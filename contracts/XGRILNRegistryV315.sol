@@ -84,9 +84,8 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         emit SourceFeeUpdated(previous, p.validatorFeeWei, p.nonce, p.setId);
     }
 
-    /// @notice Append-only, permissionless through the standard public XITA Factory.
-    /// @dev No token/router/gateway address is part of routeId; all are bound once.
-    /// Factory MUST verify both token identities and route-to-router authorization.
+    /// @notice Canonical XGR profile: one route per asset+chain pair.
+    /// @dev Preserves v3.1.5 identity compatibility for XGR/wXGR.
     function registerRoute(
         bytes32 assetId,
         uint64 destinationChainId,
@@ -100,14 +99,62 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address destinationRouter
     ) external returns (bytes32 routeId) {
         if (msg.sender != factory) revert UnauthorizedRegistrar();
+        routeId = XGRILNProtocol.routeIdV315(
+            assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain
+        );
+        _register(
+            routeId, assetId, destinationChainId, destinationDomain,
+            sourceToken, destinationToken, gateway, sourceRouter,
+            mailbox, merkleTreeHook, destinationRouter
+        );
+    }
+
+    /// @notice Open ERC20 profile: parallel independently secured route instances.
+    /// @dev The immutable source/destination router PAIR determines identity.
+    /// The permissionless Factory must deploy or authenticate each local router.
+    /// This never reserves the canonical asset ID or XGR's singleton route.
+    function registerRouteInstance(
+        bytes32 assetId,
+        uint64 destinationChainId,
+        uint32 destinationDomain,
+        address sourceToken,
+        address destinationToken,
+        address gateway,
+        address sourceRouter,
+        address mailbox,
+        address merkleTreeHook,
+        address destinationRouter
+    ) external returns (bytes32 routeId) {
+        if (msg.sender != factory) revert UnauthorizedRegistrar();
+        routeId = XGRILNProtocol.routeInstanceIdV315(
+            assetId, sourceChainId, sourceDomain, destinationChainId,
+            destinationDomain, sourceRouter, destinationRouter
+        );
+        _register(
+            routeId, assetId, destinationChainId, destinationDomain,
+            sourceToken, destinationToken, gateway, sourceRouter,
+            mailbox, merkleTreeHook, destinationRouter
+        );
+    }
+
+    function _register(
+        bytes32 routeId,
+        bytes32 assetId,
+        uint64 destinationChainId,
+        uint32 destinationDomain,
+        address sourceToken,
+        address destinationToken,
+        address gateway,
+        address sourceRouter,
+        address mailbox,
+        address merkleTreeHook,
+        address destinationRouter
+    ) private {
         if (validatorFeeWei == 0 || assetId == bytes32(0) ||
             gateway == address(0) || sourceRouter == address(0) ||
             mailbox == address(0) || merkleTreeHook == address(0) ||
             destinationRouter == address(0) || gateway.code.length == 0 ||
             sourceRouter.code.length == 0) revert InvalidRoute();
-        routeId = XGRILNProtocol.routeIdV315(
-            assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain
-        );
         if (routeExists[destinationDomain][routeId]) revert RouteAlreadyExists();
         routes[destinationDomain][routeId] = RouteRecord({
             sourceChainId: sourceChainId,
@@ -117,8 +164,8 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             mailbox: mailbox,
             merkleTreeHook: merkleTreeHook,
             destinationRouter: destinationRouter,
-            validatorFeeWei: 0, // Fee is ALWAYS read from source-chain singleton.
-            enabled: true // Never disabled after append-only registration.
+            validatorFeeWei: 0, // Always read from the source-chain singleton.
+            enabled: true // Append-only: no owner, disable or replacement.
         });
         routeAssets[destinationDomain][routeId] = AssetRoute({
             assetId: assetId,
@@ -127,7 +174,10 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             destinationToken: destinationToken
         });
         routeExists[destinationDomain][routeId] = true;
-        emit RouteAdded(destinationDomain, routeId, gateway, sourceRouter, destinationRouter, validatorFeeWei, 0);
+        emit RouteAdded(
+            destinationDomain, routeId, gateway, sourceRouter,
+            destinationRouter, validatorFeeWei, 0
+        );
     }
 
     function getRoute(uint32 destinationDomain, bytes32 routeId)
