@@ -7,6 +7,7 @@ import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
 import {XETAGuardedNativeWarpRouter} from "./XETAGuardedNativeWarpRouter.sol";
 import {XETAGuardedSyntheticWarpRouter} from "./XETAGuardedSyntheticWarpRouter.sol";
 import {ILNGateway} from "./ILNGateway.sol";
+import {XETAGuardedCollateralWarpRouterV315} from "./XETAGuardedCollateralWarpRouterV315.sol";
 
 interface IXETAXGRRouterBootstrapV315 {
     function bootstrapXETARoute(uint32 destinationDomain, bytes32 routeId) external;
@@ -38,6 +39,19 @@ contract XETATokenFactoryV315 {
 
     mapping(uint32 => XGRPeer) public xgrPeerForDomain;
 
+    struct OpenRouteRequest {
+        uint64 destinationChainId;
+        uint32 destinationDomain;
+        address destinationRouter;
+        bytes32 userSalt;
+    }
+
+    /// @dev Every open ERC20 route receives a fresh independent Router.
+    /// Synthetic tokens deployed by this factory retain their original
+    /// canonical assetId even when later locked for a second hub hop.
+    mapping(address => bytes32) public openRouterAssetId;
+    mapping(address => bytes32) public representedAssetId;
+
     error InvalidConfiguration();
     error RegistryNotDeployed();
     error RepresentationAlreadyExists();
@@ -46,6 +60,7 @@ contract XETATokenFactoryV315 {
     error PeerNotConfigured();
     error RepresentationNotDeployed();
     error RouteAlreadyExists();
+    error InvalidOpenRoute();
 
     event RegistryDeployed(address indexed registry);
     event RepresentationDeployed(bytes32 indexed assetId, address indexed router, uint64 chainId);
@@ -56,6 +71,15 @@ contract XETATokenFactoryV315 {
         address sourceRouter,
         address destinationRouter
     );
+    event ERC20RoutePrepared(
+        bytes32 indexed assetId,
+        bytes32 indexed routeId,
+        address indexed router,
+        address gateway,
+        uint32 destinationDomain,
+        address destinationRouter
+    );
+    event ERC20RouteActivated(bytes32 indexed routeId, address indexed router);
 
     constructor(
         uint64 localChainId_, uint32 localDomain_,
@@ -185,6 +209,144 @@ contract XETATokenFactoryV315 {
         emit XGRRouteCreated(
             routeId, destinationDomain_, gateway, sourceRouter, peer.router
         );
+    }
+
+
+    /// @notice Deploy an independent collateral router, then record a
+    /// pending route. Any ERC20 can be used; repeated assets are allowed.
+    /// @dev A previously factory-issued synthetic ERC20 preserves its
+    /// ORIGINAL assetId when used as collateral for a second hop through XGR.
+    function createERC20CollateralRoute(
+        address underlyingToken, OpenRouteRequest calldata request
+    ) external returns (bytes32 routeId, address router, address gateway) {
+        _validateOpenRequest(request);
+        if (underlyingToken.code.length == 0) revert InvalidOpenRoute();
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+
+        bytes32 assetId = representedAssetId[underlyingToken];
+        if (assetId == bytes32(0)) {
+            assetId = XGRILNProtocol.assetIdV315(
+                localChainId, underlyingToken, 1
+            );
+        }
+        bytes32 salt = keccak256(abi.encode(
+            "XITA_COLLATERAL_V315", msg.sender, request.userSalt,
+            assetId, underlyingToken, request.destinationChainId,
+            request.destinationDomain, request.destinationRouter
+        ));
+        router = address(new XETAGuardedCollateralWarpRouterV315{salt: salt}(
+            underlyingToken, address(registry), mailbox,
+            merkleTreeHook, destinationIsm, defaultDestinationGasLimit
+        ));
+        openRouterAssetId[router] = assetId;
+        (routeId, gateway) = _prepareOpenRoute(
+            assetId, underlyingToken, request.destinationRouter, router, request
+        );
+    }
+
+    /// @notice Deploy an isolated zero-supply wrapped ERC20 representation.
+    /// @dev User-supplied origin metadata is UNVERIFIED until the reciprocal
+    /// remote Registry/Router and actual origin ERC20 are safety-attested.
+    /// No singleton is reserved by a first caller or metadata claim.
+    function createERC20SyntheticRoute(
+        uint64 canonicalChainId,
+        address canonicalToken,
+        uint8 decimals_,
+        string calldata name_,
+        string calldata symbol_,
+        OpenRouteRequest calldata request
+    ) external returns (bytes32 routeId, address router, address gateway) {
+        _validateOpenRequest(request);
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        if (canonicalToken == address(0) ||
+            canonicalChainId == localChainId ||
+            decimals_ > 18 || bytes(name_).length == 0 ||
+            bytes(symbol_).length == 0)
+            revert InvalidOpenRoute();
+
+        bytes32 assetId = XGRILNProtocol.assetIdV315(
+            canonicalChainId, canonicalToken, 1
+        );
+        bytes32 salt = keccak256(abi.encode(
+            "XITA_SYNTHETIC_V315", msg.sender, request.userSalt,
+            assetId, request.destinationChainId,
+            request.destinationDomain, request.destinationRouter,
+            decimals_, keccak256(bytes(name_)), keccak256(bytes(symbol_))
+        ));
+        router = address(new XETAGuardedSyntheticWarpRouter{salt: salt}(
+            address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit,
+            decimals_, name_, symbol_
+        ));
+        openRouterAssetId[router] = assetId;
+        representedAssetId[router] = assetId;
+
+        address destinationToken = request.destinationChainId == canonicalChainId
+            ? canonicalToken : request.destinationRouter;
+        (routeId, gateway) = _prepareOpenRoute(
+            assetId, router, destinationToken, router, request
+        );
+    }
+
+    /// @notice Anyone can submit the cryptographic counterpart attestation.
+    /// This is transfer-safety verification, not voting on route permission.
+    /// Prepared but unproven routes remain incapable of dispatching.
+    function confirmAndBootstrapOpenRoute(
+        XGRILNRegistryV315.RouteSafetyProofV315 calldata proof,
+        bytes calldata signerBitmap,
+        bytes calldata aggregateSignature
+    ) external {
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        registry.confirmRouteInstance(proof, signerBitmap, aggregateSignature);
+        (,,,address router,,,,,bool enabled) =
+            registry.getRoute(proof.destinationDomain, proof.routeId);
+        if (!enabled || openRouterAssetId[router] == bytes32(0))
+            revert InvalidOpenRoute();
+        IXETAXGRRouterBootstrapV315(router).bootstrapXETARoute(
+            proof.destinationDomain, proof.routeId
+        );
+        emit ERC20RouteActivated(proof.routeId, router);
+    }
+
+    function _validateOpenRequest(OpenRouteRequest calldata request)
+        private view
+    {
+        if (request.destinationChainId == 0 ||
+            request.destinationChainId == localChainId ||
+            request.destinationDomain == 0 ||
+            request.destinationDomain == localDomain ||
+            request.destinationRouter == address(0) ||
+            (localDomain != 1643 && request.destinationDomain != 1643))
+            revert InvalidOpenRoute();
+    }
+
+    function _prepareOpenRoute(
+        bytes32 assetId,
+        address sourceToken,
+        address destinationToken,
+        address router,
+        OpenRouteRequest calldata request
+    ) private returns (bytes32 routeId, address gateway) {
+        routeId = XGRILNProtocol.routeInstanceIdV315(
+            assetId, localChainId, localDomain,
+            request.destinationChainId, request.destinationDomain,
+            router, request.destinationRouter
+        );
+        gateway = address(new ILNGateway{
+            salt: keccak256(abi.encodePacked("XITA_OPEN_GATEWAY_V315", routeId))
+        }(address(registry), routeId, request.destinationDomain, router, false));
+        bytes32 registeredRouteId = registry.registerRouteInstance(
+            assetId, request.destinationChainId, request.destinationDomain,
+            sourceToken, destinationToken, gateway, router,
+            mailbox, merkleTreeHook, request.destinationRouter
+        );
+        if (registeredRouteId != routeId) revert InvalidOpenRoute();
+        emit ERC20RoutePrepared(
+            assetId, routeId, router, gateway,
+            request.destinationDomain, request.destinationRouter
+        );
+        // Note: NO bootstrap here. Registry.enabled remains false until
+        // validators attest the reciprocal deployed and funded-safe route.
     }
 
 }
