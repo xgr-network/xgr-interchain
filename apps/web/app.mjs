@@ -1,7 +1,7 @@
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.mjs";
 import {manifestRoute,connectWallet,switchChain,quoteBridge,readAllowance,approveAmount,sendBridge,waitReceipt,messageIdFromReceipt,isDelivered,formatUnits,shorten} from "./protocol.mjs";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"loading"};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed"};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -55,9 +55,9 @@ function projectLinks(id){
   .map(([key,title])=>'<a class="pill-link" target="_blank" rel="noopener noreferrer" href="'+x(links[key])+'">'+title+' ↗</a>').join(" ");
 }
 function indexerNotice(){
- if(state.apiState==="ready")return '<p class="status">Source: existing XGR Explorer XETA event index. Source-chain coverage is limited to verified configured Gateways; USD TVL and global volume are not inferred.</p>';
- if(state.apiState==="error")return '<p class="status">Explorer XETA index currently unavailable. No activity values are inferred.</p>';
- return '<p class="status">Loading verified bridge events from the Explorer…</p>';
+ if(state.apiState==="ready")return '<p class="status">Source: independent XITA ILN indexer. Only verified deployed Gateway events are counted; this is not DEX trading volume.</p>';
+ if(state.apiState==="error")return '<p class="status">XITA event index is currently unavailable. No figures are inferred.</p>';
+ return '<p class="status">XITA event index not yet online. Unavailable transfer statistics are not zero.</p>';
 }
 function overview(){
  const ids=allAssets();
@@ -144,7 +144,7 @@ function token(){
  '<div class="pair"><span>Market price</span><b>'+x(displayPrice(state.prices[id]))+'</b></div>'+
  '<div class="pair"><span>Market capitalization</span><b>Not available from verified feed</b></div>'+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
- '<section class="section"><h2>Network representations</h2><div class="routes">'+a.metadata.representations.map(rep=>
+ '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
   '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
   '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
  '<section class="section"><h2>Interchain routes</h2><div class="routes">'+routes().map(rt=>
@@ -276,14 +276,20 @@ function application(e){
 }
 function render(){
  const p=path();
- el.innerHTML=p==="/"?overview():p==="/markets"?markets():(p==="/token/xgr"||p==="/xgr")?token():p==="/join"?join():p==="/routes"?routesPage():'<h1>Not found</h1>'+btn("/markets","Browse tokens");
+ const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
+ const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
+ state.assetId=id||"XGR";
+ el.innerHTML=p==="/"?overview():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?routesPage():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  document.querySelector("#route")?.addEventListener("change",reset);
  document.querySelector("#amount")?.addEventListener("input",reset);
  document.querySelector("#quote-btn")?.addEventListener("click",requestQuote);
  document.querySelector("#bridge-btn")?.addEventListener("click",bridge);
  document.querySelector("#check-delivery")?.addEventListener("click",delivery);
  document.querySelector("#application")?.addEventListener("submit",application);
- document.querySelector("#search")?.addEventListener("input",e=>document.querySelector("#market-row").style.display=/xgr|wrapped|^$/i.test(e.target.value)?"":"none");
+ document.querySelector("#search")?.addEventListener("input",e=>{
+  const value=e.target.value.trim().toLowerCase();
+  document.querySelectorAll("#market-row tr").forEach(row=>row.hidden=!row.dataset.filter?.includes(value));
+ });
  controls();
 }
 connect.addEventListener("click",async()=>{
@@ -306,4 +312,27 @@ try{
  state.catalog=await res.json();
  if(!state.catalog.assets?.XGR?.routes||!state.catalog.infrastructure?.xgrchain)throw Error("Invalid manifest");
  render();
+ // The new lightweight XITA indexer is optional at first launch.
+ // Load asynchronously; never invent totals or block wallet functionality when unavailable.
+ void loadPublicData();
 }catch(e){el.innerHTML="<h1>XETA inventory unavailable</h1><p>"+x(e.message)+"</p><p>Bridging is disabled until a verified manifest is available.</p>";}
+
+async function loadPublicData(){
+ const assetIds=allAssets();
+ const requests=[
+  loadXetaOverview(),
+  ...assetIds.flatMap(id=>[loadXetaAsset(id),loadXetaTransfers(id)]),
+  ...assetIds.map(id=>loadMarketPrice(id))
+ ];
+ const settled=await Promise.allSettled(requests);
+ state.apiState=settled[0].status==="fulfilled"?"ready":"error";
+ for(let i=0;i<assetIds.length;i++){
+  const id=assetIds[i];
+  const assetReply=settled[1+2*i],transfersReply=settled[2+2*i];
+  if(assetReply.status==="fulfilled")state.assetStats[id]=assetReply.value;
+  if(transfersReply.status==="fulfilled")state.transfers[id]=transfersReply.value;
+  const priceReply=settled[1+2*assetIds.length+i];
+  if(priceReply?.status==="fulfilled")state.prices[id]=priceReply.value;
+ }
+ if(!state.busy&&!state.quote)render();
+}
