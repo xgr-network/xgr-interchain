@@ -175,6 +175,54 @@ contract XETATokenFactoryV315 {
         emit RepresentationDeployed(assetId, router, localChainId);
     }
 
+    /// @notice Step 1: deploy standalone collateral escrow before knowing
+    /// the opposite chain's router address. This avoids CREATE2 circularity.
+    function deployOpenCollateralRouter(address token_, bytes32 userSalt)
+        external returns (bytes32 assetId, address router)
+    {
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        if (token_.code.length == 0) revert InvalidOpenRoute();
+        assetId = representedAssetId[token_];
+        if (assetId == bytes32(0))
+            assetId = XGRILNProtocol.assetIdV315(localChainId, token_, 1);
+        router = address(new XETAGuardedCollateralWarpRouterV315{
+            salt: keccak256(abi.encode(
+                "XITA_COLLATERAL_UNBOUND_V315", msg.sender, userSalt,
+                assetId, token_
+            ))
+        }(
+            token_, address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit
+        ));
+        openRouterAssetId[router] = assetId;
+        openRouterCreator[router] = msg.sender;
+    }
+
+    /// @notice Step 1 on the destination chain: zero-supply representation.
+    /// Any metadata claim remains unverified until remote safety attestation.
+    function deployOpenSyntheticRouter(
+        uint64 originChainId, address originToken, uint8 decimals_,
+        string calldata name_, string calldata symbol_, bytes32 userSalt
+    ) external returns (bytes32 assetId, address router) {
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        if (originChainId == localChainId || originToken == address(0) ||
+            decimals_ > 18 || bytes(name_).length == 0 ||
+            bytes(symbol_).length == 0) revert InvalidOpenRoute();
+        assetId = XGRILNProtocol.assetIdV315(originChainId, originToken, 1);
+        router = address(new XETAGuardedSyntheticWarpRouter{
+            salt: keccak256(abi.encode(
+                "XITA_SYNTH_UNBOUND_V315", msg.sender, userSalt, assetId,
+                decimals_, keccak256(bytes(name_)), keccak256(bytes(symbol_))
+            ))
+        }(
+            address(registry), mailbox, merkleTreeHook, destinationIsm,
+            defaultDestinationGasLimit, decimals_, name_, symbol_
+        ));
+        openRouterAssetId[router] = assetId;
+        representedAssetId[router] = assetId;
+        openRouterCreator[router] = msg.sender;
+    }
+
     /// @notice Permissionless, ATOMIC bootstrap of a pre-authenticated XGR peer.
     /// @dev Requires an initialized source fee. Every failure atomically
     /// reverts Gateway, FeeVault, registry insert and Router enrollment.
