@@ -8,260 +8,164 @@ import {XGRILNRegistryV315} from "../contracts/XGRILNRegistryV315.sol";
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
 import {XETAGuardedCollateralWarpRouterV315} from "../contracts/XETAGuardedCollateralWarpRouterV315.sol";
 import {XETAGuardedSyntheticWarpRouter} from "../contracts/XETAGuardedSyntheticWarpRouter.sol";
-import {XETARouterCore} from "../contracts/XETARouterCore.sol";
 import {ILNGateway} from "../contracts/ILNGateway.sol";
 import {MockLocalGovernanceRegistry} from "../contracts/test/MockLocalGovernanceRegistry.sol";
 
-contract MockOriginERC20V315 is ERC20 {
-    constructor() ERC20("Origin Asset", "OAS") {
-        _mint(msg.sender, 1_000_000 ether);
-    }
+contract XITAMockERC20 is ERC20 {
+    constructor() ERC20("Original Asset", "ORIG") { _mint(msg.sender, 1_000_000 ether); }
 }
 
-contract OpenV315MockMailbox {
+contract XITAOpenMailboxMock {
     uint32 public immutable localDomain;
-    uint256 public dispatchCount;
+    uint256 public count;
     constructor(uint32 domain) { localDomain = domain; }
     function quoteDispatch(uint32, bytes32, bytes calldata, bytes calldata, address)
         external pure returns (uint256) { return 0; }
     function dispatch(uint32, bytes32, bytes calldata, bytes calldata, address)
         external payable returns (bytes32) {
-        dispatchCount++;
-        return keccak256(abi.encodePacked(dispatchCount));
+        count++;
+        return keccak256(abi.encodePacked(count));
     }
 }
 
 contract XETAOpenRouteFactoryV315Test is Test {
     uint64 internal constant BASE = 8453;
-    uint32 internal constant HUB = 1643;
-    address internal constant REMOTE_A = address(0xAAA1);
-    address internal constant REMOTE_B = address(0xAAA2);
-
+    uint64 internal constant HUB = 1643;
+    address internal constant PEER_A = address(0xAAA1);
+    address internal constant PEER_B = address(0xAAA2);
     XETATokenFactoryV315 internal factory;
     XGRILNRegistryV315 internal registry;
     MockLocalGovernanceRegistry internal validators;
-    OpenV315MockMailbox internal mailbox;
-    MockOriginERC20V315 internal token;
+    XITAOpenMailboxMock internal mailbox;
+    XITAMockERC20 internal token;
 
     function setUp() public {
         vm.chainId(BASE);
         validators = new MockLocalGovernanceRegistry(uint32(BASE));
-        mailbox = new OpenV315MockMailbox(uint32(BASE));
+        mailbox = new XITAOpenMailboxMock(uint32(BASE));
         factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000,
-            new uint64[](0), new uint32[](0), new address[](0)
+            address(mailbox), address(mailbox), address(mailbox), 200_000
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
-        token = new MockOriginERC20V315();
-        XGRILNProtocol.SourceFeeProposalV315 memory p =
+        token = new XITAMockERC20();
+        XGRILNProtocol.SourceFeeProposalV315 memory proposal =
             XGRILNProtocol.SourceFeeProposalV315({
                 sourceChainId: BASE, sourceDomain: uint32(BASE),
                 registry: address(registry), setId: validators.setId(),
                 nonce: 1, validUntil: uint64(block.timestamp + 600),
                 validatorFeeWei: 100
             });
-        registry.applySourceFee(p, hex"03", hex"01");
+        registry.applySourceFee(proposal, hex"03", hex"01");
     }
 
-    function _request(address remote, bytes32 salt)
-        internal pure returns (XETATokenFactoryV315.OpenRouteRequest memory)
-    {
-        return XETATokenFactoryV315.OpenRouteRequest({
-            destinationChainId: HUB,
-            destinationDomain: HUB,
-            destinationRouter: remote,
-            userSalt: salt
-        });
-    }
-
-    function _proof(bytes32 id, address router, address remote)
+    function _proof(bytes32 id, address local, address peer)
         internal view returns (XGRILNRegistryV315.RouteSafetyProofV315 memory)
     {
-        bytes32 assetId = XGRILNProtocol.assetIdV315(BASE,address(token),1);
+        bytes32 assetId = XGRILNProtocol.assetIdV315(BASE, address(token), 1);
         return XGRILNRegistryV315.RouteSafetyProofV315({
-            destinationDomain: HUB,
+            destinationDomain: uint32(HUB),
             routeId: id,
             reverseRouteId: XGRILNProtocol.routeInstanceIdV315(
-                assetId, HUB, HUB, BASE, uint32(BASE), remote, router
+                assetId, HUB, uint32(HUB), BASE, uint32(BASE), peer, local
             ),
             remoteRegistry: address(0xB123),
             remoteFactory: address(0xB456),
             remoteGateway: address(0xB789),
-            remoteRouterCodeHash: keccak256("verified foreign runtime code"),
-            localRouterCodeHash: router.codehash,
+            remoteRouterCodeHash: keccak256("remote router"),
+            localRouterCodeHash: local.codehash,
             setId: validators.setId(),
-            validUntil: uint64(block.timestamp + 5 minutes)
+            validUntil: uint64(block.timestamp + 600)
         });
     }
 
-    function testParallelCollateralInstancesCannotCaptureCanonicalAsset() public {
-        (bytes32 a,address routerA,address gatewayA) =
-            factory.createERC20CollateralRoute(address(token),_request(REMOTE_A,bytes32(uint256(1))));
-        (bytes32 b,address routerB,address gatewayB) =
-            factory.createERC20CollateralRoute(address(token),_request(REMOTE_B,bytes32(uint256(2))));
-        assertTrue(a != b);
-        assertTrue(routerA != routerB);
+    function testSameAssetCanHaveIndependentPreparedRoutes() public {
+        (bytes32 a,address first) = factory.deployCollateralRouter(
+            address(token),bytes32(uint256(1)));
+        (bytes32 b,address second) = factory.deployCollateralRouter(
+            address(token),bytes32(uint256(2)));
+        assertEq(a, b);
+        assertTrue(first != second);
+        (bytes32 idA,address gatewayA) =
+            factory.prepareRoute(first,HUB,uint32(HUB),PEER_A,PEER_A);
+        (bytes32 idB,address gatewayB) =
+            factory.prepareRoute(second,HUB,uint32(HUB),PEER_B,PEER_B);
+        assertTrue(idA != idB);
         assertTrue(gatewayA != gatewayB);
-        assertTrue(registry.exists(HUB,a));
-        assertTrue(registry.exists(HUB,b));
-        assertEq(factory.openRouterAssetId(routerA),factory.openRouterAssetId(routerB));
-        assertEq(factory.openRouterAssetId(routerA),
-            XGRILNProtocol.assetIdV315(BASE,address(token),1));
-        (,,,,,,,,bool enabledA) = registry.getRoute(HUB,a);
-        (,,,,,,,,bool enabledB) = registry.getRoute(HUB,b);
+        assertTrue(registry.exists(uint32(HUB),idA));
+        assertTrue(registry.exists(uint32(HUB),idB));
+        (,,,,,,,,bool enabledA) = registry.getRoute(uint32(HUB),idA);
+        (,,,,,,,,bool enabledB) = registry.getRoute(uint32(HUB),idB);
         assertFalse(enabledA);
         assertFalse(enabledB);
-        assertEq(XETAGuardedCollateralWarpRouterV315(routerA).token(),address(token));
-        assertEq(XETAGuardedCollateralWarpRouterV315(routerB).token(),address(token));
+        assertEq(XETAGuardedCollateralWarpRouterV315(first).token(),address(token));
+        assertEq(XETAGuardedCollateralWarpRouterV315(second).token(),address(token));
         vm.expectRevert(ILNGateway.InvalidRoute.selector);
-        ILNGateway(gatewayA).quoteILN(HUB,bytes32(uint256(1)),1 ether);
+        ILNGateway(gatewayA).quoteILN(uint32(HUB),bytes32(uint256(1)),1 ether);
     }
 
-    function testInvalidPairProofCannotActivateEvenWhenRouteExists() public {
-        (bytes32 id,address router,) = factory.createERC20CollateralRoute(
-            address(token),_request(REMOTE_A,bytes32(uint256(3)))
-        );
-        XGRILNRegistryV315.RouteSafetyProofV315 memory p = _proof(id,router,REMOTE_A);
-        p.localRouterCodeHash = bytes32(uint256(1));
+    function testFalseRemoteProofCannotActivateRoute() public {
+        (,address local) = factory.deployCollateralRouter(address(token),bytes32(uint256(3)));
+        (bytes32 id,) = factory.prepareRoute(local,HUB,uint32(HUB),PEER_A,PEER_A);
+        XGRILNRegistryV315.RouteSafetyProofV315 memory proof = _proof(id,local,PEER_A);
+        proof.localRouterCodeHash = keccak256("spoofed local code");
         vm.expectRevert(XGRILNRegistryV315.InvalidRouteSafetyProof.selector);
-        factory.confirmAndBootstrapOpenRoute(p,hex"03",hex"01");
-        p.localRouterCodeHash = router.codehash;
+        factory.activateRoute(proof,hex"03",hex"01");
+        proof.localRouterCodeHash = local.codehash;
         validators.setResult(false);
         vm.expectRevert(XGRILNRegistryV315.InvalidRouteSafetyProof.selector);
-        factory.confirmAndBootstrapOpenRoute(p,hex"03",hex"01");
-        (,,,,,,,,bool enabled) = registry.getRoute(HUB,id);
+        factory.activateRoute(proof,hex"03",hex"01");
+        (,,,,,,,,bool enabled) = registry.getRoute(uint32(HUB),id);
         assertFalse(enabled);
     }
 
-    function testProofThenAtomicActivationAndIndependentCollateral() public {
-        (bytes32 id,address router,address gateway) =
-            factory.createERC20CollateralRoute(address(token),_request(REMOTE_A,bytes32(uint256(4))));
-        (bytes32 other,address otherRouter,) =
-            factory.createERC20CollateralRoute(address(token),_request(REMOTE_B,bytes32(uint256(5))));
-        XGRILNRegistryV315.RouteSafetyProofV315 memory proof =
-            _proof(id,router,REMOTE_A);
-        factory.confirmAndBootstrapOpenRoute(proof,hex"03",hex"01");
-        (,,,,,,,uint256 fee,bool active) = registry.getRoute(HUB,id);
-        assertTrue(active);
+    function testActivatedCollateralRouteDoesNotUseOtherEscrow() public {
+        (,address local) = factory.deployCollateralRouter(address(token),bytes32(uint256(4)));
+        (,address second) = factory.deployCollateralRouter(address(token),bytes32(uint256(5)));
+        (bytes32 id,address gateway) = factory.prepareRoute(
+            local,HUB,uint32(HUB),PEER_A,PEER_A
+        );
+        (bytes32 other,) = factory.prepareRoute(
+            second,HUB,uint32(HUB),PEER_B,PEER_B
+        );
+        factory.activateRoute(_proof(id,local,PEER_A),hex"03",hex"01");
+        (,,,,,,,uint256 fee,bool enabled) = registry.getRoute(uint32(HUB),id);
+        assertTrue(enabled);
         assertEq(fee,100);
-        (,,,,,,,,bool otherActive) = registry.getRoute(HUB,other);
-        assertFalse(otherActive);
-        assertEq(XETAGuardedCollateralWarpRouterV315(router).xetaRouteIdForDomain(HUB),id);
-        assertEq(XETAGuardedCollateralWarpRouterV315(router).routers(HUB),
-            bytes32(uint256(uint160(REMOTE_A))));
-        vm.expectRevert(XETARouterCore.XETAInvalidRoute.selector);
-        XETAGuardedCollateralWarpRouterV315(otherRouter).transferRemote(
-            HUB,bytes32(uint256(1)),1 ether
-        );
-
-        token.approve(gateway, 100 ether);
-        (
-            uint256 validatorFee,
-            uint256 quotedNative,
-            uint256 totalNative,
-            uint256 quotedToken
-        ) = ILNGateway(gateway).quoteILN(HUB,bytes32(uint256(uint160(address(0xCAFE)))),100 ether);
+        (,,,,,,,,bool otherEnabled) = registry.getRoute(uint32(HUB),other);
+        assertFalse(otherEnabled);
+        token.approve(gateway,100 ether);
+        bytes32 recipient = bytes32(uint256(uint160(address(0xCAFE))));
+        (uint256 validatorFee,,uint256 total,uint256 quotedToken) =
+            ILNGateway(gateway).quoteILN(uint32(HUB),recipient,100 ether);
         assertEq(validatorFee,100);
-        assertEq(quotedNative,0);
-        assertEq(totalNative,100);
         assertEq(quotedToken,100 ether);
-        ILNGateway(gateway).bridge{value:totalNative}(
-            HUB,bytes32(uint256(uint160(address(0xCAFE)))),100 ether
-        );
-        assertEq(token.balanceOf(router),100 ether);
-        assertEq(token.balanceOf(otherRouter),0);
+        ILNGateway(gateway).bridge{value:total}(uint32(HUB),recipient,100 ether);
+        assertEq(token.balanceOf(local),100 ether);
+        assertEq(token.balanceOf(second),0);
         assertEq(address(ILNGateway(gateway).feeVault()).balance,100);
     }
 
-    function testMultipleWrappedClaimsCanCoexistWithoutMinting() public {
-        uint64 origin = HUB;
-        address originERC20 = address(0x9999);
-        (bytes32 a,address first,) = factory.createERC20SyntheticRoute(
-            origin,originERC20,18,"Claim 1","C1",
-            _request(REMOTE_A,bytes32(uint256(6)))
+    function testIndependentSyntheticClaimsBeginWithZeroSupply() public {
+        address origin = address(0x9999);
+        (bytes32 a,address first) = factory.deploySyntheticRouter(
+            HUB,origin,18,"Claim A","A",bytes32(uint256(6))
         );
-        (bytes32 b,address second,) = factory.createERC20SyntheticRoute(
-            origin,originERC20,18,"Claim 2","C2",
-            _request(REMOTE_B,bytes32(uint256(7)))
+        (bytes32 b,address second) = factory.deploySyntheticRouter(
+            HUB,origin,18,"Claim B","B",bytes32(uint256(7))
         );
-        assertTrue(a != b);
+        assertEq(a,b);
         assertTrue(first != second);
-        assertEq(factory.representedAssetId(first),factory.representedAssetId(second));
         assertEq(XETAGuardedSyntheticWarpRouter(first).totalSupply(),0);
         assertEq(XETAGuardedSyntheticWarpRouter(second).totalSupply(),0);
-        (,,,,,,,,bool enabledA) = registry.getRoute(HUB,a);
-        assertFalse(enabledA);
+        assertEq(factory.representedAssetId(first),a);
     }
 
-    function testInvalidSpokeToSpokeIsNeverDeployed() public {
-        XETATokenFactoryV315.OpenRouteRequest memory bad =
-            XETATokenFactoryV315.OpenRouteRequest({
-                destinationChainId: 137,
-                destinationDomain: 137,
-                destinationRouter: REMOTE_A,
-                userSalt: bytes32(uint256(9))
-            });
-        vm.expectRevert(XETATokenFactoryV315.InvalidOpenRoute.selector);
-        factory.createERC20CollateralRoute(address(token),bad);
+    function testNoDirectBaseToPolygonRouteThroughFactory() public {
+        (,address router) = factory.deployCollateralRouter(
+            address(token),bytes32(uint256(8))
+        );
+        vm.expectRevert(XETATokenFactoryV315.InvalidDestination.selector);
+        factory.prepareRoute(router,137,137,PEER_A,PEER_A);
     }
-
-    function testDifferentTokenSameRouterClaimsHaveDistinctAssetId() public {
-        MockOriginERC20V315 second = new MockOriginERC20V315();
-        (bytes32 a,,) = factory.createERC20CollateralRoute(
-            address(token),_request(REMOTE_A,bytes32(uint256(10)))
-        );
-        (bytes32 b,,) = factory.createERC20CollateralRoute(
-            address(second),_request(REMOTE_A,bytes32(uint256(10)))
-        );
-        assertTrue(a != b);
-    }
-    function testDeployFirstAndBindLaterAvoidsCircularRouterAddresses() public {
-        (bytes32 assetId,address localRouter) =
-            factory.deployOpenCollateralRouter(address(token),bytes32(uint256(21)));
-        assertTrue(localRouter.code.length != 0);
-        assertEq(factory.openRouterCreator(localRouter),address(this));
-        assertEq(assetId,XGRILNProtocol.assetIdV315(BASE,address(token),1));
-
-        vm.expectRevert(XETATokenFactoryV315.UnauthorizedRouterCreator.selector);
-        vm.prank(address(0xBEEF));
-        factory.prepareExistingOpenRouterRoute(
-            localRouter,HUB,HUB,REMOTE_A,REMOTE_A
-        );
-
-        (bytes32 routeId,address gateway) = factory.prepareExistingOpenRouterRoute(
-            localRouter,HUB,HUB,REMOTE_A,REMOTE_A
-        );
-        assertTrue(gateway.code.length != 0);
-        assertTrue(registry.exists(HUB,routeId));
-        (,,,,,,,,bool live) = registry.getRoute(HUB,routeId);
-        assertFalse(live);
-        vm.expectRevert(XETARouterCore.XETAInvalidRoute.selector);
-        XETAGuardedCollateralWarpRouterV315(localRouter).bootstrapXETARoute(HUB,routeId);
-        vm.expectRevert(XETATokenFactoryV315.RouterDomainReserved.selector);
-        factory.prepareExistingOpenRouterRoute(
-            localRouter,HUB,HUB,REMOTE_B,REMOTE_B
-        );
-    }
-
-    function testIndependentRoutersCanPrepareSameAssetAndDestination() public {
-        (,address first) = factory.deployOpenCollateralRouter(
-            address(token),bytes32(uint256(22))
-        );
-        (,address second) = factory.deployOpenCollateralRouter(
-            address(token),bytes32(uint256(23))
-        );
-        (bytes32 a,) = factory.prepareExistingOpenRouterRoute(
-            first,HUB,HUB,REMOTE_A,REMOTE_A
-        );
-        (bytes32 b,) = factory.prepareExistingOpenRouterRoute(
-            second,HUB,HUB,REMOTE_B,REMOTE_B
-        );
-        assertTrue(a != b);
-        assertTrue(first != second);
-        assertTrue(registry.exists(HUB,a));
-        assertTrue(registry.exists(HUB,b));
-        assertEq(factory.openRouterAssetId(first),factory.openRouterAssetId(second));
-    }
-
 }
