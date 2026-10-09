@@ -2,6 +2,7 @@ import http from "node:http";
 import {readFileSync,writeFileSync,mkdirSync,renameSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {inspectContract} from "./inspector.mjs";
+import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
@@ -122,6 +123,11 @@ http.createServer(async(req,res)=>{
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
    return reply(res,200,{ok:true,steps,mode:"read-only",governance:"validator quorum only"});
+  }
+  if(req.method==="GET"&&path==="/admin/api/jobs")return reply(res,200,{ok:true,jobs:await getJobs()});
+  if(req.method==="POST"&&path==="/admin/api/jobs/status"){
+   const data=await bodyJSON(req);
+   return reply(res,200,{ok:true,...await recordJobEvent(data.number,data.status,data.evidence)});
   }
   if(req.method==="GET"&&path==="/admin/api/progress")return reply(res,200,{ok:true,...present(readState())});
   if(req.method==="GET"&&path==="/admin/api/preflight")return reply(res,200,{ok:true,...await preflight(inventory())});
