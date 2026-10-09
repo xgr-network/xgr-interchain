@@ -1,0 +1,61 @@
+# XITA public SPA + restricted read-only admin.
+# Prerequisites: DNS A record for xita.xgr.network, certbot TLS certificate.
+# Deploy contents of apps/web to /var/www/xita/current (or update root).
+# This example is HTTPS only; use certbot's HTTP bootstrap before enabling.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name xita.xgr.network;
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        try_files $uri =404;
+    }
+    location / { return 301 https://$host$request_uri; }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name xita.xgr.network;
+    ssl_certificate /etc/letsencrypt/live/xita.xgr.network/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/xita.xgr.network/privkey.pem;
+
+    root /var/www/xita/current;
+    index index.html;
+    server_tokens off;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    add_header X-Frame-Options DENY always;
+    add_header Permissions-Policy 'camera=(), microphone=(), geolocation=()' always;
+    # No inline JS is used in the public app. External project logos may load over HTTPS.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
+
+    location ^~ /admin/ {
+        auth_basic "XITA Operator";
+        auth_basic_user_file /etc/nginx/.htpasswd-xita;
+        proxy_pass http://127.0.0.1:4087;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Authorization "";
+        proxy_read_timeout 12s;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+    }
+    location = /admin { return 302 /admin/; }
+
+    # Indexer is a future dedicated XITA service, not the XGR Explorer.
+    # Fail closed until a tested XITA service/API exists.
+    location ^~ /api/xeta/ {
+        default_type application/json;
+        return 503 '{"ok":false,"error":"XITA indexer not deployed"}';
+    }
+    location = /api/xgr-price {
+        default_type application/json;
+        return 503 '{"ok":false,"error":"Market-data adapter not yet deployed"}';
+    }
+
+    location = /catalog.json { add_header Cache-Control "no-store" always; try_files $uri =404; }
+    location / { try_files $uri $uri/ /index.html; }
+}
