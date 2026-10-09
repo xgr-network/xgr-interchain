@@ -53,6 +53,7 @@ contract XETATokenFactoryV315 {
         address mailbox_, address hook_, address ism_, uint256 gasLimit_
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
+            (chainId_ == 1643) != (domain_ == 1643) ||
             validatorRegistry_ == address(0) || validatorRegistry_.code.length == 0 ||
             mailbox_ == address(0) || mailbox_.code.length == 0 ||
             hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0)
@@ -173,7 +174,8 @@ contract XETATokenFactoryV315 {
         if (destinationChainId == 0 || destinationChainId == localChainId ||
             destinationDomain == 0 || destinationDomain == localDomain ||
             destinationRouter == address(0) ||
-            (localDomain != 1643 && destinationDomain != 1643))
+            (destinationChainId == 1643) != (destinationDomain == 1643) ||
+            (localChainId != 1643 && destinationChainId != 1643))
             revert InvalidDestination();
         if (routeForDomainPrepared[sourceRouter][destinationDomain])
             revert RouteAlreadyPrepared();
