@@ -29,8 +29,4 @@ interface IXGRILNRegistry {
             bool enabled
         );
 
-    function governanceNonce(uint32 destinationDomain, bytes32 routeId)
-        external
-        view
-        returns (uint64);
 }
