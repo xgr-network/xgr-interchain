@@ -26,9 +26,29 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address destinationToken;
     }
 
+    /// @notice Objective remote-pair safety attestation; NOT route governance.
+    /// @dev Validator software must independently inspect a confirmed remote
+    /// Registry/Router/Gateway before signing. A first caller cannot self-attest.
+    struct RouteSafetyProofV315 {
+        uint32 destinationDomain;
+        bytes32 routeId;
+        bytes32 reverseRouteId;
+        address remoteRegistry;
+        address remoteFactory;
+        address remoteGateway;
+        bytes32 remoteRouterCodeHash;
+        bytes32 localRouterCodeHash;
+        uint64 setId;
+        uint64 validUntil;
+    }
+
+    bytes32 private constant PAIR_DOMAIN_V315 =
+        keccak256("XITA_ROUTE_SAFETY_V315");
+
     mapping(uint32 => mapping(bytes32 => RouteRecord)) private routes;
     mapping(uint32 => mapping(bytes32 => bool)) private routeExists;
     mapping(uint32 => mapping(bytes32 => AssetRoute)) private routeAssets;
+    mapping(uint32 => mapping(bytes32 => bool)) public isOpenInstance;
 
     error InvalidConfiguration();
     error InvalidRoute();
@@ -37,6 +57,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
     error InvalidFeeQuorum();
     error ExpiredFeeProposal();
     error InvalidFeeNonce();
+    error InvalidRouteSafetyProof();
 
     event RouteAdded(
         uint32 indexed destinationDomain,
@@ -48,6 +69,11 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         uint64 nonce
     );
     event SourceFeeUpdated(uint256 previousFeeWei, uint256 newFeeWei, uint64 indexed nonce, uint64 validatorSetId);
+    event RoutePrepared(uint32 indexed destinationDomain, bytes32 indexed routeId, address indexed gateway);
+    event RouteSafetyConfirmed(
+        uint32 indexed destinationDomain, bytes32 indexed routeId,
+        bytes32 indexed reverseRouteId, uint64 validatorSetId
+    );
 
     constructor(uint64 chainId_, uint32 domain_, address validators_, address factory_) {
         if (chainId_ == 0 || domain_ == 0 || factory_ == address(0) ||
@@ -105,7 +131,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         _register(
             routeId, assetId, destinationChainId, destinationDomain,
             sourceToken, destinationToken, gateway, sourceRouter,
-            mailbox, merkleTreeHook, destinationRouter
+            mailbox, merkleTreeHook, destinationRouter, true
         );
     }
 
@@ -133,7 +159,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         _register(
             routeId, assetId, destinationChainId, destinationDomain,
             sourceToken, destinationToken, gateway, sourceRouter,
-            mailbox, merkleTreeHook, destinationRouter
+            mailbox, merkleTreeHook, destinationRouter, false
         );
     }
 
@@ -148,7 +174,8 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address sourceRouter,
         address mailbox,
         address merkleTreeHook,
-        address destinationRouter
+        address destinationRouter,
+        bool isCanonical
     ) private {
         if (validatorFeeWei == 0 || assetId == bytes32(0) ||
             gateway == address(0) || sourceRouter == address(0) ||
@@ -165,7 +192,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             merkleTreeHook: merkleTreeHook,
             destinationRouter: destinationRouter,
             validatorFeeWei: 0, // Always read from the source-chain singleton.
-            enabled: true // Append-only: no owner, disable or replacement.
+            enabled: isCanonical // Open instances wait for safety evidence.
         });
         routeAssets[destinationDomain][routeId] = AssetRoute({
             assetId: assetId,
@@ -174,9 +201,89 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             destinationToken: destinationToken
         });
         routeExists[destinationDomain][routeId] = true;
+        if (isCanonical) {
+            emit RouteAdded(
+                destinationDomain, routeId, gateway, sourceRouter,
+                destinationRouter, validatorFeeWei, 0
+            );
+        } else {
+            isOpenInstance[destinationDomain][routeId] = true;
+            emit RoutePrepared(destinationDomain, routeId, gateway);
+        }
+    }
+
+    /// @notice Anyone can verify an objectively attested deployed counterpart.
+    /// @dev Requires validator-transfer-security BLS quorum, not governance
+    /// authorization to CREATE a route. A signature must certify the remote
+    /// live Router code, reciprocal pending Registry entry, custody adapter,
+    /// origin token metadata and locked asset identity on the other chain.
+    /// The contract checks every local and domain-separated signed field.
+    function confirmRouteInstance(
+        RouteSafetyProofV315 calldata proof,
+        bytes calldata signerBitmap,
+        bytes calldata aggregateSignature
+    ) external {
+        uint32 domain = proof.destinationDomain;
+        bytes32 id = proof.routeId;
+        if (!isOpenInstance[domain][id] ||
+            !routeExists[domain][id] ||
+            routes[domain][id].enabled ||
+            block.timestamp > proof.validUntil ||
+            proof.remoteRegistry == address(0) ||
+            proof.remoteFactory == address(0) ||
+            proof.remoteGateway == address(0) ||
+            proof.remoteRouterCodeHash == bytes32(0) ||
+            proof.setId == 0 ||
+            proof.validUntil == 0 ||
+            proof.setId != governanceRegistry.setId()
+        ) revert InvalidRouteSafetyProof();
+
+        RouteRecord storage route = routes[domain][id];
+        AssetRoute storage asset = routeAssets[domain][id];
+        bytes32 reverse = XGRILNProtocol.routeInstanceIdV315(
+            asset.assetId, asset.destinationChainId, domain,
+            sourceChainId, sourceDomain,
+            route.destinationRouter, route.sourceRouter
+        );
+        if (reverse != proof.reverseRouteId ||
+            route.sourceRouter.codehash != proof.localRouterCodeHash)
+            revert InvalidRouteSafetyProof();
+
+        bytes memory payload = _routeSafetyPayload(proof);
+        if (!governanceRegistry.verifyQuorum(
+            proof.setId, payload, signerBitmap, aggregateSignature
+        )) revert InvalidRouteSafetyProof();
+
+        route.enabled = true;
+        emit RouteSafetyConfirmed(domain, id, reverse, proof.setId);
+        // Legacy node's RouteAdded scanner must see an event ONLY after
+        // the new route is usable, so a pending route cannot poison discovery.
         emit RouteAdded(
-            destinationDomain, routeId, gateway, sourceRouter,
-            destinationRouter, validatorFeeWei, 0
+            domain, id, route.gateway, route.sourceRouter,
+            route.destinationRouter, validatorFeeWei, 0
+        );
+    }
+
+    function encodeRouteSafetyProofV315(RouteSafetyProofV315 calldata proof)
+        external view returns (bytes memory)
+    {
+        return _routeSafetyPayload(proof);
+    }
+
+    function _routeSafetyPayload(RouteSafetyProofV315 calldata proof)
+        private view returns (bytes memory)
+    {
+        RouteRecord storage route = routes[proof.destinationDomain][proof.routeId];
+        AssetRoute storage asset = routeAssets[proof.destinationDomain][proof.routeId];
+        return abi.encode(
+            PAIR_DOMAIN_V315,
+            sourceChainId, sourceDomain, address(this), proof.routeId,
+            asset.assetId, asset.destinationChainId, proof.destinationDomain,
+            asset.sourceToken, asset.destinationToken,
+            route.sourceRouter, route.destinationRouter, route.gateway,
+            proof.reverseRouteId, proof.remoteRegistry, proof.remoteFactory,
+            proof.remoteGateway, proof.localRouterCodeHash,
+            proof.remoteRouterCodeHash, proof.setId, proof.validUntil
         );
     }
 
