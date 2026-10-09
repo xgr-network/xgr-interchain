@@ -1,4 +1,13 @@
 # XGR Interchain — ILN v3.1.4
+
+> **v3.1.5 DEVELOPMENT BRANCH:** A new permissionless multi-instance XITA
+> route model is being implemented on `feature/v3.1.5-route-bootstrap`.
+> The v3.1.4 deployed infrastructure is unchanged. Open token routes are
+> **inactive** until an objective, validator-BLS transfer-safety attestation
+> authenticates the reciprocal remote factory/router/collateral binding.
+> Read [v3.1.5 protocol specification](docs/XITA_SPEC_V315.md).
+> **No v3.1.5 mainnet deployment is authorized by this source.**
+
 This standalone repository contains XGR Interchain ILN v3.1.4, an open, quorum-governed token-transfer protocol. **The new XETA/XITA routes are not deployed merely because this source repository exists.**
 
 XGRChain (chain ID/domain 1643) is the central hub. Base, Polygon and Arbitrum are configured as planned spokes. Transfers between two external networks always route through XGRChain in two independent steps.
