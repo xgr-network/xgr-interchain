@@ -9,6 +9,10 @@ import {XETAGuardedSyntheticWarpRouter} from "./XETAGuardedSyntheticWarpRouter.s
 import {ILNGateway} from "./ILNGateway.sol";
 import {XETAGuardedCollateralWarpRouterV315} from "./XETAGuardedCollateralWarpRouterV315.sol";
 
+interface IILNXETATokenView {
+    function token() external view returns (address);
+}
+
 interface IXETAXGRRouterBootstrapV315 {
     function bootstrapXETARoute(uint32 destinationDomain, bytes32 routeId) external;
 }
@@ -51,6 +55,8 @@ contract XETATokenFactoryV315 {
     /// canonical assetId even when later locked for a second hub hop.
     mapping(address => bytes32) public openRouterAssetId;
     mapping(address => bytes32) public representedAssetId;
+    mapping(address => address) public openRouterCreator;
+    mapping(address => mapping(uint32 => bool)) public openRouterDomainReserved;
 
     error InvalidConfiguration();
     error RegistryNotDeployed();
@@ -61,6 +67,8 @@ contract XETATokenFactoryV315 {
     error RepresentationNotDeployed();
     error RouteAlreadyExists();
     error InvalidOpenRoute();
+    error UnauthorizedRouterCreator();
+    error RouterDomainReserved();
 
     event RegistryDeployed(address indexed registry);
     event RepresentationDeployed(bytes32 indexed assetId, address indexed router, uint64 chainId);
@@ -361,7 +369,7 @@ contract XETATokenFactoryV315 {
         emit ERC20RouteActivated(proof.routeId, router);
     }
 
-    function _validateOpenRequest(OpenRouteRequest calldata request)
+    function _validateOpenRequest(OpenRouteRequest memory request)
         private view
     {
         if (request.destinationChainId == 0 ||
@@ -378,7 +386,7 @@ contract XETATokenFactoryV315 {
         address sourceToken,
         address destinationToken,
         address router,
-        OpenRouteRequest calldata request
+        OpenRouteRequest memory request
     ) private returns (bytes32 routeId, address gateway) {
         routeId = XGRILNProtocol.routeInstanceIdV315(
             assetId, localChainId, localDomain,
