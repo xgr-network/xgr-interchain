@@ -13,7 +13,7 @@ if(relay.includes("xgr_getILNInterchainAttestation"))errs.push("legacy attestati
 if(!relay.includes('env("DESTINATION_ILN_ISM")'))errs.push("ISM is optional");
 
 const forbiddenFiles=[
-  "README.md","SECURITY.md","docs/XETA_SPEC_V314.md",
+  "README.md","SECURITY.md","docs/XITA_SPEC_V315.md",
   "docs/XETA_UI_ARCHITECTURE.md","docs/REPOSITORY_LAYOUT.md",
   "docs/XETA_ROUTER_ARCHITECTURE.md","contracts/README.md",
   "apps/web/README.md","apps/web/app.mjs"

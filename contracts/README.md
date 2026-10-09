@@ -1,14 +1,31 @@
-# XETA v3.1.4 active Solidity contracts
+# XITA v3.1.5 Solidity contracts
 
-ILNGateway.sol: source-chain fee-qualified canonical Bridge entry point.
-XGRILNFeeVault.sol: source-native validator fee allocation, sparse wei payouts, pull-claims.
-XGRILNRegistry.sol: quorum-governed route add/fee/update/enable/disable.
-XGRInterchainValidatorRegistryV2.sol: membership, BLS keys, historical snapshots, lightweight fee-recipient getter.
-XGRILNInterchainISMV2.sol: route-aware destination BLS verification and exact Message ID authorization.
-XGRInterchainBLSVerifier.sol: EIP-2537 BLS verifier, conditional on actual chain compatibility.
-XETARouterCore.sol: shared multichain Hyperlane TokenRouter, gateway-only internal dispatch and quorum-bound destination bootstrap.
-XETAGuardedNativeWarpRouter.sol: thin native XGR custody adapter on XGRChain.
-XETAGuardedSyntheticWarpRouter.sol: thin synthetic token mint/burn adapter for wXGR on external EVM chains.
-Pinned Hyperlane 11.1.0 is installed by contract CI. Fork and live E2E validation remain deployment gates.
+There is one public, permissionless route-registration architecture.
 
-Only the current XETA v3.1.4 interfaces and implementations belong in this source tree. See docs/XETA_SPEC_V314.md.
+- `XETATokenFactoryV315.sol`: public per-chain Factory and two-step deployment
+  of the source and destination Router pair. Creates a Gateway and an
+  immutable pending Registry record for every directed route.
+- `XGRILNRegistryV315.sol`: source-chain route registry, inactive-until-proven
+  state, factual remote counterpart BLS attestation, shared source-native fee
+  with validator quorum. No route-specific governance or route deletion.
+- `XGRILNProtocol.sol`: deterministic original Asset ID, ONE directed
+  Router-pair Route ID format, source fee and signed checkpoint payload.
+- `XETARouterCore.sol`: gateway-only transfer dispatch, immutable route
+  enrollment, Hyperlane inbound message handling.
+- `XETAGuardedNativeWarpRouter.sol`: native XGR collateral adapter.
+- `XETAGuardedCollateralWarpRouterV315.sol`: independent ERC20 collateral
+  escrow with received-amount checks.
+- `XETAGuardedSyntheticWarpRouter.sol`: zero-supply synthetic mint/burn adapter.
+- `ILNGateway.sol` and `XGRILNFeeVault.sol`: per-directed-route gateway,
+  native fee collection and validator pull-based settlement.
+- `XGRInterchainValidatorRegistryV2.sol` and `XGRILNInterchainISMV2.sol`:
+  validator BLS membership and authenticated checkpoint transfer security.
+  Their V2 suffix identifies the cryptographic wire format, not an old route
+  registry or an alternative application protocol.
+
+**Hard rule:** every directed route includes XGRChain at exactly one
+endpoint, with BOTH chainId and domain equal to 1643. A spoke-to-spoke
+transfer uses two separate transfers through XGRChain.
+
+See `docs/XITA_SPEC_V315.md`. Not ready for mainnet without genuine
+remote-pair validation and two-chain end-to-end tests.

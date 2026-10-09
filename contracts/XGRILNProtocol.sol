@@ -1,44 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @notice Canonical XGR Interchain v3.1.3 wire-format helpers.
-/// @dev These encoders MUST remain byte-for-byte compatible with xgrchain PoS_3.
+/// @notice XITA v3.1.5: one route identity scheme for ALL assets.
+/// @dev The signed transfer-checkpoint wire format matches existing XGR PoS
+/// validators. There are NO route-governance proposals or legacy registries.
 library XGRILNProtocol {
-    bytes internal constant ROUTE_DOMAIN = "XGR_ILN_ROUTE_V2";
-    bytes internal constant GOVERNANCE_DOMAIN = "XGR_ILN_GOVERNANCE_V2";
     bytes internal constant CHECKPOINT_DOMAIN = "XGR_ILN_CHECKPOINT_V2";
-
-    uint8 internal constant PROPOSAL_FEE_UPDATE = 1;
-    uint8 internal constant PROPOSAL_ROUTE_ADD = 2;
-    uint8 internal constant PROPOSAL_ROUTE_ENABLE = 3;
-    uint8 internal constant PROPOSAL_ROUTE_DISABLE = 4;
-
-    struct RouteKey {
-        uint64 sourceChainId;
-        uint32 sourceDomain;
-        uint32 destinationDomain;
-        bytes32 routeId;
-    }
-
-    struct Route {
-        RouteKey key;
-        address gateway;
-        address sourceRouter;
-        address mailbox;
-        address merkleTreeHook;
-        address destinationRouter;
-        uint256 validatorFeeWei;
-        bool enabled;
-    }
-
-    struct GovernanceProposal {
-        uint8 proposalType;
-        address registry;
-        uint64 setId;
-        uint64 nonce;
-        uint64 validUntil;
-        Route route;
-    }
+    bytes internal constant SOURCE_FEE_DOMAIN_V315 = "XITA_SOURCE_FEE_V315";
+    bytes internal constant ASSET_DOMAIN_V315 = "XITA_ASSET_V315";
+    bytes internal constant ROUTE_INSTANCE_DOMAIN_V315 = "XITA_ROUTE_INSTANCE_V315";
 
     struct CheckpointPayload {
         uint64 sourceChainId;
@@ -59,10 +29,6 @@ library XGRILNProtocol {
         uint32 index;
     }
 
-    bytes internal constant SOURCE_FEE_DOMAIN_V315 = "XITA_SOURCE_FEE_V315";
-    bytes internal constant ASSET_DOMAIN_V315 = "XITA_ASSET_V315";
-    bytes internal constant ROUTE_DOMAIN_V315 = "XITA_ROUTE_V315";
-
     struct SourceFeeProposalV315 {
         uint64 sourceChainId;
         uint32 sourceDomain;
@@ -82,17 +48,30 @@ library XGRILNProtocol {
         return keccak256(abi.encode(keccak256(ASSET_DOMAIN_V315), canonicalChainId, token, kind));
     }
 
-    function routeIdV315(
+    /// @notice Identity of one directed, independently collateralized route.
+    /// @dev Every hop has XGRChain (chainId AND domain 1643) at exactly
+    /// one endpoint. Router pairs allow independent route instances
+    /// without a first-claim monopoly. No direct spoke-to-spoke route.
+    function routeInstanceIdV315(
         bytes32 assetId, uint64 sourceChainId, uint32 sourceDomain,
-        uint64 destinationChainId, uint32 destinationDomain
+        uint64 destinationChainId, uint32 destinationDomain,
+        address sourceRouter, address destinationRouter
     ) internal pure returns (bytes32) {
-        if (assetId == bytes32(0) || sourceChainId == 0 || destinationChainId == 0 ||
-            sourceDomain == 0 || destinationDomain == 0 ||
-            sourceChainId == destinationChainId || sourceDomain == destinationDomain ||
-            (sourceDomain != 1643 && destinationDomain != 1643)) revert InvalidRouteKey();
+        if (assetId == bytes32(0) || sourceChainId == 0 ||
+            destinationChainId == 0 || sourceDomain == 0 ||
+            destinationDomain == 0 || sourceChainId == destinationChainId ||
+            sourceDomain == destinationDomain ||
+            (sourceChainId == 1643) != (sourceDomain == 1643) ||
+            (destinationChainId == 1643) != (destinationDomain == 1643) ||
+            (sourceChainId != 1643 && destinationChainId != 1643))
+            revert InvalidRouteKey();
+        if (sourceRouter == address(0) || destinationRouter == address(0))
+            revert InvalidRouteKey();
         return keccak256(abi.encode(
-            keccak256(ROUTE_DOMAIN_V315), assetId,
-            sourceChainId, sourceDomain, destinationChainId, destinationDomain
+            keccak256(ROUTE_INSTANCE_DOMAIN_V315),
+            assetId, sourceChainId, sourceDomain,
+            destinationChainId, destinationDomain,
+            sourceRouter, destinationRouter
         ));
     }
 
@@ -109,55 +88,10 @@ library XGRILNProtocol {
         );
     }
 
+
     error InvalidRouteKey();
     error InvalidGovernanceProposal();
     error InvalidCheckpointPayload();
-
-    function encodeRouteKey(RouteKey memory key) internal pure returns (bytes memory) {
-        _requireRouteKey(key);
-        return abi.encodePacked(
-            ROUTE_DOMAIN,
-            bytes8(key.sourceChainId),
-            bytes4(key.sourceDomain),
-            bytes4(key.destinationDomain),
-            key.routeId
-        );
-    }
-
-    function routeKeyHash(RouteKey memory key) internal pure returns (bytes32) {
-        return keccak256(encodeRouteKey(key));
-    }
-
-    function encodeGovernanceProposal(GovernanceProposal memory proposal)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        _requireGovernanceProposal(proposal);
-
-        return abi.encodePacked(
-            GOVERNANCE_DOMAIN,
-            bytes8(proposal.route.key.sourceChainId),
-            bytes4(proposal.route.key.sourceDomain),
-            bytes4(proposal.route.key.destinationDomain),
-            proposal.route.key.routeId,
-            bytes20(proposal.registry),
-            bytes8(proposal.setId),
-            bytes8(proposal.nonce),
-            bytes8(proposal.validUntil),
-            bytes1(proposal.proposalType),
-            bytes20(proposal.route.gateway),
-            bytes20(proposal.route.sourceRouter),
-            bytes20(proposal.route.mailbox),
-            bytes20(proposal.route.merkleTreeHook),
-            bytes20(proposal.route.destinationRouter),
-            bytes32(proposal.route.validatorFeeWei)
-        );
-    }
-
-    function proposalId(GovernanceProposal memory proposal) internal pure returns (bytes32) {
-        return keccak256(encodeGovernanceProposal(proposal));
-    }
 
     function encodeCheckpointPayload(CheckpointPayload memory payload)
         internal
@@ -189,70 +123,6 @@ library XGRILNProtocol {
 
     function checkpointHash(CheckpointPayload memory payload) internal pure returns (bytes32) {
         return keccak256(encodeCheckpointPayload(payload));
-    }
-
-    function _requireRouteKey(RouteKey memory key) private pure {
-        if (
-            key.sourceChainId == 0 ||
-            key.sourceDomain == 0 ||
-            key.destinationDomain == 0 ||
-            key.routeId == bytes32(0)
-        ) revert InvalidRouteKey();
-    }
-
-    function _requireGovernanceProposal(GovernanceProposal memory proposal) private pure {
-        _requireRouteKey(proposal.route.key);
-
-        if (
-            proposal.registry == address(0) ||
-            proposal.setId == 0 ||
-            proposal.nonce == 0 ||
-            proposal.validUntil == 0
-        ) revert InvalidGovernanceProposal();
-
-        if (proposal.proposalType == PROPOSAL_FEE_UPDATE) {
-            if (
-                proposal.route.gateway != address(0) ||
-                proposal.route.sourceRouter != address(0) ||
-                proposal.route.mailbox != address(0) ||
-                proposal.route.merkleTreeHook != address(0) ||
-                proposal.route.destinationRouter != address(0) ||
-                proposal.route.validatorFeeWei == 0 ||
-                proposal.route.enabled
-            ) revert InvalidGovernanceProposal();
-            return;
-        }
-
-        if (proposal.proposalType == PROPOSAL_ROUTE_ADD) {
-            if (
-                proposal.route.gateway == address(0) ||
-                proposal.route.sourceRouter == address(0) ||
-                proposal.route.mailbox == address(0) ||
-                proposal.route.merkleTreeHook == address(0) ||
-                proposal.route.destinationRouter == address(0) ||
-                proposal.route.validatorFeeWei == 0 ||
-                !proposal.route.enabled
-            ) revert InvalidGovernanceProposal();
-            return;
-        }
-
-        if (
-            proposal.proposalType == PROPOSAL_ROUTE_ENABLE ||
-            proposal.proposalType == PROPOSAL_ROUTE_DISABLE
-        ) {
-            if (
-                proposal.route.gateway != address(0) ||
-                proposal.route.sourceRouter != address(0) ||
-                proposal.route.mailbox != address(0) ||
-                proposal.route.merkleTreeHook != address(0) ||
-                proposal.route.destinationRouter != address(0) ||
-                proposal.route.validatorFeeWei != 0 ||
-                proposal.route.enabled
-            ) revert InvalidGovernanceProposal();
-            return;
-        }
-
-        revert InvalidGovernanceProposal();
     }
 
     function _requireCheckpointPayload(CheckpointPayload memory payload) private pure {
