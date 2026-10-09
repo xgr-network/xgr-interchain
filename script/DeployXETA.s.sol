@@ -3,47 +3,26 @@ pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 
-import {ILNGateway} from "../contracts/ILNGateway.sol";
+import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
 import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
-import {XGRILNRegistry} from "../contracts/XGRILNRegistry.sol";
 import {XGRInterchainBLSVerifier} from "../contracts/XGRInterchainBLSVerifier.sol";
 import {XGRInterchainValidatorRegistryV2} from "../contracts/XGRInterchainValidatorRegistryV2.sol";
 
-/// @notice Generic XGR Interchain v3.1.4 deployment scripts.
-/// @dev Security-sensitive route activation is intentionally NOT performed here.
-///      After deploying the route-specific Gateway, add the route through the
-///      v3.1.4 ILN governance quorum flow so the canonical registry remains the
-///      sole source of mutable route truth.
+/// @notice XITA v3.1.5 independent deployment scripts.
+/// @dev Deploy the BLS verifier/validator registry/ISM, then deploy the
+/// permissionless Factory. ALL asset routers and route Gateways are created
+/// later through public Factory functions. NO route governance exists.
 ///
-/// Common environment:
-///   LOCAL_CHAIN_ID
-///   LOCAL_DOMAIN
+/// Common environment: LOCAL_CHAIN_ID, LOCAL_DOMAIN
+/// Validator registry: MEMBERSHIP_ORIGIN_CHAIN_ID, BLS_VERIFIER,
+/// BLS_VERIFIER_FORMAT, MINIMUM_DEACTIVATION_RESERVE_WEI,
+/// MAX_EXECUTOR_REIMBURSEMENT_WEI, INITIAL_RESERVE_WEI, VALIDATOR_COUNT,
+/// VALIDATOR_<N>_ADDRESS, _BLS_COMPRESSED, _BLS_EIP2537, _POSSESSION_PROOF.
+/// Factory: LOCAL_REGISTRY_V2, MAILBOX, MERKLE_TREE_HOOK, DESTINATION_ISM,
+/// DEFAULT_DESTINATION_GAS_LIMIT.
 ///
-/// RegistryV2 environment:
-///   MEMBERSHIP_ORIGIN_CHAIN_ID
-///   BLS_VERIFIER
-///   BLS_VERIFIER_FORMAT              (1 = compressed/native, 2 = EIP-2537)
-///   MINIMUM_DEACTIVATION_RESERVE_WEI
-///   MAX_EXECUTOR_REIMBURSEMENT_WEI
-///   INITIAL_RESERVE_WEI              (per bootstrap validator)
-///   VALIDATOR_COUNT
-///   VALIDATOR_<N>_ADDRESS
-///   VALIDATOR_<N>_BLS_COMPRESSED
-///   VALIDATOR_<N>_BLS_EIP2537
-///   VALIDATOR_<N>_POSSESSION_PROOF
-///
-/// ILN Registry environment:
-///   LOCAL_REGISTRY_V2
-///
-/// ISM environment:
-///   LOCAL_REGISTRY_V2
-///
-/// Gateway environment:
-///   ILN_REGISTRY
-///   ROUTE_ID
-///   DESTINATION_DOMAIN
-///   WARP_ROUTER
-///   NATIVE_QUOTE_INCLUDES_PRINCIPAL
+/// WARNING: always validate both chain counterparts and signer/BLS
+/// verification before any mainnet transfer. Deployment is not activation.
 abstract contract DeployXETABase is Script {
     error WrongChain(uint256 expected, uint256 actual);
     error InvalidEnv();
@@ -130,7 +109,7 @@ contract DeployXETAEIP2537Verifier is DeployXETABase {
     }
 }
 
-/// @notice Deploy the canonical destination-scoped ValidatorRegistryV2.
+/// @notice Deploy the validator set trust anchor for this source/destination.
 /// @dev The same local RegistryV2 is also the governance authority for the
 ///      ILN Registry when this physical chain acts as a source chain.
 contract DeployXETARegistryV2 is DeployXETABase {
@@ -198,30 +177,8 @@ contract DeployXETARegistryV2 is DeployXETABase {
     }
 }
 
-/// @notice Deploy the source-chain canonical ILN Registry.
-/// @dev LOCAL_REGISTRY_V2 must be the RegistryV2 deployed on this same physical
-///      chain. Route state is added later through quorum-approved governance.
-contract DeployXETAILNRegistry is DeployXETABase {
-    function run() external returns (XGRILNRegistry registry) {
-        uint64 localChainId = _asUint64(_localChainId());
-        uint32 localDomain = _localDomain();
-        address localRegistryV2 = vm.envAddress(
-            "LOCAL_REGISTRY_V2"
-        );
-        if (localRegistryV2 == address(0)) revert InvalidEnv();
-
-        vm.startBroadcast();
-        registry = new XGRILNRegistry(
-            localChainId,
-            localDomain,
-            localRegistryV2
-        );
-        vm.stopBroadcast();
-    }
-}
-
-/// @notice Deploy the generic destination ISM.
-/// @dev This is the v3.1.4 route-aware ISM for both ordinary EVM destinations
+/// @notice Deploy the destination ISM that checks BLS transfer checkpoints.
+/// @dev This is the v3.1.5 route-aware ISM for both ordinary EVM destinations
 ///      and XGRChain. The RegistryV2 selects the actual verifier implementation,
 ///      so XGRChain can use its native verifier while Base-like chains use
 ///      XGRInterchainBLSVerifier/EIP-2537.
@@ -244,40 +201,25 @@ contract DeployXETAISM is DeployXETABase {
     }
 }
 
-/// @notice Deploy one route-specific source Gateway.
-/// @dev The deployed Gateway is inert until a matching route record is added to
-///      ILN_REGISTRY through the v3.1.4 governance quorum flow.
-contract DeployXETAGateway is DeployXETABase {
-    function run() external returns (ILNGateway gateway) {
-        _localChainId();
-        _localDomain();
-
-        address ilnRegistry = vm.envAddress("ILN_REGISTRY");
-        bytes32 routeId = vm.envBytes32("ROUTE_ID");
-        uint256 rawDestinationDomain = vm.envUint(
-            "DESTINATION_DOMAIN"
-        );
-        address warpRouter = vm.envAddress("WARP_ROUTER");
-        bool nativeQuoteIncludesPrincipal = vm.envBool(
-            "NATIVE_QUOTE_INCLUDES_PRINCIPAL"
-        );
-
-        if (
-            ilnRegistry == address(0) ||
-            routeId == bytes32(0) ||
-            rawDestinationDomain == 0 ||
-            rawDestinationDomain > type(uint32).max ||
-            warpRouter == address(0)
-        ) revert InvalidEnv();
+/// @notice Factory deploys its own source registry and all public routers.
+contract DeployXETAFactoryV315 is DeployXETABase {
+    function run() external returns (XETATokenFactoryV315 factory) {
+        uint64 chainId = _asUint64(_localChainId());
+        uint32 domain = _localDomain();
+        address validators = vm.envAddress("LOCAL_REGISTRY_V2");
+        address mailbox_ = vm.envAddress("MAILBOX");
+        address hook_ = vm.envAddress("MERKLE_TREE_HOOK");
+        address ism_ = vm.envAddress("DESTINATION_ISM");
+        uint256 gasLimit = vm.envUint("DEFAULT_DESTINATION_GAS_LIMIT");
+        if (validators == address(0) || mailbox_ == address(0) ||
+            hook_ == address(0) || ism_ == address(0) || gasLimit == 0)
+            revert InvalidEnv();
 
         vm.startBroadcast();
-        gateway = new ILNGateway(
-            ilnRegistry,
-            routeId,
-            uint32(rawDestinationDomain),
-            warpRouter,
-            nativeQuoteIncludesPrincipal
+        factory = new XETATokenFactoryV315(
+            chainId, domain, validators, mailbox_, hook_, ism_, gasLimit
         );
+        factory.deployRegistry();
         vm.stopBroadcast();
     }
 }
