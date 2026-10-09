@@ -1,0 +1,13 @@
+{
+  "name": "@xgr-network/xeta-iln-relayer",
+  "private": true,
+  "version": "3.1.4",
+  "type": "module",
+  "dependencies": {
+    "ethers": "6.13.4"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "description": "Permissionless-recoverable XETA ILN v3.1.4 relay client"
+}

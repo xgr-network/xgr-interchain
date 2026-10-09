@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-config",
+  "asset": "XGR",
+  "name": "XGR",
+  "symbol": "XGR",
+  "decimals": 18,
+  "canonical": {
+    "chain": "xgrchain",
+    "representation": "native",
+    "symbol": "XGR"
+  },
+  "representations": [
+    {
+      "chain": "xgrchain",
+      "representation": "native",
+      "symbol": "XGR",
+      "assetAddress": null
+    },
+    {
+      "chain": "base",
+      "representation": "synthetic",
+      "symbol": "wXGR",
+      "assetAddress": null
+    },
+    {
+      "chain": "polygon",
+      "representation": "synthetic",
+      "symbol": "wXGR",
+      "assetAddress": null
+    },
+    {
+      "chain": "arbitrum",
+      "representation": "synthetic",
+      "symbol": "wXGR",
+      "assetAddress": null
+    }
+  ],
+  "bridgeModel": "lock-mint-burn-unlock",
+  "notes": "XETA v3.1.4 canonical asset: native XGR on XGRChain. Wrapped token contracts and route deployments require independent verification."
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "base",
+  "chainId": 8453,
+  "domainId": 8453,
+  "hyperlaneCore": {
+    "mailbox": "0xeA87ae93Fa0019a82A727bfd3eBd1cFCa8f64f1D",
+    "merkleTreeHook": "0x19dc38aeae620380430C200a6E990D5Af5480117",
+    "validatorAnnounce": "0x182E8d7c5F1B06201b102123FC7dF0EaeB445a7B",
+    "interchainGasPaymaster": "0xc3F23848Ed2e04C0c6d41bd7804fa8f89F940B94"
+  },
+  "ilnV314": {
+    "status": "unverified-not-activated",
+    "sourceRegistry": null,
+    "destinationRegistryV2": null,
+    "destinationIsmV2": null,
+    "blsVerifier": null
+  },
+  "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack."
+}

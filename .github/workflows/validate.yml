@@ -1,0 +1,77 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert no populated runtime secrets are tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e runtime/.env.relayer
+          test ! -e runtime/.env.relayer.reverse
+          if git ls-files -- "runtime/.env.relayer.iln.*" | grep -vE "\.example$"; then
+            echo "Real XETA ILN runtime env file committed" >&2
+            exit 1
+          fi
+          if git grep -nE '(^|=)(0x)?[0-9a-fA-F]{64}$' -- runtime ':!runtime/*.example'; then
+            echo "Potential raw private key found in tracked runtime files" >&2
+            exit 1
+          fi
+
+      - name: Validate JSON manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          find config deployments/mainnet -name "*.json" -print0 | xargs -0 -n1 jq empty
+          jq empty runtime/native-relayer/package.json
+
+      - name: Validate multi-asset and deployment manifest invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/validate-manifests.mjs
+          node --test tools/validate-manifests.test.mjs
+          node tools/build-xeta-web-catalog.mjs --check
+          node --test apps/web/keccak.test.mjs
+
+      - name: Validate shell and JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n runtime/manage-relayers.sh
+          bash runtime/manage-relayers.sh status all
+          if bash runtime/manage-relayers.sh status iln-invalid; then
+            echo "Invalid ILN route target was accepted" >&2
+            exit 1
+          fi
+          node tools/check-xeta-clean.mjs
+          find runtime/native-relayer -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          find apps/web -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+
+      - name: Validate operator admin
+        shell: bash
+        run: |
+          set -euo pipefail
+          find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check services/admin/admin.js
+          node --test services/admin/plan.test.mjs
+
+      - name: Native relayer tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/native-relayer
+          npm install --no-audit --no-fund
+          npm test

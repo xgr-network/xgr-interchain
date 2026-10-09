@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "name": "xgrchain",
+  "environment": "mainnet",
+  "chainId": 1643,
+  "domainId": 1643,
+  "rpcUrls": [
+    "https://rpc.xgr.network"
+  ],
+  "explorer": "https://explorer.xgr.network",
+  "nativeCurrency": {
+    "name": "XGR",
+    "symbol": "XGR",
+    "decimals": 18
+  },
+  "confirmations": 1,
+  "blsVerifierFormat": "compressed",
+  "observedInfrastructure": "deployments/mainnet/infrastructure/xgrchain.json"
+}

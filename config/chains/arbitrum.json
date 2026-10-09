@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "environment": "mainnet",
+  "name": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "rpcUrls": [
+    "https://arbitrum-one-rpc.publicnode.com"
+  ],
+  "nativeCurrency": {
+    "name": "Ether",
+    "symbol": "ETH",
+    "decimals": 18
+  },
+  "confirmations": 64,
+  "blsVerifierFormat": "eip2537",
+  "observedInfrastructure": "deployments/mainnet/infrastructure/arbitrum.json",
+  "configurationStatus": "planned-unverified"
+}

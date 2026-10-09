@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "environment": "mainnet",
+  "name": "polygon",
+  "chainId": 137,
+  "domainId": 137,
+  "rpcUrls": [
+    "https://polygon-bor-rpc.publicnode.com"
+  ],
+  "nativeCurrency": {
+    "name": "POL",
+    "symbol": "POL",
+    "decimals": 18
+  },
+  "confirmations": 128,
+  "blsVerifierFormat": "eip2537",
+  "observedInfrastructure": "deployments/mainnet/infrastructure/polygon.json",
+  "configurationStatus": "planned-unverified"
+}

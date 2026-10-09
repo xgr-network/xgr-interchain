@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "hyperlaneCore": {
+    "mailbox": null,
+    "merkleTreeHook": null
+  },
+  "ilnV314": {
+    "status": "unverified-not-activated",
+    "sourceRegistry": null,
+    "destinationRegistryV2": null,
+    "destinationIsmV2": null,
+    "blsVerifier": null
+  }
+}

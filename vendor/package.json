@@ -1,0 +1,11 @@
+{
+  "name": "xeta-pinned-hyperlane-solidity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned Hyperlane solidity source dependencies for XETA",
+  "dependencies": {
+    "@hyperlane-xyz/core": "11.1.0",
+    "@openzeppelin/contracts": "4.9.3",
+    "@openzeppelin/contracts-upgradeable": "4.9.3"
+  }
+}

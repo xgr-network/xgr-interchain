@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-deployment",
+  "network": "mainnet",
+  "asset": "XGR",
+  "ilnV314": {
+    "status": "unverified-not-activated",
+    "routes": [
+      {
+        "name": "xgr_to_base",
+        "sourceChain": "xgrchain",
+        "destinationChain": "base",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      },
+      {
+        "name": "base_to_xgr",
+        "sourceChain": "base",
+        "destinationChain": "xgrchain",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      },
+      {
+        "name": "xgr_to_polygon",
+        "sourceChain": "xgrchain",
+        "destinationChain": "polygon",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      },
+      {
+        "name": "polygon_to_xgr",
+        "sourceChain": "polygon",
+        "destinationChain": "xgrchain",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      },
+      {
+        "name": "xgr_to_arbitrum",
+        "sourceChain": "xgrchain",
+        "destinationChain": "arbitrum",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      },
+      {
+        "name": "arbitrum_to_xgr",
+        "sourceChain": "arbitrum",
+        "destinationChain": "xgrchain",
+        "routeId": null,
+        "gateway": null,
+        "feeVault": null,
+        "warpRouter": null,
+        "validatorFeeWei": null,
+        "governanceTx": null
+      }
+    ]
+  }
+}

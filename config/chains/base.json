@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "name": "base",
+  "environment": "mainnet",
+  "chainId": 8453,
+  "domainId": 8453,
+  "rpcUrls": [
+    "https://base-rpc.publicnode.com"
+  ],
+  "nativeCurrency": {
+    "name": "Ether",
+    "symbol": "ETH",
+    "decimals": 18
+  },
+  "confirmations": 12,
+  "blsVerifierFormat": "eip2537",
+  "observedInfrastructure": "deployments/mainnet/infrastructure/base.json"
+}

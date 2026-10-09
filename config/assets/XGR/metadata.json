@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "xeta-token-profile",
+  "asset": "XGR",
+  "slug": "xgr",
+  "name": "XGR",
+  "shortDescription": "Native asset of XGRChain and the XETA EVM interchain hub.",
+  "description": "XGR is the native asset of XGRChain, an EVM-compatible blockchain. XETA (XGR EVM Token Alliance) provides validator-quorum-governed token transfers between XGRChain and supported external EVM networks. Individual transfer routes become available only after independent deployment verification and governance activation.",
+  "categories": [
+    "Layer 1",
+    "Blockchain Infrastructure",
+    "Interoperability"
+  ],
+  "tags": [
+    "EVM",
+    "Proof of Stake",
+    "Interchain",
+    "XETA"
+  ],
+  "branding": {
+    "logoUrl": "https://xgr.network/Graphics/xgr_logo200.png",
+    "bannerUrl": null
+  },
+  "links": {
+    "website": "https://xgr.network",
+    "explorer": "https://explorer.xgr.network",
+    "github": "https://github.com/xgr-network",
+    "docs": null,
+    "whitepaper": null,
+    "x": null,
+    "linkedin": null,
+    "telegram": null,
+    "discord": null
+  },
+  "market": {
+    "coingeckoId": null,
+    "coinmarketcapId": null,
+    "priceSource": "explorer-xgr-price"
+  },
+  "supply": {
+    "circulating": null,
+    "total": null,
+    "max": null
+  },
+  "verification": {
+    "status": "project-maintained",
+    "proof": null
+  }
+}

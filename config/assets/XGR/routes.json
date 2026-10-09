@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-routes",
+  "asset": "XGR",
+  "network": "mainnet",
+  "protocol": "ILN-v3.1.4",
+  "routingHub": "xgrchain",
+  "routes": [
+    {
+      "name": "xgr_to_base",
+      "sourceChain": "xgrchain",
+      "destinationChain": "base",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    },
+    {
+      "name": "base_to_xgr",
+      "sourceChain": "base",
+      "destinationChain": "xgrchain",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    },
+    {
+      "name": "xgr_to_polygon",
+      "sourceChain": "xgrchain",
+      "destinationChain": "polygon",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    },
+    {
+      "name": "polygon_to_xgr",
+      "sourceChain": "polygon",
+      "destinationChain": "xgrchain",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    },
+    {
+      "name": "xgr_to_arbitrum",
+      "sourceChain": "xgrchain",
+      "destinationChain": "arbitrum",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    },
+    {
+      "name": "arbitrum_to_xgr",
+      "sourceChain": "arbitrum",
+      "destinationChain": "xgrchain",
+      "routeId": null,
+      "validatorFeeWei": null,
+      "activation": "pending-governance"
+    }
+  ]
+}

@@ -1,0 +1,407 @@
+{
+  "schemaVersion": 1,
+  "chains": {
+    "xgrchain": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "name": "xgrchain",
+      "environment": "mainnet",
+      "chainId": 1643,
+      "domainId": 1643,
+      "rpcUrls": [
+        "https://rpc.xgr.network"
+      ],
+      "explorer": "https://explorer.xgr.network",
+      "nativeCurrency": {
+        "name": "XGR",
+        "symbol": "XGR",
+        "decimals": 18
+      },
+      "confirmations": 1,
+      "blsVerifierFormat": "compressed",
+      "observedInfrastructure": "deployments/mainnet/infrastructure/xgrchain.json"
+    },
+    "base": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "name": "base",
+      "environment": "mainnet",
+      "chainId": 8453,
+      "domainId": 8453,
+      "rpcUrls": [
+        "https://base-rpc.publicnode.com"
+      ],
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "confirmations": 12,
+      "blsVerifierFormat": "eip2537",
+      "observedInfrastructure": "deployments/mainnet/infrastructure/base.json"
+    },
+    "polygon": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "environment": "mainnet",
+      "name": "polygon",
+      "chainId": 137,
+      "domainId": 137,
+      "rpcUrls": [
+        "https://polygon-bor-rpc.publicnode.com"
+      ],
+      "nativeCurrency": {
+        "name": "POL",
+        "symbol": "POL",
+        "decimals": 18
+      },
+      "confirmations": 128,
+      "blsVerifierFormat": "eip2537",
+      "observedInfrastructure": "deployments/mainnet/infrastructure/polygon.json",
+      "configurationStatus": "planned-unverified"
+    },
+    "arbitrum": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "environment": "mainnet",
+      "name": "arbitrum",
+      "chainId": 42161,
+      "domainId": 42161,
+      "rpcUrls": [
+        "https://arbitrum-one-rpc.publicnode.com"
+      ],
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "confirmations": 64,
+      "blsVerifierFormat": "eip2537",
+      "observedInfrastructure": "deployments/mainnet/infrastructure/arbitrum.json",
+      "configurationStatus": "planned-unverified"
+    }
+  },
+  "assets": {
+    "XGR": {
+      "routes": {
+        "schemaVersion": 1,
+        "kind": "asset-routes",
+        "asset": "XGR",
+        "network": "mainnet",
+        "protocol": "ILN-v3.1.4",
+        "routingHub": "xgrchain",
+        "routes": [
+          {
+            "name": "xgr_to_base",
+            "sourceChain": "xgrchain",
+            "destinationChain": "base",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          },
+          {
+            "name": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          },
+          {
+            "name": "xgr_to_polygon",
+            "sourceChain": "xgrchain",
+            "destinationChain": "polygon",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          },
+          {
+            "name": "polygon_to_xgr",
+            "sourceChain": "polygon",
+            "destinationChain": "xgrchain",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          },
+          {
+            "name": "xgr_to_arbitrum",
+            "sourceChain": "xgrchain",
+            "destinationChain": "arbitrum",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          },
+          {
+            "name": "arbitrum_to_xgr",
+            "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain",
+            "routeId": null,
+            "validatorFeeWei": null,
+            "activation": "pending-governance"
+          }
+        ]
+      },
+      "metadata": {
+        "schemaVersion": 1,
+        "kind": "asset-config",
+        "asset": "XGR",
+        "name": "XGR",
+        "symbol": "XGR",
+        "decimals": 18,
+        "canonical": {
+          "chain": "xgrchain",
+          "representation": "native",
+          "symbol": "XGR"
+        },
+        "representations": [
+          {
+            "chain": "xgrchain",
+            "representation": "native",
+            "symbol": "XGR",
+            "assetAddress": null
+          },
+          {
+            "chain": "base",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
+          },
+          {
+            "chain": "polygon",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
+          },
+          {
+            "chain": "arbitrum",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
+          }
+        ],
+        "bridgeModel": "lock-mint-burn-unlock",
+        "notes": "XETA v3.1.4 canonical asset: native XGR on XGRChain. Wrapped token contracts and route deployments require independent verification."
+      },
+      "mainnet": {
+        "schemaVersion": 1,
+        "kind": "asset-network-config",
+        "asset": "XGR",
+        "network": "mainnet",
+        "routeManifest": "config/assets/XGR/routes.json",
+        "deploymentManifest": "deployments/mainnet/assets/XGR.json",
+        "ilnV314Activation": "not-authorized",
+        "notes": "All six XETA routes are planned and require fresh router, ISM, Gateway, vault, governance and full source/destination E2E verification."
+      },
+      "deployment": {
+        "schemaVersion": 1,
+        "kind": "asset-deployment",
+        "network": "mainnet",
+        "asset": "XGR",
+        "ilnV314": {
+          "status": "unverified-not-activated",
+          "routes": [
+            {
+              "name": "xgr_to_base",
+              "sourceChain": "xgrchain",
+              "destinationChain": "base",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            },
+            {
+              "name": "base_to_xgr",
+              "sourceChain": "base",
+              "destinationChain": "xgrchain",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            },
+            {
+              "name": "xgr_to_polygon",
+              "sourceChain": "xgrchain",
+              "destinationChain": "polygon",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            },
+            {
+              "name": "polygon_to_xgr",
+              "sourceChain": "polygon",
+              "destinationChain": "xgrchain",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            },
+            {
+              "name": "xgr_to_arbitrum",
+              "sourceChain": "xgrchain",
+              "destinationChain": "arbitrum",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            },
+            {
+              "name": "arbitrum_to_xgr",
+              "sourceChain": "arbitrum",
+              "destinationChain": "xgrchain",
+              "routeId": null,
+              "gateway": null,
+              "feeVault": null,
+              "warpRouter": null,
+              "validatorFeeWei": null,
+              "governanceTx": null
+            }
+          ]
+        }
+      },
+      "profile": {
+        "schemaVersion": 1,
+        "kind": "xeta-token-profile",
+        "asset": "XGR",
+        "slug": "xgr",
+        "name": "XGR",
+        "shortDescription": "Native asset of XGRChain and the XETA EVM interchain hub.",
+        "description": "XGR is the native asset of XGRChain, an EVM-compatible blockchain. XETA (XGR EVM Token Alliance) provides validator-quorum-governed token transfers between XGRChain and supported external EVM networks. Individual transfer routes become available only after independent deployment verification and governance activation.",
+        "categories": [
+          "Layer 1",
+          "Blockchain Infrastructure",
+          "Interoperability"
+        ],
+        "tags": [
+          "EVM",
+          "Proof of Stake",
+          "Interchain",
+          "XETA"
+        ],
+        "branding": {
+          "logoUrl": "https://xgr.network/Graphics/xgr_logo200.png",
+          "bannerUrl": null
+        },
+        "links": {
+          "website": "https://xgr.network",
+          "explorer": "https://explorer.xgr.network",
+          "github": "https://github.com/xgr-network",
+          "docs": null,
+          "whitepaper": null,
+          "x": null,
+          "linkedin": null,
+          "telegram": null,
+          "discord": null
+        },
+        "market": {
+          "coingeckoId": null,
+          "coinmarketcapId": null,
+          "priceSource": "explorer-xgr-price"
+        },
+        "supply": {
+          "circulating": null,
+          "total": null,
+          "max": null
+        },
+        "verification": {
+          "status": "project-maintained",
+          "proof": null
+        }
+      }
+    }
+  },
+  "infrastructure": {
+    "xgrchain": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "xgrchain",
+      "chainId": 1643,
+      "domainId": 1643,
+      "hyperlaneCore": {
+        "mailbox": "0x5632409bc2f0e8bAc4AaF43654D4FFc7822C9c79",
+        "merkleTreeHook": "0xeD98Af715b5a72dCD412567eb086d48225CDDACF",
+        "domainRoutingIsm": "0xAf03B407FED3c4857A24Be9ac8EC64b7d178AA51",
+        "validatorAnnounce": "0x1814Be3E608883cA510707d3dc6f31792FD5CAaF"
+      },
+      "ilnV314": {
+        "status": "unverified-not-activated",
+        "sourceRegistry": null,
+        "destinationRegistryV2": null,
+        "destinationIsmV2": null,
+        "blsVerifier": null
+      },
+      "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack."
+    },
+    "base": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "base",
+      "chainId": 8453,
+      "domainId": 8453,
+      "hyperlaneCore": {
+        "mailbox": "0xeA87ae93Fa0019a82A727bfd3eBd1cFCa8f64f1D",
+        "merkleTreeHook": "0x19dc38aeae620380430C200a6E990D5Af5480117",
+        "validatorAnnounce": "0x182E8d7c5F1B06201b102123FC7dF0EaeB445a7B",
+        "interchainGasPaymaster": "0xc3F23848Ed2e04C0c6d41bd7804fa8f89F940B94"
+      },
+      "ilnV314": {
+        "status": "unverified-not-activated",
+        "sourceRegistry": null,
+        "destinationRegistryV2": null,
+        "destinationIsmV2": null,
+        "blsVerifier": null
+      },
+      "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack."
+    },
+    "polygon": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "polygon",
+      "chainId": 137,
+      "domainId": 137,
+      "hyperlaneCore": {
+        "mailbox": null,
+        "merkleTreeHook": null
+      },
+      "ilnV314": {
+        "status": "unverified-not-activated",
+        "sourceRegistry": null,
+        "destinationRegistryV2": null,
+        "destinationIsmV2": null,
+        "blsVerifier": null
+      }
+    },
+    "arbitrum": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "arbitrum",
+      "chainId": 42161,
+      "domainId": 42161,
+      "hyperlaneCore": {
+        "mailbox": null,
+        "merkleTreeHook": null
+      },
+      "ilnV314": {
+        "status": "unverified-not-activated",
+        "sourceRegistry": null,
+        "destinationRegistryV2": null,
+        "destinationIsmV2": null,
+        "blsVerifier": null
+      }
+    }
+  }
+}
