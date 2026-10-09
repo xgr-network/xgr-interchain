@@ -87,13 +87,14 @@ contract XGRILNRegistryV315Test is Test {
     }
 
     function testFeeQuorumIsRequiredAndReplayProtected() public {
+        XGRILNProtocol.SourceFeeProposalV315 memory proposal = _fee(1, 100);
         validators.setResult(false);
         vm.expectRevert(XGRILNRegistryV315.InvalidFeeQuorum.selector);
-        registry.applySourceFee(_fee(1, 100), hex"03", hex"01");
+        registry.applySourceFee(proposal, hex"03", hex"01");
         validators.setResult(true);
-        registry.applySourceFee(_fee(1, 100), hex"03", hex"01");
+        registry.applySourceFee(proposal, hex"03", hex"01");
         vm.expectRevert(XGRILNRegistryV315.InvalidFeeNonce.selector);
-        registry.applySourceFee(_fee(1, 100), hex"03", hex"01");
+        registry.applySourceFee(proposal, hex"03", hex"01");
     }
 
     function testFeeGovernanceRejectsRotatedSet() public {
