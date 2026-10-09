@@ -49,9 +49,9 @@ library XGRILNProtocol {
     }
 
     /// @notice Identity of one directed, independently collateralized route.
-    /// @dev Router addresses are included ONLY for the open multi-instance
-    /// profile. The established XGR canonical routeIdV315 stays unchanged.
-    /// Neither factory nonce nor registrar address grants exclusive ownership.
+    /// @dev Every hop has XGRChain (chainId AND domain 1643) at exactly
+    /// one endpoint. Router pairs allow independent route instances
+    /// without a first-claim monopoly. No direct spoke-to-spoke route.
     function routeInstanceIdV315(
         bytes32 assetId, uint64 sourceChainId, uint32 sourceDomain,
         uint64 destinationChainId, uint32 destinationDomain,
@@ -61,7 +61,9 @@ library XGRILNProtocol {
             destinationChainId == 0 || sourceDomain == 0 ||
             destinationDomain == 0 || sourceChainId == destinationChainId ||
             sourceDomain == destinationDomain ||
-            (sourceDomain != 1643 && destinationDomain != 1643))
+            (sourceChainId == 1643) != (sourceDomain == 1643) ||
+            (destinationChainId == 1643) != (destinationDomain == 1643) ||
+            (sourceChainId != 1643 && destinationChainId != 1643))
             revert InvalidRouteKey();
         if (sourceRouter == address(0) || destinationRouter == address(0))
             revert InvalidRouteKey();
