@@ -299,8 +299,8 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         return (
             route.sourceChainId, route.sourceDomain, route.gateway, route.sourceRouter,
             route.mailbox, route.merkleTreeHook, route.destinationRouter,
-            routeExists[destinationDomain][routeId] ? validatorFeeWei : 0,
-            routeExists[destinationDomain][routeId]
+            route.enabled ? validatorFeeWei : 0,
+            route.enabled
         );
     }
 
