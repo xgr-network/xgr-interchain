@@ -1,5 +1,7 @@
 import http from "node:http";
-import {readFileSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,renameSync} from "node:fs";
+import {randomUUID} from "node:crypto";
+import {inspectContract} from "./inspector.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
@@ -17,6 +19,49 @@ function inventory(){
   infrastructure[name]=load("deployments/mainnet/infrastructure/"+name+".json");
  }
  return {schemaVersion:1,chains,infrastructure,assets:{XGR:{routes:load("config/assets/XGR/routes.json")}}};
+}
+const dataDir=process.env.XGR_ADMIN_STATE_DIR||resolve(root,"runtime-state/admin");
+const statePath=resolve(dataDir,"progress.json");
+function readState(){
+ try{return JSON.parse(readFileSync(statePath,"utf8"))}
+ catch(e){if(e.code==="ENOENT")return {version:1,records:{},history:[]};throw e}
+}
+function writeState(state){
+ mkdirSync(dataDir,{recursive:true,mode:0o700});
+ const tmp=resolve(dataDir,"."+randomUUID()+".tmp");
+ writeFileSync(tmp,JSON.stringify(state,null,2)+"\n",{mode:0o600,flag:"wx"});
+ renameSync(tmp,statePath);
+}
+function security(req){
+ const hostHeader=String(req.headers.host||"");
+ const external=/^xita\.xgr\.network(?::443)?$/i.test(hostHeader);
+ if(!external&&!/^127\.0\.0\.1(?::4087)?$/.test(hostHeader)&&!/^localhost(?::4087)?$/.test(hostHeader))throw Error("Invalid Host");
+ const origin=req.headers.origin;
+ if(origin&&origin!=="https://xita.xgr.network")throw Error("Invalid Origin");
+ if(req.headers["sec-fetch-site"]&&req.headers["sec-fetch-site"]==="cross-site")throw Error("Cross-site request blocked");
+}
+async function bodyJSON(req){
+ if(!req.headers["content-type"]?.startsWith("application/json"))throw Error("JSON required");
+ let chunks=[],length=0;
+ for await(const chunk of req){length+=chunk.length;if(length>8192)throw Error("Request too large");chunks.push(chunk)}
+ return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+const evidenceKinds=new Set(["bls_base","bindings","governance_xgr","bootstrap_xgr","governance_base","bootstrap_base","e2e_outbound","e2e_return","publish"]);
+function present(s){
+ return {completed:Object.entries(s.records).filter(([,v])=>v.status==="recorded").length,records:s.records,history:s.history.slice(-35)};
+}
+function prereqs(steps,state,id){
+ const step=steps.find(x=>x.id===id);if(!step)throw Error("Unknown step");
+ const missing=step.dependsOn.filter(d=>state.records[d]?.status!=="recorded");
+ if(missing.length)throw Error("Dependencies not completed: "+missing.join(", "));
+ return step;
+}
+let writeBusy=false;
+async function mutate(fn){
+ if(writeBusy)throw Error("Progress update already running");
+ writeBusy=true;
+ try{const s=readState(),result=await fn(s);writeState(s);return result}
+ finally{writeBusy=false}
 }
 const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
  "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
@@ -68,19 +113,54 @@ const staticFiles=new Map([
  ["/admin/style.css",["style.css","text/css; charset=utf-8"]]
 ]);
 http.createServer(async(req,res)=>{
- if(req.method!=="GET")return reply(res,405,{ok:false,error:"Read-only console"});
+ try{security(req)}catch(e){return reply(res,403,{ok:false,error:e.message})}
+ if(!["GET","POST"].includes(req.method))return reply(res,405,{ok:false,error:"Unsupported method"});
  const path=new URL(req.url,"http://localhost").pathname;
  try{
-  const file=staticFiles.get(path);
+  const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
-  if(path==="/admin/api/plan"){
+  if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
    return reply(res,200,{ok:true,steps,mode:"read-only",governance:"validator quorum only"});
   }
-  if(path==="/admin/api/preflight")return reply(res,200,{ok:true,...await preflight(inventory())});
+  if(req.method==="GET"&&path==="/admin/api/progress")return reply(res,200,{ok:true,...present(readState())});
+  if(req.method==="GET"&&path==="/admin/api/preflight")return reply(res,200,{ok:true,...await preflight(inventory())});
+  if(req.method==="POST"&&path==="/admin/api/inspect"){
+   const input=await bodyJSON(req);
+   if(!/^(verifier_base|registry_xgr|registry_base|iln_xgr|iln_base|ism_xgr|ism_base|router_xgr|router_base|gateway_xgr|gateway_base)$/.test(input?.id||""))throw Error("Unknown component");
+   const catalog=inventory(),steps=buildPlan(catalog),step=steps.find(s=>s.id===input.id);
+   const state=readState();
+   prereqs(steps,state,step.id);
+   const known=Object.fromEntries(Object.entries(state.records).map(([id,v])=>[id,v.observation||{}]));
+   const observation=await inspectContract({catalog,step,address:input.address,txHash:input.txHash||null,known});
+   const status=observation.status==="onchain-observed"?"onchain-observed":"needs-review";
+   const result=await mutate(s=>{
+    s.records[step.id]={status,observation,updatedAt:new Date().toISOString()};
+    s.history.push({at:new Date().toISOString(),id:step.id,action:"onchain-inspection",status});
+    return observation;
+   });
+   return reply(res,200,{ok:true,observation:result});
+  }
+  if(req.method==="POST"&&path==="/admin/api/evidence"){
+   const input=await bodyJSON(req),id=String(input.id||"");
+   const steps=buildPlan(inventory());
+   if(!evidenceKinds.has(id))throw Error("Unsupported evidence step");
+   const s=readState();prereqs(steps,s,id);
+   const reference=String(input.reference||"").trim();
+   if(reference.length<15||reference.length>500||!/^https:\/\/[^\s]+$/.test(reference))throw Error("A valid evidence URL is required");
+   const note=String(input.note||"").trim();
+   if(note.length<20||note.length>1500)throw Error("A specific verification description (20–1500 characters) is required");
+   const result=await mutate(state=>{
+    const proof={kind:"operator-evidence",reference,note,recordedAt:new Date().toISOString(),verified:false};
+    state.records[id]={status:"awaiting-independent-review",proof,updatedAt:proof.recordedAt};
+    state.history.push({at:proof.recordedAt,id,action:"evidence-submitted",status:"awaiting-independent-review"});
+    return proof;
+   });
+   return reply(res,200,{ok:true,proof:result});
+  }
   return reply(res,404,{ok:false,error:"Not found"});
  }catch(e){
   console.error("Interchain admin:",e);
-  return reply(res,503,{ok:false,error:"Configuration or RPC unavailable"});
+  return reply(res,e.message?.includes("Dependencies")?409:400,{ok:false,error:String(e.message||"Request failed").slice(0,260)});
  }
 }).listen(port,host,()=>console.log("Interchain admin read-only at "+host+":"+port));
