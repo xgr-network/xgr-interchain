@@ -12,6 +12,7 @@ const word=s=>typeof s==="string"&&/^0x[0-9a-fA-F]{64}$/.test(s);
 function decode(data,type){
  if(!word(data))throw Error("Invalid read-only ABI return");
  if(type==="address")return "0x"+data.slice(-40).toLowerCase();
+ if(type==="bytes32")return data.toLowerCase();
  return BigInt(data).toString();
 }
 export async function rpcCall(url,method,params=[]){
