@@ -223,6 +223,37 @@ contract XETATokenFactoryV315 {
         openRouterCreator[router] = msg.sender;
     }
 
+    /// @notice Step 2: pair routers already deployed on both chains.
+    /// @dev Only the creator may bind their OWN router, never someone else's.
+    /// Once paired, registration is append-only and no user can later change
+    /// the remote address. Every route still needs objective safety evidence.
+    function prepareExistingOpenRouterRoute(
+        address router,
+        uint64 destinationChainId,
+        uint32 destinationDomain,
+        address destinationRouter,
+        address destinationToken
+    ) external returns (bytes32 routeId, address gateway) {
+        bytes32 assetId = openRouterAssetId[router];
+        if (assetId == bytes32(0) ||
+            openRouterCreator[router] != msg.sender)
+            revert UnauthorizedRouterCreator();
+        if (openRouterDomainReserved[router][destinationDomain])
+            revert RouterDomainReserved();
+        OpenRouteRequest memory request = OpenRouteRequest({
+            destinationChainId: destinationChainId,
+            destinationDomain: destinationDomain,
+            destinationRouter: destinationRouter,
+            userSalt: bytes32(0)
+        });
+        _validateOpenRequest(request);
+        openRouterDomainReserved[router][destinationDomain] = true;
+        (routeId, gateway) = _prepareOpenRoute(
+            assetId, IILNXETATokenView(router).token(),
+            destinationToken, router, request
+        );
+    }
+
     /// @notice Permissionless, ATOMIC bootstrap of a pre-authenticated XGR peer.
     /// @dev Requires an initialized source fee. Every failure atomically
     /// reverts Gateway, FeeVault, registry insert and Router enrollment.
