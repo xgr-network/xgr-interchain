@@ -5,11 +5,11 @@ import {XGRILNProtocol} from "./XGRILNProtocol.sol";
 import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
 import {IXGRILNRegistry} from "./IXGRILNRegistry.sol";
 
-/// @notice XITA 3.1.5 source-chain registry prototype.
+/// @notice XITA v3.1.5 source-chain route registry.
 /// @dev The registrar is a public, immutable-code Factory: it must expose a
 /// permissionless deployment flow and enforce canonical token/router ownership.
 /// The registry has no administrator, route disable, deletion or fee-by-route.
-/// Production activation requires the matching Factory and Router tests.
+/// All registrations are append-only; validator signatures attest only transfer safety.
 contract XGRILNRegistryV315 is IXGRILNRegistry {
     uint64 public immutable sourceChainId;
     uint32 public immutable sourceDomain;
@@ -48,7 +48,6 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
     mapping(uint32 => mapping(bytes32 => RouteRecord)) private routes;
     mapping(uint32 => mapping(bytes32 => bool)) private routeExists;
     mapping(uint32 => mapping(bytes32 => AssetRoute)) private routeAssets;
-    mapping(uint32 => mapping(bytes32 => bool)) public isOpenInstance;
 
     error InvalidConfiguration();
     error InvalidRoute();
@@ -110,35 +109,8 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         emit SourceFeeUpdated(previous, p.validatorFeeWei, p.nonce, p.setId);
     }
 
-    /// @notice Canonical XGR profile: one route per asset+chain pair.
-    /// @dev Preserves v3.1.5 identity compatibility for XGR/wXGR.
-    function registerRoute(
-        bytes32 assetId,
-        uint64 destinationChainId,
-        uint32 destinationDomain,
-        address sourceToken,
-        address destinationToken,
-        address gateway,
-        address sourceRouter,
-        address mailbox,
-        address merkleTreeHook,
-        address destinationRouter
-    ) external returns (bytes32 routeId) {
-        if (msg.sender != factory) revert UnauthorizedRegistrar();
-        routeId = XGRILNProtocol.routeIdV315(
-            assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain
-        );
-        _register(
-            routeId, assetId, destinationChainId, destinationDomain,
-            sourceToken, destinationToken, gateway, sourceRouter,
-            mailbox, merkleTreeHook, destinationRouter, true
-        );
-    }
-
-    /// @notice Open ERC20 profile: parallel independently secured route instances.
-    /// @dev The immutable source/destination router PAIR determines identity.
-    /// The permissionless Factory must deploy or authenticate each local router.
-    /// This never reserves the canonical asset ID or XGR's singleton route.
+    /// @notice A caller-created Router pair identifies each prepared route.
+    /// @dev There is no singleton canonical route registry or route vote.
     function registerRouteInstance(
         bytes32 assetId,
         uint64 destinationChainId,
@@ -159,7 +131,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         _register(
             routeId, assetId, destinationChainId, destinationDomain,
             sourceToken, destinationToken, gateway, sourceRouter,
-            mailbox, merkleTreeHook, destinationRouter, false
+            mailbox, merkleTreeHook, destinationRouter
         );
     }
 
@@ -174,8 +146,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address sourceRouter,
         address mailbox,
         address merkleTreeHook,
-        address destinationRouter,
-        bool isCanonical
+        address destinationRouter
     ) private {
         if (validatorFeeWei == 0 || assetId == bytes32(0) ||
             gateway == address(0) || sourceRouter == address(0) ||
@@ -192,7 +163,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             merkleTreeHook: merkleTreeHook,
             destinationRouter: destinationRouter,
             validatorFeeWei: 0, // Always read from the source-chain singleton.
-            enabled: isCanonical // Open instances wait for safety evidence.
+            enabled: false // Transfers impossible until objective safety attestation.
         });
         routeAssets[destinationDomain][routeId] = AssetRoute({
             assetId: assetId,
@@ -201,15 +172,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             destinationToken: destinationToken
         });
         routeExists[destinationDomain][routeId] = true;
-        if (isCanonical) {
-            emit RouteAdded(
-                destinationDomain, routeId, gateway, sourceRouter,
-                destinationRouter, validatorFeeWei, 0
-            );
-        } else {
-            isOpenInstance[destinationDomain][routeId] = true;
-            emit RoutePrepared(destinationDomain, routeId, gateway);
-        }
+        emit RoutePrepared(destinationDomain, routeId, gateway);
     }
 
     /// @notice Anyone can verify an objectively attested deployed counterpart.
@@ -225,8 +188,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
     ) external {
         uint32 domain = proof.destinationDomain;
         bytes32 id = proof.routeId;
-        if (!isOpenInstance[domain][id] ||
-            !routeExists[domain][id] ||
+        if (!routeExists[domain][id] ||
             routes[domain][id].enabled ||
             block.timestamp > proof.validUntil ||
             proof.remoteRegistry == address(0) ||
@@ -256,8 +218,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
 
         route.enabled = true;
         emit RouteSafetyConfirmed(domain, id, reverse, proof.setId);
-        // Legacy node's RouteAdded scanner must see an event ONLY after
-        // the new route is usable, so a pending route cannot poison discovery.
+        // Active route discovery starts only AFTER authenticated activation.
         emit RouteAdded(
             domain, id, route.gateway, route.sourceRouter,
             route.destinationRouter, validatorFeeWei, 0
@@ -308,11 +269,6 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         external view returns (AssetRoute memory)
     {
         return routeAssets[destinationDomain][routeId];
-    }
-
-    function governanceNonce(uint32, bytes32) external pure returns (uint64) {
-        // Compatibility view for older clients; per-route governance is removed.
-        return 0;
     }
 
     function exists(uint32 destinationDomain, bytes32 routeId) external view returns (bool) {
