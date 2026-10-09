@@ -62,6 +62,7 @@ library XGRILNProtocol {
     bytes internal constant SOURCE_FEE_DOMAIN_V315 = "XITA_SOURCE_FEE_V315";
     bytes internal constant ASSET_DOMAIN_V315 = "XITA_ASSET_V315";
     bytes internal constant ROUTE_DOMAIN_V315 = "XITA_ROUTE_V315";
+    bytes internal constant ROUTE_INSTANCE_DOMAIN_V315 = "XITA_ROUTE_INSTANCE_V315";
 
     struct SourceFeeProposalV315 {
         uint64 sourceChainId;
@@ -93,6 +94,30 @@ library XGRILNProtocol {
         return keccak256(abi.encode(
             keccak256(ROUTE_DOMAIN_V315), assetId,
             sourceChainId, sourceDomain, destinationChainId, destinationDomain
+        ));
+    }
+
+    /// @notice Identity of one directed, independently collateralized route.
+    /// @dev Router addresses are included ONLY for the open multi-instance
+    /// profile. The established XGR canonical routeIdV315 stays unchanged.
+    /// Neither factory nonce nor registrar address grants exclusive ownership.
+    function routeInstanceIdV315(
+        bytes32 assetId, uint64 sourceChainId, uint32 sourceDomain,
+        uint64 destinationChainId, uint32 destinationDomain,
+        address sourceRouter, address destinationRouter
+    ) internal pure returns (bytes32) {
+        // Reuse the canonical topology and chain-identity validation.
+        routeIdV315(
+            assetId, sourceChainId, sourceDomain,
+            destinationChainId, destinationDomain
+        );
+        if (sourceRouter == address(0) || destinationRouter == address(0))
+            revert InvalidRouteKey();
+        return keccak256(abi.encode(
+            keccak256(ROUTE_INSTANCE_DOMAIN_V315),
+            assetId, sourceChainId, sourceDomain,
+            destinationChainId, destinationDomain,
+            sourceRouter, destinationRouter
         ));
     }
 
