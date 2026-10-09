@@ -200,10 +200,11 @@ contract XETATokenFactoryV315Test is Test {
 
     function testCannotHijackRegisteredRouterViaDirectRegistryCall() public {
         address router = _ready();
+        bytes32 assetId = factory.xgrAssetId();
         vm.expectRevert(XGRILNRegistryV315.UnauthorizedRegistrar.selector);
         vm.prank(address(0xBEEF));
         registry.registerRoute(
-            factory.xgrAssetId(), HUB, HUB,
+            assetId, HUB, HUB,
             router, address(0), address(0x111),
             router, address(mailbox), address(mailbox), HUB_ROUTER
         );
