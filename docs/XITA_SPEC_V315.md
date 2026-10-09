@@ -1,84 +1,137 @@
-# XITA / XGR Interchain v3.1.5 — permissionless, multi-instance routes
+# XITA / XGR Interchain v3.1.5 — protocol specification
 
-**DEVELOPMENT PROTOTYPE. DO NOT DEPLOY.**
-Legacy v3.1.1–v3.1.4 contracts and rescue/recovery paths are untouched.
-The Foundry tests are not a substitute for genuine two-chain custody,
-metadata, validator/BLS and relayer-outage verification.
+**IN DEVELOPMENT — do not deploy to mainnet.**
 
-## Non-negotiable invariants
+This is a fresh XITA architecture with ONE route registration scheme. There
+is no route-add, route-enable, route-disable or per-route fee governance. The
+factory is public; route permission is not granted by the XGR organization.
 
-1. XGRChain domain 1643 is an endpoint of every **directed** route. Spoke-to-spoke transfers use two distinct source-chain hops.
-2. Asset identity remains canonical: `assetId = keccak256(abi.encode(keccak256("XITA_ASSET_V315"), uint64(originChainId), address(originalToken), uint8(kind)))`. Native origin is token 0/kind 0, ERC20 origin has a nonzero token/kind 1.
-3. The *previous exclusive singleton constraint is relaxed for OPEN routes*. Every deployed open route has a distinct **independently secured router, fee vault and escrow**. No first caller can reserve an asset/chain pair globally. Separate public token listings do not imply a canonical/verified representation.
-4. Canonical XGR/wXGR bootstrap remains the narrow, constructor-pinned legacy-compatible profile: `routeIdV315 = keccak256(abi.encode(keccak256("XITA_ROUTE_V315"), assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain))`. It is not the general multi-chain onboarding mechanism.
-5. Open route ID includes its router pair: `routeInstanceIdV315 = keccak256(abi.encode(keccak256("XITA_ROUTE_INSTANCE_V315"), assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain, sourceRouter, destinationRouter))`. Different routers can serve the same asset and domains; reverse routes have a separate ID.
-6. Each LOCAL route's Registry/Gateway/Mailbox/Hook/token/router binding is immutable after its append-only insertion. The local source fee is one positive source-native fee shared by all routes; validator quorum may update only that fee.
-7. No route-add/enable/disable governance proposal and no privileged route registrar. The factory itself is publicly callable and fixed-code. Route activation is a **technical security gate**: BLS proof of reciprocal chain facts, *not discretionary route approval*. Validator sets remain responsible for transfer safety.
-8. The current UI/indexer must never display an unproven route as active or verified; route names and metadata supplied by remote callers are assertions, not origin-chain evidence.
-9. Registered routes never disappear. If a route ceases to be operational, existing collateral/claims MUST retain a recovery path. Do not casually introduce a kill-switch or replace on-chain legacy addresses.
+## Mandatory XGRChain hub
 
-## First registration: no first-caller monopoly
+Every **single directed route** MUST have XGRChain at EXACTLY ONE endpoint:
+- XGRChain is EVM chain ID **1643** and Hyperlane domain **1643**.
+- Both chain ID and domain MUST match. A fake domain 1643 on another chain
+  cannot act as XGRChain; likewise chain ID 1643 with another domain fails.
+- Allowed: XGRChain -> Base, Base -> XGRChain, XGRChain -> Polygon,
+  Polygon -> XGRChain (and similar EVM spokes).
+- Forbidden: Base -> Polygon, Polygon -> Base, spoke -> spoke and hub -> hub.
+- To transfer Base -> Polygon the protocol performs TWO separate directed
+  routes: Base -> XGRChain, then XGRChain -> Polygon.
+- Both `XGRILNProtocol.routeInstanceIdV315` and
+  `XETATokenFactoryV315.prepareRoute` must enforce these constraints.
 
-An arbitrary third party cannot reserve an official ERC20 or XGR representation.
-There is no single claimable slot for an ERC20 asset and remote chain:
-anyone can deploy a second independent route with a different router pair.
-Likewise the new open XGR profile does not mutate the existing canonical
-native-XGR/wXGR representation.
+No chain or UI can override this rule.
 
-**Do not conflate permissionless source creation with remote authenticity.**
-A Solidity contract cannot read an arbitrary remote chain's code and storage.
-An open route is therefore always initially **PREPARED, NOT ACTIVE**.
-It cannot dispatch assets, mint or unlock until a cryptographic, fact-based
-counterpart-attestation passes. First-caller metadata has no authority.
+## Deterministic identities
 
-The optional one-step `createERC20CollateralRoute`,
-`createERC20SyntheticRoute`, `createOpenNativeXGRRoute` and
-`createOpenWrappedXGRRoute` are for already known remote router addresses.
-For a *new pair of networks*, use the preferred **two-phase bootstrap**:
+`assetId = keccak256(abi.encode(keccak256("XITA_ASSET_V315"), uint64(originChainId), address(originToken), uint8(kind)))`.
 
-1. On chain A and chain B, deploy the correct new, unbound routers using the public `deployOpenCollateralRouter`, `deployOpenSyntheticRouter`, `deployOpenNativeXGRRouter` or `deployOpenWrappedXGRRouter` functions. Peer addresses are not constructor inputs. Synthetic supply starts at zero.
-2. Obtain the actual addresses and check factory, codehash, underlying origin token, canonical asset ID, Mailbox/ISM and metadata. Both participants must bind their own freshly created routers, not a global asset singleton.
-3. On each chain, call `prepareExistingOpenRouterRoute(localRouter, remoteChainId, remoteDomain, remoteRouter, remoteToken)`. The creator controls pairing of **their own** new local router only. This is not a company/validator permission. One router can bind one route per remote domain; other users can create independent routers freely.
-4. Each registry records immutable pair binding, creates a gateway and pull-based fee vault, and emits **RoutePrepared**. `getRoute(...).enabled` is **false**; unverified routes do not emit the legacy `RouteAdded` scanner event.
-5. The active validator set independently checks *both* confirmed chain states: reciprocal route IDs, deployed contract bytecode hashes, source ERC20 origin metadata, real custody adapter, source/destination tokens, route bindings, FeeVault and ISM/Mailbox configuration. Only a matching objective safety payload may be signed. This is a transfer-safety obligation, not a vote on whether a project may join.
-6. Anyone submits the BLS aggregate and calls `confirmAndBootstrapOpenRoute`. The Registry checks domain-separated proof, current validator set, expiry, local source-router codehash, and expected reverse route ID. Confirmation, `RouteAdded` and Router bootstrap are atomic. Replay/change of pair cannot retarget an escrow.
-7. Only after both directed routes are confirmed can the UI enable live bridging. A relayer outage must not change ownership of collateral or permanently prevent recovery.
+- Native XGR: origin chain=1643, token=0x0, kind=0.
+- External ERC20: actual canonical original chain/token address, kind=1.
+- All accepted representations of one original asset share that Asset ID.
+- Token names, symbols and user-submitted origin metadata do not prove
+  authenticity. Multiple independent representations may legitimately exist.
 
-**First registrations that fail the evidence gate remain inert**. They cannot
-block other users from registering a fresh independent instance.
+`routeId = keccak256(abi.encode(keccak256("XITA_ROUTE_INSTANCE_V315"), assetId, sourceChainId, sourceDomain, destinationChainId, destinationDomain, sourceRouter, destinationRouter))`.
 
-## Attestation wire format (21 ABI words)
+- This is the **only** route identity for native XGR, wXGR and ERC20.
+- A new router pair produces a different route ID, even for the same asset
+  and directed chain pair. Nobody can monopolize an asset's first route.
+- Reverse direction reverses BOTH chain identities and Router addresses
+  and has a different Route ID.
+- Neither fee, Gateway address, UI listing status nor token symbol is part
+  of the route ID.
+- An identical directed route ID cannot be inserted twice into its source
+  registry. A route cannot be replaced or retargeted.
 
-`abi.encode(keccak256("XITA_ROUTE_SAFETY_V315"), sourceChainId, sourceDomain, sourceRegistry, routeId, assetId, destinationChainId, destinationDomain, sourceToken, destinationToken, sourceRouter, destinationRouter, gateway, reverseRouteId, remoteRegistry, remoteFactory, remoteGateway, localRouterCodeHash, remoteRouterCodeHash, setId, validUntil)`.
+## What each route registers
 
-All values are padded to 32-byte ABI words (total **672 bytes**).
-`validUntil` is a Unix time and the validator set must be current.
-Source-side code verifies the LOCAL fields against immutable storage and
-BLS quorum; validator signers must inspect REMOTE facts independently and
-refuse mismatches. A returned remote `codehash` alone is not proof of remote
-deployment, which is why the attestation is essential.
+Each source-chain registry has one immutable record per
+`(destinationDomain, routeId)`, created by the public Factory:
 
-The Go codec implementation lives separately in xgr-node PR #33.
-**There is not yet a running signer/RPC workflow that produces real route
-safety aggregates, and no multi-chain live proof verification has passed.**
+- **Asset binding**: assetId, destinationChainId, sourceToken and
+  destinationToken. Native tokens have the zero-token address.
+- **Router binding**: local sourceRouter and remote destinationRouter.
+- **Hop identity**: sourceChainId, sourceDomain, destinationDomain, routeId.
+- **Gateway binding**: its exact local Gateway address, Mailbox and
+  MerkleTreeHook. The Gateway binds this route and source Router immutably.
+- **State**: initially PREPARED (enabled=false); only a verified BLS
+  counterpart safety attestation may activate it (enabled=true).
+- **Fee**: read dynamically from the source Registry's SINGLE
+  `validatorFeeWei`; it is NOT individually configured for each route.
 
-## Source-fee governance (unchanged)
+Every new Gateway also creates its own fee accounting vault. Validators
+receive credits and claim their earnings (no automatic micro-payouts).
 
+A factory-issued Collateral Router holds its OWN token collateral.
+A Synthetic Router starts at zero supply, mints only on authenticated
+inbound delivery, and burns on authenticated outbound dispatch.
+A native-XGR Router holds the native XGR escrow for its own route.
+Independent routes never share authority to withdraw each other's funds.
+
+## Open, two-step route creation
+
+1. Deploy XITA's fixed-code Factory and its registry once per chain.
+   Deploy local Router A and local Router B independently via their public
+   respective Factories. Only the creator controls the initial binding of
+   that individual Router; anyone can create another independent Router.
+2. Learn and verify both deployed addresses. On EACH direction's source
+   chain call `prepareRoute(localRouter, remoteChainId, remoteDomain,
+   remoteRouter, remoteToken)`. The Factory checks the XGRChain-only
+   topology and writes the immutable pending route with its new Gateway.
+3. Registration itself requires no validator vote. The route is still
+   **inert**: Gateway quotes/bridging and Router dispatch must reject it.
+4. Independent safety verification checks finalized counterparty
+   chain facts: reciprocal route record, authenticated original token
+   and metadata, Router codehashes, Gateway/Factory provenance, Mailbox,
+   ISM, collateral semantics and intended bidirectional pair.
+5. The validator BLS aggregate certifies those objective transfer-safety
+   facts, NOT project membership. Anyone may submit the signed proof to
+   `activateRoute`. Activation and Router bootstrap must be atomic.
+6. Only after BOTH directions are independently active may the frontend
+   offer a bidirectional bridge. A relayer is replaceable; failure of a
+   relayer must not grant authority over assets.
+
+An unproven first registration can never block another independent route.
+No party gains an "official" token identity by registering first.
+
+## Source-chain validator fee
+
+Exactly one native-currency fee is set for each source registry, requiring
+the active validator quorum:
 `XITA_SOURCE_FEE_V315 || bytes8(chainId) || bytes4(domain) || bytes20(registry) || bytes8(setId) || bytes8(nonce) || bytes8(validUntil) || bytes32(validatorFeeWei)`.
 
-One source-native validator fee per chain; fresh monotonic nonce and current
-source set. FeeVault distributes earned fees into validator pull balances
-and preserves accrued claims across validator exit. Historical fee lookups
-must read source registry at the original message block and receipt.
+There is no per-route fee vote. The source fee nonce is monotonic, the BLS
+setId must match the current set and the signed proposal has an expiry.
+Historical receipts must be interpreted using the fee at the original
+source block, not today's current value.
 
-## Production gates — NOT YET CLEARED
+## Objective BLS route safety proof
 
-- Foundry compiler and unit tests on this draft branch.
-- Consistent Solidity/Go hashes and raw BLS safety payloads with real vectors; automated signer/RPC evidence verification and validator policy for objective remote readiness.
-- True Base ↔ XGR E2E ERC20 lock/mint/burn/unlock and XGR native XGR ↔ wrapped routes (including two-step spoke transit), fee receipts and historical snapshots.
-- Validator changes mid-flight, relayer outage/replay/refunds/recovery, ERC20 abnormal behavior (fee-on-transfer, rebasing, callback tokens) and dust/rounding tests. Unsupported token behaviors must fail closed.
-- Explicit authenticated token metadata and UI discovery/listing; unverified clone tokens must never be presented as official XGR/wXGR or original assets.
-- Deployment scripts for the new two-phase process and immutable counterpart configuration; exact bytecode verification and contract address manifests.
-- Preserve legacy collateral, old route receipts and claim paths; no automatic upgrade or replacement.
+The signed payload is `abi.encode` of exactly 21 ABI words (672 bytes):
 
-**Until these gates close, neither this PR nor the Go codec PR authorizes a mainnet deployment or replaces any legacy contract.**
+`keccak256("XITA_ROUTE_SAFETY_V315"), sourceChainId, sourceDomain, sourceRegistry, routeId, assetId, destinationChainId, destinationDomain, sourceToken, destinationToken, sourceRouter, destinationRouter, gateway, reverseRouteId, remoteRegistry, remoteFactory, remoteGateway, localRouterCodeHash, remoteRouterCodeHash, setId, validUntil`.
+
+Source Solidity checks immutable LOCAL route facts, local codehash,
+reverse ID, current set and expiry; the signing participants must first
+verify authentic REMOTE facts on a finalized chain state. A caller's remote
+address, codehash or symbol is not itself remote proof. Nonce/replay and
+metadata/collateral semantics must remain fail-closed.
+
+## Non-deployment gates
+
+- Solidity unit tests, fuzz/property tests and end-to-end two-chain tests.
+- Real validator-side fact checking, genuine BLS vectors, signing and
+  submission of the exact remote-pair safety payload.
+- Full native-XGR and ERC20 lock/mint/burn/unlock in both directions.
+- Relayer loss, retries/replay, partial delivery, validator rotations,
+  withdrawal recovery and historical source-fee snapshots.
+- Token abnormal-behavior rejection and safe display of unverified
+  representations in the indexer and UI.
+- Immutable Factory/Router bytecode manifest, deployment scripts and
+  confirmed on-chain addresses.
+
+**PoS consensus and XGRChain client software are not modified to add
+this route identity.** Existing validator checkpoint messages use
+Route ID bytes32; the additional safety onboarding flow belongs in
+XITA's own interchain infrastructure. No automatic production deploy.
