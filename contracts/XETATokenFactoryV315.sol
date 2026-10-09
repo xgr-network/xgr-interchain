@@ -223,6 +223,41 @@ contract XETATokenFactoryV315 {
         openRouterCreator[router] = msg.sender;
     }
 
+    function deployOpenNativeXGRRouter(bytes32 userSalt)
+        external returns (address router)
+    {
+        if (localChainId != 1643 || localDomain != 1643) revert WrongChain();
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        router = address(new XETAGuardedNativeWarpRouter{
+            salt: keccak256(abi.encode(
+                "XITA_NATIVE_UNBOUND_V315", msg.sender, userSalt
+            ))
+        }(
+            address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit
+        ));
+        openRouterAssetId[router] = xgrAssetId();
+        openRouterCreator[router] = msg.sender;
+    }
+
+    function deployOpenWrappedXGRRouter(bytes32 userSalt)
+        external returns (address router)
+    {
+        if (localChainId == 1643 || localDomain == 1643) revert WrongChain();
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        router = address(new XETAGuardedSyntheticWarpRouter{
+            salt: keccak256(abi.encode(
+                "XITA_WRAPPED_UNBOUND_V315", msg.sender, userSalt
+            ))
+        }(
+            address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit,
+            18, "XITA XGR Route (Unverified)", "xwXGR"
+        ));
+        openRouterAssetId[router] = xgrAssetId();
+        openRouterCreator[router] = msg.sender;
+    }
+
     /// @notice Step 2: pair routers already deployed on both chains.
     /// @dev Only the creator may bind their OWN router, never someone else's.
     /// Once paired, registration is append-only and no user can later change
