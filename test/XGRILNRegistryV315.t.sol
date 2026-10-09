@@ -69,8 +69,8 @@ contract XGRILNRegistryV315Test is Test {
 
     function testOnlyFactoryCanRegisterEvenWithValidAddresses() public {
         registry.applySourceFee(_fee(1, 100), hex"03", hex"01");
-        vm.prank(address(0xBEEF));
         vm.expectRevert(XGRILNRegistryV315.UnauthorizedRegistrar.selector);
+        vm.prank(address(0xBEEF));
         registry.registerRoute(
             assetId, 1643, DEST, address(0), address(0), address(this),
             address(this), address(this), address(this), address(0x4444)
