@@ -216,4 +216,52 @@ contract XETAOpenRouteFactoryV315Test is Test {
         );
         assertTrue(a != b);
     }
+    function testDeployFirstAndBindLaterAvoidsCircularRouterAddresses() public {
+        (bytes32 assetId,address localRouter) =
+            factory.deployOpenCollateralRouter(address(token),bytes32(uint256(21)));
+        assertTrue(localRouter.code.length != 0);
+        assertEq(factory.openRouterCreator(localRouter),address(this));
+        assertEq(assetId,XGRILNProtocol.assetIdV315(BASE,address(token),1));
+
+        vm.expectRevert(XETATokenFactoryV315.UnauthorizedRouterCreator.selector);
+        vm.prank(address(0xBEEF));
+        factory.prepareExistingOpenRouterRoute(
+            localRouter,HUB,HUB,REMOTE_A,REMOTE_A
+        );
+
+        (bytes32 routeId,address gateway) = factory.prepareExistingOpenRouterRoute(
+            localRouter,HUB,HUB,REMOTE_A,REMOTE_A
+        );
+        assertTrue(gateway.code.length != 0);
+        assertTrue(registry.exists(HUB,routeId));
+        (,,,,,,,,bool live) = registry.getRoute(HUB,routeId);
+        assertFalse(live);
+        vm.expectRevert(XETARouterCore.XETAInvalidRoute.selector);
+        XETAGuardedCollateralWarpRouterV315(localRouter).bootstrapXETARoute(HUB,routeId);
+        vm.expectRevert(XETATokenFactoryV315.RouterDomainReserved.selector);
+        factory.prepareExistingOpenRouterRoute(
+            localRouter,HUB,HUB,REMOTE_B,REMOTE_B
+        );
+    }
+
+    function testIndependentRoutersCanPrepareSameAssetAndDestination() public {
+        (,address first) = factory.deployOpenCollateralRouter(
+            address(token),bytes32(uint256(22))
+        );
+        (,address second) = factory.deployOpenCollateralRouter(
+            address(token),bytes32(uint256(23))
+        );
+        (bytes32 a,) = factory.prepareExistingOpenRouterRoute(
+            first,HUB,HUB,REMOTE_A,REMOTE_A
+        );
+        (bytes32 b,) = factory.prepareExistingOpenRouterRoute(
+            second,HUB,HUB,REMOTE_B,REMOTE_B
+        );
+        assertTrue(a != b);
+        assertTrue(first != second);
+        assertTrue(registry.exists(HUB,a));
+        assertTrue(registry.exists(HUB,b));
+        assertEq(factory.openRouterAssetId(first),factory.openRouterAssetId(second));
+    }
+
 }
