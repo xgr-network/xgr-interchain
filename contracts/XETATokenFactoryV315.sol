@@ -288,6 +288,59 @@ contract XETATokenFactoryV315 {
         );
     }
 
+    /// @notice Permissionless isolated native XGR escrow for a NEW route.
+    /// @dev Does not take over the canonical singleton representation or
+    /// make an unverifiable first claim to a unique asset/chain slot.
+    function createOpenNativeXGRRoute(OpenRouteRequest calldata request)
+        external returns (bytes32 routeId, address router, address gateway)
+    {
+        if (localChainId != 1643 || localDomain != 1643) revert WrongChain();
+        _validateOpenRequest(request);
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        bytes32 assetId = xgrAssetId();
+        bytes32 salt = keccak256(abi.encode(
+            "XITA_OPEN_NATIVE_XGR_V315", msg.sender, request.userSalt,
+            request.destinationChainId, request.destinationDomain,
+            request.destinationRouter
+        ));
+        router = address(new XETAGuardedNativeWarpRouter{salt: salt}(
+            address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit
+        ));
+        openRouterAssetId[router] = assetId;
+        (routeId, gateway) = _prepareOpenRoute(
+            assetId, address(0), request.destinationRouter, router, request
+        );
+    }
+
+    /// @notice Independent XGR representation; NEVER occupies the official
+    /// wXGR singleton address. It starts with zero supply and cannot receive
+    /// before the reciprocal native-collateral adapter is safety-attested.
+    function createOpenWrappedXGRRoute(OpenRouteRequest calldata request)
+        external returns (bytes32 routeId, address router, address gateway)
+    {
+        if (localChainId == 1643 || localDomain == 1643) revert WrongChain();
+        _validateOpenRequest(request);
+        if (address(registry) == address(0)) revert RegistryNotDeployed();
+        bytes32 assetId = xgrAssetId();
+        bytes32 salt = keccak256(abi.encode(
+            "XITA_OPEN_WRAPPED_XGR_V315", msg.sender, request.userSalt,
+            request.destinationChainId, request.destinationDomain,
+            request.destinationRouter
+        ));
+        router = address(new XETAGuardedSyntheticWarpRouter{salt: salt}(
+            address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit,
+            18, "XITA XGR Route (Unverified)", "xwXGR"
+        ));
+        openRouterAssetId[router] = assetId;
+        // Intentionally NOT representedAssetId: this open XGR clone cannot
+        // be silently relabeled as a canonical ERC20-origin token.
+        (routeId, gateway) = _prepareOpenRoute(
+            assetId, router, address(0), router, request
+        );
+    }
+
     /// @notice Anyone can submit the cryptographic counterpart attestation.
     /// This is transfer-safety verification, not voting on route permission.
     /// Prepared but unproven routes remain incapable of dispatching.
