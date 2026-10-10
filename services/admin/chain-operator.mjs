@@ -2,6 +2,8 @@
 // EIP-1193 wallet signs in the browser. All transactions are server-authored;
 // browser input may select chain/component and provide the public wallet/hash.
 import {resolve,join} from "node:path";
+import {execFileSync} from "node:child_process";
+import {checkedLocalMain} from "./main-gate.mjs";
 import {readdirSync,readFileSync} from "node:fs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
@@ -140,6 +142,17 @@ export function createChainOperator({
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
   const published=await publish(root,[result.input],{rpc});
+  // GitHub now has a NEW main SHA. The next UI step must immediately use
+  // that approved manifest, not a stale server checkout or a second TX.
+  if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
+   throw Error("GitHub publisher did not return a new main commit; intent retained");
+  if(checkedLocalMain(root)!==entry.sourceCommit)
+   throw Error("Local main moved during receipt publication; intent retained");
+  execFileSync("git",["pull","--ff-only","origin","main"],{
+   cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
+  });
+  if(checkedLocalMain(root)!==published.commit.toLowerCase())
+   throw Error("Post-publication checkout differs from GitHub receipt commit");
   const path=deploymentReceiptPath(result.verified);
   journal.document(id,path);
   return {stage:"documented",receiptPath:path,commit:published.commit,
