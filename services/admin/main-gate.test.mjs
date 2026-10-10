@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {isHubHop,currentMainCommit,checkedLocalMain,assertCurrentMain} from "./main-gate.mjs";
+import {isHubHop,currentMainCommit,checkedLocalMain,assertCurrentMain,currentMainViaGit} from "./main-gate.mjs";
 const x={chainId:1643,domainId:1643},base={chainId:8453,domainId:8453},polygon={chainId:137,domainId:137};
 const SHA="a".repeat(40);
 test("only XGRChain can serve as exactly one hop endpoint",()=>{
@@ -66,4 +66,35 @@ test("GitHub outage still allows a local read-only inventory but denies authoriz
  assert.equal(snapshot.syncStatus,"unavailable");
  assert.equal(snapshot.githubApproved,false);
  assert.ok(snapshot.warning);
+});
+
+test("HTTP 403 uses only a verified LIVE Git main ref for deploy authorization",async()=>{
+ const git=args=>{
+  if(args[0]==="symbolic-ref")return "main";
+  if(args[0]==="rev-parse")return SHA;
+  if(args[0]==="status")return "";
+  if(args[0]==="remote")return "git@github.com:xgr-network/xgr-interchain.git";
+  if(args[0]==="ls-remote")return SHA+" refs/heads/main";
+  throw Error("Unexpected Git operation");
+ };
+ const fetcher=async()=>({ok:false,status:403});
+ assert.equal(currentMainViaGit(".",{git}),SHA);
+ assert.equal(await assertCurrentMain(".",{git,fetcher}),SHA);
+ await assert.rejects(()=>assertCurrentMain(".",{
+  git:args=>args[0]==="ls-remote"?"b".repeat(40)+" refs/heads/main":git(args),
+  fetcher
+ }),/CURRENT GitHub main/);
+});
+test("origin spoofing, fallback failure and cached main never authorize deployment",async()=>{
+ const fetcher=async()=>({ok:false,status:403});
+ for(const fake of ["https://evil.example/xgr-network/xgr-interchain.git",
+  "git@github.com:xgr-network/xgr-interchain-evil.git"]){
+  assert.throws(()=>currentMainViaGit(".",{git:args=>
+   args[0]==="remote"?fake:SHA+" refs/heads/main"}),/origin/);
+ }
+ await assert.rejects(()=>assertCurrentMain(".",{
+  fetcher,git:args=>args[0]==="symbolic-ref"?"main":
+   args[0]==="rev-parse"?SHA:args[0]==="status"?"":args[0]==="remote"?
+    "git@github.com:xgr-network/xgr-interchain.git":""
+ }),/Cannot verify live main/);
 });
