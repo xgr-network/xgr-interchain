@@ -214,14 +214,14 @@ async function showSelectedDeployChain(data){
     ["Mindestreserve (Wei)",r.values.minimumReserveWei??"Offen"],
     ["Max. Executor-Erstattung (Wei)",r.values.maxExecutorReimbursementWei??"Offen"],
     ["Reserve je Validator (Wei)",r.values.perValidatorReserveWei??"Offen"],
-    ["Wallet-Deployment",r.deploymentExecutable?"Bereit":"Noch gesperrt – Transaktions-Engine nicht fertig"]
+    ["Wallet-Deployment","Einzelausführung mit GitHub-main-/BLS-/Build-/Gas-Gates"]
    ];
    const action=el("deployment-execute"),reason=el("deployment-execute-reason");
    // No optimistic deployment readiness: server must authorize each press.
    if(action)action.disabled=false;
-   if(reason)reason.textContent=r.deploymentExecutable?
-    "Commitgebundene Wallet-Transaktionsengine und Simulation noch erforderlich":
-    "Nicht ausführbar: "+(r.missing.join(" · ")||"Unvollständige Sicherheitsnachweise");
+   if(reason)reason.textContent=r.missing.length?
+    "Bootstrap blockiert: "+r.missing.join(" · "):
+    "Vorbereitete Wallet-Transaktion wird bei jedem Klick vollständig geprüft";
    readinessNode.innerHTML="<strong>Registry-Deployment · Vorprüfung</strong>"+
     lines.map(([label,value])=>'<div class="first-step"><span>'+esc(label)+'</span><small>'+esc(value)+'</small></div>').join("")+
     '<p>'+esc(r.missing.join(" · ")||"Bootstrap vollständig geprüft")+'</p>';
