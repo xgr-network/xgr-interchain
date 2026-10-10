@@ -108,6 +108,19 @@ export function nextAssetRouteTasks(inventory,infrastructure){
     kind:"router",action:rep.deployMethod,blockers:deps,status:deps.length?"waiting-infrastructure":"ready-for-independent-validation"});
   }
   for(const pair of asset.pairs){
+   if(pair.readyForAttestation){
+    for(const d of pair.directions){
+     const sourceRoute=asset.routes.find(x=>x.name===d.name&&x.kind==="route-activate");
+     if(sourceRoute)items.push({
+      id:asset.asset+":"+d.name+":activate",asset:asset.asset,chain:sourceRoute.source,
+      kind:"activation",action:"validator-quorum-confirmation",routeId:d.routeId,
+      gateway:d.gateway,router:d.localRouter,
+      destinationDomain:sourceRoute.destinationDomain,
+      blockers:["Independently verified reciprocal route safety BLS quorum"],
+      status:"requires-validator-quorum"
+     });
+    }
+   }
    for(const d of pair.directions){
     if(d.prepared)continue;
     const blockers=[];

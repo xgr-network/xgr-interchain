@@ -16,7 +16,9 @@ import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {planCatalogRoutes} from "./route-lifecycle.mjs";
 import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
+import {pendingLiveRouteTasks} from "./route-live.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
+import {createAssetOperator} from "./asset-operator.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 
@@ -124,6 +126,7 @@ async function preflight(catalog){
   note:"RPC identity and contract presence only. No deployment authorization."};
 }
 
+const assetOperator=createAssetOperator({root,stateDir:dataDir});
 const operator=createChainOperator({
  root,stateDir:dataDir,publicEvidenceDir:process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
  resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
@@ -218,13 +221,30 @@ http.createServer(async(req,res)=>{
    const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const {graph:lifecycle,tasks}=nextAssetRouteTasks(queue.inventory,infrastructure);
-   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks});
+   const pending=await pendingLiveRouteTasks(tasks,queue.inventory.chains,infrastructure,probe);
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending});
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/preview"){
    const item=await bodyJSON(req);
    const result=await operator.preview({chain:item.chain,component:item.component,
      wallet:item.wallet,parameters:item.parameters||{}});
    return reply(res,200,{ok:true,preview:result});
+  }
+  if(req.method==="POST"&&path==="/admin/api/asset-deploy/preview"){
+   const item=await bodyJSON(req);
+   return reply(res,200,{ok:true,preview:await assetOperator.preview({taskId:item.taskId,wallet:item.wallet})});
+  }
+  if(req.method==="POST"&&path==="/admin/api/asset-deploy/prepare"){
+   const item=await bodyJSON(req);
+   return reply(res,200,{ok:true,...await assetOperator.prepare({taskId:item.taskId,wallet:item.wallet})});
+  }
+  if(req.method==="POST"&&path==="/admin/api/asset-deploy/hash"){
+   const item=await bodyJSON(req);
+   return reply(res,200,{ok:true,intent:await assetOperator.hash({id:item.id,txHash:item.txHash})});
+  }
+  if(req.method==="POST"&&path==="/admin/api/asset-deploy/reconcile"){
+   const item=await bodyJSON(req);
+   return reply(res,200,{ok:true,result:await assetOperator.reconcile({id:item.id})});
   }
   if(req.method==="GET"&&path==="/admin/api/chain-deploy/status"){
    return reply(res,200,{ok:true,mode:"wallet-assisted",intents:operator.status()});

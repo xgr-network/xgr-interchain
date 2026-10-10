@@ -66,7 +66,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   const format=chain.blsVerifierFormat==="compressed"?1:2;
   const verifier=format===1?bootstrap.verifierAddress:requirePresent(infrastructure,"blsVerifier");
   if(!nonzero(verifier)||![1,2].includes(format))throw Error("BLS verifier missing");
-  const reserve={minimumWei:p.minimumWei,maxExecutorReimbursementWei:p.maxExecutorReimbursementWei,perValidatorWei:p.perValidatorWei};
+  const reserve={minimumWei:p.minimumWei,maxExecutorReimbursementWei:p.maxExecutorReimbursementWei,perValidatorWei:p.minimumWei};
   for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei"])
    if(!positive(reserve[key]))throw Error("Missing positive reserve "+key);
   if(BigInt(reserve.minimumWei)<BigInt(reserve.maxExecutorReimbursementWei)||

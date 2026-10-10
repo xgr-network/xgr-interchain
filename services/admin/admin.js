@@ -7,6 +7,9 @@ const labels={"not-deployed":"Nicht deployed",partial:"Teilweise deployed",deplo
 const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
 let workqueue=null;
 let assetPage=0;
+let assetTasks=[];
+let selectedAssetTask=null;
+let assetPreview=null;
 const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
@@ -22,8 +25,15 @@ function renderAssets(){
  const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
  '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+'</div>'+
- '<div class="asset-meta"><span>Asset-ID <b class="mono">'+esc(a.assetId)+'</b></span><span>Belege <b>'+a.receiptCount+'</b></span><span>Manifest <b>'+esc(a.deploymentManifest)+'</b></span></div>'+
- '<div class="routes">'+a.routes.map(r=>'<div class="route"><div><strong>'+esc(r.source)+' → '+esc(r.destination)+'</strong><small>'+esc(r.name)+' · '+esc(r.note)+'</small></div>'+pill(r.status)+'</div>').join("")+'</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ '<div class="routes">'+assetTasks.filter(t=>t.asset===a.key).map(t=>
+  '<div class="route"><div><strong>'+
+  esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
+  '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
+  '</small></div><button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'">Ausstehend →</button></div>').join("")+
+  (assetTasks.some(t=>t.asset===a.key)?"":'<p>Keine offenen Router- oder Gateway-Deployments.</p>')+
+  '</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
+  b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
  const pageNode=el("asset-pagination");
  pageNode.innerHTML='<span>'+esc(assets.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
  pageNode.querySelectorAll("button[data-page]").forEach(b=>b.addEventListener("click",()=>{
@@ -110,7 +120,7 @@ function moneyInWei(wei,chain){
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
  const keys=component==="validatorRegistry"
-  ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
+  ?["minimumWei","maxExecutorReimbursementWei"]:
    component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
  const result={};
  for(const key of keys){
@@ -119,20 +129,122 @@ function modalValues(component){
   result[key]=key==="defaultDestinationGasLimit"?Number(v):v;
  }
  if(component==="validatorRegistry"&&
-  (BigInt(result.perValidatorWei)<BigInt(result.minimumWei)||
-   BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
-  throw Error("Validatorreserve ≥ Mindestreserve ≥ Erstattungslimit erforderlich");
+  (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
+  throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
  if(component==="factory"&&(!Number.isSafeInteger(result.defaultDestinationGasLimit)||
   result.defaultDestinationGasLimit<21000||result.defaultDestinationGasLimit>10000000))
   throw Error("Destination-Gaslimit muss zwischen 21.000 und 10.000.000 liegen");
  return result;
 }
 let lastModalPreview=null;
+async function openAssetModal(taskId){
+ const task=assetTasks.find(x=>x.id===taskId);
+ if(!task)return;
+ selectedDeployment=null;selectedAssetTask=task;assetPreview=null;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ el("contract-modal-title").textContent=task.kind==="router"?
+  "Token-Router einmalig bereitstellen":task.kind==="activation"?
+  "BLS-Routenaktivierung":"Gerichtete Route vorbereiten";
+ el("contract-modal-subtitle").textContent=task.asset+" · "+task.chain+
+  " · Chain "+chain.chainId;
+ el("modal-parameters").hidden=true;
+ el("modal-route-context").hidden=false;
+ el("modal-route-context").textContent=task.kind==="router"?
+  "Dieser Token-Router gehört zum Asset auf dieser Chain und wird für Rückrouten wiederverwendet.":
+  task.kind==="activation"?"Die Gegenroute muss unabhängig verifiziert und mit einem echten Validator-BLS-Quorum bestätigt werden. Die Wallet kann das nicht stellvertretend unterschreiben.":
+  "Das Gateway und sein FeeVault werden gemeinsam erzeugt. Die Route bleibt bis zur BLS-Bestätigung inaktiv.";
+ el("modal-gas-result").textContent="";
+ el("modal-gas-check").disabled=task.blockers.length>0;
+ el("modal-deploy").disabled=true;
+ el("modal-recover").hidden=true;
+ el("contract-deploy-dialog").showModal();
+ if(task.kind==="activation"){
+  el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+  presentModalStatus("BLS-Quorum und unabhängiger Gegenketten-Nachweis fehlen. Noch nicht aktiv.","warn");
+  return;
+ }
+ try{
+  const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
+  const graph=workqueue.inventory.assets[task.asset];
+  const component=task.kind==="gateway"?"gateway":
+   graph.representations[task.chain].role==="native"?"nativeRouter":
+   graph.representations[task.chain].role==="synthetic"?"syntheticRouter":"collateralRouter";
+  const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+  const id=task.chain+":"+task.asset+":"+component+":"+routeName;
+  if(journal[id]){
+   el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+   el("modal-recover").hidden=false;
+   presentModalStatus("Transaktion vorhanden ("+journal[id].stage+"). Zuerst wiederherstellen; kein erneutes Senden.","warn");
+   return;
+  }
+ }catch(e){el("modal-gas-check").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
+ if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
+ else presentModalStatus("On-Chain-Router prüfen und Gas simulieren.");
+}
+async function previewAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task)return;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ let wallet=await currentWalletState();
+ if(!wallet)throw Error("Wallet verbinden");
+ if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+ wallet=await currentWalletState();
+ if(!wallet||wallet.chainId!==chain.chainId)throw Error("Wallet-Chain stimmt nicht überein");
+ const result=await postJSON("/admin/api/asset-deploy/preview",{taskId:task.id,wallet:wallet.address});
+ assetPreview={taskId:task.id,wallet:wallet.address};
+ el("modal-gas-result").textContent="Gaslimit "+BigInt(result.preview.simulation.gasLimit).toString()+
+  " · Maximal "+moneyInWei(result.preview.simulation.totalWorstCaseWei,chain);
+ el("modal-deploy").disabled=false;
+ presentModalStatus("On-Chain-Vorprüfung erfolgreich. Deployment durch Wallet bestätigen.");
+}
+async function executeAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task||assetPreview?.taskId!==task.id)throw Error("Gas bitte zuerst prüfen");
+ const wallet=await currentWalletState();
+ if(!wallet||wallet.address.toLowerCase()!==assetPreview.wallet.toLowerCase())
+  throw Error("Wallet seit der Gasprüfung geändert");
+ el("modal-deploy").disabled=true;
+ const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
+  taskId:task.id,wallet:wallet.address});
+ el("modal-recover").hidden=false;
+ presentModalStatus("Wallet signiert. Bei Unterbrechung ausschließlich Wiederherstellung verwenden.");
+ const txHash=await broadcastDeploymentIntent(prepared);
+ await postJSON("/admin/api/asset-deploy/hash",{id:prepared.id,txHash});
+ presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
+ const report=await postJSON("/admin/api/asset-deploy/reconcile",{id:prepared.id});
+ if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
+ presentModalStatus("Deployment dokumentiert. Route bleibt bis zur BLS-Aktivierung gesperrt.","success");
+ el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+}
+async function recoverAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task)return;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ const component=task.kind==="router"?task.id.includes(":")?
+   (workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="native"?"nativeRouter":
+     workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="synthetic"?"syntheticRouter":"collateralRouter"):"":
+   "gateway";
+ const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+ const id=chain.name+":"+task.asset+":"+component+":"+routeName;
+ const existing=(await get("/admin/api/chain-deploy/status")).intents.entries[id];
+ if(!existing)throw Error("Keine gespeicherte Asset-Transaktion");
+ if(existing.stage==="prepared"){
+  const txHash=window.prompt("Bereits gesendeten Wallet-Hash eingeben – niemals neu senden:","");
+  if(!txHash)throw Error("Unbekannter Broadcast-Status bleibt gesperrt");
+  await postJSON("/admin/api/asset-deploy/hash",{id,txHash});
+ }
+ const outcome=await postJSON("/admin/api/asset-deploy/reconcile",{id});
+ presentModalStatus("Wiederhergestellt: "+outcome.result.stage,"success");
+ if(outcome.result.stage==="documented"){
+  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+ }
+}
 async function openContractModal(chainName,component){
  const chain=workqueue?.inventory?.chains.find(c=>c.name===chainName);
  const infra=workqueue?.infrastructure?.find(c=>c.name===chainName);
  const part=infra?.components.find(x=>x.key===component);
  if(!chain||!part||part.status==="documented")return;
+ selectedAssetTask=null;el("modal-route-context").hidden=true;
  selectedDeployment={chainName,component};
  const title=coreTitles[component]||component;
  el("contract-modal-title").textContent=title+" · "+chainName;
@@ -172,11 +284,10 @@ async function openContractModal(chainName,component){
   const fromGitHub={
     minimumWei:r.values.minimumReserveWei,
     maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
-    perValidatorWei:r.values.perValidatorReserveWei,
     sourceFeeWei:r.values.sourceFeeWei,
     defaultDestinationGasLimit:chain.defaultDestinationGasLimit
   };
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","defaultDestinationGasLimit"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei","defaultDestinationGasLimit"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // No JSON file authorizes economics. Historical values are reference only.
@@ -209,6 +320,7 @@ async function openContractModal(chainName,component){
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
 }
 async function checkModalGas(){
+ if(selectedAssetTask){try{await previewAssetDeployment()}catch(e){presentModalStatus(e.message,"error");el("modal-deploy").disabled=true;}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const output=el("modal-gas-result");
@@ -234,6 +346,7 @@ async function checkModalGas(){
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
 }
 async function executeModalDeployment(){
+ if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){presentModalStatus("Transaktion prüfen: "+e.message+" · niemals doppelt senden","error");el("modal-recover").hidden=false;}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const button=el("modal-deploy");button.disabled=true;
@@ -263,6 +376,7 @@ async function executeModalDeployment(){
   "Abgleich erforderlich: "+e.message+". Keine zweite Transaktion senden.","error")}
 }
 async function recoverModalDeployment(){
+ if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment,id=chainName+":"+component;
  try{
@@ -311,124 +425,7 @@ async function refreshWalletBalances(){
  }catch(e){el("wallet-status").textContent=e.message;}
 }
 let selectedDeployChain=null;
-async function loadFirstDeploy(){
- const target=el("first-deploy-plan");if(!target)return;
- try{
-  const data=await get("/admin/api/first-deploy");
-  if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
-   selectedDeployChain=data.chains[0]?.name;
-  target.innerHTML='<h3>Offene Routen</h3>'+
-   '<p>Chain-Contracts werden ausschließlich über „Chains & Onboarding“ direkt auf der Chain-Karte deployed. '+
-   'Einmalige Constructor-Werte erscheinen im jeweiligen Dialog, nicht als GitHub-Konfiguration.</p>'+
-   '<label for="deployment-chain-select">Chain</label> '+
-   '<select id="deployment-chain-select">'+data.chains.map(c=>
-    '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
-     esc(c.name)+'</option>').join("")+'</select>'+
-   '<div id="route-lifecycle"></div>';
-  el("deployment-chain-select").addEventListener("change",e=>{
-   selectedDeployChain=e.target.value;loadRouteLifecycle();renderQueue();
-  });
-  await loadRouteLifecycle();
- }catch(e){target.textContent="Routenübersicht nicht verfügbar: "+e.message;}
-}
-async function loadRouteLifecycle(){
- const node=el("route-lifecycle");if(!node)return;
- try{
-  const res=await get("/admin/api/route-lifecycle");
-  if(!node.isConnected)return;
-  const tasks=(res.tasks||[]).filter(x=>x.chain===selectedDeployChain);
-  const title=task=>task.kind==="router"?
-   "Token-Router einmalig deployen · "+task.asset:"Gateway für Rück-/Hinroute vorbereiten · "+task.asset;
-  const line=task=>'<div class="first-step"><strong>'+esc(title(task))+
-   '</strong><small>'+esc(task.status==="waiting-infrastructure"?
-    "Zuerst Chain-Grundverträge bereitstellen":
-    task.status==="waiting-dependencies"?
-    "Abhängig von: "+task.blockers.join(", "):
-    "Nächster Schritt: on-chain Fakten und Factory-Transaktion unabhängig verifizieren")+
-   '</small></div>';
-  node.innerHTML='<h3>Offene Asset- und Routenaufgaben</h3>'+
-   '<p>Mint/Burn-Router nur einmal je Token und Chain. Rückroute nutzt denselben Token-Router, aber ein eigenes gerichtetes Gateway.</p>'+
-   (tasks.length?line(tasks[0]):'<p>Keine offenen Router/Gateway-Aufgaben auf dieser Chain.</p>')+
-   (tasks.length>1?'<details><summary>'+ (tasks.length-1)+
-    ' weitere offene Routenaufgaben</summary>'+
-    tasks.slice(1).map(line).join("")+'</details>':"")+
-   '<small>BLS-Sicherheitsaktivierung erfolgt erst nach verifizierter Gegenroute. Keine automatische Freischaltung.</small>';
- }catch(e){if(node.isConnected)node.textContent="Routenplan nicht verfügbar: "+e.message;}
-}
-const deployTitle={blsVerifier:"BLS-Verifier auf dieser EIP-2537-Chain bereitstellen",
- validatorRegistry:"ValidatorRegistry deployen",ism:"Interchain Security Module deployen",
- factory:"Permissionless Factory deployen",sourceRegistry:"Source Registry über Factory deployen"};
-function renderPendingChainSteps(chain,readiness){
- const pending=chain.steps.filter(s=>s.kind!=="verify"&&s.status!=="documented");
- const selector=el("deployment-component-select"),old=selector.value;
- selector.innerHTML=pending.map(s=>'<option value="'+esc(s.component)+'">'+
-  esc(deployTitle[s.component]||s.title)+'</option>').join("");
- if(pending.some(s=>s.component===old))selector.value=old;
- const next=pending[0];
- el("selected-deploy-details").innerHTML='<div class="first-chain">'+
-  '<strong>'+esc(chain.name)+' · '+pending.length+' offene Chain-Contracts</strong>'+
-  (chain.verifierFormat==="compressed"?'<p>Nativer BLS-Verifier ist Bestandteil der XGRChain. Kein EIP-2537-Deployment erforderlich.</p>':'')+
-  (next?'<div class="first-step"><strong>Nächste Aufgabe: '+esc(deployTitle[next.component]||next.title)+
-   '</strong></div>':'<p>Alle Chain-Grundverträge dokumentiert. Weiter zum Routendeploy.</p>')+
-  (pending.length>1?'<details><summary>Weitere '+(pending.length-1)+' noch offene Contracts</summary>'+
-   pending.slice(1).map(s=>'<div class="first-step">'+esc(deployTitle[s.component]||s.title)+'</div>').join("")+'</details>':'')+'</div>';
- const missing=(readiness?.missing||[]).filter(x=>!x.includes("BLS-Schlüssel")&&!x.includes("PoS-Validator-Snapshot"));
- const bootstrapOpen=readiness?.evidenceVerified===false;
- const isVerifier=next?.component==="blsVerifier";
- const status=el("deployment-execute-reason");
- const action=el("deployment-execute");
- action.disabled=!next||Boolean(workqueue?.readOnly);
- if(!next)status.textContent="Chain-Infrastruktur vollständig";
- else if(workqueue?.readOnly)status.textContent="GitHub main ist nicht aktuell bestätigt";
- else if(!isVerifier&&bootstrapOpen)status.textContent="Öffentliche Validatornachweise beim Contract-Deploy prüfen";
- else status.textContent="Die Wallet bestätigt jeden einzelnen Deploy separat";
- const summary=el("chain-live-preflight");
- summary.textContent=next?"Constructor-Werte werden nur für die konkrete Wallet-Transaktion festgelegt":
-  "Keine offenen Chain-Contracts";
- return {pending,missing};
-}
-async function showSelectedDeployChain(data){
- const chain=data.chains.find(c=>c.name===selectedDeployChain);
- if(!chain)return;
- renderPendingChainSteps(chain,null);
- try{
-  const {readiness}=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
-  if(selectedDeployChain!==chain.name)return;
-  renderPendingChainSteps(chain,readiness);
- }catch(e){if(selectedDeployChain===chain.name)
-  el("deployment-execute-reason").textContent="Statusprüfung nicht möglich: "+e.message;}
- try{
-  const preflight=(await get("/admin/api/chain-preflight?chain="+encodeURIComponent(chain.name))).preflight;
-  if(selectedDeployChain!==chain.name)return;
-  const node=el("chain-live-preflight");
-  node.textContent=(preflight.basicRpcPreflightOK?"RPC, Hyperlane und native/BLS-Prüfung OK":
-    "Sicherheitsprüfung blockiert: "+(preflight.error||"Preflight fehlt"))+
-    " · "+(chain.steps.filter(s=>s.kind!=="verify"&&s.status!=="documented").length)+" Grundverträge offen";
- }catch(e){if(selectedDeployChain===chain.name)el("chain-live-preflight").textContent=
-  "RPC-Prüfung momentan nicht erreichbar: "+e.message;}
-}
-
-function renderQueue(){
- if(!workqueue)return;
- const items=(workqueue.workItems||[]).filter(item=>{
-  // Public validator proof checks and constructor economics are inputs
-  // to the relevant contract transaction, not separate GitHub tasks.
-  if(["validator-bootstrap","fee-bootstrap"].includes(item.kind))return false;
-  return item.status!=="documented";
- });
- const scoped=items.filter(item=>item.chain===selectedDeployChain);
- const other=items.filter(item=>item.chain!==selectedDeployChain);
- const line=item=>'<div class="route"><div><strong>'+esc(item.title)+'</strong></div></div>';
- el("deployment-queue").innerHTML=
-  '<p>Nur ausstehende Aufgaben. Die vollständige technische Fehleranalyse erscheint erst beim Start der jeweiligen Aktion.</p>'+
-  (scoped.length?scoped.slice(0,1).map(line).join(""):"<p>Keine weiteren offenen Aufgaben auf der ausgewählten Chain.</p>")+
-  (scoped.length>1?'<details><summary>'+ (scoped.length-1)+
-   ' weitere offene Aufgaben auf '+esc(selectedDeployChain)+'</summary>'+
-   scoped.slice(1).map(line).join("")+'</details>':"")+
-  (other.length?'<details><summary>'+other.length+' offene Aufgaben auf anderen Chains</summary>'+
-   other.map(line).join("")+'</details>':"");
-}
-
+function renderQueue(){} // No separate work queue: cards are the actionable interface.
 function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
  for(const link of document.querySelectorAll(".sidebar [data-view]"))link.classList.toggle("active",link.dataset.view===name);
@@ -440,7 +437,9 @@ async function loadMainWorkqueue(){
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
   deploymentReadiness.clear();
-  renderAssets();renderInfrastructure();renderQueue();loadFirstDeploy();
+  try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];}
+  catch{assetTasks=[];}
+  renderAssets();renderInfrastructure();
   // Read-only evidence status lives independently from incomplete GitHub config.
   await Promise.all((data.infrastructure||[]).map(async chain=>{
    try{
@@ -475,19 +474,19 @@ async function loadJobs(){
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
 el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
-el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;});
+el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
 
 el("modal-gas-check").addEventListener("click",checkModalGas);
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
-el("deploy-all").addEventListener("click",()=>{setView("infrastructure");history.replaceState(null,"","#infrastructure");});
+
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
-el("load-jobs").addEventListener("click",loadJobs);
+
 for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();});
-setView(["assets","infrastructure","workflow"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
+setView(["assets","infrastructure"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
 el("connect-wallet").addEventListener("click",async()=>{
  try{
   const providerList=walletsAvailable();
