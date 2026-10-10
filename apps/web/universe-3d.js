@@ -743,6 +743,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  intersection?.observe(root);
  function showRankedTokens(items=[]){
   topology.planets.length=0;
+  for(const slot of orbitPaths)slot.planet=null;
   for(const [,node] of tokenLabels.splice(0))node.remove();
   const system=available.get(selectedKey);
   if(!focused||!system||compact)return;
@@ -759,6 +760,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    node.addEventListener("click",()=>onToken(token,selectedKey),{signal});
    labelRoot?.appendChild(node);tokenLabels.push([p,node]);
   }
+  root.dataset.orbitTokenCount=String(topology.planets.length);
  }
  const controller={
   showRankedTokens,
