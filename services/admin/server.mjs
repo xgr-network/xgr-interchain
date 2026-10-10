@@ -9,6 +9,7 @@ import {buildPlan,renderStepCommand} from "./plan.mjs";
 import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
+import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -127,7 +128,8 @@ http.createServer(async(req,res)=>{
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await deploymentQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
-   return reply(res,200,{ok:true,...queue,infrastructure,workItems:buildWorkItems(queue.inventory,infrastructure)});
+   const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
+   return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
   }
   if(req.method==="GET"&&path==="/admin/api/balance"){
    const queue=await deploymentQueue(root);
@@ -141,6 +143,19 @@ http.createServer(async(req,res)=>{
    const [chainId,balance]=await Promise.all([probe(rpcUrl,"eth_chainId",[]),probe(rpcUrl,"eth_getBalance",[address,"latest"])]);
    if(BigInt(chainId)!==BigInt(chain.chainId)||!/^(0x)[0-9a-f]+$/i.test(balance||""))throw Error("Invalid RPC identity or balance");
    return reply(res,200,{ok:true,chain:name,chainId:chain.chainId,address,balance});
+  }
+  if(req.method==="GET"&&path==="/admin/api/bootstrap"){
+   const queue=await deploymentQueue(root);
+   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
+   const name=new URL(req.url,"http://localhost").searchParams.get("chain");
+   if(name&&!queue.inventory.chains.some(c=>c.name===name))throw Error("Unknown main-approved chain");
+   const requested=name?bootstrap.filter(c=>c.chain===name):bootstrap;
+   const results=await Promise.all(requested.map(async plan=>{
+    try{return await readLiveBootstrap(plan,infrastructure,queue.inventory.chains)}
+    catch(e){return {...plan,verified:false,error:String(e.message).slice(0,160),missing:[...plan.missing,"On-chain bootstrap verification unavailable"]}}
+   }));
+   return reply(res,200,{ok:true,commit:queue.commit,bootstrap:results});
   }
   if(req.method==="GET"&&path==="/admin/api/infrastructure"){
    const queue=await deploymentQueue(root);
