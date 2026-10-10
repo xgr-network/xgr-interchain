@@ -154,12 +154,11 @@ async function openAssetModal(taskId){
   task.kind==="activation"?"Die Gegenroute muss unabhängig verifiziert und mit einem echten Validator-BLS-Quorum bestätigt werden. Die Wallet kann das nicht stellvertretend unterschreiben.":
   "Das Gateway und sein FeeVault werden gemeinsam erzeugt. Die Route bleibt bis zur BLS-Bestätigung inaktiv.";
  el("modal-gas-result").textContent="";
- el("modal-gas-check").disabled=task.blockers.length>0;
- el("modal-deploy").disabled=true;
+ el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
  el("contract-deploy-dialog").showModal();
  if(task.kind==="activation"){
-  el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+  el("modal-deploy").disabled=true;
   presentModalStatus("BLS-Quorum und unabhängiger Gegenketten-Nachweis fehlen. Noch nicht aktiv.","warn");
   return;
  }
@@ -172,14 +171,14 @@ async function openAssetModal(taskId){
   const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
   const id=task.chain+":"+task.asset+":"+component+":"+routeName;
   if(journal[id]){
-   el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+   el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Transaktion vorhanden ("+journal[id].stage+"). Zuerst wiederherstellen; kein erneutes Senden.","warn");
    return;
   }
- }catch(e){el("modal-gas-check").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
+ }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
  if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
- else presentModalStatus("On-Chain-Router prüfen und Gas simulieren.");
+ else presentModalStatus("Bereit: Mit Wallet deployen. Gebühren bestätigt MetaMask.");
 }
 async function previewAssetDeployment(){
  const task=selectedAssetTask;
@@ -199,10 +198,9 @@ async function previewAssetDeployment(){
 }
 async function executeAssetDeployment(){
  const task=selectedAssetTask;
- if(!task||assetPreview?.taskId!==task.id)throw Error("Gas bitte zuerst prüfen");
+ if(!task)throw Error("Keine Asset-Aufgabe ausgewählt");
  const wallet=await currentWalletState();
- if(!wallet||wallet.address.toLowerCase()!==assetPreview.wallet.toLowerCase())
-  throw Error("Wallet seit der Gasprüfung geändert");
+ if(!wallet)throw Error("Wallet verbinden");
  el("modal-deploy").disabled=true;
  const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
   taskId:task.id,wallet:wallet.address});
@@ -251,7 +249,6 @@ async function openContractModal(chainName,component){
  el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
- el("modal-gas-check").disabled=true;
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
  el("modal-parameters").hidden=true;
@@ -306,7 +303,6 @@ async function openContractModal(chainName,component){
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
 
   if(existing){
-     el("modal-gas-check").disabled=true;
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Vorherige Transaktion: "+existing.stage+
@@ -319,8 +315,8 @@ async function openContractModal(chainName,component){
    presentModalStatus("Öffentliche Validatornachweise auf der Zielchain noch nicht verifiziert.","warn");
    return;
   }
-  el("modal-gas-check").disabled=false;
-  presentModalStatus("Constructor-Werte eingeben und Gas prüfen.");
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Werte prüfen und Mit Wallet deployen. Gebühren zeigt MetaMask.");
 
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
 }
@@ -358,12 +354,9 @@ async function executeModalDeployment(){
  try{
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
   const params=modalValues(component);
-  if(!lastModalPreview||lastModalPreview.chainName!==chainName||
-    lastModalPreview.component!==component||JSON.stringify(lastModalPreview.parameters)!==JSON.stringify(params))
-   throw Error("Constructor-Werte geändert: Gas bitte erneut prüfen");
   const state=await currentWalletState();
   if(!state||state.chainId!==chain.chainId)throw Error("Wallet nicht mit ausgewählter Chain verbunden");
-  presentModalStatus("Sicherheitsprüfungen und persistentes Transaktionsjournal …");
+  presentModalStatus("Prüfe Contract und bereite MetaMask-Transaktion vor …");
   const prepared=await postJSON("/admin/api/chain-deploy/prepare",
    {chain:chainName,component,wallet:state.address,parameters:params});
   presentModalStatus("Wallet-Bestätigung ausstehend. Bei Abbruch Wiederherstellung verwenden.");
@@ -378,7 +371,7 @@ async function executeModalDeployment(){
   el("contract-deploy-dialog").close();selectedDeployment=null;
   await loadMainWorkqueue();
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
-  "Abgleich erforderlich: "+e.message+". Keine zweite Transaktion senden.","error")}
+  "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
 }
 async function recoverModalDeployment(){
  if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
@@ -481,7 +474,7 @@ async function loadJobs(){
 el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
 el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
 
-el("modal-gas-check").addEventListener("click",checkModalGas);
+
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
