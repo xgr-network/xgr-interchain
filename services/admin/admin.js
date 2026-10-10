@@ -532,7 +532,16 @@ async function loadMainWorkqueue(){
   const data=await get("/admin/api/workqueue");
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
+  deploymentReadiness.clear();
   renderAssets();renderInfrastructure();renderQueue();loadFirstDeploy();
+  // Read-only evidence status lives independently from incomplete GitHub config.
+  await Promise.all((data.infrastructure||[]).map(async chain=>{
+   try{
+    const report=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
+    if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
+   }catch{}
+  }));
+  if(workqueue===data)renderInfrastructure();
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
 async function check(){
@@ -552,6 +561,12 @@ async function loadJobs(){
   el("jobs").innerHTML=d.jobs.length?d.jobs.map(j=>'<article><a href="'+esc(j.url)+'" target="_blank" rel="noopener noreferrer">'+esc(j.title)+'</a><p>#'+j.number+' · '+esc(j.status)+'</p></article>').join(""):"<p>Keine offenen GitHub-Issues.</p>";
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
+el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
+el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;});
+el("modal-approve").addEventListener("click",approveModalBootstrap);
+el("modal-gas-check").addEventListener("click",checkModalGas);
+el("modal-deploy").addEventListener("click",executeModalDeployment);
+el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
 el("deploy-all").addEventListener("click",()=>{setView("workflow");history.replaceState(null,"","#workflow");el("first-deploy-plan")?.scrollIntoView({behavior:"smooth",block:"start"});});
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
