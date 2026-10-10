@@ -66,6 +66,19 @@ jobs:
           set -euo pipefail
           node --test apps/web/browser-smoke.test.mjs
 
+      - name: Capture actual WebGL Universe
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          node apps/web/render-visual-snapshot.mjs artifacts/universe.png
+
+      - name: Publish 3D Universe review image
+        uses: actions/upload-artifact@v4
+        with:
+          name: xita-universe-3d-preview
+          path: artifacts/universe.png
+          if-no-files-found: error
+
       - name: Validate operator admin
         shell: bash
         run: |
