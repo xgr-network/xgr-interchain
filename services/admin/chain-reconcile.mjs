@@ -29,6 +29,10 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("verifier()",v,"address");
   await check("verifierKeyFormat()",chain.blsVerifierFormat==="compressed"?1:2);
   await check("setId()",1);
+  if(!bootstrap.reserve?.minimumWei||!bootstrap.reserve?.maxExecutorReimbursementWei)
+   throw Error("Approved reserve parameters missing from live verification");
+  await check("minimumDeactivationReserveWei()",bootstrap.reserve.minimumWei);
+  await check("maxExecutorReimbursementWei()",bootstrap.reserve.maxExecutorReimbursementWei);
   const onChain=await getter(rpc,url,address,"quorumThreshold()");
   if(asWord(onChain)<2n)throw Error("Bootstrap quorum too low");
  }else if(component==="ism"){
