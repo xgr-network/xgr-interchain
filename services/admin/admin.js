@@ -93,11 +93,11 @@ async function loadFirstDeploy(){
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
-   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p>'+ 
+   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
    '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" disabled title="Wartet auf commitgebundene Transaktionssimulation und geprüfte Sicherheitsnachweise">Deploy auf dieser Chain</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
-   showSelectedDeployChain(data);
+   showSelectedDeployChain(data);loadRouteLifecycle();
   });
   el("deployment-switch-wallet").addEventListener("click",async()=>{
    try{
@@ -106,8 +106,27 @@ async function loadFirstDeploy(){
     await switchDeploymentChain(chain);await refreshWalletBalances();
    }catch(e){el("deployment-execute-reason").textContent=e.message;}
   });
-  showSelectedDeployChain(data);
+  showSelectedDeployChain(data);loadRouteLifecycle();
  }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
+}
+async function loadRouteLifecycle(){
+ const node=el("route-lifecycle");if(!node)return;
+ try{
+  const res=await get("/admin/api/route-lifecycle");
+  if(!node.isConnected)return;
+  const plans=res.lifecycle.assets.filter(a=>a.pairs.some(p=>p.chains.includes(selectedDeployChain)));
+  node.innerHTML='<h3>Token-Repräsentationen und gerichtete Routen</h3>'+
+   '<p>Eine Token-Repräsentation wird je Asset und Chain einmal erstellt und für Rückrouten wiederverwendet. Gateways sind gerichtet; Aktivierung benötigt das geprüfte BLS-Quorum.</p>'+
+   plans.map(p=>'<div class="first-chain"><strong>'+esc(p.asset)+'</strong>'+
+    p.representations.filter(r=>r.chain===selectedDeployChain).map(r=>
+     '<div class="first-step"><span>'+esc(r.component)+' · '+esc(r.chain)+'</span><small>'+
+     esc(r.action==="reuse-verified"?"Bestehenden Router wiederverwenden":r.deployMethod+" (nur einmal)")+
+     (r.router?" · "+esc(r.router):" · noch nicht deployed")+'</small></div>').join("")+
+    p.routes.filter(r=>r.source===selectedDeployChain||r.destination===selectedDeployChain)
+     .map(r=>'<div class="first-step"><span>'+esc(r.name)+' · '+esc(r.kind)+'</span><small>'+
+      esc(r.action)+" · "+esc(r.routeId||"Router-Paar noch nicht vollständig")+
+      '</small></div>').join("")+'</div>').join("");
+ }catch(e){if(node.isConnected)node.textContent="Routenplan nicht verfügbar: "+e.message;}
 }
 async function showSelectedDeployChain(data){
  const chain=data.chains.find(c=>c.name===selectedDeployChain);
