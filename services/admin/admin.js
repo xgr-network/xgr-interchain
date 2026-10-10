@@ -411,8 +411,9 @@ async function showSelectedDeployChain(data){
 function renderQueue(){
  if(!workqueue)return;
  const items=(workqueue.workItems||[]).filter(item=>{
-  if(item.kind==="validator-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.ready);
-  if(item.kind==="fee-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.proposedFeeWei);
+  // Public validator proof checks and constructor economics are inputs
+  // to the relevant contract transaction, not separate GitHub tasks.
+  if(["validator-bootstrap","fee-bootstrap"].includes(item.kind))return false;
   return item.status!=="documented";
  });
  const scoped=items.filter(item=>item.chain===selectedDeployChain);
