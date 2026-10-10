@@ -399,3 +399,10 @@ body>header{z-index:20;background:#060d1acb}
 .ux-3d-stage.is-compact{min-height:485px}
 @media(max-width:650px){body::before{background-position:40% center}.ux-3d-stage.is-compact{min-height:340px}}
 @media(prefers-reduced-motion:reduce){.ux-3d-stage::before{animation:none}}
+
+/* Northstar v5: scene is the product; the informational sidebar is subordinate. */
+.ux-universe-page .ux-universe-layout{grid-template-columns:minmax(0,1fr) 268px;gap:14px}
+.ux-universe-page .ux-3d-stage:not(.is-compact){height:min(78vh,820px);min-height:620px}
+.ux-universe-page .ux-universe-main{min-width:0}
+.ux-universe-page .ux-3d-stage{border-color:#26374b90}
+@media(max-width:1050px){.ux-universe-page .ux-universe-layout{grid-template-columns:1fr}}

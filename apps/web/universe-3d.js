@@ -191,7 +191,7 @@ const spriteVS=[
  'attribute vec3 aPos;uniform mat4 uViewProjection;',
  'uniform float uSize;uniform float uFixed;',
  'void main(){gl_Position=uViewProjection*vec4(aPos,1.0);',
- 'gl_PointSize=uFixed>0.5?uSize:min(190.0,max(1.0,uSize/max(gl_Position.w,1.0)));}'
+ 'gl_PointSize=uFixed>0.5?uSize:min(512.0,max(1.0,uSize/max(gl_Position.w,1.0)));}'
 ].join('\n');
 const spriteFS=[
  'precision mediump float;uniform vec4 uColor;uniform float uBackground;',
@@ -317,7 +317,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=compact?53:49;
+ const initialDistance=compact?42:41;
  const camera={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  const wanted={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  let focused=false,focusBlend=0;
@@ -422,7 +422,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    return add(p,[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2.0]);
   };
   for(let i=0;i<steps;i++){
-   if(!active&&i%5>1)continue;
+   if(!active&&i%13>7)continue;
    const from=pointAt(i/steps),to=pointAt((i+1)/steps);
    positions.push(...from,...to);
   }
@@ -493,7 +493,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
    gl.uniformMatrix4fv(sp.vp,false,vp);
    gl.uniform4f(sp.color,...disc.item.color,opacity);
-   gl.uniform1f(sp.size,disc.item.portal?1.8:1.35);
+   gl.uniform1f(sp.size,disc.item.portal?2.7:2.2);
    gl.uniform1f(sp.fixed,1);
    gl.uniform1f(sp.background,1);
    gl.drawArrays(gl.POINTS,0,disc.count);
@@ -586,13 +586,12 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=item.portal?.32:.13;
-   point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity,vp);
-   point(systemPosition(item,frame,reducedMotion),item.radius*1600,item.color,intensity*.67,vp);
+   const intensity=item.portal?.41:.27;
+   point(systemPosition(item,frame,reducedMotion),item.radius*9000,item.color,intensity,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity*.67,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  if(focusBlend<.65)for(const track of systemTracks)
-    line(track.geometry,[.34,.47,.65],.11*(1-focusBlend),vp);
+  // Do not paint misleading global ellipses around the network.
    if(focusBlend<.96)for(const link of paths){
    const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
    const vertices=[],steps=92;
@@ -600,7 +599,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
    gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
-   line(link.geometry,link.active?[.45,.88,.72]:[.43,.61,.84],(link.active?.7:.35)*(1-focusBlend*.93),vp);
+   line(link.geometry,link.active?[.46,.80,.92]:[.46,.65,.83],(link.active?.7:.25)*(1-focusBlend*.93),vp);
   }
   if(focusBlend>.72)for(const ring of orbitPaths){
    if(ring.planet.system.system.key!==selectedKey)continue;
@@ -625,9 +624,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));
-     const presence=focused?focusBlend:.74;
-    if(presence>.45)point(entry.position,p.radius*1400,col,.11*presence,vp);
-    body(gpu.sphere,entry.position,p.radius*presence,col,0,frame,IDENTITY,eye,vp);
+     const presence=focused?focusBlend:1;
+    if(presence>.45)point(entry.position,p.radius*2700,col,.27*presence,vp);
+    body(gpu.sphere,entry.position,p.radius*(focused?presence:1.5),col,0,frame,IDENTITY,eye,vp);
     if(p.index%3===1&&presence>.82)body(gpu.torus,entry.position,p.radius*1.72,
      col.map(x=>x*.9),2,frame,rotation(.5,.2,.3),eye,vp);
    }
