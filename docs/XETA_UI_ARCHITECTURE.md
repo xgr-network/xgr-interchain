@@ -11,7 +11,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/routes`: configured directional routes and explicitly unverified activation status
 - `/join`: offline token application draft, JSON export only
 
-There is **no** standalone legacy bridge or `/bridge` route. The old XGR/Base
+There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
 v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
 permissionless but activation remains fail-closed pending independent BLS safety
 proof and verified reciprocal route deployment.
