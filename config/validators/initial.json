@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-initial-validator-set",
+  "originChainId": 1643,
+  "selection": "explicit-initial-deployment-default",
+  "validators": [
+    "0x98F8bC086454B8386788244eee9A43d5D0b4E63E",
+    "0x7E8f8Fd2A198F77dF298041b48D79b0df4c8B1fa",
+    "0x7913fDAe82C678F42B98Ca8076Fe7D13b3EdFF15"
+  ],
+  "notes": "Three specifically designated initial interchain validators (not the entire five-member PoS set). Address order is fixed for initial deployment. BLS public keys and chain-bound proofs must be verified separately; addresses alone never authorize deployment."
+}
