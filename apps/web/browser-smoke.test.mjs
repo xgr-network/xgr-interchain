@@ -62,12 +62,12 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/token/xgr","Bridge XGR"],["/markets","Token Toplist"]]){
+  for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
-   if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Token Toplist|Token <span>Toplist<\/span>/); }
+   if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"||path==="/universe"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
     assert.match(html,/data-cosmos-action="home"/,path+" missing XGR home navigation");

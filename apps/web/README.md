@@ -6,7 +6,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 
 - `/`: dashboard, configured inventories and journey planner
 - `/universe`: interactive chain systems; choose a system, then open its token
-- `/markets`: searchable token directory
+- `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
 - `/token/<slug>`: independent token detail page and its own dedicated bridge panel
 - `/routes`: configured directional routes and explicitly unverified activation status
 - `/join`: offline token application draft, JSON export only

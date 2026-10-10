@@ -45,8 +45,16 @@ server {
     }
     location = /admin { return 302 /admin/; }
 
-    # Indexer is a future dedicated XITA service, not the XGR Explorer.
-    # Fail closed until a tested XITA service/API exists.
+    # Read-only XITA metrics process, separately managed on loopback.
+    # A missing service returns 502; it must never fallback to a fabricated zero.
+    location = /api/xeta/v1/metrics/toplist {
+        proxy_pass http://127.0.0.1:4088;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 5s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+    }
+    # Other XITA event-indexer routes remain disabled until independently verified.
     location ^~ /api/xeta/ {
         default_type application/json;
         return 503 '{"ok":false,"error":"XITA indexer not deployed"}';

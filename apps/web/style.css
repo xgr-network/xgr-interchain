@@ -238,3 +238,17 @@ button.ux-3d-token:hover,button.ux-3d-token:focus-visible{background:#223d56;bor
 .ux-rank{color:#91a9c8;font-size:13px}
 .ux-leader-footnote{font-size:11px;color:#829bb8;line-height:1.75;max-width:1130px;margin:18px 6px}
 @media(max-width:750px){.ux-leader-head,.ux-leader-toolbar{flex-direction:column;align-items:stretch}.ux-leader-highlights{grid-template-columns:1fr}.ux-leader-search-label{min-width:0}.ux-leader-info{text-align:left}}
+
+/* The XITA wordmark is the identity: wide tracking, geometric all-caps, and precise medium weight.
+   Apply its typographic language globally without sacrificing numeric/table legibility. */
+:root{--xita-type:Inter,"Arial","Helvetica Neue",system-ui,sans-serif}
+html,body,button,input,select{font-family:var(--xita-type)}
+h1,h2,h3,h4,.ux-panel-head,.ux-kicker,.ux-leader-token strong,.ux-universe-link strong,.ux-3d-focus-title{font-family:var(--xita-type);font-weight:650}
+h1{font-weight:630;letter-spacing:-.027em}
+h2{letter-spacing:-.019em}
+.ux-app h1,.ux-app h2,.ux-app h3{font-variant-ligatures:common-ligatures}
+header .site-brand strong{font-family:var(--xita-type);font-weight:650;font-size:25px;letter-spacing:.27em}
+header nav a{font-weight:550;letter-spacing:.07em}
+.ux-kicker,.eyebrow{font-weight:650;letter-spacing:.23em}
+.ux-sort-btn{font-family:var(--xita-type);letter-spacing:.09em;font-weight:650}
+.ux-metric strong,.ux-leader-highlights strong{font-variant-numeric:tabular-nums}
