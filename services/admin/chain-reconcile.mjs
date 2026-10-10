@@ -49,6 +49,8 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("validatorRegistry()",registry,"address");
   await check("destinationIsm()",ism,"address");
   await check("initialSourceFeeWei()",bootstrap.proposedFeeWei);
+  if(!Number.isSafeInteger(chain.defaultDestinationGasLimit)||chain.defaultDestinationGasLimit<21000)throw Error("Approved factory gas limit absent");
+  await check("defaultDestinationGasLimit()",chain.defaultDestinationGasLimit);
   await check("mailbox()",infra.hyperlane.mailbox,"address");
   await check("merkleTreeHook()",infra.hyperlane.merkleTreeHook,"address");
  }else if(component==="sourceRegistry"){
@@ -57,6 +59,9 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("sourceChainId()",chain.chainId);
   await check("sourceDomain()",chain.domainId);
   await check("factory()",factory,"address");
+  const validator=infra.components.find(c=>c.key==="validatorRegistry")?.address;
+  if(!ADDR.test(validator||""))throw Error("Source Registry governance authority missing");
+  await check("governanceRegistry()",validator,"address");
   await check("validatorFeeWei()",bootstrap.proposedFeeWei);
   await check("sourceFeeNonce()",0);
  }else throw Error("Unknown infrastructure component");
