@@ -320,86 +320,19 @@ async function loadFirstDeploy(){
   const data=await get("/admin/api/first-deploy");
   if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
    selectedDeployChain=data.chains[0]?.name;
-  target.innerHTML='<h3>Deployment nach GitHub-Konfiguration</h3>'+
-   '<p>Nur offene Aufgaben. Die nächste ausführbare Aktion steht oben; bereits erledigte Contracts werden nicht erneut angeboten.</p>'+
-   '<label for="deployment-chain-select">Deployment-Chain</label> '+
+  target.innerHTML='<h3>Offene Routen</h3>'+
+   '<p>Chain-Contracts werden ausschließlich über „Chains & Onboarding“ direkt auf der Chain-Karte deployed. '+
+   'Einmalige Constructor-Werte erscheinen im jeweiligen Dialog, nicht als GitHub-Konfiguration.</p>'+
+   '<label for="deployment-chain-select">Chain</label> '+
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
-      esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
-   '<div class="chain-actions"><label for="deployment-component-select">Nächster Chain-Contract</label><select id="deployment-component-select"></select><button type="button" class="outline" id="deployment-check-draft">Gas für diesen Schritt prüfen</button><small id="deployment-draft-result"></small></div>'+ 
-   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
-   '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" title="Verifizierten Chain-Contract mit verbundener Wallet deployen">Deploy auf dieser Chain</button><button type="button" class="outline" id="deployment-recover">Transaktion wiederherstellen</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
+     esc(c.name)+'</option>').join("")+'</select>'+
+   '<div id="route-lifecycle"></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
-   selectedDeployChain=e.target.value;
-   showSelectedDeployChain(data);loadRouteLifecycle();renderQueue();
+   selectedDeployChain=e.target.value;loadRouteLifecycle();renderQueue();
   });
-  el("deployment-check-draft").addEventListener("click",async()=>{
-   const node=el("deployment-draft-result"),chainName=selectedDeployChain;
-   node.textContent="Prüfe aktuellen Main-Stand und Transaktionsparameter …";
-   try{
-    const component=el("deployment-component-select").value;
-    const state=await currentWalletState();
-    const query="/admin/api/transaction-draft?chain="+encodeURIComponent(chainName)+
-      "&component="+encodeURIComponent(component)+
-      (state?.chainId===workqueue.inventory.chains.find(x=>x.name===chainName)?.chainId?
-       "&wallet="+encodeURIComponent(state.address):"");
-    const result=await get(query);
-    if(selectedDeployChain!==chainName)return;
-    node.textContent=result.draft.id+
-      (result.simulation?" · Gaslimit "+result.simulation.gasLimit+
-       " · Maximalwert "+result.simulation.totalWorstCaseWei+" Wei":" · Keine Wallet-Simulation")+
-      " · Kein Deployment autorisiert";
-   }catch(e){if(selectedDeployChain===chainName)node.textContent="Blockiert: "+e.message;}
-  });
-  el("deployment-switch-wallet").addEventListener("click",async()=>{
-   try{
-    const chain=workqueue?.inventory?.chains?.find(c=>c.name===selectedDeployChain);
-    if(!chain)throw Error("Chain not approved in main");
-    await switchDeploymentChain(chain);await refreshWalletBalances();
-   }catch(e){el("deployment-execute-reason").textContent=e.message;}
-  });
-  el("deployment-execute").addEventListener("click",async()=>{
-   const button=el("deployment-execute"),out=el("deployment-execute-reason");
-   button.disabled=true;const chainName=selectedDeployChain;
-   try{
-    const state=await currentWalletState();
-    const chain=workqueue?.inventory?.chains?.find(c=>c.name===chainName);
-    if(!state||!chain||state.chainId!==chain.chainId)
-     throw Error("Wallet muss mit der gewählten Chain verbunden sein");
-    const component=el("deployment-component-select").value;
-    out.textContent="Vorprüfung, Build, RPC-Simulation und persistentes Journal ...";
-    const prepared=await postJSON("/admin/api/chain-deploy/prepare",
-      {chain:chainName,component,wallet:state.address});
-    out.textContent="Wallet-Bestätigung ausstehend. Bei Abbruch erst Wiederherstellung nutzen.";
-    const txHash=await broadcastDeploymentIntent(prepared);
-    out.textContent="Gesendet: "+txHash+" · speichere Hash ...";
-    await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
-    out.textContent="Hash gesichert. Warte auf finalen Receipt / Verifikation ...";
-    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
-    out.textContent="Deployment: "+result.result.stage+" · "+(result.result.address||txHash);
-   }catch(e){out.textContent="Gesperrt / manuell abgleichen: "+e.message+
-    ". Keinesfalls erneut deployen, bevor die Wiederherstellung abgeschlossen ist.";}
-   finally{button.disabled=false;}
-  });
-  el("deployment-recover").addEventListener("click",async()=>{
-   const out=el("deployment-execute-reason");out.textContent="Lade Journal ...";
-   try{
-    const all=await get("/admin/api/chain-deploy/status");
-    const component=el("deployment-component-select").value;
-    const id=selectedDeployChain+":"+component;
-    const entry=all.intents.entries[id];
-    if(!entry){out.textContent="Kein gespeicherter Vorgang für "+id;return;}
-    if(entry.stage==="prepared"){
-     const typed=window.prompt("Wallet-Transaktionshash eingeben, falls gesendet. Keine erneute Transaktion auslösen:","");
-     if(!typed){out.textContent="Intent bleibt gesperrt; Wallet-Nonce prüfen";return;}
-     await postJSON("/admin/api/chain-deploy/hash",{id,txHash:typed});
-    }
-    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
-    out.textContent="Wiederherstellung: "+result.result.stage+" · "+(result.result.address||"");
-   }catch(e){out.textContent="Abgleich blockiert: "+e.message;}
-  });
-  showSelectedDeployChain(data);loadRouteLifecycle();
- }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
+  await loadRouteLifecycle();
+ }catch(e){target.textContent="Routenübersicht nicht verfügbar: "+e.message;}
 }
 async function loadRouteLifecycle(){
  const node=el("route-lifecycle");if(!node)return;
@@ -550,7 +483,7 @@ el("modal-gas-check").addEventListener("click",checkModalGas);
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
-el("deploy-all").addEventListener("click",()=>{setView("workflow");history.replaceState(null,"","#workflow");el("first-deploy-plan")?.scrollIntoView({behavior:"smooth",block:"start"});});
+el("deploy-all").addEventListener("click",()=>{setView("infrastructure");history.replaceState(null,"","#infrastructure");});
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
