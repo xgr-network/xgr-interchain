@@ -4,6 +4,7 @@
 import {execFileSync} from "node:child_process";
 import {readdirSync,readFileSync} from "node:fs";
 import {join} from "node:path";
+import {buildAssetState} from "./asset-state.mjs";
 
 const SHA=/^[0-9a-f]{40}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
@@ -53,19 +54,9 @@ export function approvedWorkInventory(root){
  }
  if(chains.xgrchain?.chainId!==1643||chains.xgrchain?.domainId!==1643)
    throw Error("XGRChain 1643 missing from main");
- for(const name of readdirSync(join(root,"config/assets"),{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>d.name)){
-   const asset=load(root,"config/assets/"+name+"/asset.json");
-   const listed=load(root,"config/assets/"+name+"/routes.json");
-   if(asset.asset!==name||listed.asset!==name||!Array.isArray(listed.routes))
-     throw Error("Invalid main asset/route definition: "+name);
-   assets[name]=asset;
-   for(const route of listed.routes){
-     const source=chains[route.sourceChain],destination=chains[route.destinationChain];
-     if(!isHubHop(source,destination))throw Error("Non-XGR hub route in main: "+name+"/"+route.name);
-     routes.push({asset:name,name:route.name,source:route.sourceChain,destination:route.destinationChain,
-       sourceChainId:source.chainId,destinationChainId:destination.chainId,routeId:route.routeId||null});
-   }
- }
+ const state=buildAssetState(root,chains,isHubHop);
+ Object.assign(assets,state.assets);
+ routes.push(...state.routes);
  return {chains:Object.values(chains),assets:Object.values(assets),routes};
 }
 export async function deploymentQueue(root,options={}){
