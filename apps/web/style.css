@@ -296,3 +296,13 @@ header nav a{font-weight:550;letter-spacing:.07em}
 .ja-consent input{width:auto}
 @media(max-width:850px){.ja-layout{grid-template-columns:1fr}.ja-preview{order:-1}.ja-visual{height:220px}}
 @media(max-width:550px){.ja-fields,.ja-network-list{grid-template-columns:1fr}.ja-fields .ja-field:nth-last-child(-n+2){grid-column:span 1}.ja-wizard,.ja-preview{padding:16px}.ja-step small{font-size:8px}}
+
+/* Join: replace misleading mini-universe drawing with direct access to real 3D exploration */
+.ja-universe-link{display:flex;align-items:center;gap:22px;min-height:245px;padding:24px;margin:20px 0 24px;background:radial-gradient(ellipse at 17% 43%,#1c3c5b7d,transparent 52%),linear-gradient(125deg,#0b1a2e,#070e1b);border:1px solid #334c67;border-radius:13px}
+.ja-universe-link-mark{width:94px;height:94px;flex:0 0 94px;border:2px solid #c4a36d;border-radius:50%;display:grid;place-items:center;font-size:46px;color:#e8c98f;box-shadow:0 0 35px #b58b554d,inset 0 0 18px #b58b5538}
+.ja-universe-link-copy{min-width:0}
+.ja-universe-link-copy strong{display:block;margin:12px 0;font-size:19px;line-height:1.25;letter-spacing:.02em}
+.ja-universe-link-copy p{font-size:12px;line-height:1.6;color:#a4b8d2}
+.ja-universe-link-action{display:inline-flex;align-items:center;border:1px solid #627e9d;border-radius:8px;margin-top:8px;padding:11px 14px;color:#e4f1ff;font-weight:650;font-size:12px;letter-spacing:.05em;background:#1c354e}
+.ja-universe-link-action:hover,.ja-universe-link-action:focus-visible{background:#294b6b;border-color:#b0d5f4}
+@media(max-width:550px){.ja-universe-link{flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.ja-universe-link-mark{width:64px;height:64px;flex-basis:64px;font-size:30px}.ja-universe-link-copy strong{font-size:17px}}

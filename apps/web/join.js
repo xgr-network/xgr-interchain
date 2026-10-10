@@ -43,8 +43,8 @@ export function joinMarkup(chains,d,step,status=""){
  (step>0?'<button class="ux-outline-button" data-join-action="back">← Back</button>':'<span></span>')+
  '<button class="ux-button" data-join-action="'+(step===3?"submit":"next")+'">'+(step===3?"Validate & prepare PR":"Continue →")+'</button></div>'+
  '<button class="ja-export" type="button" data-join-action="export">Export application draft</button></section>'+
- '<aside class="ux-panel ja-preview"><div class="ux-kicker">LIVE UNIVERSE PREVIEW</div><h2>'+escape(d.name||"Your Token")+'</h2><div class="ja-visual"><div class="ja-star ja-origin"><span>'+escape((d.symbol||"TOKEN").slice(0,8))+'</span></div><div class="ja-gate"><span>✧</span><strong>XGR</strong></div>'+
- '<div class="ja-systems">'+d.targets.filter(t=>t!=="xgrchain").slice(0,4).map((c,i)=>'<span style="--n:'+i+'">'+escape(c)+'</span>').join("")+'</div></div>'+
+ '<aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · CONNECTED UNIVERSE</div><h2>'+escape(d.name||"Your Token")+'</h2>'+
+ '<div class="ja-universe-link"><div class="ja-universe-link-mark" aria-hidden="true">✧</div><div class="ja-universe-link-copy"><div class="ux-kicker">EXPLORE THE XITA UNIVERSE</div><strong>Discover connected worlds</strong><p>Explore the real 3D universe, with XGRChain as the interchain gateway.</p><a class="ja-universe-link-action" href="/universe" target="_blank" rel="noopener noreferrer">Explore the Universe ↗</a></div></div>'+
  '<div class="ja-preview-data"><div><span>Origin</span><strong>'+escape(d.canonicalChain)+'</strong></div><div><span>Asset</span><strong>'+escape(d.symbol||"—")+'</strong></div><div><span>Planned routes</span><strong>'+d.targets.filter(t=>t!=="xgrchain").length*2+(d.canonicalChain==="xgrchain"?0:2)+'</strong></div><div><span>Status</span><strong>Not deployed</strong></div></div>'+
  '<p class="ja-info">Concept preview from your entries. Routes only become active after independent on-chain verification.</p></aside></div></div>';
 }
