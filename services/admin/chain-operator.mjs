@@ -106,6 +106,14 @@ export function createChainOperator({
   // A confirmed transaction may have lost GitHub connectivity. Always
   // re-verify the SAME tx and retry only the GitHub append, never broadcast.
   const previouslyConfirmed=entry.stage==="confirmed";
+  // A confirmed hash cannot cause another broadcast. Refresh verified
+  // GitHub receipt state in case the writer succeeded before an HTTP loss.
+  if(entry.stage==="confirmed"){
+   checkedLocalMain(root);
+   execFileSync("git",["pull","--ff-only","origin","main"],{
+    cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
+   });
+  }
   // A new main may have advanced independently after signature. Never replace
   // sourceCommit to evade the main-only publisher check.
   const {commit,infrastructure,bootstrap}=await approved(chain.name);
