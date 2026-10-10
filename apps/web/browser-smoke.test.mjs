@@ -72,6 +72,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    if(path==="/"||path==="/universe"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
     assert.match(html,/data-cosmos-action="home"/,path+" missing XGR home navigation");
+    assert.doesNotMatch(html,/Published directed routes|View all routes/,path+" has redundant route list");
     assert.doesNotMatch(html,/data-cosmos-action="left"/,path+" should not require arrow buttons");
     assert.match(html,/ux-3d-hint/,path+" missing mouse guidance");
     if(path==="/universe"){assert.match(html,/ux-3d-focus/, "System focus overlay missing");assert.match(html,/data-cosmos-system="base"/, "Clickable chain label missing");}

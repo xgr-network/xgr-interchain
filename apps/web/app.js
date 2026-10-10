@@ -1,7 +1,7 @@
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -204,7 +204,7 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel(state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?renderRoutes(universe):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }

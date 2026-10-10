@@ -1,3 +1,4 @@
+import {representationFor} from "./token-representation.js";
 // XITA Universe 3D v2 — mouse-first, hierarchical exploration using native WebGL.
 // All chain systems, tokens and configured hub/spoke paths come from catalog.json.
 // Rendering does not make a claim about route activation or chain health.
@@ -250,7 +251,7 @@ function createTopology(model){
  for(const item of systems){
   const candidates=item.system.tokens.filter(token=>{
    const rep=token.representations.find(r=>r.chain===item.system.key);
-   return !(rep?.representation==="native"&&token.canonical===item.system.key);
+   return true; // Native coin and all wrapped representations appear as distinct classified planets.
   });
   for(let i=0;i<Math.min(candidates.length,16);i++){
    // Concentric planetary families remain comfortably in view on focus.
@@ -322,7 +323,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     const chip=document.createElement("button");
     chip.type="button";
     chip.className="ux-3d-asset-link";
-    chip.textContent=token.id+(token.canonical===selectedKey?" · Native":" · Token");
+    const rep=representationFor(token,selectedKey);
+    chip.textContent=rep.symbol+" · "+rep.label;
+    chip.dataset.representation=rep.kind;
     chip.title="Open "+token.name+" token page";
     chip.addEventListener("click",()=>onToken(token,selectedKey),{signal});
     tokensRoot.appendChild(chip);
@@ -569,13 +572,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     if(p.index%3===1&&focusBlend>.82)body(gpu.torus,entry.position,p.radius*1.72,
      col.map(x=>x*.9),2,frame,rotation(.5,.2,.3),eye,vp);
    }
-  }
-  const hub=topology.byKey.get(HUB);
-  if(hub&&(!focused||selectedKey===HUB||focusBlend<.65)){
-   const c=hub.position;
-   body(gpu.torus,c,4.0,[.68,.52,.31],2,frame,rotation(.5+frame*.028,.3,frame*.038),eye,vp);
-   body(gpu.torus,c,3.27,[.57,.77,.86],2,frame,rotation(.20,-.38-frame*.022,-.25),eye,vp);
-   body(gpu.torus,c,4.64,[.44,.62,.72],2,frame,rotation(.88,.56,frame*.014),eye,vp);
   }
   updateLabels(vp,w,h,frame);
   raf=requestAnimationFrame(draw);
