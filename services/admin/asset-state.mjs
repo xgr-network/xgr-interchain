@@ -70,7 +70,7 @@ function verifyReceipts(root,deployed,key,assetId,chains,routeNames){
  }
  return result;
 }
-function routeState(route,receipts){
+export function routeState(route,receipts){
  const records=receipts.filter(r=>r.routeName===route.name);
  const identifiers=[...new Set(records.map(r=>r.routeId||r.provenance?.routeId).filter(Boolean).map(clean))];
  // Routers belong to ONE asset representation on a chain, independent
