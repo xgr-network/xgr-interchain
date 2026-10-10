@@ -58,15 +58,13 @@ export function validateCatalog({chains,assets,infrastructure}){
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){
   const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d,listing:ls}=a;
-  check(ls?.schemaVersion===1&&ls.kind==="xita-asset-listing"&&ls.asset===name&&
-    ["accepted","public"].includes(ls.status)&&
-    (ls.status!=="public"||ls.basis==="protocol-hub"&&name==="XGR"||
-      ls.basis==="verified-transfer"&&typeof ls.publicProof==="object"&&
-      /^0x[a-f0-9]{64}$/i.test(ls.publicProof?.transferTx||"")&&
-      /^0x[a-f0-9]{64}$/i.test(ls.publicProof?.destinationTx||"")&&
-      /^[a-z0-9][a-z0-9-]{0,99}$/.test(ls.publicProof?.coingeckoId||"")&&
-      /^[a-f0-9]{40}$/.test(ls.publicProof?.evidenceCommit||"")),
-    p+": missing or invalid GitHub listing publication evidence");
+  // A submitted tx hash or GitHub commit reference is NOT proof of successful
+  // delivery. Until the finality-aware receipt verifier is shipped, third-party
+  // assets must stay accepted (direct-link only), never public.
+  const listingValid=ls?.schemaVersion===1&&ls.kind==="xita-asset-listing"&&
+    ls.asset===name&&(ls.status==="accepted"&&ls.basis==="review-merged"&&ls.publicProof===null||
+    ls.status==="public"&&name==="XGR"&&ls.basis==="protocol-hub"&&ls.publicProof===null);
+  check(listingValid,p+": missing or invalid GitHub listing publication evidence");
   check(m.kind==="asset-config"&&m.schemaVersion===1&&m.asset===name&&Number.isInteger(m.decimals)&&m.decimals>=0&&m.decimals<=36,p+": invalid asset metadata");
   
   const publicName=x=>typeof x==="string"&&x.length>=1&&x.length<=120&&x.trim()===x;
