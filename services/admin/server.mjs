@@ -6,6 +6,7 @@ import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
+import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -121,18 +122,24 @@ http.createServer(async(req,res)=>{
  try{
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
+  if(req.method==="GET"&&path==="/admin/api/workqueue"){
+   const queue=await deploymentQueue(root);
+   return reply(res,200,{ok:true,...queue});
+  }
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
    return reply(res,200,{ok:true,steps,mode:"read-only",governance:"validator quorum only"});
   }
   if(req.method==="GET"&&path==="/admin/api/jobs")return reply(res,200,{ok:true,jobs:await getJobs()});
   if(req.method==="POST"&&path==="/admin/api/jobs/status"){
+   await assertCurrentMain(root);
    const data=await bodyJSON(req);
    return reply(res,200,{ok:true,...await recordJobEvent(data.number,data.status,data.evidence)});
   }
   if(req.method==="GET"&&path==="/admin/api/progress")return reply(res,200,{ok:true,...present(readState())});
   if(req.method==="GET"&&path==="/admin/api/preflight")return reply(res,200,{ok:true,...await preflight(inventory())});
   if(req.method==="POST"&&path==="/admin/api/inspect"){
+   await assertCurrentMain(root);
    const input=await bodyJSON(req);
    if(!/^(verifier_base|registry_xgr|registry_base|iln_xgr|iln_base|ism_xgr|ism_base|router_xgr|router_base|gateway_xgr|gateway_base)$/.test(input?.id||""))throw Error("Unknown component");
    const catalog=inventory(),steps=buildPlan(catalog),step=steps.find(s=>s.id===input.id);
@@ -149,6 +156,7 @@ http.createServer(async(req,res)=>{
    return reply(res,200,{ok:true,observation:result});
   }
   if(req.method==="POST"&&path==="/admin/api/evidence"){
+   await assertCurrentMain(root);
    const input=await bodyJSON(req),id=String(input.id||"");
    const steps=buildPlan(inventory());
    if(!evidenceKinds.has(id))throw Error("Unsupported evidence step");
