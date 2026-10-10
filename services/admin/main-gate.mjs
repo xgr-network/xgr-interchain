@@ -57,7 +57,7 @@ export function approvedWorkInventory(root){
  const state=buildAssetState(root,chains,isHubHop);
  Object.assign(assets,state.assets);
  routes.push(...state.routes);
- return {chains:Object.values(chains),assets:Object.values(assets),routes};
+ return {chains:Object.values(chains),assets,routes};
 }
 export async function deploymentQueue(root,options={}){
  const commit=await assertCurrentMain(root,options);
