@@ -34,14 +34,18 @@ direct external-to-external transfer. A second hop sponsor is not implemented.
 Universe paths visualize topology and configured inventory only; never infer
 live activation from an illustration or an asset listing.
 
+## Startup and publication
+
+Dashboard and Universe read the same-origin `catalog.json` (approximately 10 KB) directly. RPC, wallet and optional indexer endpoints are outside the critical rendering path. Browser modules use `.js` to avoid Nginx `.mjs` MIME inconsistencies. A classic-script watchdog replaces the placeholder with a visible error if JavaScript fails to execute; the catalog request is limited to 2.5 seconds.
+
 ## Checks
 
 ```sh
 node tools/build-xeta-web-catalog.mjs --check
 node --test apps/web/experience.test.mjs apps/web/keccak.test.mjs
-node --check apps/web/app.mjs
-node --check apps/web/experience.mjs
-node --check apps/web/wallet-core.mjs
+node --check apps/web/app.js
+node --check apps/web/experience.js
+node --check apps/web/wallet-core.js
 ```
 
 The static site requires SPA fallback. Always review routes and wallet behavior

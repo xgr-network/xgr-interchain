@@ -58,10 +58,10 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test apps/web/keccak.test.mjs
+    node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs
     node --test services/admin/*.test.mjs
-    node --check apps/web/app.mjs
-    node --check apps/web/ui-data.mjs
+    node --check apps/web/app.js
+    node --check apps/web/ui-data.js
     node --check services/admin/server.mjs
     node --check services/admin/admin.js
     node --check services/admin/wallet.js

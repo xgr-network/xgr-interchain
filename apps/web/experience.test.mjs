@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.mjs";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
 
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
