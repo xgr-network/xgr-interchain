@@ -139,7 +139,6 @@ async function openContractModal(chainName,component){
  el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
- el("modal-approve").hidden=true;
  el("modal-gas-check").disabled=true;
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
@@ -159,8 +158,7 @@ async function openContractModal(chainName,component){
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
   el("modal-parameters").hidden=!requiresValues;
-  el("modal-approve").hidden=true;
-  el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
+   el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
      r.verifiedValidatorCount+"/3 öffentliche Validatornachweise geprüft · Snapshot "+r.originSnapshotBlock:
      "Validatornachweise müssen vor dem Deploy geprüft werden"):"";
@@ -193,8 +191,7 @@ async function openContractModal(chainName,component){
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
 
   if(existing){
-   el("modal-approve").hidden=true;
-   el("modal-gas-check").disabled=true;
+     el("modal-gas-check").disabled=true;
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Vorherige Transaktion: "+existing.stage+
