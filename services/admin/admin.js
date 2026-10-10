@@ -110,7 +110,7 @@ function moneyInWei(wei,chain){
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
  const keys=component==="validatorRegistry"
-  ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
+  ?["minimumWei","maxExecutorReimbursementWei"]:
    component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
  const result={};
  for(const key of keys){
@@ -119,9 +119,8 @@ function modalValues(component){
   result[key]=key==="defaultDestinationGasLimit"?Number(v):v;
  }
  if(component==="validatorRegistry"&&
-  (BigInt(result.perValidatorWei)<BigInt(result.minimumWei)||
-   BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
-  throw Error("Validatorreserve ≥ Mindestreserve ≥ Erstattungslimit erforderlich");
+  (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
+  throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
  if(component==="factory"&&(!Number.isSafeInteger(result.defaultDestinationGasLimit)||
   result.defaultDestinationGasLimit<21000||result.defaultDestinationGasLimit>10000000))
   throw Error("Destination-Gaslimit muss zwischen 21.000 und 10.000.000 liegen");
