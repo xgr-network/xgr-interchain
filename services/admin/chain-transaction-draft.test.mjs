@@ -31,7 +31,7 @@ test("factory registry is a call to existing verified Factory, not a new deploym
 });
 test("missing bootstrap and dependencies fail closed",()=>{
  assert.throws(()=>chainDraft({root:process.cwd(),chain:base,infrastructure:infra(base),
- bootstrap:{chain:"base",ready:false},component:"validatorRegistry"}),/incomplete/);
+ bootstrap:{chain:"base",ready:false},component:"validatorRegistry",parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100",perValidatorWei:"400"}}),/Independently verified/);
  assert.throws(()=>chainDraft({root:process.cwd(),chain:base,infrastructure:infra(base),
  bootstrap:{chain:"base"},component:"ism"}),/dependency/);
 });

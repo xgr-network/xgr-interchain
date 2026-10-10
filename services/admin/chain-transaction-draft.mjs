@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {encodeAbi,encodeFunctionCall} from "./abi-encoder.mjs";
 import {selector} from "../../apps/web/keccak.mjs";
+import {deploymentParameters} from "./deployment-parameters.mjs";
 
 const ADDR=/^0x[0-9a-fA-F]{40}$/;
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
@@ -42,7 +43,7 @@ function requirePresent(map,key){
  if(!nonzero(address))throw Error("Verified dependency missing: "+key);
  return address;
 }
-export function chainDraft({root,chain,infrastructure,bootstrap,component,gasLimit=200000}){
+export function chainDraft({root,chain,infrastructure,bootstrap,component,parameters={}}){
  if(!chain||!infrastructure||!bootstrap||chain.name!==infrastructure.name||
     chain.chainId!==infrastructure.chainId||bootstrap.chain!==chain.name)
   throw Error("Chain manifest identity mismatch");
@@ -56,21 +57,22 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,gasLim
  if(component==="blsVerifier" && chain.blsVerifierFormat!=="eip2537")
   throw Error("Native verifier must never be redeployed");
  if(deployed(infrastructure,component))throw Error("Component already documented");
- const cfg=load(root,"config/bootstrap/"+chain.name+".json");
  let values=[],value="0x0";
  if(component==="validatorRegistry"){
-  if(!bootstrap.ready)throw Error("Validator bootstrap manifest incomplete");
-  if(!cfg.validatorSnapshot?.validators?.length)throw Error("Missing validators");
+  const p=deploymentParameters(component,parameters);
+  if(!bootstrap.initialValidators||bootstrap.validatorCount!==bootstrap.expectedValidatorCount)
+   throw Error("Independently verified three-validator PoS/BLS snapshot required");
+  if(!bootstrap.validatorSnapshot?.validators?.length)throw Error("Missing verified validator proof records");
   const format=chain.blsVerifierFormat==="compressed"?1:2;
   const verifier=format===1?bootstrap.verifierAddress:requirePresent(infrastructure,"blsVerifier");
   if(!nonzero(verifier)||![1,2].includes(format))throw Error("BLS verifier missing");
-  const reserve=cfg.reserve||{};
+  const reserve={minimumWei:p.minimumWei,maxExecutorReimbursementWei:p.maxExecutorReimbursementWei,perValidatorWei:p.perValidatorWei};
   for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei"])
    if(!positive(reserve[key]))throw Error("Missing positive reserve "+key);
   if(BigInt(reserve.minimumWei)<BigInt(reserve.maxExecutorReimbursementWei)||
      BigInt(reserve.perValidatorWei)<BigInt(reserve.minimumWei))
    throw Error("Invalid reserve relationships");
-  const vs=cfg.validatorSnapshot.validators;
+  const vs=bootstrap.validatorSnapshot.validators;
   values=[1643,chain.domainId,verifier,format,reserve.minimumWei,reserve.maxExecutorReimbursementWei,
    vs.map(v=>v.address),vs.map(v=>v.blsPublicKeyCompressed),
    vs.map(v=>v.blsPublicKeyEIP2537),vs.map(v=>v.possessionProof)];
@@ -78,17 +80,17 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,gasLim
  }else if(component==="ism"){
   values=[requirePresent(infrastructure,"validatorRegistry")];
  }else if(component==="factory"){
-  if(!positive(cfg.sourceFee?.targetWei))throw Error("Source fee not approved");
+  const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane;
   if(!nonzero(core.mailbox)||!nonzero(core.merkleTreeHook))
    throw Error("Unverified Hyperlane core");
-  const gas=load(root,"config/chains/"+chain.name+".json").defaultDestinationGasLimit;
+  const gas=p.defaultDestinationGasLimit;
   // No silently invented gas parameter. Until an approved gas limit exists,
   // factory construction is deliberately blocked.
   if(!Number.isSafeInteger(gas)||gas<21000)throw Error("Missing approved defaultDestinationGasLimit");
   values=[chain.chainId,chain.domainId,requirePresent(infrastructure,"validatorRegistry"),
    core.mailbox,core.merkleTreeHook,requirePresent(infrastructure,"ism"),
-   gas,cfg.sourceFee.targetWei];
+   gas,p.sourceFeeWei];
  }
  const artifact=exactArtifact(root,component);
  return {id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,

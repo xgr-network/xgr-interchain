@@ -44,48 +44,48 @@ fee must be checked before approval.
 The same sequence must execute on any supported EVM chain. A complete
 config makes deployment **selectable**, not automatically safe to broadcast.
 
-## Chain-contract execution (PR #32)
+## Chain contracts: on-chain economic authority (v3.1.5)
 
-The chain infrastructure execution path is implemented through the Admin UI:
+1. GitHub `main` defines the permitted EVM chains, RPC, BLS verifier
+   format and artifacts. Its infrastructure manifests hold **verified address
+   references and receipt paths**, not a second copy of current economics.
+2. Public XGR PoS snapshot and domain-bound initial BLS proofs are checked
+   independently at the time of Registry preparation. Existing proof files
+   are reused. A supported EIP-2537 spoke must first deploy a receipt-verified
+   BLS Verifier, then verify all 3 public PoPs through that contract.
+3. Clicking an outstanding Contract in **Chains & Onboarding** opens a
+   component-specific UI dialog. The ValidatorRegistry requests only minimum
+   reserve, maximum executor reimbursement, and initial per-validator reserve.
+   The Factory requests only initial source-chain fee and default destination
+   gas limit. Other chain contracts do not request economic inputs.
+4. These values are **not written to bootstrap JSON or chain JSON**. Their
+   exact validated decimal/Wei bytes are used to construct the one proposed
+   transaction, then persisted with the durable EIP-1193 transaction intent.
+   Gas preview and the actual Wallet transaction are rebuilt from the same
+   contract artifacts and parameter values, independently checked against
+   the clean current GitHub-main source commit.
+5. Only a wallet may sign/broadcast. An interrupted or ambiguous transaction
+   remains locked and is reconciled by the known nonce, transaction hash and
+   receipt; never send a duplicate.
+6. After finalized canonical receipt verification, runtime Keccak and
+   immutable/getter verification, the contract address and historical receipt
+   are appended to GitHub main, and the server updates its clean checkout.
+7. The live ValidatorRegistry is authoritative for minimum reserve,
+   reimbursement ceiling and actual per-validator reserves. The Factory is
+   authoritative for destination gas and its immutable initial source fee.
+   The SourceRegistry is authoritative for **current** source fee and fee
+   nonce (including BLS quorum changes after initialization).
+8. If a contract is missing, no live economic state is invented. An optional
+   current-gas-price estimate remains visibly **unapproved**, never treated
+   as a protocol rule.
 
-- The operator approves independently verified **public** bootstrap evidence
-  and explicit reserve/fee/gas parameters to current GitHub `main` in ONE
-  atomic commit, using the server-only `XITA_GITHUB_TOKEN`. Never send private
-  validator keys to this service.
-- The server independently checks the current clean main, the selected RPC,
-  BLS format, finalized validator proofs, and the approved chain dependencies.
-- `forge build --force` reconstructs compiler artifacts from the exact
-  checked-out source commit. Constructor ABI, runtime-template immutables and
-  deployed contract getters are verified against trusted config.
-- `eth_estimateGas`, gas-price, wallet balance, selected chain and pending
-  nonce are checked before storing a durable (fsync) write-ahead intent.
-- The user authorizes ONLY this server-produced EIP-1193 transaction in their
-  connected wallet. The browser sends no private key to the backend.
-- RPC-observed hash, sender, calldata, nonce, value and recipient must
-  independently match the prepared intent; unknown hashes never clear it.
-- The canonical finalized receipt, actual runtime bytecode, relevant
-  constructor/immutable getters and Factory events are checked.
-- Receipts and per-chain deployment manifests are committed atomically to
-  GitHub main. The clean server checkout fast-forwards to that new commit.
-- After interrupted execution the UI offers **Wiederherstellen**. If a
-  transaction is pending or the hash cannot be established, it remains locked:
-  never send it again automatically.
+The reserve and initial fee fields in legacy `config/bootstrap/*.json`
+remain tolerated only as historical, read-only compatibility hints. No new
+deployment writes to them or uses them as an on-chain authority.
 
-The operator must deploy each chain component in dependency order:
-`blsVerifier` only on eip2537 chains, then `validatorRegistry`, `ism`,
-`factory`, `sourceRegistry`. XGRChain uses its native compressed verifier
-and never deploys the Solidity EIP-2537 verifier.
+This is not proof of a successful real mainnet deployment: software CI and
+read-only proof tests must pass; the operator must authorize a small first
+live transaction and inspect the actual chain receipt. Router/Gateway
+creation and BLS route activation remain separate stages.
 
-Before any mainnet attempt, configure on the Admin **service account**:
-a verified Foundry/Forge installation and pinned Solidity dependencies,
-persistent writable `XGR_ADMIN_STATE_DIR`, external RPC access,
-`XITA_GITHUB_TOKEN` restricted to this repository, TLS/Basic Auth, and a
-wallet with native gas. If any preflight fails, the UI MUST NOT broadcast.
-
-**Real-chain execution has not been demonstrated by unit CI alone.** First
-use one authorized low-risk deployment and inspect receipts, then progress
-through dependencies. BLS route preparation/activation and relayer v3.1.5 E2E
-remain independent and are NOT authorized by successfully deploying chain
-infrastructure.
-
-`./manage.sh deploy` publishes the WEBSITE only; it never deploys contracts.
+`./manage.sh deploy` publishes the WEBSITE only, never chain contracts.

@@ -42,8 +42,8 @@ let deploymentReadiness=new Map();
 function cleanBootstrapStatus(chain){
  const r=deploymentReadiness.get(chain);
  if(!r)return "Prüfung ausstehend";
- if(r.evidenceVerified&&r.manifestMatchesEvidence&&r.bootstrapReady)return "Freigegeben";
- if(r.evidenceVerified)return r.verifiedValidatorCount+" Validatoren geprüft · Parameter freigeben";
+ if(liveBootstrap.get(chain)?.validatorSetId)return "Registry live · On-Chain-Werte verbindlich";
+ if(r.evidenceVerified)return r.verifiedValidatorCount+" Validatoren geprüft";
  return r.evidenceError?"Nachweise prüfen":"Validierung noch offen";
 }
 function renderInfrastructure(){
@@ -64,7 +64,18 @@ function renderInfrastructure(){
      esc(displayAddress(part.address))+' ⧉</button>':
     '<button class="component-pending" data-open-chain="'+esc(c.name)+
      '" data-open-component="'+esc(part.key)+'">Ausstehend →</button>')+'</div>').join("");
-  const r=deploymentReadiness.get(c.name);
+  const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
+  const money=n=>n==null?"":moneyInWei(n,c);
+  const liveRows=live?.validatorSetId?
+   '<details class="chain-onchain-params"><summary>On-Chain-Parameter</summary>'+
+    '<div>Reserve-Minimum: '+esc(money(live.liveMinimumReserveWei))+'</div>'+
+    '<div>Executor-Limit: '+esc(money(live.liveMaxExecutorReimbursementWei))+'</div>'+
+    Object.entries(live.liveValidatorReservesWei||{}).map(([address,value])=>
+     '<div>'+esc(displayAddress(address))+': '+esc(money(value))+'</div>').join("")+
+    (live.liveFactoryGasLimit?'<div>Factory-Zielgas: '+esc(live.liveFactoryGasLimit)+'</div>':'')+
+    (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
+       ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
+    '</details>':"";
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
    '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
@@ -72,6 +83,7 @@ function renderInfrastructure(){
    (c.documented<c.required?
     '<div class="chain-bootstrap-summary"><span>Bootstrap</span><span>'+
     esc(cleanBootstrapStatus(c.name))+'</span></div>':"")+
+   liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
    '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
    '"></div></div></article>';
@@ -96,20 +108,26 @@ function moneyInWei(wei,chain){
  catch{return "—"}
 }
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
-function modalValues(){
+function modalValues(component){
+ const keys=component==="validatorRegistry"
+  ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
+   component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
  const result={};
- for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei"])
-  result[key]=el("modal-"+key).value.trim();
- const gas=el("modal-defaultDestinationGasLimit").value.trim();
- if(!/^[1-9][0-9]*$/.test(gas))throw Error("Gaslimit: ganze positive Zahl erforderlich");
- result.defaultDestinationGasLimit=Number(gas);
- if(Object.entries(result).some(([k,v])=>k!=="defaultDestinationGasLimit"&&!/^[1-9][0-9]*$/.test(v)))
-  throw Error("Reserve und Gebühren müssen positive ganze Wei-Werte sein");
- if(BigInt(result.perValidatorWei)<BigInt(result.minimumWei)||
-    BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei))
-  throw Error("Reserve je Validator ≥ Mindestreserve ≥ Erstattungslimit");
+ for(const key of keys){
+  const v=el("modal-"+key).value.trim();
+  if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
+  result[key]=key==="defaultDestinationGasLimit"?Number(v):v;
+ }
+ if(component==="validatorRegistry"&&
+  (BigInt(result.perValidatorWei)<BigInt(result.minimumWei)||
+   BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
+  throw Error("Validatorreserve ≥ Mindestreserve ≥ Erstattungslimit erforderlich");
+ if(component==="factory"&&(!Number.isSafeInteger(result.defaultDestinationGasLimit)||
+  result.defaultDestinationGasLimit<21000||result.defaultDestinationGasLimit>10000000))
+  throw Error("Destination-Gaslimit muss zwischen 21.000 und 10.000.000 liegen");
  return result;
 }
+let lastModalPreview=null;
 async function openContractModal(chainName,component){
  const chain=workqueue?.inventory?.chains.find(c=>c.name===chainName);
  const infra=workqueue?.infrastructure?.find(c=>c.name===chainName);
@@ -121,7 +139,6 @@ async function openContractModal(chainName,component){
  el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
- el("modal-approve").hidden=true;
  el("modal-gas-check").disabled=true;
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
@@ -135,49 +152,46 @@ async function openContractModal(chainName,component){
   const r=response.readiness,existing=status.intents.entries[chainName+":"+component];
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
-  const approvalNeeded=!(r.bootstrapReady&&r.manifestMatchesEvidence);
-  const bootstrapFields={
-   minimumWei:r.values.minimumReserveWei,
-   maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
-   perValidatorWei:r.values.perValidatorReserveWei,
-   sourceFeeWei:r.values.sourceFeeWei,
-   defaultDestinationGasLimit:chain.defaultDestinationGasLimit
-  };
+  const requiresValues=component==="validatorRegistry"||component==="factory";
+  lastModalPreview=null;
+  const fields=component==="validatorRegistry"
+   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
+   component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
+  el("modal-parameters").hidden=!requiresValues;
+   el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
+   ?(r.evidenceVerified?
+     r.verifiedValidatorCount+"/3 öffentliche Validatornachweise geprüft · Snapshot "+r.originSnapshotBlock:
+     "Validatornachweise müssen vor dem Deploy geprüft werden"):"";
   let proposal=null;
-  try{
-   const quoted=await get("/admin/api/bootstrap/suggestions?chain="+encodeURIComponent(chainName));
-   if(quoted.commit===response.commit)proposal=quoted.proposal;
-  }catch(e){
-   presentModalStatus("Gaspreisvorschlag nicht verfügbar: "+e.message,"warn");
+  if(requiresValues){
+   try{
+    const response=await get("/admin/api/bootstrap/suggestions?chain="+encodeURIComponent(chainName));
+    proposal=response.proposal;
+   }catch{}
   }
-  for(const [key,val] of Object.entries(bootstrapFields)){
+  const fromGitHub={
+    minimumWei:r.values.minimumReserveWei,
+    maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
+    perValidatorWei:r.values.perValidatorReserveWei,
+    sourceFeeWei:r.values.sourceFeeWei,
+    defaultDestinationGasLimit:chain.defaultDestinationGasLimit
+  };
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","defaultDestinationGasLimit"]){
    const input=el("modal-"+key);
-   const suggested=proposal?.values?.[key];
-   const approved=val!==null&&val!==undefined;
-   input.value=approved?String(val):"";
-   input.placeholder=!approved&&suggested!==undefined?String(suggested):"Nicht festgelegt";
-   input.dataset.source=approved?"main":"unset";
-   input.title=approved?"Freigegebene GitHub-main-Konfiguration":"Nicht beschlossen. Vorschlag steht nur als Platzhalter, nicht als Wert.";
+   input.parentElement.hidden=!fields.includes(key);
+   // No JSON file authorizes economics. Historical values are reference only.
+   input.value="";
+   const suggestion=fromGitHub[key]??proposal?.values?.[key];
+   input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
+   input.title="Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
   }
-  const explanation=el("modal-parameter-note");
-  if(explanation)explanation.textContent=proposal?
-   "QUELLE: Genehmigte Werte stammen aus GitHub main. Leere Felder sind NICHT genehmigt; "+
-   "der graue Platzhalter ist nur eine Gaspreis-Schätzung. Quelle RPC: "+
-   moneyInWei(proposal.gasPriceWei,chain)+"/Gas. Annahmen: 500.000 Gas Executor, "+
-   "750.000 Gas Mindestreserve, 1.000.000 Gas Anfangsreserve. "+
-   "Die Source-Fee ist eine eigene wirtschaftliche Entscheidung – keine gemessene Gasgebühr. "+
-   "Vorschlagswerte müssen bewusst eingetragen und bestätigt werden.":
-   "QUELLE: GitHub main für freigegebene Werte; fehlende Werte bleiben leer. "+
-   "Kein geprüfter Vorschlag verfügbar.";
+  el("modal-parameter-note").textContent=requiresValues?
+   "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. "+
+   "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
+   "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
 
-  el("modal-parameters").hidden=!approvalNeeded;
-  el("modal-approve").hidden=!approvalNeeded;
-  el("modal-bootstrap-evidence").textContent=r.evidenceVerified?
-   "3/3 Validatoren kryptografisch verifiziert · Snapshot "+r.originSnapshotBlock:
-   "Validatornachweise für "+chainName+" noch nicht verifiziert";
   if(existing){
-   el("modal-approve").hidden=true;
-   el("modal-gas-check").disabled=true;
+     el("modal-gas-check").disabled=true;
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Vorherige Transaktion: "+existing.stage+
@@ -185,37 +199,14 @@ async function openContractModal(chainName,component){
    return;
   }
   if(workqueue.readOnly)throw Error("GitHub main ist nicht aktuell");
-  if(approvalNeeded){
-   presentModalStatus(r.evidenceVerified?
-    "Reserve, Source-Fee und Gaslimit freigeben; die Validatornachweise liegen bereits vor.":
-    "Zuerst müssen die Validatornachweise für diese Zielchain vollständig geprüft sein.",
-    r.evidenceVerified?"":"warn");
-   el("modal-approve").disabled=!r.evidenceVerified;
+  if(component==="validatorRegistry"&&!r.evidenceVerified){
+   presentModalStatus("Öffentliche Validatornachweise auf der Zielchain noch nicht verifiziert.","warn");
    return;
   }
   el("modal-gas-check").disabled=false;
-  presentModalStatus("Bereit zur Gasprüfung.");
+  presentModalStatus("Constructor-Werte eingeben und Gas prüfen.");
+
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
-}
-async function approveModalBootstrap(){
- if(!selectedDeployment)return;
- const {chainName,component}=selectedDeployment;
- const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
- let values;
- try{values=modalValues()}catch(e){return presentModalStatus(e.message,"error")}
- const total=(BigInt(values.perValidatorWei)*3n).toString();
- if(!window.confirm("Bootstrap auf "+chainName+" in GitHub main freigeben?\n"+
-   "Reserve für 3 Validatoren: "+moneyInWei(total,chain)+"\n"+
-   "Source-Fee: "+moneyInWei(values.sourceFeeWei,chain)+"\n"+
-   "Gaslimit: "+values.defaultDestinationGasLimit))return;
- const button=el("modal-approve");button.disabled=true;
- presentModalStatus("Prüfe vorhandene Validatornachweise und schreibe GitHub main …");
- try{
-  await postJSON("/admin/api/bootstrap/approve",{chain:chainName,values});
-  el("contract-deploy-dialog").close();selectedDeployment=null;
-  await loadMainWorkqueue();
-  await openContractModal(chainName,component);
- }catch(e){presentModalStatus("Freigabe blockiert: "+e.message,"error");button.disabled=false;}
 }
 async function checkModalGas(){
  if(!selectedDeployment)return;
@@ -230,11 +221,14 @@ async function checkModalGas(){
   }
   const updated=await currentWalletState();
   if(!updated||updated.chainId!==chain.chainId)throw Error("Wallet auf andere Chain eingestellt");
-  const result=await get("/admin/api/transaction-draft?chain="+encodeURIComponent(chainName)+
-   "&component="+encodeURIComponent(component)+"&wallet="+encodeURIComponent(updated.address));
-  if(!result.simulation)throw Error("Keine gültige Gas-Simulation");
-  output.textContent="Gaslimit "+BigInt(result.simulation.gasLimit).toString()+
-   " · maximale Gesamtkosten "+moneyInWei(result.simulation.totalWorstCaseWei,chain);
+  const parameters=modalValues(component);
+  const result=await postJSON("/admin/api/chain-deploy/preview",{
+   chain:chainName,component,wallet:updated.address,parameters
+  });
+  if(!result.preview?.totalWorstCaseWei)throw Error("Keine gültige Gas-Simulation");
+  lastModalPreview={chainName,component,parameters,sourceCommit:result.preview.sourceCommit,wallet:updated.address};
+  output.textContent="Gaslimit "+BigInt(result.preview.gasLimit).toString()+
+   " · inkl. Constructor-Einlage bis "+moneyInWei(result.preview.totalWorstCaseWei,chain);
   el("modal-deploy").disabled=false;
   presentModalStatus("Gas geprüft. Deployment benötigt Bestätigung in deiner Wallet.");
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
@@ -245,11 +239,15 @@ async function executeModalDeployment(){
  const button=el("modal-deploy");button.disabled=true;
  try{
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
+  const params=modalValues(component);
+  if(!lastModalPreview||lastModalPreview.chainName!==chainName||
+    lastModalPreview.component!==component||JSON.stringify(lastModalPreview.parameters)!==JSON.stringify(params))
+   throw Error("Constructor-Werte geändert: Gas bitte erneut prüfen");
   const state=await currentWalletState();
   if(!state||state.chainId!==chain.chainId)throw Error("Wallet nicht mit ausgewählter Chain verbunden");
   presentModalStatus("Sicherheitsprüfungen und persistentes Transaktionsjournal …");
   const prepared=await postJSON("/admin/api/chain-deploy/prepare",
-   {chain:chainName,component,wallet:state.address});
+   {chain:chainName,component,wallet:state.address,parameters:params});
   presentModalStatus("Wallet-Bestätigung ausstehend. Bei Abbruch Wiederherstellung verwenden.");
   const txHash=await broadcastDeploymentIntent(prepared);
   el("modal-recover").hidden=false;
@@ -319,130 +317,19 @@ async function loadFirstDeploy(){
   const data=await get("/admin/api/first-deploy");
   if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
    selectedDeployChain=data.chains[0]?.name;
-  target.innerHTML='<h3>Deployment nach GitHub-Konfiguration</h3>'+
-   '<p>Nur offene Aufgaben. Die nächste ausführbare Aktion steht oben; bereits erledigte Contracts werden nicht erneut angeboten.</p>'+
-   '<label for="deployment-chain-select">Deployment-Chain</label> '+
+  target.innerHTML='<h3>Offene Routen</h3>'+
+   '<p>Chain-Contracts werden ausschließlich über „Chains & Onboarding“ direkt auf der Chain-Karte deployed. '+
+   'Einmalige Constructor-Werte erscheinen im jeweiligen Dialog, nicht als GitHub-Konfiguration.</p>'+
+   '<label for="deployment-chain-select">Chain</label> '+
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
-      esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
-   '<div class="chain-actions"><label for="deployment-component-select">Nächster Chain-Contract</label><select id="deployment-component-select"></select><button type="button" class="outline" id="deployment-check-draft">Gas für diesen Schritt prüfen</button><small id="deployment-draft-result"></small></div>'+ 
-   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
-   '<details class="chain-bootstrap"><summary>Verifizierten Bootstrap und Chain-Parameter in GitHub main freigeben</summary>'+
-   '<p>Die drei öffentlichen Validator-Beweise werden vom Server erneut kryptografisch geprüft. Nur die wirtschaftlichen Werte in Wei sowie das Gaslimit gibst du frei.</p>'+
-   '<label>Mindestreserve je Validator (Wei) <input id="approval-minimum" inputmode="numeric" placeholder="Wei" /></label>'+
-   '<label>Max. Executor-Erstattung (Wei) <input id="approval-reimbursement" inputmode="numeric" placeholder="Wei" /></label>'+
-   '<label>Anfangsreserve je Validator (Wei) <input id="approval-reserve" inputmode="numeric" placeholder="Wei" /></label>'+
-   '<label>Initiale Source-Fee (Wei) <input id="approval-fee" inputmode="numeric" placeholder="Wei" /></label>'+
-   '<label>Default Destination Gas Limit <input id="approval-gas" inputmode="numeric" placeholder="Ganzer Gas-Wert" /></label>'+
-   '<button type="button" id="approve-chain-bootstrap">Bootstrap nach main schreiben</button>'+
-   '<small id="approval-status">Erst nach gültiger PoS-/BLS-Verifikation verfügbar. Keine Wallet-Transaktion.</small></details>'+
-   '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" title="Verifizierten Chain-Contract mit verbundener Wallet deployen">Deploy auf dieser Chain</button><button type="button" class="outline" id="deployment-recover">Transaktion wiederherstellen</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
+     esc(c.name)+'</option>').join("")+'</select>'+
+   '<div id="route-lifecycle"></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
-   selectedDeployChain=e.target.value;
-   showSelectedDeployChain(data);loadRouteLifecycle();renderQueue();
+   selectedDeployChain=e.target.value;loadRouteLifecycle();renderQueue();
   });
-  el("deployment-check-draft").addEventListener("click",async()=>{
-   const node=el("deployment-draft-result"),chainName=selectedDeployChain;
-   node.textContent="Prüfe aktuellen Main-Stand und Transaktionsparameter …";
-   try{
-    const component=el("deployment-component-select").value;
-    const state=await currentWalletState();
-    const query="/admin/api/transaction-draft?chain="+encodeURIComponent(chainName)+
-      "&component="+encodeURIComponent(component)+
-      (state?.chainId===workqueue.inventory.chains.find(x=>x.name===chainName)?.chainId?
-       "&wallet="+encodeURIComponent(state.address):"");
-    const result=await get(query);
-    if(selectedDeployChain!==chainName)return;
-    node.textContent=result.draft.id+
-      (result.simulation?" · Gaslimit "+result.simulation.gasLimit+
-       " · Maximalwert "+result.simulation.totalWorstCaseWei+" Wei":" · Keine Wallet-Simulation")+
-      " · Kein Deployment autorisiert";
-   }catch(e){if(selectedDeployChain===chainName)node.textContent="Blockiert: "+e.message;}
-  });
-  el("approve-chain-bootstrap").addEventListener("click",async()=>{
-   const output=el("approval-status"),chain=selectedDeployChain;
-   const entries=[
-    ["minimumWei","approval-minimum"],
-    ["maxExecutorReimbursementWei","approval-reimbursement"],
-    ["perValidatorWei","approval-reserve"],
-    ["sourceFeeWei","approval-fee"]
-   ];
-   const values=Object.fromEntries(entries.map(([k,v])=>[k,el(v).value.trim()]));
-   values.defaultDestinationGasLimit=Number(el("approval-gas").value.trim());
-   const all=[...entries.map(([,id])=>el(id).value.trim()),el("approval-gas").value.trim()];
-   if(all.some(x=>!/^[1-9][0-9]*$/.test(x))){
-    output.textContent="Nur positive ganze Werte zulässig";return;
-   }
-   const nativeSymbol=workqueue?.inventory?.chains?.find(x=>x.name===chain)?.nativeCurrency?.symbol||"Native";
-   const totalReserve=(BigInt(values.perValidatorWei)*3n).toString();
-   const statement="Chain: "+chain+" ("+nativeSymbol+")\\n"+
-    "Mindestreserve: "+values.minimumWei+" Wei\\n"+
-    "Max. Executor-Erstattung: "+values.maxExecutorReimbursementWei+" Wei\\n"+
-    "Reserve je Validator: "+values.perValidatorWei+" Wei\\n"+
-    "Gesamtreserve für drei Validatoren: "+totalReserve+" Wei ("+
-      formatNative(totalReserve,18,8)+" "+nativeSymbol+")\\n"+
-    "Source-Fee: "+values.sourceFeeWei+" Wei\\n"+
-    "Gaslimit: "+values.defaultDestinationGasLimit+
-    "\\n\\nDiese unveränderlichen Constructor-Grundwerte in GitHub main freigeben?";
-   if(!window.confirm(statement))
-    return;
-   const button=el("approve-chain-bootstrap");button.disabled=true;
-   output.textContent="Prüfe Validator-Proofs und GitHub main ...";
-   try{
-    const response=await postJSON("/admin/api/bootstrap/approve",{chain,values});
-    output.textContent="Bootstrap freigegeben: "+response.result.commit;
-    window.location.reload();
-   }catch(e){output.textContent="Freigabe verweigert: "+e.message;button.disabled=false;}
-  });
-  el("deployment-switch-wallet").addEventListener("click",async()=>{
-   try{
-    const chain=workqueue?.inventory?.chains?.find(c=>c.name===selectedDeployChain);
-    if(!chain)throw Error("Chain not approved in main");
-    await switchDeploymentChain(chain);await refreshWalletBalances();
-   }catch(e){el("deployment-execute-reason").textContent=e.message;}
-  });
-  el("deployment-execute").addEventListener("click",async()=>{
-   const button=el("deployment-execute"),out=el("deployment-execute-reason");
-   button.disabled=true;const chainName=selectedDeployChain;
-   try{
-    const state=await currentWalletState();
-    const chain=workqueue?.inventory?.chains?.find(c=>c.name===chainName);
-    if(!state||!chain||state.chainId!==chain.chainId)
-     throw Error("Wallet muss mit der gewählten Chain verbunden sein");
-    const component=el("deployment-component-select").value;
-    out.textContent="Vorprüfung, Build, RPC-Simulation und persistentes Journal ...";
-    const prepared=await postJSON("/admin/api/chain-deploy/prepare",
-      {chain:chainName,component,wallet:state.address});
-    out.textContent="Wallet-Bestätigung ausstehend. Bei Abbruch erst Wiederherstellung nutzen.";
-    const txHash=await broadcastDeploymentIntent(prepared);
-    out.textContent="Gesendet: "+txHash+" · speichere Hash ...";
-    await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
-    out.textContent="Hash gesichert. Warte auf finalen Receipt / Verifikation ...";
-    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
-    out.textContent="Deployment: "+result.result.stage+" · "+(result.result.address||txHash);
-   }catch(e){out.textContent="Gesperrt / manuell abgleichen: "+e.message+
-    ". Keinesfalls erneut deployen, bevor die Wiederherstellung abgeschlossen ist.";}
-   finally{button.disabled=false;}
-  });
-  el("deployment-recover").addEventListener("click",async()=>{
-   const out=el("deployment-execute-reason");out.textContent="Lade Journal ...";
-   try{
-    const all=await get("/admin/api/chain-deploy/status");
-    const component=el("deployment-component-select").value;
-    const id=selectedDeployChain+":"+component;
-    const entry=all.intents.entries[id];
-    if(!entry){out.textContent="Kein gespeicherter Vorgang für "+id;return;}
-    if(entry.stage==="prepared"){
-     const typed=window.prompt("Wallet-Transaktionshash eingeben, falls gesendet. Keine erneute Transaktion auslösen:","");
-     if(!typed){out.textContent="Intent bleibt gesperrt; Wallet-Nonce prüfen";return;}
-     await postJSON("/admin/api/chain-deploy/hash",{id,txHash:typed});
-    }
-    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
-    out.textContent="Wiederherstellung: "+result.result.stage+" · "+(result.result.address||"");
-   }catch(e){out.textContent="Abgleich blockiert: "+e.message;}
-  });
-  showSelectedDeployChain(data);loadRouteLifecycle();
- }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
+  await loadRouteLifecycle();
+ }catch(e){target.textContent="Routenübersicht nicht verfügbar: "+e.message;}
 }
 async function loadRouteLifecycle(){
  const node=el("route-lifecycle");if(!node)return;
@@ -486,27 +373,18 @@ function renderPendingChainSteps(chain,readiness){
   (pending.length>1?'<details><summary>Weitere '+(pending.length-1)+' noch offene Contracts</summary>'+
    pending.slice(1).map(s=>'<div class="first-step">'+esc(deployTitle[s.component]||s.title)+'</div>').join("")+'</details>':'')+'</div>';
  const missing=(readiness?.missing||[]).filter(x=>!x.includes("BLS-Schlüssel")&&!x.includes("PoS-Validator-Snapshot"));
- const bootstrapOpen=!readiness?.bootstrapReady||!readiness?.manifestMatchesEvidence;
+ const bootstrapOpen=readiness?.evidenceVerified===false;
  const isVerifier=next?.component==="blsVerifier";
  const status=el("deployment-execute-reason");
  const action=el("deployment-execute");
- action.disabled=!next||Boolean(workqueue?.readOnly)||(!isVerifier&&bootstrapOpen);
+ action.disabled=!next||Boolean(workqueue?.readOnly);
  if(!next)status.textContent="Chain-Infrastruktur vollständig";
  else if(workqueue?.readOnly)status.textContent="GitHub main ist nicht aktuell bestätigt";
- else if(!isVerifier&&bootstrapOpen)status.textContent="Zuerst: verifizierten Bootstrap und Reserve/Fee/Gas freigeben";
+ else if(!isVerifier&&bootstrapOpen)status.textContent="Öffentliche Validatornachweise beim Contract-Deploy prüfen";
  else status.textContent="Die Wallet bestätigt jeden einzelnen Deploy separat";
- const approve=el("approve-chain-bootstrap");
- if(approve)approve.disabled=Boolean(workqueue?.readOnly)||Boolean(readiness?.manifestMatchesEvidence&&readiness?.bootstrapReady);
  const summary=el("chain-live-preflight");
- if(bootstrapOpen&&!isVerifier){
-  summary.textContent=readiness?.evidenceVerified?
-   readiness.verifiedValidatorCount+" Validatoren verifiziert · Bootstrap-Konfiguration noch freigeben":
-   "Bootstrap-Nachweise müssen auf dieser Zielchain noch geprüft werden";
- }else if(next){
-  summary.textContent="Nächster Schritt: "+(deployTitle[next.component]||next.title);
- }else summary.textContent="Keine offenen Chain-Contracts";
- const details=document.querySelector("details.chain-bootstrap");
- if(details)details.hidden=Boolean(readiness?.manifestMatchesEvidence&&readiness?.bootstrapReady);
+ summary.textContent=next?"Constructor-Werte werden nur für die konkrete Wallet-Transaktion festgelegt":
+  "Keine offenen Chain-Contracts";
  return {pending,missing};
 }
 async function showSelectedDeployChain(data){
@@ -533,8 +411,9 @@ async function showSelectedDeployChain(data){
 function renderQueue(){
  if(!workqueue)return;
  const items=(workqueue.workItems||[]).filter(item=>{
-  if(item.kind==="validator-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.ready);
-  if(item.kind==="fee-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.proposedFeeWei);
+  // Public validator proof checks and constructor economics are inputs
+  // to the relevant contract transaction, not separate GitHub tasks.
+  if(["validator-bootstrap","fee-bootstrap"].includes(item.kind))return false;
   return item.status!=="documented";
  });
  const scoped=items.filter(item=>item.chain===selectedDeployChain);
@@ -569,7 +448,13 @@ async function loadMainWorkqueue(){
     if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
    }catch{}
   }));
-  if(workqueue===data)renderInfrastructure();
+  if(workqueue===data){
+   try{
+    const b=await get("/admin/api/bootstrap");
+    liveBootstrap=new Map(b.bootstrap.map(x=>[x.chain,x]));
+   }catch{liveBootstrap=new Map();}
+   renderInfrastructure();
+  }
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
 async function check(){
@@ -591,12 +476,12 @@ async function loadJobs(){
 }
 el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
 el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;});
-el("modal-approve").addEventListener("click",approveModalBootstrap);
+
 el("modal-gas-check").addEventListener("click",checkModalGas);
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
-el("deploy-all").addEventListener("click",()=>{setView("workflow");history.replaceState(null,"","#workflow");el("first-deploy-plan")?.scrollIntoView({behavior:"smooth",block:"start"});});
+el("deploy-all").addEventListener("click",()=>{setView("infrastructure");history.replaceState(null,"","#infrastructure");});
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 

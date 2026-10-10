@@ -4,6 +4,7 @@
 import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsyncSync,unlinkSync} from "node:fs";
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
+import {deploymentParameters} from "./deployment-parameters.mjs";
 const ID=/^[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|factory|sourceRegistry)$/;
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
@@ -16,6 +17,11 @@ function validate(e){
     e.chainId<1||!PHASES.has(e?.stage)||
     !H256.test(e?.buildHash||"")||!H256.test(e?.artifactHash||""))
    throw Error("Malformed deployment intent identity");
+ const component=e.id.split(":")[1];
+ const parameters=deploymentParameters(component,e.parameters||{});
+ if(JSON.stringify(parameters)!==JSON.stringify(e.parameters||{}))throw Error("Noncanonical constructor parameters");
+ if(component==="validatorRegistry" && (!e.validatorSnapshot||!Array.isArray(e.validatorSnapshot.validators)||e.validatorSnapshot.validators.length!==3))
+  throw Error("Three public validator proofs must be journaled with Registry constructor");
  const t=e.transaction;
  if(!t||!ADDR.test(t.from||"")||!HEX.test(t.data||"")||
     t.data.length<10||t.data.length>400000||

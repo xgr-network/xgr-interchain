@@ -46,12 +46,17 @@ export function validatePublicBootstrapProof(proof,{chain,approvedValidators}){
 }
 export async function verifyPublicBootstrapOnChain(proof,{chain,bootstrap,approvedValidators,rpc=rpcCall}){
  const checked=validatePublicBootstrapProof(proof,{chain,approvedValidators});
- if(chain.blsVerifierFormat!=="compressed"||!h(bootstrap.verifierAddress,40))
-  throw Error("Compressed verifier must be configured for read-only verification");
+ if(!["compressed","eip2537"].includes(chain.blsVerifierFormat)||
+    !h(bootstrap.verifierAddress,40))
+  throw Error("Confirmed verifier address required for public proof verification");
  const id=await rpc(chain.rpcUrls[0],"eth_chainId",[]);
  if(BigInt(id)!==BigInt(chain.chainId))throw Error("Wrong target chain");
+ const key=chain.blsVerifierFormat==="compressed"?
+   checked.compressedPublicKey:proof.blsPublicKeyEIP2537;
+ const sig=chain.blsVerifierFormat==="compressed"?
+   checked.compressedSignature:proof.possessionProof;
  const result=await rpc(chain.rpcUrls[0],"eth_call",[{to:bootstrap.verifierAddress,
-  data:encodeBlsVerify(checked.payload,checked.compressedPublicKey,checked.compressedSignature),
+  data:encodeBlsVerify(checked.payload,key,sig),
   gas:"0x1e8480"},"latest"]);
  return {validator:checked.validator,chain:chain.name,verified:result==="0x"+"0".repeat(63)+"1",
   payloadBound:true,publicKeyConsistent:true,mode:"read-only"};

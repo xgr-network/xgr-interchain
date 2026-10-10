@@ -4,6 +4,7 @@ import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
 import {rpcCall} from "./inspector.mjs";
+import {keccak256} from "../../apps/web/keccak.mjs";
 const equal=(x,y)=>typeof x==="string"&&typeof y==="string"&&x.toLowerCase()===y.toLowerCase();
 const safeChain=n=>typeof n==="string"&&/^[a-z][a-z0-9-]*$/.test(n);
 const approvedFields=["minimumWei","maxExecutorReimbursementWei","perValidatorWei"];
@@ -43,6 +44,7 @@ export async function readDeploymentReadiness({
   snapshotConfirmedDepth:null,manifestMatchesEvidence:false,
   bootstrapReady:boot.ready===true,
   deploymentExecutable:false,transactionSimulation:"not-available",
+  verifiedSnapshot:null,
   values:{sourceFeeWei:config.sourceFee?.targetWei??null,
    minimumReserveWei:config.reserve?.minimumWei??null,
    maxExecutorReimbursementWei:config.reserve?.maxExecutorReimbursementWei??null,
@@ -54,10 +56,27 @@ export async function readDeploymentReadiness({
   const snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));
   const proofs=initial.validators.map((_,i)=>readPublic(join(evidenceDir,"validator-"+(i+1)+".txt")));
   const candidate=loadJSON(join(evidenceDir,"bootstrap-candidate.json"));
-  const prepared=await prepareBootstrapEvidence({chain,originChain:origin,bootstrap:config,
+  let proofBootstrap=config;
+  if(chain.blsVerifierFormat==="eip2537"){
+   const infrastructure=loadJSON(join(root,chain.observedInfrastructure));
+   const v=infrastructure.xitaV315?.components?.blsVerifier;
+   if(!v||!/^0x[0-9a-f]{40}$/i.test(v.address||"")||
+      !/^0x[0-9a-f]{64}$/i.test(v.runtimeCodeKeccak256||"")||
+      typeof v.receiptPath!=="string"||
+      !v.receiptPath.startsWith("deployments/mainnet/receipts/"+chain.name+"/"))
+    throw Error("EIP-2537 verifier deployment must be independently documented");
+   const code=await rpc(chain.rpcUrls[0],"eth_getCode",[v.address,"latest"]);
+   if(!/^0x(?:[0-9a-f]{2})+$/i.test(code||"")||
+      keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex"))).toLowerCase()!==
+      v.runtimeCodeKeccak256.toLowerCase())
+    throw Error("On-chain EIP-2537 verifier runtime differs from documented artifact");
+   proofBootstrap={...config,verifierAddress:v.address};
+  }
+  const prepared=await prepareBootstrapEvidence({chain,originChain:origin,bootstrap:proofBootstrap,
    initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})});
   if(!sameEvidence(candidate.validatorSnapshot,prepared.candidate.validatorSnapshot,initial.validators))
    throw Error("Local candidate differs from independently verified public evidence");
+  report.verifiedSnapshot=prepared.candidate.validatorSnapshot;
   report.evidenceVerified=true;
   report.verifiedValidatorCount=prepared.report.verifiedValidatorCount;
   report.originSnapshotBlock=prepared.report.snapshotBlock;

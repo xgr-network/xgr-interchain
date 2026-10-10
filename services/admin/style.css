@@ -35,3 +35,5 @@
 .modal-footer{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}
 .modal-footer button{white-space:normal}
 @media(max-width:560px){.modal-fields{grid-template-columns:1fr}.contract-dialog{padding:16px}}
+
+.modal-fields label[hidden]{display:none}

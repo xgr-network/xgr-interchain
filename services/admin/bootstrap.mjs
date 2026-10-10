@@ -82,7 +82,9 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
  const sourceRegistry=addrBy("sourceRegistry");
  const result={...plan,validatorRegistry,sourceRegistry,verified:false,
   validatorSetId:null,validatorCountOnChain:null,feeWei:null,feeNonce:null,
-  missing:[...plan.missing]};
+  liveMinimumReserveWei:null,liveMaxExecutorReimbursementWei:null,
+  liveValidatorReservesWei:{},liveFactoryGasLimit:null,liveFactoryInitialFeeWei:null,
+  missing:[]};
  const id=await rpc(url,"eth_chainId",[]);
  if(BigInt(id)!==BigInt(chain.chainId))throw Error("Bootstrap RPC chain mismatch");
  if(validatorRegistry){
@@ -93,7 +95,36 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   if(decodeUint(domain)!==BigInt(chain.domainId))throw Error("Validator registry domain mismatch");
   result.validatorSetId=decodeUint(set).toString();
   result.quorumThreshold=decodeUint(threshold).toString();
+  const [min,max]=await Promise.all([
+    abiView(rpc,url,validatorRegistry,"minimumDeactivationReserveWei()"),
+    abiView(rpc,url,validatorRegistry,"maxExecutorReimbursementWei()")
+  ]);
+  result.liveMinimumReserveWei=decodeUint(min).toString();
+  result.liveMaxExecutorReimbursementWei=decodeUint(max).toString();
+  for(const address of plan.initialValidators){
+   const [active,detail]=await Promise.all([
+    rpc(url,"eth_call",[{to:validatorRegistry,
+      data:selector("getValidatorStatus(address)")+address.slice(2).padStart(64,"0")},"latest"]),
+    rpc(url,"eth_call",[{to:validatorRegistry,
+      data:selector("getValidator(address)")+address.slice(2).padStart(64,"0")},"latest"])
+   ]);
+   if(!/^0x[0-9a-f]{128}$/i.test(active||"")||!/^0x[0-9a-f]{192,}$/i.test(detail||""))
+    throw Error("Invalid live ValidatorRegistry read for pinned validator");
+   if(BigInt("0x"+active.slice(2,66))!==1n)
+    throw Error("Pinned validator inactive in live Registry");
+   result.liveValidatorReservesWei[address]=BigInt("0x"+detail.slice(130,194)).toString();
+  }
+  result.validatorCountOnChain=plan.initialValidators.length;
  }else result.missing.push("ValidatorRegistryV2 noch nicht deployed");
+ const factory=observed?.components.find(c=>c.key==="factory")?.address;
+ if(factory){
+  const [gas,initialFee]=await Promise.all([
+   abiView(rpc,url,factory,"defaultDestinationGasLimit()"),
+   abiView(rpc,url,factory,"initialSourceFeeWei()")
+  ]);
+  result.liveFactoryGasLimit=decodeUint(gas).toString();
+  result.liveFactoryInitialFeeWei=decodeUint(initialFee).toString();
+ }
  if(sourceRegistry){
   const [sourceDomain,nonce,fee]=await Promise.all([
    abiView(rpc,url,sourceRegistry,"sourceDomain()"),
@@ -106,11 +137,12 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   // The main manifest pins ONLY the constructor's INITIAL fee. Later fee
   // changes are BLS-quorum governed and must never be treated as a drift bug.
   result.feeOrigin=result.feeNonce==="0"?"initial-constructor":"onchain-governance";
-  if(result.feeNonce==="0" && plan.proposedFeeWei &&
-     result.feeWei!==plan.proposedFeeWei)
-   result.missing.push("Initial on-chain fee differs from approved constructor fee");
+  if(result.feeNonce==="0"&&result.liveFactoryInitialFeeWei&&
+     result.feeWei!==result.liveFactoryInitialFeeWei)
+   result.missing.push("Source Registry initial fee differs from deployed Factory");
  }else result.missing.push("Source-Registry noch nicht deployed");
- result.verified=result.ready && Boolean(result.validatorSetId)&&result.feeWei!=="0"&&
-  result.feeWei!==null && (result.feeNonce!=="0"||result.feeWei===plan.proposedFeeWei) && result.missing.length===0;
+ result.verified=Boolean(result.validatorSetId)&&
+  result.validatorCountOnChain===plan.expectedValidatorCount&&
+  result.feeWei!==null&&result.feeWei!=="0"&&result.missing.length===0;
  return result;
 }
