@@ -231,7 +231,7 @@ function createGPU(gl){
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
- if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:2.36,portal:true});
+ if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:2.45,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
   // Balanced initial composition; each orbit keeps an independent spatial axis.
@@ -242,7 +242,7 @@ function createTopology(model){
    axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
    speed:.0019+(i%5)*.00065,inclination:.21+(i%4)*.13,node:i*.81};
   systems.push({system:spokes[i],orbital,position:[...orbital.origin],
-   color:chainColor(spokes[i].key,i+1),radius:2.17,portal:false});
+   color:chainColor(spokes[i].key,i+1),radius:1.92,portal:false});
  }
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
@@ -257,8 +257,8 @@ function createTopology(model){
   });
   for(let i=0;i<Math.min(candidates.length,16);i++){
    // Concentric planetary families remain comfortably in view on focus.
-   planets.push({system:item,token:candidates[i],index:i,orbit:4.6+Math.floor(i/5)*2.45+(i%5)*.35,
-    radius:clamp(.48-(i*.009),.28,.48),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
+   planets.push({system:item,token:candidates[i],index:i,orbit:3.35+Math.floor(i/5)*1.8+(i%5)*.28,
+    radius:clamp(.52-(i*.009),.30,.52),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
      inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
   }
  }
@@ -317,7 +317,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=compact?42:41;
+ const initialDistance=compact?47:49;
  const camera={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  const wanted={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  let focused=false,focusBlend=0;
@@ -440,7 +440,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
   return bufferLine(arr);
  }
- let paths=[],orbitPaths=[],stellarDiscs=[],systemTracks=[],stars=null,pointBuffer=null;
+ let paths=[],orbitPaths=[],stellarDiscs=[],systemTracks=[],localRings=[],stars=null,pointBuffer=null;
  function initialize(){
   try{
    gl=canvas.getContext("webgl",{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:false,powerPreference:"low-power"});
@@ -461,6 +461,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
      const local=makeStellarDisc(item),scratch=new Float32Array(local.length);
      return {item,local,scratch,buffer:gpu.makeBuffer(gl.ARRAY_BUFFER,scratch),count:local.length/3};
     });
+    localRings=topology.systems.map(item=>({item,geometry:bufferLine(new Float32Array(144*2*3))}));
     systemTracks=topology.systems.filter(item=>!item.portal).map(item=>({
      item,geometry:bufferLine(makeSystemOrbitTrack(item))
     }));
@@ -493,7 +494,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
    gl.uniformMatrix4fv(sp.vp,false,vp);
    gl.uniform4f(sp.color,...disc.item.color,opacity);
-   gl.uniform1f(sp.size,disc.item.portal?2.7:2.2);
+   gl.uniform1f(sp.size,disc.item.portal?2.3:1.85);
    gl.uniform1f(sp.fixed,1);
    gl.uniform1f(sp.background,1);
    gl.drawArrays(gl.POINTS,0,disc.count);
@@ -586,12 +587,29 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=item.portal?.41:.27;
-   point(systemPosition(item,frame,reducedMotion),item.radius*9000,item.color,intensity,vp);
-   point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity*.67,vp);
+   const intensity=item.portal?.30:.15;
+   point(systemPosition(item,frame,reducedMotion),item.radius*(item.portal?7800:4200),item.color,intensity,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*2300,item.color,intensity*.57,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Do not paint misleading global ellipses around the network.
+   // Local star-system orbital bands, rather than misleading global ellipses.
+   for(const ring of localRings){
+    const item=ring.item;
+    if(focused&&selectedKey!==item.system.key&&focusBlend>.8)continue;
+    const center=systemPosition(item,frame,reducedMotion);
+    const vertices=[],N=144;
+    const tilt=item.portal?[.30,.12,.12]:[item.orbital.inclination,item.orbital.node,item.orbital.node*.18];
+    for(let i=0;i<N;i++){
+     if(!item.portal&&i%37>31)continue;
+     const pointAt=a=>add(center,rotate([Math.cos(a)*item.radius*2.30,0,Math.sin(a)*item.radius*1.58],...tilt));
+     vertices.push(...pointAt(i*TWO_PI/N),...pointAt((i+1)*TWO_PI/N));
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER,ring.geometry.buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
+    ring.geometry.count=vertices.length/3;
+    line(ring.geometry,item.portal?[.82,.66,.37]:item.color,item.portal?.40:.24,vp);
+   }
    if(focusBlend<.96)for(const link of paths){
    const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
    const vertices=[],steps=92;
