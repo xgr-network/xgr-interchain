@@ -230,20 +230,18 @@ function createGPU(gl){
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
- if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:1.92,portal:true});
+ if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:2.36,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
-  // Staggered 3D rings maintain sufficient separation as chains are added.
+  // Balanced initial composition; each orbit keeps an independent spatial axis.
   const ring=Math.floor(i/7),within=i%7,perRing=Math.min(7,count-ring*7);
-  const angle=-Math.PI*0.39+(within/perRing)*TWO_PI+ring*.25;
-  const r=28+ring*17;
-  const orbital={major:r,minor:r*(.76+(i%3)*.06),
-   phase:angle,speed:.0032+(i%4)*.0014,
-   inclination:(i%2?-1:1)*(.18+(i%4)*.13),
-   node:.26+i*1.06,twist:(i%3-1)*.16};
-  systems.push({system:spokes[i],orbital,
-   position:orbitPosition({orbital},0,true),
-   color:chainColor(spokes[i].key,i+1),radius:1.66,portal:false});
+  const theta=-2.48+within*TWO_PI/perRing+ring*.36;
+  const r=16+(i%3)*2+ring*8;
+  const orbital={origin:[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2],
+   axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
+   speed:.0019+(i%5)*.00065,inclination:.21+(i%4)*.13,node:i*.81};
+  systems.push({system:spokes[i],orbital,position:[...orbital.origin],
+   color:chainColor(spokes[i].key,i+1),radius:2.17,portal:false});
  }
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
@@ -272,10 +270,10 @@ export const createUniverseTopology=createTopology;
 // Stable orbital elements prevent the former shared flat-plane rotation.
 export function orbitPosition(elements,time,reduced=false){
  if(elements.portal)return [0,0,0];
- const o=elements.orbital;
- const theta=o.phase+(reduced?0:time*o.speed);
- const local=[Math.cos(theta)*o.major,0,Math.sin(theta)*o.minor];
- return rotate(local,o.inclination,o.node,o.twist);
+ const o=elements.orbital,v=o.origin;
+ if(reduced)return [...v];
+ const a=time*o.speed,k=o.axis,ca=Math.cos(a),sa=Math.sin(a);
+ return add(add(mul(v,ca),mul(cross(k,v),sa)),mul(k,dot(k,v)*(1-ca)));
 }
 function systemPosition(item,time,reduced=false){return orbitPosition(item,time,reduced)}
 function tokenOrbitPoint(p,angle,center){
@@ -318,8 +316,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=clamp(49+Math.max(0,farthest-28)*.9,49,160);
- const camera={target:[0,0,0],distance:initialDistance,yaw:.17,pitch:.20};
+ const initialDistance=clamp(47+Math.max(0,farthest-24)*1.15,47,135);
+ const camera={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  const wanted={target:[0,0,0],distance:initialDistance,yaw:.17,pitch:.20};
  let focused=false,focusBlend=0;
  const allPick=[];
@@ -365,7 +363,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  };
  function home(){
   focused=false;selectedKey=HUB;
-  wanted.target=[0,0,0];wanted.distance=initialDistance;wanted.yaw=.17;wanted.pitch=.20;
+  wanted.target=[0,0,0];wanted.distance=initialDistance;wanted.yaw=.09;wanted.pitch=.10;
   setFocusUI();
   onFocus(HUB);
  }
