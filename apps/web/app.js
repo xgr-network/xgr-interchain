@@ -1,3 +1,4 @@
+import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
@@ -178,7 +179,9 @@ function application(e){
  URL.revokeObjectURL(url);
  document.querySelector("#form-status").textContent="Downloaded locally; nothing submitted to XETA.";
 }
+let cosmos=null;
 function render(){
+ if(cosmos){cosmos.dispose();cosmos=null;}
  const p=path();
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
@@ -188,10 +191,14 @@ function render(){
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
+ if(p==="/"||p==="/universe"){
+  const host=document.querySelector("#xita-3d");
+  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{state.experience.system=key;const details=document.querySelector("#ux-selected-details");if(details&&p==="/universe"){details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";}},onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
+ }
  document.querySelectorAll("[data-xita-system]").forEach(button=>button.addEventListener("click",()=>{
    state.experience.system=button.dataset.xitaSystem;
-   if(p==="/")history.pushState(null,"","/universe");
-   render();
+   if(p==="/"){history.pushState(null,"","/universe");render();}
+   else if(cosmos)cosmos.focus(state.experience.system);
  }));
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});

@@ -165,3 +165,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-width:900px){header{flex-wrap:wrap;padding:16px 20px;gap:10px}nav{order:3;width:100%;overflow:auto;gap:18px}.ux-metrics,.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.ux-dashboard-grid,.ux-universe-layout,.ux-below,.columns{grid-template-columns:1fr}.ux-overview-panel{grid-column:auto}.ux-universe-map{height:510px}.ux-universe-map.is-compact{height:480px}.ux-discovery{flex-direction:column;align-items:flex-start}}
 @media(max-width:580px){main{padding:20px 13px 55px}header{position:relative}header small{display:none}#connect{padding:9px;font-size:11px}.ux-panel{padding:15px}.ux-header-row{display:block}.ux-universe-link{margin-top:18px}.ux-metrics,.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ux-metric{padding:12px;min-height:103px}.ux-metric strong{font-size:23px}.ux-chain-list{grid-template-columns:1fr}.ux-universe-map{height:420px}.ux-universe-map.is-compact{height:350px}.ux-system{min-width:60px}.ux-orbit{transform:scale(.65)}.ux-hub .ux-orbit{transform:scale(.73)}.ux-system-name{font-size:12px}.ux-system-sub{font-size:9px}.ux-map-legend{font-size:8px}.ux-panel-head{align-items:flex-start}.ux-journey-line{font-size:12px}.ux-universe-hero{padding-top:12px}.ux-universe-hero h1{font-size:49px}.ux-hero-actions{flex-wrap:wrap}.ux-discovery-assets{width:100%}footer{flex-direction:column}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Immersive 3D Universe — replaces the clipped static orbital diagram */
+.ux-3d-stage{position:relative;isolation:isolate;width:100%;height:630px;border-radius:13px;overflow:hidden;background:radial-gradient(ellipse at 52% 50%,#112843 0%,#0a1428 44%,#050a14 92%);border:1px solid #243752}
+.ux-3d-stage.is-compact{height:470px;margin-top:8px}
+.ux-3d-canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none;outline-offset:-3px}
+.ux-3d-canvas:active{cursor:grabbing}
+.ux-3d-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.ux-3d-label{position:absolute;top:0;left:0;padding:4px 9px;border:1px solid #6c8cb344;background:#071324be;border-radius:6px;color:#d8e9ff;font-size:12px;font-weight:600;text-shadow:0 1px 7px #000;white-space:nowrap}
+.ux-3d-label.is-hub{border-color:#d4b77b88;color:#f0d7a8}
+.ux-3d-label.is-focused{background:#1b3150e6;border-color:#90b5e6}
+.ux-3d-controls{position:absolute;bottom:32px;left:14px;display:flex;flex-wrap:wrap;gap:5px;max-width:calc(100% - 28px)}
+.ux-3d-controls button{border:1px solid #3a5674;border-radius:6px;background:#0c182ad9;color:#dfecff;min-width:34px;height:32px;padding:0 8px;cursor:pointer;font-size:13px}
+.ux-3d-controls button:hover{background:#233957}
+.ux-3d-status{position:absolute;top:13px;right:14px;font-size:10px;color:#9bb4d2;background:#071324a9;padding:6px 10px;border-radius:5px;pointer-events:none}
+.ux-3d-stage.is-compact .ux-3d-controls{bottom:25px}
+.ux-3d-stage.is-compact .ux-3d-label{font-size:11px}
+@media(max-width:650px){.ux-3d-stage{height:480px}.ux-3d-stage.is-compact{height:340px}.ux-3d-controls button{min-width:29px;height:30px}.ux-3d-status{max-width:56%;text-align:right}}

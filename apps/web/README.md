@@ -51,3 +51,11 @@ node --check apps/web/wallet-core.js
 The static site requires SPA fallback. Always review routes and wallet behavior
 in a real browser before deploying. No wallet private keys or secret seeds
 are requested.
+
+## The XITA Universe — immersive 3D
+
+`/universe` mounts a local, dependency-free WebGL star map using the existing `catalog.json`. XGRChain remains the spatial and routing hub; other chain systems are arranged in depth. A chain's native coin is the system star, listed non-native representations orbit as selectable token planets. Directional configured routes are drawn only between the hub and a spoke; unactivated links are dashed. This scene is explanatory, **not on-chain delivery evidence**.
+
+Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` to zoom; arrow keys or on-screen arrows to rotate; WASD to pan; `H`/Home or `XGR ⌂` to reset; click stars to focus and token planets to open their token page. A native lightweight 2D fallback is shown if WebGL is unavailable. Animation pauses off-screen, on background tabs, and when navigating away.
+
+`/` retains the dashboard and embeds the same renderer in compact form. Browser smoke tests assert successful initialization on dashboard and `/universe`.
