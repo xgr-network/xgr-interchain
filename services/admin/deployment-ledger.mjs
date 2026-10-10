@@ -212,6 +212,45 @@ export async function publishDeploymentBatch(root,inputs,{
   original.receiptPaths.sort();
   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
  }
+ // Update the canonical per-chain infrastructure index in the SAME atomic
+ // Git commit as its immutable on-chain verified receipts. This is not the
+ // fee-quorum transaction journal (it has no deployed bytecode).
+ const infraComponents=new Set(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
+ const byChain=new Map();
+ for(const receipt of receipts){
+  if(receipt.asset!==null||!infraComponents.has(receipt.component))continue;
+  const arr=byChain.get(receipt.chain)||[];
+  arr.push(receipt);byChain.set(receipt.chain,arr);
+ }
+ for(const [chain,records] of byChain){
+  const path="deployments/mainnet/infrastructure/"+chain+".json";
+  const existing=await request("/contents/"+path+"?ref=main");
+  if(!existing.ok||typeof existing.json.content!=="string"||
+     existing.json.encoding!=="base64")throw Error("Missing approved chain deployment index "+chain);
+  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\\s/g,""),"base64").toString("utf8"));
+  const local=JSON.parse((await import("node:fs")).readFileSync(
+    (await import("node:path")).join(root,path),"utf8"));
+  if(JSON.stringify(original)!==JSON.stringify(local)||
+     original.chain!==chain||original.kind!=="infrastructure-deployment"||
+     original.xitaV315?.schemaVersion!==1||
+     !Array.isArray(original.xitaV315.receiptPaths)||
+     typeof original.xitaV315.components!=="object")
+    throw Error("Chain infrastructure index differs from approved main");
+  for(const receipt of records){
+   if(original.xitaV315.components[receipt.component])
+    throw Error("Existing chain infrastructure component cannot be silently replaced: "+receipt.component);
+   const receiptPath=deploymentReceiptPath(receipt);
+   if(original.xitaV315.receiptPaths.includes(receiptPath))
+    throw Error("Already indexed chain infrastructure receipt");
+   original.xitaV315.components[receipt.component]={
+    address:receipt.address,runtimeCodeKeccak256:receipt.runtimeCodeKeccak256,
+    receiptPath
+   };
+   original.xitaV315.receiptPaths.push(receiptPath);
+  }
+  original.xitaV315.receiptPaths.sort();
+  entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
+ }
  const commitInfo=await request("/git/commits/"+main);
  if(!commitInfo.ok||!SHA.test(commitInfo.json?.tree?.sha||""))
   throw Error("Cannot verify main Git tree");
