@@ -16,3 +16,18 @@ test("rejects unsafe public profile URL",()=>{const c=copy();c.assets.XGR.profil
 test("rejects mismatched token profile",()=>{const c=copy();c.assets.XGR.profile.asset="OTHER";assert.ok(validateCatalog(c).some(e=>e.includes("public token profile")))});
 
 test("reject public listing without GitHub-pinned transfer proof",()=>{const c=copy();c.assets.XGR.listing={schemaVersion:1,kind:"xita-asset-listing",asset:"XGR",status:"public",basis:"verified-transfer",publicProof:null};assert.ok(validateCatalog(c).some(x=>x.includes("publication evidence")))});
+
+test("protocol hub XGR is accepted until a verified successful XITA bridge transfer",()=>{
+ const c=copy();
+ assert.equal(c.assets.XGR.listing.status,"accepted");
+ assert.equal(c.assets.XGR.listing.basis,"protocol-hub");
+ c.assets.XGR.listing.status="public";
+ assert.ok(validateCatalog(c).some(x=>x.includes("publication evidence")));
+});
+test("a fabricated publication object cannot bypass the absent finality verifier",()=>{
+ const c=copy();
+ c.assets.XGR.listing.status="public";
+ c.assets.XGR.listing.basis="verified-transfer";
+ c.assets.XGR.listing.publicProof={txHash:"0x"+"f".repeat(64)};
+ assert.ok(validateCatalog(c).some(x=>x.includes("publication evidence")));
+});
