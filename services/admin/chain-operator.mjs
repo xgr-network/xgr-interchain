@@ -1,7 +1,8 @@
 // The only server-backed, main-authorized core deployment coordinator.
 // EIP-1193 wallet signs in the browser. All transactions are server-authored;
 // browser input may select chain/component and provide the public wallet/hash.
-import {resolve} from "node:path";
+import {resolve,join} from "node:path";
+import {readdirSync,readFileSync} from "node:fs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
@@ -106,8 +107,29 @@ export function createChainOperator({
   // A new main may have advanced independently after signature. Never replace
   // sourceCommit to evade the main-only publisher check.
   const {commit,infrastructure,bootstrap}=await approved(chain.name);
-  if(commit!==entry.sourceCommit)
-   throw Error("GitHub main advanced; hold signed transaction for operator reconciliation");
+  if(commit!==entry.sourceCommit){
+   // GitHub may have accepted a receipt before the HTTP response was lost.
+   // Only an immutable, exact source-commit/tx/wallet receipt can settle it.
+   const receiptDir=join(root,"deployments/mainnet/receipts",chain.name);
+   let match=null;
+   try{
+    for(const file of readdirSync(receiptDir)){
+     if(!file.startsWith(entry.txHash.slice(2).toLowerCase()+"-")||!file.endsWith(".json"))continue;
+     const record=JSON.parse(readFileSync(join(receiptDir,file),"utf8"));
+     if(!eq(record.transactionHash,entry.txHash)||
+        !eq(record.approval?.sourceCommit,entry.sourceCommit)||
+        !eq(record.deployer,entry.wallet)||
+        record.chainId!==entry.chainId||record.component!==id.split(":")[1]||
+        record.status!=="onchain-deployment-verified")continue;
+     match="deployments/mainnet/receipts/"+chain.name+"/"+file;
+    }
+   }catch(e){if(e.code!=="ENOENT")throw e}
+   if(match && entry.stage==="confirmed"){
+    journal.document(id,match);
+    return {stage:"documented",receiptPath:match,recoveredFromGitHub:true};
+   }
+   throw Error("GitHub main advanced; hold signed transaction for manual source-commit reconciliation");
+  }
   const built=await build(root,commit);
   const artifact=built.artifacts[id.split(":")[1]];
   if(artifact.buildHash!==entry.buildHash||artifact.artifactHash!==entry.artifactHash)
