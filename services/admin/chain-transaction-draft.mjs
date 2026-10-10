@@ -23,7 +23,12 @@ const typesFor={
  factory:["uint64","uint32","address","address","address","address","uint256","uint256"]
 };
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
-function exactArtifact(root,component){
+function exactArtifact(root,component,compiled){
+ if(compiled){
+  if(compiled.component!==component||typeof compiled.creation!=="string"||!HEX.test(compiled.creation))
+   throw Error("Trusted precompiled creation artifact missing for "+component);
+  return {name:contractFor[component],hex:compiled.creation};
+ }
  const name=contractFor[component];
  if(!name)throw Error("No constructor artifact for "+component);
  const file=load(root,"out/"+name+".sol/"+name+".json");
@@ -43,7 +48,7 @@ function requirePresent(map,key){
  if(!nonzero(address))throw Error("Verified dependency missing: "+key);
  return address;
 }
-export function chainDraft({root,chain,infrastructure,bootstrap,component,parameters={}}){
+export function chainDraft({root,chain,infrastructure,bootstrap,component,parameters={},artifact=null}){
  if(!chain||!infrastructure||!bootstrap||chain.name!==infrastructure.name||
     chain.chainId!==infrastructure.chainId||bootstrap.chain!==chain.name)
   throw Error("Chain manifest identity mismatch");
@@ -92,10 +97,10 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
    core.mailbox,core.merkleTreeHook,requirePresent(infrastructure,"ism"),
    gas,p.sourceFeeWei];
  }
- const artifact=exactArtifact(root,component);
+ const artifactData=exactArtifact(root,component,artifact);
  return {id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,
-  component,operation:"create",contract:artifact.name,
-  transaction:{to:null,data:artifact.hex+encodeAbi(typesFor[component],values).slice(2),value},
+  component,operation:"create",contract:artifactData.name,
+  transaction:{to:null,data:artifactData.hex+encodeAbi(typesFor[component],values).slice(2),value},
   mustVerify:"finalized receipt, canonical block, constructor bindings and deployed runtime"};
 }
 export async function simulateChainDraft(draft,{rpc,url,from}){

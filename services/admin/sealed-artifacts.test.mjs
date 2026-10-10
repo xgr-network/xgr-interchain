@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {sealArtifacts,readSealedArtifacts,NAMES} from "./sealed-artifacts.mjs";
 import {createHash} from "node:crypto";
-const sha="a".repeat(40);
+const sha="a".repeat(40),fingerprint="c".repeat(64);
 test("offline admin reads release-pinned bytecode without invoking compiler",()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-sealed-"));
  try{
@@ -14,13 +14,13 @@ test("offline admin reads release-pinned bytecode without invoking compiler",()=
    mkdirSync(folder,{recursive:true});
    writeFileSync(join(folder,name+".json"),JSON.stringify({component:name}));
   }
-  const sealed=sealArtifacts(dir,{commit:sha,forgeVersion:"forge Version 1.8.3"});
+  const sealed=sealArtifacts(dir,{commit:sha,forgeVersion:"forge Version 1.8.3",sourceFingerprint:fingerprint});
   assert.equal(Object.keys(sealed.artifacts).length,NAMES.length);
-  assert.deepEqual(Object.keys(readSealedArtifacts(dir,sha).raws).sort(),[...NAMES].sort());
+  assert.deepEqual(Object.keys(readSealedArtifacts(dir,sha,{sourceFingerprint:fingerprint}).raws).sort(),[...NAMES].sort());
   const file=join(dir,"out",NAMES[0]+".sol",NAMES[0]+".json");
   writeFileSync(file,'{"tampered":true}');
   assert.throws(()=>readSealedArtifacts(dir,sha),/changed or is missing/);
-  assert.throws(()=>readSealedArtifacts(dir,"b".repeat(40)),/not sealed/);
+  assert.throws(()=>readSealedArtifacts(dir,"b".repeat(40),{sourceFingerprint:"d".repeat(64)}),/(?:missing|not sealed)/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("UI no longer requires separate Forge/gas action",()=>{

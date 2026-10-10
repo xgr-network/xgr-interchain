@@ -5,7 +5,7 @@ import {checkedLocalMain} from "./main-gate.mjs";
 export const NAMES=Object.freeze(["XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV2","XGRILNInterchainISMV2","XETATokenFactoryV315","XGRILNRegistryV315","XETAGuardedNativeWarpRouter","XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315","ILNGateway","XGRILNFeeVault"]);
 const valid=/^[a-f0-9]{40}$/i;
 const digest=x=>createHash("sha256").update(x).digest("hex");
-export function sealArtifacts(root,{commit=checkedLocalMain(root),forgeVersion}={}){
+export function sealArtifacts(root,{commit=checkedLocalMain(root),forgeVersion,sourceFingerprint}={}){
  if(!valid.test(commit)||typeof forgeVersion!=="string"||!forgeVersion.toLowerCase().includes("forge"))
   throw Error("A pinned main commit and Forge version are required");
  const artifacts={};
@@ -22,7 +22,7 @@ export function sealArtifacts(root,{commit=checkedLocalMain(root),forgeVersion}=
  renameSync(temp,file);
  return seal;
 }
-export function readSealedArtifacts(root,commit){
+export function readSealedArtifacts(root,commit,{sourceFingerprint}={}){
  const seal=JSON.parse(readFileSync(join(root,"out","xita-deployment-build.json"),"utf8"));
  if(seal.schema!=="xita-precompiled-v1"||seal.sourceCommit!==commit.toLowerCase()||
     !valid.test(commit)||typeof seal.forgeVersion!=="string"||!seal.forgeVersion.toLowerCase().includes("forge"))
