@@ -30,7 +30,7 @@ test("reject direct bridge and duplicate canonical token",()=>{
  assert.throws(()=>buildManifestBundle({...application,targets:["polygon","polygon"]},catalog),/distinct/);
  assert.throws(()=>buildManifestBundle({...application,canonicalChain:"unknown"},catalog),/Unknown canonical/);
  assert.throws(()=>buildManifestBundle({...application,canonicalAddress:"0x0000000000000000000000000000000000000000"},catalog),/Original ERC-20/);
- assert.throws(()=>buildManifestBundle({...application,confirmed:false},catalog),/confirmation/);
+ assert.throws(()=>buildManifestBundle({...application,confirmed:false},catalog),/acknowledgement/);
 });
 test("reject unsafe public metadata",()=>{
  assert.throws(()=>buildManifestBundle({...application,name:"<script>alert(1)</script>"},catalog),/Invalid project/);
