@@ -7,6 +7,9 @@ const labels={"not-deployed":"Nicht deployed",partial:"Teilweise deployed",deplo
 const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
 let workqueue=null;
 let assetPage=0;
+let assetTasks=[];
+let selectedAssetTask=null;
+let assetPreview=null;
 const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
@@ -22,8 +25,15 @@ function renderAssets(){
  const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
  '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+'</div>'+
- '<div class="asset-meta"><span>Asset-ID <b class="mono">'+esc(a.assetId)+'</b></span><span>Belege <b>'+a.receiptCount+'</b></span><span>Manifest <b>'+esc(a.deploymentManifest)+'</b></span></div>'+
- '<div class="routes">'+a.routes.map(r=>'<div class="route"><div><strong>'+esc(r.source)+' → '+esc(r.destination)+'</strong><small>'+esc(r.name)+' · '+esc(r.note)+'</small></div>'+pill(r.status)+'</div>').join("")+'</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ '<div class="routes">'+assetTasks.filter(t=>t.asset===a.key).map(t=>
+  '<div class="route"><div><strong>'+
+  esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
+  '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
+  '</small></div><button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'">Ausstehend →</button></div>').join("")+
+  (assetTasks.some(t=>t.asset===a.key)?"":'<p>Keine offenen Router- oder Gateway-Deployments.</p>')+
+  '</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
+  b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
  const pageNode=el("asset-pagination");
  pageNode.innerHTML='<span>'+esc(assets.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
  pageNode.querySelectorAll("button[data-page]").forEach(b=>b.addEventListener("click",()=>{
@@ -127,11 +137,92 @@ function modalValues(component){
  return result;
 }
 let lastModalPreview=null;
+async function openAssetModal(taskId){
+ const task=assetTasks.find(x=>x.id===taskId);
+ if(!task)return;
+ selectedDeployment=null;selectedAssetTask=task;assetPreview=null;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ el("contract-modal-title").textContent=task.kind==="router"?
+  "Token-Router einmalig bereitstellen":"Gerichtete Route vorbereiten";
+ el("contract-modal-subtitle").textContent=task.asset+" · "+task.chain+
+  " · Chain "+chain.chainId;
+ el("modal-parameters").hidden=true;
+ el("modal-route-context").hidden=false;
+ el("modal-route-context").textContent=task.kind==="router"?
+  "Dieser Token-Router gehört zum Asset auf dieser Chain und wird für Rückrouten wiederverwendet.":
+  "Das Gateway und sein FeeVault werden gemeinsam erzeugt. Die Route bleibt bis zur BLS-Bestätigung inaktiv.";
+ el("modal-gas-result").textContent="";
+ el("modal-gas-check").disabled=task.blockers.length>0;
+ el("modal-deploy").disabled=true;
+ el("modal-recover").hidden=true;
+ el("contract-deploy-dialog").showModal();
+ if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
+ else presentModalStatus("On-Chain-Router prüfen und Gas simulieren.");
+}
+async function previewAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task)return;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ let wallet=await currentWalletState();
+ if(!wallet)throw Error("Wallet verbinden");
+ if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+ wallet=await currentWalletState();
+ if(!wallet||wallet.chainId!==chain.chainId)throw Error("Wallet-Chain stimmt nicht überein");
+ const result=await postJSON("/admin/api/asset-deploy/preview",{taskId:task.id,wallet:wallet.address});
+ assetPreview={taskId:task.id,wallet:wallet.address};
+ el("modal-gas-result").textContent="Gaslimit "+BigInt(result.preview.simulation.gasLimit).toString()+
+  " · Maximal "+moneyInWei(result.preview.simulation.totalWorstCaseWei,chain);
+ el("modal-deploy").disabled=false;
+ presentModalStatus("On-Chain-Vorprüfung erfolgreich. Deployment durch Wallet bestätigen.");
+}
+async function executeAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task||assetPreview?.taskId!==task.id)throw Error("Gas bitte zuerst prüfen");
+ const wallet=await currentWalletState();
+ if(!wallet||wallet.address.toLowerCase()!==assetPreview.wallet.toLowerCase())
+  throw Error("Wallet seit der Gasprüfung geändert");
+ el("modal-deploy").disabled=true;
+ const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
+  taskId:task.id,wallet:wallet.address});
+ el("modal-recover").hidden=false;
+ presentModalStatus("Wallet signiert. Bei Unterbrechung ausschließlich Wiederherstellung verwenden.");
+ const txHash=await broadcastDeploymentIntent(prepared);
+ await postJSON("/admin/api/asset-deploy/hash",{id:prepared.id,txHash});
+ presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
+ const report=await postJSON("/admin/api/asset-deploy/reconcile",{id:prepared.id});
+ if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
+ presentModalStatus("Deployment dokumentiert. Route bleibt bis zur BLS-Aktivierung gesperrt.","success");
+ el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+}
+async function recoverAssetDeployment(){
+ const task=selectedAssetTask;
+ if(!task)return;
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ const component=task.kind==="router"?task.id.includes(":")?
+   (workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="native"?"nativeRouter":
+     workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="synthetic"?"syntheticRouter":"collateralRouter"):"":
+   "gateway";
+ const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+ const id=chain.name+":"+task.asset+":"+component+":"+routeName;
+ const existing=(await get("/admin/api/chain-deploy/status")).intents.entries[id];
+ if(!existing)throw Error("Keine gespeicherte Asset-Transaktion");
+ if(existing.stage==="prepared"){
+  const txHash=window.prompt("Bereits gesendeten Wallet-Hash eingeben – niemals neu senden:","");
+  if(!txHash)throw Error("Unbekannter Broadcast-Status bleibt gesperrt");
+  await postJSON("/admin/api/asset-deploy/hash",{id,txHash});
+ }
+ const outcome=await postJSON("/admin/api/asset-deploy/reconcile",{id});
+ presentModalStatus("Wiederhergestellt: "+outcome.result.stage,"success");
+ if(outcome.result.stage==="documented"){
+  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+ }
+}
 async function openContractModal(chainName,component){
  const chain=workqueue?.inventory?.chains.find(c=>c.name===chainName);
  const infra=workqueue?.infrastructure?.find(c=>c.name===chainName);
  const part=infra?.components.find(x=>x.key===component);
  if(!chain||!part||part.status==="documented")return;
+ selectedAssetTask=null;el("modal-route-context").hidden=true;
  selectedDeployment={chainName,component};
  const title=coreTitles[component]||component;
  el("contract-modal-title").textContent=title+" · "+chainName;
@@ -207,6 +298,7 @@ async function openContractModal(chainName,component){
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
 }
 async function checkModalGas(){
+ if(selectedAssetTask){try{await previewAssetDeployment()}catch(e){presentModalStatus(e.message,"error");el("modal-deploy").disabled=true;}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const output=el("modal-gas-result");
@@ -232,6 +324,7 @@ async function checkModalGas(){
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
 }
 async function executeModalDeployment(){
+ if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){presentModalStatus("Transaktion prüfen: "+e.message+" · niemals doppelt senden","error");el("modal-recover").hidden=false;}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const button=el("modal-deploy");button.disabled=true;
@@ -261,6 +354,7 @@ async function executeModalDeployment(){
   "Abgleich erforderlich: "+e.message+". Keine zweite Transaktion senden.","error")}
 }
 async function recoverModalDeployment(){
+ if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment,id=chainName+":"+component;
  try{
@@ -321,6 +415,8 @@ async function loadMainWorkqueue(){
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
   deploymentReadiness.clear();
+  try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];}
+  catch{assetTasks=[];}
   renderAssets();renderInfrastructure();
   // Read-only evidence status lives independently from incomplete GitHub config.
   await Promise.all((data.infrastructure||[]).map(async chain=>{
@@ -356,7 +452,7 @@ async function loadJobs(){
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
 el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
-el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;});
+el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
 
 el("modal-gas-check").addEventListener("click",checkModalGas);
 el("modal-deploy").addEventListener("click",executeModalDeployment);
