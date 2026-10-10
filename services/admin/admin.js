@@ -93,11 +93,30 @@ async function loadFirstDeploy(){
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
+   '<div class="chain-actions"><label for="deployment-component-select">Chain-Contract</label><select id="deployment-component-select"><option value="blsVerifier">BLS Verifier (EIP-2537)</option><option value="validatorRegistry">ValidatorRegistry</option><option value="ism">Interchain Security Module</option><option value="factory">Permissionless Factory</option><option value="sourceRegistry">Source Registry</option></select><button type="button" class="outline" id="deployment-check-draft">Transaktion vorbereiten / Gas prüfen</button><small id="deployment-draft-result">Nur Simulation; kein Senden</small></div>'+ 
    '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
    '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" disabled title="Wartet auf commitgebundene Transaktionssimulation und geprüfte Sicherheitsnachweise">Deploy auf dieser Chain</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
    showSelectedDeployChain(data);loadRouteLifecycle();
+  });
+  el("deployment-check-draft").addEventListener("click",async()=>{
+   const node=el("deployment-draft-result"),chainName=selectedDeployChain;
+   node.textContent="Prüfe aktuellen Main-Stand und Transaktionsparameter …";
+   try{
+    const component=el("deployment-component-select").value;
+    const state=await currentWalletState();
+    const query="/admin/api/transaction-draft?chain="+encodeURIComponent(chainName)+
+      "&component="+encodeURIComponent(component)+
+      (state?.chainId===workqueue.inventory.chains.find(x=>x.name===chainName)?.chainId?
+       "&wallet="+encodeURIComponent(state.address):"");
+    const result=await get(query);
+    if(selectedDeployChain!==chainName)return;
+    node.textContent=result.draft.id+
+      (result.simulation?" · Gaslimit "+result.simulation.gasLimit+
+       " · Maximalwert "+result.simulation.totalWorstCaseWei+" Wei":" · Keine Wallet-Simulation")+
+      " · Kein Deployment autorisiert";
+   }catch(e){if(selectedDeployChain===chainName)node.textContent="Blockiert: "+e.message;}
   });
   el("deployment-switch-wallet").addEventListener("click",async()=>{
    try{
