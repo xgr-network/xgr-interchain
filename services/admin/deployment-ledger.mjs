@@ -16,6 +16,7 @@ const COMPONENTS=new Set([
 const EVENTS={
  "factory-router":{sig:"RouterDeployed(bytes32,address,address)",topicIndex:2},
  "factory-gateway":{sig:"RoutePrepared(bytes32,address,address)",topicIndex:3},
+ "factory-feevault":{sig:"RoutePrepared(bytes32,address,address)",topicIndex:3},
  "factory-registry":{sig:"RegistryDeployed(address)",topicIndex:1}
 };
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -46,19 +47,21 @@ function proveCreation(receipt,componentAddress,provenance){
   return {kind:"create"};
  }
  const event=EVENTS[provenance.kind];
- if(!event||!address(provenance.factory)||!equal(receipt.to,provenance.factory))
+ if(!event||!address(provenance.factory)||!equal(receipt.to,provenance.factory)||
+    (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
  const logs=receipt.logs||[];
  const matched=logs.some(log=>Array.isArray(log.topics)&&
    equal(log.address,provenance.factory)&&equal(log.topics[0],topic0)&&
-   equal(log.topics[event.topicIndex],topicAddress(componentAddress))&&
+   equal(log.topics[event.topicIndex],topicAddress(provenance.kind==="factory-feevault"?provenance.gateway:componentAddress))&&
    (!provenance.routeId || equal(log.topics[1],provenance.routeId))&&
    (!provenance.assetId || equal(log.topics[1],provenance.assetId)));
  if(!matched)throw Error("Factory did not emit the expected deployment event");
  return {kind:provenance.kind,factory:provenance.factory.toLowerCase(),
    ...(provenance.routeId?{routeId:provenance.routeId.toLowerCase()}:{}),
-   ...(provenance.assetId?{assetId:provenance.assetId.toLowerCase()}:{})};
+   ...(provenance.assetId?{assetId:provenance.assetId.toLowerCase()}:{}),
+   ...(provenance.kind==="factory-feevault"?{gateway:provenance.gateway.toLowerCase()}:{})};
 }
 
 /**
