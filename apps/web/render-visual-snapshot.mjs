@@ -13,8 +13,8 @@ const server=createServer(async(req,res)=>{
  const target=["/","/universe","/markets"].includes(path)?"index.html":path.slice(1);
  const full=resolve(root,target);
  if(!full.startsWith(root.endsWith(sep)?root:root+sep)){res.writeHead(403);res.end();return;}
- try{res.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream"});res.end(await readFile(full));}
- catch{res.writeHead(404);res.end();}
+ try{const file=await readFile(full);res.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream"});res.end(file);}
+ catch{if(!res.headersSent){res.writeHead(404);res.end();}}
 });
 await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
 try{
