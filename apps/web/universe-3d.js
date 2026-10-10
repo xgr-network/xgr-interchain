@@ -263,7 +263,18 @@ function createTopology(model){
 }
 // Exported for deterministic topology/asset tests, not for authorizing bridge operations.
 export const createUniverseTopology=createTopology;
+// A slow heliocentric sweep keeps the configured spokes anchored to XGR.
+function systemPosition(item,time,reduced=false){
+ if(item.portal)return [0,0,0];
+ const base=item.position,angle=reduced?0:time*0.0075;
+ return [base[0]*Math.cos(angle)-base[2]*Math.sin(angle),base[1],base[0]*Math.sin(angle)+base[2]*Math.cos(angle)];
+}
 function planetPosition(p,time){
+ const center=systemPosition(p.system,time);
+ const a=p.phase+time*p.speed,r=p.orbit,c=center;
+ return [c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r*.56,c[2]+Math.sin(a)*r*.31];
+}
+function deprecatedPlanetPosition(p,time){
  const a=p.phase+time*p.speed,r=p.orbit,c=p.system.position;
  return [c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r*.56,c[2]+Math.sin(a)*r*.31];
 }
@@ -338,7 +349,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  const focusKey=(key,close=false)=>{
   if(!available.has(key))return;
   selectedKey=key;focused=!compact;
-  wanted.target=[...available.get(key).position];
+  wanted.target=[...systemPosition(available.get(key),frame,reducedMotion)];
   const n=topology.planets.filter(p=>p.system.system.key===key).length;
   wanted.distance=close?10.5:clamp(15.5+n*.37,15.5,25);
   setFocusUI();
@@ -410,7 +421,14 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   }
   return bufferLine(positions);
  }
- function createOrbit(item,p){
+ function createDynamicPath(a,b,active){
+   const vertices=[],steps=56;
+   const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
+   for(let i=0;i<steps;i++){if(!active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
+   const buf=gpu.makeBuffer(gl.ARRAY_BUFFER,new Float32Array(vertices));
+   return {buffer:buf,count:vertices.length/3};
+  }
+  function createOrbit(item,p){
   const arr=[],N=80;
   for(let i=0;i<N;i++){
    const a=TWO_PI*i/N,b=TWO_PI*(i+1)/N,c=item.position;
@@ -492,7 +510,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  function updateLabels(vp,w,h,t){
   allPick.length=0;
   for(const [system,label] of labels){
-   const pos=projectionOf(system.position,vp,w,h);
+   const pos=projectionOf(systemPosition(system,t,reducedMotion),vp,w,h);
    const showSystem=(!focused||system.system.key===selectedKey||focusBlend<.35);
    const visible=showSystem&&pos&&pos.visible&&pos.x>45&&pos.x<w-45&&pos.y>30&&pos.y<h-48;
    label.hidden=!visible;
@@ -517,7 +535,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  function draw(now){
   if(disposed||!visible||!gl)return;
   const dt=last?Math.min((now-last)/1000,.07):0;last=now;frame+=dt;
-  const ease=reducedMotion?1:1-Math.exp(-dt*4.7);
+  if(focused&&selectedKey!==HUB)wanted.target=systemPosition(available.get(selectedKey),frame,reducedMotion);
+   const ease=reducedMotion?1:1-Math.exp(-dt*4.7);
   focusBlend=mix(focusBlend,focused?1:0,reducedMotion?1:1-Math.exp(-dt*4.5));
   camera.distance=mix(camera.distance,wanted.distance,ease);
   camera.yaw=mix(camera.yaw,wanted.yaw,ease);
@@ -543,17 +562,24 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
    const intensity=item.portal?.19:.15;
-   point(item.position,item.radius*3600,item.color,intensity,vp);
-   point(item.position,item.radius*1600,item.color,intensity*.67,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*1600,item.color,intensity*.67,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  if(focusBlend<.96)for(const link of paths)
+  if(focusBlend<.96)for(const link of paths){
+   const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
+   const vertices=[],steps=92;
+   const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
+   for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
+   gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
    line(link.geometry,link.active?[.45,.88,.72]:[.43,.61,.84],(link.active?.7:.35)*(1-focusBlend*.93),vp);
+  }
   if(focusBlend>.15)for(const ring of orbitPaths)
    if(ring.planet.system.system.key===selectedKey)
     line(ring.geometry,[.48,.66,.81],.24*focusBlend,vp);
   const entries=[];
-  for(const item of topology.systems)entries.push({type:"star",item,depth:Math.hypot(...sub(item.position,eye))});
+  for(const item of topology.systems)entries.push({type:"star",item,depth:Math.hypot(...sub(systemPosition(item,frame,reducedMotion),eye))});
   if(focusBlend>.15)for(const planet of topology.planets)
    if(planet.system.system.key===selectedKey)
     entries.push({type:"planet",planet,position:planetPosition(planet,frame),depth:0});
@@ -563,7 +589,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    if(entry.type==="star"){
     const item=entry.item;
     if(focused&&item.system.key!==selectedKey&&focusBlend>.9)continue;
-    body(gpu.sphere,item.position,item.radius,item.color,1,frame,IDENTITY,eye,vp);
+    body(gpu.sphere,systemPosition(item,frame,reducedMotion),item.radius,item.color,1,frame,IDENTITY,eye,vp);
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));

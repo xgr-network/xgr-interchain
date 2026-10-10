@@ -6,20 +6,24 @@ const safeDecimal=v=>typeof v==="string"&&/^(0|[1-9][0-9]*)(\.[0-9]+)?$/.test(v)
 const amount=v=>safeDecimal(v)?Number(v):null;
 export function verifiedMetrics(snapshot,assetId){
  const row=snapshot?.schemaVersion===1&&snapshot?.kind==="xita-asset-metrics-v1"&&snapshot.assets?.[assetId];
- if(!row||row.assetId!==assetId||row.verified!==true)return null;
+ if(!row||row.assetId!==assetId)return null;
+ const ledgerVerified=row.verified===true;
  const valuation=row.market||{},custody=row.custody||{},movement=row.movement||{};
  const price=valuation.status==="verified"&&finite(valuation.priceUsd)?valuation.priceUsd:null;
  const circulating=valuation.status==="verified"&&safeDecimal(valuation.circulatingRaw)&&Number.isInteger(valuation.decimals)&&valuation.decimals>=0&&valuation.decimals<=36?Number(valuation.circulatingRaw)/10**valuation.decimals:null;
- const marketCap=valuation.status==="verified"&&finite(valuation.marketCapUsd)&&price!==null&&circulating!==null?valuation.marketCapUsd:null;
+ const marketCap=valuation.status==="verified"&&finite(valuation.marketCapUsd)&&price!==null&&circulating!==null?valuation.marketCapUsd:
+  valuation.status==="market-data"&&valuation.source==="coingecko"&&finite(valuation.marketCapUsd)&&
+  finite(valuation.priceUsd)&&valuation.priceUsd>0&&finite(valuation.circulating)&&valuation.circulating>0
+    ?valuation.marketCapUsd:null;
  // Custody must be attested from verified balances with withdrawals and unrelated
  // incoming transfers excluded, independently per route's physical escrow.
- const locked= custody.status==="verified"&&custody.complete===true&&finite(custody.lockedUsd)&&
+ const locked= ledgerVerified&&custody.status==="verified"&&custody.complete===true&&finite(custody.lockedUsd)&&
  Array.isArray(custody.vaults)&&custody.vaults.length>0&&
  custody.vaults.every(x=>x.verified===true&&typeof x.chain==="string"&&typeof x.router==="string"&&safeDecimal(x.netLockedRaw)&&finite(x.valueUsd))&&
  new Set(custody.vaults.map(x=>x.chain.toLowerCase()+":"+x.router.toLowerCase())).size===custody.vaults.length
   ?Math.abs(custody.vaults.reduce((n,x)=>n+x.valueUsd,0)-custody.lockedUsd)<=Math.max(.000001,custody.lockedUsd*.00000001)?custody.lockedUsd:null:null;
  // One journey ID = one end-user transfer across XGR (not twice for two hops).
- const moved=movement.status==="verified"&&movement.complete===true&&finite(movement.movedUsd)&&
+ const moved=ledgerVerified&&movement.status==="verified"&&movement.complete===true&&finite(movement.movedUsd)&&
  Array.isArray(movement.journeys)&&
  movement.journeys.every(x=>typeof x.id==="string"&&x.id.length>0&&x.verified===true&&x.viaHub===true&&finite(x.valueUsd)&&Array.isArray(x.hops)&&x.hops.length>=1&&x.hops.length<=2&&x.hops.every(h=>h.includes("xgrchain")))&&
  new Set(movement.journeys.map(x=>x.id)).size===movement.journeys.length&&

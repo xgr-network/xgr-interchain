@@ -24,3 +24,11 @@ test("a single unverifiable asset invalidates aggregate totals",()=>{
  assert.equal(result.totals,null);
  assert.equal(result.assets.ABC.verified,false);
 });
+
+test("CoinGecko public market data does not fabricate locked collateral",()=>{
+ const c={assets:{ABC:{profile:{market:{priceSource:"coingecko",coingeckoId:"example-token"}},routes:{routes:[]}}}};
+ const m={records:{"example-token":{priceUsd:2,marketCapUsd:2000,circulating:1000,asOf:"2026-10-10T00:00:00Z"}}};
+ const rows=projectMetrics(c,null,m);
+ assert.equal(rows.assets.ABC.market.marketCapUsd,2000);
+ assert.equal(rows.assets.ABC.verified,false);assert.equal(rows.totals,null);
+});

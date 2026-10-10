@@ -9,7 +9,7 @@ const application={
  description:"A sample project with valid fields for testing the XITA onboarding manifest generation process.",
  canonicalChain:"base",canonicalAddress:"0x1234567890123456789012345678901234567890",
  decimals:18,targets:["xgrchain","polygon"],categories:["DeFi"],tags:["Cross-chain"],
- logoUrl:"https://example.org/logo.png",confirmed:true
+ logoUrl:"https://example.org/logo.png",priceSource:"none",confirmed:true
 };
 test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const b=buildManifestBundle(application,catalog);
@@ -40,4 +40,10 @@ test("reject unsafe public metadata",()=>{
 test("never leak private contact information into generated public files",()=>{
  const b=buildManifestBundle({...application,contact:"private@example.org"},catalog);
  assert.equal(JSON.stringify(b.files).includes("private@example.org"),false);
+});
+
+test("CoinGecko pricing metadata is recorded in generated profile",()=>{
+ const b=buildManifestBundle({...application,priceSource:"coingecko",coingeckoId:"ethereum"},catalog);
+ const p=JSON.parse(b.files["config/assets/EXMP/metadata.json"]);
+ assert.equal(p.market.priceSource,"coingecko");assert.equal(p.market.coingeckoId,"ethereum");
 });

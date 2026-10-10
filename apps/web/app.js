@@ -74,7 +74,7 @@ function markets(){
  '<td class="ux-leader-value">'+row.configuredRoutes+'</td></tr>').join("");
  return '<div class="ux-app ux-leaderboard"><div class="ux-kicker">XITA · ASSET DISCOVERY</div><div class="ux-leader-head"><div><h1>Explore <span>Tokens</span></h1>'+
  '<p class="ux-lead">Discover assets by verified locked collateral, unique interchain value moved through XGRChain and token market capitalization.</p></div>'+
- '<div class="ux-leader-info">Verified metrics only<br><small>Live indexer values appear when available</small></div></div>'+
+ '<div class="ux-leader-info">Locked and moved: on-chain verified<br><small>Market caps: external provider data when configured</small></div></div>'+
  '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(state.catalog.assets).length+'</strong></div>'+
  '<div><span>Verified custody TVL</span><strong>'+formatUsd(state.leaderboard?.totals?.lockedUsd)+'</strong></div>'+
  '<div><span>Moved through XGR</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
@@ -152,7 +152,7 @@ function captureJoin(){
  document.querySelectorAll("[data-join]").forEach(el=>{
   const key=el.dataset.join;
   if(el.type==="checkbox")d[key]=el.checked;
-  else if(key==="decimals")d[key]=Number(el.value);
+  else if(key==="decimals")d[key]=el.value===""?null:Number(el.value);
   else d[key]=el.value;
  });
  d.symbol=d.symbol.trim().toUpperCase();d.slug=d.slug.trim().toLowerCase();
@@ -169,7 +169,31 @@ async function runJoin(action){
   joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
  }
  const problems=validateStep(d,joinState.step,state.catalog.chains);
- if(problems.length){joinState.status="Complete: "+problems.join(", ");drawJoin();return;}
+ if(problems.length){
+   joinState.status="Please complete the required fields.";
+   const fields={name:"name",symbol:"symbol",slug:"slug",website:"website",
+     "Short description (15–280 characters)":"shortDescription",
+     "Full description (40–5000 characters)":"description",
+     "CoinGecko coin ID":"coingeckoId",
+     "ERC-20 contract address":"canonicalAddress",
+     "Canonical chain":"canonicalChain",Decimals:"decimals"};
+   drawJoin();
+   const errors=[];
+   for(const problem of problems){
+     const key=fields[problem]||Object.keys(fields).find(k=>problem.startsWith(k))&&fields[Object.keys(fields).find(k=>problem.startsWith(k))];
+     const field=key?document.querySelector('[data-join="'+key+'"]'):null;
+     if(field){
+       field.setAttribute("aria-invalid","true");
+       field.closest(".ja-field")?.classList.add("is-invalid");
+       const msg=document.createElement("span");msg.className="ja-field-error";msg.textContent=problem+" is required or invalid";
+       field.closest(".ja-field")?.appendChild(msg);errors.push(field);
+     }
+   }
+   const status=document.querySelector("#ja-status");
+   if(status)status.textContent="Please complete: "+problems.join(", ");
+   errors[0]?.focus();
+   return;
+ }
  if(action==="next"){joinState.step=Math.min(3,joinState.step+1);joinState.status="";drawJoin();return;}
  if(action==="submit"){
   joinState.status="Validating public token manifests…";drawJoin();

@@ -63,3 +63,7 @@ Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` 
 ## Alliance onboarding security
 
 `services/onboarding/manifests.mjs` generates valid public token manifests, a catalog update and a pending deployment index; PRs are **listing proposals only**, not route activation. `services/onboarding/server.mjs` can provide localhost-only `/api/xita/join/preview`. The publisher implementation prepares a GitHub draft PR but public `/submit` is intentionally closed pending signed project identity + short-lived scoped session. Never place a GitHub token in browser scripts, do not expose `/submit` directly to unauthenticated users. The public web continues to work if preview API is not configured; drafts can be exported locally.
+
+## Join price-source configuration
+
+The home chain must be selected explicitly (no default Base). Step 2 records the original ERC-20 address and optional CoinGecko ID; no asset bridge is enabled by selecting a chain. Onboarding validation requires valid canonical chain and contract. Price feeds are informational and not collateral or route proof.
