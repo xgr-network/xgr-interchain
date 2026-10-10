@@ -180,6 +180,38 @@ export async function publishDeploymentBatch(root,inputs,{
   if(r.ok)throw Error("Deployment receipt already exists: "+entry.path);
   if(r.status!==404)throw Error("Cannot confirm append-only GitHub receipt path");
  }
+ // Each asset has exactly one git-tracked index of its deployment receipts.
+ // This index is updated in the SAME Git commit as the immutable receipts.
+ // The operator never needs to copy addresses or edit JSON manually.
+ const byAsset=new Map();
+ for(const receipt of receipts){
+  if(receipt.asset===null)continue;
+  const arr=byAsset.get(receipt.asset)||[];
+  arr.push(deploymentReceiptPath(receipt));
+  byAsset.set(receipt.asset,arr);
+ }
+ for(const [asset,added] of byAsset){
+  const path="deployments/mainnet/assets/"+asset+".json";
+  const existing=await request("/contents/"+path+"?ref=main");
+  if(!existing.ok||typeof existing.json.content!=="string"||
+     existing.json.encoding!=="base64")
+    throw Error("Cannot read canonical deployment index for "+asset);
+  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\\s/g,""),"base64").toString("utf8"));
+  const local=JSON.parse((await import("node:fs")).readFileSync(
+    (await import("node:path")).join(root,path),"utf8"));
+  if(JSON.stringify(original)!==JSON.stringify(local))
+    throw Error("Asset deployment index on GitHub differs from approved main checkout");
+  if(original.schemaVersion!==2||original.asset!==asset||
+     original.assetId!==approvedWorkInventory(root).assets[asset].assetId||
+     !Array.isArray(original.receiptPaths))
+    throw Error("Deployment index identity mismatch for "+asset);
+  for(const file of added){
+   if(original.receiptPaths.includes(file))throw Error("Already indexed deployment receipt "+file);
+   original.receiptPaths.push(file);
+  }
+  original.receiptPaths.sort();
+  entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
+ }
  const commitInfo=await request("/git/commits/"+main);
  if(!commitInfo.ok||!SHA.test(commitInfo.json?.tree?.sha||""))
   throw Error("Cannot verify main Git tree");
