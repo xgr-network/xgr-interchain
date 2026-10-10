@@ -14,3 +14,11 @@ test("Market caps require valid public provider record",async()=>{
  assert.equal(snapshot.records.ethereum.marketCapUsd,100);
  assert.equal(snapshot.records.ethereum.priceUsd,2);
 });
+
+test("XGR CoinGecko id is configured in the canonical generated catalog",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ assert.deepEqual(configuredIds(catalog),["xgr"]);
+ assert.equal(catalog.assets.XGR.profile.market.priceSource,"coingecko");
+ assert.equal(catalog.assets.XGR.listing.status,"public");
+});
