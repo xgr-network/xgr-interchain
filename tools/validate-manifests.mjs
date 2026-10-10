@@ -102,13 +102,13 @@ export function validateCatalog({chains,assets,infrastructure}){
   check(assetId!==null||address(m.canonical?.tokenAddress),p+": missing original token address");
   check(d.kind==="asset-deployment"&&d.asset===name&&d.schemaVersion===2&&d.network==="mainnet"&&d.sourceManifest===p+"/asset.json"&&Array.isArray(d.receiptPaths),p+": invalid asset deployment binding");
   if(assetId!==null)check(d.assetId===assetId&&m.assetId===assetId,p+": canonical asset ID mismatch");
-  check(d.receiptPaths.every(x=>typeof x==="string"&&/^deployments\\/mainnet\\/receipts\\/[a-z][a-z0-9-]*\\/[a-f0-9]{64}-[a-f0-9]{40}\\.json$/.test(x)),p+": invalid deployment receipt reference");
+  check(d.receiptPaths.every(x=>typeof x==="string"&&/^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(x)),p+": invalid deployment receipt reference");
 
  }
  return errors;
 }
 export function validateRepository(root=ROOT){return validateCatalog(loadCatalog(root))}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{const problems=validateRepository();if(problems.length){for(const x of problems)console.error("INVALID: "+x);process.exitCode=1}else console.log("PASS: XETA v3.1.4 chain, asset, hub and deployment manifests")}
+ try{const problems=validateRepository();if(problems.length){for(const x of problems)console.error("INVALID: "+x);process.exitCode=1}else console.log("PASS: XITA v3.1.5 chain, asset, hub and deployment manifests")}
  catch(err){console.error("INVALID: "+err.message);process.exitCode=1}
 }
