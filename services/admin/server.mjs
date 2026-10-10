@@ -13,6 +13,7 @@ import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
 import {inspectConfiguredChain} from "./chain-preflight.mjs";
 import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
 import {deploymentJournal} from "./deployment-journal.mjs";
+import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -175,6 +176,18 @@ http.createServer(async(req,res)=>{
    const preflight=await inspectConfiguredChain({chain,core:observed.hyperlane,
     bootstrap});
    return reply(res,200,{ok:true,commit:queue.commit,preflight});
+  }
+  if(req.method==="GET"&&path==="/admin/api/deployment-readiness"){
+   const queue=await readOnlyWorkQueue(root);
+   const name=new URL(req.url,"http://localhost").searchParams.get("chain");
+   const chain=queue.inventory.chains.find(c=>c.name===name);
+   if(!chain)throw Error("Chain is not approved by GitHub main");
+   const boot=bootstrapPlan(root,chain);
+   const baseDir=process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
+     resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public");
+   const readiness=await readDeploymentReadiness({root,chain,inventory:queue.inventory,
+    boot,baseDir,mainCurrent:queue.githubApproved});
+   return reply(res,200,{ok:true,commit:queue.commit,readiness});
   }
   if(req.method==="GET"&&path==="/admin/api/first-deploy"){
    const queue=await readOnlyWorkQueue(root);
