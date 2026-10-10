@@ -43,11 +43,20 @@ export function currentMainViaGit(root,{
    timeout:12000,maxBuffer:8192,env:{...process.env,GIT_TERMINAL_PROMPT:"0"}}).trim()
 }={}){
  const origin=git(["remote","get-url","origin"]).trim();
- if(!/^(?:(?:git@)?github\\.com:|https:\\/\\/github\\.com\\/|ssh:\\/\\/git@github\\.com\\/)xgr-network\\/xgr-interchain(?:\\.git)?\\/?$/i.test(origin))
+ const canonicalOrigins=new Set([
+  "git@github.com:xgr-network/xgr-interchain.git",
+  "git@github.com:xgr-network/xgr-interchain",
+  "https://github.com/xgr-network/xgr-interchain.git",
+  "https://github.com/xgr-network/xgr-interchain",
+  "ssh://git@github.com/xgr-network/xgr-interchain.git",
+  "ssh://git@github.com/xgr-network/xgr-interchain"
+ ]);
+ if(!canonicalOrigins.has(origin))
   throw Error("Git remote origin is not the pinned xgr-network/xgr-interchain repository");
  const output=git(["ls-remote","--exit-code","origin","refs/heads/main"]).trim();
- const match=/^([0-9a-f]{40})\\s+refs\\/heads\\/main$/i.exec(output);
- if(!match)throw Error("Live Git remote main ref not independently verified");
+ const match=output.split(" ");
+ const valid=match.length===2&&/^[0-9a-f]{40}$/i.test(match[0])&&match[1]==="refs/heads/main";
+ if(!valid)throw Error("Live Git remote main ref not independently verified");
  return match[1].toLowerCase();
 }
 export async function liveMainCommit(root,options={}){
