@@ -34,3 +34,12 @@ test("GitHub outage and dirty checkout block deployment",async()=>{
  await assert.rejects(()=>currentMainCommit({fetcher:async()=>({ok:false,status:503})}),/unavailable/);
  assert.throws(()=>checkedLocalMain(".",{git:a=>a[0]==="symbolic-ref"?"main":a[0]==="rev-parse"?SHA:" M contracts/X.sol"}),/differs/);
 });
+
+test("main work inventory returns assets by canonical key",async()=>{
+ const {approvedWorkInventory}=await import("./main-gate.mjs");
+ const root=new URL("../../",import.meta.url).pathname;
+ const inventory=approvedWorkInventory(root);
+ assert.ok(inventory.assets.XGR);
+ assert.equal(inventory.assets.XGR.key,"XGR");
+ assert.equal(inventory.assets.XGR.routeCount,6);
+});
