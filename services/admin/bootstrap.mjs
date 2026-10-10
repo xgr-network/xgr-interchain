@@ -52,6 +52,7 @@ export function bootstrapPlan(root,chain){
   uint(reserve.perValidatorWei)&&
   BigInt(reserve.minimumWei)>=BigInt(reserve.maxExecutorReimbursementWei)&&
   BigInt(reserve.perValidatorWei)>=BigInt(reserve.minimumWei)&&uint(fee.targetWei)&&
+  fee.initialization==="factory-constructor-no-quorum"&&
   fee.governance==="validator-bls-quorum"&&Number.isInteger(fee.ttlSeconds)&&
   fee.ttlSeconds>=1&&fee.ttlSeconds<=600;
  const missing=[];
@@ -59,14 +60,15 @@ export function bootstrapPlan(root,chain){
  if(!snapshot.blockNumber)missing.push("Finalisierter XGR-PoS-Validator-Snapshot fehlt");
  if(!complete&&(!uint(reserve.minimumWei)||!uint(reserve.maxExecutorReimbursementWei)||!uint(reserve.perValidatorWei)))
   missing.push("Reserve-Parameter und Erstattungslimit fehlen");
- if(!uint(fee.targetWei))missing.push("Source-Chain-Gebühr in Wei nicht festgelegt");
+ if(!uint(fee.targetWei))missing.push("Initiale Source-Chain-Gebühr in Wei für Factory-Konstruktor fehlt");
+ if(fee.initialization!=="factory-constructor-no-quorum")missing.push("Fee-Bootstrap muss ohne Initialquorum im Factory-Konstruktor erfolgen");
  if(!complete&&!missing.length)missing.push("Bootstrap-Parameter inkonsistent");
  return {chain:chain.name,chainId:chain.chainId,domainId:chain.domainId,
   validatorCount:validators.length,expectedValidatorCount:expected.length,initialValidators:expected,setId:null,ready:complete,missing,
   reserveWei:complete?(BigInt(reserve.perValidatorWei)*BigInt(validators.length)).toString():null,
   proposedFeeWei:uint(fee.targetWei)?fee.targetWei:null,
   verifierAddress:addr(cfg.verifierAddress)?cfg.verifierAddress:null,
-  feeGovernance:fee.governance};
+  feeGovernance:fee.governance,feeInitialization:fee.initialization};
 }
 export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}={}){
  const chain=chains.find(c=>c.name===plan.chain);
@@ -99,7 +101,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   if(decodeUint(sourceDomain)!==BigInt(chain.domainId))throw Error("Source registry domain mismatch");
   result.feeWei=decodeUint(fee).toString();
   result.feeNonce=decodeUint(nonce).toString();
-  if(result.feeWei==="0")result.missing.push("Source-Chain-Fee-Quorum noch nicht ausgeführt");
+  if(result.feeWei==="0")result.missing.push("Source-Chain-Initialgebühr fehlt");
  }else result.missing.push("Source-Registry noch nicht deployed");
  result.verified=result.ready && Boolean(result.validatorSetId)&&result.feeWei!=="0"&&result.feeWei!==null;
  return result;
