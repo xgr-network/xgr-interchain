@@ -100,8 +100,9 @@ export function createChainOperator({
   if(entry.stage==="documented")return {stage:"documented",receiptPath:entry.receiptPath};
   if(entry.stage==="prepared")
    throw Error("Wallet hash not reconciled; inspect sender nonce before any retry");
-  if(entry.stage==="confirmed")
-   return {stage:"confirmed",message:"Transaction verified; GitHub recording may be retried without broadcast"};
+  // A confirmed transaction may have lost GitHub connectivity. Always
+  // re-verify the SAME tx and retry only the GitHub append, never broadcast.
+  const previouslyConfirmed=entry.stage==="confirmed";
   // A new main may have advanced independently after signature. Never replace
   // sourceCommit to evade the main-only publisher check.
   const {commit,infrastructure,bootstrap}=await approved(chain.name);
@@ -113,7 +114,7 @@ export function createChainOperator({
    throw Error("Recompiled artifact differs from original wallet-intent build");
   const result=await reconcileDeployedContract({
    root,entry,chain,bootstrap,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
-  journal.confirm(id,entry.txHash,{
+  if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
   const published=await publish(root,[result.input],{rpc});
