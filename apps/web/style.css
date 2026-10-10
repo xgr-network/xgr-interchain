@@ -420,3 +420,8 @@ a.ux-ranked-token{color:#c9e1fb;padding:5px 7px;text-decoration:none;border:1px 
 a.ux-ranked-token:hover{background:#1c3552}
 .ux-3d-focus{max-width:min(300px,calc(100% - 26px))}
 .ux-3d-stage.is-compact .ux-orbit-tools,.ux-3d-stage.is-compact .ux-ranked-tokens{display:none}
+
+/* Configured token planets remain discoverable without verified market metrics. */
+.ux-3d-stage[data-mode="system"] .ux-3d-asset-link{border-style:dashed}
+.ux-3d-stage[data-mode="system"] button.ux-3d-token{border-style:dashed;box-shadow:0 0 16px #6da6e633}
+.ux-3d-stage[data-mode="system"] button.ux-3d-token:focus-visible{outline:2px solid #c9e3ff;outline-offset:3px}
