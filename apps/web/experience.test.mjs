@@ -61,3 +61,14 @@ test("v3.1.5 token bridge remains disabled until verified deployment",()=>{
  assert.match(markup,/two independent source transactions/);
  assert.doesNotMatch(markup,/quoteILN|ILNGateway/);
 });
+
+test("selected chain details distinguish native and wrapped asset symbols",()=>{
+ const rich={...catalog,assets:{XGR:{...catalog.assets.XGR,metadata:{
+ canonical:{chain:"xgrchain"},representations:[
+ {chain:"xgrchain",representation:"native",symbol:"XGR"},
+ {chain:"base",representation:"synthetic",symbol:"wXGR"},
+ {chain:"polygon",representation:"synthetic",symbol:"wXGR"}]}}}};
+ const html=renderUniverse(buildExperienceModel(rich),"base");
+ assert.match(html,/wXGR/);
+ assert.match(html,/Wrapped/);
+});
