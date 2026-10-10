@@ -42,3 +42,31 @@ Expose only behind TLS and authenticated Nginx `/admin/`, with all API
 subpaths protected. The GitHub connection requires outbound access to
 the GitHub REST API. `XITA_GITHUB_TOKEN` is optional for public main SHA
 checks but required for issue status operations; rate limits may apply.
+
+## Automatic post-deployment GitHub address recording
+
+`deployment-ledger.mjs` now contains the trusted **backend-only** recorder
+for the future one-click wallet deployment executor. For each executed
+transaction, the recorder independently reads the receipt, canonical block,
+expected chain ID, confirmation depth and Ethereum **Keccak-256 runtime code
+hash**. Direct creations must match receipt.contractAddress; Factory
+subdeployments must match its factory event and caller. The expected runtime
+code fingerprint must come from the main-approved build, **not the browser**.
+
+Verified records are immutable files under
+`deployments/mainnet/receipts/<chain>/<transaction-hash>-<address>.json`.
+The whole transaction batch is atomically committed as one new fast-forward
+commit to GitHub main using a least-privilege GitHub writer token. Existing
+receipt paths are never overwritten. Files include addresses, tx/block hashes,
+block height, source commit, chain ID, deployer, code hash, Factory provenance
+and optional asset/route association. The writer does **not** invent or mark
+BLS route activation from a deployment receipt.
+
+**Important:** This module is NOT exposed as a generic POST endpoint. It
+must be invoked only by the future trusted deployment executor, after
+wallet transactions are created from a commit-pinned reviewed artifact plan.
+Because main advances when evidence is appended, the executor must persist
+the original approved source SHA in its durable journal and handle resuming
+a batch after the address-reporting commit. A failed GitHub write must not
+re-execute an already successful chain transaction. No deployment can occur
+until the remaining executable workflow and wallet integration are finished.
