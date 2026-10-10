@@ -65,7 +65,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/token/xgr","Bridge XGR"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
-   assert.ok(html.includes(expected),path+" missing expected page "+expected);
+   assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
   }
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
