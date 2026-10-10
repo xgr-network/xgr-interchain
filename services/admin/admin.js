@@ -89,12 +89,12 @@ async function loadFirstDeploy(){
   if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
    selectedDeployChain=data.chains[0]?.name;
   target.innerHTML='<h3>Deployment nach GitHub-Konfiguration</h3>'+
-   '<p>Jede freigegebene EVM-Chain aus GitHub main verwendet dieselbe Deployment-Pipeline. On-Chain-Aktionen werden erst nach verifizierter Artefakt-, BLS-, Wallet- und Journal-Freigabe aktiviert.</p>'+
+   '<p>Nur offene Aufgaben. Die nächste ausführbare Aktion steht oben; bereits erledigte Contracts werden nicht erneut angeboten.</p>'+
    '<label for="deployment-chain-select">Deployment-Chain</label> '+
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
-   '<div class="chain-actions"><label for="deployment-component-select">Chain-Contract</label><select id="deployment-component-select"><option value="blsVerifier">BLS Verifier (EIP-2537)</option><option value="validatorRegistry">ValidatorRegistry</option><option value="ism">Interchain Security Module</option><option value="factory">Permissionless Factory</option><option value="sourceRegistry">Source Registry</option></select><button type="button" class="outline" id="deployment-check-draft">Transaktion vorbereiten / Gas prüfen</button><small id="deployment-draft-result">Nur Simulation; kein Senden</small></div>'+ 
+   '<div class="chain-actions"><label for="deployment-component-select">Nächster Chain-Contract</label><select id="deployment-component-select"></select><button type="button" class="outline" id="deployment-check-draft">Gas für diesen Schritt prüfen</button><small id="deployment-draft-result"></small></div>'+ 
    '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
    '<details class="chain-bootstrap"><summary>Verifizierten Bootstrap und Chain-Parameter in GitHub main freigeben</summary>'+
    '<p>Die drei öffentlichen Validator-Beweise werden vom Server erneut kryptografisch geprüft. Nur die wirtschaftlichen Werte in Wei sowie das Gaslimit gibst du frei.</p>'+
@@ -108,7 +108,7 @@ async function loadFirstDeploy(){
    '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" title="Verifizierten Chain-Contract mit verbundener Wallet deployen">Deploy auf dieser Chain</button><button type="button" class="outline" id="deployment-recover">Transaktion wiederherstellen</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
-   showSelectedDeployChain(data);loadRouteLifecycle();
+   showSelectedDeployChain(data);loadRouteLifecycle();renderQueue();
   });
   el("deployment-check-draft").addEventListener("click",async()=>{
    const node=el("deployment-draft-result"),chainName=selectedDeployChain;
@@ -232,61 +232,88 @@ async function loadRouteLifecycle(){
       '</small></div>').join("")+'</div>').join("");
  }catch(e){if(node.isConnected)node.textContent="Routenplan nicht verfügbar: "+e.message;}
 }
+const deployTitle={blsVerifier:"BLS-Verifier auf dieser EIP-2537-Chain bereitstellen",
+ validatorRegistry:"ValidatorRegistry deployen",ism:"Interchain Security Module deployen",
+ factory:"Permissionless Factory deployen",sourceRegistry:"Source Registry über Factory deployen"};
+function renderPendingChainSteps(chain,readiness){
+ const pending=chain.steps.filter(s=>s.kind!=="verify"&&s.status!=="documented");
+ const selector=el("deployment-component-select"),old=selector.value;
+ selector.innerHTML=pending.map(s=>'<option value="'+esc(s.component)+'">'+
+  esc(deployTitle[s.component]||s.title)+'</option>').join("");
+ if(pending.some(s=>s.component===old))selector.value=old;
+ const next=pending[0];
+ el("selected-deploy-details").innerHTML='<div class="first-chain">'+
+  '<strong>'+esc(chain.name)+' · '+pending.length+' offene Chain-Contracts</strong>'+
+  (chain.verifierFormat==="compressed"?'<p>Nativer BLS-Verifier ist Bestandteil der XGRChain. Kein EIP-2537-Deployment erforderlich.</p>':'')+
+  (next?'<div class="first-step"><strong>Nächste Aufgabe: '+esc(deployTitle[next.component]||next.title)+
+   '</strong></div>':'<p>Alle Chain-Grundverträge dokumentiert. Weiter zum Routendeploy.</p>')+
+  (pending.length>1?'<details><summary>Weitere '+(pending.length-1)+' noch offene Contracts</summary>'+
+   pending.slice(1).map(s=>'<div class="first-step">'+esc(deployTitle[s.component]||s.title)+'</div>').join("")+'</details>':'')+'</div>';
+ const missing=(readiness?.missing||[]).filter(x=>!x.includes("BLS-Schlüssel")&&!x.includes("PoS-Validator-Snapshot"));
+ const bootstrapOpen=!readiness?.bootstrapReady||!readiness?.manifestMatchesEvidence;
+ const isVerifier=next?.component==="blsVerifier";
+ const status=el("deployment-execute-reason");
+ const action=el("deployment-execute");
+ action.disabled=!next||Boolean(workqueue?.readOnly)||(!isVerifier&&bootstrapOpen);
+ if(!next)status.textContent="Chain-Infrastruktur vollständig";
+ else if(workqueue?.readOnly)status.textContent="GitHub main ist nicht aktuell bestätigt";
+ else if(!isVerifier&&bootstrapOpen)status.textContent="Zuerst: verifizierten Bootstrap und Reserve/Fee/Gas freigeben";
+ else status.textContent="Die Wallet bestätigt jeden einzelnen Deploy separat";
+ const approve=el("approve-chain-bootstrap");
+ if(approve)approve.disabled=Boolean(workqueue?.readOnly)||Boolean(readiness?.manifestMatchesEvidence&&readiness?.bootstrapReady);
+ const summary=el("chain-live-preflight");
+ if(bootstrapOpen&&!isVerifier){
+  summary.textContent=readiness?.evidenceVerified?
+   readiness.verifiedValidatorCount+" Validatoren verifiziert · Bootstrap-Konfiguration noch freigeben":
+   "Bootstrap-Nachweise müssen auf dieser Zielchain noch geprüft werden";
+ }else if(next){
+  summary.textContent="Nächster Schritt: "+(deployTitle[next.component]||next.title);
+ }else summary.textContent="Keine offenen Chain-Contracts";
+ const details=document.querySelector("details.chain-bootstrap");
+ if(details)details.hidden=Boolean(readiness?.manifestMatchesEvidence&&readiness?.bootstrapReady);
+ return {pending,missing};
+}
 async function showSelectedDeployChain(data){
  const chain=data.chains.find(c=>c.name===selectedDeployChain);
  if(!chain)return;
- el("selected-deploy-details").innerHTML=
-  '<div class="first-chain"><strong>'+esc(chain.name)+' · '+esc(chain.verifiedComponents)+'/'+
-  esc(chain.totalSteps)+' Schritte dokumentiert</strong><small>Initialgebühr: '+
-  esc(chain.initialFeeWei===null?"offen":chain.initialFeeWei+" Wei")+'</small>'+
-  chain.steps.map(s=>'<div class="first-step"><span>'+esc(s.title)+'</span><small>'+
-   esc(s.status==="documented"?"Dokumentiert":s.blockers.join(" · ")||"Verifikation offen")+
-   '</small></div>').join("")+'</div>';
- const readinessNode=document.createElement("div");
- readinessNode.className="chain-bootstrap";
- el("selected-deploy-details").append(readinessNode);
- readinessNode.textContent="Prüfe BLS-Evidenz und Deployment-Parameter …";
+ renderPendingChainSteps(chain,null);
  try{
-  const {readiness:r}=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
-  if(selectedDeployChain===chain.name){
-   const lines=[
-    ["BLS-Validatoren",r.evidenceVerified?r.verifiedValidatorCount+" / 3 verifiziert":"Nicht vollständig geprüft"],
-    ["PoS-Snapshot",r.originSnapshotBlock===null?"Ausstehend":"Block "+r.originSnapshotBlock+" · "+r.snapshotConfirmedDepth+" Bestätigungen"],
-    ["GitHub main",r.mainCurrent?"Aktuell":"Nicht bestätigt"],
-    ["Bootstrap-Manifest",r.manifestMatchesEvidence?"Übereinstimmend":"Noch nicht übernommen"],
-    ["Source-Fee (Wei)",r.values.sourceFeeWei??"Offen"],
-    ["Mindestreserve (Wei)",r.values.minimumReserveWei??"Offen"],
-    ["Max. Executor-Erstattung (Wei)",r.values.maxExecutorReimbursementWei??"Offen"],
-    ["Reserve je Validator (Wei)",r.values.perValidatorReserveWei??"Offen"],
-    ["Wallet-Deployment","Einzelausführung mit GitHub-main-/BLS-/Build-/Gas-Gates"]
-   ];
-   const action=el("deployment-execute"),reason=el("deployment-execute-reason");
-   // No optimistic deployment readiness: server must authorize each press.
-   if(action)action.disabled=false;
-   if(reason)reason.textContent=r.missing.length?
-    "Bootstrap blockiert: "+r.missing.join(" · "):
-    "Vorbereitete Wallet-Transaktion wird bei jedem Klick vollständig geprüft";
-   readinessNode.innerHTML="<strong>Registry-Deployment · Vorprüfung</strong>"+
-    lines.map(([label,value])=>'<div class="first-step"><span>'+esc(label)+'</span><small>'+esc(value)+'</small></div>').join("")+
-    '<p>'+esc(r.missing.join(" · ")||"Bootstrap vollständig geprüft")+'</p>';
-  }
- }catch(e){if(selectedDeployChain===chain.name)readinessNode.textContent="Vorprüfung nicht verfügbar: "+e.message;}
- const pre=el("chain-live-preflight");
- pre.textContent="RPC-/Verifier-Prüfung läuft …";
- try{
-  const status=(await get("/admin/api/chain-preflight?chain="+encodeURIComponent(chain.name))).preflight;
+  const {readiness}=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
   if(selectedDeployChain!==chain.name)return;
-  pre.textContent=chain.name+": "+(status.basicRpcPreflightOK?
-   "RPC und Hyperlane Core OK":"Preflight offen oder fehlgeschlagen")+
-   " · BLS-Positivnachweis ausstehend · Keine Deploy-Freigabe"+
-   (status.error?" · "+status.error:"");
- }catch(e){if(selectedDeployChain===chain.name)pre.textContent="Preflight nicht verfügbar: "+e.message;}
+  renderPendingChainSteps(chain,readiness);
+ }catch(e){if(selectedDeployChain===chain.name)
+  el("deployment-execute-reason").textContent="Statusprüfung nicht möglich: "+e.message;}
+ try{
+  const preflight=(await get("/admin/api/chain-preflight?chain="+encodeURIComponent(chain.name))).preflight;
+  if(selectedDeployChain!==chain.name)return;
+  const node=el("chain-live-preflight");
+  node.textContent=(preflight.basicRpcPreflightOK?"RPC, Hyperlane und native/BLS-Prüfung OK":
+    "Sicherheitsprüfung blockiert: "+(preflight.error||"Preflight fehlt"))+
+    " · "+(chain.steps.filter(s=>s.kind!=="verify"&&s.status!=="documented").length)+" Grundverträge offen";
+ }catch(e){if(selectedDeployChain===chain.name)el("chain-live-preflight").textContent=
+  "RPC-Prüfung momentan nicht erreichbar: "+e.message;}
 }
+
 function renderQueue(){
  if(!workqueue)return;
- const items=workqueue.workItems||[];
- el("deployment-queue").innerHTML=items.map(item=>'<div class="route"><div><strong>'+esc(item.title)+'</strong><small>'+esc(item.reason)+'</small></div><span class="status blocked">Blockiert</span></div>').join("")||"<p>Keine offenen Deployments im aktuellen main.</p>";
+ const items=(workqueue.workItems||[]).filter(item=>{
+  if(item.kind==="validator-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.ready);
+  if(item.kind==="fee-bootstrap")return !workqueue.bootstrap?.some(p=>p.chain===item.chain&&p.proposedFeeWei);
+  return item.status!=="documented";
+ });
+ const scoped=items.filter(item=>item.chain===selectedDeployChain);
+ const other=items.filter(item=>item.chain!==selectedDeployChain);
+ const line=item=>'<div class="route"><div><strong>'+esc(item.title)+'</strong></div></div>';
+ el("deployment-queue").innerHTML=
+  '<p>Nur ausstehende Aufgaben. Die vollständige technische Fehleranalyse erscheint erst beim Start der jeweiligen Aktion.</p>'+
+  (scoped.length?scoped.slice(0,1).map(line).join(""):"<p>Keine weiteren offenen Aufgaben auf der ausgewählten Chain.</p>")+
+  (scoped.length>1?'<details><summary>'+ (scoped.length-1)+
+   ' weitere offene Aufgaben auf '+esc(selectedDeployChain)+'</summary>'+
+   scoped.slice(1).map(line).join("")+'</details>':"")+
+  (other.length?'<details><summary>'+other.length+' offene Aufgaben auf anderen Chains</summary>'+
+   other.map(line).join("")+'</details>':"");
 }
+
 function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
  for(const link of document.querySelectorAll(".sidebar [data-view]"))link.classList.toggle("active",link.dataset.view===name);
