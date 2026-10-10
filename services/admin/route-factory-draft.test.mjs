@@ -52,3 +52,14 @@ test("each direction gets its own route instance, same two router addresses reve
   route:{source:"base",destination:"xgrchain",router:addr(12),
    remoteRouter:addr(11),routeId:id,gateway:addr(18)},action:"prepare-route"}),/unprepared/);
 });
+
+test("generic ERC20 synthetic includes origin, metadata and salt",()=>{
+ const token=addr(70);
+ const erc={asset:"ALT",assetId,canonicalChain:"xgrchain",canonicalToken:token,
+  metadata:{name:"Alt Token",symbol:"ALT",decimals:18}};
+ const draft=factoryRouteDraft({asset:erc,source:base,destination:hub,
+  sourceInfrastructure:infra(base),destinationInfrastructure:infra(hub),
+  representation:representation("base","syntheticRouter",null),action:"deploy-router"});
+ assert.equal(draft.component,"syntheticRouter");
+ assert.ok(draft.transaction.data.length>400);
+});
