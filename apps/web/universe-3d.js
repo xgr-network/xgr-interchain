@@ -249,19 +249,9 @@ function createTopology(model){
   .map(c=>({from:byKey.get(HUB),to:byKey.get(c.key),
    active:model.routes.some(r=>(r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key)&&r.active)}))
   .filter(v=>v.from&&v.to);
+ // Orbit planets are populated on demand from indexed, eligible top-ranked assets.
+ // Never materialize every catalog token as a WebGL body.
  const planets=[];
- for(const item of systems){
-  const candidates=item.system.tokens.filter(token=>{
-   const rep=token.representations.find(r=>r.chain===item.system.key);
-   return Boolean(rep); // Do not invent planets without a chain representation.
-  });
-  for(let i=0;i<Math.min(candidates.length,16);i++){
-   // Concentric planetary families remain comfortably in view on focus.
-   planets.push({system:item,token:candidates[i],index:i,orbit:4.6+Math.floor(i/5)*2.45+(i%5)*.35,
-    radius:clamp(.48-(i*.009),.28,.48),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
-     inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
-  }
- }
  return {systems,planets,links,byKey};
 }
 // Exported for deterministic topology/asset tests, not for authorizing bridge operations.
