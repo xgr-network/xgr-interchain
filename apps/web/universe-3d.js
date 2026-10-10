@@ -1,3 +1,4 @@
+import {makeStellarDisc,placeStellarDisc,makeSystemOrbitTrack} from "./universe-scene.js";
 import {representationFor} from "./token-representation.js";
 // XITA Universe 3D v2 — mouse-first, hierarchical exploration using native WebGL.
 // All chain systems, tokens and configured hub/spoke paths come from catalog.json.
@@ -439,7 +440,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
   return bufferLine(arr);
  }
- let paths=[],orbitPaths=[],stars=null,pointBuffer=null;
+ let paths=[],orbitPaths=[],stellarDiscs=[],systemTracks=[],stars=null,pointBuffer=null;
  function initialize(){
   try{
    gl=canvas.getContext("webgl",{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:false,powerPreference:"low-power"});
@@ -456,6 +457,13 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    pointBuffer=gpu.makeBuffer(gl.ARRAY_BUFFER,new Float32Array([0,0,0]));
    paths=topology.links.map(link=>({...link,geometry:createPath(link.from.position,link.to.position,link.active)}));
    orbitPaths=topology.planets.map(planet=>({planet,geometry:createOrbit(planet.system,planet)}));
+    stellarDiscs=topology.systems.map(item=>{
+     const local=makeStellarDisc(item),scratch=new Float32Array(local.length);
+     return {item,local,scratch,buffer:gpu.makeBuffer(gl.ARRAY_BUFFER,scratch),count:local.length/3};
+    });
+    systemTracks=topology.systems.filter(item=>!item.portal).map(item=>({
+     item,geometry:bufferLine(makeSystemOrbitTrack(item))
+    }));
    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
    gl.enable(gl.BLEND);
    root.dataset.renderer="webgl";
@@ -475,7 +483,22 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform4f(shader.color,color[0],color[1],color[2],alpha);
   gl.drawArrays(gl.LINES,0,geometry.count);
  }
- function point(position,size,color,opacity,vp,background=false){
+ function dustCloud(disc,center,vp,time,opacity){
+   const positions=placeStellarDisc(disc.local,center,time,disc.item,disc.scratch);
+   gl.bindBuffer(gl.ARRAY_BUFFER,disc.buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,positions,gl.DYNAMIC_DRAW);
+   const sp=gpu.sprites;
+   gl.useProgram(sp.p);
+   gl.enableVertexAttribArray(sp.pos);
+   gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
+   gl.uniformMatrix4fv(sp.vp,false,vp);
+   gl.uniform4f(sp.color,...disc.item.color,opacity);
+   gl.uniform1f(sp.size,disc.item.portal?1.8:1.35);
+   gl.uniform1f(sp.fixed,1);
+   gl.uniform1f(sp.background,1);
+   gl.drawArrays(gl.POINTS,0,disc.count);
+  }
+  function point(position,size,color,opacity,vp,background=false){
   const shader=gpu.sprites;
   gl.useProgram(shader.p);
   gl.bindBuffer(gl.ARRAY_BUFFER,pointBuffer);
@@ -563,12 +586,14 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=item.portal?.19:.15;
+   const intensity=item.portal?.32:.13;
    point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity,vp);
    point(systemPosition(item,frame,reducedMotion),item.radius*1600,item.color,intensity*.67,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  if(focusBlend<.96)for(const link of paths){
+  if(focusBlend<.65)for(const track of systemTracks)
+    line(track.geometry,[.34,.47,.65],.11*(1-focusBlend),vp);
+   if(focusBlend<.96)for(const link of paths){
    const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
    const vertices=[],steps=92;
    const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
@@ -600,7 +625,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));
-     const presence=focused?focusBlend:.84;
+     const presence=focused?focusBlend:.74;
     if(presence>.45)point(entry.position,p.radius*1400,col,.11*presence,vp);
     body(gpu.sphere,entry.position,p.radius*presence,col,0,frame,IDENTITY,eye,vp);
     if(p.index%3===1&&presence>.82)body(gpu.torus,entry.position,p.radius*1.72,
