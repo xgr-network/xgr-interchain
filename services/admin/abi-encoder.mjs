@@ -1,6 +1,7 @@
 // Minimal, strict ABI encoder for the constructors used by XITA v3.1.5.
 // No browser-supplied ABI, selectors, constructor arguments or arbitrary calls.
 const UINT=/^uint(8|32|64|256)$/;
+const HASH=/^0x[0-9a-f]{64}$/i;
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/;
 const BYTES=/^0x(?:[0-9a-fA-F]{2})*$/;
 const word=n=>{
@@ -53,6 +54,10 @@ export function encodeAbi(types,values){
   if(dynamic(type)){
    const tail=dynamicChunk(type,values[i]);const head=word(offset);
    offset+=tail.length/2;tails.push(tail);return head;
+  }
+  if(type==="bytes32"){
+   if(!HASH.test(values[i]||""))throw Error("Invalid ABI bytes32");
+   return values[i].slice(2).toLowerCase();
   }
   return type==="address"?address(values[i]):uint(type,values[i]);
  });
