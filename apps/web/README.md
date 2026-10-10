@@ -1,15 +1,49 @@
-# XETA standalone web UI
+# XITA standalone web UI
 
-Serve apps/web as a static site with **SPA fallback to index.html**. Deploy at xeta.xgr.network after completing all security gates.
+Status: visual frontend implemented. **No production bridge is active.**
 
-The website is built from the authoritative repository inventory:
+## Pages
+
+- `/`: dashboard, configured inventories and journey planner
+- `/universe`: interactive chain systems; choose a system, then open its token
+- `/markets`: searchable token directory
+- `/token/<slug>`: independent token detail page and its own dedicated bridge panel
+- `/routes`: configured directional routes and explicitly unverified activation status
+- `/join`: offline token application draft, JSON export only
+
+There is **no** standalone legacy bridge or `/bridge` route. The old XGR/Base
+v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
+permissionless but activation remains fail-closed pending independent BLS safety
+proof and verified reciprocal route deployment.
+
+## Transfer UI security contract
+
+The v3.1.5 transfer panel is an interactive **route-planning preview only**,
+not an executable mock bridge. Wallet connection reads account, chain ID and
+native wallet gas balance; no contracts are called or approved. The send button
+is explicitly disabled. Do **not** revive v3.1.4 `quoteILN`, `bridge`,
+`ILNGateway` or legacy governance calls as a shortcut.
+
+When the v3.1.5 gateway adapter, deployment manifests, fee journals, and
+live route-safety proofs are finished, the token panel can execute the new
+ABI flow only after verifying on-chain source and destination contracts,
+the reciprocal route pairing and route activation. A Base -> Polygon route
+is **two independently executed hops** through XGRChain 1643, never a
+direct external-to-external transfer. A second hop sponsor is not implemented.
+
+Universe paths visualize topology and configured inventory only; never infer
+live activation from an illustration or an asset listing.
+
+## Checks
 
 ```sh
-node tools/build-xeta-web-catalog.mjs
-node --test apps/web/keccak.test.mjs
 node tools/build-xeta-web-catalog.mjs --check
+node --test apps/web/experience.test.mjs apps/web/keccak.test.mjs
+node --check apps/web/app.mjs
+node --check apps/web/experience.mjs
+node --check apps/web/wallet-core.mjs
 ```
 
-The UI uses an injected EIP-1193 EVM wallet and the onchain ILNGateway's quoteILN/bridge functions. It blocks unknown, unverified, or unactivated routes, and checks the canonical ILN Registry immediately before quotes. Users must approve ERC20 amounts to the **gateway**. Delivery requires destination Mailbox.delivered(messageId); submission alone is not success.
-
-Join Alliance creates a local JSON draft only; it does not pretend to send an application to a configured server. Live pricing, volume, indexing and recovery must be independently verified before being advertised.
+The static site requires SPA fallback. Always review routes and wallet behavior
+in a real browser before deploying. No wallet private keys or secret seeds
+are requested.
