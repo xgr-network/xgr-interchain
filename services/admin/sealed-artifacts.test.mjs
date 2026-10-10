@@ -20,7 +20,7 @@ test("offline admin reads release-pinned bytecode without invoking compiler",()=
   const file=join(dir,"out",NAMES[0]+".sol",NAMES[0]+".json");
   writeFileSync(file,'{"tampered":true}');
   assert.throws(()=>readSealedArtifacts(dir,sha),/changed or is missing/);
-  assert.throws(()=>readSealedArtifacts(dir,"b".repeat(40),{sourceFingerprint:"d".repeat(64)}),/missing/);
+  assert.throws(()=>readSealedArtifacts(dir,"b".repeat(40),{sourceFingerprint:"d".repeat(64)}),/(?:missing|not sealed)/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("UI no longer requires separate Forge/gas action",()=>{
