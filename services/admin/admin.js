@@ -153,17 +153,22 @@ async function openContractModal(chainName,component){
   for(const [key,val] of Object.entries(bootstrapFields)){
    const input=el("modal-"+key);
    const suggested=proposal?.values?.[key];
-   input.value=val===null||val===undefined?(suggested===undefined?"":String(suggested)):String(val);
-   input.dataset.source=(val===null||val===undefined)?"unapproved-estimate":"main";
-   input.title=input.dataset.source==="main"?"Wert aus GitHub main":"Unverbindlicher Vorschlag auf Basis des aktuellen Gaspreises";
+   const approved=val!==null&&val!==undefined;
+   input.value=approved?String(val):"";
+   input.placeholder=!approved&&suggested!==undefined?String(suggested):"Nicht festgelegt";
+   input.dataset.source=approved?"main":"unset";
+   input.title=approved?"Freigegebene GitHub-main-Konfiguration":"Nicht beschlossen. Vorschlag steht nur als Platzhalter, nicht als Wert.";
   }
   const explanation=el("modal-parameter-note");
   if(explanation)explanation.textContent=proposal?
-   "Vorschläge aus Gaspreis "+moneyInWei(proposal.gasPriceWei,chain)+
-   " pro Gas. Annahmen: 500.000 Gas Erstattung, 750.000 Gas Mindestreserve, "+
-   "1.000.000 Gas Anfangsreserve, 100 Gas Source-Fee; Destination-Gaslimit 500.000. "+
-   "Nicht freigegeben, alle Werte editierbar.":
-   "Für fehlende Parameter konnte kein Gaspreis-Vorschlag ermittelt werden.";
+   "QUELLE: Genehmigte Werte stammen aus GitHub main. Leere Felder sind NICHT genehmigt; "+
+   "der graue Platzhalter ist nur eine Gaspreis-Schätzung. Quelle RPC: "+
+   moneyInWei(proposal.gasPriceWei,chain)+"/Gas. Annahmen: 500.000 Gas Executor, "+
+   "750.000 Gas Mindestreserve, 1.000.000 Gas Anfangsreserve. "+
+   "Die Source-Fee ist eine eigene wirtschaftliche Entscheidung – keine gemessene Gasgebühr. "+
+   "Vorschlagswerte müssen bewusst eingetragen und bestätigt werden.":
+   "QUELLE: GitHub main für freigegebene Werte; fehlende Werte bleiben leer. "+
+   "Kein geprüfter Vorschlag verfügbar.";
 
   el("modal-parameters").hidden=!approvalNeeded;
   el("modal-approve").hidden=!approvalNeeded;
