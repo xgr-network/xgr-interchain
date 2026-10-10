@@ -26,6 +26,7 @@ contract XETATokenFactoryV315 {
     address public immutable merkleTreeHook;
     address public immutable destinationIsm;
     uint256 public immutable defaultDestinationGasLimit;
+    uint256 public immutable initialSourceFeeWei;
 
     XGRILNRegistryV315 public registry;
 
@@ -50,13 +51,13 @@ contract XETATokenFactoryV315 {
 
     constructor(
         uint64 chainId_, uint32 domain_, address validatorRegistry_,
-        address mailbox_, address hook_, address ism_, uint256 gasLimit_
+        address mailbox_, address hook_, address ism_, uint256 gasLimit_, uint256 initialSourceFeeWei_
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
             (chainId_ == 1643) != (domain_ == 1643) ||
             validatorRegistry_ == address(0) || validatorRegistry_.code.length == 0 ||
             mailbox_ == address(0) || mailbox_.code.length == 0 ||
-            hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0)
+            hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0 || initialSourceFeeWei_ == 0)
             revert InvalidConfiguration();
         IXGRInterchainValidatorSetV2 validators =
             IXGRInterchainValidatorSetV2(validatorRegistry_);
@@ -69,12 +70,13 @@ contract XETATokenFactoryV315 {
         merkleTreeHook = hook_;
         destinationIsm = ism_;
         defaultDestinationGasLimit = gasLimit_;
+        initialSourceFeeWei = initialSourceFeeWei_;
     }
 
     function deployRegistry() external returns (address) {
         if (address(registry) != address(0)) return address(registry);
         XGRILNRegistryV315 r = new XGRILNRegistryV315(
-            localChainId, localDomain, validatorRegistry, address(this)
+            localChainId, localDomain, validatorRegistry, address(this), initialSourceFeeWei
         );
         registry = r;
         emit RegistryDeployed(address(r));
