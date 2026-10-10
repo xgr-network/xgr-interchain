@@ -43,6 +43,7 @@ export async function readDeploymentReadiness({
   snapshotConfirmedDepth:null,manifestMatchesEvidence:false,
   bootstrapReady:boot.ready===true,
   deploymentExecutable:false,transactionSimulation:"not-available",
+  verifiedSnapshot:null,
   values:{sourceFeeWei:config.sourceFee?.targetWei??null,
    minimumReserveWei:config.reserve?.minimumWei??null,
    maxExecutorReimbursementWei:config.reserve?.maxExecutorReimbursementWei??null,
@@ -58,6 +59,7 @@ export async function readDeploymentReadiness({
    initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})});
   if(!sameEvidence(candidate.validatorSnapshot,prepared.candidate.validatorSnapshot,initial.validators))
    throw Error("Local candidate differs from independently verified public evidence");
+  report.verifiedSnapshot=prepared.candidate.validatorSnapshot;
   report.evidenceVerified=true;
   report.verifiedValidatorCount=prepared.report.verifiedValidatorCount;
   report.originSnapshotBlock=prepared.report.snapshotBlock;
