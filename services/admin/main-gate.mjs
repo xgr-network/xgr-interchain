@@ -54,10 +54,10 @@ export function currentMainViaGit(root,{
  if(!canonicalOrigins.has(origin))
   throw Error("Git remote origin is not the pinned xgr-network/xgr-interchain repository");
  const output=git(["ls-remote","--exit-code","origin","refs/heads/main"]).trim();
- const match=output.split(" ");
+ const match=output.split(/\s+/);
  const valid=match.length===2&&/^[0-9a-f]{40}$/i.test(match[0])&&match[1]==="refs/heads/main";
  if(!valid)throw Error("Live Git remote main ref not independently verified");
- return match[1].toLowerCase();
+ return match[0].toLowerCase();
 }
 export async function liveMainCommit(root,options={}){
  try{return await currentMainCommit(options)}
