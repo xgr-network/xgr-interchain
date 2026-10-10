@@ -44,7 +44,7 @@ test("dashboard and inventory do not invent real-time operational metrics",()=>{
   assert.match(renderRoutes(model),/Source-native validator fees are chain-wide/);
 });
 test("catalog-sourced strings are escaped in markup",()=>{
-  const hostile={...catalog,chains:{...catalog.chains,base:{...catalog.chains.base,name:'<img src=x onerror=alert(1)>'}}};
+  const hostile={...catalog,chains:{...catalog.chains,foreign:{chainId:999,domainId:999,name:'<img src=x onerror=alert(1)>',nativeCurrency:{symbol:'ETH'}}}};
   const model=buildExperienceModel(hostile);
   const html=renderUniverse(model);
   assert.doesNotMatch(html,/<img/);
