@@ -1,4 +1,5 @@
 import {representationFor} from "./token-representation.js";
+import {verifiedMetrics,formatUsd} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
 // The token detail page remains the only bridge execution entry point.
@@ -83,12 +84,24 @@ export function universeMap(model,selected,compact=false){
     '<div class="ux-map-legend">XGRChain is the mandatory transit hub · Dashed paths are not proof of activation</div></div>';
 }
 
-function systemDetails(model,selected){
+function systemDetails(model,selected,metrics=null){
   const system=model.chains.find(c=>c.key===selected)||model.hub||model.chains[0];
   if(!system)return '<p class="ux-muted">No configured chains found.</p>';
   const associated=model.routes.filter(r=>r.source===system.key||r.destination===system.key);
   const active=associated.filter(r=>r.active).length;
   const list=system.tokens.slice(0,5).map(t=>{const rep=representationFor(t,system.key);return '<a class="ux-asset" data-nav href="'+esc(tokenLink(t))+'"><span class="ux-dot"></span><span>'+esc(rep.symbol)+'</span><span class="ux-small">'+esc(rep.label)+'</span><span class="ux-arrow">↗</span></a>';}).join("");
+  const marketRows=system.tokens.map(token=>{
+   const facts=verifiedMetrics(metrics,token.id);
+   const row=metrics?.assets?.[token.id];
+   if(facts?.marketCapUsd===null||facts?.marketCapUsd===undefined||
+      row?.market?.source!=="coingecko"||row.market.status!=="market-data")return "";
+   const date=typeof row.market.asOf==="string"&&Number.isFinite(Date.parse(row.market.asOf))?
+    new Date(row.market.asOf).toLocaleString("en-US",{timeZone:"UTC",dateStyle:"medium",timeStyle:"short"})+" UTC":"Time unavailable";
+   return '<div class="ux-market-card"><span class="ux-kicker">'+esc(token.id)+' · COINGECKO</span>'+
+    '<strong>'+esc(formatUsd(facts.marketCapUsd))+'</strong>'+
+    '<span class="ux-small">Asset-wide market cap · not '+esc(system.label)+' TVL</span>'+
+    '<span class="ux-small">Price: '+esc(formatUsd(row.market.priceUsd))+' · '+esc(date)+'</span></div>';
+  }).filter(Boolean).join("");
   return '<div class="ux-panel-head"><span class="ux-kicker">Selected stellar system</span><span class="ux-label">'+(system.key===HUB?"Interchain hub":"Spoke network")+'</span></div>'+
     '<h3 class="ux-detail-name">'+esc(system.label)+'</h3><p class="ux-muted">'+(system.key===HUB?
     "XGRChain is the mandatory interchain transit point. Transfers between external systems require two independent route operations.":
@@ -97,6 +110,7 @@ function systemDetails(model,selected){
     '<div><span>Native gas asset</span><strong>'+esc(system.nativeCurrency)+'</strong></div>'+
     '<div><span>Configured directed routes</span><strong>'+associated.length+'</strong></div>'+
     '<div><span>Verified active routes</span><strong>'+active+'</strong></div></div>'+
+    (marketRows?'<h4>Market data</h4>'+marketRows:'')+
     '<h4>Tokens on this system</h4>'+(list||'<p class="ux-muted">No listed token representations yet.</p>')+
     (system.tokens.length>5?'<p class="ux-small">+'+(system.tokens.length-5)+' more tokens · <a data-nav href="/markets">Browse directory →</a></p>':"");
 }
@@ -201,7 +215,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed"){
     '<div class="ux-discovery-assets">'+model.assets.slice(0,4).map(a=>'<a data-nav class="ux-discovery-item" href="'+esc(tokenLink(a))+'"><span class="ux-token-sphere"></span><strong>'+esc(a.id)+'</strong><span>Explore ↗</span></a>').join("")+
     '<a data-nav class="ux-discovery-item" href="/markets"><strong>All assets</strong><span>Directory ↗</span></a></div></section></div>';
 }
-export function renderUniverse(model,selected=HUB){
+export function renderUniverse(model,selected=HUB,metrics=null){
   const active=model.routes.filter(r=>r.active).length;
   const total=model.chains.length;
   return '<div class="ux-app ux-universe-page"><div class="ux-universe-hero"><div class="ux-kicker">INTERCONNECTED WORLDS · THE XITA UNIVERSE</div>'+
@@ -211,7 +225,7 @@ export function renderUniverse(model,selected=HUB){
     '<div class="ux-universe-layout"><div class="ux-universe-main"><div class="ux-map-bar"><span class="ux-kicker">SYSTEM MAP · '+total+' CONFIGURED</span>'+
     '<span class="ux-small">'+active+' verified active directed routes</span></div>'+'<div id="xita-3d" class="ux-3d-stage"><canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive three dimensional XITA universe. Drag to rotate, scroll to zoom, use arrow keys."></canvas><div class="ux-3d-labels" aria-hidden="true"></div><div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGR hub">◎ XGR Hub</button></div><div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3><p class="ux-3d-focus-count"></p><div class="ux-3d-asset-links"></div></div><div class="ux-3d-hint">Drag to orbit · Scroll to zoom · Right-drag to pan · Click a star to explore</div><div class="ux-3d-status">Reading configured routes</div></div>'+
     '<div class="ux-map-caption">XGRChain is the only intermediate system. Paths indicate eligible topology; unactivated routes cannot bridge.</div></div>'+
-    '<aside class="ux-panel ux-details" id="ux-selected-details" aria-live="polite">'+systemDetails(model,selected)+'</aside></div>'+
+    '<aside class="ux-panel ux-details" id="ux-selected-details" aria-live="polite">'+systemDetails(model,selected,metrics)+'</aside></div>'+
     '<section class="ux-panel ux-below"><div><div class="ux-kicker">BEYOND THE STAR MAP</div><h2>All configured systems</h2><p class="ux-muted">The map shows a limited number of systems to remain readable as XITA grows. The directory includes every configured chain.</p></div>'+
     '<div class="ux-universe-directory">'+model.chains.map(c=>'<button type="button" data-xita-system="'+esc(c.key)+'" class="ux-directory-item'+(selected===c.key?" is-selected":"")+'">'+
     '<span class="ux-chain-symbol'+(c.key===HUB?" is-hub":"")+'"></span><strong>'+esc(c.label)+'</strong><small>'+c.tokens.length+' assets</small><span>Explore ↗</span></button>').join("")+'</div></section></div>';
