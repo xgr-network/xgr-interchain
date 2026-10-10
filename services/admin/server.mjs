@@ -16,6 +16,7 @@ import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {planCatalogRoutes} from "./route-lifecycle.mjs";
 import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
+import {pendingLiveRouteTasks} from "./route-live.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
 import {createAssetOperator} from "./asset-operator.mjs";
 
@@ -220,7 +221,8 @@ http.createServer(async(req,res)=>{
    const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const {graph:lifecycle,tasks}=nextAssetRouteTasks(queue.inventory,infrastructure);
-   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks});
+   const pending=await pendingLiveRouteTasks(tasks,queue.inventory.chains,infrastructure,probe);
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending});
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/preview"){
    const item=await bodyJSON(req);
