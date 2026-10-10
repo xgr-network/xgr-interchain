@@ -218,12 +218,10 @@ function render(){
  }));
  document.querySelector("#ux-leader-search")?.addEventListener("input",event=>{
    state.leaderboardSearch=event.target.value;
-   // Preserve keyboard focus and caret position while sorting the table.
-   const tbody=document.querySelector(".ux-leader-table tbody");
-   if(!tbody)return;
-   const rows=rankAssets(buildLeaderboardRows(state.catalog,state.leaderboard),state.leaderboardSort,state.leaderboardDir)
-    .filter(row=>(row.name+" "+row.id).toLowerCase().includes(state.leaderboardSearch.toLowerCase()));
-   tbody.querySelectorAll("tr").forEach(tr=>tr.hidden=!rows.some(row=>tr.dataset.token===row.id));
+   const position=event.target.selectionStart;
+   render();
+   const field=document.querySelector("#ux-leader-search");
+   if(field){field.focus();if(typeof position==="number")field.setSelectionRange(position,position);}
  });
  document.querySelector("#application")?.addEventListener("submit",application);
  document.querySelector("#search")?.addEventListener("input",e=>{
