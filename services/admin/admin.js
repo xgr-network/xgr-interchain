@@ -80,6 +80,14 @@ async function refreshWalletBalances(){
   el("wallet-balances").textContent=balances.map(([name,b])=>name+": "+b).join(" · ");
  }catch(e){el("wallet-status").textContent=e.message;}
 }
+async function loadFirstDeploy(){
+ const target=el("first-deploy-plan");if(!target)return;
+ try{
+  const data=await get("/admin/api/first-deploy");
+  target.innerHTML='<h3>Erster Einsatz: Base ↔ XGRChain</h3><p>Vorbereitung / nur Leseansicht. Die Blockchain-Ausführung bleibt bis zur vollständigen Prüfung gesperrt.</p>'+
+   data.chains.map(c=>'<div class="first-chain"><strong>'+esc(c.name)+' · '+esc(c.verifiedComponents)+'/'+esc(c.totalSteps)+' Schritte dokumentiert</strong><small>Initialgebühr: '+esc(c.initialFeeWei===null?"offen":c.initialFeeWei+" Wei")+'</small><div>'+c.steps.map(s=>'<div class="first-step"><span>'+esc(s.title)+'</span><small>'+esc(s.status==="documented"?"Dokumentiert":s.blockers.join(" · ")||"Verifikation offen")+'</small></div>').join("")+'</div></div>').join("");
+ }catch(e){target.textContent="Erster Deployment-Plan nicht verfügbar: "+e.message;}
+}
 function renderQueue(){
  if(!workqueue)return;
  const items=workqueue.workItems||[];
@@ -95,7 +103,7 @@ async function loadMainWorkqueue(){
   const data=await get("/admin/api/workqueue");
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
-  renderAssets();renderInfrastructure();renderQueue();
+  renderAssets();renderInfrastructure();renderQueue();loadFirstDeploy();
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
 async function check(){
