@@ -44,7 +44,7 @@ jobs:
           node tools/validate-manifests.mjs
           node --test tools/validate-manifests.test.mjs
           node tools/build-xeta-web-catalog.mjs --check
-          node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs
+          node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/onboarding/manifests.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash
@@ -71,6 +71,8 @@ jobs:
         run: |
           set -euo pipefail
           find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check services/onboarding/server.mjs
+          node --check services/onboarding/manifests.mjs
           node --check services/admin/admin.js
           node --check services/admin/wallet.js
           grep -q 'type="module" src="/admin/admin.js"' services/admin/index.html

@@ -9,7 +9,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
 - `/token/<slug>`: independent token detail page and its own dedicated bridge panel
 - `/routes`: configured directional routes and explicitly unverified activation status
-- `/join`: offline token application draft, JSON export only
+- `/join`: four-step Alliance onboarding with live token universe preview, local JSON export, and optional manifest preview backend. GitHub PR publication requires verified identity/session and is disabled until authentication is installed.
 
 There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
 v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
@@ -59,3 +59,7 @@ are requested.
 Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` to zoom; arrow keys or on-screen arrows to rotate; WASD to pan; `H`/Home or `XGR ⌂` to reset; click stars to focus and token planets to open their token page. A native lightweight 2D fallback is shown if WebGL is unavailable. Animation pauses off-screen, on background tabs, and when navigating away.
 
 `/` retains the dashboard and embeds the same renderer in compact form. Browser smoke tests assert successful initialization on dashboard and `/universe`.
+
+## Alliance onboarding security
+
+`services/onboarding/manifests.mjs` generates valid public token manifests, a catalog update and a pending deployment index; PRs are **listing proposals only**, not route activation. `services/onboarding/server.mjs` can provide localhost-only `/api/xita/join/preview`. The publisher implementation prepares a GitHub draft PR but public `/submit` is intentionally closed pending signed project identity + short-lived scoped session. Never place a GitHub token in browser scripts, do not expose `/submit` directly to unauthenticated users. The public web continues to work if preview API is not configured; drafts can be exported locally.

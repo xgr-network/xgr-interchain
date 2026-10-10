@@ -252,3 +252,47 @@ header nav a{font-weight:550;letter-spacing:.07em}
 .ux-kicker,.eyebrow{font-weight:650;letter-spacing:.23em}
 .ux-sort-btn{font-family:var(--xita-type);letter-spacing:.09em;font-weight:650}
 .ux-metric strong,.ux-leader-highlights strong{font-variant-numeric:tabular-nums}
+
+/* XITA Alliance onboarding */
+.ja-page{max-width:1380px;margin:auto}
+.ja-hero{padding:35px 0 24px}
+.ja-hero h1{max-width:900px}
+.ja-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:20px;align-items:start}
+.ja-wizard,.ja-preview{padding:28px}
+.ja-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:37px}
+.ja-step{border-top:2px solid #293d5a;padding-top:14px;display:flex;flex-direction:column;gap:8px;color:#71849f}
+.ja-step.is-current{border-color:#b5dbff;color:#d6eaff}.ja-step.is-done{border-color:#6ea3c3}
+.ja-step span{font-size:12px;letter-spacing:.12em;font-weight:700}
+.ja-step small{font-size:10px}
+.ja-form-head{margin-bottom:20px}
+.ja-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ja-fields .ja-field:nth-last-child(-n+2){grid-column:span 2}
+.ja-field{display:flex;flex-direction:column;gap:8px;color:#b0c1dc;font-size:11px}
+.ja-field input,.ja-field textarea,.ja-field select{width:100%;background:#071326;border:1px solid #36506d;border-radius:9px;padding:12px;color:#edf6ff}
+.ja-field textarea{resize:vertical;line-height:1.6}
+.ja-info{font-size:11px;color:#8da8c8;line-height:1.7;margin:17px 0}
+.ja-network-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ja-network{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid #2d4964;border-radius:10px;background:#09192b;cursor:pointer}
+.ja-network input{width:auto;accent-color:#96c6f5}
+.ja-network strong,.ja-network small{display:block}
+.ja-network strong{font-size:13px}.ja-network small{margin-top:4px;font-size:10px;color:#91a6c1}
+.ja-network-arrow{margin-left:auto;color:#89aed2}
+.ja-orb{width:19px;height:19px;flex-shrink:0;border-radius:50%;background:radial-gradient(circle at 26% 24%,#f1faff,#6798cb 48%,#1d3050);box-shadow:0 0 12px #7fb6e244}
+.ja-status{font-size:12px;color:#f1cf92;min-height:24px;margin-top:20px}
+.ja-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:15px}
+.ja-actions .ux-button{width:auto;margin:0}
+.ja-export{margin-top:18px;border:0;background:none;color:#9bc8ea;font-size:11px;text-decoration:underline}
+.ja-visual{height:310px;position:relative;background:radial-gradient(ellipse at 38% 45%,#172c4e,transparent 65%),#060d1b;border:1px solid #243c5a;border-radius:13px;overflow:hidden;margin:20px 0}
+.ja-visual:after{content:"";position:absolute;inset:0;background-image:radial-gradient(1px 1px at 22% 16%,#a7c6ea 90%,transparent),radial-gradient(1px 1px at 77% 43%,#a7c6ea 90%,transparent);background-size:75px 99px,113px 149px;opacity:.4;pointer-events:none}
+.ja-star{position:absolute;left:18%;top:35%;width:92px;height:92px;border-radius:50%;background:radial-gradient(circle at 26% 24%,#f4fdff,#5690ca 40%,#1a3559 85%);box-shadow:0 0 42px #3686d866;display:grid;place-items:center;font-size:12px;font-weight:650;color:#071527;z-index:1}
+.ja-gate{position:absolute;left:65%;top:42%;border:2px solid #ccab71;border-radius:50%;height:82px;width:82px;transform:translate(-50%,-50%);display:grid;place-items:center;color:#f5dcaa;box-shadow:0 0 22px #ad905088;z-index:1}
+.ja-gate span{font-size:23px}.ja-gate strong{font-size:9px}
+.ja-star:after{content:"";position:absolute;width:260px;border-top:1px dashed #98b6d3;left:85px;top:47px;z-index:-1}
+.ja-systems{position:absolute;right:10%;bottom:12%;display:flex;gap:10px;flex-wrap:wrap;max-width:80%}
+.ja-systems span{background:#162c43dd;border:1px solid #547590;border-radius:8px;padding:5px 8px;font-size:10px;z-index:2}
+.ja-preview-data>div{display:flex;justify-content:space-between;gap:20px;padding:12px 0;border-bottom:1px solid #263950;font-size:12px}
+.ja-preview-data span{color:#91abc6}
+.ja-consent{display:flex;gap:12px;font-size:12px;line-height:1.6}
+.ja-consent input{width:auto}
+@media(max-width:850px){.ja-layout{grid-template-columns:1fr}.ja-preview{order:-1}.ja-visual{height:220px}}
+@media(max-width:550px){.ja-fields,.ja-network-list{grid-template-columns:1fr}.ja-fields .ja-field:nth-last-child(-n+2){grid-column:span 1}.ja-wizard,.ja-preview{padding:16px}.ja-step small{font-size:8px}}
