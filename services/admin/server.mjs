@@ -14,6 +14,7 @@ import {inspectConfiguredChain} from "./chain-preflight.mjs";
 import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
 import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
+import {planCatalogRoutes} from "./route-lifecycle.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -192,6 +193,12 @@ http.createServer(async(req,res)=>{
    const readiness=await readDeploymentReadiness({root,chain,inventory:queue.inventory,
     boot,baseDir,mainCurrent:queue.githubApproved});
    return reply(res,200,{ok:true,commit:queue.commit,readiness});
+  }
+  if(req.method==="GET"&&path==="/admin/api/route-lifecycle"){
+   const queue=await readOnlyWorkQueue(root);
+   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   const lifecycle=planCatalogRoutes(queue.inventory,infrastructure);
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle});
   }
   if(req.method==="GET"&&path==="/admin/api/first-deploy"){
    const queue=await readOnlyWorkQueue(root);
