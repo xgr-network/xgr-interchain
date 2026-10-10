@@ -17,8 +17,9 @@ proofs have been checked or that the current PoS set is finalized.
    those same three validators, in exactly the committed address order.
    Never import any private validator keys into the admin.
 5. Configure minimum reserve, maximum reimbursement, and per-validator
-   reserve amounts in wei; decide and approve the initial Base source
-   validator fee, also in wei.
+   reserve amounts in wei. The initial Base source validator fee is
+   **0.0000001 ETH = 100000000000 wei**, already approved in
+   `config/bootstrap/base.json`; it is additional to gas.
 6. Verify on Base that the documented Hyperlane mailbox and Merkle hook
    addresses contain the expected code, that EIP-2537 operations work,
    and that the verifier/registry construction arguments and runtime
@@ -32,7 +33,7 @@ proofs have been checked or that the current PoS set is finalized.
 
 ## Explicit blockers (as of this change)
 
-The initial source-native fee is now a **positive, immutable Factory constructor parameter** forwarded once to the newly created Registry. The source fee starts at nonce **0**, while later fee changes require a validator quorum, starting at nonce **1**. The operator must still approve a real integer-wei value in GitHub main and verify the deployed constructor input before any deployment.
+The initial source-native fee is now a **positive, immutable Factory constructor parameter** forwarded once to the newly created Registry. The source fee starts at nonce **0**, while later fee changes require a validator quorum, starting at nonce **1**. The approved Base fee is `100000000000` wei in GitHub main. Verify the deployed Factory constructor binds exactly that amount before proceeding.
 
 The web Admin deployment button is also still disabled: no
 commit-pinned wallet deployment transaction compiler, durable transaction
