@@ -21,7 +21,9 @@
   "sourceFee": {
     "targetWei": null,
     "governance": "validator-bls-quorum",
-    "ttlSeconds": 300
+    "ttlSeconds": 300,
+    "initialization": "factory-constructor-no-quorum",
+    "notes": "The initial positive fee is a constructor-bound factory parameter. Nonce starts at 0. Only changes after deployment need BLS validator quorum."
   },
   "notes": "EIP-2537 runtime verifier requires proven precompile support and negative/positive BLS vectors before deployment.",
   "initialValidatorsManifest": "config/validators/initial.json"
