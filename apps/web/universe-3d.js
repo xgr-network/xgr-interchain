@@ -445,8 +445,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gpu=createGPU(gl);
    resize();
    const rnd=random(1643),arr=[];
-   for(let i=0;i<(compact?450:1100);i++){
-    const y=rnd()*2-1,a=rnd()*TWO_PI,r=118+rnd()*260;
+   for(let i=0;i<(compact?850:1900);i++){
+    const y=rnd()*2-1,a=rnd()*TWO_PI,r=90+rnd()*330;
     const length=Math.sqrt(1-y*y);
     arr.push(Math.cos(a)*length*r,y*r,Math.sin(a)*length*r);
    }
@@ -555,10 +555,10 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.useProgram(sp.p);
   gl.bindBuffer(gl.ARRAY_BUFFER,stars.buffer);
   gl.enableVertexAttribArray(sp.pos);gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
-  gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.60,.73,.91,.43);
-  gl.uniform1f(sp.size,1.7);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
+  gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.68,.78,.96,.62);
+  gl.uniform1f(sp.size,2.1);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
-  // Soft additive stellar corona, kept restrained to the website palette.
+  // Slow, large-area clouds give the dark background visible depth without textures.\n   for(let i=0;i<7;i++){\n    const angle=i*2.39996+frame*.002,depth=150+i*19;\n    point([Math.cos(angle)*depth,Math.sin(angle*.61)*56,Math.sin(angle)*depth],\n      69000+i*4300,i%3===0?[.20,.46,.57]:i%3===1?[.29,.30,.49]:[.25,.39,.53],.018,vp);\n   }\n   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
    const intensity=item.portal?.19:.15;
