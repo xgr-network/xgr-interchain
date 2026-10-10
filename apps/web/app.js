@@ -1,3 +1,4 @@
+import {publicDirectoryCatalog} from "./listing-visibility.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
@@ -13,6 +14,7 @@ const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
 const profile=id=>state.catalog.assets[id]?.profile||{name:id,slug:id.toLowerCase(),shortDescription:"",description:"",categories:[],tags:[],links:{},branding:{}};
 const tokenUrl=id=>"/token/"+encodeURIComponent(profile(id).slug);
 const allAssets=()=>Object.keys(state.catalog.assets);
+const publicCatalog=()=>publicDirectoryCatalog(state.catalog);
 const routes=()=>asset().routes.routes;
 const activeFor=id=>0;
 const path=()=>decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
@@ -61,7 +63,7 @@ function indexerNotice(){
  return '<p class="status">XITA event index not yet online. Unavailable transfer statistics are not zero.</p>';
 }
 function markets(){
- const rows=rankAssets(buildLeaderboardRows(state.catalog,state.leaderboard),state.leaderboardSort,state.leaderboardDir)
+ const rows=rankAssets(buildLeaderboardRows(publicCatalog(),state.leaderboard),state.leaderboardSort,state.leaderboardDir)
   .filter(row=>(row.name+" "+row.id).toLowerCase().includes(state.leaderboardSearch.toLowerCase()));
  const columns=[["lockedUsd","Locked TVL"],["movedUsd","Moved via XGR"],["marketCapUsd","Market cap"]];
  const th=columns.map(([key,label])=>'<th><button class="ux-sort-btn" type="button" data-leader-sort="'+key+'" aria-pressed="'+(state.leaderboardSort===key)+'">'+label+' <span>'+(state.leaderboardSort===key?(state.leaderboardDir==="desc"?"↓":"↑"):"↕")+'</span></button></th>').join("");
@@ -75,7 +77,7 @@ function markets(){
  return '<div class="ux-app ux-leaderboard"><div class="ux-kicker">XITA · ASSET DISCOVERY</div><div class="ux-leader-head"><div><h1>Explore <span>Tokens</span></h1>'+
  '<p class="ux-lead">Discover assets by verified locked collateral, unique interchain value moved through XGRChain and token market capitalization.</p></div>'+
  '<div class="ux-leader-info">Locked and moved: on-chain verified<br><small>Market caps: external provider data when configured</small></div></div>'+
- '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(state.catalog.assets).length+'</strong></div>'+
+ '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(publicCatalog().assets).length+'</strong></div>'+
  '<div><span>Verified custody TVL</span><strong>'+formatUsd(state.leaderboard?.totals?.lockedUsd)+'</strong></div>'+
  '<div><span>Moved through XGR</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
  '<section class="ux-panel ux-leader-table-panel"><div class="ux-leader-toolbar"><div><h2>Explore assets</h2><p class="ux-small">Click a column heading to sort · Missing metrics always rank last</p></div>'+
@@ -229,7 +231,7 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- const universe=buildExperienceModel(state.catalog,()=>false);
+ const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
