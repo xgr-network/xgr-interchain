@@ -32,12 +32,7 @@ proofs have been checked or that the current PoS set is finalized.
 
 ## Explicit blockers (as of this change)
 
-The current Solidity `XGRILNRegistryV315` still initializes
-`validatorFeeWei` to **zero** and requires a quorum for
-`applySourceFee`. The requested **no-quorum initial fee** therefore
-requires a compatible, tested **constructor-initialized** Registry/
-Factory design before deployment; just modifying the UI manifest
-would be misleading.
+The initial source-native fee is now a **positive, immutable Factory constructor parameter** forwarded once to the newly created Registry. The source fee starts at nonce **0**, while later fee changes require a validator quorum, starting at nonce **1**. The operator must still approve a real integer-wei value in GitHub main and verify the deployed constructor input before any deployment.
 
 The web Admin deployment button is also still disabled: no
 commit-pinned wallet deployment transaction compiler, durable transaction

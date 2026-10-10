@@ -22,7 +22,7 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
   items.push({kind:"validator-bootstrap",id:plan.chain+":validator-bootstrap",chain:plan.chain,
    title:plan.chain+" / Validator-PoP & Reserve",status:"blocked",reason:plan.ready?"On-chain Validation und Wallet-Executor ausstehend":plan.missing.join("; ")});
   items.push({kind:"fee-bootstrap",id:plan.chain+":source-fee",chain:plan.chain,
-   title:plan.chain+" / Source-Chain-Gebühr",status:"blocked",reason:plan.proposedFeeWei?("Fee "+plan.proposedFeeWei+" Wei: BLS-Quorum und Registry-Verifikation ausstehend"):"Source-Chain-Fee in config/bootstrap fehlt"});
+   title:plan.chain+" / Source-Chain-Gebühr",status:"blocked",reason:plan.proposedFeeWei?("Initiale Fee "+plan.proposedFeeWei+" Wei: Factory-Konstruktor und Registry-Verifikation ausstehend (kein Quorum)"):"Source-Chain-Fee in config/bootstrap fehlt"});
  }
  for(const asset of Object.values(inventory.assets)){
   for(const route of asset.routes){

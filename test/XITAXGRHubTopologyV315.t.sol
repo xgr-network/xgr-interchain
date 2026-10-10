@@ -78,7 +78,7 @@ contract XITAXGRHubTopologyV315Test is Test {
         vm.expectRevert(XETATokenFactoryV315.InvalidConfiguration.selector);
         new XETATokenFactoryV315(
             HUB, uint32(POLYGON), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
         );
     }
 
@@ -90,7 +90,7 @@ contract XITAXGRHubTopologyV315Test is Test {
             new XITATopologyMailboxMock(uint32(BASE));
         XETATokenFactoryV315 factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
         );
         factory.deployRegistry();
         address router = factory.deployWrappedXGRRouter(bytes32(uint256(1)));

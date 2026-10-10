@@ -35,7 +35,7 @@ contract XETATokenFactoryV315Test is Test {
         mailbox = new XITAMailboxV315Mock(DOMAIN);
         factory = new XETATokenFactoryV315(
             CHAIN, DOMAIN, address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 250_000
+            address(mailbox), address(mailbox), address(mailbox), 250_000, 100
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
     }
@@ -75,6 +75,9 @@ contract XETATokenFactoryV315Test is Test {
         assertEq(factory.deployRegistry(), address(registry));
         assertEq(registry.factory(), address(factory));
         assertEq(registry.sourceDomain(), DOMAIN);
+        assertEq(factory.initialSourceFeeWei(), 100);
+        assertEq(registry.validatorFeeWei(), 100);
+        assertEq(registry.sourceFeeNonce(), 0);
         assertEq(address(registry.governanceRegistry()), address(validators));
     }
 
@@ -142,10 +145,11 @@ contract XETATokenFactoryV315Test is Test {
         factory.prepareRoute(address(0x1234), HUB, uint32(HUB), REMOTE_ROUTER, address(0));
     }
 
-    function testNoFeeNoPreparedRoute() public {
+    function testInitialFeeAllowsRoutePreparationWithoutQuorum() public {
         address local = factory.deployWrappedXGRRouter(bytes32(uint256(5)));
-        vm.expectRevert(XGRILNRegistryV315.InvalidRoute.selector);
-        factory.prepareRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
-        assertFalse(factory.routeForDomainPrepared(local, uint32(HUB)));
+        (bytes32 id,) = factory.prepareRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
+        assertTrue(id != bytes32(0));
+        assertTrue(factory.routeForDomainPrepared(local, uint32(HUB)));
+        assertEq(registry.sourceFeeNonce(), 0);
     }
 }

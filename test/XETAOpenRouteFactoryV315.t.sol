@@ -45,7 +45,7 @@ contract XETAOpenRouteFactoryV315Test is Test {
         mailbox = new XITAOpenMailboxMock(uint32(BASE));
         factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
         token = new XITAMockERC20();
