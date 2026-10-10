@@ -30,3 +30,28 @@ test("unexpected fee or malicious constructor address fails closed",async()=>{
  await assert.rejects(()=>verifyChainBindings({rpc,url:"https://test.invalid",
   component:"factory",address:addr(9),chain,bootstrap,infra}),/binding mismatch/);
 });
+
+test("SourceRegistry live BLS-governed fee overrides the original Factory constructor fee",async()=>{
+ const signatures=new Map(Object.entries({
+  "sourceChainId()":word(137),"sourceDomain()":word(137),
+  "factory()":word(5),"governanceRegistry()":word(3),
+  "validatorFeeWei()":word(900000000000n),"sourceFeeNonce()":word(2)
+ }).map(([sig,v])=>[selector(sig),v]));
+ const rpc=async(_url,method,args)=>{
+  assert.equal(method,"eth_call");
+  return signatures.get(args[0].data);
+ };
+ assert.equal(await verifyChainBindings({rpc,url:"https://test.invalid",
+  component:"sourceRegistry",address:addr(10),chain,bootstrap,infra}),true);
+});
+test("initial SourceRegistry fee must equal deployed Factory when nonce zero",async()=>{
+ const signatures=new Map(Object.entries({
+  "sourceChainId()":word(137),"sourceDomain()":word(137),
+  "factory()":word(5),"governanceRegistry()":word(3),
+  "validatorFeeWei()":word(200),"sourceFeeNonce()":word(0),
+  "initialSourceFeeWei()":word(100)
+ }).map(([sig,v])=>[selector(sig),v]));
+ await assert.rejects(()=>verifyChainBindings({rpc:async(_url,_method,args)=>signatures.get(args[0].data),
+  url:"https://test.invalid",component:"sourceRegistry",address:addr(10),
+  chain,bootstrap,infra}),/differs from on-chain Factory/);
+});
