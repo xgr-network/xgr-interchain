@@ -39,6 +39,19 @@ export function validateCatalog({chains,assets,infrastructure}){
    check(Number.isSafeInteger(inf.ilnV314.verifiedAtBlock)&&inf.ilnV314.verifiedAtBlock>0,p+": missing verifiedAtBlock");
    check(["sourceRegistry","destinationRegistryV2","destinationIsmV2","blsVerifier"].every(k=>inf.ilnV314[k]===null||address(inf.ilnV314[k])),p+": invalid contract address");
   }
+  const v315=inf.xitaV315;
+  check(v315?.schemaVersion===1&&Array.isArray(v315?.receiptPaths)&&
+    typeof v315?.components==="object"&&!Array.isArray(v315?.components),p+": invalid XITA v3.1.5 deployment index");
+  if(v315?.components&&typeof v315.components==="object"){
+   const allowed=new Set(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
+   for(const [component,item] of Object.entries(v315.components)){
+    check(allowed.has(component)&&address(item?.address)&&
+      hash(item?.runtimeCodeKeccak256)&&
+      typeof item?.receiptPath==="string"&&
+      /^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(item.receiptPath)&&
+      v315.receiptPaths.includes(item.receiptPath),p+": invalid component deployment binding "+component);
+   }
+  }
   const core=inf.hyperlaneCore;
   check(!!core&&((core.mailbox===null&&core.merkleTreeHook===null)||(address(core.mailbox)&&address(core.merkleTreeHook))),p+": inconsistent Mailbox/Hook");
  }
