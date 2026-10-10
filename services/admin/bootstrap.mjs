@@ -103,10 +103,14 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   result.feeWei=decodeUint(fee).toString();
   result.feeNonce=decodeUint(nonce).toString();
   if(result.feeWei==="0")result.missing.push("Source-Chain-Initialgebühr fehlt");
-  if(plan.proposedFeeWei && result.feeWei!==plan.proposedFeeWei)
-   result.missing.push("On-chain Source-Fee differs from main-approved constructor fee");
+  // The main manifest pins ONLY the constructor's INITIAL fee. Later fee
+  // changes are BLS-quorum governed and must never be treated as a drift bug.
+  result.feeOrigin=result.feeNonce==="0"?"initial-constructor":"onchain-governance";
+  if(result.feeNonce==="0" && plan.proposedFeeWei &&
+     result.feeWei!==plan.proposedFeeWei)
+   result.missing.push("Initial on-chain fee differs from approved constructor fee");
  }else result.missing.push("Source-Registry noch nicht deployed");
  result.verified=result.ready && Boolean(result.validatorSetId)&&result.feeWei!=="0"&&
-  result.feeWei!==null && result.feeWei===plan.proposedFeeWei && result.missing.length===0;
+  result.feeWei!==null && (result.feeNonce!=="0"||result.feeWei===plan.proposedFeeWei) && result.missing.length===0;
  return result;
 }
