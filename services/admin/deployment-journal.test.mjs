@@ -10,7 +10,7 @@ const base={id:"base:validatorRegistry",txHash:"0x"+"a".repeat(64),
 test("journal remains durable and never sends duplicate transactions",()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-journal-"));
  try{
-  const journal=journal(dir);journal.record(base);
+  const localJournal=journal(dir);localJournal.record(base);
   const reopened=journal(dir);
   assert.equal(reopened.read().entries[base.id].stage,"submitted");
   assert.throws(()=>reopened.record({...base,txHash:"0x"+"d".repeat(64)}),/already journaled/);
