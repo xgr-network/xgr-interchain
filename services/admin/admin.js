@@ -143,19 +143,26 @@ async function openAssetModal(taskId){
  selectedDeployment=null;selectedAssetTask=task;assetPreview=null;
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
  el("contract-modal-title").textContent=task.kind==="router"?
-  "Token-Router einmalig bereitstellen":"Gerichtete Route vorbereiten";
+  "Token-Router einmalig bereitstellen":task.kind==="activation"?
+  "BLS-Routenaktivierung":"Gerichtete Route vorbereiten";
  el("contract-modal-subtitle").textContent=task.asset+" · "+task.chain+
   " · Chain "+chain.chainId;
  el("modal-parameters").hidden=true;
  el("modal-route-context").hidden=false;
  el("modal-route-context").textContent=task.kind==="router"?
   "Dieser Token-Router gehört zum Asset auf dieser Chain und wird für Rückrouten wiederverwendet.":
+  task.kind==="activation"?"Die Gegenroute muss unabhängig verifiziert und mit einem echten Validator-BLS-Quorum bestätigt werden. Die Wallet kann das nicht stellvertretend unterschreiben.":
   "Das Gateway und sein FeeVault werden gemeinsam erzeugt. Die Route bleibt bis zur BLS-Bestätigung inaktiv.";
  el("modal-gas-result").textContent="";
  el("modal-gas-check").disabled=task.blockers.length>0;
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
  el("contract-deploy-dialog").showModal();
+ if(task.kind==="activation"){
+  el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+  presentModalStatus("BLS-Quorum und unabhängiger Gegenketten-Nachweis fehlen. Noch nicht aktiv.","warn");
+  return;
+ }
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
   const graph=workqueue.inventory.assets[task.asset];
