@@ -74,8 +74,13 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   const validator=infra.components.find(c=>c.key==="validatorRegistry")?.address;
   if(!ADDR.test(validator||""))throw Error("Source Registry governance authority missing");
   await check("governanceRegistry()",validator,"address");
-  await check("validatorFeeWei()",bootstrap.proposedFeeWei);
-  await check("sourceFeeNonce()",0);
+  const nonce=asWord(await getter(rpc,url,address,"sourceFeeNonce()"));
+  const actualFee=asWord(await getter(rpc,url,address,"validatorFeeWei()"));
+  if(actualFee===0n)throw Error("Source registry has invalid zero live fee");
+  if(nonce===0n){
+   const initialFee=asWord(await getter(rpc,url,factory,"initialSourceFeeWei()"));
+   if(actualFee!==initialFee)throw Error("Initial source fee differs from on-chain Factory");
+  }
  }else throw Error("Unknown infrastructure component");
  return true;
 }
