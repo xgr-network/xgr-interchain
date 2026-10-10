@@ -96,6 +96,15 @@ async function loadFirstDeploy(){
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
    '<div class="chain-actions"><label for="deployment-component-select">Chain-Contract</label><select id="deployment-component-select"><option value="blsVerifier">BLS Verifier (EIP-2537)</option><option value="validatorRegistry">ValidatorRegistry</option><option value="ism">Interchain Security Module</option><option value="factory">Permissionless Factory</option><option value="sourceRegistry">Source Registry</option></select><button type="button" class="outline" id="deployment-check-draft">Transaktion vorbereiten / Gas prüfen</button><small id="deployment-draft-result">Nur Simulation; kein Senden</small></div>'+ 
    '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
+   '<details class="chain-bootstrap"><summary>Verifizierten Bootstrap und Chain-Parameter in GitHub main freigeben</summary>'+
+   '<p>Die drei öffentlichen Validator-Beweise werden vom Server erneut kryptografisch geprüft. Nur die wirtschaftlichen Werte in Wei sowie das Gaslimit gibst du frei.</p>'+
+   '<label>Mindestreserve je Validator (Wei) <input id="approval-minimum" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Max. Executor-Erstattung (Wei) <input id="approval-reimbursement" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Anfangsreserve je Validator (Wei) <input id="approval-reserve" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Initiale Source-Fee (Wei) <input id="approval-fee" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Default Destination Gas Limit <input id="approval-gas" inputmode="numeric" placeholder="Ganzer Gas-Wert" /></label>'+
+   '<button type="button" id="approve-chain-bootstrap">Bootstrap nach main schreiben</button>'+
+   '<small id="approval-status">Erst nach gültiger PoS-/BLS-Verifikation verfügbar. Keine Wallet-Transaktion.</small></details>'+
    '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" title="Verifizierten Chain-Contract mit verbundener Wallet deployen">Deploy auf dieser Chain</button><button type="button" class="outline" id="deployment-recover">Transaktion wiederherstellen</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
@@ -118,6 +127,30 @@ async function loadFirstDeploy(){
        " · Maximalwert "+result.simulation.totalWorstCaseWei+" Wei":" · Keine Wallet-Simulation")+
       " · Kein Deployment autorisiert";
    }catch(e){if(selectedDeployChain===chainName)node.textContent="Blockiert: "+e.message;}
+  });
+  el("approve-chain-bootstrap").addEventListener("click",async()=>{
+   const output=el("approval-status"),chain=selectedDeployChain;
+   const entries=[
+    ["minimumWei","approval-minimum"],
+    ["maxExecutorReimbursementWei","approval-reimbursement"],
+    ["perValidatorWei","approval-reserve"],
+    ["sourceFeeWei","approval-fee"]
+   ];
+   const values=Object.fromEntries(entries.map(([k,v])=>[k,el(v).value.trim()]));
+   values.defaultDestinationGasLimit=Number(el("approval-gas").value.trim());
+   const all=[...entries.map(([,id])=>el(id).value.trim()),el("approval-gas").value.trim()];
+   if(all.some(x=>!/^[1-9][0-9]*$/.test(x))){
+    output.textContent="Nur positive ganze Werte zulässig";return;
+   }
+   if(!window.confirm("Chain "+chain+" freigeben? Reserve, Source-Fee und Gaslimit werden atomar in GitHub main festgeschrieben."))
+    return;
+   const button=el("approve-chain-bootstrap");button.disabled=true;
+   output.textContent="Prüfe Validator-Proofs und GitHub main ...";
+   try{
+    const response=await postJSON("/admin/api/bootstrap/approve",{chain,values});
+    output.textContent="Bootstrap freigegeben: "+response.result.commit;
+    window.location.reload();
+   }catch(e){output.textContent="Freigabe verweigert: "+e.message;button.disabled=false;}
   });
   el("deployment-switch-wallet").addEventListener("click",async()=>{
    try{
