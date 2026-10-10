@@ -85,34 +85,25 @@ export function validateCatalog({chains,assets,infrastructure}){
    reps.set(rep.chain,rep);
   }
   check(reps.get(m.canonical?.chain)?.representation===m.canonical?.representation,p+": canonical representation differs");
-  check(r.kind==="asset-routes"&&r.asset===name&&r.protocol==="ILN-v3.1.4"&&r.routingHub==="xgrchain",p+": invalid routing manifest");
+  check(r.kind==="asset-routes"&&r.asset===name&&r.protocol==="XITA-v3.1.5"&&r.routingHub==="xgrchain",p+": invalid routing manifest");
   const names=new Set(),pairs=new Set();
   for(const rt of r.routes||[]){
-   check(!names.has(rt.name),p+": duplicate route name");names.add(rt.name);
-   check(chains[rt.sourceChain]&&chains[rt.destinationChain]&&rt.sourceChain!==rt.destinationChain&&reps.has(rt.sourceChain)&&reps.has(rt.destinationChain),p+": invalid route endpoints");
-   check(rt.sourceChain==="xgrchain"||rt.destinationChain==="xgrchain",p+": direct external-to-external route prohibited");
-   check(["pending-governance","quorum-activated"].includes(rt.activation),p+": invalid activation");
-   if(rt.activation==="pending-governance")check((rt.routeId===null&&rt.validatorFeeWei===null)||(hash(rt.routeId)&&fee(rt.validatorFeeWei)),p+": unapproved route requires null fields or complete route ID and fee");
-   else check(hash(rt.routeId)&&fee(rt.validatorFeeWei),p+": activated route requires route ID/fee");
-   if(hash(rt.routeId)){const key=rt.sourceChain+rt.destinationChain+rt.routeId.toLowerCase();check(!routeKeys.has(key),p+": duplicate canonical ILN route ID");routeKeys.add(key)}
-   pairs.add(rt.sourceChain+":"+rt.destinationChain);
+    check(!names.has(rt.name),p+": duplicate route name");names.add(rt.name);
+    check(chains[rt.sourceChain]&&chains[rt.destinationChain]&&rt.sourceChain!==rt.destinationChain&&reps.has(rt.sourceChain)&&reps.has(rt.destinationChain),p+": invalid route endpoints");
+    check(rt.sourceChain==="xgrchain"||rt.destinationChain==="xgrchain",p+": direct external-to-external route prohibited");
+    check(!Object.hasOwn(rt,"validatorFeeWei")&&!Object.hasOwn(rt,"activation"),p+": deployment state must not be in config routes");
+    pairs.add(rt.sourceChain+":"+rt.destinationChain);
   }
   for(const rt of r.routes||[])check(pairs.has(rt.destinationChain+":"+rt.sourceChain),p+": missing reverse route "+rt.name);
   check(mn.routeManifest===p+"/routes.json"&&mn.deploymentManifest===`deployments/mainnet/assets/${name}.json`,p+": invalid manifest linkage");
-  check(d.kind==="asset-deployment"&&d.asset===name&&d.network==="mainnet",p+": missing deployment shell");
-  const observed=d.ilnV314?.routes||[];
-  check(observed.length===(r.routes||[]).length,p+": routes differ from observed deployment");
-  for(const rt of r.routes||[]){
-   const obs=observed.find(x=>x.name===rt.name&&x.sourceChain===rt.sourceChain&&x.destinationChain===rt.destinationChain);
-   check(!!obs,p+": missing observed route "+rt.name);if(!obs)continue;
-   if(rt.routeId===null)check(["routeId","gateway","feeVault","warpRouter","validatorFeeWei","governanceTx"].every(k=>obs[k]===null),p+": pending route contains fictitious deployment");
-   else check(obs.routeId?.toLowerCase()===rt.routeId?.toLowerCase()&&address(obs.gateway)&&address(obs.feeVault)&&address(obs.warpRouter)&&obs.validatorFeeWei===rt.validatorFeeWei,p+": deployed route missing corroboration");
-   if(rt.activation==="quorum-activated")check(hash(obs.governanceTx)&&infrastructure[rt.sourceChain]?.ilnV314?.status==="verified-deployed"&&infrastructure[rt.destinationChain]?.ilnV314?.status==="verified-deployed",p+": activated route missing governance/infrastructure");
-   else check(obs.governanceTx===null,p+": pending route contains governanceTx");
-  }
-  const active=(r.routes||[]).some(rt=>rt.activation==="quorum-activated");
-  check(mn.ilnV314Activation===(active?"governance-confirmed":"not-authorized"),p+": incorrect activation summary");
-  check(d.ilnV314?.status===(active?"active":(r.routes||[]).every(rt=>rt.routeId===null)?"unverified-not-activated":"deployed-pending-governance"),p+": incorrect deployment summary");
+  const canonical=chains[m.canonical?.chain];
+  const assetId=canonical&&m.canonical?.representation==="native"&&canonical.chainId===1643
+    ? "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0":null;
+  check(assetId!==null||address(m.canonical?.tokenAddress),p+": missing original token address");
+  check(d.kind==="asset-deployment"&&d.asset===name&&d.schemaVersion===2&&d.network==="mainnet"&&d.sourceManifest===p+"/asset.json"&&Array.isArray(d.receiptPaths),p+": invalid asset deployment binding");
+  if(assetId!==null)check(d.assetId===assetId&&m.assetId===assetId,p+": canonical asset ID mismatch");
+  check(d.receiptPaths.every(x=>typeof x==="string"&&/^deployments\\/mainnet\\/receipts\\/[a-z][a-z0-9-]*\\/[a-f0-9]{64}-[a-f0-9]{40}\\.json$/.test(x)),p+": invalid deployment receipt reference");
+
  }
  return errors;
 }
