@@ -230,17 +230,20 @@ function createGPU(gl){
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
- if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:2.28,portal:true});
+ if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:1.92,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
   // Staggered 3D rings maintain sufficient separation as chains are added.
   const ring=Math.floor(i/7),within=i%7,perRing=Math.min(7,count-ring*7);
   const angle=-Math.PI*0.39+(within/perRing)*TWO_PI+ring*.25;
   const r=28+ring*17;
-  const y=(i%3-1)*5+(ring%2?3:0);
-  systems.push({system:spokes[i],
-   position:[Math.cos(angle)*r,y+Math.sin(angle*1.6)*2,Math.sin(angle)*r*.78],
-   color:chainColor(spokes[i].key,i+1),radius:1.82,portal:false});
+  const orbital={major:r,minor:r*(.76+(i%3)*.06),
+   phase:angle,speed:.0032+(i%4)*.0014,
+   inclination:(i%2?-1:1)*(.18+(i%4)*.13),
+   node:.26+i*1.06,twist:(i%3-1)*.16};
+  systems.push({system:spokes[i],orbital,
+   position:orbitPosition({orbital},0,true),
+   color:chainColor(spokes[i].key,i+1),radius:1.66,portal:false});
  }
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
@@ -251,12 +254,13 @@ function createTopology(model){
  for(const item of systems){
   const candidates=item.system.tokens.filter(token=>{
    const rep=token.representations.find(r=>r.chain===item.system.key);
-   return true; // Native coin and all wrapped representations appear as distinct classified planets.
+   return Boolean(rep); // Do not invent planets without a chain representation.
   });
   for(let i=0;i<Math.min(candidates.length,16);i++){
    // Concentric planetary families remain comfortably in view on focus.
    planets.push({system:item,token:candidates[i],index:i,orbit:4.6+Math.floor(i/5)*2.45+(i%5)*.35,
-    radius:clamp(.67-(i*.014),.33,.67),speed:.034/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13});
+    radius:clamp(.48-(i*.009),.28,.48),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
+     inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
   }
  }
  return {systems,planets,links,byKey};
@@ -264,19 +268,23 @@ function createTopology(model){
 // Exported for deterministic topology/asset tests, not for authorizing bridge operations.
 export const createUniverseTopology=createTopology;
 // A slow heliocentric sweep keeps the configured spokes anchored to XGR.
-function systemPosition(item,time,reduced=false){
- if(item.portal)return [0,0,0];
- const base=item.position,angle=reduced?0:time*0.0075;
- return [base[0]*Math.cos(angle)-base[2]*Math.sin(angle),base[1],base[0]*Math.sin(angle)+base[2]*Math.cos(angle)];
+// Each system follows a distinct inclined 3D orbit around the XGR gateway.
+// Stable orbital elements prevent the former shared flat-plane rotation.
+export function orbitPosition(elements,time,reduced=false){
+ if(elements.portal)return [0,0,0];
+ const o=elements.orbital;
+ const theta=o.phase+(reduced?0:time*o.speed);
+ const local=[Math.cos(theta)*o.major,0,Math.sin(theta)*o.minor];
+ return rotate(local,o.inclination,o.node,o.twist);
 }
-function planetPosition(p,time){
- const center=systemPosition(p.system,time);
- const a=p.phase+time*p.speed,r=p.orbit,c=center;
- return [c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r*.56,c[2]+Math.sin(a)*r*.31];
+function systemPosition(item,time,reduced=false){return orbitPosition(item,time,reduced)}
+function tokenOrbitPoint(p,angle,center){
+ return add(center,rotate([Math.cos(angle)*p.orbit,0,Math.sin(angle)*p.orbit*.82],
+  p.inclination,p.node,p.twist));
 }
-function deprecatedPlanetPosition(p,time){
- const a=p.phase+time*p.speed,r=p.orbit,c=p.system.position;
- return [c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r*.56,c[2]+Math.sin(a)*r*.31];
+function planetPosition(p,time,reduced=false){
+ return tokenOrbitPoint(p,p.phase+(reduced?0:time*p.speed),
+  systemPosition(p.system,time,reduced));
 }
 function setText(node,text){if(node)node.textContent=text;}
 function fallback(stage,topology,reason,select){
@@ -351,7 +359,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   selectedKey=key;focused=!compact;
   wanted.target=[...systemPosition(available.get(key),frame,reducedMotion)];
   const n=topology.planets.filter(p=>p.system.system.key===key).length;
-  wanted.distance=close?10.5:clamp(15.5+n*.37,15.5,25);
+  wanted.distance=close?17.5:clamp(22+n*.55,22,33);
   setFocusUI();
   onFocus(key);
  };
@@ -429,12 +437,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    return {buffer:buf,count:vertices.length/3};
   }
   function createOrbit(item,p){
-  const arr=[],N=80;
-  for(let i=0;i<N;i++){
-   const a=TWO_PI*i/N,b=TWO_PI*(i+1)/N,c=item.position;
-   arr.push(c[0]+Math.cos(a)*p.orbit,c[1]+Math.sin(a)*p.orbit*.56,c[2]+Math.sin(a)*p.orbit*.31,
-    c[0]+Math.cos(b)*p.orbit,c[1]+Math.sin(b)*p.orbit*.56,c[2]+Math.sin(b)*p.orbit*.31);
-  }
+  const arr=[],N=80,c=systemPosition(item,0,true);
+  for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
   return bufferLine(arr);
  }
  let paths=[],orbitPaths=[],stars=null,pointBuffer=null;
@@ -524,7 +528,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(const [planet,node] of tokenLabels){
    node.hidden=true;
    if(!focused||planet.system.system.key!==selectedKey||focusBlend<.7)continue;
-   const pos=projectionOf(planetPosition(planet,t),vp,w,h);
+   const pos=projectionOf(planetPosition(planet,t,reducedMotion),vp,w,h);
    if(!pos||!pos.visible||pos.x<45||pos.x>w-45||pos.y<50||pos.y>h-64)continue;
    node.hidden=false;
    node.style.transform="translate3d("+Math.round(pos.x)+"px,"+Math.round(pos.y+26)+"px,0) translate(-50%,0)";
@@ -558,7 +562,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.68,.78,.96,.62);
   gl.uniform1f(sp.size,2.1);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
-  // Slow, large-area clouds give the dark background visible depth without textures.\n   for(let i=0;i<7;i++){\n    const angle=i*2.39996+frame*.002,depth=150+i*19;\n    point([Math.cos(angle)*depth,Math.sin(angle*.61)*56,Math.sin(angle)*depth],\n      69000+i*4300,i%3===0?[.20,.46,.57]:i%3===1?[.29,.30,.49]:[.25,.39,.53],.018,vp);\n   }\n   // Soft additive stellar corona, kept restrained to the website palette.
+  // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
    const intensity=item.portal?.19:.15;
@@ -575,14 +579,19 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
    line(link.geometry,link.active?[.45,.88,.72]:[.43,.61,.84],(link.active?.7:.35)*(1-focusBlend*.93),vp);
   }
-  if(focusBlend>.15)for(const ring of orbitPaths)
-   if(ring.planet.system.system.key===selectedKey)
-    line(ring.geometry,[.48,.66,.81],.24*focusBlend,vp);
+  if(focusBlend>.72)for(const ring of orbitPaths){
+   if(ring.planet.system.system.key!==selectedKey)continue;
+   const verts=[],N=80,c=systemPosition(ring.planet.system,frame,reducedMotion);
+   for(let i=0;i<N;i++)verts.push(...tokenOrbitPoint(ring.planet,TWO_PI*i/N,c),...tokenOrbitPoint(ring.planet,TWO_PI*(i+1)/N,c));
+   gl.bindBuffer(gl.ARRAY_BUFFER,ring.geometry.buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.DYNAMIC_DRAW);
+   line(ring.geometry,[.48,.63,.79],.19*focusBlend,vp);
+  }
   const entries=[];
   for(const item of topology.systems)entries.push({type:"star",item,depth:Math.hypot(...sub(systemPosition(item,frame,reducedMotion),eye))});
   if(focusBlend>.15)for(const planet of topology.planets)
    if(planet.system.system.key===selectedKey)
-    entries.push({type:"planet",planet,position:planetPosition(planet,frame),depth:0});
+    entries.push({type:"planet",planet,position:planetPosition(planet,frame,reducedMotion),depth:0});
   for(const entry of entries)if(entry.type==="planet")entry.depth=Math.hypot(...sub(entry.position,eye));
   entries.sort((a,b)=>b.depth-a.depth);
   for(const entry of entries){
