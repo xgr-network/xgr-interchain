@@ -5,7 +5,8 @@ import {resolve} from "node:path";
 const root=resolve(new URL("../../",import.meta.url).pathname);
 test("UI trusted build compiles production contracts without forge-std scripts or tests",()=>{
  const source=readFileSync(resolve(root,"services/admin/trusted-artifacts.mjs"),"utf8");
- assert.match(source,/\["build","--force","--skip","test","script"\]/);
+ assert.doesNotMatch(source,/exec\(forge,\["build"/);
+ assert.match(source,/readSealedArtifacts\(root,commit\)/);
 });
 test("server update provisions Hyperlane and OpenZeppelin before restarting UI",()=>{
  const sh=readFileSync(resolve(root,"manage.sh"),"utf8");
