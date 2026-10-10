@@ -16,6 +16,7 @@ import {reconcileDeployedContract} from "./chain-reconcile.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
+import {deploymentParameters} from "./deployment-parameters.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const nonceWord=s=>{
@@ -39,7 +40,7 @@ export function createChainOperator({
   const bootstrap=bootstrapPlan(root,chain);
   return {commit,inventory:all,chain,infrastructure,bootstrap};
  }
- async function prepare({chain:chainName,component,wallet}){
+ async function prepare({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   const journal=journals(all.chains);
@@ -48,16 +49,20 @@ export function createChainOperator({
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
    bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Destination chain RPC, core or BLS preflight failed");
-  if(component!=="blsVerifier"){
+  const values=deploymentParameters(component,parameters);
+  let verified=bootstrap;
+  if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({
     root,chain,inventory:all,boot:bootstrap,baseDir:publicEvidenceDir,
     mainCurrent:true,rpc
    });
-   if(!readiness.evidenceVerified||!readiness.manifestMatchesEvidence||
-      !readiness.bootstrapReady||readiness.missing.length)
-    throw Error("Bootstrap evidence/fee/reserve is not approved by current main");
+   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==3||
+      !readiness.verifiedSnapshot?.validators?.length)
+    throw Error("Independently verified PoS/BLS public snapshot unavailable");
+   verified={...bootstrap,validatorCount:3,expectedValidatorCount:3,
+     validatorSnapshot:readiness.verifiedSnapshot};
   }
-  const draft=chainDraft({root,chain,infrastructure,bootstrap,component});
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
   const artifacts=await build(root,commit);
   const artifact=artifacts.artifacts[component];
   if(!artifact)throw Error("No verified contract artifact");
@@ -70,6 +75,8 @@ export function createChainOperator({
   const item=journal.prepare({
    id:draft.id,chainId:chain.chainId,sourceCommit:commit,
    wallet,buildHash:artifact.buildHash,artifactHash:artifact.artifactHash,
+   parameters:values,
+   validatorSnapshot:component==="validatorRegistry"?verified.validatorSnapshot:null,
    transaction
   });
   return {mode:"await-wallet-confirmation",commit,id:item.id,chain:chain.name,
@@ -144,8 +151,13 @@ export function createChainOperator({
   const artifact=built.artifacts[id.split(":")[1]];
   if(artifact.buildHash!==entry.buildHash||artifact.artifactHash!==entry.artifactHash)
    throw Error("Recompiled artifact differs from original wallet-intent build");
+  const verified={...bootstrap,
+   reserve:entry.parameters?.minimumWei?{minimumWei:entry.parameters.minimumWei,maxExecutorReimbursementWei:entry.parameters.maxExecutorReimbursementWei,perValidatorWei:entry.parameters.perValidatorWei}:bootstrap.reserve,
+   proposedFeeWei:entry.parameters?.sourceFeeWei||bootstrap.proposedFeeWei,
+   initialValidators:bootstrap.initialValidators};
+  const effectiveChain={...chain,defaultDestinationGasLimit:entry.parameters?.defaultDestinationGasLimit||chain.defaultDestinationGasLimit};
   const result=await reconcileDeployedContract({
-   root,entry,chain,bootstrap,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
+   root,entry,chain:effectiveChain,bootstrap:verified,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
   if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
