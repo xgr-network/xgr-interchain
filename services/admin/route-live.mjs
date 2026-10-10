@@ -13,6 +13,8 @@ export async function checkLiveActivation(task,chain,infrastructure,rpc){
  if(!ADDR.test(registry||""))throw Error("Documented source Registry missing");
  const url=chain.rpcUrls[0];
  const chainId=await rpc(url,"eth_chainId",[]);
+ if(typeof chainId!=="string"||!/^0x[0-9a-f]+$/i.test(chainId))
+  throw Error("Malformed RPC chain identity response");
  if(BigInt(chainId)!==BigInt(chain.chainId))throw Error("Route RPC chain identity mismatch");
  const calldata=selector("getRoute(uint32,bytes32)")+
    encodeAbi(["uint32","bytes32"],[task.destinationDomain,task.routeId]).slice(2);
