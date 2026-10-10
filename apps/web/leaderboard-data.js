@@ -1,3 +1,4 @@
+import {isPublicAsset} from "./listing-visibility.js";
 // XITA verified asset metrics projection. Never infer collateral from wrapped supply.
 // Snapshot schema: xita-asset-metrics-v1, data only from verified finalised ledger facts.
 // Missing or incomplete metrics remain null, not zero.
@@ -43,7 +44,7 @@ export function rankAssets(rows,key="lockedUsd",direction="desc"){
 }
 export const formatUsd=(v)=>finite(v)?new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:v<1?6:2}).format(v):"—";
 export function buildLeaderboardRows(catalog,snapshot){
- return Object.entries(catalog?.assets||{}).map(([id,asset])=>{
+ return Object.entries(catalog?.assets||{}).filter(([id,asset])=>isPublicAsset(id,asset)).map(([id,asset])=>{
   const facts=verifiedMetrics(snapshot,id);
   return {id,name:asset.profile?.name||asset.metadata?.name||id,
    slug:asset.profile?.slug||id.toLowerCase(),
