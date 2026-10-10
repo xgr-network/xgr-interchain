@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-validator-fee-bootstrap",
+  "chain": "xgrchain",
+  "chainId": 1643,
+  "destinationDomain": 1643,
+  "membershipOriginChainId": 1643,
+  "validatorSource": "xgrchain-pos-finalized",
+  "verifierFormat": "compressed",
+  "verifierAddress": "0x0000000000000000000000000000000000002040",
+  "validatorSnapshot": {
+    "blockNumber": null,
+    "validators": []
+  },
+  "reserve": {
+    "minimumWei": null,
+    "maxExecutorReimbursementWei": null,
+    "perValidatorWei": null
+  },
+  "sourceFee": {
+    "targetWei": null,
+    "governance": "validator-bls-quorum",
+    "ttlSeconds": 300
+  },
+  "notes": "Native compressed BLS precompile requires positive and negative verification vectors; no Solidity verifier deployment. Compressed possession proofs must match the native verifier."
+}
