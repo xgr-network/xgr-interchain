@@ -18,7 +18,7 @@ import {planCatalogRoutes} from "./route-lifecycle.mjs";
 import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
-import {approveBootstrapToMain} from "./bootstrap-approval.mjs";
+
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
@@ -221,25 +221,18 @@ http.createServer(async(req,res)=>{
    const {graph:lifecycle,tasks}=nextAssetRouteTasks(queue.inventory,infrastructure);
    return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks});
   }
-  if(req.method==="POST"&&path==="/admin/api/bootstrap/approve"){
+  if(req.method==="POST"&&path==="/admin/api/chain-deploy/preview"){
    const item=await bodyJSON(req);
-   const chain=item.chain;
-   const active=Object.values(operator.status().entries).some(e=>
-    e.id.startsWith(chain+":")&&e.stage!=="documented");
-   if(active)throw Error("Unresolved chain transaction prevents bootstrap manifest change");
-   const result=await approveBootstrapToMain({
-    root,chainName:chain,values:item.values,
-    evidenceDir:process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
-      resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
-   });
-   return reply(res,200,{ok:true,result});
+   const result=await operator.preview({chain:item.chain,component:item.component,
+     wallet:item.wallet,parameters:item.parameters||{}});
+   return reply(res,200,{ok:true,preview:result});
   }
   if(req.method==="GET"&&path==="/admin/api/chain-deploy/status"){
    return reply(res,200,{ok:true,mode:"wallet-assisted",intents:operator.status()});
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/prepare"){
    const item=await bodyJSON(req);
-   const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet});
+   const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet,parameters:item.parameters||{}});
    return reply(res,200,{ok:true,...prepared});
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/hash"){
