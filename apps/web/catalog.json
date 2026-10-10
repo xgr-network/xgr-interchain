@@ -88,56 +88,38 @@
         "kind": "asset-routes",
         "asset": "XGR",
         "network": "mainnet",
-        "protocol": "ILN-v3.1.4",
+        "protocol": "XITA-v3.1.5",
         "routingHub": "xgrchain",
         "routes": [
           {
             "name": "xgr_to_base",
             "sourceChain": "xgrchain",
-            "destinationChain": "base",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "base"
           },
           {
             "name": "base_to_xgr",
             "sourceChain": "base",
-            "destinationChain": "xgrchain",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "xgrchain"
           },
           {
             "name": "xgr_to_polygon",
             "sourceChain": "xgrchain",
-            "destinationChain": "polygon",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "polygon"
           },
           {
             "name": "polygon_to_xgr",
             "sourceChain": "polygon",
-            "destinationChain": "xgrchain",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "xgrchain"
           },
           {
             "name": "xgr_to_arbitrum",
             "sourceChain": "xgrchain",
-            "destinationChain": "arbitrum",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "arbitrum"
           },
           {
             "name": "arbitrum_to_xgr",
             "sourceChain": "arbitrum",
-            "destinationChain": "xgrchain",
-            "routeId": null,
-            "validatorFeeWei": null,
-            "activation": "pending-governance"
+            "destinationChain": "xgrchain"
           }
         ]
       },
@@ -180,7 +162,8 @@
           }
         ],
         "bridgeModel": "lock-mint-burn-unlock",
-        "notes": "XETA v3.1.4 canonical asset: native XGR on XGRChain. Wrapped token contracts and route deployments require independent verification."
+        "notes": "Canonical native XGR on XGRChain. Synthetic representations on spokes use authenticated mint/burn.",
+        "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0"
       },
       "mainnet": {
         "schemaVersion": 1,
@@ -189,85 +172,16 @@
         "network": "mainnet",
         "routeManifest": "config/assets/XGR/routes.json",
         "deploymentManifest": "deployments/mainnet/assets/XGR.json",
-        "ilnV314Activation": "not-authorized",
-        "notes": "All six XETA routes are planned and require fresh router, ISM, Gateway, vault, governance and full source/destination E2E verification."
+        "notes": "Deployment observations are indexed by canonical assetId and verified immutable receipts; source definitions originate from main."
       },
       "deployment": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "kind": "asset-deployment",
         "network": "mainnet",
         "asset": "XGR",
-        "ilnV314": {
-          "status": "unverified-not-activated",
-          "routes": [
-            {
-              "name": "xgr_to_base",
-              "sourceChain": "xgrchain",
-              "destinationChain": "base",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            },
-            {
-              "name": "base_to_xgr",
-              "sourceChain": "base",
-              "destinationChain": "xgrchain",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            },
-            {
-              "name": "xgr_to_polygon",
-              "sourceChain": "xgrchain",
-              "destinationChain": "polygon",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            },
-            {
-              "name": "polygon_to_xgr",
-              "sourceChain": "polygon",
-              "destinationChain": "xgrchain",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            },
-            {
-              "name": "xgr_to_arbitrum",
-              "sourceChain": "xgrchain",
-              "destinationChain": "arbitrum",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            },
-            {
-              "name": "arbitrum_to_xgr",
-              "sourceChain": "arbitrum",
-              "destinationChain": "xgrchain",
-              "routeId": null,
-              "gateway": null,
-              "feeVault": null,
-              "warpRouter": null,
-              "validatorFeeWei": null,
-              "governanceTx": null
-            }
-          ]
-        }
+        "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+        "sourceManifest": "config/assets/XGR/asset.json",
+        "receiptPaths": []
       },
       "profile": {
         "schemaVersion": 1,
