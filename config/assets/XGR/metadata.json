@@ -33,9 +33,9 @@
     "discord": null
   },
   "market": {
-    "coingeckoId": null,
+    "coingeckoId": "xgr",
     "coinmarketcapId": null,
-    "priceSource": "explorer-xgr-price"
+    "priceSource": "coingecko"
   },
   "supply": {
     "circulating": null,
