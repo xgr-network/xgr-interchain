@@ -72,3 +72,17 @@ test("selected chain details distinguish native and wrapped asset symbols",()=>{
  assert.match(html,/wXGR/);
  assert.match(html,/Wrapped/);
 });
+
+test("CoinGecko market cap in Universe is asset-wide and independent of route activation",()=>{
+ const model=buildExperienceModel(catalog,()=>false);
+ const snapshot={schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:{assetId:"XGR",verified:false,
+  market:{status:"market-data",source:"coingecko",marketCapUsd:10351.53,priceUsd:0.0001144,circulating:90485400,asOf:"2026-10-10T17:00:00Z"},
+  custody:{status:"unavailable"},movement:{status:"unavailable"}}}};
+ const html=renderUniverse(model,"polygon",snapshot);
+ assert.match(html,/10,351.53/);
+ assert.match(html,/Asset-wide market cap/);
+ assert.match(html,/not Polygon TVL/);
+ assert.match(html,/0<\\/strong>/);
+ const without=renderUniverse(model,"polygon");
+ assert.doesNotMatch(without,/ux-market-card/);
+});
