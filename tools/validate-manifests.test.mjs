@@ -14,3 +14,5 @@ test("unverified asset has no deployment receipts",()=>{const x=copy();assert.de
 test("rejects missing token profile logo",()=>{const c=copy();c.assets.XGR.profile.branding.logoUrl=null;assert.ok(validateCatalog(c).some(e=>e.includes("profile branding")))});
 test("rejects unsafe public profile URL",()=>{const c=copy();c.assets.XGR.profile.links.website="javascript:alert(1)";assert.ok(validateCatalog(c).some(e=>e.includes("profile links")))});
 test("rejects mismatched token profile",()=>{const c=copy();c.assets.XGR.profile.asset="OTHER";assert.ok(validateCatalog(c).some(e=>e.includes("public token profile")))});
+
+test("reject public listing without GitHub-pinned transfer proof",()=>{const c=copy();c.assets.XGR.listing={schemaVersion:1,kind:"xita-asset-listing",asset:"XGR",status:"public",basis:"verified-transfer",publicProof:null};assert.ok(validateCatalog(c).some(x=>x.includes("publication evidence")))});
