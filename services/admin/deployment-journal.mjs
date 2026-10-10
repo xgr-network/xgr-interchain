@@ -7,21 +7,23 @@ import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 const H40=/^[a-f0-9]{40}$/i,TX=/^0x[a-f0-9]{64}$/i,ADDR=/^0x[a-f0-9]{40}$/i;
 const STAGES=new Set(["submitted","confirmed","failed","documented"]);
-function safeId(s){if(typeof s!=="string"||!/^(base|xgrchain):[a-zA-Z][a-zA-Z0-9]{2,45}$/.test(s))throw Error("Unapproved deployment step ID");return s}
+function safeId(s){if(typeof s!=="string"||!/^[a-z][a-z0-9-]{1,50}:[a-zA-Z][a-zA-Z0-9]{2,45}$/.test(s))throw Error("Invalid deployment step ID");return s}
 function validate(entry){
  safeId(entry.id);
  if(!TX.test(entry.txHash||"")||!H40.test(entry.sourceCommit||"")||!ADDR.test(entry.wallet||""))
   throw Error("Invalid transaction journal identity");
- if(!Number.isSafeInteger(entry.chainId)||![8453,1643].includes(entry.chainId)||!STAGES.has(entry.stage))
+ if(!Number.isSafeInteger(entry.chainId)||entry.chainId<1||!STAGES.has(entry.stage))
   throw Error("Invalid journal chain or state");
 }
-export function deploymentJournal({dir}){
+export function deploymentJournal({dir,chains=[]}){
  if(typeof dir!=="string"||!dir.startsWith("/"))throw Error("Persistent absolute journal directory required");
+ const configured=new Map(chains.map(c=>[c.name,c.chainId]));
+ const requireApproved=e=>{const name=safeId(e.id).split(":")[0];if(configured.get(name)!==e.chainId)throw Error("Deployment chain is not approved in inventory");};
  const path=join(dir,"transactions.json"),lock=join(dir,"transactions.lock");
  const read=()=>{try{
   const value=JSON.parse(readFileSync(path,"utf8"));
   if(value.version!==1||typeof value.entries!=="object"||Array.isArray(value.entries))throw Error("Journal schema mismatch");
-  Object.values(value.entries).forEach(validate);
+  Object.values(value.entries).forEach(entry=>{validate(entry);requireApproved(entry)});
   return value;
  }catch(e){if(e.code==="ENOENT")return {version:1,entries:{}};throw e}};
  const write=value=>{
@@ -47,7 +49,7 @@ export function deploymentJournal({dir}){
  return {
   read,
   record(entry){
-   validate({...entry,stage:"submitted"});
+   validate({...entry,stage:"submitted"});requireApproved(entry);
    return mutate(s=>{
     const id=safeId(entry.id);
     if(s.entries[id])throw Error("Deployment step already journaled; reconcile before any new transaction");
