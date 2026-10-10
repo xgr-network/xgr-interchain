@@ -176,11 +176,13 @@ async function runJoin(action){
      "Full description (40–5000 characters)":"description",
      "CoinGecko coin ID":"coingeckoId",
      "ERC-20 contract address":"canonicalAddress",
-     "Canonical chain":"canonicalChain",Decimals:"decimals"};
+     "Canonical chain":"canonicalChain",Decimals:"decimals",
+     "Logo URL or PNG":"logoUrl","Token URL slug":"slug","HTTPS website":"website",
+     "Project confirmation":"confirmed","One or more other chains":"targets"};
    drawJoin();
    const errors=[];
    for(const problem of problems){
-     const key=fields[problem]||Object.keys(fields).find(k=>problem.startsWith(k))&&fields[Object.keys(fields).find(k=>problem.startsWith(k))];
+     const key=fields[problem]||fields[Object.keys(fields).find(k=>problem.startsWith(k))];
      const field=key?document.querySelector('[data-join="'+key+'"]'):null;
      if(field){
        field.setAttribute("aria-invalid","true");
@@ -189,9 +191,9 @@ async function runJoin(action){
        field.closest(".ja-field")?.appendChild(msg);errors.push(field);
      }
    }
-   const status=document.querySelector("#ja-status");
+   const status=el.querySelector("#ja-status");
    if(status)status.textContent="Please complete: "+problems.join(", ");
-   errors[0]?.focus();
+   errors[0]?.focus({preventScroll:true});
    return;
  }
  if(action==="next"){joinState.step=Math.min(3,joinState.step+1);joinState.status="";drawJoin();return;}
@@ -257,7 +259,7 @@ function render(){
    const field=document.querySelector("#ux-leader-search");
    if(field){field.focus();if(typeof position==="number")field.setSelectionRange(position,position);}
  });
- document.querySelector("#application")?.addEventListener("submit",application);
+ // The Join wizard has persistent delegated event handlers below.
  document.querySelector("#search")?.addEventListener("input",e=>{
   const value=e.target.value.trim().toLowerCase();
   document.querySelectorAll("#market-row tr").forEach(row=>row.hidden=!row.dataset.filter?.includes(value));
@@ -271,6 +273,47 @@ if(globalThis.ethereum?.on){
  globalThis.ethereum.on("accountsChanged",accounts=>{state.account=Array.isArray(accounts)?accounts[0]||null:null;connect.textContent=state.account?shorten(state.account):"Connect Wallet";state.walletGas=null;void updateWalletGas();if(!state.account)render();});
  globalThis.ethereum.on("chainChanged",()=>{state.walletGas=null;void updateWalletGas();});
 }
+// Persistent listeners: repainting the wizard never discards its controls.
+el.addEventListener("click",event=>{
+ const button=event.target.closest("[data-join-action]");
+ if(!button||!el.contains(button)||path()!=="/join")return;
+ event.preventDefault();
+ void runJoin(button.dataset.joinAction);
+});
+el.addEventListener("input",event=>{
+ const field=event.target.closest("[data-join]");
+ if(!field||path()!=="/join"||!joinState.data)return;
+ captureJoin();
+ field.removeAttribute("aria-invalid");
+ field.closest(".ja-field")?.classList.remove("is-invalid");
+ field.closest(".ja-field")?.querySelectorAll(".ja-field-error").forEach(n=>n.remove());
+ const d=joinState.data;
+ for(const [k,value] of Object.entries({name:d.name||"Your Token",symbol:d.symbol||"—"})){
+  const target=el.querySelector('[data-join-preview="'+k+'"]');
+  if(target)target.textContent=value;
+ }
+});
+el.addEventListener("change",event=>{
+ if(path()!=="/join"||!joinState.data)return;
+ const field=event.target;
+ if(field.matches("#ja-logo")){
+  const file=field.files?.[0];if(!file)return;
+  if(file.type!=="image/png"||file.size>300000){
+   joinState.status="Please upload a PNG of at most 300 KB.";drawJoin();return;
+  }
+  const reader=new FileReader();
+  reader.onload=()=>{
+   joinState.data.logoPngBase64=String(reader.result).split(",")[1];
+   joinState.status="PNG loaded and included in the local application draft.";drawJoin();
+  };
+  reader.onerror=()=>{joinState.status="Could not read the PNG.";drawJoin();};
+  reader.readAsDataURL(file);return;
+ }
+ if(field.matches("[data-join-target]")){captureJoin();drawJoin();return;}
+ if(field.matches('[data-join="canonicalChain"],[data-join="priceSource"]')){
+  captureJoin();drawJoin();
+ }
+});
 document.addEventListener("click",e=>{
  const a=e.target.closest("a[data-nav]");
  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
