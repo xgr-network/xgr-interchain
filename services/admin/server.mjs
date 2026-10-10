@@ -10,6 +10,8 @@ import {readOnlyWorkQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
 import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
+import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
+import {deploymentJournal} from "./deployment-journal.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -161,6 +163,14 @@ http.createServer(async(req,res)=>{
    const queue=await readOnlyWorkQueue(root);
    const configured=infrastructureInventory(root,queue.inventory.chains);
    return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/first-deploy"){
+   const queue=await readOnlyWorkQueue(root);
+   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,
+    ...buildFirstChainDeploymentPlan(queue.inventory,infrastructure,bootstrap),
+    journal:deploymentJournal({dir:resolve(dataDir,"deployments")}).read()});
   }
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
