@@ -67,6 +67,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         uint256 validatorFeeWei,
         uint64 nonce
     );
+    event SourceFeeInitialized(uint256 validatorFeeWei, uint64 validatorSetId);
     event SourceFeeUpdated(uint256 previousFeeWei, uint256 newFeeWei, uint64 indexed nonce, uint64 validatorSetId);
     event RoutePrepared(uint32 indexed destinationDomain, bytes32 indexed routeId, address indexed gateway);
     event RouteSafetyConfirmed(
@@ -74,9 +75,9 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         bytes32 indexed reverseRouteId, uint64 validatorSetId
     );
 
-    constructor(uint64 chainId_, uint32 domain_, address validators_, address factory_) {
+    constructor(uint64 chainId_, uint32 domain_, address validators_, address factory_, uint256 initialValidatorFeeWei_) {
         if (chainId_ == 0 || domain_ == 0 || factory_ == address(0) ||
-            validators_ == address(0) || block.chainid != chainId_) revert InvalidConfiguration();
+            validators_ == address(0) || initialValidatorFeeWei_ == 0 || block.chainid != chainId_) revert InvalidConfiguration();
         IXGRInterchainValidatorSetV2 v = IXGRInterchainValidatorSetV2(validators_);
         if (v.destinationDomain() != domain_ || v.verifier() == address(0)) revert InvalidConfiguration();
         sourceChainId = chainId_;
@@ -84,9 +85,13 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         governanceRegistry = v;
         factory = factory_;
         activationBlock = block.number;
+        validatorFeeWei = initialValidatorFeeWei_;
+        // Initial fee is committed once as immutable Factory constructor input.
+        // Nonce 0 is the bootstrap epoch; only later changes require BLS quorum.
+        emit SourceFeeInitialized(initialValidatorFeeWei_, v.setId());
     }
 
-    /// @notice Single validator-approved fee for ALL routes on this source chain.
+    /// @notice Quorum-controlled CHANGES to the bootstrap source-native fee for ALL routes.
     /// @dev Unset fee (zero) prevents live route enrollment and fee-qualified bridging.
     function applySourceFee(
         XGRILNProtocol.SourceFeeProposalV315 calldata proposal,
