@@ -11,12 +11,12 @@ test("first deploy exclusively covers Base and XGRChain and uses native verifier
  const bootstrap=inventory.chains.map(c=>bootstrapPlan(root,c));
  const plan=buildFirstChainDeploymentPlan(inventory,infrastructure,bootstrap);
  assert.equal(plan.mode,"preflight-only");
- assert.deepEqual(plan.chains.map(c=>c.name),["base","xgrchain"]);
- assert.equal(plan.chains[0].initialFeeWei,"100000000000");
- assert.equal(plan.chains[1].initialFeeWei,null);
- assert.equal(plan.chains[0].steps[0].component,"blsVerifier");
- assert.equal(plan.chains[1].steps[0].component,"nativeVerifier");
- assert.equal(plan.chains[1].steps.some(s=>s.component==="blsVerifier"),false);
+ assert.deepEqual(plan.chains.map(c=>c.name),["xgrchain","base"]);
+ assert.equal(plan.chains[0].initialFeeWei,null);
+ assert.equal(plan.chains[1].initialFeeWei,"100000000000");
+ assert.equal(plan.chains[0].steps[0].component,"nativeVerifier");
+ assert.equal(plan.chains[1].steps[0].component,"blsVerifier");
+ assert.equal(plan.chains[0].steps.some(s=>s.component==="blsVerifier"),false);
  assert.equal(plan.asset.routeIds.length,2);
  assert.ok(plan.chains.flatMap(c=>c.steps).every(s=>s.status!=="ready"));
 });
