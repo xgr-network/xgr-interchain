@@ -22,16 +22,16 @@ export function makeStellarDisc(system,count){
  const key=system.system.key;
  const seed=[...key].reduce((h,c)=>(Math.imul(h,33)+c.charCodeAt(0))>>>0,1643);
  const rand=rng(seed),hub=system.portal;
- const total=count??(hub?440:260),pts=new Float32Array(total*3);
+ const total=count??(hub?2300:1650),pts=new Float32Array(total*3);
  const tilt=hub?[.31,.12,.09]:[
   (system.orbital?.inclination||.25)*.82,
   system.orbital?.node||.1,
   (system.orbital?.node||.2)*.24];
  for(let i=0;i<total;i++){
   const t=(i+rand()*.66)/total;
-  const r=system.radius*(1.35+1.42*Math.sqrt(t))+(rand()-.5)*.16;
-  const arm=i%3,a=arm*TAU/3+t*TAU*2.65+(rand()-.5)*.20;
-  const thick=(rand()-.5)*system.radius*(hub?.23:.17);
+  const r=system.radius*(1.12+1.88*Math.sqrt(t))+(rand()-.5)*.42;
+  const arm=i%4,a=arm*TAU/4+t*TAU*2.8+(rand()-.5)*.28;
+  const thick=(rand()-.5)*system.radius*(hub?.30:.22);
   let p=[Math.cos(a)*r,thick,Math.sin(a)*r*.79];
   // Rotate into distinct orbital planes; no common flat disk.
   p=rotateAxis(p,[1,0,0],tilt[0]);
