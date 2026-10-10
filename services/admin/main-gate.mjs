@@ -35,9 +35,44 @@ export function checkedLocalMain(root,{git=(args)=>execFileSync("git",args,{cwd:
  if(dirty)throw Error("Tracked working tree differs from main commit");
  return sha;
 }
+// The git transport checks the SAME LIVE refs/heads/main when GitHub's REST
+// API responds 403/429 or is unreachable. This is not an offline cache.
+// Pin origin to the canonical GitHub repository before consulting ls-remote.
+export function currentMainViaGit(root,{
+ git=(args)=>execFileSync("git",args,{cwd:root,encoding:"utf8",
+   timeout:12000,maxBuffer:8192,env:{...process.env,GIT_TERMINAL_PROMPT:"0"}}).trim()
+}={}){
+ const origin=git(["remote","get-url","origin"]).trim();
+ const canonicalOrigins=new Set([
+  "git@github.com:xgr-network/xgr-interchain.git",
+  "git@github.com:xgr-network/xgr-interchain",
+  "https://github.com/xgr-network/xgr-interchain.git",
+  "https://github.com/xgr-network/xgr-interchain",
+  "ssh://git@github.com/xgr-network/xgr-interchain.git",
+  "ssh://git@github.com/xgr-network/xgr-interchain"
+ ]);
+ if(!canonicalOrigins.has(origin))
+  throw Error("Git remote origin is not the pinned xgr-network/xgr-interchain repository");
+ const output=git(["ls-remote","--exit-code","origin","refs/heads/main"]).trim();
+ const match=output.split(/\s+/);
+ const valid=match.length===2&&/^[0-9a-f]{40}$/i.test(match[0])&&match[1]==="refs/heads/main";
+ if(!valid)throw Error("Live Git remote main ref not independently verified");
+ return match[0].toLowerCase();
+}
+export async function liveMainCommit(root,options={}){
+ try{return await currentMainCommit(options)}
+ catch(apiError){
+  try{return currentMainViaGit(root,options)}
+  catch(gitError){
+   throw Error("Cannot verify live main over GitHub API or pinned Git remote ("+
+    String(apiError.message||apiError)+"; "+
+    String(gitError.message||gitError)+")");
+  }
+ }
+}
 export async function assertCurrentMain(root,options={}){
  const local=checkedLocalMain(root,options);
- const remote=await currentMainCommit(options);
+ const remote=await liveMainCommit(root,options);
  if(local!==remote)throw Error("Server commit is not the CURRENT GitHub main; update checkout before deploying");
  return remote;
 }
@@ -74,7 +109,7 @@ export async function readOnlyWorkQueue(root,options={}){
  const inventory=approvedWorkInventory(root);
  let remoteCommit=null,syncStatus="unavailable",warning=null;
  try{
-  remoteCommit=await currentMainCommit(options);
+  remoteCommit=await liveMainCommit(root,options);
   syncStatus=remoteCommit===commit?"current":"outdated";
   if(syncStatus==="outdated")
    warning="Lokaler GitHub-main-Checkout ist veraltet. ./manage.sh update ausführen. Deployments sind gesperrt.";
