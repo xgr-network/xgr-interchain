@@ -306,3 +306,13 @@ header nav a{font-weight:550;letter-spacing:.07em}
 .ja-universe-link-action{display:inline-flex;align-items:center;border:1px solid #627e9d;border-radius:8px;margin-top:8px;padding:11px 14px;color:#e4f1ff;font-weight:650;font-size:12px;letter-spacing:.05em;background:#1c354e}
 .ja-universe-link-action:hover,.ja-universe-link-action:focus-visible{background:#294b6b;border-color:#b0d5f4}
 @media(max-width:550px){.ja-universe-link{flex-direction:column;align-items:flex-start;gap:15px;padding:20px}.ja-universe-link-mark{width:64px;height:64px;flex-basis:64px;font-size:30px}.ja-universe-link-copy strong{font-size:17px}}
+
+/* Depth-first nebula treatment: restrained cyan / midnight blue layered clouds */
+.ux-3d-stage{background:radial-gradient(ellipse 38% 28% at 18% 72%,#26607837,transparent 95%),radial-gradient(ellipse 47% 37% at 76% 25%,#393b7252,transparent 93%),radial-gradient(ellipse 50% 65% at 50% 55%,#14345378,transparent 90%),#030810}
+.ux-3d-stage::before{content:"";pointer-events:none;position:absolute;inset:0;opacity:.48;background:radial-gradient(ellipse 21% 58% at 24% 52%,#476b9544,transparent 95%),radial-gradient(ellipse 35% 27% at 73% 39%,#426e8540,transparent 95%);filter:blur(36px);mix-blend-mode:screen;z-index:0}
+.ux-3d-canvas{position:relative;z-index:1}
+.ux-3d-stage::after{content:"";pointer-events:none;position:absolute;inset:0;box-shadow:inset 0 0 120px 35px #02050cc9;z-index:1}
+.ux-3d-labels,.ux-3d-controls,.ux-3d-status,.ux-3d-focus,.ux-3d-hint{z-index:3}
+.ja-field.is-invalid input,.ja-field.is-invalid textarea,.ja-field.is-invalid select{border-color:#e48282;box-shadow:0 0 0 1px #b74d58}
+.ja-field-error{color:#ef9b9b;font-size:11px;margin-top:2px;line-height:1.4}
+.ja-status:not(:empty){border-left:3px solid #cc8e68;padding:9px 12px;background:#3b281e38}
