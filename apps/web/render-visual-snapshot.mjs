@@ -2,7 +2,7 @@ import {createServer} from "node:http";
 import {readFile, mkdir} from "node:fs/promises";
 import {resolve,extname,sep} from "node:path";
 import {fileURLToPath} from "node:url";
-import {spawnSync} from "node:child_process";
+import {spawn} from "node:child_process";
 
 const root=fileURLToPath(new URL(".",import.meta.url));
 const output=resolve(process.argv[2]||"artifacts/xita-universe.png");
@@ -24,7 +24,13 @@ try{
  "--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader",
  "--window-size=1600,960","--hide-scrollbars","--virtual-time-budget=3500",
  "--screenshot="+output,"http://127.0.0.1:"+server.address().port+"/universe"];
- const run=spawnSync(chrome,args,{timeout:40000,encoding:"utf8"});
- if(run.status!==0)throw Error("Chromium screenshot failed: "+run.stderr?.slice(-1800));
+ await new Promise((ok,fail)=>{
+  const proc=spawn(chrome,args,{stdio:["ignore","ignore","pipe"]});
+  let errors="";
+  proc.stderr.on("data",part=>errors+=part.toString());
+  const timer=setTimeout(()=>{proc.kill();fail(new Error("Chromium screenshot timeout"))},40000);
+  proc.on("error",e=>{clearTimeout(timer);fail(e)});
+  proc.on("close",code=>{clearTimeout(timer);code===0?ok():fail(new Error("Chromium screenshot failed: "+errors.slice(-1800)))});
+ });
  console.log("Screenshot ready: "+output);
 }finally{await new Promise(ok=>server.close(ok));}
