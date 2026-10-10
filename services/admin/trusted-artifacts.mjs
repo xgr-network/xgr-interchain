@@ -9,6 +9,7 @@ import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {checkedLocalMain} from "./main-gate.mjs";
+import {resolveForgeExecutable} from "./forge-tooling.mjs";
 
 const exec=promisify(execFile);
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
@@ -93,8 +94,9 @@ export function verifyRuntimeTemplate(artifact,observedCode){
 }
 export async function trustedBuild(root,commit,{
  runner=async()=>{
-  const {stdout:version}=await exec("forge",["--version"],{cwd:root,timeout:12000,maxBuffer:4096});
-  await exec("forge",["build","--force"],{cwd:root,timeout:180000,maxBuffer:1024*1024*4});
+  const forge=resolveForgeExecutable();
+  const {stdout:version}=await exec(forge,["--version"],{cwd:root,timeout:12000,maxBuffer:4096});
+  await exec(forge,["build","--force"],{cwd:root,timeout:180000,maxBuffer:1024*1024*4});
   return version.trim();
  }
 }={}){
