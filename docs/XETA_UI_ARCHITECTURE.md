@@ -8,7 +8,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/universe`: interactive chain systems; choose a system, then open its token
 - `/markets`: searchable token directory
 - `/token/<slug>`: independent token detail page and its own dedicated bridge panel
-- `/routes`: configured directional routes and explicitly unverified activation status
+- Route inventory appears on individual token pages; the standalone public Routes page is retired.
 - `/join`: offline token application draft, JSON export only
 
 There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
