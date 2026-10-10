@@ -16,7 +16,7 @@ const input={chain,originChain:origin,bootstrap,initial,snapshot,proofs,rpc,veri
 test("generates candidate in pinned order, leaves actual config untouched",async()=>{
  // Exercise output without BLS vector fixture; a separate live RPC test verifies cryptography.
  // Invalid test signatures intentionally remain untrusted by actual verifier.
- await assert.rejects(()=>prepareBootstrapEvidence(input),/Expected EIP2537 G1/);
+ await assert.rejects(()=>prepareBootstrapEvidence(input),/EIP2537 G1 padding must be zero/);
 });
 test("canonical hash mismatch fails before any signature call",async()=>{
  await assert.rejects(()=>prepareBootstrapEvidence({...input,rpc:async (_,method)=>method==="eth_getBlockByNumber"?{number:"0x64",hash:"0x"+"b".repeat(64)}:rpc(_,method)}),/block hash/);
