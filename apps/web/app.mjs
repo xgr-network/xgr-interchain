@@ -10,13 +10,10 @@ const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
 const profile=id=>state.catalog.assets[id]?.profile||{name:id,slug:id.toLowerCase(),shortDescription:"",description:"",categories:[],tags:[],links:{},branding:{}};
 const tokenUrl=id=>"/token/"+encodeURIComponent(profile(id).slug);
 const allAssets=()=>Object.keys(state.catalog.assets);
-const route=r=>({allowed:false});
 const routes=()=>asset().routes.routes;
-const active=()=>0;
 const activeFor=id=>0;
 const path=()=>decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
 const btn=(url,label,alt=false)=>'<a data-nav href="'+url+'" class="btn'+(alt?" alt":"")+'">'+label+'</a>';
-const tag=r=>'<span class="tag">'+(route(r.name).allowed?"Verified":"Pending governance")+'</span>';
 const fmt=(n,dec=18)=>formatUnits(n,dec,10);
 const note=t=>'<div class="notice">'+t+'</div>';
 function projectLogo(id){
@@ -151,8 +148,6 @@ function join(){
  '<div class="card"><h2>From token to alliance</h2><p class="muted">01 · Submit your token specification</p><p class="muted">02 · Token contract and project authorization verification</p><p class="muted">03 · Validator quorum route governance</p><p class="muted">04 · Verified deployment and live token page</p>'+
  '<div class="notice">This form saves a local draft only. It does not send information to a backend, request a wallet signature, or grant token onboarding approval.</div></div></div>';
 }
-function routesPage(){return '<div class="eyebrow">Research & development</div><h1>Route Finder</h1><p class="lead">Future graph search across DEX swaps and XETA bridge hops. Route quotes, non-atomic recovery, gas sponsorship and liquidity indexing are not live.</p>'+btn("/token/xgr","Explore initial token");}
-function reset(){state.walletGas=null;}
 async function updateWalletGas(){
  if(!state.account||!globalThis.ethereum?.request)return;
  try{
@@ -206,7 +201,6 @@ function render(){
   const value=e.target.value.trim().toLowerCase();
   document.querySelectorAll("#market-row tr").forEach(row=>row.hidden=!row.dataset.filter?.includes(value));
  });
- controls();
 }
 connect.addEventListener("click",async()=>{
  if(!globalThis.ethereum){alert("An injected EIP-1193 EVM wallet is required.");return;}
