@@ -45,7 +45,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.end('{"ok":false,"error":"Not deployed"}');
    return;
   }
-  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/token/xgr";
+  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/token/xgr"||pathname==="/markets";
   const target=isPage?"index.html":pathname.slice(1);
   const full=resolve(root,target);
   if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
@@ -62,11 +62,12 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/token/xgr","Bridge XGR"]]){
+  for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/token/xgr","Bridge XGR"],["/markets","Token Toplist"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
+   if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Token Toplist|Token <span>Toplist<\/span>/); }
    if(path==="/"||path==="/universe"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
     assert.match(html,/data-cosmos-action="home"/,path+" missing XGR home navigation");

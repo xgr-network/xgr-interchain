@@ -1,9 +1,10 @@
+import {buildLeaderboardRows,rankAssets,formatUsd} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"}};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -59,23 +60,29 @@ function indexerNotice(){
  return '<p class="status">XITA event index not yet online. Unavailable transfer statistics are not zero.</p>';
 }
 function markets(){
- const ids=allAssets();
- return '<div class="eyebrow">Discovery</div><h1>Token markets</h1>'+
- '<p class="lead">Project listings and real indexed bridge activity. Trading volume and market capitalization remain separate from transfer events.</p>'+
- '<label class="field" for="search">Find a project</label><input id="search" placeholder="Symbol, name, category or tag">'+
- '<div class="card section" style="overflow:auto"><table class="table"><thead><tr>'+
- '<th>Token</th><th>Market price</th><th>Market cap</th><th>24h DEX volume</th><th>24h bridge transfers</th><th>Bridge volume</th><th>Verified routes</th>'+
- '</tr></thead><tbody id="market-row">'+ids.map(id=>marketRow(id)).join("")+'</tbody></table></div>'+
- indexerNotice();
-}
-function marketRow(id){
- const p=profile(id);
- const symbol=x(id),data=state.catalog.assets[id];
- return '<tr data-filter="'+x((p.name+" "+id+" "+(p.categories||[]).join(" ")+" "+(p.tags||[]).join(" ")).toLowerCase())+'">'+
- '<td><a href="'+tokenUrl(id)+'" data-nav>'+symbol+' · '+x(p.name)+'</a></td>'+
- '<td>'+x(displayPrice(state.prices[id]))+'</td><td>—</td><td>—</td>'+
- '<td>'+x(indexedCount(id,"last24h"))+'</td><td>'+x(amountFor(id,"last24h"))+'</td>'+
- '<td>'+activeFor(id)+" / "+data.routes.routes.length+'</td></tr>';
+ const rows=rankAssets(buildLeaderboardRows(state.catalog,state.leaderboard),state.leaderboardSort,state.leaderboardDir)
+  .filter(row=>(row.name+" "+row.id).toLowerCase().includes(state.leaderboardSearch.toLowerCase()));
+ const columns=[["lockedUsd","Locked TVL"],["movedUsd","Moved via XGR"],["marketCapUsd","Market cap"]];
+ const th=columns.map(([key,label])=>'<th><button class="ux-sort-btn" type="button" data-leader-sort="'+key+'" aria-pressed="'+(state.leaderboardSort===key)+'">'+label+' <span>'+(state.leaderboardSort===key?(state.leaderboardDir==="desc"?"↓":"↑"):"↕")+'</span></button></th>').join("");
+ const cells=rows.map((row,i)=>'<tr data-token="'+x(row.id)+'"><td class="ux-rank">'+(i+1)+'</td><td><a class="ux-leader-token" data-nav href="/token/'+encodeURIComponent(row.slug)+'">'+
+ (typeof row.logo==="string"&&row.logo.startsWith("https://")?'<img src="'+x(row.logo)+'" loading="lazy" alt="">':'<span class="ux-leader-placeholder">✦</span>')+
+ '<span><strong>'+x(row.name)+'</strong><small>'+x(row.id)+'</small></span></a></td>'+
+ '<td class="ux-leader-value">'+formatUsd(row.lockedUsd)+'</td>'+
+ '<td class="ux-leader-value">'+formatUsd(row.movedUsd)+'</td>'+
+ '<td class="ux-leader-value">'+formatUsd(row.marketCapUsd)+'</td>'+
+ '<td class="ux-leader-value">'+row.configuredRoutes+'</td></tr>').join("");
+ return '<div class="ux-app ux-leaderboard"><div class="ux-kicker">XITA · ASSET DISCOVERY</div><div class="ux-leader-head"><div><h1>Token <span>Toplist</span></h1>'+
+ '<p class="ux-lead">Discover assets by verified locked collateral, unique interchain value moved through XGRChain and token market capitalization.</p></div>'+
+ '<div class="ux-leader-info">Verified metrics only<br><small>Live indexer values appear when available</small></div></div>'+
+ '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(state.catalog.assets).length+'</strong></div>'+
+ '<div><span>Verified custody TVL</span><strong>'+formatUsd(state.leaderboard?.totals?.lockedUsd)+'</strong></div>'+
+ '<div><span>Moved through XGR</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
+ '<section class="ux-panel ux-leader-table-panel"><div class="ux-leader-toolbar"><div><h2>Explore assets</h2><p class="ux-small">Click a column heading to sort · Missing metrics always rank last</p></div>'+
+ '<label class="ux-leader-search-label"><span>Search tokens</span><input id="ux-leader-search" type="search" placeholder="Name or symbol…" value="'+x(state.leaderboardSearch)+'"></label></div>'+
+ '<div class="ux-leader-scroll"><table class="ux-leader-table"><thead><tr><th>#</th><th>Asset</th>'+th+'<th>Routes configured</th></tr></thead>'+
+ '<tbody>'+cells+'</tbody></table></div>'+
+ (!rows.length?'<p class="ux-muted">No matching assets.</p>':'')+'</section>'+
+ '<p class="ux-leader-footnote">Locked TVL counts only independently verified net collateral in distinct route escrows, not wrapped token supply or incidental deposits. Moved value deduplicates journeys through XGRChain. No verified indexer snapshot means unknown, not zero. Market capitalization requires verified market price and circulating supply; unverified values remain unavailable.</p></div>';
 }
 function feeBreakdown(id){
  const rows=state.assetStats[id]?.lifetime||[];
@@ -203,6 +210,19 @@ function render(){
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelectorAll("[data-leader-sort]").forEach(button=>button.addEventListener("click",()=>{
+   const key=button.dataset.leaderSort;
+   if(!["lockedUsd","movedUsd","marketCapUsd"].includes(key))return;
+   state.leaderboardDir=state.leaderboardSort===key&&state.leaderboardDir==="desc"?"asc":"desc";
+   state.leaderboardSort=key;render();
+ }));
+ document.querySelector("#ux-leader-search")?.addEventListener("input",event=>{
+   state.leaderboardSearch=event.target.value;
+   const position=event.target.selectionStart;
+   render();
+   const field=document.querySelector("#ux-leader-search");
+   if(field){field.focus();if(typeof position==="number")field.setSelectionRange(position,position);}
+ });
  document.querySelector("#application")?.addEventListener("submit",application);
  document.querySelector("#search")?.addEventListener("input",e=>{
   const value=e.target.value.trim().toLowerCase();
@@ -236,6 +256,7 @@ async function start(){
   render();
   el.dataset.ready="1";
   void loadPublicData();
+  void loadLeaderboard();
  }catch(error){
   el.dataset.failed="1";
   const message=error?.name==="AbortError"?"Local catalog request timed out after 2.5 seconds":error?.message||"Unknown catalog error";
@@ -263,3 +284,5 @@ async function loadPublicData(){
  }
  if(state.catalog&&path()!=="/universe")render();
 }
+
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets")render();}catch{ /* Unavailable is not zero */ }}
