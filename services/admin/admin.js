@@ -313,7 +313,8 @@ async function openContractModal(chainName,component){
     ". Zuerst wiederherstellen – niemals erneut senden.","warn");
    return;
   }
-  if(workqueue.readOnly)throw Error("GitHub main ist nicht aktuell");
+  // Gas preview works with a clean checked-out main even if GitHub is temporarily unavailable.
+  // The server independently validates the LIVE main before wallet preparation.
   if(component==="validatorRegistry"&&!r.evidenceVerified){
    presentModalStatus("Öffentliche Validatornachweise auf der Zielchain noch nicht verifiziert.","warn");
    return;
