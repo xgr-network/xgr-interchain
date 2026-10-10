@@ -80,9 +80,8 @@ async function refreshWalletBalances(){
 }
 function renderQueue(){
  if(!workqueue)return;
- const items=[...(workqueue.infrastructure||[]).filter(c=>c.status!=="documented").map(c=>({label:"Chain / "+c.name,detail:(c.required-c.documented)+" Infrastruktur-Komponenten offen"})),
- ...Object.values(workqueue.inventory.assets).flatMap(a=>a.routes.filter(r=>r.status!=="deployed").map(r=>({label:"Asset / "+a.key+" / "+r.source+" → "+r.destination,detail:r.note})))];
- el("deployment-queue").innerHTML=items.map((item,i)=>'<div class="route"><div><strong>'+esc(item.label)+'</strong><small>'+esc(item.detail)+'</small></div><span class="status">Offen</span></div>').join("")||"<p>Keine offenen Deployments im aktuellen main.</p>";
+ const items=workqueue.workItems||[];
+ el("deployment-queue").innerHTML=items.map(item=>'<div class="route"><div><strong>'+esc(item.title)+'</strong><small>'+esc(item.reason)+'</small></div><span class="status blocked">Blockiert</span></div>').join("")||"<p>Keine offenen Deployments im aktuellen main.</p>";
 }
 function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
