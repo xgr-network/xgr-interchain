@@ -114,6 +114,7 @@ export function nextAssetRouteTasks(inventory,infrastructure){
      if(sourceRoute)items.push({
       id:asset.asset+":"+d.name+":activate",asset:asset.asset,chain:sourceRoute.source,
       kind:"activation",action:"validator-quorum-confirmation",routeId:d.routeId,
+      gateway:d.gateway,router:d.localRouter,
       destinationDomain:sourceRoute.destinationDomain,
       blockers:["Independently verified reciprocal route safety BLS quorum"],
       status:"requires-validator-quorum"
