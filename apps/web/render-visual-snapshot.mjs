@@ -1,0 +1,30 @@
+import {createServer} from "node:http";
+import {readFile, mkdir} from "node:fs/promises";
+import {resolve,extname,sep} from "node:path";
+import {fileURLToPath} from "node:url";
+import {spawnSync} from "node:child_process";
+
+const root=fileURLToPath(new URL(".",import.meta.url));
+const output=resolve(process.argv[2]||"artifacts/xita-universe.png");
+const types={".html":"text/html",".js":"text/javascript",".css":"text/css",".json":"application/json",".svg":"image/svg+xml"};
+const server=createServer(async(req,res)=>{
+ const path=new URL(req.url,"http://127.0.0.1").pathname;
+ if(path.startsWith("/api/")){res.writeHead(503,{"Content-Type":"application/json"});res.end("{}");return;}
+ const target=["/","/universe","/markets"].includes(path)?"index.html":path.slice(1);
+ const full=resolve(root,target);
+ if(!full.startsWith(root.endsWith(sep)?root:root+sep)){res.writeHead(403);res.end();return;}
+ try{res.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream"});res.end(await readFile(full));}
+ catch{res.writeHead(404);res.end();}
+});
+await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
+try{
+ await mkdir(resolve(output,".."),{recursive:true});
+ const chrome=process.env.XITA_BROWSER||"chromium";
+ const args=["--headless","--no-sandbox","--disable-dev-shm-usage",
+ "--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader",
+ "--window-size=1600,960","--hide-scrollbars","--virtual-time-budget=3500",
+ "--screenshot="+output,"http://127.0.0.1:"+server.address().port+"/universe"];
+ const run=spawnSync(chrome,args,{timeout:40000,encoding:"utf8"});
+ if(run.status!==0)throw Error("Chromium screenshot failed: "+run.stderr?.slice(-1800));
+ console.log("Screenshot ready: "+output);
+}finally{await new Promise(ok=>server.close(ok));}
