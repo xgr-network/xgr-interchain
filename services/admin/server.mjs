@@ -16,7 +16,6 @@ import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {planCatalogRoutes} from "./route-lifecycle.mjs";
 import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
-import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
@@ -244,36 +243,6 @@ http.createServer(async(req,res)=>{
    const item=await bodyJSON(req);
    const result=await operator.reconcile({id:item.id});
    return reply(res,200,{ok:true,result});
-  }
-  if(req.method==="GET"&&path==="/admin/api/transaction-draft"){
-   // Draft only, never broadcasts a transaction or conveys signing authority.
-   const queue=await readOnlyWorkQueue(root);
-   const url=new URL(req.url,"http://localhost");
-   const chain=queue.inventory.chains.find(c=>c.name===url.searchParams.get("chain"));
-   const component=url.searchParams.get("component");
-   if(!chain)throw Error("Chain not approved");
-   const infra=infrastructureInventory(root,[chain])[0];
-   const boot=bootstrapPlan(root,chain);
-   const draft=chainDraft({root,chain,infrastructure:infra,bootstrap:boot,component});
-   const from=url.searchParams.get("wallet");
-   const simulation=from?await simulateChainDraft(draft,{
-    rpc:probe,url:chain.rpcUrls[0],from}):null;
-   return reply(res,200,{ok:true,mode:"read-only",commit:queue.commit,
-    mainCurrent:queue.githubApproved,
-    approvedForExecution:false,
-    draft:simulation?{...draft,transaction:undefined}:{
-     id:draft.id,chain:draft.chain,chainId:draft.chainId,component:draft.component,
-     operation:draft.operation,contract:draft.contract,
-     creationBytes:draft.transaction.data.length/2-1,
-     depositWei:BigInt(draft.transaction.value).toString()},
-    simulation:simulation?{
-     gasEstimateWei:simulation.gasEstimateWei,
-     gasLimit:simulation.gasLimit,gasPriceWei:simulation.gasPriceWei,
-     totalWorstCaseWei:simulation.totalWorstCaseWei,simulated:true
-    }:null,
-    missing:["Verified commit-pinned artifact provenance and runtime link proof",
-     "Wallet-confirmed transaction executor and write-ahead intent journal",
-     "Finalized receipt, constructor bindings and restart-safe GitHub recording"]});
   }
   if(req.method==="GET"&&path==="/admin/api/first-deploy"){
    const queue=await readOnlyWorkQueue(root);
