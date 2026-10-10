@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes} from "./experience.mjs";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.mjs";
 
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
@@ -49,4 +49,15 @@ test("catalog-sourced strings are escaped in markup",()=>{
   const html=renderUniverse(model);
   assert.doesNotMatch(html,/<img/);
   assert.match(html,/&lt;img/);
+});
+
+test("v3.1.5 token bridge remains disabled until verified deployment",()=>{
+ const model=buildExperienceModel(catalog,()=>true);
+ const markup=renderTokenBridge(model,"XGR",{origin:"base",destination:"polygon",amount:"5"},{account:null});
+ assert.match(markup,/Base/);
+ assert.match(markup,/XGRChain/);
+ assert.match(markup,/Polygon/);
+ assert.match(markup,/disabled/);
+ assert.match(markup,/two independent source transactions/);
+ assert.doesNotMatch(markup,/quoteILN|ILNGateway/);
 });
