@@ -20,7 +20,7 @@ contract XGRILNRegistryV315Test is Test {
         vm.chainId(CHAIN);
         validators = new MockLocalGovernanceRegistry(DOMAIN);
         registry = new XGRILNRegistryV315(
-            CHAIN, DOMAIN, address(validators), address(this)
+            CHAIN, DOMAIN, address(validators), address(this), 100
         );
         assetId = XGRILNProtocol.assetIdV315(HUB, address(0), 0);
     }
@@ -62,9 +62,15 @@ contract XGRILNRegistryV315Test is Test {
         });
     }
 
-    function testCannotPrepareWithoutSourceFee() public {
-        vm.expectRevert(XGRILNRegistryV315.InvalidRoute.selector);
-        _route();
+    function testInitialFeeIsPresentWithoutQuorum() public {
+        assertEq(registry.validatorFeeWei(), 100);
+        assertEq(registry.sourceFeeNonce(), 0);
+        assertTrue(_route() != bytes32(0));
+    }
+
+    function testZeroInitialFeeRejected() public {
+        vm.expectRevert(XGRILNRegistryV315.InvalidConfiguration.selector);
+        new XGRILNRegistryV315(CHAIN, DOMAIN, address(validators), address(this), 0);
     }
 
     function testRegisteredRouteIsPreparedButNotActive() public {
