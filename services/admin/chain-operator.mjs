@@ -40,6 +40,38 @@ export function createChainOperator({
   const bootstrap=bootstrapPlan(root,chain);
   return {commit,inventory:all,chain,infrastructure,bootstrap};
  }
+ async function preview({chain:chainName,component,wallet,parameters={}}){
+  if(!ADDRESS.test(wallet||""))throw Error("Connect a valid wallet");
+  const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
+  const values=deploymentParameters(component,parameters);
+  const journal=journals(all.chains);
+  if(journal.read().entries[chain.name+":"+component])
+   throw Error("Existing transaction must be recovered, never re-created");
+  const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
+  if(!preflight.basicRpcPreflightOK)throw Error("Chain or BLS preflight failed");
+  let verified=bootstrap;
+  if(component==="validatorRegistry"){
+   const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
+     baseDir:publicEvidenceDir,mainCurrent:true,rpc});
+   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==3||
+      !readiness.verifiedSnapshot?.validators?.length)
+    throw Error("Three independently verified validator proofs required");
+   verified={...bootstrap,validatorCount:3,expectedValidatorCount:3,
+    validatorSnapshot:readiness.verifiedSnapshot};
+  }
+  const compiled=await build(root,commit);
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
+  const artifact=compiled.artifacts[component];
+  if(!artifact)throw Error("Missing trusted artifact");
+  if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
+   throw Error("Creation bytecode differs from trusted artifact");
+  const simulation=await simulateChainDraft(draft,{rpc,url:chain.rpcUrls[0],from:wallet});
+  return {chain:chain.name,component,sourceCommit:commit,
+    gasEstimateWei:simulation.gasEstimateWei,gasLimit:simulation.gasLimit,
+    gasPriceWei:simulation.gasPriceWei,totalWorstCaseWei:simulation.totalWorstCaseWei,
+    depositWei:BigInt(draft.transaction.value).toString(),
+    parameters:values,mode:"preview-only-no-broadcast"};
+ }
  async function prepare({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
@@ -62,8 +94,8 @@ export function createChainOperator({
    verified={...bootstrap,validatorCount:3,expectedValidatorCount:3,
      validatorSnapshot:readiness.verifiedSnapshot};
   }
-  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
   const artifacts=await build(root,commit);
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
   const artifact=artifacts.artifacts[component];
   if(!artifact)throw Error("No verified contract artifact");
   if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
@@ -181,5 +213,5 @@ export function createChainOperator({
  const status=()=>{
   const all=inventory();return journals(all.chains).read();
  };
- return {prepare,hash,reconcile,status};
+ return {preview,prepare,hash,reconcile,status};
 }
