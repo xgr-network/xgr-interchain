@@ -1,6 +1,6 @@
-import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.mjs";
-import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.mjs";
-import {connectWallet,shorten,formatUnits} from "./wallet-core.mjs";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
+import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
+import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"}};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -216,17 +216,27 @@ document.addEventListener("click",e=>{
  e.preventDefault();history.pushState(null,"",a.pathname);render();scrollTo(0,0);
 });
 window.addEventListener("popstate",render);
-try{
- const res=await fetch("/catalog.json",{cache:"no-store"});
- if(!res.ok)throw Error("Manifest unavailable");
- state.catalog=await res.json();
- if(!state.catalog.assets?.XGR?.routes||!state.catalog.infrastructure?.xgrchain)throw Error("Invalid manifest");
- render();
- // The new lightweight XITA indexer is optional at first launch.
- // Load asynchronously; never invent totals or block wallet functionality when unavailable.
- void loadPublicData();
-}catch(e){el.innerHTML="<h1>XETA inventory unavailable</h1><p>"+x(e.message)+"</p><p>Bridging is disabled until a verified manifest is available.</p>";}
-
+// Dashboard loads the 10 KB same-origin catalog, never RPC/indexer data.
+async function start(){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),2500);
+ try{
+  const response=await fetch("/catalog.json",{cache:"no-store",signal:controller.signal});
+  if(!response.ok)throw Error("Local catalog.json returned HTTP "+response.status);
+  const catalog=await response.json();
+  if(!catalog?.assets?.XGR?.routes||!catalog?.infrastructure?.xgrchain||!catalog?.chains?.xgrchain)throw Error("Invalid local catalog");
+  state.catalog=catalog;
+  render();
+  el.dataset.ready="1";
+  void loadPublicData();
+ }catch(error){
+  el.dataset.failed="1";
+  const message=error?.name==="AbortError"?"Local catalog request timed out after 2.5 seconds":error?.message||"Unknown catalog error";
+  el.innerHTML='<section class="ux-app ux-start-error"><div class="ux-kicker">XITA · Configuration error</div><h1>Dashboard unavailable</h1><p>Could not read the local token configuration.</p><p class="ux-small">'+x(message)+'</p><button type="button" class="ux-outline-button" id="retry-xita">Retry</button></section>';
+  document.getElementById("retry-xita")?.addEventListener("click",()=>{delete el.dataset.failed;void start();});
+ }finally{clearTimeout(timeout);}
+}
+void start();
 async function loadPublicData(){
  const assetIds=allAssets();
  const requests=[
@@ -244,5 +254,5 @@ async function loadPublicData(){
   const priceReply=settled[1+2*assetIds.length+i];
   if(priceReply?.status==="fulfilled")state.prices[id]=priceReply.value;
  }
- if(!state.busy&&!state.quote)render();
+ if(state.catalog)render();
 }
