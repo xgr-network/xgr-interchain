@@ -1,71 +1,180 @@
 #!/usr/bin/env bash
-# XITA web/admin maintenance. Does not touch XGR Node, Explorer or any relayer.
+# XITA admin + website management; NEVER controls XGRChain or ILN relayers.
 set -Eeuo pipefail
 
-ROOT="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+ADMIN_SERVICE="xita-admin.service"
 SITE_DIR="/var/www/xita"
-ADMIN_SERVICE="xita-admin"
-ACTION="help"
-if [[ $# -gt 0 ]]; then ACTION="$1"; fi
+ADMIN_URL="http://127.0.0.1:${XGR_ADMIN_PORT:-4087}"
 
-check() {
-  cd "$ROOT"
-  node tools/validate-manifests.mjs
-  node tools/build-xeta-web-catalog.mjs --check
-  node --test apps/web/keccak.test.mjs
-  node --test services/admin/plan.test.mjs
-  node --check apps/web/app.mjs
-  node --check apps/web/ui-data.mjs
-  node --check services/admin/server.mjs
-  node --check services/admin/admin.js
-  if ! git diff --quiet -- apps/web config deployments; then
-    echo "ERROR: uncommitted manifest/UI changes; refusing deployment" >&2
+usage() {
+  cat <<'HELP'
+XITA Admin / website management
+Usage: ./manage.sh <command>
+
+  status        Admin service, Git revision and website publication
+  start         Start xita-admin.service
+  stop          Stop xita-admin.service
+  restart       Restart ONLY xita-admin.service
+  logs          Show last 100 admin service log lines
+  follow        Follow admin service logs (Ctrl+C to exit)
+  health        Check the GitHub-main workqueue API
+  check         Validate current local manifests, UI and admin code
+  publish-web   Publish static apps/web and restart the admin
+  update        Pull GitHub main, validate, publish web, restart admin
+  deploy        Backward-compatible alias for publish-web (WEB ONLY)
+  help          Show this help
+
+No command deploys blockchain contracts, restarts validators or changes relayers.
+Contract deployments happen only through the verified Admin UI workflow.
+HELP
+}
+
+privileged() {
+  if (( EUID == 0 )); then "$@"; else sudo "$@"; fi
+}
+
+require_clean_main() {
+  local branch state
+  branch="$(git -C "$ROOT" symbolic-ref --quiet --short HEAD)" || {
+    echo "ERROR: repository is in detached HEAD state." >&2
+    return 1
+  }
+  if [[ "$branch" != "main" ]]; then
+    echo "ERROR: checkout main before publishing; current branch: $branch" >&2
+    return 1
+  fi
+  state="$(git -C "$ROOT" status --porcelain --untracked-files=no)"
+  if [[ -n "$state" ]]; then
+    echo "ERROR: tracked files have local changes; refusing to publish/update." >&2
+    printf '%s\n' "$state" >&2
     return 1
   fi
 }
 
-publish() {
-  local sha release next previous
-  sha="$(git -C "$ROOT" rev-parse --short=12 HEAD)"
-  [[ "$sha" =~ ^[0-9a-f]{12}$ ]] || { echo "Unsafe release revision" >&2; return 1; }
-  release="$SITE_DIR/releases/$sha"
-  sudo install -d -m 755 "$SITE_DIR/releases" "$release"
-  sudo cp -a "$ROOT/apps/web/." "$release/"
-  sudo chmod -R a+rX "$release"
-  previous="$(readlink -f "$SITE_DIR/current" 2>/dev/null || true)"
-  next="$SITE_DIR/.next-$sha-$$"
-  sudo ln -s "$release" "$next"
-  sudo mv -Tf "$next" "$SITE_DIR/current"
-  if ! sudo systemctl restart "$ADMIN_SERVICE"; then
-    echo "Admin failed to restart; reverting web symlink" >&2
-    if [[ -n "$previous" && -d "$previous" ]]; then
-      sudo ln -s "$previous" "$next"
-      sudo mv -Tf "$next" "$SITE_DIR/current"
+check() {
+  (
+    cd "$ROOT"
+    echo "Checking XITA manifests, web and admin ..."
+    node tools/validate-manifests.mjs
+    node tools/build-xeta-web-catalog.mjs --check
+    node --test apps/web/keccak.test.mjs
+    node --test services/admin/*.test.mjs
+    node --check apps/web/app.mjs
+    node --check apps/web/ui-data.mjs
+    node --check services/admin/server.mjs
+    node --check services/admin/admin.js
+    bash -n manage.sh
+    echo "PASS: XITA validation."
+  )
+}
+
+wait_admin() {
+  local i
+  for i in 1 2 3 4 5 6; do
+    if curl -fsS --max-time 3 "$ADMIN_URL/admin/api/plan" >/dev/null 2>&1; then
+      return 0
     fi
-    sudo systemctl status "$ADMIN_SERVICE" --no-pager || true
+    sleep 1
+  done
+  return 1
+}
+
+restore_web() {
+  local previous="$1" next="$2"
+  if [[ -n "$previous" && -d "$previous" ]]; then
+    privileged ln -s "$previous" "$next"
+    privileged mv -Tf "$next" "$SITE_DIR/current"
+  else
+    privileged rm -f "$SITE_DIR/current"
+  fi
+}
+
+publish_web() {
+  local sha release previous next
+  require_clean_main
+  check
+  sha="$(git -C "$ROOT" rev-parse --verify HEAD)"
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || {
+    echo "ERROR: invalid Git revision." >&2
+    return 1
+  }
+  release="$SITE_DIR/releases/$sha"
+  echo "Publishing XITA website from main: ${sha:0:12}"
+  privileged install -d -m 755 "$SITE_DIR/releases" "$release"
+  privileged cp -a "$ROOT/apps/web/." "$release/"
+  privileged chmod -R a+rX "$release"
+  previous="$(readlink -f "$SITE_DIR/current" 2>/dev/null || true)"
+  next="$SITE_DIR/.next-${sha:0:12}-$$"
+  privileged ln -s "$release" "$next"
+  privileged mv -Tf "$next" "$SITE_DIR/current"
+
+  if ! privileged systemctl restart "$ADMIN_SERVICE" || ! wait_admin; then
+    echo "ERROR: admin failed after website publication; restoring previous website." >&2
+    restore_web "$previous" "$next"
+    privileged systemctl restart "$ADMIN_SERVICE" || true
+    privileged systemctl status "$ADMIN_SERVICE" --no-pager --lines=20 || true
     return 1
   fi
-  if ! sudo systemctl is-active --quiet "$ADMIN_SERVICE"; then
-    echo "Admin service inactive" >&2
-    return 1
-  fi
-  curl -fsS --max-time 8 http://127.0.0.1:4087/admin/api/plan > /dev/null
-  echo "SUCCESS: XITA static site $sha deployed; admin restarted."
+  echo "SUCCESS: website ${sha:0:12} published and $ADMIN_SERVICE restarted."
 }
 
 status() {
-  echo "Git: $(git -C "$ROOT" rev-parse --short=12 HEAD)"
-  printf 'Published UI: '
+  echo "Git branch: $(git -C "$ROOT" branch --show-current)"
+  echo "Git revision: $(git -C "$ROOT" rev-parse --short=12 HEAD)"
+  printf "Published web: "
   readlink -f "$SITE_DIR/current" || true
-  sudo systemctl is-active "$ADMIN_SERVICE" || true
-  curl -sS --max-time 5 -o /dev/null -w 'Admin HTTP: %{http_code}\n' \
-    http://127.0.0.1:4087/admin/api/plan || true
+  echo "Admin service:"
+  privileged systemctl status "$ADMIN_SERVICE" --no-pager --lines=12 || true
+  printf "Admin API (/admin/api/plan): "
+  curl -sS --max-time 5 -o /dev/null -w '%{http_code}\n' "$ADMIN_URL/admin/api/plan" || true
 }
 
-case "$ACTION" in
-  check) check ;;
-  restart|deploy) check; publish ;;
-  update) cd "$ROOT"; git pull --ff-only; check; publish ;;
+health() {
+  echo "Checking $ADMIN_URL/admin/api/workqueue ..."
+  if curl -fsS --max-time 10 "$ADMIN_URL/admin/api/workqueue" >/dev/null; then
+    echo "OK: admin online and current GitHub main workqueue verified."
+  else
+    echo "ERROR: workqueue unavailable (service, GitHub or outdated checkout)." >&2
+    return 1
+  fi
+}
+
+update() {
+  require_clean_main
+  echo "Updating xgr-interchain from origin/main ..."
+  git -C "$ROOT" pull --ff-only origin main
+  publish_web
+}
+
+case "${1:-help}" in
+  start)
+    privileged systemctl start "$ADMIN_SERVICE"
+    privileged systemctl is-active "$ADMIN_SERVICE"
+    ;;
+  stop)
+    privileged systemctl stop "$ADMIN_SERVICE"
+    echo "$ADMIN_SERVICE stopped."
+    ;;
+  restart)
+    privileged systemctl restart "$ADMIN_SERVICE"
+    privileged systemctl is-active "$ADMIN_SERVICE"
+    ;;
   status) status ;;
-  *) echo 'Usage: ./manage.sh {check|restart|deploy|update|status}' ;;
+  logs) privileged journalctl -u "$ADMIN_SERVICE" -n 100 --no-pager ;;
+  follow) privileged journalctl -u "$ADMIN_SERVICE" -n 30 -f ;;
+  health) health ;;
+  check) check ;;
+  publish-web|deploy)
+    if [[ "${1:-}" == "deploy" ]]; then
+      echo "NOTICE: 'deploy' publishes the static WEBSITE ONLY, not contracts."
+    fi
+    publish_web
+    ;;
+  update) update ;;
+  help|-h|--help) usage ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
 esac
