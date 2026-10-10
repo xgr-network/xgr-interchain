@@ -44,7 +44,7 @@ jobs:
           node tools/validate-manifests.mjs
           node --test tools/validate-manifests.test.mjs
           node tools/build-xeta-web-catalog.mjs --check
-          node --test apps/web/keccak.test.mjs
+          node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash
@@ -58,7 +58,13 @@ jobs:
           fi
           node tools/check-xeta-clean.mjs
           find runtime/native-relayer -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          find apps/web -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          find apps/web -maxdepth 1 \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 -n1 node --check
+
+      - name: Browser startup smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test apps/web/browser-smoke.test.mjs
 
       - name: Validate operator admin
         shell: bash

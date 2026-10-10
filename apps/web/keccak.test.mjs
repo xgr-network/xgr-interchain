@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {keccak256,selector} from "./keccak.mjs";
-import {connectWallet,formatUnits,shorten} from "./wallet-core.mjs";
+import {keccak256,selector} from "./keccak.js";
+import {connectWallet,formatUnits,shorten} from "./wallet-core.js";
 test("Ethereum Keccak standard vectors and selectors",()=>{
  assert.equal(keccak256(""),"0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
  assert.equal(selector("transfer(address,uint256)"),"0xa9059cbb");

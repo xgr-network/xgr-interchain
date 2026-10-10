@@ -56,6 +56,8 @@ server {
         return 503 '{"ok":false,"error":"Market-data adapter not yet deployed"}';
     }
 
+    # Do not rewrite missing JavaScript assets to index.html.
+    location ~* \.js$ { try_files $uri =404; add_header Cache-Control "no-cache" always; }
     location = /catalog.json { add_header Cache-Control "no-store" always; try_files $uri =404; }
     location / { try_files $uri $uri/ /index.html; }
 }
