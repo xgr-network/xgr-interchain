@@ -67,3 +67,15 @@ Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` 
 ## Join price-source configuration
 
 The home chain must be selected explicitly (no default Base). Step 2 records the original ERC-20 address and optional CoinGecko ID; no asset bridge is enabled by selecting a chain. Onboarding validation requires valid canonical chain and contract. Price feeds are informational and not collateral or route proof.
+
+## CoinGecko market data in Universe
+
+XGR uses CoinGecko ID `xgr` as its public market provider. The existing
+read-only metrics adapter refreshes the external market snapshot on its normal
+cache cycle. System detail panels and token profiles may show the sourced USD
+market cap and price with an as-of timestamp. Market cap is asset-wide and
+may repeat on several chains representing that same asset; **never aggregate
+it across chains or label it bridge TVL**. Unavailable market data remains
+absent; price-only market data never activates a transfer or supplies a
+verified escrow balance. The XGR public listing is currently retained for
+UI testing via its protocol-hub exception.

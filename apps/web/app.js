@@ -1,6 +1,6 @@
 import {publicDirectoryCatalog} from "./listing-visibility.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
-import {buildLeaderboardRows,rankAssets,formatUsd} from "./leaderboard-data.js";
+import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
@@ -123,6 +123,13 @@ function tokenActivity(id){
  '<small class="muted">Source-native amounts are listed by chain and never aggregated across denominations.</small></div>'+
  '<h3>Recent source transfers</h3>'+historyMarkup(id)+indexerNotice();
 }
+function tokenMarketMarkup(id){
+ const row=state.leaderboard?.assets?.[id],facts=verifiedMetrics(state.leaderboard,id);
+ if(row?.market?.status!=="market-data"||row.market.source!=="coingecko"||facts?.marketCapUsd==null)return '<div class="pair"><span>CoinGecko market cap</span><b>—</b></div>';
+ const asOf=typeof row.market.asOf==="string"&&Number.isFinite(Date.parse(row.market.asOf))?new Date(row.market.asOf).toLocaleString("en-US",{timeZone:"UTC",dateStyle:"medium",timeStyle:"short"})+" UTC":"Timestamp unavailable";
+ return '<div class="pair"><span>Market cap (asset-wide)</span><b>'+x(formatUsd(facts.marketCapUsd))+'</b></div>'+
+  '<p class="ux-small">CoinGecko · '+x(asOf)+' · Not XITA collateral / TVL</p>';
+}
 function token(){
  const id=state.assetId,a=asset(),p=profile(id),canonical=a.metadata.canonical?.chain||"unknown";
  const model=buildExperienceModel(state.catalog,()=>false);
@@ -134,7 +141,7 @@ function token(){
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
  '<div class="pair"><span>Activated XITA v3.1.5 routes</span><b>0 / '+routes().length+'</b></div>'+
- '<div class="pair"><span>Market price</span><b>'+x(displayPrice(state.prices[id]))+'</b></div>'+
+ '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
  '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
  '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
@@ -232,7 +239,7 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system,state.leaderboard):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
@@ -241,7 +248,7 @@ function render(){
   if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
-   if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+   if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key,state.leaderboard).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
    if(p==="/universe")void loadSystemRanking(key);
   },onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
   if(p==="/universe"&&state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
@@ -408,4 +415,10 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets")render();}catch{ /* Unavailable is not zero */ }}
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path().startsWith("/token/"))render();
+ if(path()==="/universe"){
+  const details=document.querySelector("#ux-selected-details");
+  if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
+   details.innerHTML=renderUniverse(model,state.experience.system,body).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+  }
+ }}catch{ /* Unavailable is not zero */ }}
