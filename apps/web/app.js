@@ -419,6 +419,6 @@ async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
-   details.innerHTML=renderUniverse(model,state.experience.system,body).match(/<aside class="ux-panel ux-details"[^>]*>([\\s\\S]*?)<\\/aside>/)?.[1]||"";
+   details.innerHTML=renderUniverse(model,state.experience.system,body).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
  }}catch{ /* Unavailable is not zero */ }}
