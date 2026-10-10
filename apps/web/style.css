@@ -425,3 +425,8 @@ a.ux-ranked-token:hover{background:#1c3552}
 .ux-3d-stage[data-mode="system"] .ux-3d-asset-link{border-style:dashed}
 .ux-3d-stage[data-mode="system"] button.ux-3d-token{border-style:dashed;box-shadow:0 0 16px #6da6e633}
 .ux-3d-stage[data-mode="system"] button.ux-3d-token:focus-visible{outline:2px solid #c9e3ff;outline-offset:3px}
+
+/* Independent public market metadata, not chain escrow or bridge TVL. */
+.ux-market-card{display:flex;flex-direction:column;gap:7px;padding:14px 12px;margin:10px 0;border:1px solid #45658680;border-radius:10px;background:linear-gradient(145deg,#15283fba,#0b192ab8)}
+.ux-market-card strong{font-size:clamp(19px,2.4vw,25px);letter-spacing:-.035em;font-variant-numeric:tabular-nums;color:#dceafe}
+.ux-market-card .ux-small{line-height:1.5}
