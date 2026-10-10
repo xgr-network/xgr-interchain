@@ -9,7 +9,7 @@ const word=n=>{
  if(v<0n||v>=(1n<<256n))throw Error("ABI uint256 overflow");
  return v.toString(16).padStart(64,"0");
 };
-const dynamic=t=>t==="bytes"||t==="address[]"||t==="bytes[]";
+const dynamic=t=>t==="bytes"||t==="string"||t==="address[]"||t==="bytes[]";
 const address=a=>{
  if(!ADDRESS.test(a||""))throw Error("Malformed ABI address");
  return a.slice(2).toLowerCase().padStart(64,"0");
@@ -33,6 +33,10 @@ const bytesChunk=value=>{
 };
 const dynamicChunk=(type,value)=>{
  if(type==="bytes")return bytesChunk(value);
+ if(type==="string"){
+  if(typeof value!=="string"||!value||value.length>256)throw Error("Invalid ABI string");
+  return bytesChunk("0x"+Buffer.from(value,"utf8").toString("hex"));
+ }
  if(!Array.isArray(value)||value.length>1024)throw Error("Invalid ABI dynamic array");
  if(type==="address[]")return word(value.length)+value.map(address).join("");
  if(type==="bytes[]"){
