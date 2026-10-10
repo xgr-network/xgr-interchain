@@ -7,7 +7,10 @@ const root=new URL("../../",import.meta.url).pathname;
 test("all four main-approved chains have fail-closed validator and fee bootstrap",()=>{
  const inventory=approvedWorkInventory(root),bootstrap=inventory.chains.map(c=>bootstrapPlan(root,c));
  assert.equal(bootstrap.length,4);
- assert.ok(bootstrap.every(p=>p.ready===false&&p.validatorCount===0&&p.expectedValidatorCount===3&&p.proposedFeeWei===null));
+ assert.ok(bootstrap.every(p=>p.ready===false&&p.validatorCount===0&&p.expectedValidatorCount===3));
+ assert.equal(bootstrap.find(p=>p.chain==="base").proposedFeeWei,"100000000000");
+ assert.equal(bootstrap.find(p=>p.chain==="base").feeInitialization,"factory-constructor-no-quorum");
+ assert.ok(bootstrap.filter(p=>p.chain!=="base").every(p=>p.proposedFeeWei===null));
  assert.deepEqual(bootstrap.find(p=>p.chain==="base").initialValidators,[
   "0x98F8bC086454B8386788244eee9A43d5D0b4E63E",
   "0x7E8f8Fd2A198F77dF298041b48D79b0df4c8B1fa",
