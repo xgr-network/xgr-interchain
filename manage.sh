@@ -109,6 +109,7 @@ prepare_solidity_runtime() {
   echo "Building deployment artifacts before activating the Admin ..."
   forge_bin="$(node "$ROOT/services/admin/resolve-forge-cli.mjs")"
   (cd "$ROOT" && "$forge_bin" build --force --skip test script)
+  node "$ROOT/services/admin/seal-build-cli.mjs" "$ROOT" "$("$forge_bin" --version)"
 }
 
 
