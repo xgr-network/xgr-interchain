@@ -387,7 +387,7 @@ async function loadSystemRanking(chain){
   if(id!==systemRequest||state.experience.system!==chain)return;
   if(data.kind!=="xita-system-ranking-v1"||data.chain!==chain||!Array.isArray(data.items))throw Error("Invalid metrics");
   cosmos?.showRankedTokens(data.items);
-  if(!data.items.length){panel.textContent=data.note;return;}
+  if(!data.items.length){panel.textContent="No sourced ranking available. Configured token planets remain visible; deployment and activation are not verified.";return;}
   const list=document.createElement("div");
   for(const item of data.items.slice(0,6)){
    const a=document.createElement("a");a.href="/token/"+encodeURIComponent(item.slug);
@@ -399,13 +399,13 @@ async function loadSystemRanking(chain){
  }catch{
   if(id!==systemRequest)return;
   cosmos?.showRankedTokens([]);
-  panel.textContent="Ranking unavailable. No estimated planets are shown.";
+  panel.textContent="Ranking unavailable. Configured token planets remain visible without estimated market values.";
  }
 }
 el.addEventListener("change",e=>{
  if(e.target.id==="ux-orbit-sort"){state.universeSort=e.target.value;void loadSystemRanking(state.experience.system);}
 });
 el.addEventListener("input",e=>{
- if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;void loadSystemRanking(state.experience.system);}
+ if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
 async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets")render();}catch{ /* Unavailable is not zero */ }}
