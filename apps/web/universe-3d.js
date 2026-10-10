@@ -316,9 +316,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=clamp(47+Math.max(0,farthest-24)*1.15,47,135);
+ const initialDistance=compact?53:49;
  const camera={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
- const wanted={target:[0,0,0],distance:initialDistance,yaw:.17,pitch:.20};
+ const wanted={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.10};
  let focused=false,focusBlend=0;
  const allPick=[];
  const status=root.querySelector(".ux-3d-status");
@@ -518,7 +518,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    label.hidden=!visible;
    if(!visible)continue;
    const px=pos.x,py=pos.y;
-   label.style.transform="translate3d("+Math.round(px)+"px,"+Math.round(py+Math.min(85,system.radius*175/pos.depth)+23)+"px,0) translate(-50%,0)";
+   label.style.transform="translate3d("+Math.round(px)+"px,"+Math.round(py+clamp(system.radius*520/pos.depth,20,55))+"px,0) translate(-50%,0)";
    label.classList.toggle("is-focused",selectedKey===system.system.key);
    allPick.push({x:px,y:py,depth:pos.depth,kind:"system",key:system.system.key,
     radius:clamp(system.radius*600/pos.depth,21,56)});
@@ -600,9 +600,10 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));
-    if(focusBlend>.5)point(entry.position,p.radius*1400,col,.12*focusBlend,vp);
-    body(gpu.sphere,entry.position,p.radius*focusBlend,col,0,frame,IDENTITY,eye,vp);
-    if(p.index%3===1&&focusBlend>.82)body(gpu.torus,entry.position,p.radius*1.72,
+     const presence=focused?focusBlend:.84;
+    if(presence>.45)point(entry.position,p.radius*1400,col,.11*presence,vp);
+    body(gpu.sphere,entry.position,p.radius*presence,col,0,frame,IDENTITY,eye,vp);
+    if(p.index%3===1&&presence>.82)body(gpu.torus,entry.position,p.radius*1.72,
      col.map(x=>x*.9),2,frame,rotation(.5,.2,.3),eye,vp);
    }
   }

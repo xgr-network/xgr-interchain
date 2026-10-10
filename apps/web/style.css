@@ -376,3 +376,26 @@ body>header{position:sticky;z-index:20}
 .ux-3d-stage::after{box-shadow:inset 0 0 75px 10px #02060b80}
 .ux-3d-canvas{position:relative;z-index:1}
 .ux-3d-labels,.ux-3d-controls,.ux-3d-focus,.ux-3d-status,.ux-3d-hint{z-index:4}
+
+/* XITA Northstar v3 — textured dust replaces imperceptible flat gradients. */
+html{background:#030914}
+body{background:#030914;isolation:isolate}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.66;
+ background-image:url("/cosmos-dust.svg");background-size:cover;background-position:center center}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.28;filter:blur(34px);
+ background:radial-gradient(ellipse 55% 38% at 57% 45%,#24476673,transparent 92%),
+ radial-gradient(ellipse 42% 23% at 15% 73%,#28445a4d,transparent 92%)}
+body>header,body>main,body>footer{position:relative;z-index:1}
+body>header{z-index:20;background:#060d1acb}
+.ux-panel,.card,.ux-metric,.ux-universe-main{background:linear-gradient(155deg,#0b1625d9,#07111edd);border-color:#34476488;backdrop-filter:blur(5px)}
+.ux-3d-stage{background:radial-gradient(ellipse 70% 53% at 53% 48%,#19314a88,transparent 91%),#030914;
+ isolation:isolate}
+.ux-3d-stage::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+ background-image:url("/cosmos-dust.svg");background-position:center;background-size:cover;opacity:.52;filter:none;transform:none;mix-blend-mode:screen}
+.ux-3d-stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;box-shadow:inset 0 0 68px 10px #03091499}
+.ux-3d-canvas{position:relative;z-index:2}
+.ux-3d-labels,.ux-3d-controls,.ux-3d-status,.ux-3d-focus,.ux-3d-hint{z-index:4}
+.ux-3d-label.is-hub{color:#f7d8a4;border-color:#d3ad6b99;background:#1a1923cb}
+.ux-3d-stage.is-compact{min-height:485px}
+@media(max-width:650px){body::before{background-position:40% center}.ux-3d-stage.is-compact{min-height:340px}}
+@media(prefers-reduced-motion:reduce){.ux-3d-stage::before{animation:none}}
