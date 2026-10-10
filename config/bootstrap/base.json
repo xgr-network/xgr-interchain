@@ -10,7 +10,8 @@
   "verifierAddress": null,
   "validatorSnapshot": {
     "blockNumber": null,
-    "validators": []
+    "validators": [],
+    "notes": "Expected initial validators are fixed by initialValidatorsManifest; finality/block/key proofs still required"
   },
   "reserve": {
     "minimumWei": null,
@@ -22,5 +23,6 @@
     "governance": "validator-bls-quorum",
     "ttlSeconds": 300
   },
-  "notes": "EIP-2537 runtime verifier requires proven precompile support and negative/positive BLS vectors before deployment."
+  "notes": "EIP-2537 runtime verifier requires proven precompile support and negative/positive BLS vectors before deployment.",
+  "initialValidatorsManifest": "config/validators/initial.json"
 }

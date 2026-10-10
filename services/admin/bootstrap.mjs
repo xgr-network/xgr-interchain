@@ -18,7 +18,18 @@ export function bootstrapPlan(root,chain){
     cfg.destinationDomain!==chain.domainId||cfg.membershipOriginChainId!==1643||
     cfg.verifierFormat!==chain.blsVerifierFormat)
   throw Error("Validator bootstrap manifest identity mismatch: "+chain.name);
+ const initialPath="config/validators/initial.json";
+ if(cfg.initialValidatorsManifest!==initialPath)throw Error("Missing canonical initial validator manifest");
+ const initial=JSON.parse(readFileSync(join(root,initialPath),"utf8"));
+ const expected=initial.validators;
+ if(initial.schemaVersion!==1||initial.kind!=="xita-initial-validator-set"||
+    initial.originChainId!==1643||!Array.isArray(expected)||expected.length!==3||
+    new Set(expected.map(a=>a.toLowerCase())).size!==3||!expected.every(addr))
+  throw Error("Invalid pinned initial validator identities");
  const snapshot=cfg.validatorSnapshot||{},validators=snapshot.validators||[];
+ if(validators.length && (validators.length!==expected.length ||
+    validators.some((v,i)=>v.address?.toLowerCase()!==expected[i].toLowerCase())))
+   throw Error("Bootstrap validator membership/order differs from pinned initial set");
  if(!Array.isArray(validators))throw Error("Invalid validator snapshot");
  const seen=new Set(),keys=new Set();
  for(const v of validators){
@@ -44,14 +55,14 @@ export function bootstrapPlan(root,chain){
   fee.governance==="validator-bls-quorum"&&Number.isInteger(fee.ttlSeconds)&&
   fee.ttlSeconds>=1&&fee.ttlSeconds<=600;
  const missing=[];
- if(!validators.length)missing.push("Validator-BLS-Keys und Proof-of-Possession fehlen");
+ if(!validators.length)missing.push("BLS-Schlüssel und PoPs der drei vorgegebenen Validatoren fehlen");
  if(!snapshot.blockNumber)missing.push("Finalisierter XGR-PoS-Validator-Snapshot fehlt");
  if(!complete&&(!uint(reserve.minimumWei)||!uint(reserve.maxExecutorReimbursementWei)||!uint(reserve.perValidatorWei)))
   missing.push("Reserve-Parameter und Erstattungslimit fehlen");
  if(!uint(fee.targetWei))missing.push("Source-Chain-Gebühr in Wei nicht festgelegt");
  if(!complete&&!missing.length)missing.push("Bootstrap-Parameter inkonsistent");
  return {chain:chain.name,chainId:chain.chainId,domainId:chain.domainId,
-  validatorCount:validators.length,setId:null,ready:complete,missing,
+  validatorCount:validators.length,expectedValidatorCount:expected.length,initialValidators:expected,setId:null,ready:complete,missing,
   reserveWei:complete?(BigInt(reserve.perValidatorWei)*BigInt(validators.length)).toString():null,
   proposedFeeWei:uint(fee.targetWei)?fee.targetWei:null,
   verifierAddress:addr(cfg.verifierAddress)?cfg.verifierAddress:null,
