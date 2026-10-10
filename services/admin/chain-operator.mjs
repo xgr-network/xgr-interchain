@@ -60,7 +60,7 @@ export function createChainOperator({
     validatorSnapshot:readiness.verifiedSnapshot};
   }
   const compiled=await build(root,commit);
-  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact:compiled.artifacts[component]});
   const artifact=compiled.artifacts[component];
   if(!artifact)throw Error("Missing trusted artifact");
   if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
@@ -95,7 +95,7 @@ export function createChainOperator({
      validatorSnapshot:readiness.verifiedSnapshot};
   }
   const artifacts=await build(root,commit);
-  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values});
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact:artifacts.artifacts[component]});
   const artifact=artifacts.artifacts[component];
   if(!artifact)throw Error("No verified contract artifact");
   if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
