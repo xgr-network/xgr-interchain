@@ -7,7 +7,7 @@ import {deploymentIntents} from "./deployment-intents.mjs";
 const wallet="0x"+"a".repeat(40), hash="0x"+"b".repeat(64);
 const input={id:"polygon:validatorRegistry",chainId:137,sourceCommit:"c".repeat(40),
  wallet,buildHash:"d".repeat(64),artifactHash:"e".repeat(64),
- parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100",perValidatorWei:"400"},
+ parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100"},
  validatorSnapshot:{validators:[{address:"0x"+"1".repeat(40)},{address:"0x"+"2".repeat(40)},{address:"0x"+"3".repeat(40)}]},
  transaction:{from:wallet,to:null,data:"0x1234567890",value:"0x0",nonce:"0x0",gas:"0x100000"}};
 test("write-ahead wallet intent is persistent and cannot be broadcast twice",()=>{
