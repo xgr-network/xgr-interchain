@@ -156,6 +156,21 @@ async function openAssetModal(taskId){
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
  el("contract-deploy-dialog").showModal();
+ try{
+  const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
+  const graph=workqueue.inventory.assets[task.asset];
+  const component=task.kind==="gateway"?"gateway":
+   graph.representations[task.chain].role==="native"?"nativeRouter":
+   graph.representations[task.chain].role==="synthetic"?"syntheticRouter":"collateralRouter";
+  const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+  const id=task.chain+":"+task.asset+":"+component+":"+routeName;
+  if(journal[id]){
+   el("modal-gas-check").disabled=true;el("modal-deploy").disabled=true;
+   el("modal-recover").hidden=false;
+   presentModalStatus("Transaktion vorhanden ("+journal[id].stage+"). Zuerst wiederherstellen; kein erneutes Senden.","warn");
+   return;
+  }
+ }catch(e){el("modal-gas-check").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
  if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
  else presentModalStatus("On-Chain-Router prüfen und Gas simulieren.");
 }
