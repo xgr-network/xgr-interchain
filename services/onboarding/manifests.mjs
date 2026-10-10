@@ -86,11 +86,14 @@ export function normalizeApplication(raw,inventory){
  if(raw.confirmed!==true)note("Project representative acknowledgement required");
  const representations=[canonicalChain,"xgrchain",...chosen].filter((key,i,arr)=>arr.indexOf(key)===i);
  if(representations.length<2)note("An XGRChain spoke is required");
+ const priceSource=raw.priceSource==="coingecko"?"coingecko":"none";
+ const coingeckoId=priceSource==="coingecko"?String(raw.coingeckoId||"").toLowerCase():null;
+ if(priceSource==="coingecko"&&!/^[a-z0-9][a-z0-9-]{0,99}$/.test(coingeckoId||""))note("Invalid CoinGecko ID");
  const linkMap=normalizeLinks(raw.links);
  const normalized={name,symbol,slug,shortDescription,description,website,
   canonicalChain,canonicalAddress:address,decimals:raw.decimals,
   targets:[...chosen].sort(),categories,tags,
-  logoUrl,links:linkMap,confirmed:true};
+  logoUrl,links:linkMap,priceSource,coingeckoId,confirmed:true};
  return {normalized,binary};
 }
 export function buildManifestBundle(raw,catalog){
@@ -123,7 +126,7 @@ export function buildManifestBundle(raw,catalog){
   shortDescription:a.shortDescription,description:a.description,
   categories:a.categories,tags:a.tags,branding:{logoUrl:a.logoUrl,bannerUrl:null},
   links:{website:a.website,...a.links},
-  market:{coingeckoId:null,coinmarketcapId:null,priceSource:"none"},
+  market:{coingeckoId:a.coingeckoId,coinmarketcapId:null,priceSource:a.priceSource},
   supply:{circulating:null,total:null,max:null},
   verification:{status:"project-maintained",proof:null}};
  const routeConfig={schemaVersion:1,kind:"asset-routes",asset:key,network:"mainnet",
