@@ -31,3 +31,22 @@ document.getElementById("connect-wallet").addEventListener("click",async()=>{
  catch(e){document.getElementById("wallet-status").textContent=e.message}
 });
 loadJobs();
+
+async function loadMainWorkqueue(){
+ const status=document.getElementById("main-status"),work=document.getElementById("main-workqueue");
+ status.textContent="Verifying current GitHub main…";
+ try{
+  const response=await get("/admin/api/workqueue");
+  status.textContent="Verified current GitHub main: "+response.commit.slice(0,12);
+  const items=[
+   ...response.inventory.chains.map(c=>({type:"Chain",name:c.name,detail:"chainId "+c.chainId+" · domain "+c.domainId})),
+   ...Object.entries(response.inventory.assets).map(([name])=>({type:"Asset",name,detail:"Main manifest present"})),
+   ...response.inventory.routes.map(r=>({type:"Route",name:r.asset+" / "+r.name,detail:r.source+" → "+r.destination}))
+  ];
+  work.innerHTML=items.map(item=>'<article><strong>'+esc(item.type)+' · '+esc(item.name)+'</strong><p>'+esc(item.detail)+'</p><small>GitHub main eligible · transaction execution not yet enabled</small></article>').join("");
+ }catch(e){
+  status.textContent="Deployment blocked: "+e.message;
+  work.textContent="No deployment authorized. Only the latest checked-out GitHub main can be deployed.";
+ }
+}
+loadMainWorkqueue();
