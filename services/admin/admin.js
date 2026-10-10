@@ -88,15 +88,23 @@ async function loadFirstDeploy(){
   if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
    selectedDeployChain=data.chains[0]?.name;
   target.innerHTML='<h3>Deployment nach GitHub-Konfiguration</h3>'+
-   '<p>Chain frei wählen. Vorbereitung / nur Leseansicht; Wallet-Deployments bleiben gesperrt.</p>'+
+   '<p>Jede freigegebene EVM-Chain aus GitHub main verwendet dieselbe Deployment-Pipeline. On-Chain-Aktionen werden erst nach verifizierter Artefakt-, BLS-, Wallet- und Journal-Freigabe aktiviert.</p>'+
    '<label for="deployment-chain-select">Deployment-Chain</label> '+
    '<select id="deployment-chain-select">'+data.chains.map(c=>
     '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
-   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p>';
+   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p>'+ 
+   '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" disabled title="Wartet auf commitgebundene Transaktionssimulation und geprüfte Sicherheitsnachweise">Deploy auf dieser Chain</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
    showSelectedDeployChain(data);
+  });
+  el("deployment-switch-wallet").addEventListener("click",async()=>{
+   try{
+    const chain=workqueue?.inventory?.chains?.find(c=>c.name===selectedDeployChain);
+    if(!chain)throw Error("Chain not approved in main");
+    await switchDeploymentChain(chain);await refreshWalletBalances();
+   }catch(e){el("deployment-execute-reason").textContent=e.message;}
   });
   showSelectedDeployChain(data);
  }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
@@ -129,6 +137,12 @@ async function showSelectedDeployChain(data){
     ["Reserve je Validator (Wei)",r.values.perValidatorReserveWei??"Offen"],
     ["Wallet-Deployment",r.deploymentExecutable?"Bereit":"Noch gesperrt – Transaktions-Engine nicht fertig"]
    ];
+   const action=el("deployment-execute"),reason=el("deployment-execute-reason");
+   // Never enable a transaction based on read-only readiness alone.
+   if(action)action.disabled=true;
+   if(reason)reason.textContent=r.deploymentExecutable?
+    "Commitgebundene Wallet-Transaktionsengine und Simulation noch erforderlich":
+    "Nicht ausführbar: "+(r.missing.join(" · ")||"Unvollständige Sicherheitsnachweise");
    readinessNode.innerHTML="<strong>Registry-Deployment · Vorprüfung</strong>"+
     lines.map(([label,value])=>'<div class="first-step"><span>'+esc(label)+'</span><small>'+esc(value)+'</small></div>').join("")+
     '<p>'+esc(r.missing.join(" · ")||"Bootstrap vollständig geprüft")+'</p>';

@@ -6,7 +6,7 @@ import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
-import {readOnlyWorkQueue,assertCurrentMain} from "./main-gate.mjs";
+import {readOnlyWorkQueue,assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
 import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
@@ -22,12 +22,14 @@ if(!["127.0.0.1","::1"].includes(host))throw Error("Admin must bind to loopback"
 if(!Number.isInteger(port)||port<1024||port>65535)throw Error("Invalid admin port");
 const load=path=>JSON.parse(readFileSync(resolve(root,path),"utf8"));
 function inventory(){
- const chains={},infrastructure={};
- for(const name of ["xgrchain","base"]){
-  chains[name]=load("config/chains/"+name+".json");
-  infrastructure[name]=load("deployments/mainnet/infrastructure/"+name+".json");
- }
- return {schemaVersion:1,chains,infrastructure,assets:{XGR:{routes:load("config/assets/XGR/routes.json")}}};
+ // Compatibility diagnostics MUST have the same chain coverage as main.
+ // No chain may require a JS change to become visible.
+ const approved=approvedWorkInventory(root);
+ const chains=Object.fromEntries(approved.chains.map(c=>[c.name,c]));
+ const infrastructure=Object.fromEntries(approved.chains.map(c=>[c.name,load(c.observedInfrastructure)]));
+ const assets=Object.fromEntries(Object.keys(approved.assets).map(name=>
+   [name,{routes:load("config/assets/"+name+"/routes.json")}]));
+ return {schemaVersion:1,chains,infrastructure,assets};
 }
 const dataDir=process.env.XGR_ADMIN_STATE_DIR||resolve(root,"runtime-state/admin");
 const statePath=resolve(dataDir,"progress.json");
@@ -93,9 +95,9 @@ async function probe(url,method,params){
  }finally{clearTimeout(timeout)}
 }
 async function preflight(catalog){
- const results=[];
- for(const name of ["xgrchain","base"]){
-  const chain=catalog.chains[name],infra=catalog.infrastructure[name];
+ const results=await Promise.all(Object.values(catalog.chains).map(async chain=>{
+  const infra=catalog.infrastructure[chain.name];
+  const name=chain.name;
   const status={name,expectedChainId:chain.chainId,chainIdOk:false,mailboxCode:false,hookCode:false};
   try{
    const url=chain.rpcUrls?.[0];
@@ -110,11 +112,13 @@ async function preflight(catalog){
    status.mailboxCode=typeof mailbox==="string"&&mailbox!=="0x";
    status.hookCode=typeof hook==="string"&&hook!=="0x";
   }catch(e){status.error=String(e.message).slice(0,180)}
-  results.push(status);
- }
- return {checkedAt:new Date().toISOString(),results,ready:results.every(r=>r.chainIdOk&&r.mailboxCode&&r.hookCode),
-  note:"Checks RPC identity and contract code only; not BLS, governance or custody."};
+  return status;
+ }));
+ return {checkedAt:new Date().toISOString(),results,
+  ready:results.every(r=>r.chainIdOk&&r.mailboxCode&&r.hookCode),
+  note:"RPC identity and contract presence only. No deployment authorization."};
 }
+
 const dir=dirname(fileURLToPath(import.meta.url));
 const staticFiles=new Map([
  ["/admin/",["index.html","text/html; charset=utf-8"]],
