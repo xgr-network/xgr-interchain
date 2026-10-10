@@ -8,6 +8,7 @@ import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
 import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
+import {buildWorkItems} from "./work-items.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -125,7 +126,8 @@ http.createServer(async(req,res)=>{
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await deploymentQueue(root);
-   return reply(res,200,{ok:true,...queue,infrastructure:infrastructureInventory(root,queue.inventory.chains)});
+   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   return reply(res,200,{ok:true,...queue,infrastructure,workItems:buildWorkItems(queue.inventory,infrastructure)});
   }
   if(req.method==="GET"&&path==="/admin/api/balance"){
    const queue=await deploymentQueue(root);
