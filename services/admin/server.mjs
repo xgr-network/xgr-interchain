@@ -10,6 +10,7 @@ import {readOnlyWorkQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
 import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
+import {inspectXgrFirstDeploy} from "./xgr-preflight.mjs";
 import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
 import {deploymentJournal} from "./deployment-journal.mjs";
 
@@ -163,6 +164,18 @@ http.createServer(async(req,res)=>{
    const queue=await readOnlyWorkQueue(root);
    const configured=infrastructureInventory(root,queue.inventory.chains);
    return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/xgr-preflight"){
+   const queue=await readOnlyWorkQueue(root);
+   const chain=queue.inventory.chains.find(c=>c.name==="xgrchain");
+   const info=load("deployments/mainnet/infrastructure/xgrchain.json");
+   const conf=load("config/bootstrap/xgrchain.json");
+   return reply(res,200,{ok:true,commit:queue.commit,
+    preflight:await inspectXgrFirstDeploy({
+     url:chain.rpcUrls[0],mailbox:info.hyperlaneCore.mailbox,
+     merkleTreeHook:info.hyperlaneCore.merkleTreeHook,
+     verifier:conf.verifierAddress
+    })});
   }
   if(req.method==="GET"&&path==="/admin/api/first-deploy"){
    const queue=await readOnlyWorkQueue(root);
