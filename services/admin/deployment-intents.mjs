@@ -1,7 +1,7 @@
 // XITA v3.1.5 durable WRITE-AHEAD wallet intent.
 // Persist before asking EIP-1193 wallet to broadcast. A crash, failed wallet
 // callback or GitHub outage may never generate a second tx for the same step.
-import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,unlinkSync} from "node:fs";
+import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsyncSync,unlinkSync} from "node:fs";
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 const ID=/^[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|factory|sourceRegistry)$/;
@@ -61,7 +61,11 @@ export function deploymentIntents({directory,chains}){
    const s=read(),out=fn(s);
    const tmp=join(dir,"."+randomUUID()+".tmp");
    writeFileSync(tmp,JSON.stringify(s,null,2)+"\n",{mode:0o600,flag:"wx"});
+   const fileHandle=openSync(tmp,"r");
+   try{fsyncSync(fileHandle)}finally{closeSync(fileHandle)}
    renameSync(tmp,file);
+   const dirHandle=openSync(dir,"r");
+   try{fsyncSync(dirHandle)}finally{closeSync(dirHandle)}
    return out;
   }finally{
    if(fd!==undefined){closeSync(fd);unlinkSync(lock);}
