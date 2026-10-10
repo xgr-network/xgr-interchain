@@ -42,7 +42,7 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
   }
  }
  // Keep unknown aggregate unknown; never sum a partial selection as network TVL.
- const facts=buildLeaderboardRows(catalog,{kind:"xita-asset-metrics-v1",schemaVersion:1,assets});
+ const facts=buildLeaderboardRows(catalog,{kind:"xita-asset-metrics-v1",schemaVersion:1,assets},{includeUnlisted:true});
  const complete=keys.length>0&&facts.every(f=>f.lockedUsd!==null&&f.movedUsd!==null);
  const totals=complete?{
    lockedUsd:facts.reduce((s,x)=>s+x.lockedUsd,0),
