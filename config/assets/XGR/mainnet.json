@@ -5,6 +5,5 @@
   "network": "mainnet",
   "routeManifest": "config/assets/XGR/routes.json",
   "deploymentManifest": "deployments/mainnet/assets/XGR.json",
-  "ilnV314Activation": "not-authorized",
-  "notes": "All six XETA routes are planned and require fresh router, ISM, Gateway, vault, governance and full source/destination E2E verification."
+  "notes": "Deployment observations are indexed by canonical assetId and verified immutable receipts; source definitions originate from main."
 }
