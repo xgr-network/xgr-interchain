@@ -237,10 +237,13 @@ function createTopology(model){
   const ring=Math.floor(i/7),within=i%7,perRing=Math.min(7,count-ring*7);
   const angle=-Math.PI*0.39+(within/perRing)*TWO_PI+ring*.25;
   const r=28+ring*17;
-  const y=(i%3-1)*5+(ring%2?3:0);
-  systems.push({system:spokes[i],
-   position:[Math.cos(angle)*r,y+Math.sin(angle*1.6)*2,Math.sin(angle)*r*.78],
-   color:chainColor(spokes[i].key,i+1),radius:1.82,portal:false});
+  const orbital={major:r,minor:r*(.76+(i%3)*.06),
+   phase:angle,speed:.0032+(i%4)*.0014,
+   inclination:(i%2?-1:1)*(.18+(i%4)*.13),
+   node:.26+i*1.06,twist:(i%3-1)*.16};
+  systems.push({system:spokes[i],orbital,
+   position:orbitPosition({orbital},0,true),
+   color:chainColor(spokes[i].key,i+1),radius:1.66,portal:false});
  }
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
