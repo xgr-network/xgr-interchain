@@ -241,7 +241,7 @@ function render(){
   if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
-  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{state.experience.system=key;const details=document.querySelector("#ux-selected-details");if(details&&p==="/universe"){details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";}},onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
+   if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
    if(p==="/universe")void loadSystemRanking(key);
   },onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
   if(p==="/universe"&&state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
