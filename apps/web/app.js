@@ -156,7 +156,7 @@ function captureJoin(){
   else d[key]=el.value;
  });
  d.symbol=d.symbol.trim().toUpperCase();d.slug=d.slug.trim().toLowerCase();
- d.targets=[...document.querySelectorAll("[data-join-target]:checked")].map(el=>el.dataset.joinTarget);
+ if(document.querySelector("[data-join-target]"))d.targets=[...document.querySelectorAll("[data-join-target]:checked")].map(el=>el.dataset.joinTarget);
 }
 async function runJoin(action){
  captureJoin();
