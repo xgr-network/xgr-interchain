@@ -8,6 +8,7 @@ import {createHash} from "node:crypto";
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {keccak256} from "../../apps/web/keccak.mjs";
+import {checkedLocalMain} from "./main-gate.mjs";
 
 const exec=promisify(execFile);
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
@@ -88,7 +89,9 @@ export async function trustedBuild(root,commit,{
  }
 }={}){
  if(!SHA.test(commit||""))throw Error("Trusted build requires exact main commit SHA");
+ if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed before build");
  const forgeVersion=await runner();
+ if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed while building");
  const artifacts={};
  for(const [component,name] of Object.entries(SOURCE)){
   const raw=JSON.parse(readFileSync(join(root,"out",name+".sol",name+".json"),"utf8"));
