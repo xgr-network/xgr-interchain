@@ -15,6 +15,7 @@ import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
 import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {planCatalogRoutes} from "./route-lifecycle.mjs";
+import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
 import {approveBootstrapToMain} from "./bootstrap-approval.mjs";
@@ -204,8 +205,8 @@ http.createServer(async(req,res)=>{
   if(req.method==="GET"&&path==="/admin/api/route-lifecycle"){
    const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
-   const lifecycle=planCatalogRoutes(queue.inventory,infrastructure);
-   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle});
+   const {graph:lifecycle,tasks}=nextAssetRouteTasks(queue.inventory,infrastructure);
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks});
   }
   if(req.method==="POST"&&path==="/admin/api/bootstrap/approve"){
    const item=await bodyJSON(req);

@@ -1,6 +1,7 @@
 // Minimal, strict ABI encoder for the constructors used by XITA v3.1.5.
 // No browser-supplied ABI, selectors, constructor arguments or arbitrary calls.
 const UINT=/^uint(8|32|64|256)$/;
+const HASH=/^0x[0-9a-f]{64}$/i;
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/;
 const BYTES=/^0x(?:[0-9a-fA-F]{2})*$/;
 const word=n=>{
@@ -8,7 +9,7 @@ const word=n=>{
  if(v<0n||v>=(1n<<256n))throw Error("ABI uint256 overflow");
  return v.toString(16).padStart(64,"0");
 };
-const dynamic=t=>t==="bytes"||t==="address[]"||t==="bytes[]";
+const dynamic=t=>t==="bytes"||t==="string"||t==="address[]"||t==="bytes[]";
 const address=a=>{
  if(!ADDRESS.test(a||""))throw Error("Malformed ABI address");
  return a.slice(2).toLowerCase().padStart(64,"0");
@@ -32,6 +33,10 @@ const bytesChunk=value=>{
 };
 const dynamicChunk=(type,value)=>{
  if(type==="bytes")return bytesChunk(value);
+ if(type==="string"){
+  if(typeof value!=="string"||!value||value.length>256)throw Error("Invalid ABI string");
+  return bytesChunk("0x"+Buffer.from(value,"utf8").toString("hex"));
+ }
  if(!Array.isArray(value)||value.length>1024)throw Error("Invalid ABI dynamic array");
  if(type==="address[]")return word(value.length)+value.map(address).join("");
  if(type==="bytes[]"){
@@ -53,6 +58,10 @@ export function encodeAbi(types,values){
   if(dynamic(type)){
    const tail=dynamicChunk(type,values[i]);const head=word(offset);
    offset+=tail.length/2;tails.push(tail);return head;
+  }
+  if(type==="bytes32"){
+   if(!HASH.test(values[i]||""))throw Error("Invalid ABI bytes32");
+   return values[i].slice(2).toLowerCase();
   }
   return type==="address"?address(values[i]):uint(type,values[i]);
  });
