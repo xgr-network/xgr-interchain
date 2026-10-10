@@ -91,10 +91,33 @@ restore_web() {
   fi
 }
 
+prepare_solidity_runtime() {
+  # Pinned by vendor/package.json. Install only on missing package files;
+  # never use Solidity imports from a browser, user-supplied path or PR.
+  local vendor="$ROOT/vendor/node_modules"
+  if [[ ! -f "$vendor/@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol" ||
+        ! -f "$vendor/@openzeppelin/contracts/token/ERC20/ERC20.sol" ||
+        ! -f "$vendor/@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol" ]]; then
+    echo "Preparing pinned Hyperlane/OpenZeppelin Solidity sources for UI deployment..."
+    command -v npm >/dev/null || {
+      echo "ERROR: npm unavailable for pinned Solidity dependencies" >&2
+      return 1
+    }
+    npm install --prefix "$ROOT/vendor" --ignore-scripts --no-audit --no-fund --package-lock=false
+  fi
+  [[ -f "$vendor/@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol" &&
+     -f "$vendor/@openzeppelin/contracts/token/ERC20/ERC20.sol" &&
+     -f "$vendor/@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol" ]] || {
+    echo "ERROR: Pinned Solidity source installation incomplete" >&2
+    return 1
+  }
+}
+
 publish_web() {
   local sha release previous next
   require_clean_main
   check
+  prepare_solidity_runtime
   sha="$(git -C "$ROOT" rev-parse --verify HEAD)"
   [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || {
     echo "ERROR: invalid Git revision." >&2

@@ -96,7 +96,7 @@ export async function trustedBuild(root,commit,{
  runner=async()=>{
   const forge=resolveForgeExecutable();
   const {stdout:version}=await exec(forge,["--version"],{cwd:root,timeout:12000,maxBuffer:4096});
-  await exec(forge,["build","--force"],{cwd:root,timeout:180000,maxBuffer:1024*1024*4});
+  await exec(forge,["build","--force","--skip","test","script"],{cwd:root,timeout:180000,maxBuffer:1024*1024*4});
   return version.trim();
  }
 }={}){
