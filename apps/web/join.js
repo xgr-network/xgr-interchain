@@ -18,9 +18,9 @@ export function validateStep(d,step,chains){
   if(!["none","coingecko"].includes(d.priceSource))missing.push("Price source");
   if(d.priceSource==="coingecko"&&!/^[a-z0-9][a-z0-9-]{0,99}$/.test(d.coingeckoId||""))missing.push("CoinGecko coin ID");
   if(!/^0x[0-9a-f]{40}$/i.test(d.canonicalAddress)||/^0x0{40}$/i.test(d.canonicalAddress))missing.push("ERC-20 contract address");
-  if(!Number.isInteger(Number(d.decimals))||Number(d.decimals)<0||Number(d.decimals)>36)missing.push("Decimals");
+  if(d.decimals===null||d.decimals===""||!Number.isInteger(Number(d.decimals))||Number(d.decimals)<0||Number(d.decimals)>36)missing.push("Decimals");
  }else if(step===2){
-  if(!d.targets.length||d.targets.includes(d.canonicalChain)||d.targets.some(x=>!Object.hasOwn(chains,x)))missing.push("One or more other chains");
+  if(!d.canonicalChain||!d.targets.length||d.targets.includes(d.canonicalChain)||d.targets.some(x=>!Object.hasOwn(chains,x)))missing.push("One or more other chains");
  }else if(step===3&&!d.confirmed)missing.push("Project confirmation");
  return missing;
 }
