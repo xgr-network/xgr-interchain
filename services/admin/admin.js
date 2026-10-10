@@ -35,20 +35,226 @@ function renderAssets(){
 let currentWallet=null;
 let chainObservations=new Map();
 let liveBootstrap=new Map();
+const coreTitles={blsVerifier:"BLS-Verifier",validatorRegistry:"ValidatorRegistry",ism:"Security Module",factory:"Factory",sourceRegistry:"Source Registry"};
+const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
+let selectedDeployment=null;
+let deploymentReadiness=new Map();
+function cleanBootstrapStatus(chain){
+ const r=deploymentReadiness.get(chain);
+ if(!r)return "Prüfung ausstehend";
+ if(r.evidenceVerified&&r.manifestMatchesEvidence&&r.bootstrapReady)return "Freigegeben";
+ if(r.evidenceVerified)return r.verifiedValidatorCount+" Validatoren geprüft · Parameter freigeben";
+ return r.evidenceError?"Nachweise prüfen":"Validierung noch offen";
+}
 function renderInfrastructure(){
  if(!workqueue)return;
+ const chains=workqueue.inventory.chains;
  el("infrastructure-list").innerHTML=(workqueue.infrastructure||[]).map(c=>{
-  const live=chainObservations.get(c.name),state=live?.status||c.status;
-  const bootstrap=liveBootstrap.get(c.name)||(workqueue.bootstrap||[]).find(x=>x.chain===c.name);
-  const core=c.hyperlane.mailbox&&c.hyperlane.merkleTreeHook?"Core-Adressen dokumentiert":"Hyperlane Core fehlt";
-  const status=state==="observed-complete"?"Alle XITA-Contracts beobachtet":state==="observed-partial"?"Teilweise on-chain beobachtet":state==="unreachable"?"RPC nicht erreichbar":c.documented+"/"+c.required+" XITA-Contracts dokumentiert";
-  return '<div class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong><span class="status '+(state==="observed-complete"?"deployed":c.documented?"partial":"")+'">'+esc(status)+'</span></div><small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small><p>'+esc(core)+'</p><div class="chain-components">'+c.components.map(part=>'<div>'+esc(part.key)+' <span>'+esc(part.address||"Ausstehend")+'</span></div>').join("")+'</div><div class="chain-bootstrap"><strong>Validatoren & Source-Fee</strong><p>'+esc(bootstrap?.verified?"Validatoren & Quorum-Gebühr bestätigt":bootstrap?.ready?"Konfiguration vollständig; On-Chain noch offen":"Nicht bootstrapfähig")+'</p><small>'+esc((bootstrap?.validatorSetId?"Set "+bootstrap.validatorSetId+" · Fee "+bootstrap.feeWei+" Wei · Nonce "+bootstrap.feeNonce+" · ":"")+(bootstrap?.missing||[]).join(" · ")||"PoP und Gebühren-Quorum noch on-chain zu prüfen")+'</small></div><div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+'">Wallet auf '+esc(c.name)+' wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+'">Guthaben: Wallet verbinden</div></div></div>';
+  const cfg=chains.find(x=>x.name===c.name);
+  const native=cfg?.blsVerifierFormat==="compressed";
+  const verifier=(workqueue.bootstrap||[]).find(x=>x.chain===c.name)?.verifierAddress;
+  const verifierRow=native&&verifier?
+   '<div class="component-row"><span>Nativer BLS-Verifier</span><span class="component-address">'+
+   '<button class="address-copy" data-copy="'+esc(verifier)+'" title="'+esc(verifier)+'">'+esc(displayAddress(verifier))+
+   ' ⧉</button></span></div>':"";
+  const tasks=c.components.map(part=>
+   '<div class="component-row"><span>'+esc(coreTitles[part.key]||part.key)+'</span>'+
+   (part.status==="documented"&&part.address?
+    '<button class="address-copy" data-copy="'+esc(part.address)+'" title="'+esc(part.address)+'">'+
+     esc(displayAddress(part.address))+' ⧉</button>':
+    '<button class="component-pending" data-open-chain="'+esc(c.name)+
+     '" data-open-component="'+esc(part.key)+'">Ausstehend →</button>')+'</div>').join("");
+  const r=deploymentReadiness.get(c.name);
+  return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
+   '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
+   '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
+   '<div class="chain-components">'+verifierRow+tasks+'</div>'+
+   (c.documented<c.required?
+    '<div class="chain-bootstrap-summary"><span>Bootstrap</span><span>'+
+    esc(cleanBootstrapStatus(c.name))+'</span></div>':"")+
+   '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
+   '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
+   '"></div></div></article>';
  }).join("");
+ el("infrastructure-list").querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{
+  try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent="Kopiert ✓";
+   setTimeout(()=>{b.textContent=displayAddress(b.dataset.copy)+" ⧉";},1200);
+  }catch{b.textContent=b.dataset.copy;}
+ }));
+ el("infrastructure-list").querySelectorAll("[data-open-chain]").forEach(b=>b.addEventListener("click",()=>{
+  openContractModal(b.dataset.openChain,b.dataset.openComponent);
+ }));
  el("infrastructure-list").querySelectorAll("button[data-switch]").forEach(b=>b.addEventListener("click",async()=>{
-  try{const chain=workqueue.inventory.chains.find(x=>x.name===b.dataset.switch);await switchDeploymentChain(chain);await refreshWalletBalances();}
+  try{const chain=chains.find(x=>x.name===b.dataset.switch);
+   await switchDeploymentChain(chain);await refreshWalletBalances();}
   catch(e){el("wallet-status").textContent=e.message;}
  }));
  if(currentWallet)refreshWalletBalances();
+}
+function moneyInWei(wei,chain){
+ try{return formatNative(String(wei),chain.nativeCurrency.decimals||18,8)+" "+chain.nativeCurrency.symbol}
+ catch{return "—"}
+}
+function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
+function modalValues(){
+ const result={};
+ for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei"])
+  result[key]=el("modal-"+key).value.trim();
+ const gas=el("modal-defaultDestinationGasLimit").value.trim();
+ if(!/^[1-9][0-9]*$/.test(gas))throw Error("Gaslimit: ganze positive Zahl erforderlich");
+ result.defaultDestinationGasLimit=Number(gas);
+ if(Object.entries(result).some(([k,v])=>k!=="defaultDestinationGasLimit"&&!/^[1-9][0-9]*$/.test(v)))
+  throw Error("Reserve und Gebühren müssen positive ganze Wei-Werte sein");
+ if(BigInt(result.perValidatorWei)<BigInt(result.minimumWei)||
+    BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei))
+  throw Error("Reserve je Validator ≥ Mindestreserve ≥ Erstattungslimit");
+ return result;
+}
+async function openContractModal(chainName,component){
+ const chain=workqueue?.inventory?.chains.find(c=>c.name===chainName);
+ const infra=workqueue?.infrastructure?.find(c=>c.name===chainName);
+ const part=infra?.components.find(x=>x.key===component);
+ if(!chain||!part||part.status==="documented")return;
+ selectedDeployment={chainName,component};
+ const title=coreTitles[component]||component;
+ el("contract-modal-title").textContent=title+" · "+chainName;
+ el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
+ presentModalStatus("Lade aktuellen Deployment-Status …");
+ el("modal-gas-result").textContent="";
+ el("modal-approve").hidden=true;
+ el("modal-gas-check").disabled=true;
+ el("modal-deploy").disabled=true;
+ el("modal-recover").hidden=true;
+ el("modal-parameters").hidden=true;
+ el("contract-deploy-dialog").showModal();
+ try{
+  const [response,status]=await Promise.all([
+   get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chainName)),
+   get("/admin/api/chain-deploy/status")]);
+  if(selectedDeployment?.chainName!==chainName||selectedDeployment.component!==component)return;
+  const r=response.readiness,existing=status.intents.entries[chainName+":"+component];
+  deploymentReadiness.set(chainName,r);
+  renderInfrastructure();
+  const approvalNeeded=!(r.bootstrapReady&&r.manifestMatchesEvidence);
+  const bootstrapFields={
+   minimumWei:r.values.minimumReserveWei,
+   maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
+   perValidatorWei:r.values.perValidatorReserveWei,
+   sourceFeeWei:r.values.sourceFeeWei,
+   defaultDestinationGasLimit:chain.defaultDestinationGasLimit
+  };
+  for(const [key,val] of Object.entries(bootstrapFields))
+   el("modal-"+key).value=val===null||val===undefined?"":String(val);
+  el("modal-parameters").hidden=!approvalNeeded;
+  el("modal-approve").hidden=!approvalNeeded;
+  el("modal-bootstrap-evidence").textContent=r.evidenceVerified?
+   "3/3 Validatoren kryptografisch verifiziert · Snapshot "+r.originSnapshotBlock:
+   "Validatornachweise für "+chainName+" noch nicht verifiziert";
+  if(existing){
+   el("modal-approve").hidden=true;
+   el("modal-gas-check").disabled=true;
+   el("modal-deploy").disabled=true;
+   el("modal-recover").hidden=false;
+   presentModalStatus("Vorherige Transaktion: "+existing.stage+
+    ". Zuerst wiederherstellen – niemals erneut senden.","warn");
+   return;
+  }
+  if(workqueue.readOnly)throw Error("GitHub main ist nicht aktuell");
+  if(approvalNeeded){
+   presentModalStatus(r.evidenceVerified?
+    "Reserve, Source-Fee und Gaslimit freigeben; die Validatornachweise liegen bereits vor.":
+    "Zuerst müssen die Validatornachweise für diese Zielchain vollständig geprüft sein.",
+    r.evidenceVerified?"":"warn");
+   el("modal-approve").disabled=!r.evidenceVerified;
+   return;
+  }
+  el("modal-gas-check").disabled=false;
+  presentModalStatus("Bereit zur Gasprüfung.");
+ }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
+}
+async function approveModalBootstrap(){
+ if(!selectedDeployment)return;
+ const {chainName,component}=selectedDeployment;
+ const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
+ let values;
+ try{values=modalValues()}catch(e){return presentModalStatus(e.message,"error")}
+ const total=(BigInt(values.perValidatorWei)*3n).toString();
+ if(!window.confirm("Bootstrap auf "+chainName+" in GitHub main freigeben?\n"+
+   "Reserve für 3 Validatoren: "+moneyInWei(total,chain)+"\n"+
+   "Source-Fee: "+moneyInWei(values.sourceFeeWei,chain)+"\n"+
+   "Gaslimit: "+values.defaultDestinationGasLimit))return;
+ const button=el("modal-approve");button.disabled=true;
+ presentModalStatus("Prüfe vorhandene Validatornachweise und schreibe GitHub main …");
+ try{
+  await postJSON("/admin/api/bootstrap/approve",{chain:chainName,values});
+  el("contract-deploy-dialog").close();selectedDeployment=null;
+  await loadMainWorkqueue();
+  await openContractModal(chainName,component);
+ }catch(e){presentModalStatus("Freigabe blockiert: "+e.message,"error");button.disabled=false;}
+}
+async function checkModalGas(){
+ if(!selectedDeployment)return;
+ const {chainName,component}=selectedDeployment;
+ const output=el("modal-gas-result");
+ try{
+  const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
+  const state=await currentWalletState();
+  if(!state)throw Error("Zuerst Wallet verbinden");
+  if(state.chainId!==chain.chainId){
+   await switchDeploymentChain(chain);
+  }
+  const updated=await currentWalletState();
+  if(!updated||updated.chainId!==chain.chainId)throw Error("Wallet auf andere Chain eingestellt");
+  const result=await get("/admin/api/transaction-draft?chain="+encodeURIComponent(chainName)+
+   "&component="+encodeURIComponent(component)+"&wallet="+encodeURIComponent(updated.address));
+  if(!result.simulation)throw Error("Keine gültige Gas-Simulation");
+  output.textContent="Gaslimit "+BigInt(result.simulation.gasLimit).toString()+
+   " · maximale Gesamtkosten "+moneyInWei(result.simulation.totalWorstCaseWei,chain);
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Gas geprüft. Deployment benötigt Bestätigung in deiner Wallet.");
+ }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
+}
+async function executeModalDeployment(){
+ if(!selectedDeployment)return;
+ const {chainName,component}=selectedDeployment;
+ const button=el("modal-deploy");button.disabled=true;
+ try{
+  const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
+  const state=await currentWalletState();
+  if(!state||state.chainId!==chain.chainId)throw Error("Wallet nicht mit ausgewählter Chain verbunden");
+  presentModalStatus("Sicherheitsprüfungen und persistentes Transaktionsjournal …");
+  const prepared=await postJSON("/admin/api/chain-deploy/prepare",
+   {chain:chainName,component,wallet:state.address});
+  presentModalStatus("Wallet-Bestätigung ausstehend. Bei Abbruch Wiederherstellung verwenden.");
+  const txHash=await broadcastDeploymentIntent(prepared);
+  el("modal-recover").hidden=false;
+  presentModalStatus("Transaktion gesendet · Hash wird gesichert …");
+  await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
+  presentModalStatus("Warte auf Receipt und On-Chain-Verifikation …");
+  const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
+  if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
+  presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
+  el("contract-deploy-dialog").close();selectedDeployment=null;
+  await loadMainWorkqueue();
+ }catch(e){el("modal-recover").hidden=false;presentModalStatus(
+  "Abgleich erforderlich: "+e.message+". Keine zweite Transaktion senden.","error")}
+}
+async function recoverModalDeployment(){
+ if(!selectedDeployment)return;
+ const {chainName,component}=selectedDeployment,id=chainName+":"+component;
+ try{
+  const all=await get("/admin/api/chain-deploy/status");
+  const entry=all.intents.entries[id];
+  if(!entry)throw Error("Keine laufende Transaktion im Journal");
+  if(entry.stage==="prepared"){
+   const hash=window.prompt("Transaktionshash der Wallet (falls gesendet):","");
+   if(!hash)return presentModalStatus("Unbekannter Broadcast-Status. Transaktion bleibt gesperrt.","warn");
+   await postJSON("/admin/api/chain-deploy/hash",{id,txHash:hash});
+  }
+  const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
+  presentModalStatus("Wiederherstellung: "+result.result.stage,"success");
+  if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await loadMainWorkqueue()}
+ }catch(e){presentModalStatus("Wiederherstellung blockiert: "+e.message,"error")}
 }
 function formatBalance(b,c){return formatNative(b,c.nativeCurrency.decimals||18)+" "+c.nativeCurrency.symbol;}
 async function refreshWalletBalances(){
@@ -329,7 +535,16 @@ async function loadMainWorkqueue(){
   const data=await get("/admin/api/workqueue");
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
+  deploymentReadiness.clear();
   renderAssets();renderInfrastructure();renderQueue();loadFirstDeploy();
+  // Read-only evidence status lives independently from incomplete GitHub config.
+  await Promise.all((data.infrastructure||[]).map(async chain=>{
+   try{
+    const report=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
+    if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
+   }catch{}
+  }));
+  if(workqueue===data)renderInfrastructure();
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
 async function check(){
@@ -349,6 +564,12 @@ async function loadJobs(){
   el("jobs").innerHTML=d.jobs.length?d.jobs.map(j=>'<article><a href="'+esc(j.url)+'" target="_blank" rel="noopener noreferrer">'+esc(j.title)+'</a><p>#'+j.number+' · '+esc(j.status)+'</p></article>').join(""):"<p>Keine offenen GitHub-Issues.</p>";
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
+el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
+el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;});
+el("modal-approve").addEventListener("click",approveModalBootstrap);
+el("modal-gas-check").addEventListener("click",checkModalGas);
+el("modal-deploy").addEventListener("click",executeModalDeployment);
+el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
 el("deploy-all").addEventListener("click",()=>{setView("workflow");history.replaceState(null,"","#workflow");el("first-deploy-plan")?.scrollIntoView({behavior:"smooth",block:"start"});});
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
