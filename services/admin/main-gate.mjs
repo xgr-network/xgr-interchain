@@ -64,3 +64,27 @@ export async function deploymentQueue(root,options={}){
  return {commit,source:"github-main",githubApproved:true,inventory:approvedWorkInventory(root),
    note:"Main grants deployment eligibility only. Wallet transaction requires verified build, prerequisites and chain checks."};
 }
+
+// Read-only rendering may use a clean checked-out main snapshot even when
+// remote main has advanced or GitHub is momentarily unavailable. This method
+// NEVER authorizes deployment. Do not use its inventory to bypass
+// assertCurrentMain() in executable or mutating server endpoints.
+export async function readOnlyWorkQueue(root,options={}){
+ const commit=checkedLocalMain(root,options);
+ const inventory=approvedWorkInventory(root);
+ let remoteCommit=null,syncStatus="unavailable",warning=null;
+ try{
+  remoteCommit=await currentMainCommit(options);
+  syncStatus=remoteCommit===commit?"current":"outdated";
+  if(syncStatus==="outdated")
+   warning="Lokaler GitHub-main-Checkout ist veraltet. ./manage.sh update ausführen. Deployments sind gesperrt.";
+ }catch(e){
+  warning="Aktueller GitHub-main-Stand nicht prüfbar ("+String(e.message||e).slice(0,140)+"). Nur lokale Vorschau; Deployments sind gesperrt.";
+ }
+ return {
+  commit,remoteCommit,syncStatus,githubApproved:syncStatus==="current",
+  readOnly:syncStatus!=="current",source:syncStatus==="current"?"github-main":"local-main-snapshot",
+  inventory,warning,
+  note:"Only the latest confirmed GitHub main authorizes deployments. This endpoint is display-only."
+ };
+}
