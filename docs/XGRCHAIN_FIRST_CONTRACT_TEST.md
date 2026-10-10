@@ -1,41 +1,26 @@
-# XGRChain-first contract test (v3.1.5)
+# Generic XITA v3.1.5 Deployment Preflight
 
-We test first on **XGRChain mainnet (1643)** because native XGR is
-available and considerably cheaper than ETH. This does **not** make failed
-or duplicate mainnet deployments reversible.
+The chain and the test order are selected by the operator. Every chain,
+asset, route, fee, verifier format and address comes from the validated
+GitHub main configuration. No XGRChain-first or Base-first special path exists.
 
-## Phase 0: cost-free mainnet verification
+## Read-only inspection
 
-After `./manage.sh update`, inspect
-`GET /admin/api/xgr-preflight` or the first deployment section in Admin.
-It checks chain ID, Hyperlane Mailbox/Merkle hook runtime code, current
-gas price, and the **native compressed BLS verifier at 0x2040** by a
-deliberately invalid ABI-encoded signature via read-only `eth_call`.
-Expected result: 32-byte ABI false. The precompile legitimately returns
-`0x` from `eth_getCode`; this is not evidence of absence.
+- `GET /admin/api/first-deploy`: planning data for **all** configured chains,
+  not a fixed list. Select a chain in the Admin workflow.
+- `GET /admin/api/chain-preflight?chain=<configured-name>`: read-only RPC
+  identity, Hyperlane Mailbox/Hook bytecode, gas price and verifier-specific
+  tests. Unknown chains are rejected.
+- `blsVerifierFormat="compressed"`: requires a config-defined precompile
+  address and tests rejection of a malformed compressed signature via
+  `eth_call`. Precompiles may have empty `eth_getCode`.
+- `blsVerifierFormat="eip2537"`: validates RPC/Core only at this stage.
+  Positive and negative EIP-2537 tests remain mandatory.
 
-**Passing the negative test DOES NOT prove positive BLS verification.**
-A known-good positive compressed signature must also be tested. The
-current XGR validator CLI `ibft interchain bootstrap-proof` produces
-the **EIP-2537 uncompressed 256-byte** signature as `possessionProof`;
-the 0x2040 native verifier requires a **96-byte compressed** signature.
-Do not put 256-byte EIP proofs into the XGRChain manifest. A tested
-conversion or safe exporter is needed before deployment, with the same
-payload, validator address, chain ID 1643 and destination domain 1643.
-Never copy validator private keys to the admin or GitHub.
+All chains are blocked from contract deployment until a positive BLS vector,
+chain-bound public validator proofs, finalized PoS snapshot, approved reserve
+and native initial fee, trusted contract artifacts, wallet executor, journal,
+receipt verification and GitHub backcommit are working.
 
-## Remaining prerequisites for a real paid contract deployment
-
-- Three matched validator public keys and valid domain-bound PoPs;
-  finalized XGR PoS membership snapshot verified against the selected set
-- Initial XGR-native source fee approved in `config/bootstrap/xgrchain.json`
-- Reserve floor, max executor reimbursement, and per-validator balance
-  approved as XGR wei; note the Registry constructor locks three reserves
-- Trusted commit-pinned Foundry init/runtime code, simulated deployment,
-  wallet approval and gas estimate
-- Durable tx journal, on-chain receipt + codehash verification, automatic
-  GitHub deployment records (all integrated, including crash recovery)
-- Only then route creation, technical quorum and live transfer E2E
-
-We deliberately do not expose a wallet transaction from this smoke test.
-No assets are locked or bridged.
+The first operational trial may be selected on XGRChain to save gas, but
+choosing it does not change any protocol architecture or code path.

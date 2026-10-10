@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {rpcCall} from "./inspector.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const CODE=/^0x(?:[a-f0-9]{2})+$/i;
-const parts=["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"];
+const executableParts=["validatorRegistry","ism","factory","sourceRegistry"];
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"))}
 export function infrastructureInventory(root,chains) {
  return chains.map(c=>{
@@ -14,7 +14,10 @@ export function infrastructureInventory(root,chains) {
    throw Error("Chain infrastructure manifest mismatch: "+c.name);
   const core=observed.hyperlaneCore||{};
   const verified=(observed.xitaV315?.components)||{};
-  const components=parts.map(key=>{
+  if(!["compressed","eip2537"].includes(c.blsVerifierFormat))
+   throw Error("Unsupported configured verifier format: "+c.name);
+  const requiredParts=c.blsVerifierFormat==="compressed"?executableParts:["blsVerifier",...executableParts];
+  const components=requiredParts.map(key=>{
    const item=verified[key],valid=item&&ADDRESS.test(item.address||"")&&
      /^0x[a-f0-9]{64}$/i.test(item.runtimeCodeKeccak256||"")&&
      typeof item.receiptPath==="string" && item.receiptPath.startsWith("deployments/mainnet/receipts/"+c.name+"/");
@@ -23,8 +26,8 @@ export function infrastructureInventory(root,chains) {
   const count=components.filter(x=>x.status==="documented").length;
   return {name:c.name,chainId:c.chainId,domainId:c.domainId,
    nativeCurrency:c.nativeCurrency,rpcUrls:c.rpcUrls,explorer:c.explorer||null,
-   status:count===parts.length?"documented":count?"partial":"not-deployed",
-   documented:count,required:parts.length,components,
+   status:count===requiredParts.length?"documented":count?"partial":"not-deployed",
+   documented:count,required:requiredParts.length,components,
    hyperlane:{mailbox:core.mailbox||null,merkleTreeHook:core.merkleTreeHook||null}};
  });
 }

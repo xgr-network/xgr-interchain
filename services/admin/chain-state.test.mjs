@@ -9,7 +9,7 @@ test("all four main-approved chains carry explicit v3.1.5 deployment gaps",()=>{
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
- assert.ok(chains.every(c=>c.required===5 && c.components.length===5));
+ assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?4:5) && c.components.length===c.required));
  assert.ok(chains.every(c=>c.status==="not-deployed"));
 });
 test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
