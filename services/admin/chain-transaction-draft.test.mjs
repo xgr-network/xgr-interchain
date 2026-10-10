@@ -50,3 +50,28 @@ test("gas simulation checks chain, balance and gas before any signing",async()=>
  await assert.rejects(()=>simulateChainDraft(draft,{rpc:async(_,m)=>m==="eth_getBalance"?"0x0":mock(_,m),
   url:"https://polygon.example.org",from:addr(1)}),/Insufficient/);
 });
+
+
+test("real constructor simulation journals explicit null recipient and factory call keeps address",async()=>{
+ const from=addr(7);
+ const mock=async (_url,method,params)=>{
+  if(method==="eth_chainId")return "0x66b";
+  if(method==="eth_estimateGas"){
+   if(params[0].to!==undefined&&params[0].to!==addr(10))
+    throw Error("Unexpected simulation recipient");
+   return "0x500000";
+  }
+  if(method==="eth_gasPrice")return "0x1";
+  if(method==="eth_getBalance")return "0xfffffffffffffff";
+  throw Error("Unexpected RPC method "+method);
+ };
+ const creation={chain:"xgrchain",chainId:1643,component:"validatorRegistry",operation:"create",
+  transaction:{to:null,data:"0x1234567890",value:"0x100"}};
+ const created=await simulateChainDraft(creation,{rpc:mock,url:"https://xgr.example.org",from});
+ assert.equal(created.transaction.to,null);
+ assert.equal(created.transaction.from,from);
+ const registryCall={...creation,component:"sourceRegistry",operation:"factory-call",
+  transaction:{...creation.transaction,to:addr(10),value:"0x0"}};
+ const called=await simulateChainDraft(registryCall,{rpc:mock,url:"https://xgr.example.org",from});
+ assert.equal(called.transaction.to,addr(10));
+});
