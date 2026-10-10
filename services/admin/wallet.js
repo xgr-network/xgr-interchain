@@ -110,3 +110,25 @@ export async function balanceOnWalletChain(address) {
 // Wallet transfers will only be exposed when the reviewed server-side
 // main-pinned deployment executor is complete; never accept arbitrary
 // browser-authored transaction payloads.
+
+// Explicit wallet signing, never a server-side key or unsourced calldata.
+// Caller must compare the transaction to the main-derived prepared intent.
+export async function broadcastDeploymentIntent(prepared){
+ const provider=getWalletProvider();
+ if(!provider)throw Error("Wallet connection required");
+ const state=await currentWalletState();
+ if(!state||state.chainId!==prepared.chainId)
+  throw Error("Switch wallet to selected deployment chain");
+ const t=prepared.transaction;
+ if(!t||String(t.from).toLowerCase()!==state.address.toLowerCase()||
+    typeof t.data!=="string"||!/^0x[0-9a-f]+$/i.test(t.data))
+  throw Error("Prepared wallet transaction mismatch");
+ const tx={
+  from:state.address,data:t.data,value:t.value,gas:t.gas,nonce:t.nonce,
+  ...(t.to?{to:t.to}:{})
+ };
+ const txHash=await provider.request({method:"eth_sendTransaction",params:[tx]});
+ if(!/^0x[0-9a-f]{64}$/i.test(txHash||""))
+  throw Error("Wallet did not return a valid transaction hash; intent remains locked");
+ return txHash;
+}

@@ -1,6 +1,7 @@
-import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable} from "./wallet.js";
+import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
+async function postJSON(p,data){const r=await fetch(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error||"HTTP "+r.status);return d;}
 async function get(p){const r=await fetch(p,{cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error||"HTTP "+r.status);return d;}
 const labels={"not-deployed":"Nicht deployed",partial:"Teilweise deployed",deployed:"Deployed"};
 const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
@@ -95,7 +96,16 @@ async function loadFirstDeploy(){
       esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
    '<div class="chain-actions"><label for="deployment-component-select">Chain-Contract</label><select id="deployment-component-select"><option value="blsVerifier">BLS Verifier (EIP-2537)</option><option value="validatorRegistry">ValidatorRegistry</option><option value="ism">Interchain Security Module</option><option value="factory">Permissionless Factory</option><option value="sourceRegistry">Source Registry</option></select><button type="button" class="outline" id="deployment-check-draft">Transaktion vorbereiten / Gas prüfen</button><small id="deployment-draft-result">Nur Simulation; kein Senden</small></div>'+ 
    '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p><div id="route-lifecycle">Prüfe Router- und Routenplan …</div>'+ 
-   '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" disabled title="Wartet auf commitgebundene Transaktionssimulation und geprüfte Sicherheitsnachweise">Deploy auf dieser Chain</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
+   '<details class="chain-bootstrap"><summary>Verifizierten Bootstrap und Chain-Parameter in GitHub main freigeben</summary>'+
+   '<p>Die drei öffentlichen Validator-Beweise werden vom Server erneut kryptografisch geprüft. Nur die wirtschaftlichen Werte in Wei sowie das Gaslimit gibst du frei.</p>'+
+   '<label>Mindestreserve je Validator (Wei) <input id="approval-minimum" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Max. Executor-Erstattung (Wei) <input id="approval-reimbursement" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Anfangsreserve je Validator (Wei) <input id="approval-reserve" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Initiale Source-Fee (Wei) <input id="approval-fee" inputmode="numeric" placeholder="Wei" /></label>'+
+   '<label>Default Destination Gas Limit <input id="approval-gas" inputmode="numeric" placeholder="Ganzer Gas-Wert" /></label>'+
+   '<button type="button" id="approve-chain-bootstrap">Bootstrap nach main schreiben</button>'+
+   '<small id="approval-status">Erst nach gültiger PoS-/BLS-Verifikation verfügbar. Keine Wallet-Transaktion.</small></details>'+
+   '<div class="chain-actions"><button type="button" class="outline" id="deployment-switch-wallet">Wallet auf ausgewählte Chain wechseln</button><button type="button" id="deployment-execute" title="Verifizierten Chain-Contract mit verbundener Wallet deployen">Deploy auf dieser Chain</button><button type="button" class="outline" id="deployment-recover">Transaktion wiederherstellen</button><small id="deployment-execute-reason">Sicherheitsgates werden geprüft</small></div>';
   el("deployment-chain-select").addEventListener("change",e=>{
    selectedDeployChain=e.target.value;
    showSelectedDeployChain(data);loadRouteLifecycle();
@@ -118,12 +128,87 @@ async function loadFirstDeploy(){
       " · Kein Deployment autorisiert";
    }catch(e){if(selectedDeployChain===chainName)node.textContent="Blockiert: "+e.message;}
   });
+  el("approve-chain-bootstrap").addEventListener("click",async()=>{
+   const output=el("approval-status"),chain=selectedDeployChain;
+   const entries=[
+    ["minimumWei","approval-minimum"],
+    ["maxExecutorReimbursementWei","approval-reimbursement"],
+    ["perValidatorWei","approval-reserve"],
+    ["sourceFeeWei","approval-fee"]
+   ];
+   const values=Object.fromEntries(entries.map(([k,v])=>[k,el(v).value.trim()]));
+   values.defaultDestinationGasLimit=Number(el("approval-gas").value.trim());
+   const all=[...entries.map(([,id])=>el(id).value.trim()),el("approval-gas").value.trim()];
+   if(all.some(x=>!/^[1-9][0-9]*$/.test(x))){
+    output.textContent="Nur positive ganze Werte zulässig";return;
+   }
+   const nativeSymbol=workqueue?.inventory?.chains?.find(x=>x.name===chain)?.nativeCurrency?.symbol||"Native";
+   const totalReserve=(BigInt(values.perValidatorWei)*3n).toString();
+   const statement="Chain: "+chain+" ("+nativeSymbol+")\\n"+
+    "Mindestreserve: "+values.minimumWei+" Wei\\n"+
+    "Max. Executor-Erstattung: "+values.maxExecutorReimbursementWei+" Wei\\n"+
+    "Reserve je Validator: "+values.perValidatorWei+" Wei\\n"+
+    "Gesamtreserve für drei Validatoren: "+totalReserve+" Wei ("+
+      formatNative(totalReserve,18,8)+" "+nativeSymbol+")\\n"+
+    "Source-Fee: "+values.sourceFeeWei+" Wei\\n"+
+    "Gaslimit: "+values.defaultDestinationGasLimit+
+    "\\n\\nDiese unveränderlichen Constructor-Grundwerte in GitHub main freigeben?";
+   if(!window.confirm(statement))
+    return;
+   const button=el("approve-chain-bootstrap");button.disabled=true;
+   output.textContent="Prüfe Validator-Proofs und GitHub main ...";
+   try{
+    const response=await postJSON("/admin/api/bootstrap/approve",{chain,values});
+    output.textContent="Bootstrap freigegeben: "+response.result.commit;
+    window.location.reload();
+   }catch(e){output.textContent="Freigabe verweigert: "+e.message;button.disabled=false;}
+  });
   el("deployment-switch-wallet").addEventListener("click",async()=>{
    try{
     const chain=workqueue?.inventory?.chains?.find(c=>c.name===selectedDeployChain);
     if(!chain)throw Error("Chain not approved in main");
     await switchDeploymentChain(chain);await refreshWalletBalances();
    }catch(e){el("deployment-execute-reason").textContent=e.message;}
+  });
+  el("deployment-execute").addEventListener("click",async()=>{
+   const button=el("deployment-execute"),out=el("deployment-execute-reason");
+   button.disabled=true;const chainName=selectedDeployChain;
+   try{
+    const state=await currentWalletState();
+    const chain=workqueue?.inventory?.chains?.find(c=>c.name===chainName);
+    if(!state||!chain||state.chainId!==chain.chainId)
+     throw Error("Wallet muss mit der gewählten Chain verbunden sein");
+    const component=el("deployment-component-select").value;
+    out.textContent="Vorprüfung, Build, RPC-Simulation und persistentes Journal ...";
+    const prepared=await postJSON("/admin/api/chain-deploy/prepare",
+      {chain:chainName,component,wallet:state.address});
+    out.textContent="Wallet-Bestätigung ausstehend. Bei Abbruch erst Wiederherstellung nutzen.";
+    const txHash=await broadcastDeploymentIntent(prepared);
+    out.textContent="Gesendet: "+txHash+" · speichere Hash ...";
+    await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
+    out.textContent="Hash gesichert. Warte auf finalen Receipt / Verifikation ...";
+    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
+    out.textContent="Deployment: "+result.result.stage+" · "+(result.result.address||txHash);
+   }catch(e){out.textContent="Gesperrt / manuell abgleichen: "+e.message+
+    ". Keinesfalls erneut deployen, bevor die Wiederherstellung abgeschlossen ist.";}
+   finally{button.disabled=false;}
+  });
+  el("deployment-recover").addEventListener("click",async()=>{
+   const out=el("deployment-execute-reason");out.textContent="Lade Journal ...";
+   try{
+    const all=await get("/admin/api/chain-deploy/status");
+    const component=el("deployment-component-select").value;
+    const id=selectedDeployChain+":"+component;
+    const entry=all.intents.entries[id];
+    if(!entry){out.textContent="Kein gespeicherter Vorgang für "+id;return;}
+    if(entry.stage==="prepared"){
+     const typed=window.prompt("Wallet-Transaktionshash eingeben, falls gesendet. Keine erneute Transaktion auslösen:","");
+     if(!typed){out.textContent="Intent bleibt gesperrt; Wallet-Nonce prüfen";return;}
+     await postJSON("/admin/api/chain-deploy/hash",{id,txHash:typed});
+    }
+    const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
+    out.textContent="Wiederherstellung: "+result.result.stage+" · "+(result.result.address||"");
+   }catch(e){out.textContent="Abgleich blockiert: "+e.message;}
   });
   showSelectedDeployChain(data);loadRouteLifecycle();
  }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
@@ -173,14 +258,14 @@ async function showSelectedDeployChain(data){
     ["Mindestreserve (Wei)",r.values.minimumReserveWei??"Offen"],
     ["Max. Executor-Erstattung (Wei)",r.values.maxExecutorReimbursementWei??"Offen"],
     ["Reserve je Validator (Wei)",r.values.perValidatorReserveWei??"Offen"],
-    ["Wallet-Deployment",r.deploymentExecutable?"Bereit":"Noch gesperrt – Transaktions-Engine nicht fertig"]
+    ["Wallet-Deployment","Einzelausführung mit GitHub-main-/BLS-/Build-/Gas-Gates"]
    ];
    const action=el("deployment-execute"),reason=el("deployment-execute-reason");
-   // Never enable a transaction based on read-only readiness alone.
-   if(action)action.disabled=true;
-   if(reason)reason.textContent=r.deploymentExecutable?
-    "Commitgebundene Wallet-Transaktionsengine und Simulation noch erforderlich":
-    "Nicht ausführbar: "+(r.missing.join(" · ")||"Unvollständige Sicherheitsnachweise");
+   // No optimistic deployment readiness: server must authorize each press.
+   if(action)action.disabled=false;
+   if(reason)reason.textContent=r.missing.length?
+    "Bootstrap blockiert: "+r.missing.join(" · "):
+    "Vorbereitete Wallet-Transaktion wird bei jedem Klick vollständig geprüft";
    readinessNode.innerHTML="<strong>Registry-Deployment · Vorprüfung</strong>"+
     lines.map(([label,value])=>'<div class="first-step"><span>'+esc(label)+'</span><small>'+esc(value)+'</small></div>').join("")+
     '<p>'+esc(r.missing.join(" · ")||"Bootstrap vollständig geprüft")+'</p>';

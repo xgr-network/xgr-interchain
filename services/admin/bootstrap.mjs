@@ -66,6 +66,7 @@ export function bootstrapPlan(root,chain){
  return {chain:chain.name,chainId:chain.chainId,domainId:chain.domainId,
   validatorCount:validators.length,expectedValidatorCount:expected.length,initialValidators:expected,setId:null,ready:complete,missing,
   reserveWei:complete?(BigInt(reserve.perValidatorWei)*BigInt(validators.length)).toString():null,
+  reserve:{minimumWei:reserve.minimumWei??null,maxExecutorReimbursementWei:reserve.maxExecutorReimbursementWei??null,perValidatorWei:reserve.perValidatorWei??null},
   proposedFeeWei:uint(fee.targetWei)?fee.targetWei:null,
   verifierAddress:addr(cfg.verifierAddress)?cfg.verifierAddress:null,
   feeGovernance:fee.governance,feeInitialization:fee.initialization};

@@ -16,6 +16,8 @@ import {deploymentJournal} from "./deployment-journal.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {planCatalogRoutes} from "./route-lifecycle.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
+import {createChainOperator} from "./chain-operator.mjs";
+import {approveBootstrapToMain} from "./bootstrap-approval.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -121,6 +123,10 @@ async function preflight(catalog){
   note:"RPC identity and contract presence only. No deployment authorization."};
 }
 
+const operator=createChainOperator({
+ root,stateDir:dataDir,publicEvidenceDir:process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
+ resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
+});
 const dir=dirname(fileURLToPath(import.meta.url));
 const staticFiles=new Map([
  ["/admin/",["index.html","text/html; charset=utf-8"]],
@@ -200,6 +206,37 @@ http.createServer(async(req,res)=>{
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const lifecycle=planCatalogRoutes(queue.inventory,infrastructure);
    return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle});
+  }
+  if(req.method==="POST"&&path==="/admin/api/bootstrap/approve"){
+   const item=await bodyJSON(req);
+   const chain=item.chain;
+   const active=Object.values(operator.status().entries).some(e=>
+    e.id.startsWith(chain+":")&&e.stage!=="documented");
+   if(active)throw Error("Unresolved chain transaction prevents bootstrap manifest change");
+   const result=await approveBootstrapToMain({
+    root,chainName:chain,values:item.values,
+    evidenceDir:process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
+      resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
+   });
+   return reply(res,200,{ok:true,result});
+  }
+  if(req.method==="GET"&&path==="/admin/api/chain-deploy/status"){
+   return reply(res,200,{ok:true,mode:"wallet-assisted",intents:operator.status()});
+  }
+  if(req.method==="POST"&&path==="/admin/api/chain-deploy/prepare"){
+   const item=await bodyJSON(req);
+   const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet});
+   return reply(res,200,{ok:true,...prepared});
+  }
+  if(req.method==="POST"&&path==="/admin/api/chain-deploy/hash"){
+   const item=await bodyJSON(req);
+   const result=await operator.hash({id:item.id,txHash:item.txHash});
+   return reply(res,200,{ok:true,intent:result});
+  }
+  if(req.method==="POST"&&path==="/admin/api/chain-deploy/reconcile"){
+   const item=await bodyJSON(req);
+   const result=await operator.reconcile({id:item.id});
+   return reply(res,200,{ok:true,result});
   }
   if(req.method==="GET"&&path==="/admin/api/transaction-draft"){
    // Draft only, never broadcasts a transaction or conveys signing authority.

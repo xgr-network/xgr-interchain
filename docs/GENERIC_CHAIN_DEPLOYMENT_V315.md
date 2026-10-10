@@ -44,14 +44,48 @@ fee must be checked before approval.
 The same sequence must execute on any supported EVM chain. A complete
 config makes deployment **selectable**, not automatically safe to broadcast.
 
-## Current implementation boundary
+## Chain-contract execution (PR #32)
 
-Main-driven inventory, chain selection, per-chain wallet switching,
-preflight and read-only readiness are implemented. The actual
-commit-pinned artifact planner, validated EIP-1193 transaction executor,
-crash reconciliation, source-chain historical fee evidence, per-route
-counterpart BLS safety execution and relayer v3.1.5 E2E are unfinished.
-Deployment buttons must stay disabled until ALL prerequisite gates are
-implemented and tested. No chain-specific quick path is acceptable.
+The chain infrastructure execution path is implemented through the Admin UI:
+
+- The operator approves independently verified **public** bootstrap evidence
+  and explicit reserve/fee/gas parameters to current GitHub `main` in ONE
+  atomic commit, using the server-only `XITA_GITHUB_TOKEN`. Never send private
+  validator keys to this service.
+- The server independently checks the current clean main, the selected RPC,
+  BLS format, finalized validator proofs, and the approved chain dependencies.
+- `forge build --force` reconstructs compiler artifacts from the exact
+  checked-out source commit. Constructor ABI, runtime-template immutables and
+  deployed contract getters are verified against trusted config.
+- `eth_estimateGas`, gas-price, wallet balance, selected chain and pending
+  nonce are checked before storing a durable (fsync) write-ahead intent.
+- The user authorizes ONLY this server-produced EIP-1193 transaction in their
+  connected wallet. The browser sends no private key to the backend.
+- RPC-observed hash, sender, calldata, nonce, value and recipient must
+  independently match the prepared intent; unknown hashes never clear it.
+- The canonical finalized receipt, actual runtime bytecode, relevant
+  constructor/immutable getters and Factory events are checked.
+- Receipts and per-chain deployment manifests are committed atomically to
+  GitHub main. The clean server checkout fast-forwards to that new commit.
+- After interrupted execution the UI offers **Wiederherstellen**. If a
+  transaction is pending or the hash cannot be established, it remains locked:
+  never send it again automatically.
+
+The operator must deploy each chain component in dependency order:
+`blsVerifier` only on eip2537 chains, then `validatorRegistry`, `ism`,
+`factory`, `sourceRegistry`. XGRChain uses its native compressed verifier
+and never deploys the Solidity EIP-2537 verifier.
+
+Before any mainnet attempt, configure on the Admin **service account**:
+a verified Foundry/Forge installation and pinned Solidity dependencies,
+persistent writable `XGR_ADMIN_STATE_DIR`, external RPC access,
+`XITA_GITHUB_TOKEN` restricted to this repository, TLS/Basic Auth, and a
+wallet with native gas. If any preflight fails, the UI MUST NOT broadcast.
+
+**Real-chain execution has not been demonstrated by unit CI alone.** First
+use one authorized low-risk deployment and inspect receipts, then progress
+through dependencies. BLS route preparation/activation and relayer v3.1.5 E2E
+remain independent and are NOT authorized by successfully deploying chain
+infrastructure.
 
 `./manage.sh deploy` publishes the WEBSITE only; it never deploys contracts.
