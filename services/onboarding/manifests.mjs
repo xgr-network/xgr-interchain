@@ -149,6 +149,7 @@ export function buildManifestBundle(raw,catalog){
   [base+"/metadata.json"]:json(profile),
   [base+"/routes.json"]:json(routeConfig),
   [base+"/mainnet.json"]:json(mainnet),
+  [base+"/listing.json"]:json(listing),
   ["deployments/mainnet/assets/"+key+".json"]:json(deployment),
   ["apps/web/catalog.json"]:json({schemaVersion:1,...proposedCatalog})
  };
