@@ -1,3 +1,4 @@
+import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
@@ -140,21 +141,46 @@ function token(){
  '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">Prepared inventory only; not activated</div></div>').join("")+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,{account:state.account,chainId:state.walletChainId,nativeBalance:state.walletGas})+'</aside></div>';
 }
+const joinState={data:null,step:0,status:""};
 function join(){
- return '<div class="eyebrow">Join the XGR EVM Token Alliance</div><h1>Bring your token to more networks.</h1>'+
- '<p class="lead">Applications, review, standard integration and project listing are free. Export an application draft for review; this UI does not claim to submit it or activate governance.</p>'+
- '<div class="columns"><form id="application" class="card"><h2>Project application</h2>'+
- '<label class="field">Project name</label><input id="project" required maxlength="80"><label class="field">Token symbol</label><input id="symbol" required maxlength="20">'+
- '<label class="field">Project website</label><input id="website" required type="url" placeholder="https://">'+
- '<label class="field">Canonical chain</label><select id="canonical">'+Object.keys(state.catalog.chains).map(c=>'<option value="'+c+'">'+names[c]+'</option>').join("")+'</select>'+
- '<label class="field">Canonical token address</label><input id="address" required pattern="0x[0-9A-Fa-f]{40}" placeholder="0x…">'+
- '<label class="field">Token decimals</label><input id="decimals" type="number" min="0" max="36" value="18" required>'+
- '<label class="field">Target networks (Ctrl/Cmd for multiple)</label><select id="targets" multiple size="4">'+Object.keys(state.catalog.chains).map(c=>'<option value="'+c+'">'+names[c]+'</option>').join("")+'</select>'+
- '<label class="field">Project contact email</label><input id="email" type="email" required>'+
- '<p class="muted">Proof of wallet or multisig authorization will be required during review. Never submit private keys.</p><label><input style="width:auto;display:inline" id="ack" type="checkbox" required> I confirm I represent this project</label>'+
- '<button class="wide" type="submit">Export application JSON</button><p class="status" id="form-status"></p></form>'+
- '<div class="card"><h2>From token to alliance</h2><p class="muted">01 · Submit your token specification</p><p class="muted">02 · Token contract and project authorization verification</p><p class="muted">03 · Validator quorum route governance</p><p class="muted">04 · Verified deployment and live token page</p>'+
- '<div class="notice">This form saves a local draft only. It does not send information to a backend, request a wallet signature, or grant token onboarding approval.</div></div></div>';
+ if(!joinState.data)joinState.data=draft(state.catalog.chains);
+ return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status);
+}
+function drawJoin(){if(path()==="/join")render();}
+function captureJoin(){
+ const d=joinState.data;
+ document.querySelectorAll("[data-join]").forEach(el=>{
+  const key=el.dataset.join;
+  if(el.type==="checkbox")d[key]=el.checked;
+  else if(key==="decimals")d[key]=Number(el.value);
+  else d[key]=el.value;
+ });
+ d.symbol=d.symbol.trim().toUpperCase();d.slug=d.slug.trim().toLowerCase();
+ d.targets=[...document.querySelectorAll("[data-join-target]:checked")].map(el=>el.dataset.joinTarget);
+}
+async function runJoin(action){
+ captureJoin();
+ const d=joinState.data;
+ if(action==="back"){joinState.step=Math.max(0,joinState.step-1);joinState.status="";drawJoin();return;}
+ if(action==="export"){
+  const blob=new Blob([JSON.stringify({...d,kind:"xita-alliance-application-draft"},null,2)+"\n"],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="xita-alliance-application.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
+ }
+ const problems=validateStep(d,joinState.step,state.catalog.chains);
+ if(problems.length){joinState.status="Complete: "+problems.join(", ");drawJoin();return;}
+ if(action==="next"){joinState.step=Math.min(3,joinState.step+1);joinState.status="";drawJoin();return;}
+ if(action==="submit"){
+  joinState.status="Validating public token manifests…";drawJoin();
+  try{
+   const response=await fetch("/api/xita/join/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
+   const body=await response.json();
+   if(!response.ok||!body.ok)throw Error(body.error||"Backend preview unavailable");
+   joinState.status="Manifest validation passed. "+body.files.length+" files prepared. Automatic PR submission requires verified project identity and a configured server-side GitHub writer; use Export draft until enabled.";
+  }catch(e){joinState.status="Preview unavailable: "+e.message+". You can still export the local application draft.";}
+  drawJoin();
+ }
 }
 async function updateWalletGas(){
  if(!state.account||!globalThis.ethereum?.request)return;
@@ -169,22 +195,6 @@ async function updateWalletGas(){
   state.walletChainId=null;
  }
  if(path().startsWith("/token/"))render();
-}
-function application(e){
- e.preventDefault();
- if(!e.target.reportValidity())return;
- const targets=[...document.querySelector("#targets").selectedOptions].map(o=>o.value);
- if(!targets.length){document.querySelector("#form-status").textContent="Select at least one target network.";return;}
- const data={schemaVersion:1,kind:"xeta-alliance-application-draft",status:"unsubmitted",
- project:document.querySelector("#project").value,symbol:document.querySelector("#symbol").value,
- website:document.querySelector("#website").value,canonicalChain:document.querySelector("#canonical").value,
- canonicalAddress:document.querySelector("#address").value,decimals:Number(document.querySelector("#decimals").value),
- targetNetworks:targets,contact:document.querySelector("#email").value,
- authorizationProof:"pending",governance:"not-approved"};
- const blob=new Blob([JSON.stringify(data,null,2)+"\n"],{type:"application/json"}),url=URL.createObjectURL(blob);
- const a=document.createElement("a");a.href=url;a.download="xeta-token-application.json";a.click();
- URL.revokeObjectURL(url);
- document.querySelector("#form-status").textContent="Downloaded locally; nothing submitted to XETA.";
 }
 let cosmos=null;
 function render(){
