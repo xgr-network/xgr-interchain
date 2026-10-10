@@ -10,7 +10,7 @@ import {readOnlyWorkQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
 import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
-import {inspectXgrFirstDeploy} from "./xgr-preflight.mjs";
+import {inspectConfiguredChain} from "./chain-preflight.mjs";
 import {buildFirstChainDeploymentPlan} from "./deployment-sequence.mjs";
 import {deploymentJournal} from "./deployment-journal.mjs";
 
@@ -165,17 +165,16 @@ http.createServer(async(req,res)=>{
    const configured=infrastructureInventory(root,queue.inventory.chains);
    return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
   }
-  if(req.method==="GET"&&path==="/admin/api/xgr-preflight"){
+  if(req.method==="GET"&&path==="/admin/api/chain-preflight"){
    const queue=await readOnlyWorkQueue(root);
-   const chain=queue.inventory.chains.find(c=>c.name==="xgrchain");
-   const info=load("deployments/mainnet/infrastructure/xgrchain.json");
-   const conf=load("config/bootstrap/xgrchain.json");
-   return reply(res,200,{ok:true,commit:queue.commit,
-    preflight:await inspectXgrFirstDeploy({
-     url:chain.rpcUrls[0],mailbox:info.hyperlaneCore.mailbox,
-     merkleTreeHook:info.hyperlaneCore.merkleTreeHook,
-     verifier:conf.verifierAddress
-    })});
+   const name=new URL(req.url,"http://localhost").searchParams.get("chain");
+   const chain=queue.inventory.chains.find(c=>c.name===name);
+   if(!chain)throw Error("Chain is not in GitHub main");
+   const observed=infrastructureInventory(root,[chain])[0];
+   const bootstrap=bootstrapPlan(root,chain);
+   const preflight=await inspectConfiguredChain({chain,core:observed.hyperlane,
+    bootstrap});
+   return reply(res,200,{ok:true,commit:queue.commit,preflight});
   }
   if(req.method==="GET"&&path==="/admin/api/first-deploy"){
    const queue=await readOnlyWorkQueue(root);
