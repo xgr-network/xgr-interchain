@@ -66,6 +66,21 @@ jobs:
           set -euo pipefail
           node --test apps/web/browser-smoke.test.mjs
 
+      - name: Capture Northstar design screenshot
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          node apps/web/render-visual-snapshot.mjs artifacts/xita-universe.png
+
+      - name: Upload Northstar screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xita-universe-preview
+          path: artifacts/xita-universe.png
+          if-no-files-found: warn
+
       - name: Validate operator admin
         shell: bash
         run: |
