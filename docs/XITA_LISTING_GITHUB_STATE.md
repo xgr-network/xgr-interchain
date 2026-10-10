@@ -11,7 +11,7 @@ outside a reviewed GitHub state transition.
 | accepted | Merged onboarding PR + config/assets/<TOKEN>/listing.json | Direct-link | Hidden |
 | public | Approved GitHub state commit, validated finalized transfer and pricing proof | Direct-link | Visible |
 
-XGR is a protocol-hub exception, pinned public in versioned config.
+XGRChain is always visible as the configured network hub, but native XGR is **not** exempt from token publication gates. Its listing remains `accepted` / direct-link-only until independent proof of a finalized, successful XITA v3.1.5 bridge transfer is verified through the normal reviewed GitHub publication process. Planned wrapped representations on spokes are not public tokens.
 
 **Submission:** A valid onboarding PR adds the asset config, route intentions,
 unactivated deployment inventory, listing.json with status=accepted, and
