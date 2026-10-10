@@ -67,6 +67,11 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
+   if(path==="/"||path==="/universe"){
+    assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
+    assert.match(html,/data-cosmos-action="home"/,path+" missing XGR home navigation");
+    assert.match(html,/data-renderer="(webgl|fallback)"/,path+" did not initialize WebGL or graceful fallback");
+   }
   }
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
