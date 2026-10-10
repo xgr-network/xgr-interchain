@@ -637,21 +637,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     entries.push({type:"planet",planet,position:planetPosition(planet,frame,reducedMotion),depth:0});
   for(const entry of entries)if(entry.type==="planet")entry.depth=Math.hypot(...sub(entry.position,eye));
   entries.sort((a,b)=>b.depth-a.depth);
-  // Decorative, noninteractive moons: never counted as listed tokens or valid routes.
-  for(const item of topology.systems){
-   if(focused&&selectedKey!==item.system.key&&focusBlend>.87)continue;
-   const center=systemPosition(item,frame,reducedMotion);
-   const tilt=item.portal?.30:item.orbital.inclination;
-   const node=item.portal?.15:item.orbital.node;
-   for(let j=0;j<(item.portal?4:3);j++){
-    const phase=.45+j*2.32+(item.portal?0:item.system.chainId*.0021);
-    const orbit={orbit:3.0+j*.66,inclination:tilt,node,twist:j*.23};
-    const p=tokenOrbitPoint(orbit,phase+(reducedMotion?0:frame*.010/(1+j*.35)),center);
-    const color=item.color.map(x=>x*.58+.17);
-    point(p,1250,color,.11,vp);
-    body(gpu.sphere,p,.24+(j%2)*.10,color,0,frame,IDENTITY,eye,vp);
-   }
-  }
   for(const entry of entries){
    if(entry.type==="star"){
     const item=entry.item;
