@@ -238,7 +238,9 @@ function createTopology(model){
   const ring=Math.floor(i/7),within=i%7,perRing=Math.min(7,count-ring*7);
   const theta=-2.48+within*TWO_PI/perRing+ring*.36;
   const r=16+(i%3)*2+ring*8;
-  const orbital={origin:[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2],
+  const studioPositions={base:[-12,12,-2],arbitrum:[-20,-10,2],polygon:[21,-10,-3],xdc:[23,10,3]};
+  const start=studioPositions[spokes[i].key]||[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2];
+  const orbital={origin:start,
    axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
    speed:.0019+(i%5)*.00065,inclination:.21+(i%4)*.13,node:i*.81};
   systems.push({system:spokes[i],orbital,position:[...orbital.origin],
@@ -257,8 +259,9 @@ function createTopology(model){
   });
   for(let i=0;i<Math.min(candidates.length,16);i++){
    // Concentric planetary families remain comfortably in view on focus.
-   planets.push({system:item,token:candidates[i],index:i,orbit:3.35+Math.floor(i/5)*1.8+(i%5)*.28,
-    radius:clamp(.52-(i*.009),.30,.52),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
+   planets.push({system:item,token:candidates[i],index:i,orbit:4.4+Math.floor(i/5)*1.8+(i%5)*.28,
+    radius:clamp(.73-(i*.019),.36,.73),speed:.018/(1+i*.2),
+     phase:(i*2.399)+({xgrchain:.28,base:2.25,arbitrum:4.45,polygon:1.25}[item.system.key]??(item.system.chainId||7)*.13),
      inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
   }
  }
@@ -549,11 +552,11 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   }
   for(const [planet,node] of tokenLabels){
    node.hidden=true;
-   if(!focused||planet.system.system.key!==selectedKey||focusBlend<.7)continue;
+   if(focused?(planet.system.system.key!==selectedKey||focusBlend<.7):planet.index!==0)continue;
    const pos=projectionOf(planetPosition(planet,t,reducedMotion),vp,w,h);
    if(!pos||!pos.visible||pos.x<45||pos.x>w-45||pos.y<50||pos.y>h-64)continue;
    node.hidden=false;
-   node.style.transform="translate3d("+Math.round(pos.x)+"px,"+Math.round(pos.y+26)+"px,0) translate(-50%,0)";
+   node.style.transform="translate3d("+Math.round(pos.x)+"px,"+Math.round(pos.y+18)+"px,0) translate(-50%,0)";
    allPick.push({x:pos.x,y:pos.y,depth:pos.depth,kind:"token",token:planet.token,
     chain:planet.system.system.key,radius:clamp(planet.radius*850/pos.depth,18,42)});
   }
