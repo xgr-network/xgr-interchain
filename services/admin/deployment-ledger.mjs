@@ -37,7 +37,7 @@ function checkRegisteredTarget(root,chain,asset,routeName,component){
  if(routeName!==null && !inventory.routes.some(r=>
    r.asset===asset && r.name===routeName && (r.source===chain||r.destination===chain)))
   throw Error("Route is not in GitHub main");
- return approvedChain;
+ return {approvedChain,assetId:asset===null?null:inventory.assets[asset].assetId};
 }
 function proveCreation(receipt,componentAddress,provenance){
  if(provenance.kind==="create"){
@@ -79,7 +79,7 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
   throw Error("Missing deployment artifact, wallet, transaction or source commit");
  if(provenance.routeId&&!h32(provenance.routeId))throw Error("Invalid Route ID");
  if(provenance.assetId&&!h32(provenance.assetId))throw Error("Invalid Asset ID");
- const c=checkRegisteredTarget(root,chain,asset,routeName,component);
+ const {approvedChain:c,assetId}=checkRegisteredTarget(root,chain,asset,routeName,component);
  const url=c.rpcUrls?.[0];
  if(typeof url!=="string"||!url.startsWith("https://"))throw Error("No HTTPS chain RPC");
  const [chainID,receipt,head]=await Promise.all([
@@ -114,7 +114,7 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
   approval:{ref:"main",sourceCommit:sourceCommit.toLowerCase()},
-  chain,chainId:c.chainId,domainId:c.domainId,component,asset,routeName,
+  chain,chainId:c.chainId,domainId:c.domainId,component,asset,assetId,routeName,
   address:contractAddress.toLowerCase(),runtimeCodeKeccak256:observedHash,
   transactionHash:txHash.toLowerCase(),blockNumber:Number(blockNumber),
   blockHash:receipt.blockHash.toLowerCase(),confirmations:Number(confirmations),
