@@ -143,8 +143,28 @@ async function openContractModal(chainName,component){
    sourceFeeWei:r.values.sourceFeeWei,
    defaultDestinationGasLimit:chain.defaultDestinationGasLimit
   };
-  for(const [key,val] of Object.entries(bootstrapFields))
-   el("modal-"+key).value=val===null||val===undefined?"":String(val);
+  let proposal=null;
+  try{
+   const quoted=await get("/admin/api/bootstrap/suggestions?chain="+encodeURIComponent(chainName));
+   if(quoted.commit===response.commit)proposal=quoted.proposal;
+  }catch(e){
+   presentModalStatus("Gaspreisvorschlag nicht verfügbar: "+e.message,"warn");
+  }
+  for(const [key,val] of Object.entries(bootstrapFields)){
+   const input=el("modal-"+key);
+   const suggested=proposal?.values?.[key];
+   input.value=val===null||val===undefined?(suggested===undefined?"":String(suggested)):String(val);
+   input.dataset.source=(val===null||val===undefined)?"unapproved-estimate":"main";
+   input.title=input.dataset.source==="main"?"Wert aus GitHub main":"Unverbindlicher Vorschlag auf Basis des aktuellen Gaspreises";
+  }
+  const explanation=el("modal-parameter-note");
+  if(explanation)explanation.textContent=proposal?
+   "Vorschläge aus Gaspreis "+moneyInWei(proposal.gasPriceWei,chain)+
+   " pro Gas. Annahmen: 500.000 Gas Erstattung, 750.000 Gas Mindestreserve, "+
+   "1.000.000 Gas Anfangsreserve, 100 Gas Source-Fee; Destination-Gaslimit 500.000. "+
+   "Nicht freigegeben, alle Werte editierbar.":
+   "Für fehlende Parameter konnte kein Gaspreis-Vorschlag ermittelt werden.";
+
   el("modal-parameters").hidden=!approvalNeeded;
   el("modal-approve").hidden=!approvalNeeded;
   el("modal-bootstrap-evidence").textContent=r.evidenceVerified?

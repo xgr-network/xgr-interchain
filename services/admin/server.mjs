@@ -19,6 +19,7 @@ import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
 import {approveBootstrapToMain} from "./bootstrap-approval.mjs";
+import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -189,6 +190,18 @@ http.createServer(async(req,res)=>{
    const preflight=await inspectConfiguredChain({chain,core:observed.hyperlane,
     bootstrap});
    return reply(res,200,{ok:true,commit:queue.commit,preflight});
+  }
+  if(req.method==="GET"&&path==="/admin/api/bootstrap/suggestions"){
+   const queue=await readOnlyWorkQueue(root);
+   const name=new URL(req.url,"http://localhost").searchParams.get("chain");
+   const chain=queue.inventory.chains.find(c=>c.name===name);
+   if(!chain)throw Error("Chain is not in approved main");
+   const chainId=await probe(chain.rpcUrls[0],"eth_chainId",[]);
+   if(BigInt(chainId)!==BigInt(chain.chainId))throw Error("RPC chain ID mismatch");
+   const gasPrice=await probe(chain.rpcUrls[0],"eth_gasPrice",[]);
+   return reply(res,200,{ok:true,commit:queue.commit,
+    proposal:suggestBootstrapValues({chain,bootstrap:bootstrapPlan(root,chain),
+      gasPriceWei:BigInt(gasPrice).toString()})});
   }
   if(req.method==="GET"&&path==="/admin/api/deployment-readiness"){
    const queue=await readOnlyWorkQueue(root);
