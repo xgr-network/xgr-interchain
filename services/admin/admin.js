@@ -291,13 +291,17 @@ async function openContractModal(chainName,component){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // No JSON file authorizes economics. Historical values are reference only.
-   input.value="";
+   const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
+    minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000"}:null;
+   input.value=xgrInitial?.[key]??"";
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
    input.title="Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
   }
   el("modal-parameter-note").textContent=requiresValues?
-   "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. "+
+   (chainName==="xgrchain"&&component==="validatorRegistry"?
+    "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
+    "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. ")+
    "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
 
