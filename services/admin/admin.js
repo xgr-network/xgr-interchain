@@ -171,11 +171,10 @@ async function openContractModal(chainName,component){
   const fromGitHub={
     minimumWei:r.values.minimumReserveWei,
     maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
-    perValidatorWei:r.values.perValidatorReserveWei,
     sourceFeeWei:r.values.sourceFeeWei,
     defaultDestinationGasLimit:chain.defaultDestinationGasLimit
   };
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","defaultDestinationGasLimit"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei","defaultDestinationGasLimit"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // No JSON file authorizes economics. Historical values are reference only.
