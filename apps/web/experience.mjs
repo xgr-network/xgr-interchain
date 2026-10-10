@@ -117,6 +117,53 @@ function metric(label,value,desc){
   return '<div class="ux-metric"><span class="ux-kicker">'+esc(label)+'</span><strong>'+esc(value)+'</strong><small>'+esc(desc)+'</small></div>';
 }
 
+// Token-first v3.1.5 bridge presentation. There is intentionally no transaction
+// action until on-chain Registry/Router/Gateway pairs and the new ABI adapter
+// are independently verified. Never reuse a legacy v3.1.4 Gateway call.
+export function renderTokenBridge(model,assetId,selection={},wallet={}){
+  const token=model.assets.find(a=>a.id===assetId);
+  if(!token)return '<div class="ux-panel"><h2>Token unavailable</h2></div>';
+  const supported=model.chains.filter(c=>c.tokens.some(t=>t.id===assetId));
+  const origin=supported.some(c=>c.key===selection.origin)?selection.origin:token.canonical;
+  const destination=supported.some(c=>c.key===selection.destination&&c.key!==origin)?
+    selection.destination:supported.find(c=>c.key!==origin)?.key||origin;
+  const plan=previewRoute(model,origin,destination,assetId);
+  const originChain=model.chains.find(c=>c.key===origin);
+  const walletOnSource=Boolean(wallet.account&&Number(wallet.chainId)===Number(originChain?.chainId));
+  const walletChain=model.chains.find(c=>Number(c.chainId)===Number(wallet.chainId));
+  const sourceName=originChain?.label||origin;
+  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
+  return '<div class="ux-token-bridge" id="token-bridge"><div class="ux-kicker">XITA v3.1.5 · Token-specific bridge</div>'+
+    '<h2>Bridge '+esc(token.name)+'</h2>'+
+    '<p class="ux-muted">The bridge for this asset belongs here. The Universe is a way to discover chains, select tokens and arrive at their transfer page.</p>'+
+    '<label class="ux-field" for="ux-token-origin">Origin chain</label>'+
+    '<select id="ux-token-origin">'+chainOptions({chains:supported},origin)+'</select>'+
+    '<label class="ux-field" for="ux-token-destination">Destination chain</label>'+
+    '<select id="ux-token-destination">'+chainOptions({chains:supported},destination)+'</select>'+
+    '<div class="ux-divider"></div><span class="ux-kicker">Interchain route</span>'+
+    routePath(model,plan)+
+    '<div class="ux-route-status">'+pill(false)+'<p>'+esc(plan.reason)+'</p></div>'+
+    (plan.path.length===3?'<p class="ux-small">Spoke-to-spoke is two independent source transactions with XGRChain as a real intermediate chain. A second hop is NOT automatically sponsored or executed.</p>':
+    '<p class="ux-small">A direct route is allowed only when one endpoint is XGRChain (chain ID/domain 1643).</p>')+
+    '<div class="ux-hop-detail"><span class="ux-kicker">Directed hops</span>'+
+    (plan.hops.length?plan.hops.map((r,i)=>'<div class="ux-hop"><strong>'+esc(model.chains.find(c=>c.key===plan.path[i])?.label||plan.path[i])+
+      ' → '+esc(model.chains.find(c=>c.key===plan.path[i+1])?.label||plan.path[i+1])+'</strong>'+
+      '<span>'+(r?"Configured · not activated":"Route not configured")+'</span></div>').join(""):'<p class="ux-small">No valid path.</p>')+'</div>'+
+    '<label class="ux-field" for="ux-token-amount">Amount ('+esc(assetId)+')</label>'+
+    '<input id="ux-token-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0" value="'+esc(amount)+'">'+
+    '<div class="ux-wallet-gas"><strong>Wallet & gas</strong>'+
+    (wallet.account?
+      '<span>'+esc(wallet.account.slice(0,6)+"…"+wallet.account.slice(-4))+'</span>'+
+      '<p class="ux-small">'+(walletOnSource?
+        'Origin gas balance: '+esc(wallet.nativeBalance??"—")+' '+esc(originChain?.nativeCurrency??"")+' ('+esc(sourceName)+')':
+        'Wallet network: '+esc(walletChain?.label||"unknown")+'. Switch to '+esc(sourceName)+' in your wallet before a future source transfer.')+'</p>':
+      '<p class="ux-small">Connect an EVM wallet to view its native gas balance on the selected origin chain.</p>')+
+    '</div>'+
+    '<div class="ux-route-status"><p><strong>Transfer execution unavailable.</strong> This release has no verified v3.1.5 Gateway adapter or active reciprocal route pair. No fees, quotes or destination deliveries are invented.</p></div>'+
+    '<button type="button" disabled class="ux-button ux-disabled">Bridge unavailable · awaiting verified deployment</button>'+
+    '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal safety activation. The old bridge is retired.</p></div>';
+}
+
 export function renderDashboard(model,selection={},apiState="not-deployed"){
   const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
   const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:model.chains.find(c=>c.key!==source)?.key||source;
