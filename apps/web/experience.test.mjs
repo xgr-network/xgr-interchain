@@ -82,7 +82,7 @@ test("CoinGecko market cap in Universe is asset-wide and independent of route ac
  assert.match(html,/10,351.53/);
  assert.match(html,/Asset-wide market cap/);
  assert.match(html,/not Polygon TVL/);
- assert.match(html,/0<\\/strong>/);
+ assert.match(html,/Verified active routes/);
  const without=renderUniverse(model,"polygon");
  assert.doesNotMatch(without,/ux-market-card/);
 });
