@@ -40,7 +40,7 @@ test("unknown always last for either sort direction",()=>{
  assert.deepEqual(rankAssets(rows,"lockedUsd","asc").map(x=>x.name),["B","C","A"]);
 });
 test("all listed tokens appear without metrics even if indexer is offline",()=>{
- const catalog={assets:{XGR:{profile:{name:"XGR"},routes:{routes:[]}},ABC:{profile:{name:"ABC"},routes:{routes:[]}}}};
+ const catalog={assets:{XGR:{profile:{name:"XGR"},listing:{kind:"xita-asset-listing",asset:"XGR",status:"public"},routes:{routes:[]}},ABC:{profile:{name:"ABC"},listing:{kind:"xita-asset-listing",asset:"ABC",status:"public"},routes:{routes:[]}}}};
  const rows=buildLeaderboardRows(catalog,null);
  assert.equal(rows.length,2);assert.ok(rows.every(x=>x.lockedUsd===null&&x.movedUsd===null&&x.marketCapUsd===null));
  assert.equal(formatUsd(null),"—");

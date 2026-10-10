@@ -13,7 +13,9 @@ const application={
 };
 test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const b=buildManifestBundle(application,catalog);
- assert.equal(Object.keys(b.files).length,6);
+ assert.equal(Object.keys(b.files).length,7);
+ const listing=JSON.parse(b.files["config/assets/EXMP/listing.json"]);
+ assert.equal(listing.status,"accepted");
  const asset=JSON.parse(b.files["config/assets/EXMP/asset.json"]);
  const routes=JSON.parse(b.files["config/assets/EXMP/routes.json"]);
  assert.equal(asset.canonical.tokenAddress,application.canonicalAddress);

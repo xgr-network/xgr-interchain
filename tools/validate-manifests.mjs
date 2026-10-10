@@ -13,7 +13,7 @@ export function loadCatalog(root=ROOT){
  for(const file of files(root,"config/chains")){const n=file.slice(0,-5);chains[n]=json(root,"config/chains/"+file)}
  for(const chain of Object.keys(chains))infrastructure[chain]=json(root,"deployments/mainnet/infrastructure/"+chain+".json");
  for(const dir of readdirSync(join(root,"config/assets"),{withFileTypes:true}).filter(x=>x.isDirectory())){
-  const n=dir.name;assets[n]={metadata:json(root,`config/assets/${n}/asset.json`),profile:json(root,`config/assets/${n}/metadata.json`),routes:json(root,`config/assets/${n}/routes.json`),mainnet:json(root,`config/assets/${n}/mainnet.json`),deployment:json(root,`deployments/mainnet/assets/${n}.json`)};
+  const n=dir.name;assets[n]={metadata:json(root,`config/assets/${n}/asset.json`),profile:json(root,`config/assets/${n}/metadata.json`),listing:json(root,`config/assets/${n}/listing.json`),routes:json(root,`config/assets/${n}/routes.json`),mainnet:json(root,`config/assets/${n}/mainnet.json`),deployment:json(root,`deployments/mainnet/assets/${n}.json`)};
  }
  return {chains,assets,infrastructure};
 }
@@ -57,7 +57,14 @@ export function validateCatalog({chains,assets,infrastructure}){
  }
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){
-  const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d}=a;
+  const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d,listing:ls}=a;
+  // A submitted tx hash or GitHub commit reference is NOT proof of successful
+  // delivery. Until the finality-aware receipt verifier is shipped, third-party
+  // assets must stay accepted (direct-link only), never public.
+  const listingValid=ls?.schemaVersion===1&&ls.kind==="xita-asset-listing"&&
+    ls.asset===name&&(ls.status==="accepted"&&ls.basis==="review-merged"&&ls.publicProof===null||
+    ls.status==="public"&&name==="XGR"&&ls.basis==="protocol-hub"&&ls.publicProof===null);
+  check(listingValid,p+": missing or invalid GitHub listing publication evidence");
   check(m.kind==="asset-config"&&m.schemaVersion===1&&m.asset===name&&Number.isInteger(m.decimals)&&m.decimals>=0&&m.decimals<=36,p+": invalid asset metadata");
   
   const publicName=x=>typeof x==="string"&&x.length>=1&&x.length<=120&&x.trim()===x;

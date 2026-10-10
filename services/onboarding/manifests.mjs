@@ -136,9 +136,10 @@ export function buildManifestBundle(raw,catalog){
   notes:"Directory listing and route intentions only; on-chain deployment and activation are independent."};
  const deployment={schemaVersion:2,kind:"asset-deployment",network:"mainnet",asset:key,assetId,
   sourceManifest:base+"/asset.json",receiptPaths:[]};
+ const listing={schemaVersion:1,kind:"xita-asset-listing",asset:key,status:"accepted",basis:"review-merged",publicProof:null};
  const proposedCatalog={
   chains:catalog.chains,infrastructure:catalog.infrastructure,
-  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,mainnet,deployment}}
+  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,mainnet,deployment,listing}}
  };
  const errors=validateCatalog(proposedCatalog);
  if(errors.length)note("Generated manifest failed validation: "+errors.slice(0,4).join("; "));
@@ -148,6 +149,7 @@ export function buildManifestBundle(raw,catalog){
   [base+"/metadata.json"]:json(profile),
   [base+"/routes.json"]:json(routeConfig),
   [base+"/mainnet.json"]:json(mainnet),
+  [base+"/listing.json"]:json(listing),
   ["deployments/mainnet/assets/"+key+".json"]:json(deployment),
   ["apps/web/catalog.json"]:json({schemaVersion:1,...proposedCatalog})
  };
