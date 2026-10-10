@@ -66,7 +66,7 @@ jobs:
           set -euo pipefail
           find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
           node --check services/admin/admin.js
-          node --test services/admin/plan.test.mjs
+          node --test services/admin/*.test.mjs
 
       - name: Native relayer tests
         shell: bash
