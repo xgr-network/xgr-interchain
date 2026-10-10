@@ -350,6 +350,7 @@ async function loadJobs(){
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
+el("deploy-all").addEventListener("click",()=>{setView("workflow");history.replaceState(null,"","#workflow");el("first-deploy-plan")?.scrollIntoView({behavior:"smooth",block:"start"});});
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
