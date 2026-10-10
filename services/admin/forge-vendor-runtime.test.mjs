@@ -11,5 +11,6 @@ test("server update provisions Hyperlane and OpenZeppelin before restarting UI",
  const sh=readFileSync(resolve(root,"manage.sh"),"utf8");
  assert.match(sh,/npm install --prefix "\$ROOT\/vendor" --ignore-scripts/);
  assert.match(sh,/prepare_solidity_runtime\n  sha=/);
- assert.match(sh,/@hyperlane-xyz\/core\/contracts\/token\/libs\/TokenRouter\.sol/);
+ assert.match(sh,/verify-solidity-runtime\.mjs/);
+ assert.match(sh,/forge_bin.*build --force --skip test script/);
 });
