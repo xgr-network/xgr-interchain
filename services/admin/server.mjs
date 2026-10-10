@@ -7,6 +7,7 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
 import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
+import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -124,7 +125,12 @@ http.createServer(async(req,res)=>{
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await deploymentQueue(root);
-   return reply(res,200,{ok:true,...queue});
+   return reply(res,200,{ok:true,...queue,infrastructure:infrastructureInventory(root,queue.inventory.chains)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/infrastructure"){
+   const queue=await deploymentQueue(root);
+   const configured=infrastructureInventory(root,queue.inventory.chains);
+   return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
   }
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
