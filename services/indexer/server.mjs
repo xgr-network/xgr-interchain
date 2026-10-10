@@ -1,3 +1,4 @@
+import {systemRanking} from "../../apps/web/system-rankings.js";
 // Read-only XITA metrics projector. No trust in remote claims: input must be a
 // trusted, locally maintained evidence file produced by a finalized-chain verifier.
 // No write API, no GitHub credentials, no simulated numbers, no legacy collateral.
@@ -62,7 +63,7 @@ export async function handler(req,res){
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/health"))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
@@ -71,7 +72,15 @@ export async function handler(req,res){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}
   }
-  return send(200,projectMetrics(catalog,readEvidence(),cache.snapshot));
+  const metrics=projectMetrics(catalog,readEvidence(),cache.snapshot);
+  if(pathname.startsWith("/api/xeta/v1/systems/")){
+   const chain=pathname.slice("/api/xeta/v1/systems/".length);
+   if(!/^[a-z0-9-]{1,60}$/.test(chain))return send(404,{ok:false,error:"Unknown system"});
+   const url=new URL(req.url,"http://localhost");
+   const result=systemRanking(catalog,metrics,chain,{sort:url.searchParams.get("sort"),search:url.searchParams.get("q")||""});
+   return result?send(200,result):send(404,{ok:false,error:"Unknown system"});
+  }
+  return send(200,metrics);
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});
