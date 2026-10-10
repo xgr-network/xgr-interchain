@@ -6,3 +6,32 @@
 .chain-bootstrap{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}.chain-bootstrap strong{font-size:12px}.chain-bootstrap p{margin:5px 0;font-size:11px}.chain-bootstrap small{font-size:11px;color:#f0c38a;line-height:1.5}
 
 .first-deploy-plan{border:1px solid var(--line);padding:18px;border-radius:12px;background:var(--sub);margin-bottom:18px}.first-deploy-plan h3{font-size:17px}.first-chain{margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px}.first-chain>small{display:block;color:var(--muted);margin-top:5px}.first-step{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:9px 0;font-size:12px}.first-step small{color:var(--muted);max-width:62%;text-align:right;overflow-wrap:anywhere}
+
+/* Click-through contract deployment: the chain card is the workspace. */
+.chain-card{min-width:0}
+.component-row{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:34px;font-size:12px}
+.component-row>span:first-child{flex:1}
+.component-pending{background:transparent;border:1px solid #517e8d;color:var(--accent);padding:6px 10px;font-size:12px;font-weight:650}
+.component-pending:hover{background:#21444c}
+.address-copy{font-family:ui-monospace,monospace;background:transparent;color:#c7dbe8;border:1px solid #354d61;padding:6px 8px;font-size:11px}
+.chain-bootstrap-summary{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}
+.chain-bootstrap-summary span:last-child{text-align:right;color:#d9e9f4}
+.contract-dialog{border:1px solid #456176;border-radius:16px;width:min(580px,calc(100vw - 28px));max-height:90vh;overflow:auto;background:#142132;color:var(--ink);padding:24px;box-shadow:0 24px 90px #000a}
+.contract-dialog::backdrop{background:#030810d9}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line);padding-bottom:15px}
+.modal-head h2{margin:8px 0 5px;font-size:22px}
+.modal-head p{font-size:12px;margin:0}
+.modal-close{font-size:20px;min-width:42px;padding:7px}
+.modal-parameters{margin:18px 0}
+.modal-parameters h3{font-size:15px;margin:0 0 8px}
+.modal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.modal-fields label{display:grid;gap:5px;font-size:12px;color:var(--muted)}
+.modal-fields input{width:100%;min-width:0}
+.modal-status{font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px;min-height:40px;color:var(--muted)}
+.modal-status[data-type="error"]{color:#f2a4a4}
+.modal-status[data-type="warn"]{color:#e8be7f}
+.modal-status[data-type="success"]{color:var(--accent)}
+.modal-gas-result{color:var(--accent);font-size:12px;margin:12px 0;font-variant-numeric:tabular-nums}
+.modal-footer{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:18px}
+.modal-footer button{white-space:normal}
+@media(max-width:560px){.modal-fields{grid-template-columns:1fr}.contract-dialog{padding:16px}}
