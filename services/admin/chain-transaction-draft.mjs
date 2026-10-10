@@ -123,5 +123,8 @@ export async function simulateChainDraft(draft,{rpc,url,from}){
  return {chain:draft.chain,component:draft.component,operation:draft.operation,
   gasEstimateWei:estimate,gasLimit:"0x"+gas.toString(16),gasPriceWei:price,
   totalWorstCaseWei:total.toString(),wallet:from,simulated:true,
-  transaction:{...t,gas:"0x"+gas.toString(16)}};
+  // eth_estimateGas omits "to" for contract creation. The durable journal
+  // requires an explicit null destination to distinguish creation from an
+  // incomplete wallet payload. Keep "to" absent in the RPC simulation only.
+  transaction:{...t,to:draft.transaction.to??null,gas:"0x"+gas.toString(16)}};
 }
