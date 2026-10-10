@@ -10,10 +10,9 @@ test("canonical native and wrapped XGR are distinctly labelled",()=>{
  assert.deepEqual([representationFor(token,"xgrchain").kind,representationFor(token,"base").kind],["native","wrapped"]);
  assert.equal(representationFor(token,"base").symbol,"wXGR");
 });
-test("hub system has token planets as well, but no artificial rings required",()=>{
+test("global universe initially has no eagerly created token planets",()=>{
  const topo=createUniverseTopology(buildExperienceModel(cat));
- assert.ok(topo.planets.some(p=>p.system.system.key==="xgrchain"&&p.token.id==="XGR"));
- assert.ok(topo.planets.some(p=>p.system.system.key==="base"&&p.token.id==="XGR"));
+ assert.equal(topo.planets.length,0);
 });
 test("dashboard uses token directory not redundant published routes",()=>{
  const html=renderDashboard(buildExperienceModel(cat),{},"unavailable");
