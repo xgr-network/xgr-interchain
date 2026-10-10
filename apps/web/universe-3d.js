@@ -259,9 +259,9 @@ function createTopology(model){
   });
   for(let i=0;i<Math.min(candidates.length,16);i++){
    // Concentric planetary families remain comfortably in view on focus.
-   planets.push({system:item,token:candidates[i],index:i,orbit:4.4+Math.floor(i/5)*1.8+(i%5)*.28,
-    radius:clamp(.73-(i*.019),.36,.73),speed:.018/(1+i*.2),
-     phase:(i*2.399)+({xgrchain:.28,base:2.25,arbitrum:4.45,polygon:1.25}[item.system.key]??(item.system.chainId||7)*.13),
+   planets.push({system:item,token:candidates[i],index:i,orbit:5.1+Math.floor(i/5)*1.8+(i%5)*.28,
+    radius:clamp(.78-(i*.019),.38,.78),speed:.018/(1+i*.2),
+     phase:(i*2.399)+({xgrchain:2.65,base:-.25,arbitrum:.18,polygon:2.95}[item.system.key]??(item.system.chainId||7)*.13),
      inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
   }
  }
