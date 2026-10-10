@@ -169,7 +169,7 @@ async function runJoin(action){
   joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
  }
  const problems=validateStep(d,joinState.step,state.catalog.chains);
- if(problems.length){joinState.status="Complete: "+problems.join(", ");drawJoin();return;}
+ if(problems.length){joinState.status="Please complete: "+problems.join(", ");drawJoin();return;}
  if(action==="next"){joinState.step=Math.min(3,joinState.step+1);joinState.status="";drawJoin();return;}
  if(action==="submit"){
   joinState.status="Validating public token manifests…";drawJoin();
