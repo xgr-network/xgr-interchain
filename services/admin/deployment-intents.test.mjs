@@ -36,3 +36,22 @@ test("unapproved chain, malformed nonce and sender mismatch fail before journali
   assert.throws(()=>p.prepare({...input,transaction:{...input.transaction,from:"0x"+"f".repeat(40)}}),/sender differ/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("route Gateway and Router use the SAME persistent write-ahead journal",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-route-intent-"));
+ try{
+  const open=()=>deploymentIntents({directory:dir,chains:[{name:"base",chainId:8453}]});
+  const route={...input,id:"base:XGR:gateway:base_to_xgr",chainId:8453,parameters:{},
+   asset:"XGR",assetId:"0x"+"1".repeat(64),routeName:"base_to_xgr",
+   routeId:"0x"+"2".repeat(64),factory:"0x"+"3".repeat(40),validatorSnapshot:null,
+   transaction:{...input.transaction,to:"0x"+"3".repeat(40)}};
+  open().prepare(route);
+  assert.equal(open().read().entries[route.id].stage,"prepared");
+  assert.throws(()=>open().prepare(route),/Existing deployment intent/);
+  open().attachHash(route.id,hash);
+  assert.equal(open().read().entries[route.id].stage,"submitted");
+  assert.throws(()=>open().attachHash(route.id,"0x"+"f".repeat(64)),/replace/);
+  open().confirm(route.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
+  assert.equal(open().read().entries[route.id].stage,"confirmed");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
