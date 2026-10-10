@@ -566,8 +566,15 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    point(systemPosition(item,frame,reducedMotion),item.radius*1600,item.color,intensity*.67,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  if(focusBlend<.96)for(const link of paths)
+  if(focusBlend<.96)for(const link of paths){
+   const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
+   const vertices=[],steps=92;
+   const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
+   for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
+   gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
    line(link.geometry,link.active?[.45,.88,.72]:[.43,.61,.84],(link.active?.7:.35)*(1-focusBlend*.93),vp);
+  }
   if(focusBlend>.15)for(const ring of orbitPaths)
    if(ring.planet.system.system.key===selectedKey)
     line(ring.geometry,[.48,.66,.81],.24*focusBlend,vp);
