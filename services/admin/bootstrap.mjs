@@ -102,7 +102,10 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   result.feeWei=decodeUint(fee).toString();
   result.feeNonce=decodeUint(nonce).toString();
   if(result.feeWei==="0")result.missing.push("Source-Chain-Initialgebühr fehlt");
+  if(plan.proposedFeeWei && result.feeWei!==plan.proposedFeeWei)
+   result.missing.push("On-chain Source-Fee differs from main-approved constructor fee");
  }else result.missing.push("Source-Registry noch nicht deployed");
- result.verified=result.ready && Boolean(result.validatorSetId)&&result.feeWei!=="0"&&result.feeWei!==null;
+ result.verified=result.ready && Boolean(result.validatorSetId)&&result.feeWei!=="0"&&
+  result.feeWei!==null && result.feeWei===plan.proposedFeeWei && result.missing.length===0;
  return result;
 }
