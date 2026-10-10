@@ -118,7 +118,7 @@ export function nextAssetRouteTasks(inventory,infrastructure){
        blockers.push(name+":"+component);
     }
     items.push({id:asset.asset+":"+d.name+":prepare",asset:asset.asset,
-     chain:d.name.split("_to_")[0],kind:"gateway",action:"prepareRoute",
+     chain:asset.routes.find(r=>r.kind==="route-prepare"&&r.name===d.name)?.source,kind:"gateway",action:"prepareRoute",
      blockers,status:blockers.length?"waiting-dependencies":"ready-for-independent-validation"});
    }
   }
