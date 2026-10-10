@@ -53,9 +53,7 @@ verified EIP-2537 deployment merely because the chain ID matches.
 
 ## Single source-native fee per physical chain
 
-After ValidatorRegistry, ISM, Factory and source ILN Registry are verifiably
-deployed, the chain-wide source fee is proposed through the existing
-validator quorum protocol:
+**Initial deployment**: the chain-wide positive native fee is approved in GitHub main, pinned into the immutable Factory constructor and passed to the Source ILN Registry constructor. There is no validator quorum for this one-time bootstrap; the registry starts at nonce 0. A deployer cannot subsequently edit the initial value.\n\n**Later changes**, after deployment, require the existing validator quorum protocol:
 
 1. `ibft interchain fee create --source <chain> --fee-wei <value> --data-dir <validator-data>`
 2. Each participating validator explicitly calls `ibft interchain fee approve --proposal-id <hash> --data-dir <validator-data>`.
@@ -74,7 +72,7 @@ updates `deployments/mainnet/infrastructure/<chain>.json` in the same
 GitHub fast-forward commit. Asset router/gateway receipts instead update
 `deployments/mainnet/assets/<asset>.json` using the canonical Asset ID.
 
-A **fee update is not a contract deployment**: it needs a separate
+The **initial fee** must be attested as part of the Registry/Factory deployment constructor binding; it is not a signed quorum update. A later **fee update is not a contract deployment**: it needs a separate
 verified governance-event journal with proposal ID, setId, nonce,
 feeWei, txHash, source chain and confirmed block. That journal and the
 wallet-signed generic creation executor remain unfinished; they are
