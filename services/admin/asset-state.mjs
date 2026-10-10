@@ -73,8 +73,13 @@ function verifyReceipts(root,deployed,key,assetId,chains,routeNames){
 function routeState(route,receipts){
  const records=receipts.filter(r=>r.routeName===route.name);
  const identifiers=[...new Set(records.map(r=>r.routeId||r.provenance?.routeId).filter(Boolean).map(clean))];
+ // Routers belong to ONE asset representation on a chain, independent
+ // of route direction. Gateways and FeeVaults remain route-specific.
+ const routerComponents=new Set(["nativeRouter","syntheticRouter","collateralRouter"]);
  const addressFor=(component,chain)=>
-  records.filter(r=>r.component===component&&r.chain===chain).map(r=>r.address);
+  receipts.filter(r=>r.component===component&&r.chain===chain&&
+   (routerComponents.has(component)?(r.routeName===null||r.routeName===route.name):
+    r.routeName===route.name)).map(r=>r.address);
  const components={
   sourceRouters:[...new Set([...addressFor("nativeRouter",route.source),...addressFor("collateralRouter",route.source),...addressFor("syntheticRouter",route.source)])],
   destinationRouters:[...new Set([...addressFor("nativeRouter",route.destination),...addressFor("collateralRouter",route.destination),...addressFor("syntheticRouter",route.destination)])],
@@ -83,7 +88,7 @@ function routeState(route,receipts){
  };
  // Recorded != active. Routes remain "deployed" at most until an actual
  // reciprocal BLS-verified activation record is separately verified.
- const ready=identifiers.length===1&&Object.values(components).every(a=>a.length>0);
+ const ready=identifiers.length===1&&Object.values(components).every(a=>a.length===1);
  const status=records.length===0?"not-deployed":ready?"deployed":"partial";
  return {...route,routeIds:identifiers,components,receipts:records.map(r=>r.receiptPath),
   receiptCount:records.length,status,
