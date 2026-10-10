@@ -1,6 +1,7 @@
 // Reconcile a signed transaction by its exact committed wallet intent.
 // Never assume a successful receipt proves correct constructor or immutables.
 import {selector} from "../../apps/web/keccak.mjs";
+import {encodeAbi} from "./abi-encoder.mjs";
 import {verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {verifyDeploymentReceipt} from "./deployment-ledger.mjs";
 const H32=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
@@ -34,7 +35,18 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("minimumDeactivationReserveWei()",bootstrap.reserve.minimumWei);
   await check("maxExecutorReimbursementWei()",bootstrap.reserve.maxExecutorReimbursementWei);
   const onChain=await getter(rpc,url,address,"quorumThreshold()");
-  if(asWord(onChain)<2n)throw Error("Bootstrap quorum too low");
+  if(!Array.isArray(bootstrap.initialValidators)||bootstrap.initialValidators.length!==3 ||
+     asWord(onChain)!==2n)throw Error("Bootstrap quorum or pinned validator count differs");
+  for(const validator of bootstrap.initialValidators){
+   const status=await rpc(url,"eth_call",[{
+    to:address,data:selector("getValidatorStatus(address)")+
+     encodeAbi(["address"],[validator]).slice(2)
+   },"latest"]);
+   if(!/^0x[0-9a-f]{128}$/i.test(status||"")||
+      BigInt("0x"+status.slice(2,66))!==1n||
+      BigInt("0x"+status.slice(66,130))!==1n)
+    throw Error("Pinned initial validator missing or inactive in RegistryV2");
+  }
  }else if(component==="ism"){
   const v=infra.components.find(c=>c.key==="validatorRegistry")?.address;
   if(!ADDR.test(v||""))throw Error("Registry missing during ISM verification");
