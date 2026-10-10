@@ -127,6 +127,19 @@ http.createServer(async(req,res)=>{
    const queue=await deploymentQueue(root);
    return reply(res,200,{ok:true,...queue,infrastructure:infrastructureInventory(root,queue.inventory.chains)});
   }
+  if(req.method==="GET"&&path==="/admin/api/balance"){
+   const queue=await deploymentQueue(root);
+   const url=new URL(req.url,"http://localhost");
+   const name=url.searchParams.get("chain"),address=url.searchParams.get("address");
+   if(!/^0x[a-fA-F0-9]{40}$/.test(address||""))throw Error("Invalid wallet address");
+   const chain=queue.inventory.chains.find(c=>c.name===name);
+   if(!chain)throw Error("Chain not approved in current main");
+   const rpcUrl=chain.rpcUrls?.[0];
+   if(!/^https:\/\//.test(rpcUrl||""))throw Error("Invalid approved RPC");
+   const [chainId,balance]=await Promise.all([probe(rpcUrl,"eth_chainId",[]),probe(rpcUrl,"eth_getBalance",[address,"latest"])]);
+   if(BigInt(chainId)!==BigInt(chain.chainId)||!/^(0x)[0-9a-f]+$/i.test(balance||""))throw Error("Invalid RPC identity or balance");
+   return reply(res,200,{ok:true,chain:name,chainId:chain.chainId,address,balance});
+  }
   if(req.method==="GET"&&path==="/admin/api/infrastructure"){
    const queue=await deploymentQueue(root);
    const configured=infrastructureInventory(root,queue.inventory.chains);
