@@ -111,6 +111,29 @@ async function showSelectedDeployChain(data){
   chain.steps.map(s=>'<div class="first-step"><span>'+esc(s.title)+'</span><small>'+
    esc(s.status==="documented"?"Dokumentiert":s.blockers.join(" · ")||"Verifikation offen")+
    '</small></div>').join("")+'</div>';
+ const readinessNode=document.createElement("div");
+ readinessNode.className="chain-bootstrap";
+ el("selected-deploy-details").append(readinessNode);
+ readinessNode.textContent="Prüfe BLS-Evidenz und Deployment-Parameter …";
+ try{
+  const {readiness:r}=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
+  if(selectedDeployChain===chain.name){
+   const lines=[
+    ["BLS-Validatoren",r.evidenceVerified?r.verifiedValidatorCount+" / 3 verifiziert":"Nicht vollständig geprüft"],
+    ["PoS-Snapshot",r.originSnapshotBlock===null?"Ausstehend":"Block "+r.originSnapshotBlock+" · "+r.snapshotConfirmedDepth+" Bestätigungen"],
+    ["GitHub main",r.mainCurrent?"Aktuell":"Nicht bestätigt"],
+    ["Bootstrap-Manifest",r.manifestMatchesEvidence?"Übereinstimmend":"Noch nicht übernommen"],
+    ["Source-Fee (Wei)",r.values.sourceFeeWei??"Offen"],
+    ["Mindestreserve (Wei)",r.values.minimumReserveWei??"Offen"],
+    ["Max. Executor-Erstattung (Wei)",r.values.maxExecutorReimbursementWei??"Offen"],
+    ["Reserve je Validator (Wei)",r.values.perValidatorReserveWei??"Offen"],
+    ["Wallet-Deployment",r.deploymentExecutable?"Bereit":"Noch gesperrt – Transaktions-Engine nicht fertig"]
+   ];
+   readinessNode.innerHTML="<strong>Registry-Deployment · Vorprüfung</strong>"+
+    lines.map(([label,value])=>'<div class="first-step"><span>'+esc(label)+'</span><small>'+esc(value)+'</small></div>').join("")+
+    '<p>'+esc(r.missing.join(" · ")||"Bootstrap vollständig geprüft")+'</p>';
+  }
+ }catch(e){if(selectedDeployChain===chain.name)readinessNode.textContent="Vorprüfung nicht verfügbar: "+e.message;}
  const pre=el("chain-live-preflight");
  pre.textContent="RPC-/Verifier-Prüfung läuft …";
  try{
