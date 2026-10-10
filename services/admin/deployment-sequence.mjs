@@ -17,7 +17,7 @@ export function buildFirstChainDeploymentPlan(inventory,infrastructure,bootstrap
  const infraByName=new Map(infrastructure.map(c=>[c.name,c]));
  const bootstrapByName=new Map(bootstrap.map(b=>[b.chain,b]));
  const chainPlans=[];
- for(const name of ["base","xgrchain"]){
+ for(const name of ["xgrchain","base"]){
   const chain=chainByName.get(name),infra=infraByName.get(name),plan=bootstrapByName.get(name);
   if(!chain||!infra||!plan||!CHAINS.has(name))
    throw Error("Base/XGRChain is missing from the GitHub main inventory");
