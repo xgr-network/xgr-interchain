@@ -1,7 +1,8 @@
+import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes} from "./experience.mjs";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.mjs";
 import {manifestRoute,connectWallet,switchChain,quoteBridge,readAllowance,approveAmount,sendBridge,waitReceipt,messageIdFromReceipt,isDelivered,formatUnits,shorten} from "./protocol.mjs";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed"};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"}};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -279,7 +280,16 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- el.innerHTML=p==="/"?overview():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?routesPage():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ const universe=buildExperienceModel(state.catalog,(assetId,routeId)=>{const a=state.catalog.assets[assetId];return Boolean(a&&manifestRoute(state.catalog,a,routeId).allowed);});
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?renderRoutes(universe):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
+   document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
+ }
+ document.querySelectorAll("[data-xita-system]").forEach(button=>button.addEventListener("click",()=>{
+   state.experience.system=button.dataset.xitaSystem;
+   if(p==="/")history.pushState(null,"","/universe");
+   render();
+ }));
  document.querySelector("#route")?.addEventListener("change",reset);
  document.querySelector("#amount")?.addEventListener("input",reset);
  document.querySelector("#quote-btn")?.addEventListener("click",requestQuote);
