@@ -74,7 +74,7 @@ function markets(){
  '<td class="ux-leader-value">'+row.configuredRoutes+'</td></tr>').join("");
  return '<div class="ux-app ux-leaderboard"><div class="ux-kicker">XITA · ASSET DISCOVERY</div><div class="ux-leader-head"><div><h1>Explore <span>Tokens</span></h1>'+
  '<p class="ux-lead">Discover assets by verified locked collateral, unique interchain value moved through XGRChain and token market capitalization.</p></div>'+
- '<div class="ux-leader-info">Verified metrics only<br><small>Live indexer values appear when available</small></div></div>'+
+ '<div class="ux-leader-info">Locked and moved: on-chain verified<br><small>Market caps: external provider data when configured</small></div></div>'+
  '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(state.catalog.assets).length+'</strong></div>'+
  '<div><span>Verified custody TVL</span><strong>'+formatUsd(state.leaderboard?.totals?.lockedUsd)+'</strong></div>'+
  '<div><span>Moved through XGR</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
