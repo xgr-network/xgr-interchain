@@ -64,6 +64,7 @@ check() {
     node --check apps/web/ui-data.mjs
     node --check services/admin/server.mjs
     node --check services/admin/admin.js
+    node --check services/admin/wallet.js
     bash -n manage.sh
     echo "PASS: XITA validation."
   )
