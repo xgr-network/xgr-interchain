@@ -13,7 +13,7 @@ export function loadCatalog(root=ROOT){
  for(const file of files(root,"config/chains")){const n=file.slice(0,-5);chains[n]=json(root,"config/chains/"+file)}
  for(const chain of Object.keys(chains))infrastructure[chain]=json(root,"deployments/mainnet/infrastructure/"+chain+".json");
  for(const dir of readdirSync(join(root,"config/assets"),{withFileTypes:true}).filter(x=>x.isDirectory())){
-  const n=dir.name;assets[n]={metadata:json(root,`config/assets/${n}/asset.json`),profile:json(root,`config/assets/${n}/metadata.json`),routes:json(root,`config/assets/${n}/routes.json`),mainnet:json(root,`config/assets/${n}/mainnet.json`),deployment:json(root,`deployments/mainnet/assets/${n}.json`)};
+  const n=dir.name;assets[n]={metadata:json(root,`config/assets/${n}/asset.json`),profile:json(root,`config/assets/${n}/metadata.json`),listing:json(root,`config/assets/${n}/listing.json`),routes:json(root,`config/assets/${n}/routes.json`),mainnet:json(root,`config/assets/${n}/mainnet.json`),deployment:json(root,`deployments/mainnet/assets/${n}.json`)};
  }
  return {chains,assets,infrastructure};
 }
@@ -57,7 +57,16 @@ export function validateCatalog({chains,assets,infrastructure}){
  }
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){
-  const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d}=a;
+  const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d,listing:ls}=a;
+  check(ls?.schemaVersion===1&&ls.kind==="xita-asset-listing"&&ls.asset===name&&
+    ["accepted","public"].includes(ls.status)&&
+    (ls.status!=="public"||ls.basis==="protocol-hub"&&name==="XGR"||
+      ls.basis==="verified-transfer"&&typeof ls.publicProof==="object"&&
+      /^0x[a-f0-9]{64}$/i.test(ls.publicProof?.transferTx||"")&&
+      /^0x[a-f0-9]{64}$/i.test(ls.publicProof?.destinationTx||"")&&
+      /^[a-z0-9][a-z0-9-]{0,99}$/.test(ls.publicProof?.coingeckoId||"")&&
+      /^[a-f0-9]{40}$/.test(ls.publicProof?.evidenceCommit||"")),
+    p+": missing or invalid GitHub listing publication evidence");
   check(m.kind==="asset-config"&&m.schemaVersion===1&&m.asset===name&&Number.isInteger(m.decimals)&&m.decimals>=0&&m.decimals<=36,p+": invalid asset metadata");
   
   const publicName=x=>typeof x==="string"&&x.length>=1&&x.length<=120&&x.trim()===x;
