@@ -48,7 +48,7 @@ export function validateCatalog({chains,assets,infrastructure}){
     check(allowed.has(component)&&address(item?.address)&&
       hash(item?.runtimeCodeKeccak256)&&
       typeof item?.receiptPath==="string"&&
-      /^deployments\\/mainnet\\/receipts\\/[a-z][a-z0-9-]*\\/[a-f0-9]{64}-[a-f0-9]{40}\\.json$/.test(item.receiptPath)&&
+      /^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(item.receiptPath)&&
       v315.receiptPaths.includes(item.receiptPath),p+": invalid component deployment binding "+component);
    }
   }
