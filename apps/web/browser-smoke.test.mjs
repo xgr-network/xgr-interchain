@@ -52,7 +52,30 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.writeHead(403);response.end();return;
   }
   try{
-   const data=await readFile(full);
+   let data=await readFile(full);
+   if(pathname==="/join"&&new URL(request.url,"http://localhost").searchParams.has("test-interaction")){
+    const probe=`<script>
+     (function(){
+       const task=setInterval(()=>{
+        const app=document.querySelector("#app");
+        if(app?.dataset.ready!=="1")return;
+        clearInterval(task);
+        const button=app.querySelector('[data-join-action="next"]');
+        button?.click();
+        const invalid=app.querySelector("#ja-status")?.textContent.includes("Please complete:")&&app.querySelector('[aria-invalid="true"]');
+        document.body.dataset.joinValidation=invalid?"pass":"fail";
+        if(!invalid)return;
+        const values={name:"Example Token",symbol:"EXMP",slug:"example-token",website:"https://example.org",logoUrl:"https://example.org/logo.png",shortDescription:"An example cross-chain network asset.",description:"A sufficiently detailed test project description for checking wizard step navigation and form validation."};
+        for(const [key,value] of Object.entries(values)){
+          const input=app.querySelector('[data-join="'+key+'"]');if(input){input.value=value;input.dispatchEvent(new Event("input",{bubbles:true}));}
+        }
+        app.querySelector('[data-join-action="next"]')?.click();
+        document.body.dataset.joinAdvance=app.textContent.includes("Step 2 / 4")?"pass":"fail";
+       },25);
+     })();
+     </script>`;
+    data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
+   }
    response.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream","Cache-Control":"no-store"});
    response.end(data);
   }catch{
@@ -79,6 +102,9 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
     assert.match(html,/data-renderer="(webgl|fallback)"/,path+" did not initialize WebGL or graceful fallback");
    }
   }
+  const joinProbe=await visit(executable,origin+"/join?test-interaction=1");
+  assert.match(joinProbe,/data-join-validation="pass"/,"Continue must show inline field errors for invalid inputs");
+  assert.match(joinProbe,/data-join-advance="pass"/,"Continue must advance after valid fields");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
   for(const name of ["/app.js","/experience.js","/wallet-core.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
