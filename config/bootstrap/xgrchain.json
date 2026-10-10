@@ -10,7 +10,8 @@
   "verifierAddress": "0x0000000000000000000000000000000000002040",
   "validatorSnapshot": {
     "blockNumber": null,
-    "validators": []
+    "validators": [],
+    "notes": "Expected initial validators are fixed by initialValidatorsManifest; finality/block/key proofs still required"
   },
   "reserve": {
     "minimumWei": null,
@@ -22,5 +23,6 @@
     "governance": "validator-bls-quorum",
     "ttlSeconds": 300
   },
-  "notes": "Native compressed BLS precompile requires positive and negative verification vectors; no Solidity verifier deployment. Compressed possession proofs must match the native verifier."
+  "notes": "Native compressed BLS precompile requires positive and negative verification vectors; no Solidity verifier deployment. Compressed possession proofs must match the native verifier.",
+  "initialValidatorsManifest": "config/validators/initial.json"
 }
