@@ -11,6 +11,7 @@ import {keccak256} from "../../apps/web/keccak.mjs";
 import {checkedLocalMain} from "./main-gate.mjs";
 import {resolveForgeExecutable} from "./forge-tooling.mjs";
 import {verifySolidityImports} from "./solidity-imports.mjs";
+import {readSealedArtifacts} from "./sealed-artifacts.mjs";
 
 const exec=promisify(execFile);
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
@@ -93,23 +94,13 @@ export function verifyRuntimeTemplate(artifact,observedCode){
   throw Error("On-chain runtime differs outside compiler-declared immutables");
  return keccak256(hexBytes(observedCode));
 }
-export async function trustedBuild(root,commit,{
- runner=async()=>{
-  verifySolidityImports(root);
-  const forge=resolveForgeExecutable();
-  const {stdout:version}=await exec(forge,["--version"],{cwd:root,timeout:12000,maxBuffer:4096});
-  await exec(forge,["build","--force","--skip","test","script"],{cwd:root,timeout:180000,maxBuffer:1024*1024*4});
-  return version.trim();
- }
-}={}){
- if(!SHA.test(commit||""))throw Error("Trusted build requires exact main commit SHA");
- if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed before build");
- const forgeVersion=await runner();
- if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed while building");
+export async function trustedBuild(root,commit){
+ if(!SHA.test(commit||""))throw Error("Trusted build requires main SHA");
+ if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed");
+ const {seal,raws}=readSealedArtifacts(root,commit);
  const artifacts={};
- for(const [component,name] of Object.entries(SOURCE)){
-  const raw=JSON.parse(readFileSync(join(root,"out",name+".sol",name+".json"),"utf8"));
-  artifacts[component]=artifactTemplate(raw,{component,commit,forgeVersion});
- }
- return {commit:commit.toLowerCase(),forgeVersion,artifacts};
+ for(const [component,name] of Object.entries(SOURCE))
+  artifacts[component]=artifactTemplate(raws[name],{component,commit,forgeVersion:seal.forgeVersion});
+ if(checkedLocalMain(root)!==commit.toLowerCase())throw Error("Source checkout changed during artifact read");
+ return {commit:commit.toLowerCase(),forgeVersion:seal.forgeVersion,artifacts};
 }
