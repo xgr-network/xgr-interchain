@@ -2,7 +2,7 @@
 // wallet hashes, never signs or retransmits an EVM transaction.
 // A new transaction for the same component is blocked until its previous
 // hash has been conclusively reconciled. Directory must be persistent.
-import {readFileSync,writeFileSync,mkdirSync,renameSync,openSync,closeSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,renameSync,openSync,closeSync,unlinkSync} from "node:fs";
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 const H40=/^[a-f0-9]{40}$/i,TX=/^0x[a-f0-9]{64}$/i,ADDR=/^0x[a-f0-9]{40}$/i;
@@ -41,7 +41,7 @@ export function deploymentJournal({dir}){
   }finally{if(handle!==undefined){
    closeSync(handle);
    // Remove our lock file only. Stale lock requires manual operator review.
-   const {unlinkSync}=requireFs();unlinkSync(lock);
+   unlinkSync(lock);
   }}
  }
  return {
@@ -71,6 +71,3 @@ export function deploymentJournal({dir}){
   }
  };
 }
-// Import lazily to keep all filesystem operations inside the same module.
-import {unlinkSync} from "node:fs";
-function requireFs(){return {unlinkSync}}
