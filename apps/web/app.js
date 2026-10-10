@@ -261,5 +261,5 @@ async function loadPublicData(){
   const priceReply=settled[1+2*assetIds.length+i];
   if(priceReply?.status==="fulfilled")state.prices[id]=priceReply.value;
  }
- if(state.catalog)render();
+ if(state.catalog&&path()!=="/universe")render();
 }
