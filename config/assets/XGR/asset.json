@@ -37,5 +37,6 @@
     }
   ],
   "bridgeModel": "lock-mint-burn-unlock",
-  "notes": "XETA v3.1.4 canonical asset: native XGR on XGRChain. Wrapped token contracts and route deployments require independent verification."
+  "notes": "Canonical native XGR on XGRChain. Synthetic representations on spokes use authenticated mint/burn.",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0"
 }
