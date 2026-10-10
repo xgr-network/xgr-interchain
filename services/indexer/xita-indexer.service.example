@@ -1,0 +1,23 @@
+[Unit]
+Description=XITA read-only market and verified on-chain metrics API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+Environment=XITA_INDEXER_HOST=127.0.0.1
+Environment=XITA_INDEXER_PORT=4088
+ExecStart=/usr/bin/node services/indexer/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/tmp
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
