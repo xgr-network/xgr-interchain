@@ -107,7 +107,7 @@ el("asset-search").addEventListener("input",renderAssets);
 el("asset-filter").addEventListener("change",renderAssets);
 
 el("load-jobs").addEventListener("click",loadJobs);
-for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);});
+for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();});
 setView(["assets","infrastructure","workflow"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
 el("connect-wallet").addEventListener("click",async()=>{
  try{
@@ -127,6 +127,6 @@ async function checkLiveInfrastructure(){
   el("preflight").textContent="On-Chain-Infrastruktur abgeglichen: "+data.chains.filter(x=>x.status==="observed-complete").length+"/"+data.chains.length+" vollständig beobachtet";
  }catch(e){el("preflight").textContent="Infrastrukturprüfung fehlgeschlagen: "+e.message;}
 }
-el("refresh").removeEventListener("click",check);
 el("refresh").addEventListener("click",checkLiveInfrastructure);
 loadMainWorkqueue();loadPlan();
+// Chain RPC state is queried only in the dedicated Chains view or on refresh.
