@@ -142,7 +142,18 @@ async function loadFirstDeploy(){
    if(all.some(x=>!/^[1-9][0-9]*$/.test(x))){
     output.textContent="Nur positive ganze Werte zulässig";return;
    }
-   if(!window.confirm("Chain "+chain+" freigeben? Reserve, Source-Fee und Gaslimit werden atomar in GitHub main festgeschrieben."))
+   const nativeSymbol=workqueue?.inventory?.chains?.find(x=>x.name===chain)?.nativeCurrency?.symbol||"Native";
+   const totalReserve=(BigInt(values.perValidatorWei)*3n).toString();
+   const statement="Chain: "+chain+" ("+nativeSymbol+")\\n"+
+    "Mindestreserve: "+values.minimumWei+" Wei\\n"+
+    "Max. Executor-Erstattung: "+values.maxExecutorReimbursementWei+" Wei\\n"+
+    "Reserve je Validator: "+values.perValidatorWei+" Wei\\n"+
+    "Gesamtreserve für drei Validatoren: "+totalReserve+" Wei ("+
+      formatNative(totalReserve,18,8)+" "+nativeSymbol+")\\n"+
+    "Source-Fee: "+values.sourceFeeWei+" Wei\\n"+
+    "Gaslimit: "+values.defaultDestinationGasLimit+
+    "\\n\\nDiese unveränderlichen Constructor-Grundwerte in GitHub main freigeben?";
+   if(!window.confirm(statement))
     return;
    const button=el("approve-chain-bootstrap");button.disabled=true;
    output.textContent="Prüfe Validator-Proofs und GitHub main ...";
