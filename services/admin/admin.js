@@ -1,52 +1,61 @@
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function get(p){const r=await fetch(p,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);return r.json()}
-async function loadPlan(){const box=document.getElementById("steps");try{const data=await get("/admin/api/plan");box.innerHTML=data.steps.map(s=>'<article><strong>'+s.order+' · '+esc(s.id)+'</strong><p>'+esc(s.description)+'</p><small>'+esc(s.chain)+' / '+esc(s.kind)+' · prerequisites: '+esc(s.dependsOn.join(", ")||"none")+'</small>'+(s.command?'<pre>'+esc(s.command)+'</pre>':"")+(s.mandatoryProof?'<p>Independent verification required</p>':"")+'</article>').join("")}catch(e){box.textContent="Cannot load plan: "+e.message}}
-async function check(){const box=document.getElementById("preflight");box.textContent="Checking…";try{const data=await get("/admin/api/preflight");box.innerHTML=data.results.map(r=>'<article><strong>'+esc(r.name)+'</strong><p>Chain ID: '+(r.chainIdOk?"OK":"Not verified")+' · Mailbox: '+(r.mailboxCode?"OK":"Not verified")+' · Hook: '+(r.hookCode?"OK":"Not verified")+'</p>'+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</article>').join("")+'<p>'+esc(data.note)+'</p>'}catch(e){box.textContent="RPC checks unavailable: "+e.message}}
-document.getElementById("refresh").addEventListener("click",check);loadPlan();
-async function loadJobs(){
- const node=document.getElementById("jobs");node.textContent="Loading GitHub issues…";
- try{
-  const data=await get("/admin/api/jobs");
-  if(!data.jobs.length){node.textContent="No open work items in GitHub.";return}
-  node.innerHTML=data.jobs.map(j=>'<article><a target="_blank" rel="noopener noreferrer" href="'+esc(j.url)+'">#'+j.number+' · '+esc(j.title)+'</a><p>Status: '+esc(j.status)+'</p>'+
-   '<select data-status="'+j.number+'"><option value="">Choose verified update</option>'+
-   ['preflight','deployment','verification','validator-approval-required','blocked'].map(x=>'<option value="'+x+'">'+x+'</option>').join('')+'</select>'+
-   '<input data-evidence="'+j.number+'" placeholder="Audit evidence / transaction ID or link" minlength="12" maxlength="1000">'+
-   '<button data-update="'+j.number+'" type="button">Record in GitHub</button></article>').join("");
-  node.querySelectorAll("button[data-update]").forEach(b=>b.addEventListener("click",async()=>{
-   const id=b.dataset.update,status=node.querySelector('[data-status="'+id+'"]').value;
-   const evidence=node.querySelector('[data-evidence="'+id+'"]').value.trim();
-   if(!status||evidence.length<12){alert("Select a status and provide supporting evidence.");return}
-   b.disabled=true;
-   try{const response=await fetch("/admin/api/jobs/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({number:Number(id),status,evidence})});
-    const payload=await response.json();if(!response.ok)throw Error(payload.error||"GitHub update failed");
-    await loadJobs();
-   }catch(e){alert(e.message)}finally{b.disabled=false}
-  }));
- }catch(e){node.textContent="GitHub queue unavailable: "+e.message}
+const el=id=>document.getElementById(id);
+async function get(p){const r=await fetch(p,{cache:"no-store"});const d=await r.json();if(!r.ok)throw Error(d.error||"HTTP "+r.status);return d;}
+const labels={"not-deployed":"Nicht deployed",partial:"Teilweise deployed",deployed:"Deployed"};
+const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
+let workqueue=null;
+function renderAssets(){
+ if(!workqueue)return;
+ const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
+ const assets=Object.values(workqueue.inventory.assets).filter(a=>(filter==="all"||a.status===filter)&&[a.name,a.symbol,a.key,a.canonicalChain,...a.routes.map(r=>r.destination)].join(" ").toLowerCase().includes(q));
+ el("metrics").innerHTML=[
+  ["Assets",Object.keys(workqueue.inventory.assets).length],
+  ["Routen",workqueue.inventory.routes.length],
+  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>a.status!=="deployed").length]
+ ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
+ el("main-workqueue").innerHTML=assets.length?assets.map(a=>'<section class="asset-card"><div class="asset-head">'+
+ '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+'</div>'+
+ '<div class="asset-meta"><span>Asset-ID <b class="mono">'+esc(a.assetId)+'</b></span><span>Belege <b>'+a.receiptCount+'</b></span><span>Manifest <b>'+esc(a.deploymentManifest)+'</b></span></div>'+
+ '<div class="routes">'+a.routes.map(r=>'<div class="route"><div><strong>'+esc(r.source)+' → '+esc(r.destination)+'</strong><small>'+esc(r.name)+' · '+esc(r.note)+'</small></div>'+pill(r.status)+'</div>').join("")+'</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
 }
-document.getElementById("load-jobs").addEventListener("click",loadJobs);
-document.getElementById("connect-wallet").addEventListener("click",async()=>{
- try{const addr=await connectDeploymentWallet();document.getElementById("wallet-status").textContent=" Connected: "+addr.slice(0,8)+"…"+addr.slice(-4)}
- catch(e){document.getElementById("wallet-status").textContent=e.message}
-});
-loadJobs();
-
+function renderInfrastructure(){
+ if(!workqueue)return;
+ el("infrastructure-list").innerHTML=workqueue.inventory.chains.map(c=>
+  '<div class="chain-card"><strong>'+esc(c.name)+'</strong><small>Chain '+c.chainId+' · Domain '+c.domainId+'</small><p>In GitHub main freigegeben. Technischer Deployment-Nachweis separat.</p></div>').join("");
+}
 async function loadMainWorkqueue(){
- const status=document.getElementById("main-status"),work=document.getElementById("main-workqueue");
- status.textContent="Verifying current GitHub main…";
+ el("main-status").textContent="Aktuellen GitHub main prüfen …";
  try{
-  const response=await get("/admin/api/workqueue");
-  status.textContent="Verified current GitHub main: "+response.commit.slice(0,12);
-  const items=[
-   ...response.inventory.chains.map(c=>({type:"Chain",name:c.name,detail:"chainId "+c.chainId+" · domain "+c.domainId})),
-   ...Object.entries(response.inventory.assets).map(([name])=>({type:"Asset",name,detail:"Main manifest present"})),
-   ...response.inventory.routes.map(r=>({type:"Route",name:r.asset+" / "+r.name,detail:r.source+" → "+r.destination}))
-  ];
-  work.innerHTML=items.map(item=>'<article><strong>'+esc(item.type)+' · '+esc(item.name)+'</strong><p>'+esc(item.detail)+'</p><small>GitHub main eligible · transaction execution not yet enabled</small></article>').join("");
- }catch(e){
-  status.textContent="Deployment blocked: "+e.message;
-  work.textContent="No deployment authorized. Only the latest checked-out GitHub main can be deployed.";
- }
+  const data=await get("/admin/api/workqueue");
+  workqueue=data;
+  el("main-status").textContent="GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment";
+  renderAssets();renderInfrastructure();
+ }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
-loadMainWorkqueue();
+async function check(){
+ el("preflight").textContent="RPC-Prüfung läuft …";
+ try{
+  const d=await get("/admin/api/preflight");
+  el("preflight").innerHTML=d.results.map(r=>'<article><strong>'+esc(r.name)+'</strong><p>Chain-ID '+(r.chainIdOk?"OK":"nicht bestätigt")+' · Mailbox '+(r.mailboxCode?"OK":"nicht bestätigt")+' · Hook '+(r.hookCode?"OK":"nicht bestätigt")+'</p>'+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</article>').join("");
+ }catch(e){el("preflight").textContent=e.message;}
+}
+async function loadPlan(){
+ try{const d=await get("/admin/api/plan");el("steps").innerHTML=d.steps.map(s=>'<article><strong>'+s.order+'. '+esc(s.description)+'</strong><p>'+esc(s.chain)+' · '+esc(s.kind)+'</p></article>').join("");}
+ catch(e){el("steps").textContent="Veralteter Diagnoseplan nicht verfügbar: "+e.message;}
+}
+async function loadJobs(){
+ try{
+  const d=await get("/admin/api/jobs");
+  el("jobs").innerHTML=d.jobs.length?d.jobs.map(j=>'<article><a href="'+esc(j.url)+'" target="_blank" rel="noopener noreferrer">'+esc(j.title)+'</a><p>#'+j.number+' · '+esc(j.status)+'</p></article>').join(""):"<p>Keine offenen GitHub-Issues.</p>";
+ }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
+}
+el("reload-inventory").addEventListener("click",loadMainWorkqueue);
+el("asset-search").addEventListener("input",renderAssets);
+el("asset-filter").addEventListener("change",renderAssets);
+el("refresh").addEventListener("click",check);
+el("load-jobs").addEventListener("click",loadJobs);
+el("connect-wallet").addEventListener("click",async()=>{
+ try{const a=await connectDeploymentWallet();el("wallet-status").textContent=a.slice(0,8)+"…"+a.slice(-4);}
+ catch(e){el("wallet-status").textContent=e.message;}
+});
+loadMainWorkqueue();loadPlan();
