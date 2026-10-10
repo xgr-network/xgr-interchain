@@ -218,18 +218,23 @@ async function loadRouteLifecycle(){
  try{
   const res=await get("/admin/api/route-lifecycle");
   if(!node.isConnected)return;
-  const plans=res.lifecycle.assets.filter(a=>a.pairs.some(p=>p.chains.includes(selectedDeployChain)));
-  node.innerHTML='<h3>Token-Repräsentationen und gerichtete Routen</h3>'+
-   '<p>Eine Token-Repräsentation wird je Asset und Chain einmal erstellt und für Rückrouten wiederverwendet. Gateways sind gerichtet; Aktivierung benötigt das geprüfte BLS-Quorum.</p>'+
-   plans.map(p=>'<div class="first-chain"><strong>'+esc(p.asset)+'</strong>'+
-    p.representations.filter(r=>r.chain===selectedDeployChain).map(r=>
-     '<div class="first-step"><span>'+esc(r.component)+' · '+esc(r.chain)+'</span><small>'+
-     esc(r.action==="reuse-verified"?"Bestehenden Router wiederverwenden":r.deployMethod+" (nur einmal)")+
-     (r.router?" · "+esc(r.router):" · noch nicht deployed")+'</small></div>').join("")+
-    p.routes.filter(r=>r.source===selectedDeployChain||r.destination===selectedDeployChain)
-     .map(r=>'<div class="first-step"><span>'+esc(r.name)+' · '+esc(r.kind)+'</span><small>'+
-      esc(r.action)+" · "+esc(r.routeId||"Router-Paar noch nicht vollständig")+
-      '</small></div>').join("")+'</div>').join("");
+  const tasks=(res.tasks||[]).filter(x=>x.chain===selectedDeployChain);
+  const title=task=>task.kind==="router"?
+   "Token-Router einmalig deployen · "+task.asset:"Gateway für Rück-/Hinroute vorbereiten · "+task.asset;
+  const line=task=>'<div class="first-step"><strong>'+esc(title(task))+
+   '</strong><small>'+esc(task.status==="waiting-infrastructure"?
+    "Zuerst Chain-Grundverträge bereitstellen":
+    task.status==="waiting-dependencies"?
+    "Abhängig von: "+task.blockers.join(", "):
+    "Nächster Schritt: on-chain Fakten und Factory-Transaktion unabhängig verifizieren")+
+   '</small></div>';
+  node.innerHTML='<h3>Offene Asset- und Routenaufgaben</h3>'+
+   '<p>Mint/Burn-Router nur einmal je Token und Chain. Rückroute nutzt denselben Token-Router, aber ein eigenes gerichtetes Gateway.</p>'+
+   (tasks.length?line(tasks[0]):'<p>Keine offenen Router/Gateway-Aufgaben auf dieser Chain.</p>')+
+   (tasks.length>1?'<details><summary>'+ (tasks.length-1)+
+    ' weitere offene Routenaufgaben</summary>'+
+    tasks.slice(1).map(line).join("")+'</details>':"")+
+   '<small>BLS-Sicherheitsaktivierung erfolgt erst nach verifizierter Gegenroute. Keine automatische Freischaltung.</small>';
  }catch(e){if(node.isConnected)node.textContent="Routenplan nicht verfügbar: "+e.message;}
 }
 const deployTitle={blsVerifier:"BLS-Verifier auf dieser EIP-2537-Chain bereitstellen",
