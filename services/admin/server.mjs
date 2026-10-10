@@ -182,7 +182,7 @@ http.createServer(async(req,res)=>{
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
    return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,
     ...buildFirstChainDeploymentPlan(queue.inventory,infrastructure,bootstrap),
-    journal:deploymentJournal({dir:resolve(dataDir,"deployments")}).read()});
+    journal:deploymentJournal({dir:resolve(dataDir,"deployments"),chains:queue.inventory.chains}).read()});
   }
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));
