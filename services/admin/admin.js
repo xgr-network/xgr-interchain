@@ -42,8 +42,8 @@ let deploymentReadiness=new Map();
 function cleanBootstrapStatus(chain){
  const r=deploymentReadiness.get(chain);
  if(!r)return "Prüfung ausstehend";
- if(r.evidenceVerified&&r.manifestMatchesEvidence&&r.bootstrapReady)return "Freigegeben";
- if(r.evidenceVerified)return r.verifiedValidatorCount+" Validatoren geprüft · Parameter freigeben";
+ if(liveBootstrap.get(chain)?.validatorSetId)return "Registry live · On-Chain-Werte verbindlich";
+ if(r.evidenceVerified)return r.verifiedValidatorCount+" Validatoren geprüft";
  return r.evidenceError?"Nachweise prüfen":"Validierung noch offen";
 }
 function renderInfrastructure(){
@@ -64,7 +64,18 @@ function renderInfrastructure(){
      esc(displayAddress(part.address))+' ⧉</button>':
     '<button class="component-pending" data-open-chain="'+esc(c.name)+
      '" data-open-component="'+esc(part.key)+'">Ausstehend →</button>')+'</div>').join("");
-  const r=deploymentReadiness.get(c.name);
+  const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
+  const money=n=>n==null?"":moneyInWei(n,c);
+  const liveRows=live?.validatorSetId?
+   '<details class="chain-onchain-params"><summary>On-Chain-Parameter</summary>'+
+    '<div>Reserve-Minimum: '+esc(money(live.liveMinimumReserveWei))+'</div>'+
+    '<div>Executor-Limit: '+esc(money(live.liveMaxExecutorReimbursementWei))+'</div>'+
+    Object.entries(live.liveValidatorReservesWei||{}).map(([address,value])=>
+     '<div>'+esc(displayAddress(address))+': '+esc(money(value))+'</div>').join("")+
+    (live.liveFactoryGasLimit?'<div>Factory-Zielgas: '+esc(live.liveFactoryGasLimit)+'</div>':'')+
+    (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
+       ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
+    '</details>':"";
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
    '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
@@ -72,6 +83,7 @@ function renderInfrastructure(){
    (c.documented<c.required?
     '<div class="chain-bootstrap-summary"><span>Bootstrap</span><span>'+
     esc(cleanBootstrapStatus(c.name))+'</span></div>':"")+
+   liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
    '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
    '"></div></div></article>';
@@ -505,7 +517,13 @@ async function loadMainWorkqueue(){
     if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
    }catch{}
   }));
-  if(workqueue===data)renderInfrastructure();
+  if(workqueue===data){
+   try{
+    const b=await get("/admin/api/bootstrap");
+    liveBootstrap=new Map(b.bootstrap.map(x=>[x.chain,x]));
+   }catch{liveBootstrap=new Map();}
+   renderInfrastructure();
+  }
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
 async function check(){
