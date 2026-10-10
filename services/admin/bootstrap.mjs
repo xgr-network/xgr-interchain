@@ -26,7 +26,10 @@ export function bootstrapPlan(root,chain){
   if(!addr(address)||seen.has(address)||typeof key!=="string"||
      !/^0x[a-f0-9]{96}$/.test(key)||
      !/^0x[a-f0-9]{256}$/i.test(v.blsPublicKeyEIP2537||"")||
-     !HEX.test(v.possessionProof)||v.possessionProof.length<4)
+     !HEX.test(v.possessionProof)||
+     (chain.blsVerifierFormat==="compressed" ?
+       !/^0x[a-f0-9]{192}$/i.test(v.possessionProof):
+       !/^0x[a-f0-9]{512}$/i.test(v.possessionProof)))
    throw Error("Invalid, duplicated or missing validator bootstrap evidence: "+chain.name);
   seen.add(address);if(keys.has(key))throw Error("Duplicate BLS key");keys.add(key);
   if(v.originChainId!==1643||v.destinationDomain!==chain.domainId)
