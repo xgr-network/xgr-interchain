@@ -6,7 +6,7 @@ import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
-import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
+import {readOnlyWorkQueue,assertCurrentMain} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {buildWorkItems} from "./work-items.mjs";
 import {bootstrapPlan,readLiveBootstrap} from "./bootstrap.mjs";
@@ -126,13 +126,13 @@ http.createServer(async(req,res)=>{
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
-   const queue=await deploymentQueue(root);
+   const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
    return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
   }
   if(req.method==="GET"&&path==="/admin/api/balance"){
-   const queue=await deploymentQueue(root);
+   const queue=await readOnlyWorkQueue(root);
    const url=new URL(req.url,"http://localhost");
    const name=url.searchParams.get("chain"),address=url.searchParams.get("address");
    if(!/^0x[a-fA-F0-9]{40}$/.test(address||""))throw Error("Invalid wallet address");
@@ -145,7 +145,7 @@ http.createServer(async(req,res)=>{
    return reply(res,200,{ok:true,chain:name,chainId:chain.chainId,address,balance});
   }
   if(req.method==="GET"&&path==="/admin/api/bootstrap"){
-   const queue=await deploymentQueue(root);
+   const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
    const name=new URL(req.url,"http://localhost").searchParams.get("chain");
@@ -158,7 +158,7 @@ http.createServer(async(req,res)=>{
    return reply(res,200,{ok:true,commit:queue.commit,bootstrap:results});
   }
   if(req.method==="GET"&&path==="/admin/api/infrastructure"){
-   const queue=await deploymentQueue(root);
+   const queue=await readOnlyWorkQueue(root);
    const configured=infrastructureInventory(root,queue.inventory.chains);
    return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
   }

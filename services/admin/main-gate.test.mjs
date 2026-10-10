@@ -43,3 +43,27 @@ test("main work inventory returns assets by canonical key",async()=>{
  assert.equal(inventory.assets.XGR.key,"XGR");
  assert.equal(inventory.assets.XGR.routeCount,6);
 });
+
+test("stale main still renders read-only inventory while never approving Deploy",async()=>{
+ const {readOnlyWorkQueue}=await import("./main-gate.mjs");
+ const root=new URL("../../",import.meta.url).pathname;
+ const snapshot=await readOnlyWorkQueue(root,{
+  git:a=>a[0]==="symbolic-ref"?"main":a[0]==="rev-parse"?SHA:"",
+  fetcher:async()=>({ok:true,json:async()=>({object:{sha:"b".repeat(40)}})})
+ });
+ assert.equal(snapshot.syncStatus,"outdated");
+ assert.equal(snapshot.readOnly,true);
+ assert.equal(snapshot.githubApproved,false);
+ assert.ok(snapshot.inventory.assets.XGR);
+ assert.equal(snapshot.inventory.chains.length,4);
+});
+test("GitHub outage still allows a local read-only inventory but denies authorization",async()=>{
+ const {readOnlyWorkQueue}=await import("./main-gate.mjs");
+ const snapshot=await readOnlyWorkQueue(new URL("../../",import.meta.url).pathname,{
+  git:a=>a[0]==="symbolic-ref"?"main":a[0]==="rev-parse"?SHA:"",
+  fetcher:async()=>{throw Error("offline")}
+ });
+ assert.equal(snapshot.syncStatus,"unavailable");
+ assert.equal(snapshot.githubApproved,false);
+ assert.ok(snapshot.warning);
+});
