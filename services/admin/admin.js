@@ -356,7 +356,7 @@ async function executeModalDeployment(){
   const params=modalValues(component);
   const state=await currentWalletState();
   if(!state||state.chainId!==chain.chainId)throw Error("Wallet nicht mit ausgewählter Chain verbunden");
-  presentModalStatus("Sicherheitsprüfungen und persistentes Transaktionsjournal …");
+  presentModalStatus("Prüfe Contract und bereite MetaMask-Transaktion vor …");
   const prepared=await postJSON("/admin/api/chain-deploy/prepare",
    {chain:chainName,component,wallet:state.address,parameters:params});
   presentModalStatus("Wallet-Bestätigung ausstehend. Bei Abbruch Wiederherstellung verwenden.");
@@ -371,7 +371,7 @@ async function executeModalDeployment(){
   el("contract-deploy-dialog").close();selectedDeployment=null;
   await loadMainWorkqueue();
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
-  "Abgleich erforderlich: "+e.message+". Keine zweite Transaktion senden.","error")}
+  "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
 }
 async function recoverModalDeployment(){
  if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
