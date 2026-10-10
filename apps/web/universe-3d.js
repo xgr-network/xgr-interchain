@@ -434,12 +434,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    return {buffer:buf,count:vertices.length/3};
   }
   function createOrbit(item,p){
-  const arr=[],N=80;
-  for(let i=0;i<N;i++){
-   const a=TWO_PI*i/N,b=TWO_PI*(i+1)/N,c=item.position;
-   arr.push(c[0]+Math.cos(a)*p.orbit,c[1]+Math.sin(a)*p.orbit*.56,c[2]+Math.sin(a)*p.orbit*.31,
-    c[0]+Math.cos(b)*p.orbit,c[1]+Math.sin(b)*p.orbit*.56,c[2]+Math.sin(b)*p.orbit*.31);
-  }
+  const arr=[],N=80,c=systemPosition(item,0,true);
+  for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
   return bufferLine(arr);
  }
  let paths=[],orbitPaths=[],stars=null,pointBuffer=null;
@@ -580,9 +576,14 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
    line(link.geometry,link.active?[.45,.88,.72]:[.43,.61,.84],(link.active?.7:.35)*(1-focusBlend*.93),vp);
   }
-  if(focusBlend>.15)for(const ring of orbitPaths)
-   if(ring.planet.system.system.key===selectedKey)
-    line(ring.geometry,[.48,.66,.81],.24*focusBlend,vp);
+  if(focusBlend>.72)for(const ring of orbitPaths){
+   if(ring.planet.system.system.key!==selectedKey)continue;
+   const verts=[],N=80,c=systemPosition(ring.planet.system,frame,reducedMotion);
+   for(let i=0;i<N;i++)verts.push(...tokenOrbitPoint(ring.planet,TWO_PI*i/N,c),...tokenOrbitPoint(ring.planet,TWO_PI*(i+1)/N,c));
+   gl.bindBuffer(gl.ARRAY_BUFFER,ring.geometry.buffer);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.DYNAMIC_DRAW);
+   line(ring.geometry,[.48,.63,.79],.19*focusBlend,vp);
+  }
   const entries=[];
   for(const item of topology.systems)entries.push({type:"star",item,depth:Math.hypot(...sub(systemPosition(item,frame,reducedMotion),eye))});
   if(focusBlend>.15)for(const planet of topology.planets)
