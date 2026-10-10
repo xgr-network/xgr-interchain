@@ -1,7 +1,8 @@
+import {buildExperienceModel,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.mjs";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.mjs";
-import {manifestRoute,connectWallet,switchChain,quoteBridge,readAllowance,approveAmount,sendBridge,waitReceipt,messageIdFromReceipt,isDelivered,formatUnits,shorten} from "./protocol.mjs";
+import {connectWallet,shorten,formatUnits} from "./wallet-core.mjs";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed"};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"}};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -9,13 +10,10 @@ const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
 const profile=id=>state.catalog.assets[id]?.profile||{name:id,slug:id.toLowerCase(),shortDescription:"",description:"",categories:[],tags:[],links:{},branding:{}};
 const tokenUrl=id=>"/token/"+encodeURIComponent(profile(id).slug);
 const allAssets=()=>Object.keys(state.catalog.assets);
-const route=r=>manifestRoute(state.catalog,asset(),r);
 const routes=()=>asset().routes.routes;
-const active=()=>routes().filter(r=>route(r.name).allowed).length;
-const activeFor=id=>(state.catalog.assets[id]?.routes?.routes||[]).filter(rt=>manifestRoute(state.catalog,state.catalog.assets[id],rt.name).allowed).length;
+const activeFor=id=>0;
 const path=()=>decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
 const btn=(url,label,alt=false)=>'<a data-nav href="'+url+'" class="btn'+(alt?" alt":"")+'">'+label+'</a>';
-const tag=r=>'<span class="tag">'+(route(r.name).allowed?"Verified":"Pending governance")+'</span>';
 const fmt=(n,dec=18)=>formatUnits(n,dec,10);
 const note=t=>'<div class="notice">'+t+'</div>';
 function projectLogo(id){
@@ -58,22 +56,6 @@ function indexerNotice(){
  if(state.apiState==="ready")return '<p class="status">Source: independent XITA ILN indexer. Only verified deployed Gateway events are counted; this is not DEX trading volume.</p>';
  if(state.apiState==="error")return '<p class="status">XITA event index is currently unavailable. No figures are inferred.</p>';
  return '<p class="status">XITA event index not yet online. Unavailable transfer statistics are not zero.</p>';
-}
-function overview(){
- const ids=allAssets();
- return '<div class="eyebrow">XGR EVM Token Alliance</div><h1>One ecosystem.<br>Every connected token.</h1>'+
- '<p class="lead">Explore token projects, validator-governed interchain routes, and verified bridge activity. Every asset has its own profile and transfer interface.</p>'+
- '<div class="actions">'+btn(tokenUrl("XGR"),"Explore XGR token")+btn("/markets","Browse markets",true)+'</div>'+
- '<div class="cards">'+metric("Published assets",String(ids.length),"Token profiles")+
-  metric("Verified routes",String(ids.reduce((sum,id)=>sum+activeFor(id),0)),"Quorum-governed")+
-  metric("24h source transfers",indexedCount("XGR","last24h"),"Observed XGR Gateway messages")+
-  metric("24h XGR transferred",amountFor("XGR","last24h"),"Unknown principal amounts excluded")+'</div>'+
- indexerNotice()+
- '<section class="section"><div class="eyebrow">Interchain network</div><h2>XGRChain hub</h2><p class="muted">External-to-external movement consists of two independent transfers through XGRChain. The future automated second-hop sponsor is not deployed.</p>'+
- '<div class="card"><h3>XGR configured routes</h3>'+state.catalog.assets.XGR.routes.routes.map(rt=>
-  '<div class="pair"><span>'+x(routeName(rt))+'</span><span class="tag">'+(manifestRoute(state.catalog,state.catalog.assets.XGR,rt.name).allowed?"Verified":"Pending governance")+'</span></div>').join("")+'</div></section>'+
- '<section class="section"><div class="eyebrow">Explore projects</div><h2>Token directory</h2><div class="project-grid">'+ids.map(tokenCard).join("")+'</div></section>'+
- '<section class="section"><h2>Join the Alliance</h2><p class="lead">Free onboarding and integration proposals, with independent validator approval before any route can become active.</p>'+btn("/join","Join the Alliance")+'</section>';
 }
 function markets(){
  const ids=allAssets();
@@ -132,37 +114,23 @@ function tokenActivity(id){
 }
 function token(){
  const id=state.assetId,a=asset(),p=profile(id),canonical=a.metadata.canonical?.chain||"unknown";
+ const model=buildExperienceModel(state.catalog,()=>false);
  const chips=(p.categories||[]).map(cat=>'<span class="category-chip">'+x(cat)+'</span>').join(" ");
  return '<div class="columns"><article><a href="/markets" data-nav class="muted">← All tokens</a>'+
  '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(names[canonical]||canonical)+' · Canonical asset</div>'+
  '<h1>'+x(p.name)+' <small>'+x(id)+'</small></h1><span class="tag">'+x(p.verification?.status||"project-maintained")+'</span></div></div>'+
- '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p>'+
- '<p class="muted">'+x(p.description)+'</p>'+chips+
+ '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
- '<div class="pair"><span>Verified routes</span><b>'+active()+' / '+routes().length+'</b></div>'+
+ '<div class="pair"><span>Activated XITA v3.1.5 routes</span><b>0 / '+routes().length+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(displayPrice(state.prices[id]))+'</b></div>'+
- '<div class="pair"><span>Market capitalization</span><b>Not available from verified feed</b></div>'+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
  '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
-  '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
-  '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
- '<section class="section"><h2>Interchain routes</h2><div class="routes">'+routes().map(rt=>
-  '<div class="route"><strong>'+x(routeName(rt))+'</strong><div style="margin-top:10px">'+tag(rt)+'</div></div>').join("")+'</div></section>'+
- '<section class="section"><h2>Verified transfer activity</h2><div id="token-activity">'+tokenActivity(id)+'</div></section>'+
- '<section class="section"><h2>Validator governance and recovery</h2><p class="muted">Transfers require a quorum-approved source route and successful destination Mailbox delivery. A source transaction is not proof of destination settlement. Recovery uses the original message ID and never a second bridge transfer.</p></section>'+
- '</article><aside class="card"><div class="eyebrow">Transfer '+x(id)+'</div><h2>Bridge this token</h2>'+
- '<p class="muted">Select the source and destination. Live fee quotes and ERC-20 approvals use the authorized Gateway, never direct Warp-router transfers.</p>'+
- '<label class="field" for="route">Route</label><select id="route">'+routes().map(rt=>
-  '<option value="'+x(rt.name)+'">'+x(routeName(rt))+' · '+(route(rt.name).allowed?"verified":"planned")+'</option>').join("")+'</select>'+
- '<label class="field" for="amount">Amount ('+x(id)+')</label><input id="amount" inputmode="decimal" placeholder="0.0" autocomplete="off">'+
- '<div id="route-note">'+note("Route not activated. No unverified contracts can receive funds.")+'</div>'+
- '<div class="note section" id="quote">No live quote available.</div>'+
- '<button class="wide alt" id="quote-btn" disabled>Request Gateway quote</button><button class="wide" id="bridge-btn" disabled>Bridge token</button>'+
- '<p class="status" id="status">Connect an EVM wallet to begin.</p>'+
- '<div id="transfer" class="hidden"><h3>Transfer status</h3><p class="status" id="message-id"></p>'+
- '<button class="wide alt" id="check-delivery">Check destination delivery</button><p class="status" id="delivery"></p></div>'+
- '</aside></div>';
+ '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
+ '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
+ '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
+ '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">Prepared inventory only; not activated</div></div>').join("")+'</div></section>'+
+ '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,{account:state.account,chainId:state.walletChainId,nativeBalance:state.walletGas})+'</aside></div>';
 }
 function join(){
  return '<div class="eyebrow">Join the XGR EVM Token Alliance</div><h1>Bring your token to more networks.</h1>'+
@@ -180,83 +148,19 @@ function join(){
  '<div class="card"><h2>From token to alliance</h2><p class="muted">01 · Submit your token specification</p><p class="muted">02 · Token contract and project authorization verification</p><p class="muted">03 · Validator quorum route governance</p><p class="muted">04 · Verified deployment and live token page</p>'+
  '<div class="notice">This form saves a local draft only. It does not send information to a backend, request a wallet signature, or grant token onboarding approval.</div></div></div>';
 }
-function routesPage(){return '<div class="eyebrow">Research & development</div><h1>Route Finder</h1><p class="lead">Future graph search across DEX swaps and XETA bridge hops. Route quotes, non-atomic recovery, gas sponsorship and liquidity indexing are not live.</p>'+btn("/token/xgr","Explore initial token");}
-function reset(){state.quote=null;state.quoteKey=null;const q=document.querySelector("#quote");if(q)q.textContent="Request a live Gateway quote before you bridge.";controls();}
-function current(){return document.querySelector("#route")?.value;}
-function key(){return current()+"|"+document.querySelector("#amount")?.value+"|"+state.account;}
-function controls(){
- const q=document.querySelector("#quote-btn"),b=document.querySelector("#bridge-btn");
- if(!q)return;
- const a=route(current()).allowed;
- q.disabled=state.busy||!state.account||!a;
- b.disabled=state.busy||!a||!state.account||!state.quote||state.quoteKey!==key();
- const n=document.querySelector("#route-note");
- if(n)n.innerHTML=a?'<div class="note">Active inventory: on-chain route validation still required before quoting.</div>':note("Route not validator-activated and independently verified. Transfers are disabled.");
-}
-function status(s){const e=document.querySelector("#status");if(e)e.textContent=s;}
-async function action(fn){
- if(state.busy)return;
- state.busy=true;controls();
- try{await fn();}catch(e){status(e.message||"Wallet action failed");alert(e.message||"Wallet action failed");}
- finally{state.busy=false;controls();}
-}
-async function requestQuote(){
- await action(async()=>{
-  if(!state.account)throw Error("Connect a wallet first");
-  const r={...route(current()),assetCanonicalChain:asset().metadata.canonical.chain};
-  if(!r.allowed)throw Error("Route is not activated");
-  await switchChain(globalThis.ethereum,r.src);
-  status("Reading canonical registry and live Gateway fees…");
-  const q=await quoteBridge(globalThis.ethereum,r,state.account,document.querySelector("#amount").value,asset().metadata.decimals);
-  state.quote=q;state.quoteKey=key();
-  document.querySelector("#quote").innerHTML=
-    '<div class="pair"><span>Validator fee</span><b>'+fmt(q.validatorFeeWei)+' '+r.src.nativeCurrency.symbol+'</b></div>'+
-    '<div class="pair"><span>Router/native amount</span><b>'+fmt(q.routerNativeValueWei)+' '+r.src.nativeCurrency.symbol+'</b></div>'+
-    '<div class="pair"><span>Total native value</span><b>'+fmt(q.totalNativeValueWei)+' '+r.src.nativeCurrency.symbol+'</b></div>'+
-    '<div class="pair"><span>ERC-20 principal</span><b>'+fmt(q.tokenAmount,asset().metadata.decimals)+'</b></div>';
-  status("Live quote received. Fees can change before the transaction is signed.");
- });
-}
-async function bridge(){
- await action(async()=>{
-  if(!state.quote||state.quoteKey!==key())throw Error("Request a fresh quote");
-  const r={...route(current()),assetCanonicalChain:asset().metadata.canonical.chain},old=state.quote;
-  await switchChain(globalThis.ethereum,r.src);
-  const fresh=await quoteBridge(globalThis.ethereum,r,state.account,document.querySelector("#amount").value,asset().metadata.decimals);
-  if(fresh.totalNativeValueWei!==old.totalNativeValueWei)throw Error("Gateway quote has changed. Please request a fresh quote.");
-  if(fresh.tokenAmount>0n){
-   const allowance=await readAllowance(globalThis.ethereum,fresh.token,state.account,r.deployed.gateway);
-   if(allowance<fresh.tokenAmount){
-    if(!confirm("Approve the exact token amount to the canonical XETA Gateway?"))return;
-    const approval=await approveAmount(globalThis.ethereum,fresh.token,r.deployed.gateway,fresh.tokenAmount,state.account);
-    status("Waiting for ERC-20 allowance approval receipt…");
-    await waitReceipt(globalThis.ethereum,approval);
-    const newAllowance=await readAllowance(globalThis.ethereum,fresh.token,state.account,r.deployed.gateway);
-    if(newAllowance<fresh.tokenAmount)throw Error("Token allowance remains insufficient");
-   }
-  }
-  const recheck=await quoteBridge(globalThis.ethereum,r,state.account,document.querySelector("#amount").value,asset().metadata.decimals);
-  if(recheck.totalNativeValueWei!==fresh.totalNativeValueWei)throw Error("Fees changed before bridging. Request a new quote.");
-  if(!confirm("Submit XETA Gateway transfer? Tokens will be locked or burned; destination settlement is separate."))return;
-  const tx=await sendBridge(globalThis.ethereum,r,state.account,recheck);
-  state.quote=null;state.quoteKey=null;status("Source transaction submitted: "+tx);
-  const receipt=await waitReceipt(globalThis.ethereum,tx);
-  const messageId=messageIdFromReceipt(receipt,r);
-  state.transfer={r,messageId,tx};
-  document.querySelector("#transfer").classList.remove("hidden");
-  document.querySelector("#message-id").textContent="Source confirmed · Transaction "+tx+" · Message "+messageId;
-  document.querySelector("#delivery").textContent="Destination delivery not yet verified. Never bridge a second time to retry delivery.";
-  status("Source transaction confirmed. Destination settlement pending.");
- });
-}
-async function delivery(){
- await action(async()=>{
-  if(!state.transfer)throw Error("No original message to check");
-  const {r,messageId}=state.transfer;
-  await switchChain(globalThis.ethereum,r.dst);
-  const delivered=await isDelivered(globalThis.ethereum,r,messageId);
-  document.querySelector("#delivery").textContent=delivered?"Verified as delivered in destination Mailbox. Transfer complete.":"Not yet delivered. Use original message ID for relayer-independent recovery; do not rebridge.";
- });
+async function updateWalletGas(){
+ if(!state.account||!globalThis.ethereum?.request)return;
+ try{
+  const chainHex=await globalThis.ethereum.request({method:"eth_chainId"});
+  const balanceHex=await globalThis.ethereum.request({method:"eth_getBalance",params:[state.account,"latest"]});
+  state.walletChainId=Number(BigInt(chainHex));
+  const native=BigInt(balanceHex);
+  state.walletGas=formatUnits(native,18,6);
+ }catch{
+  state.walletGas=null;
+  state.walletChainId=null;
+ }
+ if(path().startsWith("/token/"))render();
 }
 function application(e){
  e.preventDefault();
@@ -279,26 +183,32 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- el.innerHTML=p==="/"?overview():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?routesPage():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
- document.querySelector("#route")?.addEventListener("change",reset);
- document.querySelector("#amount")?.addEventListener("input",reset);
- document.querySelector("#quote-btn")?.addEventListener("click",requestQuote);
- document.querySelector("#bridge-btn")?.addEventListener("click",bridge);
- document.querySelector("#check-delivery")?.addEventListener("click",delivery);
+ const universe=buildExperienceModel(state.catalog,()=>false);
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():p==="/routes"?renderRoutes(universe):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
+   document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
+ }
+ document.querySelectorAll("[data-xita-system]").forEach(button=>button.addEventListener("click",()=>{
+   state.experience.system=button.dataset.xitaSystem;
+   if(p==="/")history.pushState(null,"","/universe");
+   render();
+ }));
+ document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
+ document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
+ document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
  document.querySelector("#application")?.addEventListener("submit",application);
  document.querySelector("#search")?.addEventListener("input",e=>{
   const value=e.target.value.trim().toLowerCase();
   document.querySelectorAll("#market-row tr").forEach(row=>row.hidden=!row.dataset.filter?.includes(value));
  });
- controls();
 }
 connect.addEventListener("click",async()=>{
  if(!globalThis.ethereum){alert("An injected EIP-1193 EVM wallet is required.");return;}
- try{state.account=await connectWallet(globalThis.ethereum);connect.textContent=shorten(state.account);reset();}catch(e){alert(e.message);}
+ try{state.account=await connectWallet(globalThis.ethereum);connect.textContent=shorten(state.account);await updateWalletGas();}catch(e){alert(e.message);}
 });
 if(globalThis.ethereum?.on){
- globalThis.ethereum.on("accountsChanged",()=>{state.account=null;connect.textContent="Connect Wallet";reset();});
- globalThis.ethereum.on("chainChanged",reset);
+ globalThis.ethereum.on("accountsChanged",accounts=>{state.account=Array.isArray(accounts)?accounts[0]||null:null;connect.textContent=state.account?shorten(state.account):"Connect Wallet";state.walletGas=null;void updateWalletGas();if(!state.account)render();});
+ globalThis.ethereum.on("chainChanged",()=>{state.walletGas=null;void updateWalletGas();});
 }
 document.addEventListener("click",e=>{
  const a=e.target.closest("a[data-nav]");
