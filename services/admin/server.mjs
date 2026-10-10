@@ -7,6 +7,8 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildPlan,renderStepCommand} from "./plan.mjs";
 import {deploymentQueue,assertCurrentMain} from "./main-gate.mjs";
+import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
+import {buildWorkItems} from "./work-items.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -124,7 +126,26 @@ http.createServer(async(req,res)=>{
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await deploymentQueue(root);
-   return reply(res,200,{ok:true,...queue});
+   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   return reply(res,200,{ok:true,...queue,infrastructure,workItems:buildWorkItems(queue.inventory,infrastructure)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/balance"){
+   const queue=await deploymentQueue(root);
+   const url=new URL(req.url,"http://localhost");
+   const name=url.searchParams.get("chain"),address=url.searchParams.get("address");
+   if(!/^0x[a-fA-F0-9]{40}$/.test(address||""))throw Error("Invalid wallet address");
+   const chain=queue.inventory.chains.find(c=>c.name===name);
+   if(!chain)throw Error("Chain not approved in current main");
+   const rpcUrl=chain.rpcUrls?.[0];
+   if(!/^https:\/\//.test(rpcUrl||""))throw Error("Invalid approved RPC");
+   const [chainId,balance]=await Promise.all([probe(rpcUrl,"eth_chainId",[]),probe(rpcUrl,"eth_getBalance",[address,"latest"])]);
+   if(BigInt(chainId)!==BigInt(chain.chainId)||!/^(0x)[0-9a-f]+$/i.test(balance||""))throw Error("Invalid RPC identity or balance");
+   return reply(res,200,{ok:true,chain:name,chainId:chain.chainId,address,balance});
+  }
+  if(req.method==="GET"&&path==="/admin/api/infrastructure"){
+   const queue=await deploymentQueue(root);
+   const configured=infrastructureInventory(root,queue.inventory.chains);
+   return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
   }
   if(req.method==="GET"&&path==="/admin/api/plan"){
    const steps=buildPlan(inventory()).map(s=>({...s,command:renderStepCommand(s)}));

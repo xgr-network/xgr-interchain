@@ -1,17 +1,112 @@
-export async function connectDeploymentWallet(){
- if(!window.ethereum)throw Error("Install an EVM wallet to deploy");
- const accounts=await window.ethereum.request({method:"eth_requestAccounts"});
- if(!accounts?.[0])throw Error("No wallet account connected");
- return accounts[0];
+// Browser-only, EIP-1193 deployment wallet client. The backend NEVER
+// receives private keys or wallet transaction signing capabilities.
+// WalletConnect SDK-only sessions require a separately configured project ID.
+const ADDRESS = /^0x[0-9a-f]{40}$/i;
+const known = new Map();
+let active = null;
+let listeners = [];
+let discoveryReady = false;
+
+export function formatNative(wei, decimals = 18, digits = 5) {
+  if (typeof wei !== "string" || !/^(?:0x[0-9a-f]+|[0-9]+)$/i.test(wei) ||
+      !Number.isInteger(decimals) || decimals < 0 || decimals > 36)
+    throw new Error("Ungültiges Guthaben");
+  const v = BigInt(wei), base = 10n ** BigInt(decimals);
+  const whole = v / base;
+  const part = (v % base).toString().padStart(decimals, "0")
+    .slice(0, Math.max(0, digits)).replace(/0+$/, "");
+  return whole.toString() + (part ? "." + part : "");
 }
-export async function deployVerifier(payload){
- const account=await connectDeploymentWallet();
- const chain=await window.ethereum.request({method:"eth_chainId"});
- if(BigInt(chain)!==8453n){
-  await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x2105"}]});
- }
- if(!payload||payload.id!=="verifier_base"||payload.chainId!==8453||
-   !/^0x[0-9a-f]+$/i.test(payload.bytecode))throw Error("Unverified deployment payload");
- if(!window.confirm("Deploy the new BLS verifier on Base mainnet? This spends real ETH. Confirm the contract build and EIP-2537 checks first."))return null;
- return window.ethereum.request({method:"eth_sendTransaction",params:[{from:account,data:payload.bytecode,value:"0x0"}]});
+
+export function walletsAvailable(win = window) {
+  if (!discoveryReady) {
+    win.addEventListener("eip6963:announceProvider", event => {
+      const info = event.detail?.info, provider = event.detail?.provider;
+      if (typeof provider?.request === "function" &&
+          typeof info?.uuid === "string" && typeof info?.name === "string")
+        known.set(info.uuid, {id:info.uuid, name:info.name, provider});
+    });
+    discoveryReady = true;
+  }
+  win.dispatchEvent(new Event("eip6963:requestProvider"));
+  const injected = win.ethereum;
+  if (typeof injected?.request === "function")
+    known.set("injected", {id:"injected",name:injected.isMetaMask ? "MetaMask / Browser Wallet" : "Browser Wallet", provider:injected});
+  for (const [i, p] of (injected?.providers || []).entries()) {
+    if (typeof p?.request === "function")
+      known.set("injected-" + i, {id:"injected-" + i,name:p.isMetaMask?"MetaMask":"EVM Wallet "+(i+1),provider:p});
+  }
+  return [...known.values()].map(({id,name}) => ({id,name}));
 }
+
+export function getWalletProvider(id = null) {
+  if (id && known.has(id)) return known.get(id).provider;
+  if (active) return active;
+  if (typeof window !== "undefined" && typeof window.ethereum?.request === "function") return window.ethereum;
+  return null;
+}
+
+export async function connectDeploymentWallet({providerId = null,onChange = null}={}) {
+  walletsAvailable();
+  const provider = getWalletProvider(providerId);
+  if (!provider) throw Error("Keine EVM-Wallet gefunden. Bitte MetaMask oder eine EIP-1193 Wallet installieren.");
+  const accounts = await provider.request({method:"eth_requestAccounts"});
+  const address = accounts?.[0];
+  if (!ADDRESS.test(address || "")) throw Error("Keine gültige Wallet-Adresse verbunden");
+  if (active && active !== provider) for (const item of listeners) {
+    active.removeListener?.(item.name,item.fn);
+  }
+  listeners=[];
+  active=provider;
+  if (onChange && typeof provider.on === "function") {
+    const emit = () => onChange();
+    for (const name of ["accountsChanged","chainChanged","disconnect"]) {
+      provider.on(name,emit);
+      listeners.push({name,fn:emit});
+    }
+  }
+  return {address, chainId:Number(BigInt(await provider.request({method:"eth_chainId"})))};
+}
+
+export async function currentWalletState() {
+  const provider=getWalletProvider();
+  if (!provider) return null;
+  const accounts=await provider.request({method:"eth_accounts"});
+  if (!ADDRESS.test(accounts?.[0] || "")) return null;
+  const chainId=Number(BigInt(await provider.request({method:"eth_chainId"})));
+  return {address:accounts[0],chainId};
+}
+
+export async function switchDeploymentChain(chain) {
+  const provider=getWalletProvider();
+  if (!provider) throw Error("Bitte zuerst Wallet verbinden");
+  if (!chain || !Number.isSafeInteger(chain.chainId) ||
+      !Array.isArray(chain.rpcUrls) ||
+      !chain.rpcUrls.some(url=>typeof url==="string"&&url.startsWith("https://")))
+    throw Error("Chain ist nicht in GitHub main freigegeben");
+  const chainId="0x"+chain.chainId.toString(16);
+  try {
+    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId}]});
+  } catch (e) {
+    if (e?.code!==4902 && e?.data?.originalError?.code!==4902) throw e;
+    await provider.request({method:"wallet_addEthereumChain",params:[{
+      chainId,chainName:chain.name==="xgrchain"?"XGRChain":chain.name,
+      nativeCurrency:chain.nativeCurrency,rpcUrls:chain.rpcUrls,
+      ...(chain.explorer?{blockExplorerUrls:[chain.explorer]}:{})
+    }]});
+    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId}]});
+  }
+  const actual=BigInt(await provider.request({method:"eth_chainId"}));
+  if (actual!==BigInt(chain.chainId)) throw Error("Wallet hat nicht auf die ausgewählte Chain gewechselt");
+  return Number(actual);
+}
+
+export async function balanceOnWalletChain(address) {
+  const provider=getWalletProvider();
+  if (!provider||!ADDRESS.test(address||"")) throw Error("Wallet nicht verbunden");
+  return provider.request({method:"eth_getBalance",params:[address,"latest"]});
+}
+
+// Wallet transfers will only be exposed when the reviewed server-side
+// main-pinned deployment executor is complete; never accept arbitrary
+// browser-authored transaction payloads.

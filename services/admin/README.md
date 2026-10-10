@@ -70,3 +70,39 @@ the original approved source SHA in its durable journal and handle resuming
 a batch after the address-reporting commit. A failed GitHub write must not
 re-execute an already successful chain transaction. No deployment can occur
 until the remaining executable workflow and wallet integration are finished.
+
+## Admin UI v3.1.5: wallet, chain onboarding, workqueue
+
+The Admin console has three separate views with URL fragments:
+`#assets` (search/filter and 12 assets per page), `#infrastructure`
+(chain components and wallet native balances), `#workflow` (ordered,
+explicitly blocked infrastructure/route steps). All data is derived from
+approved GitHub `main` and separately verified receipt indexes.
+
+Wallets are connected through injected EIP-1193 providers, including
+EIP-6963 multi-wallet discovery. The Admin entrypoint is an ES module:
+`<script type="module" src="/admin/admin.js"></script>`, importing
+`wallet.js`. This fixes the previous `connectDeploymentWallet is not
+defined` browser error. A standalone WalletConnect QR session is NOT yet
+provided: that requires a separately reviewed WalletConnect SDK/project ID.
+The operator can switch to any approved chain; browser-authorized wallet
+transactions still require explicit wallet approval.
+
+The balance overview reads the connected chain through the wallet and other
+approved chains from public RPC via read-only `GET /admin/api/balance`.
+The server checks RPC chain identity, but a displayed balance is not proof
+of sufficient deployment gas until transaction simulation. No EVM keys are
+transmitted to the server.
+
+`GET /admin/api/infrastructure` probes all configured chain identities,
+Hyperlane core deployments and code at documented XITA v3.1.5 addresses.
+Existing Hyperlane infrastructure does NOT count as newly deployed XITA.
+`GET /admin/api/workqueue` now returns `workItems` with missing chain
+components and asset/route prerequisites. These are explicitly BLOCKED,
+not immediately executable, until reviewed artifacts and the validated
+wallet transaction executor are in place.
+
+To install after merge: `./manage.sh update`, then refresh the browser.
+The deployment button MUST remain disabled until cryptographic counterpart
+validation, receipt journaling and wallet main-pinned creation transactions
+are complete. Do not send real native currency based only on UI readiness.
