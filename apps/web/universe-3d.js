@@ -370,7 +370,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    node.addEventListener("dblclick",e=>{e.preventDefault();focusKey(item.system.key,true);},{signal});
   }
   labelRoot?.appendChild(node);
-  labelNodes.set(item.system.key,node);
   return [item,node];
  });
  setFocusUI();
