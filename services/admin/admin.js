@@ -5,6 +5,8 @@ async function get(p){const r=await fetch(p,{cache:"no-store"});const d=await r.
 const labels={"not-deployed":"Nicht deployed",partial:"Teilweise deployed",deployed:"Deployed"};
 const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
 let workqueue=null;
+let assetPage=0;
+const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
  const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
@@ -14,10 +16,20 @@ function renderAssets(){
   ["Routen",workqueue.inventory.routes.length],
   ["Offen",Object.values(workqueue.inventory.assets).filter(a=>a.status!=="deployed").length]
  ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
- el("main-workqueue").innerHTML=assets.length?assets.map(a=>'<section class="asset-card"><div class="asset-head">'+
+ const pages=Math.max(1,Math.ceil(assets.length/ASSETS_PER_PAGE));
+ assetPage=Math.max(0,Math.min(assetPage,pages-1));
+ const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
+ el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
  '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+'</div>'+
  '<div class="asset-meta"><span>Asset-ID <b class="mono">'+esc(a.assetId)+'</b></span><span>Belege <b>'+a.receiptCount+'</b></span><span>Manifest <b>'+esc(a.deploymentManifest)+'</b></span></div>'+
  '<div class="routes">'+a.routes.map(r=>'<div class="route"><div><strong>'+esc(r.source)+' → '+esc(r.destination)+'</strong><small>'+esc(r.name)+' · '+esc(r.note)+'</small></div>'+pill(r.status)+'</div>').join("")+'</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ const pageNode=el("asset-pagination");
+ pageNode.innerHTML='<span>'+esc(assets.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
+ pageNode.querySelectorAll("button[data-page]").forEach(b=>b.addEventListener("click",()=>{
+   assetPage+=b.dataset.page==="next"?1:-1;
+   renderAssets();
+ }));
+
 }
 let currentWallet=null;
 let chainObservations=new Map();
@@ -103,8 +115,8 @@ async function loadJobs(){
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
-el("asset-search").addEventListener("input",renderAssets);
-el("asset-filter").addEventListener("change",renderAssets);
+el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
+el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
 el("load-jobs").addEventListener("click",loadJobs);
 for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();});
