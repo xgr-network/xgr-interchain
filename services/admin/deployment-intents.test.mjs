@@ -55,3 +55,22 @@ test("route Gateway and Router use the SAME persistent write-ahead journal",()=>
   assert.equal(open().read().entries[route.id].stage,"confirmed");
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+
+test("simulation-generated creation transaction is accepted by persistent journal",async()=>{
+ const {simulateChainDraft}=await import("./chain-transaction-draft.mjs");
+ const dir=mkdtempSync(join(tmpdir(),"xita-intent-creation-"));
+ try{
+  const simulation=await simulateChainDraft({
+   chain:"polygon",chainId:137,component:"validatorRegistry",operation:"create",
+   transaction:{to:null,data:"0x1234567890",value:"0x12c"}
+  },{url:"https://polygon.example.org",from:wallet,rpc:async(_url,method)=>({
+   eth_chainId:"0x89",eth_estimateGas:"0x500000",eth_gasPrice:"0x1",
+   eth_getBalance:"0xffffffffffffffff"
+  })[method]});
+  const open=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const saved=open.prepare({...input,transaction:{...simulation.transaction,nonce:"0x0"}});
+  assert.equal(saved.transaction.to,null);
+  assert.equal(open.read().entries[input.id].transaction.to,null);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
