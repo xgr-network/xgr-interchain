@@ -18,13 +18,23 @@ const SOURCE={
  validatorRegistry:"XGRInterchainValidatorRegistryV2",
  ism:"XGRILNInterchainISMV2",
  factory:"XETATokenFactoryV315",
- sourceRegistry:"XGRILNRegistryV315"
+ sourceRegistry:"XGRILNRegistryV315",
+ nativeRouter:"XETAGuardedNativeWarpRouter",
+ syntheticRouter:"XETAGuardedSyntheticWarpRouter",
+ collateralRouter:"XETAGuardedCollateralWarpRouterV315",
+ gateway:"ILNGateway",
+ feeVault:"XGRILNFeeVault"
 };
 const TYPES={
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],
- factory:["uint64","uint32","address","address","address","address","uint256","uint256"]
+ factory:["uint64","uint32","address","address","address","address","uint256","uint256"],
+ nativeRouter:["address","address","address","address","uint256"],
+ syntheticRouter:["address","address","address","address","uint256","uint8","string","string"],
+ collateralRouter:["address","address","address","address","address","uint256"],
+ gateway:["address","bytes32","uint32","address","bool"],
+ feeVault:["address","address","bytes32","uint32"]
 };
 const digest=s=>createHash("sha256").update(s).digest("hex");
 const hexBytes=s=>Uint8Array.from(Buffer.from(s.slice(2),"hex"));
