@@ -1,5 +1,6 @@
 import {selector} from "../../apps/web/keccak.mjs";
 import {rpcCall} from "./inspector.mjs";
+import {probeEip2537Precompiles} from "./eip2537-precompile.mjs";
 const BYTEHEX=/^0x(?:[0-9a-fA-F]{2})*$/;
 const WORD_FALSE="0x"+"0".repeat(64);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -62,10 +63,15 @@ export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall})
    result.nativeNegativeVectorRejected=negative==="0x"+"0".repeat(64);
    if(!result.nativeNegativeVectorRejected)throw Error("Native compressed verifier rejected negative smoke-test format");
   } else if(chain.blsVerifierFormat==="eip2537"){
-   result.verifierStatus="EIP-2537 precompile positive/negative vectors pending";
+   const vectors=await probeEip2537Precompiles(rpc,url);
+   result.eip2537PrecompileVerified=true;
+   result.eip2537VectorsPassed=vectors.vectorsPassed;
+   result.eip2537MalformedInputRejected=vectors.malformedRejected;
+   result.verifierStatus="EIP-2537 precompiles verified; deployed BLS verifier and real PoP pending";
   } else throw Error("Unsupported BLS verifier format");
   result.basicRpcPreflightOK=Boolean(result.chainIdVerified&&result.mailboxCode&&result.merkleTreeHookCode&&
-    (chain.blsVerifierFormat!=="compressed"||result.nativeNegativeVectorRejected));
+    (chain.blsVerifierFormat!=="compressed"||result.nativeNegativeVectorRejected)&&
+    (chain.blsVerifierFormat!=="eip2537"||result.eip2537PrecompileVerified));
  }catch(e){result.error=String(e.message||e).slice(0,200);result.basicRpcPreflightOK=false;}
  return result;
 }
