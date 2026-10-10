@@ -1,5 +1,6 @@
 import {makeStellarDisc,placeStellarDisc,makeSystemOrbitTrack} from "./universe-scene.js";
 import {representationFor} from "./token-representation.js";
+import {systemTokenPlanets} from "./universe-token-layout.js";
 // XITA Universe 3D v2 — mouse-first, hierarchical exploration using native WebGL.
 // All chain systems, tokens and configured hub/spoke paths come from catalog.json.
 // Rendering does not make a claim about route activation or chain health.
@@ -330,7 +331,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    focusTitle.textContent=focused?(system?.label||selectedKey):"";
    if(focusCount)focusCount.textContent=focused?(countTokens(selectedKey).length+" token asset(s) · click a planet or token"): "";
    tokensRoot.replaceChildren();
-   if(focused)for(const token of []){
+   if(focused)for(const token of countTokens(selectedKey)){
     const chip=document.createElement("button");
     chip.type="button";
     chip.className="ux-3d-asset-link";
@@ -350,16 +351,16 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   if(!available.has(key))return;
   selectedKey=key;focused=!compact;
   wanted.target=[...systemPosition(available.get(key),frame,reducedMotion)];
-  topology.planets.length=0;
-   for(const [,node] of tokenLabels.splice(0))node.remove();
-   const n=0;
-  wanted.distance=close?17.5:clamp(22+n*.55,22,33);
+  rebuildPlanets();
+  const n=topology.planets.length;
+  wanted.distance=close?17.5:clamp(20+n*.85,20,29);
   setFocusUI();
   onFocus(key);
  };
  function home(){
   focused=false;selectedKey=HUB;
   wanted.target=[0,0,0];wanted.distance=initialDistance;wanted.yaw=.09;wanted.pitch=.19;
+  rebuildPlanets();
   setFocusUI();
   onFocus(HUB);
  }
@@ -579,23 +580,25 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.68,.78,.96,.62);
   gl.uniform1f(sp.size,2.1);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
-  // Previously these galaxy particle fields were generated but never rendered.
+  // A focused system dissolves its abstract galaxy dust into catalog tokens.
   for(const disc of stellarDiscs){
-   if(focused&&disc.item.system.key!==selectedKey&&focusBlend>.88)continue;
+   const fade=focused?(disc.item.system.key===selectedKey?1-focusBlend:1-clamp(focusBlend*1.4,0,1)):1-focusBlend;
+   if(fade<=.01)continue;
    dustCloud(disc,systemPosition(disc.item,frame,reducedMotion),vp,frame,
-    disc.item.portal?.80:.70);
+    (disc.item.portal?.80:.70)*fade);
   }
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=item.portal?.41:.27;
+   const intensity=(item.portal?.41:.27)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
    point(systemPosition(item,frame,reducedMotion),item.radius*9000,item.color,intensity,vp);
    point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity*.67,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  // Independent, local 3D accretion and gateway rings: no fabricated token or route.
+  // Galaxy rings fade into real catalog-listed planet orbits on focus.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.86)continue;
+   if(focused&&item.system.key===selectedKey&&focusBlend>.96)continue;
    const center=systemPosition(item,frame,reducedMotion);
    if(item.portal){
     const t=reducedMotion?0:frame*.07;
@@ -741,29 +744,41 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   if(!visible)stop();else start();
  },{threshold:0}):null;
  intersection?.observe(root);
- function showRankedTokens(items=[]){
+ let rankedTokens=[], tokenQuery="";
+ function rebuildPlanets(){
   topology.planets.length=0;
   for(const slot of orbitPaths)slot.planet=null;
   for(const [,node] of tokenLabels.splice(0))node.remove();
   const system=available.get(selectedKey);
-  if(!focused||!system||compact)return;
-  for(const [i,item] of items.slice(0,6).entries()){
-   const token=system.system.tokens.find(t=>t.id===item.assetId);
-   if(!token)continue;
-   const p={system,token,index:i,orbit:4.5+i*.53,radius:.64-i*.065,
-    speed:.016/(1+i*.2),phase:i*2.4,inclination:.32+(i%3)*.22,node:i*.71,twist:.15+i*.13};
+  if(!focused||!system||compact){
+   root.dataset.orbitTokenCount="0";
+   return;
+  }
+  const items=systemTokenPlanets(system.system,rankedTokens,tokenQuery);
+  for(const item of items){
+   const p={...item,system};
    topology.planets.push(p);
-   orbitPaths[i].planet=p;
-   const node=document.createElement("button");node.type="button";
-   node.className="ux-3d-token";node.hidden=true;
-   node.textContent=item.symbol+" · "+item.representation;
-   node.addEventListener("click",()=>onToken(token,selectedKey),{signal});
+   orbitPaths[item.index].planet=p;
+   const node=document.createElement("button");
+   node.type="button";node.className="ux-3d-token";node.hidden=true;
+   node.textContent=item.representation.symbol+" · "+item.representation.label;
+   node.title="Open "+item.token.name+" token page (configured representation; activation unverified)";
+   node.setAttribute("aria-label","Open "+item.token.name+" on "+system.system.label);
+   node.addEventListener("click",()=>onToken(item.token,selectedKey),{signal});
    labelRoot?.appendChild(node);tokenLabels.push([p,node]);
   }
   root.dataset.orbitTokenCount=String(topology.planets.length);
  }
+ function showRankedTokens(items=[]){
+  rankedTokens=Array.isArray(items)?items:[];
+  rebuildPlanets();
+ }
+ function searchTokens(query=""){
+  tokenQuery=String(query||"");
+  rebuildPlanets();
+ }
  const controller={
-  showRankedTokens,
+  showRankedTokens,searchTokens,
   focus(key){if(key===HUB)home();else focusKey(key);},
   home,orbit,zoom,pan,
   dispose(){
