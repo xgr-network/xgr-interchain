@@ -151,6 +151,9 @@ async function openContractModal(chainName,component){
    "3/3 Validatoren kryptografisch verifiziert · Snapshot "+r.originSnapshotBlock:
    "Validatornachweise für "+chainName+" noch nicht verifiziert";
   if(existing){
+   el("modal-approve").hidden=true;
+   el("modal-gas-check").disabled=true;
+   el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Vorherige Transaktion: "+existing.stage+
     ". Zuerst wiederherstellen – niemals erneut senden.","warn");
