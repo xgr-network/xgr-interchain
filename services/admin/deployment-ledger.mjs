@@ -196,7 +196,7 @@ export async function publishDeploymentBatch(root,inputs,{
   if(!existing.ok||typeof existing.json.content!=="string"||
      existing.json.encoding!=="base64")
     throw Error("Cannot read canonical deployment index for "+asset);
-  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\\s/g,""),"base64").toString("utf8"));
+  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\s/g,""),"base64").toString("utf8"));
   const local=JSON.parse((await import("node:fs")).readFileSync(
     (await import("node:path")).join(root,path),"utf8"));
   if(JSON.stringify(original)!==JSON.stringify(local))
