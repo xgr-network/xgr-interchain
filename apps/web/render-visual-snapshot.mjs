@@ -21,8 +21,8 @@ try{
  await mkdir(resolve(output,".."),{recursive:true});
  const chrome=process.env.XITA_BROWSER||"chromium";
  const args=["--headless","--no-sandbox","--disable-dev-shm-usage",
- "--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader",
- "--window-size=1600,960","--hide-scrollbars","--virtual-time-budget=3500",
+ "--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-background-timer-throttling",
+ "--window-size=1600,960","--hide-scrollbars","--virtual-time-budget=1000",
  "--screenshot="+output,"http://127.0.0.1:"+server.address().port+"/universe"];
  await new Promise((ok,fail)=>{
   const proc=spawn(chrome,args,{stdio:["ignore","ignore","pipe"]});
