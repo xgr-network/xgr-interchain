@@ -139,7 +139,8 @@ export function planAssetRoutes(asset,chains,infrastructure){
   pairs.push({id:asset.key+":"+id,asset:asset.key,chains:[a.name,b.name],
    directions,readyForAttestation:directions.every(x=>x.prepared)});
  }
- return {asset:asset.key,assetId:asset.assetId,representations,
+ return {asset:asset.key,assetId:asset.assetId,canonicalChain:asset.canonicalChain,
+  canonicalToken:asset.canonicalToken,metadata:{name:asset.name,symbol:asset.symbol,decimals:asset.decimals},representations,
   routes:operations,pairs,
   disclaimer:"On-chain current code, ownership, reciprocal registrations, BLS signatures and receipt finality must be revalidated before each transaction."};
 }
