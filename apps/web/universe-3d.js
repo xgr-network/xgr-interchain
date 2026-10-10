@@ -249,19 +249,9 @@ function createTopology(model){
   .map(c=>({from:byKey.get(HUB),to:byKey.get(c.key),
    active:model.routes.some(r=>(r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key)&&r.active)}))
   .filter(v=>v.from&&v.to);
+ // Orbit planets are populated on demand from indexed, eligible top-ranked assets.
+ // Never materialize every catalog token as a WebGL body.
  const planets=[];
- for(const item of systems){
-  const candidates=item.system.tokens.filter(token=>{
-   const rep=token.representations.find(r=>r.chain===item.system.key);
-   return Boolean(rep); // Do not invent planets without a chain representation.
-  });
-  for(let i=0;i<Math.min(candidates.length,16);i++){
-   // Concentric planetary families remain comfortably in view on focus.
-   planets.push({system:item,token:candidates[i],index:i,orbit:4.6+Math.floor(i/5)*2.45+(i%5)*.35,
-    radius:clamp(.48-(i*.009),.28,.48),speed:.026/(1+i*.2),phase:(i*2.399)+(item.system.chainId||7)*.13,
-     inclination:.33+(i%5)*.22,node:(item.system.chainId||7)*.017+i*.57,twist:.15+i*.13});
-  }
- }
  return {systems,planets,links,byKey};
 }
 // Exported for deterministic topology/asset tests, not for authorizing bridge operations.
@@ -337,7 +327,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    focusTitle.textContent=focused?(system?.label||selectedKey):"";
    if(focusCount)focusCount.textContent=focused?(countTokens(selectedKey).length+" token asset(s) · click a planet or token"): "";
    tokensRoot.replaceChildren();
-   if(focused)for(const token of countTokens(selectedKey)){
+   if(focused)for(const token of []){
     const chip=document.createElement("button");
     chip.type="button";
     chip.className="ux-3d-asset-link";
@@ -357,7 +347,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   if(!available.has(key))return;
   selectedKey=key;focused=!compact;
   wanted.target=[...systemPosition(available.get(key),frame,reducedMotion)];
-  const n=topology.planets.filter(p=>p.system.system.key===key).length;
+  topology.planets.length=0;
+   for(const [,node] of tokenLabels.splice(0))node.remove();
+   const n=0;
   wanted.distance=close?17.5:clamp(22+n*.55,22,33);
   setFocusUI();
   onFocus(key);
@@ -720,7 +712,26 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   if(!visible)stop();else start();
  },{threshold:0}):null;
  intersection?.observe(root);
+ function showRankedTokens(items=[]){
+  topology.planets.length=0;
+  for(const [,node] of tokenLabels.splice(0))node.remove();
+  const system=available.get(selectedKey);
+  if(!focused||!system||compact)return;
+  for(const [i,item] of items.slice(0,6).entries()){
+   const token=system.system.tokens.find(t=>t.id===item.assetId);
+   if(!token)continue;
+   const p={system,token,index:i,orbit:4.5+i*.53,radius:.64-i*.065,
+    speed:.016/(1+i*.2),phase:i*2.4,inclination:.32+(i%3)*.22,node:i*.71,twist:.15+i*.13};
+   topology.planets.push(p);
+   const node=document.createElement("button");node.type="button";
+   node.className="ux-3d-token";node.hidden=true;
+   node.textContent=item.symbol+" · "+item.representation;
+   node.addEventListener("click",()=>onToken(token,selectedKey),{signal});
+   labelRoot?.appendChild(node);tokenLabels.push([p,node]);
+  }
+ }
  const controller={
+  showRankedTokens,
   focus(key){if(key===HUB)home();else focusKey(key);},
   home,orbit,zoom,pan,
   dispose(){

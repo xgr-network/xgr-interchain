@@ -6,7 +6,7 @@ import {buildExperienceModel,renderDashboard,renderUniverse,renderTokenBridge} f
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:""};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -238,7 +238,13 @@ function render(){
  }
  if(p==="/"||p==="/universe"){
   const host=document.querySelector("#xita-3d");
-  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{state.experience.system=key;const details=document.querySelector("#ux-selected-details");if(details&&p==="/universe"){details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";}},onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
+  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{
+   state.experience.system=key;
+   const details=document.querySelector("#ux-selected-details");
+   if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+   if(p==="/universe")void loadSystemRanking(key);
+  },onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
+  if(p==="/universe"&&state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
  }
  document.querySelectorAll("[data-xita-system]").forEach(button=>button.addEventListener("click",()=>{
    state.experience.system=button.dataset.xitaSystem;
@@ -364,4 +370,42 @@ async function loadPublicData(){
  if(state.catalog&&path()!=="/universe")render();
 }
 
+let systemRequest=0;
+async function loadSystemRanking(chain){
+ const id=++systemRequest;
+ const panel=document.querySelector("#ux-ranked-tokens");
+ if(!panel)return;
+ if(chain==="xgrchain"&&document.querySelector("#xita-3d")?.dataset.mode==="overview"){
+  panel.textContent="Select a stellar system to explore its ranked tokens.";return;
+ }
+ panel.textContent="Reading sourced token rankings…";
+ try{
+  const url="/api/xeta/v1/systems/"+encodeURIComponent(chain)+"?sort="+encodeURIComponent(state.universeSort)+"&q="+encodeURIComponent(state.universeQuery);
+  const res=await fetch(url,{cache:"no-store"});
+  if(!res.ok)throw Error("Indexer unavailable");
+  const data=await res.json();
+  if(id!==systemRequest||state.experience.system!==chain)return;
+  if(data.kind!=="xita-system-ranking-v1"||data.chain!==chain||!Array.isArray(data.items))throw Error("Invalid metrics");
+  cosmos?.showRankedTokens(data.items);
+  if(!data.items.length){panel.textContent=data.note;return;}
+  const list=document.createElement("div");
+  for(const item of data.items.slice(0,6)){
+   const a=document.createElement("a");a.href="/token/"+encodeURIComponent(item.slug);
+   a.dataset.nav="";a.className="ux-ranked-token";
+   a.textContent=item.symbol+" · "+item.representation+" · "+item.value.toLocaleString("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0});
+   list.appendChild(a);
+  }
+  panel.replaceChildren(list);
+ }catch{
+  if(id!==systemRequest)return;
+  cosmos?.showRankedTokens([]);
+  panel.textContent="Ranking unavailable. No estimated planets are shown.";
+ }
+}
+el.addEventListener("change",e=>{
+ if(e.target.id==="ux-orbit-sort"){state.universeSort=e.target.value;void loadSystemRanking(state.experience.system);}
+});
+el.addEventListener("input",e=>{
+ if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;void loadSystemRanking(state.experience.system);}
+});
 async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets")render();}catch{ /* Unavailable is not zero */ }}

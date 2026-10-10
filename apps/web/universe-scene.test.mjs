@@ -11,7 +11,7 @@ test("stellar geometry exists for each chain and includes real depth",()=>{
  const t=createUniverseTopology(buildExperienceModel(catalog));
  assert.equal(sceneComposition(t).hub,1);
  assert.equal(sceneComposition(t).inclinedOrbits,3);
- assert.equal(sceneComposition(t).nativeOrWrappedPlanets,2);
+ assert.equal(sceneComposition(t).nativeOrWrappedPlanets,0);
  for(const system of t.systems){
   const disc=makeStellarDisc(system);
   assert.ok(disc.length>700);
