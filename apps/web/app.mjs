@@ -60,22 +60,6 @@ function indexerNotice(){
  if(state.apiState==="error")return '<p class="status">XITA event index is currently unavailable. No figures are inferred.</p>';
  return '<p class="status">XITA event index not yet online. Unavailable transfer statistics are not zero.</p>';
 }
-function overview(){
- const ids=allAssets();
- return '<div class="eyebrow">XGR EVM Token Alliance</div><h1>One ecosystem.<br>Every connected token.</h1>'+
- '<p class="lead">Explore token projects, validator-governed interchain routes, and verified bridge activity. Every asset has its own profile and transfer interface.</p>'+
- '<div class="actions">'+btn(tokenUrl("XGR"),"Explore XGR token")+btn("/markets","Browse markets",true)+'</div>'+
- '<div class="cards">'+metric("Published assets",String(ids.length),"Token profiles")+
-  metric("Verified routes",String(ids.reduce((sum,id)=>sum+activeFor(id),0)),"Quorum-governed")+
-  metric("24h source transfers",indexedCount("XGR","last24h"),"Observed XGR Gateway messages")+
-  metric("24h XGR transferred",amountFor("XGR","last24h"),"Unknown principal amounts excluded")+'</div>'+
- indexerNotice()+
- '<section class="section"><div class="eyebrow">Interchain network</div><h2>XGRChain hub</h2><p class="muted">External-to-external movement consists of two independent transfers through XGRChain. The future automated second-hop sponsor is not deployed.</p>'+
- '<div class="card"><h3>XGR configured routes</h3>'+state.catalog.assets.XGR.routes.routes.map(rt=>
-  '<div class="pair"><span>'+x(routeName(rt))+'</span><span class="tag">'+(manifestRoute(state.catalog,state.catalog.assets.XGR,rt.name).allowed?"Verified":"Pending governance")+'</span></div>').join("")+'</div></section>'+
- '<section class="section"><div class="eyebrow">Explore projects</div><h2>Token directory</h2><div class="project-grid">'+ids.map(tokenCard).join("")+'</div></section>'+
- '<section class="section"><h2>Join the Alliance</h2><p class="lead">Free onboarding and integration proposals, with independent validator approval before any route can become active.</p>'+btn("/join","Join the Alliance")+'</section>';
-}
 function markets(){
  const ids=allAssets();
  return '<div class="eyebrow">Discovery</div><h1>Token markets</h1>'+
