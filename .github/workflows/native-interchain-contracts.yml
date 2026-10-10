@@ -25,7 +25,7 @@ jobs:
         run: |
           node services/admin/verify-solidity-runtime.mjs .
           forge build --force --skip test script
-          node services/admin/seal-build-cli.mjs . "$(forge --version)"
+          node services/admin/seal-build-cli.mjs . "$(forge --version)" "$(git rev-parse HEAD)"
           node --input-type=module -e 'import {readSealedArtifacts} from "./services/admin/sealed-artifacts.mjs"; import {execFileSync} from "node:child_process"; const sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(); if(Object.keys(readSealedArtifacts(".",sha).raws).length!==10)process.exit(1);'
       - name: Contract tests
         run: forge test -vvv
