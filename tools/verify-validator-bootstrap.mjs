@@ -17,8 +17,22 @@ try{
  const chain=load("config/chains/"+name+".json");
  const bootstrap=load("config/bootstrap/"+name+".json");
  const validators=load("config/validators/initial.json").validators;
- const raw=JSON.parse(readFileSync(resolve(file),"utf8"));
- const proof=raw.result||raw;
+ const rawText=readFileSync(resolve(file),"utf8");
+ let proof;
+ if(rawText.trimStart().startsWith("{")){
+  const raw=JSON.parse(rawText);proof=raw.result||raw;
+ }else{
+  const fields=Object.fromEntries(rawText.split(/\r?\n/).filter(x=>x.includes("|")).map(line=>{
+   const index=line.indexOf("|");return [line.slice(0,index).trim(),line.slice(index+1).trim()];
+  }));
+  proof={
+   validator:fields["Validator"],originChainId:Number(fields["Origin chain ID"]),
+   destinationDomain:Number(fields["Destination domain"]),
+   blsPublicKey:fields["BLS public key"],
+   blsPublicKeyEIP2537:fields["BLS public key EIP-2537"],
+   payload:fields["Payload"],possessionProof:fields["Possession proof EIP-2537"]
+  };
+ }
  const result=await verifyPublicBootstrapOnChain(proof,{chain,bootstrap,approvedValidators:validators});
  console.log(JSON.stringify(result,null,2));
  if(!result.verified)process.exitCode=1;
