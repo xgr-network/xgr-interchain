@@ -61,7 +61,7 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
 export async function reconcileDeployedContract({
  root,entry,chain,bootstrap,infrastructure,artifact,rpc,url
 }){
- if(entry.stage!=="submitted"||!H32.test(entry.txHash||""))
+ if(!["submitted","confirmed"].includes(entry.stage)||!H32.test(entry.txHash||""))
   throw Error("Only submitted, hash-journaled transactions can reconcile");
  if(entry.chainId!==chain.chainId||entry.id!==chain.name+":"+artifact.component)
   throw Error("Deployment identity differs from approved chain");
