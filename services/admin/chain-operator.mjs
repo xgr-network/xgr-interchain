@@ -31,8 +31,8 @@ export function createChainOperator({
  const inventory=()=>approvedWorkInventory(root);
  const journals=chains=>deploymentIntents({
   directory:resolve(stateDir,"wallet-intents"),chains});
- async function approved(chainName){
-  const commit=await mainCheck(root);
+ async function approved(chainName,{previewOnly=false}={}){
+  const commit=previewOnly?checkedLocalMain(root):await mainCheck(root);
   const all=inventory();
   const chain=all.chains.find(c=>c.name===chainName);
   if(!chain)throw Error("Chain absent from current GitHub main");
@@ -42,7 +42,7 @@ export function createChainOperator({
  }
  async function preview({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid wallet");
-  const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
+  const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName,{previewOnly:true});
   const values=deploymentParameters(component,parameters);
   const journal=journals(all.chains);
   if(journal.read().entries[chain.name+":"+component])
@@ -70,7 +70,7 @@ export function createChainOperator({
     gasEstimateWei:simulation.gasEstimateWei,gasLimit:simulation.gasLimit,
     gasPriceWei:simulation.gasPriceWei,totalWorstCaseWei:simulation.totalWorstCaseWei,
     depositWei:BigInt(draft.transaction.value).toString(),
-    parameters:values,mode:"preview-only-no-broadcast"};
+    parameters:values,mode:"preview-only-no-broadcast-local-clean-main"};
  }
  async function prepare({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
