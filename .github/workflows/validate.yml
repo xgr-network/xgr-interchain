@@ -44,7 +44,7 @@ jobs:
           node tools/validate-manifests.mjs
           node --test tools/validate-manifests.test.mjs
           node tools/build-xeta-web-catalog.mjs --check
-          node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs services/indexer/server.test.mjs services/onboarding/manifests.test.mjs services/indexer/coingecko.test.mjs
+          node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs services/indexer/server.test.mjs services/onboarding/manifests.test.mjs services/indexer/coingecko.test.mjs services/indexer/finality-observer.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash
@@ -65,6 +65,19 @@ jobs:
         run: |
           set -euo pipefail
           node --test apps/web/browser-smoke.test.mjs
+
+      - name: Capture actual WebGL Universe
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          node apps/web/render-visual-snapshot.mjs artifacts/universe.png
+
+      - name: Publish 3D Universe review image
+        uses: actions/upload-artifact@v4
+        with:
+          name: xita-universe-3d-preview
+          path: artifacts/universe.png
+          if-no-files-found: error
 
       - name: Validate operator admin
         shell: bash
