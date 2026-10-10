@@ -33,7 +33,8 @@ export function approvedBootstrapDocuments({
  if(BigInt(values.minimumWei)<BigInt(values.maxExecutorReimbursementWei)||
     BigInt(values.perValidatorWei)<BigInt(values.minimumWei))
   throw Error("Per-validator reserve must exceed minimum; minimum must exceed executor ceiling");
- const bootstrap=structuredClone(candidate);
+ const bootstrap=structuredClone(current);
+ bootstrap.validatorSnapshot=structuredClone(candidate.validatorSnapshot);
  bootstrap.reserve={...current.reserve,
   minimumWei:values.minimumWei,
   maxExecutorReimbursementWei:values.maxExecutorReimbursementWei,
