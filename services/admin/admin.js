@@ -80,16 +80,47 @@ async function refreshWalletBalances(){
   el("wallet-balances").textContent=balances.map(([name,b])=>name+": "+b).join(" · ");
  }catch(e){el("wallet-status").textContent=e.message;}
 }
+let selectedDeployChain=null;
 async function loadFirstDeploy(){
  const target=el("first-deploy-plan");if(!target)return;
  try{
   const data=await get("/admin/api/first-deploy");
-  target.innerHTML='<h3>Erster Einsatz: XGRChain → Base</h3><p>Vorbereitung / nur Leseansicht. Die Blockchain-Ausführung bleibt bis zur vollständigen Prüfung gesperrt.</p><p id="xgr-live-preflight">XGRChain-RPC-/BLS-Prüfung läuft …</p>'+
-   data.chains.map(c=>'<div class="first-chain"><strong>'+esc(c.name)+' · '+esc(c.verifiedComponents)+'/'+esc(c.totalSteps)+' Schritte dokumentiert</strong><small>Initialgebühr: '+esc(c.initialFeeWei===null?"offen":c.initialFeeWei+" Wei")+'</small><div>'+c.steps.map(s=>'<div class="first-step"><span>'+esc(s.title)+'</span><small>'+esc(s.status==="documented"?"Dokumentiert":s.blockers.join(" · ")||"Verifikation offen")+'</small></div>').join("")+'</div></div>').join("");
-  try {const status=(await get("/admin/api/xgr-preflight")).preflight;
-   const live=el("xgr-live-preflight");if(live)live.textContent="XGRChain Live-Preflight: "+(status.basicRpcPreflightOK?"RPC/Core und negativer BLS-Test OK":"nicht bestanden")+" · Positive BLS-Verifikation offen · "+(status.error||"Keine Deploy-Freigabe");
-  } catch(e){const live=el("xgr-live-preflight");if(live)live.textContent="XGRChain-Preflight nicht erreichbar: "+e.message;}
- }catch(e){target.textContent="Erster Deployment-Plan nicht verfügbar: "+e.message;}
+  if(!selectedDeployChain||!data.chains.some(c=>c.name===selectedDeployChain))
+   selectedDeployChain=data.chains[0]?.name;
+  target.innerHTML='<h3>Deployment nach GitHub-Konfiguration</h3>'+
+   '<p>Chain frei wählen. Vorbereitung / nur Leseansicht; Wallet-Deployments bleiben gesperrt.</p>'+
+   '<label for="deployment-chain-select">Deployment-Chain</label> '+
+   '<select id="deployment-chain-select">'+data.chains.map(c=>
+    '<option value="'+esc(c.name)+'"'+(c.name===selectedDeployChain?' selected':'')+'>'+
+      esc(c.name)+' · '+esc(c.nativeCurrency.symbol)+'</option>').join("")+'</select>'+
+   '<div id="selected-deploy-details"></div><p id="chain-live-preflight">RPC-Prüfung noch nicht gestartet</p>';
+  el("deployment-chain-select").addEventListener("change",e=>{
+   selectedDeployChain=e.target.value;
+   showSelectedDeployChain(data);
+  });
+  showSelectedDeployChain(data);
+ }catch(e){target.textContent="Deployment-Plan nicht verfügbar: "+e.message;}
+}
+async function showSelectedDeployChain(data){
+ const chain=data.chains.find(c=>c.name===selectedDeployChain);
+ if(!chain)return;
+ el("selected-deploy-details").innerHTML=
+  '<div class="first-chain"><strong>'+esc(chain.name)+' · '+esc(chain.verifiedComponents)+'/'+
+  esc(chain.totalSteps)+' Schritte dokumentiert</strong><small>Initialgebühr: '+
+  esc(chain.initialFeeWei===null?"offen":chain.initialFeeWei+" Wei")+'</small>'+
+  chain.steps.map(s=>'<div class="first-step"><span>'+esc(s.title)+'</span><small>'+
+   esc(s.status==="documented"?"Dokumentiert":s.blockers.join(" · ")||"Verifikation offen")+
+   '</small></div>').join("")+'</div>';
+ const pre=el("chain-live-preflight");
+ pre.textContent="RPC-/Verifier-Prüfung läuft …";
+ try{
+  const status=(await get("/admin/api/chain-preflight?chain="+encodeURIComponent(chain.name))).preflight;
+  if(selectedDeployChain!==chain.name)return;
+  pre.textContent=chain.name+": "+(status.basicRpcPreflightOK?
+   "RPC und Hyperlane Core OK":"Preflight offen oder fehlgeschlagen")+
+   " · BLS-Positivnachweis ausstehend · Keine Deploy-Freigabe"+
+   (status.error?" · "+status.error:"");
+ }catch(e){if(selectedDeployChain===chain.name)pre.textContent="Preflight nicht verfügbar: "+e.message;}
 }
 function renderQueue(){
  if(!workqueue)return;
