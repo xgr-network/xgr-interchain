@@ -1,3 +1,4 @@
+import {representationFor} from "./token-representation.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
 // The token detail page remains the only bridge execution entry point.
@@ -87,7 +88,7 @@ function systemDetails(model,selected){
   if(!system)return '<p class="ux-muted">No configured chains found.</p>';
   const associated=model.routes.filter(r=>r.source===system.key||r.destination===system.key);
   const active=associated.filter(r=>r.active).length;
-  const list=system.tokens.slice(0,5).map(t=>'<a class="ux-asset" data-nav href="'+esc(tokenLink(t))+'"><span class="ux-dot"></span><span>'+esc(t.name)+'</span><span class="ux-small">'+esc(t.id)+'</span><span class="ux-arrow">↗</span></a>').join("");
+  const list=system.tokens.slice(0,5).map(t=>{const rep=representationFor(t,system.key);return '<a class="ux-asset" data-nav href="'+esc(tokenLink(t))+'"><span class="ux-dot"></span><span>'+esc(rep.symbol)+'</span><span class="ux-small">'+esc(rep.label)+'</span><span class="ux-arrow">↗</span></a>';}).join("");
   return '<div class="ux-panel-head"><span class="ux-kicker">Selected stellar system</span><span class="ux-label">'+(system.key===HUB?"Interchain hub":"Spoke network")+'</span></div>'+
     '<h3 class="ux-detail-name">'+esc(system.label)+'</h3><p class="ux-muted">'+(system.key===HUB?
     "XGRChain is the mandatory interchain transit point. Transfers between external systems require two independent route operations.":
