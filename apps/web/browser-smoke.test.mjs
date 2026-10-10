@@ -67,7 +67,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
-   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/LIVE UNIVERSE PREVIEW/);}
+   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"||path==="/universe"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
