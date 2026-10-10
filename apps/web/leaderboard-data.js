@@ -43,8 +43,8 @@ export function rankAssets(rows,key="lockedUsd",direction="desc"){
  });
 }
 export const formatUsd=(v)=>finite(v)?new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:v<1?6:2}).format(v):"—";
-export function buildLeaderboardRows(catalog,snapshot){
- return Object.entries(catalog?.assets||{}).filter(([id,asset])=>isPublicAsset(id,asset)).map(([id,asset])=>{
+export function buildLeaderboardRows(catalog,snapshot,{includeUnlisted=false}={}){
+ return Object.entries(catalog?.assets||{}).filter(([id,asset])=>includeUnlisted||isPublicAsset(id,asset)).map(([id,asset])=>{
   const facts=verifiedMetrics(snapshot,id);
   return {id,name:asset.profile?.name||asset.metadata?.name||id,
    slug:asset.profile?.slug||id.toLowerCase(),
