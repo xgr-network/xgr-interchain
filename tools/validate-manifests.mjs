@@ -78,7 +78,7 @@ export function validateCatalog({chains,assets,infrastructure}){
   check(pub?.links&&typeof pub.links.website==="string"&&url(pub.links.website)&&
     ["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"].every(k=>url(pub.links[k])),
     p+": invalid profile links");
-  check(pub?.market&&["none","explorer-xgr-price"].includes(pub.market.priceSource)&&
+  check(pub?.market&&["none","explorer-xgr-price","coingecko"].includes(pub.market.priceSource)&&
     (pub.market.priceSource!=="explorer-xgr-price"||name==="XGR")&&refId(pub.market.coingeckoId)&&refId(pub.market.coinmarketcapId),
     p+": invalid profile market config");
   check(pub?.supply&&["circulating","total","max"].every(k=>
