@@ -63,3 +63,19 @@ test("generic ERC20 synthetic includes origin, metadata and salt",()=>{
  assert.equal(draft.component,"syntheticRouter");
  assert.ok(draft.transaction.data.length>400);
 });
+
+test("synthetic second hop resolves canonical origin outside source and destination",()=>{
+ const asset={asset:"AUD",assetId:"0x"+"a".repeat(64),canonicalChain:"xdc",
+  canonicalToken:"0x"+"1".repeat(40),metadata:{decimals:18,name:"Audit",symbol:"AUD"}};
+ const source={name:"base",chainId:8453,domainId:8453};
+ const dest={name:"xgrchain",chainId:1643,domainId:1643};
+ const chain={name:"xdc",chainId:50,domainId:50};
+ const infrastructure={components:[{key:"factory",address:"0x"+"2".repeat(40)},
+  {key:"sourceRegistry",address:"0x"+"3".repeat(40)}]};
+ const draft=factoryRouteDraft({asset,source,destination:dest,
+  sourceInfrastructure:infrastructure,destinationInfrastructure:infrastructure,
+  representation:{chain:"base",component:"syntheticRouter",router:null},
+  action:"deploy-router",chains:[chain,source,dest]});
+ assert.ok(draft.transaction.data.startsWith("0x"));
+ assert.equal(draft.chain,"base");
+});

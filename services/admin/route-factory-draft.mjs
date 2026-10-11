@@ -20,7 +20,7 @@ export function routeSalt(assetId,chainId,kind){
  return keccak256("XITA_V315_CANONICAL_CATALOG:"+assetId.toLowerCase()+":"+chainId+":"+kind);
 }
 export function factoryRouteDraft({asset,source,destination,sourceInfrastructure,
- destinationInfrastructure,representation,route,action}){
+ destinationInfrastructure,representation,route,action,chains=[]}){
  if(!asset||!source||!destination||source.chainId===destination.chainId||
     (source.chainId!==1643&&destination.chainId!==1643))
   throw Error("Only XGRChain hub-directed routes supported");
@@ -49,7 +49,9 @@ export function factoryRouteDraft({asset,source,destination,sourceInfrastructure
    const original=asset.canonicalToken;
    if(!valid(original))throw Error("Canonical ERC20 origin address required");
    const canonicalChain=asset.canonicalChain;
-   const orig=source.name===canonicalChain?source:destination.name===canonicalChain?destination:null;
+   const orig=source.name===canonicalChain?source:
+    destination.name===canonicalChain?destination:
+    chains.find(c=>c.name===canonicalChain)||null;
    if(!orig)throw Error("Canonical source chain for synthetic creation unavailable");
    const metadata=asset.metadata;
    if(!metadata||!Number.isInteger(metadata.decimals)||metadata.decimals>18||
