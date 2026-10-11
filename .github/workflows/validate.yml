@@ -50,11 +50,11 @@ jobs:
           set -euo pipefail
           node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs
 
-      - name: Validate indexer and publication policy tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          node --test services/indexer/server.test.mjs services/indexer/coingecko.test.mjs services/indexer/finality-observer.test.mjs services/indexer/publication.test.mjs
+      - name: Validate indexer server tests
+        run: node --test services/indexer/server.test.mjs services/indexer/coingecko.test.mjs services/indexer/finality-observer.test.mjs
+
+      - name: Validate derived publication policy
+        run: node --test services/indexer/publication.test.mjs
 
       - name: Validate UI and discovery tests
         shell: bash
