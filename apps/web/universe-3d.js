@@ -17,8 +17,8 @@ const mix=(a,b,t)=>a+(b-a)*t;
 const near=(a,b,eps=.001)=>Math.abs(a-b)<=eps;
 const IDENTITY=new Float32Array([1,0,0,0,1,0,0,0,1]);
 const fixedColors={
- xgrchain:[.94,.72,.40],base:[.42,.68,.94],
- polygon:[.62,.56,.85],arbitrum:[.47,.71,.85],
+ xgrchain:[1.0,.78,.43],base:[.32,.58,1.0],
+ polygon:[.64,.35,1.0],arbitrum:[.51,.75,.96],
  xdc:[.47,.75,.74],ethereum:[.70,.76,.90]
 };
 function chainColor(key,index){
@@ -240,7 +240,7 @@ function createTopology(model){
   const theta=-2.48+within*TWO_PI/perRing+ring*.36;
   const r=16+(i%3)*2+ring*8;
   // Depth-balanced starting positions, with deterministic fallback for new systems.
-  const anchors={base:[-15,11,-2.6],arbitrum:[-18,-11,2.3],polygon:[17,-10,-3.8],xdc:[19,10,1.5]};
+  const anchors={base:[-12,12,-2.6],arbitrum:[-14,-11,2.3],polygon:[17,-10,-3.8],xdc:[19,10,1.5]};
   const origin=anchors[spokes[i].key]||[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2];
   const orbital={origin,
    axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
@@ -311,9 +311,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=compact?47:47;
- const camera={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.19};
- const wanted={target:[0,0,0],distance:initialDistance,yaw:.09,pitch:.19};
+ const initialDistance=compact?47:57;
+ const camera={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
+ const wanted={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
  let focused=false,focusBlend=0;
  const allPick=[];
  const status=root.querySelector(".ux-3d-status");
@@ -490,7 +490,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
    gl.uniformMatrix4fv(sp.vp,false,vp);
    gl.uniform4f(sp.color,...disc.item.color,opacity);
-   gl.uniform1f(sp.size,disc.item.portal?2.7:2.2);
+   gl.uniform1f(sp.size,disc.item.portal?3.0:2.5);
    gl.uniform1f(sp.fixed,1);
    gl.uniform1f(sp.background,1);
    gl.drawArrays(gl.POINTS,0,disc.count);
@@ -577,8 +577,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.useProgram(sp.p);
   gl.bindBuffer(gl.ARRAY_BUFFER,stars.buffer);
   gl.enableVertexAttribArray(sp.pos);gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
-  gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.68,.78,.96,.62);
-  gl.uniform1f(sp.size,2.1);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
+  gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.80,.87,1.0,.82);
+  gl.uniform1f(sp.size,2.6);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
   // A focused system dissolves its abstract galaxy dust into catalog tokens.
   for(const disc of stellarDiscs){
@@ -590,9 +590,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=(item.portal?.41:.27)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
-   point(systemPosition(item,frame,reducedMotion),item.radius*9000,item.color,intensity,vp);
-   point(systemPosition(item,frame,reducedMotion),item.radius*3600,item.color,intensity*.67,vp);
+   const intensity=(item.portal?.56:.36)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
+   point(systemPosition(item,frame,reducedMotion),item.radius*10500,item.color,intensity*1.30,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*4200,item.color,intensity*.93,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Galaxy rings fade into real catalog-listed planet orbits on focus.
@@ -602,11 +602,11 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    const center=systemPosition(item,frame,reducedMotion);
    if(item.portal){
     const t=reducedMotion?0:frame*.07;
-    body(gpu.torus,center,item.radius*1.90,[.98,.76,.40],2,frame,
+    body(gpu.torus,center,item.radius*1.90,[1.0,.79,.43],2,frame,
       rotation(.88,.12+t,.20),eye,vp);
-    body(gpu.torus,center,item.radius*2.32,[.88,.57,.25],2,frame,
+    body(gpu.torus,center,item.radius*2.32,[.94,.66,.29],2,frame,
       rotation(1.30,.42-t*.53,-.36),eye,vp);
-    body(gpu.torus,center,item.radius*1.55,[1,.88,.62],2,frame,
+    body(gpu.torus,center,item.radius*1.55,[1.0,.90,.71],2,frame,
       rotation(.54,.23+t*.47,-.26),eye,vp);
    }else{
     body(gpu.torus,center,item.radius*1.84,item.color.map(c=>c*.85),2,frame,
@@ -623,7 +623,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
    gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
-   line(link.geometry,link.active?[.46,.80,.92]:[.46,.65,.83],(link.active?.7:.25)*(1-focusBlend*.93),vp);
+   line(link.geometry,link.active?[.58,.85,1.0]:[.60,.72,.91],(link.active?.80:.35)*(1-focusBlend*.93),vp);
   }
   if(focusBlend>.72)for(const ring of orbitPaths){
    if(!ring.planet||ring.planet.system.system.key!==selectedKey)continue;
