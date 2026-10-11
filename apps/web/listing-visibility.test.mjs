@@ -1,14 +1,49 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {isPublicAsset,publicDirectoryCatalog,listingStatus} from "./listing-visibility.js";
-const wrap=(status)=>({listing:{schemaVersion:1,kind:"xita-asset-listing",asset:"ABC",status}});
-test("accepted assets are direct-link only and never searchable/listed",()=>{
- const catalog={assets:{ABC:wrap("accepted"),XGR:{listing:{kind:"xita-asset-listing",asset:"XGR",status:"public"}}}};
- const publicAssets=publicDirectoryCatalog(catalog);
- assert.deepEqual(Object.keys(publicAssets.assets),["XGR"]);
- assert.equal(listingStatus(catalog.assets.ABC),"accepted");
+import {isDeployedAsset,isPublicAsset,publicDirectoryCatalog,listingStatus} from "./listing-visibility.js";
+import {deployedFixture} from "./deployed-test-fixture.mjs";
+const asset=()=>deployedFixture("ABC");
+const view=(status,assetId=asset().metadata.assetId)=>({schemaVersion:1,kind:"xita-visibility-v1",
+ assets:{ABC:{status,assetId}}});
+test("prospect has no token page and no public listing",()=>{
+ const a=asset();a.deployment.present=false;
+ assert.equal(listingStatus(a),"prospect");
+ assert.equal(isDeployedAsset(a),false);
+ assert.equal(isPublicAsset("ABC",a,view("public")),false);
 });
-test("missing and mismatched manifest cannot publish a token",()=>{
- assert.equal(isPublicAsset("ABC",{listing:{asset:"XYZ",kind:"xita-asset-listing",status:"public"}}),false);
- assert.equal(isPublicAsset("ABC",{}),false);
+test("all router and route receipts are required for deployed token",()=>{
+ const a=asset();assert.equal(isDeployedAsset(a),true);
+ assert.equal(listingStatus(a),"unknown");
+ const partial=structuredClone(a);partial.deployment.routeDeployments[0].components.feeVault=null;
+ assert.equal(isDeployedAsset(partial),false);
+ const absent=structuredClone(a);absent.deployment.representations.pop();
+ assert.equal(isDeployedAsset(absent),false);
+ const unrelated=structuredClone(a);
+ unrelated.deployment.routeDeployments[0].components.gateway.receiptPath="outside/repo.json";
+ assert.equal(isDeployedAsset(unrelated),false);
+});
+test("multiple documented route instances do not invalidate an otherwise complete direction",()=>{
+ const a=asset();
+ const extra=structuredClone(a.deployment.routeDeployments[0]);
+ extra.routeId="0x"+"9".repeat(64);
+ extra.components={gateway:null,feeVault:null};
+ a.deployment.routeDeployments.push(extra);
+ assert.equal(isDeployedAsset(a),true);
+ a.deployment.routeDeployments[0].components={gateway:null,feeVault:null};
+ assert.equal(isDeployedAsset(a),false);
+});
+test("derived accepted and public visibility are reversible without touching GitHub",()=>{
+ const a=asset(),catalog={assets:{ABC:a}};
+ assert.equal(listingStatus(a,view("accepted").assets.ABC),"accepted");
+ assert.deepEqual(Object.keys(publicDirectoryCatalog(catalog,view("accepted")).assets),[]);
+ assert.equal(listingStatus(a,view("public").assets.ABC),"public");
+ assert.deepEqual(Object.keys(publicDirectoryCatalog(catalog,view("public")).assets),["ABC"]);
+ assert.deepEqual(Object.keys(publicDirectoryCatalog(catalog,view("accepted")).assets),[]);
+ assert.deepEqual(Object.keys(publicDirectoryCatalog(catalog,view("public")).assets),["ABC"]);
+ assert.equal(isPublicAsset("ABC",a,view("public","0x"+"f".repeat(64))),false);
+});
+test("missing or spoofed DB snapshots cannot publish",()=>{
+ assert.equal(isPublicAsset("ABC",asset(),null),false);
+ assert.equal(isPublicAsset("ABC",{},view("public")),false);
+ assert.equal(isPublicAsset("ABC",asset(),{kind:"unknown",assets:{ABC:{status:"public"}}}),false);
 });

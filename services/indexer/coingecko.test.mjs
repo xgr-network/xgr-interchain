@@ -20,5 +20,6 @@ test("XGR CoinGecko id is configured in the canonical generated catalog",async()
  const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
  assert.deepEqual(configuredIds(catalog),["xgr"]);
  assert.equal(catalog.assets.XGR.profile.market.priceSource,"coingecko");
- assert.equal(catalog.assets.XGR.listing.status,"public");
+ assert.equal(Object.hasOwn(catalog.assets.XGR,"listing"),false);
+ assert.equal(catalog.publication.minimumLockedUsd,null);
 });

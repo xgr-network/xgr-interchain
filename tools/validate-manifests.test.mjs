@@ -46,4 +46,5 @@ test("rejects missing token profile logo",()=>{const c=copy();c.assets.XGR.profi
 test("rejects unsafe public profile URL",()=>{const c=copy();c.assets.XGR.profile.links.website="javascript:alert(1)";assert.ok(validateCatalog(c).some(e=>e.includes("profile links")))});
 test("rejects mismatched token profile",()=>{const c=copy();c.assets.XGR.profile.asset="OTHER";assert.ok(validateCatalog(c).some(e=>e.includes("public token profile")))});
 
-test("reject public listing without GitHub-pinned transfer proof",()=>{const c=copy();c.assets.XGR.listing={schemaVersion:1,kind:"xita-asset-listing",asset:"XGR",status:"public",basis:"verified-transfer",publicProof:null};assert.ok(validateCatalog(c).some(x=>x.includes("publication evidence")))});
+test("legacy manual listing controls are rejected",()=>{const c=copy();c.assets.XGR.listing={status:"public"};assert.ok(validateCatalog(c).some(x=>x.includes("legacy listing state forbidden")))});
+test("no public threshold is hardcoded in configuration",()=>{const c=copy();assert.equal(c.publication.minimumLockedUsd,null);c.publication.minimumLockedUsd=-1;assert.ok(validateCatalog(c).some(x=>x.includes("invalid publication policy")))});

@@ -135,10 +135,9 @@ export function buildManifestBundle(raw,catalog){
   protocol:"XITA-v3.1.5",routingHub:"xgrchain",routes};
  const deployment={schemaVersion:3,kind:"asset-deployment",network:"mainnet",asset:key,assetId,
   sourceManifest:base+"/asset.json",receiptPaths:[],representations:[],routeDeployments:[],present:false};
- const listing={schemaVersion:1,kind:"xita-asset-listing",asset:key,status:"accepted",basis:"review-merged",publicProof:null};
  const proposedCatalog={
-  chains:catalog.chains,infrastructure:catalog.infrastructure,
-  assets:{...catalog.assets,[key]:{metadata,profile,listing,routes:routeConfig,deployment}}
+  chains:catalog.chains,infrastructure:catalog.infrastructure,publication:catalog.publication,
+  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,deployment}}
  };
  const errors=validateCatalog(proposedCatalog);
  if(errors.length)note("Generated manifest failed validation: "+errors.slice(0,4).join("; "));
@@ -147,7 +146,6 @@ export function buildManifestBundle(raw,catalog){
   [base+"/asset.json"]:json(metadata),
   [base+"/metadata.json"]:json(profile),
   [base+"/routes.json"]:json(routeConfig),
-  [base+"/listing.json"]:json(listing),
   ["apps/web/catalog.json"]:json({schemaVersion:1,...proposedCatalog})
  };
  return {key,slug:a.slug,assetId,files,

@@ -1,38 +1,6 @@
-# XITA GitHub-controlled listing state machine
+# Retired: GitHub listing state
 
-GitHub is the source of truth for **directory publication**. No RPC indexer,
-database, UI job, CoinGecko response or app operator may change listing state
-outside a reviewed GitHub state transition.
+This document is superseded. No `listing.json`, manual publication PR
+or mandatory CoinGecko listing remains part of the XITA state machine.
 
-| Phase | Authoritative evidence | Token detail | Tokens/Search/Universe |
-|---|---|---|---|
-| pending_review | Open Alliance onboarding PR | No public page | Hidden |
-| rejected | Closed, unmerged onboarding PR | No public page | Hidden |
-| accepted | Merged onboarding PR + config/assets/<shard>/<SYMBOL>/listing.json | Direct-link | Hidden |
-| public | Approved GitHub state commit, validated finalized transfer and pricing proof | Direct-link | Visible |
-
-XGR is a protocol-hub exception, pinned public in versioned config.
-
-**Submission:** A valid onboarding PR adds the asset config, route intentions,
-listing.json with status=accepted, but NO unverified deployment index, and
-generated catalog.json. PR authors do not get approval to deploy contracts;
-deployment is the separate wallet-controlled permissionless service.
-
-**Publication:** Once at least one directed route has valid deployment
-receipts, on-chain security activation and a finalized successful transfer
-to its destination, and an independently fetched valid CoinGecko mapping, a
-future verification worker can propose a GitHub PR changing ONLY listing
-state and evidence. It cannot publish directly by writing a database row.
-CI must verify the signed finality/receipt evidence, journey correlation,
-route activation and proof chain IDs, and the new main commit must
-atomically carry public status. Search and Universe must read this status.
-
-**Current fail-closed boundary:** The receipt verifier and authenticated
-GitHub transition bot do not yet exist. The manifest validator therefore
-rejects *all new external public status values*; only accepted remains
-permitted until those gates are built. A hex-looking transaction hash is
-not a sufficient proof. Do not relax this without end-to-end tests.
-
-**Practical distinction:** GitHub is canonical for publication, but the
-blockchain is canonical for factual transfers and security activation.
-A successful chain event alone does not modify the directory state.
+See [XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md).

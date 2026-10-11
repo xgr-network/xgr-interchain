@@ -3,6 +3,8 @@
 Start: `node services/indexer/server.mjs` from the repository root, listening at `127.0.0.1:4088` by default. This service is NOT automatically started by `./manage.sh update`; enable it independently when ready.
 
 - `GET /health`: adapter health, not proof that indexer data is populated.
+- `GET /api/xeta/v1/visibility`: read-only derived per-asset listing eligibility.
+- `/metrics/toplist` embeds the same visibility; per-system rankings consume it.
 - `GET /api/xeta/v1/metrics/toplist`: catalog-derived asset inventory, verified metrics when backed by the trusted evidence file, null otherwise.
 - No HTTP ingestion, signing, wallet transactions, browser-provided metrics, or RPC write access.
 
@@ -38,3 +40,14 @@ event/escrow evidence collector is not implemented, so TVL/movement must stay
 unavailable. Do not feed manually prepared JSON as an attestation. The adapter can
 safely deliver CoinGecko prices where configured. Main's XGR market metadata
 currently uses Explorer, not CoinGecko, so its market cap also remains unknown.
+
+## PostgreSQL publication read model
+The schema in `services/indexer/sql/001_verified_asset_liquidity.sql`
+requires separate provisioning. Use a SELECT-only role configured through
+`XITA_INDEXER_DATABASE_URL`; no credentials or write APIs in this service.
+A separately audited finalized-chain observer must write only genuinely
+verified collateral snapshots and independently reliable USD valuations.
+This reader is NOT that verifier. If absent or untrusted, eligibility is
+unknown, never zero. The minimum in `config/publication.json` remains null
+until a later decision; **no public token listings are enabled yet**.
+See [publication policy](../../docs/XITA_PUBLICATION_POLICY.md).

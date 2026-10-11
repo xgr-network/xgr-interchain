@@ -234,7 +234,7 @@ function northstarCards(model,metrics=null){
 function allianceIntro(){
  return '<section class="ux-alliance-intro" id="about-xita"><div class="ux-alliance-heading"><span class="ux-kicker">THE ALLIANCE BEHIND THE UNIVERSE</span>'+
   '<h2>XGR Interchain <em>Token Alliance.</em></h2>'+
-  '<p>Bring your token into new blockchain ecosystems with XITA. Apply to the Alliance, get your project reviewed and let XGR sponsor the complete deployment of approved interchain routes. After the first verified real transfer, your token is published on XITA for holders to discover.</p>'+
+  '<p>Bring your token into new blockchain ecosystems with XITA. Apply to the Alliance, get your project reviewed and let XGR sponsor the complete deployment of approved interchain routes. Once independently verified net locked value meets the configured threshold, the token is publicly discoverable while its collateral remains eligible.</p>'+
   '<div class="ux-alliance-pillars"><span>XGRChain v3.x hub</span><span>PoS validator security</span><span>XGR-sponsored route deployment</span><span>Interchain Token Alliance</span></div></div>'+
   '<div class="ux-alliance-audiences">'+
   '<article class="ux-alliance-audience ux-alliance-audience-holders">'+
@@ -249,11 +249,11 @@ function allianceIntro(){
   '<article class="ux-alliance-audience ux-alliance-audience-projects">'+
   '<div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span>'+
   '<h3>Bring your token to new chains.</h3>'+
-  '<p>Reach new communities without bearing the contract deployment costs for an approved route. Apply to the Alliance, pass the XGR project review and have XGR fund and arrange the deployment. Once the first real transfer is confirmed, your token receives its public XITA listing.</p>'+
+  '<p>Reach new communities without bearing the contract deployment costs for an approved route. Apply to the Alliance, pass the XGR project review and have XGR fund and arrange the deployment. Once verified net locked collateral reaches the configured threshold, the token appears publicly until the value falls below it.</p>'+
   '<div class="ux-alliance-steps" aria-label="How projects participate in XITA">'+
   '<span><small>01</small>Apply and pass project review</span>'+
   '<span><small>02</small>XGR sponsors route deployment</span>'+
-  '<span><small>03</small>First real transfer → XITA listing</span></div>'+
+  '<span><small>03</small>Qualifying locked value → public listing</span></div>'+
   '<a data-nav href="/join">Bring Your Token <span aria-hidden="true">↗</span></a></article>'+
   '</div></section>';
 }
@@ -317,18 +317,18 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed"){
 }
 const faqGroups=[
  {label:"01 · THE OPPORTUNITY",title:"Why XITA?",items:[
-  ["What is XITA?","The XGR Interchain Token Alliance helps token projects expand to additional blockchain ecosystems and reach new communities. Projects apply for admission; after a positive XGR review, XGR sponsors and arranges the approved route deployment. A token is publicly listed on XITA after its first verified real transfer through that route."],
+  ["What is XITA?","The XGR Interchain Token Alliance helps token projects expand to additional blockchain ecosystems and reach new communities. Projects apply for admission; after a positive XGR review, XGR sponsors and arranges the approved route deployment. A token is publicly discoverable only while independently verified net locked value meets the configured USD-equivalent threshold."],
   ["Why bring a token to more blockchains?","Different chains have different communities and applications. Connecting your token to additional networks can make it accessible to more people, without replacing its original contract. New users, liquidity and demand are opportunities, not guarantees."],
   ["What can token holders do?","Explore publicly listed tokens, discover their supported networks and inspect verified transfer routes. Actual bridging is available only when the required contracts and route checks are complete."],
   ["What makes XITA different?","XITA offers more than an application directory or a bridge interface. Accepted projects receive XGR-sponsored deployment of their approved interchain routes. The public token listing follows a successful first real transfer, so projects become visible after demonstrating a working connection."]
  ]},
  {label:"02 · TOKEN PROJECTS",title:"Join the Token Alliance",items:[
-  ["Why should my project join XITA?","Reach additional blockchain communities while XGR covers the complete smart-contract deployment costs for your approved interchain route. The Alliance offers a clear onboarding and review process. After the first confirmed real transfer, your token is published on the XITA website."],
+  ["Why should my project join XITA?","Reach additional blockchain communities while XGR covers the complete smart-contract deployment costs for your approved interchain route. The Alliance offers a clear onboarding and review process. Public discovery is derived automatically from current verified net locked collateral and the configured global threshold."],
   ["How does the application process work?","Start with Bring Your Token and provide your project information, original token contract and desired networks. The application must then be submitted for XGR's review. A prepared draft or successful form validation is not yet an approved or submitted application."],
   ["What happens after my project is approved?","XGR arranges and fully sponsors the deployment of the accepted route, including its required smart contracts. The team then completes the necessary contract and route verification before enabling live transfers. There is no public token listing merely for passing review."],
-  ["When does my token appear on XITA?","After the first genuine, successfully completed transfer on the approved route has been verified, XGR publishes the token on the XITA website. An application, positive review or contract deployment on its own is not enough."],
+  ["When does my token appear on XITA?","Once net locked collateral is independently verified at or above the configured threshold, the token enters public discovery. Unlocking below the threshold hides it again. An application, positive review or contract deployment on its own is not enough."],
   ["Is the route deployment free for accepted projects?","Yes. XGR sponsors the complete deployment of approved routes under the XITA Alliance program. This does not mean that later end-user transfers are gas-free: normal blockchain gas and applicable validator fees are separate."],
-  ["Does XITA provide DEX liquidity or exchange listings?","No. XGR sponsors the approved route deployment and publishes the token on XITA after its first verified transfer. That is not a centralized-exchange listing, automatic DEX liquidity, market making or guaranteed trading volume."],
+  ["Does XITA provide DEX liquidity or exchange listings?","No. XGR sponsors the approved route deployment and publishes the token on XITA while its verified locked value meets the public threshold. That is not a centralized-exchange listing, automatic DEX liquidity, market making or guaranteed trading volume."],
   ["Can my project expand to more networks later?","You can request additional supported networks through the Alliance review process. Accepted additional routes follow the same XGR-sponsored deployment, verification and real-transfer milestones."]
  ]},
  {label:"03 · TOKEN HOLDERS",title:"Explore and Move Tokens",items:[
@@ -341,7 +341,7 @@ const faqGroups=[
  {label:"04 · TRUST & TRANSPARENCY",title:"Security and Network Facts",items:[
   ["Who secures interchain transfers?","XGRChain's Proof-of-Stake validators secure cross-chain message verification. The XGRChain v3.x network and its interchain smart contracts provide the underlying infrastructure."],
   ["Does a configured route mean I can bridge?","No. A configured route is not automatically available. The contract deployments and counterpart registrations must be independently verified before the portal enables real transfers."],
-  ["Why is a project not immediately listed after approval?","XITA distinguishes an accepted application from a functioning live integration. XGR first deploys the approved route; only after a successful real transfer is confirmed does the project receive its public XITA token listing."],
+  ["Why is a project not immediately listed after approval?","XITA distinguishes an accepted application from a functioning live integration. XGR first deploys the approved route; only while independently verified net locked value meets the global threshold does the project appear publicly."],
   ["What are Locked TVL and Moved via XGR?","Locked TVL is verified collateral in bridge escrows. Moved via XGR measures completed interchain journey volume without counting two-hop transfers twice. Missing evidence is not displayed as zero."],
   ["Is market capitalization the same as bridge liquidity?","No. Market capitalization comes from sourced market data and reflects the asset's broader value. It is not the amount locked in XITA and is not evidence that a bridge route is active."]
  ]}

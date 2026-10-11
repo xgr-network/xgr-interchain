@@ -5,13 +5,14 @@ website catalog and onboarding. Deployment files record only finalized,
 independently verified on-chain receipts. The chain remains authoritative for
 live code, registry state, fees and transfer results.
 
-## Config (intent, identity and listing only)
+## Config (reviewed intent and identity, no manual listing)
 
 - config/chains/<chain>/chain.json — EVM chain identity, RPC and capabilities.
 - config/chains/<chain>/bootstrap.json — initial validator and verifier configuration.
 - config/validators/initial.json — initial validator identities.
 - config/assets/<assetId[2..4]>/<SYMBOL>/asset.json — canonical asset identity.
-- Same asset folder: metadata.json, listing.json, routes.json.
+- Same asset folder: metadata.json and routes.json (three files total).
+- config/publication.json — optional global USD-equivalent publication threshold, currently null.
 - No per-asset mainnet.json and no token deployment addresses in config.
 
 The two-character lowercase shard comes from the first byte of the 32-byte
@@ -48,6 +49,7 @@ Other contracts/chains/assets have no deployment indexes.
 - services/admin/main-gate.mjs and asset-state.mjs — same canonical inventory.
 - services/admin/deployment-ledger.mjs — atomic Git commit with verified receipt,
   its proper chain/asset/route index and regenerated catalog.
+- services/indexer/publication.mjs — read-only database-backed derived visibility.
 - services/onboarding/manifests.mjs — configuration-only proposals. Onboarding
   NEVER creates deployment records or grants route permission.
 
@@ -60,3 +62,6 @@ Legacy Hyperlane on-chain addresses are deliberately excluded from this new
 deployment inventory. Solidity transport dependencies are not automatically
 removed by deleting obsolete address manifests; they require their own
 reviewed build/deployment evidence before use.
+
+See [XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md) for prospect,
+deployed and reversible public visibility rules. No status lives in GitHub.

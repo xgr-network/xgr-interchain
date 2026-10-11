@@ -7,7 +7,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/`: dashboard, configured inventories and journey planner
 - `/universe`: interactive chain systems; choose a system, then open its token
 - `/markets`: searchable token directory
-- `/token/<slug>`: independent token detail page and its own dedicated bridge panel
+- `/token/<slug>`: requires verified complete deployments, with dedicated bridge panel
 - Route inventory appears on individual token pages; the standalone public Routes page is retired.
 - `/join`: offline token application draft, JSON export only
 
@@ -51,3 +51,11 @@ node --check apps/web/wallet-core.js
 The static site requires SPA fallback. Always review routes and wallet behavior
 in a real browser before deploying. No wallet private keys or secret seeds
 are requested.
+
+## Derived visibility
+No listing.json exists. Config, deployment receipts and the read-only
+PostgreSQL-backed indexer jointly determine eligibility. Tokens, public
+search, Universe and rankings show only explicitly public assets. The
+minimum locked USD/USDC-equivalent threshold is currently unset; stale
+or missing evidence is unknown, not zero. See
+[XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md).

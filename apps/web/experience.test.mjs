@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows} from "./experience.js";
+import {deployedFixture} from "./deployed-test-fixture.mjs";
 
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
@@ -124,16 +125,19 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  assert.match(faq,/href="\/plan-route"/);
 });
 
-test("public ranking only includes independently sourced market caps and no unlisted tokens",()=>{
- const published=(id,slug)=>({profile:{name:id,slug},listing:{kind:"xita-asset-listing",asset:id,status:"public"}});
- const c={assets:{A:published("A","a"),B:published("B","b"),HIDDEN:{
-  profile:{name:"HIDDEN",slug:"hidden"},listing:{kind:"xita-asset-listing",asset:"HIDDEN",status:"accepted"}}}};
+test("public ranking requires DB-qualified full deployments and sourced caps",()=>{
+ const c={assets:{A:deployedFixture("A"),B:deployedFixture("B"),HIDDEN:deployedFixture("HIDDEN")}};
  const row=(id,cap)=>({assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
   marketCapUsd:cap,priceUsd:1,circulating:cap},custody:{status:"unavailable"},movement:{status:"unavailable"}});
- const snapshot={kind:"xita-asset-metrics-v1",schemaVersion:1,assets:{A:row("A",100),B:row("B",200),HIDDEN:row("HIDDEN",1000000)}};
+ const snapshot={kind:"xita-asset-metrics-v1",schemaVersion:1,assets:{A:row("A",100),B:row("B",200),HIDDEN:row("HIDDEN",1000000)},
+ visibility:{kind:"xita-visibility-v1",schemaVersion:1,assets:{
+  A:{status:"public",assetId:c.assets.A.metadata.assetId},
+  B:{status:"public",assetId:c.assets.B.metadata.assetId},
+  HIDDEN:{status:"accepted",assetId:c.assets.HIDDEN.metadata.assetId}}}};
  assert.deepEqual(dashboardMarketRows(c,snapshot).map(r=>r.id),["B","A"]);
  assert.deepEqual(dashboardMarketRows(c,null),[]);
 });
+
 test("dashboard never treats partial TVL as verified and planner stays on its own page",()=>{
  const model=buildExperienceModel(catalog);
  const data={schemaVersion:1,kind:"xita-asset-metrics-v1",totals:null,assets:{}};
@@ -158,16 +162,16 @@ test("Northstar hero explains holders and projects with matching actions",()=>{
  assert.match(html,/FOR TOKEN HOLDERS/);
  assert.match(html,/FOR TOKEN PROJECTS/);
  assert.match(html,/Check route availability/);
- assert.match(html,/first real transfer is confirmed/);
+ assert.match(html,/configured threshold/);
  assert.doesNotMatch(html,/id="ux-journey-planner"/);
 });
 
-test("partner program publicly describes review, sponsorship and first-transfer listing",()=>{
+test("partner program describes review, sponsorship and threshold-based listing",()=>{
  const faq=renderFAQ(),home=renderDashboard(buildExperienceModel(catalog));
  for(const content of [faq,home]){
   assert.match(content,/review/i);
   assert.match(content,/sponsor/i);
-  assert.match(content,/first (verified )?real transfer/i);
+  assert.match(content,/threshold/i);
  }
  assert.doesNotMatch(faq,/discretionary Alliance approval|No central Alliance vote|permissionless XITA Factory/i);
 });

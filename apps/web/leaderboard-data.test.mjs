@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {verifiedMetrics,rankAssets,buildLeaderboardRows,formatUsd} from "./leaderboard-data.js";
+import {deployedFixture} from "./deployed-test-fixture.mjs";
 const proof={
  schemaVersion:1,kind:"xita-asset-metrics-v1",
  assets:{XGR:{
@@ -39,9 +40,14 @@ test("unknown always last for either sort direction",()=>{
  assert.deepEqual(rankAssets(rows,"lockedUsd","desc").map(x=>x.name),["C","B","A"]);
  assert.deepEqual(rankAssets(rows,"lockedUsd","asc").map(x=>x.name),["B","C","A"]);
 });
-test("all listed tokens appear without metrics even if indexer is offline",()=>{
- const catalog={assets:{XGR:{profile:{name:"XGR"},listing:{kind:"xita-asset-listing",asset:"XGR",status:"public"},routes:{routes:[]}},ABC:{profile:{name:"ABC"},listing:{kind:"xita-asset-listing",asset:"ABC",status:"public"},routes:{routes:[]}}}};
- const rows=buildLeaderboardRows(catalog,null);
- assert.equal(rows.length,2);assert.ok(rows.every(x=>x.lockedUsd===null&&x.movedUsd===null&&x.marketCapUsd===null));
+test("only DB-qualified deployed tokens appear; no fabricated metrics",()=>{
+ const catalog={assets:{XGR:deployedFixture("XGR","xgrchain"),ABC:deployedFixture("ABC")}};
+ const visibility={schemaVersion:1,kind:"xita-visibility-v1",assets:{
+  XGR:{status:"public",assetId:catalog.assets.XGR.metadata.assetId},
+  ABC:{status:"accepted",assetId:catalog.assets.ABC.metadata.assetId}}};
+ const rows=buildLeaderboardRows(catalog,{visibility});
+ assert.equal(rows.length,1);assert.equal(rows[0].id,"XGR");
+ assert.equal(rows[0].lockedUsd,null);assert.equal(rows[0].marketCapUsd,null);
+ assert.deepEqual(buildLeaderboardRows(catalog,null),[]);
  assert.equal(formatUsd(null),"—");
 });

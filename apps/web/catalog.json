@@ -174,14 +174,6 @@
           "proof": null
         }
       },
-      "listing": {
-        "schemaVersion": 1,
-        "kind": "xita-asset-listing",
-        "asset": "XGR",
-        "status": "public",
-        "basis": "protocol-hub",
-        "publicProof": null
-      },
       "routes": {
         "schemaVersion": 1,
         "kind": "asset-routes",
@@ -301,5 +293,11 @@
       },
       "present": true
     }
+  },
+  "publication": {
+    "schemaVersion": 1,
+    "kind": "xita-publication-policy",
+    "minimumLockedUsd": null,
+    "maxEvidenceAgeSeconds": 900
   }
 }
