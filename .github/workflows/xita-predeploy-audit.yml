@@ -21,7 +21,7 @@ jobs:
           mkdir -p artifacts
           forge test -vv | tee artifacts/baseline.txt
           python3 - <<'PY' | tee artifacts/sizes.json
-          import glob,json,os
+          import json
           names=['XGRInterchainBLSVerifier','XGRInterchainValidatorRegistryV2','XGRInterchainValidatorRegistryV3','XGRILNInterchainISMV2','XETATokenFactoryV315','XGRILNRegistryV315','XETAGuardedNativeWarpRouter','XETAGuardedSyntheticWarpRouter','XETAGuardedCollateralWarpRouterV315','ILNGateway','XGRILNFeeVault']
           out=[]
           for n in names:
@@ -30,15 +30,15 @@ jobs:
               out.append(dict(contract=n,creation_bytes=len(c)//2,runtime_bytes=len(r)//2,code_deposit_gas=200*(len(r)//2),runtime_under_EIP170=len(r)//2<=24576))
           print(json.dumps(out,indent=2))
           PY
-          sed -n '1,280p' vendor/node_modules/@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol > artifacts/upstream-token-router.sol
+          cp vendor/node_modules/@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol artifacts/upstream-token-router.sol
           cp vendor/node_modules/@hyperlane-xyz/core/contracts/token/libs/TokenCollateral.sol artifacts/upstream-collateral.sol
       - name: Additional security and liveness invariants (failures are findings)
         id: crypto
         continue-on-error: true
         run: |
           set -euo pipefail
-          cp audit/XITAPredeployReview.t.sol test/XITAPredeployReview.t.sol
-          forge test --match-path test/XITAPredeployReview.t.sol -vv | tee artifacts/review-tests.txt
+          cp audit/*.t.sol test/
+          forge test --match-contract 'XITAPredeploy.*|XITAAssetIsolationAudit' -vv | tee artifacts/review-tests.txt
       - name: Cross-chain deployment planner invariant
         id: planner
         continue-on-error: true
@@ -70,4 +70,10 @@ jobs:
         run: |
           set -euo pipefail
           git rev-parse HEAD
-          go test -p 2 -timeout 12m ./consensus/ibft/interchain ./interchain/evm ./interchain/runtime
+          go test -p 2 -timeout 12m ./consensus/ibft/interchain ./interchain/evm ./interchain/runtime ./interchain/verification ./crypto
+          echo '=== ROUTE-ID HELPER CALL SITES ==='
+          git grep -n XITADirectedRouteID -- '*.go' || true
+          echo '=== PoP PRE-REGISTRATION CALL SITES ==='
+          git grep -n 'provePossession' -- '*.go' || true
+          echo '=== CODE LIMITS ==='
+          git grep -nE 'maxCodeSize|MaxCodeSize|MaxInitCodeSize|24576' -- state chain || true
