@@ -75,7 +75,7 @@ function projectionOf(position,viewProjection,width,height){
  return {x:(x/w+1)*width/2,y:(1-y/w)*height/2,z:z/w,depth:w,
   visible:Math.abs(x/w)<1.3&&Math.abs(y/w)<1.3&&z/w>-1.2&&z/w<1.2};
 }
-function makeSphere(stacks=30,slices=46){
+function makeSphere(stacks=24,slices=36){
  const vertices=[],normals=[],indices=[];
  for(let y=0;y<=stacks;y++){
   const phi=y*Math.PI/stacks;
@@ -660,8 +660,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
       const satellite=add(center,rotate([Math.cos(angle)*radial,
         Math.sin(angle*1.13)*item.radius*.43,Math.sin(angle)*radial*.72],
         item.portal?.32:item.orbital.inclination,0,.12));
-      body(gpu.sphere,satellite,item.radius*(moon===0?.17:.10),
-       item.color.map(c=>Math.min(1,c*.66+.26)),0,frame,IDENTITY,eye,vp);
+      point(satellite,item.radius*(moon===0?750:520),
+       item.color.map(c=>Math.min(1,c*.66+.26)),.76,vp);
      }
     }
    }else{
