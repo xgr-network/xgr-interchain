@@ -154,3 +154,15 @@ test("completed-record cleanup preserves all unresolved router and route transac
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries),[route.id]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("cancel only a matching prepared draft, not a submitted tx",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-cancel-"));
+ try{
+  const st=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const e=st.prepare(input);
+  assert.throws(()=>st.cancelPrepared(e.id,"wrong"),/Only the exact/);
+  assert.deepEqual(st.cancelPrepared(e.id,e.createdAt),{discarded:true});
+  st.prepare(input);st.attachHash(e.id,hash);
+  assert.throws(()=>st.cancelPrepared(e.id,st.read().entries[e.id].createdAt),/Only the exact/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

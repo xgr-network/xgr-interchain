@@ -14,6 +14,7 @@ import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {trustedBuild} from "./trusted-artifacts.mjs";
 import {reconcileDeployedContract} from "./chain-reconcile.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
+import {verifyPrepared} from "./prepared-override.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
@@ -228,8 +229,22 @@ export function createChainOperator({
   return {stage:"documented",receiptPath:path,commit:published.commit,
    address:result.contractAddress,txHash:entry.txHash};
  }
+ async function cancelPrepared({id,createdAt}){
+  const all=approvedWorkInventory(root);
+  const j=journals(all.chains);
+  const e=j.read().entries[id];
+  if(!e||e.createdAt!==createdAt||e.stage!=="prepared")
+   throw Error("Only exact prepared draft can be cancelled");
+  const chain=all.chains.find(c=>c.chainId===e.chainId);
+  if(!chain)throw Error("Unknown chain");
+  const inf=infrastructureInventory(root,[chain])[0];
+  if(inf.components.some(c=>c.key===id.split(":")[1]&&c.status==="documented"))
+   throw Error("Contract already documented in GitHub");
+  await verifyPrepared({entry:e,chain,rpc});
+  return j.cancelPrepared(id,createdAt);
+ }
  const status=()=>{
   const all=inventory();return journals(all.chains).read();
  };
- return {preview,prepare,hash,reconcile,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,status};
 }

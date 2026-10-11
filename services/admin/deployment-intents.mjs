@@ -110,6 +110,15 @@ export function deploymentIntents({directory,chains}){
     return entry;
    });
   },
+  cancelPrepared(id,createdAt){
+   if(!ID.test(id||"")||!createdAt)throw Error("Invalid draft identity");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.stage!=="prepared"||e.txHash!=null||e.createdAt!==createdAt)
+     throw Error("Only the exact unsent draft can be discarded");
+    delete s.entries[id];return {discarded:true};
+   });
+  },
   attachHash(id,hash){
    if(!ID.test(id||"")||!TX.test(hash||""))throw Error("Invalid signed wallet transaction hash");
    return mutate(s=>{

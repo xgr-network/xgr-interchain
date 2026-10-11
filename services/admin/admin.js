@@ -162,6 +162,7 @@ async function openAssetModal(taskId){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
+ el("modal-cancel").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
@@ -174,6 +175,7 @@ async function openAssetModal(taskId){
   if(journal[id]){
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
+   el("modal-cancel").hidden=journal[id].stage!=="prepared";
    presentModalStatus("Transaktion vorhanden ("+journal[id].stage+"). Zuerst wiederherstellen; kein erneutes Senden.","warn");
    return;
   }
@@ -252,6 +254,7 @@ async function openContractModal(chainName,component){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
+ el("modal-cancel").hidden=true;
  el("modal-parameters").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
@@ -311,6 +314,7 @@ async function openContractModal(chainName,component){
   if(existing){
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
+   el("modal-cancel").hidden=existing.stage!=="prepared";
    presentModalStatus("Unabgeschlossene Wallet-Transaktion ("+existing.stage+
     "). Zuerst wiederherstellen – niemals erneut senden.","warn");
    return;
@@ -383,6 +387,25 @@ async function executeModalDeployment(){
   await loadMainWorkqueue();
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
   "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
+}
+async function discardPreparedModal(){
+ const j=(await get("/admin/api/chain-deploy/status")).intents.entries;
+ let id,asset=selectedAssetTask,core=selectedDeployment;
+ if(core)id=core.chainName+":"+core.component;
+ else if(asset){
+  const role=workqueue.inventory.assets[asset.asset].representations[asset.chain].role;
+  const comp=asset.kind==="gateway"?"gateway":role==="native"?"nativeRouter":role==="synthetic"?"syntheticRouter":"collateralRouter";
+  id=asset.chain+":"+asset.asset+":"+comp+":"+(asset.kind==="gateway"?asset.id.slice(asset.asset.length+1).replace(/:register$/,""):"none");
+ }
+ const entry=j[id];
+ if(!entry||entry.stage!=="prepared")throw Error("Kein ungesendeter Entwurf");
+ if(!window.confirm("Ungesendeten Wallet-Entwurf verwerfen?"))return;
+ await postJSON(asset?"/admin/api/asset-deploy/cancel-prepared":"/admin/api/chain-deploy/cancel-prepared",
+  {id,createdAt:entry.createdAt});
+ el("contract-deploy-dialog").close();
+ await loadMainWorkqueue();
+ if(core)await openContractModal(core.chainName,core.component);
+ else await openAssetModal(asset.id);
 }
 async function recoverModalDeployment(){
  if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
@@ -488,6 +511,7 @@ el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=nu
 
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
+el("modal-cancel").addEventListener("click",()=>discardPreparedModal().catch(e=>presentModalStatus(e.message,"error")));
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
 
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
