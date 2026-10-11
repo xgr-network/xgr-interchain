@@ -85,7 +85,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","Interchain Dashboard"],["/universe","The XITA"],["/plan-route","Plan a Route"],["/faq","Frequently Asked Questions"],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
+  for(const [path,expected] of [["/","XGR Interchain"],["/universe","The XITA"],["/plan-route","Plan a Route"],["/faq","Frequently Asked Questions"],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
@@ -101,6 +101,9 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
     assert.doesNotMatch(html,/Published directed routes|View all routes/,path+" has redundant route list");
     assert.doesNotMatch(html,/data-cosmos-action="left"/,path+" should not require arrow buttons");
     assert.match(html,/ux-3d-hint/,path+" missing mouse guidance");
+    assert.match(html,/ux-alliance-intro/,path+" missing Alliance explainer");
+    assert.match(html,/ux-dashboard-ranking/,path+" missing sourced token ranking");
+    assert.doesNotMatch(html,/id="ux-journey-planner"|id="ux-origin"/,path+" contains duplicate planner");
 
     assert.match(html,/data-renderer="(webgl|fallback)"/,path+" did not initialize WebGL or graceful fallback");
    }
