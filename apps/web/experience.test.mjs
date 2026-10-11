@@ -101,5 +101,5 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.match(universe,/Explore configured worlds/);
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
  assert.doesNotMatch(home,/XDC/);
- assert.match(home,/Arbitrum|Polygon/);
+ assert.match(home,/Polygon/);
 });
