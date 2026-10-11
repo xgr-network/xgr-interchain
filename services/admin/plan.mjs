@@ -4,6 +4,9 @@ export const SUPPORTED=["xgrchain","base"];
 const SCRIPT={
   verifier:"script/DeployXETA.s.sol:DeployXETAEIP2537Verifier",
   validatorRegistry:"script/DeployXETA.s.sol:DeployXETARegistryV3",
+  nativeRouterDeployer:"contracts/XETANativeRouterDeployer.sol",
+  syntheticRouterDeployer:"contracts/XETASyntheticRouterDeployer.sol",
+  collateralRouterDeployer:"contracts/XETACollateralRouterDeployer.sol",
   sourceRegistry:"script/DeployXETA.s.sol:DeployXETAILNRegistry",
   ism:"script/DeployXETA.s.sol:DeployXETAISM",
   nativeRouter:"script/DeployXETARouters.s.sol:DeployXETANativeAssetRouter",
