@@ -136,6 +136,7 @@ const staticFiles=new Map([
  ["/admin/",["index.html","text/html; charset=utf-8"]],
  ["/admin/admin.js",["admin.js","text/javascript; charset=utf-8"]],
  ["/admin/api-client.mjs",["api-client.mjs","text/javascript; charset=utf-8"]],
+ ["/admin/deployment-poll.mjs",["deployment-poll.mjs","text/javascript; charset=utf-8"]],
  ["/admin/style.css",["style.css","text/css; charset=utf-8"]],
  ["/admin/wallet.js",["wallet.js","text/javascript; charset=utf-8"]]
 ]);
