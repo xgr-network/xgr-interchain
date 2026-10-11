@@ -94,3 +94,23 @@ test("unexpected journal metadata is rejected rather than retained",()=>{
   assert.throws(()=>store.read(),/schema mismatch/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("only fully documented intent can be discarded; record is not archived",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-discarded-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  store.prepare(input);
+  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
+  store.attachHash(input.id,hash);
+  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
+  store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
+  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
+  const path="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  store.document(input.id,path);
+  assert.throws(()=>store.discardDocumented(input.id,"0x"+"f".repeat(64)),/Only the exact verified/);
+  assert.deepEqual(store.discardDocumented(input.id,hash),{discarded:true});
+  assert.deepEqual(store.read(),{version:1,entries:{}});
+  store.prepare(input);
+  assert.equal(store.read().entries[input.id].stage,"prepared");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
