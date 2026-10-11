@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {checkLiveActivation,pendingLiveRouteTasks} from "./route-live.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
-const task={kind:"activation",id:"XGR:xgr_to_base:activate",asset:"XGR",
+const task={kind:"registration",id:"XGR:xgr_to_base:register",asset:"XGR",
  chain:"xgrchain",routeId:"0x"+"a".repeat(64),destinationDomain:8453,
  gateway:addr(7),router:addr(9),blockers:[]};
 const chain={name:"xgrchain",chainId:1643,rpcUrls:["https://xgr.invalid"]};
@@ -23,7 +23,7 @@ test("receipt alone cannot mark route active; live Registry enabled flag is requ
  assert.equal(a.enabled,false);
  const pending=await pendingLiveRouteTasks([task],[chain],[infra],mock(false));
  assert.equal(pending.length,1);
- assert.equal(pending[0].status,"requires-validator-quorum");
+ assert.equal(pending[0].status,"registration-not-active");
  const live=await pendingLiveRouteTasks([task],[chain],[infra],mock(true));
  assert.equal(live.length,0);
 });
@@ -33,5 +33,5 @@ test("malformed route response and wrong source chain fail closed",async()=>{
  await assert.rejects(()=>checkLiveActivation(task,chain,infra,wrong),/chain identity/);
  const pending=await pendingLiveRouteTasks([task],[chain],[infra],wrong);
  assert.equal(pending.length,1);
- assert.equal(pending[0].status,"activation-state-unverified");
+ assert.equal(pending[0].status,"registration-state-unverified");
 });

@@ -144,23 +144,23 @@ async function openAssetModal(taskId){
  selectedDeployment=null;selectedAssetTask=task;assetPreview=null;
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
  el("contract-modal-title").textContent=task.kind==="router"?
-  "Token-Router einmalig bereitstellen":task.kind==="activation"?
-  "BLS-Routenaktivierung":"Gerichtete Route vorbereiten";
+  "Token-Router einmalig bereitstellen":
+  "Gerichtete Route registrieren";
  el("contract-modal-subtitle").textContent=task.asset+" · "+task.chain+
   " · Chain "+chain.chainId;
  el("modal-parameters").hidden=true;
  el("modal-route-context").hidden=false;
  el("modal-route-context").textContent=task.kind==="router"?
   "Dieser Token-Router gehört zum Asset auf dieser Chain und wird für Rückrouten wiederverwendet.":
-  task.kind==="activation"?"Die Gegenroute muss unabhängig verifiziert und mit einem echten Validator-BLS-Quorum bestätigt werden. Die Wallet kann das nicht stellvertretend unterschreiben.":
-  "Das Gateway und sein FeeVault werden gemeinsam erzeugt. Die Route bleibt bis zur BLS-Bestätigung inaktiv.";
+  
+  "Gateway, FeeVault und lokale Router-Bindung werden atomar ohne Validator-Votum registriert.";
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
  el("contract-deploy-dialog").showModal();
- if(task.kind==="activation"){
+ if(false){
   el("modal-deploy").disabled=true;
-  presentModalStatus("BLS-Quorum und unabhängiger Gegenketten-Nachweis fehlen. Noch nicht aktiv.","warn");
+  presentModalStatus("Nicht mehr verwendet","warn");
   return;
  }
  try{
@@ -169,7 +169,7 @@ async function openAssetModal(taskId){
   const component=task.kind==="gateway"?"gateway":
    graph.representations[task.chain].role==="native"?"nativeRouter":
    graph.representations[task.chain].role==="synthetic"?"syntheticRouter":"collateralRouter";
-  const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+  const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:register$/,""):"none";
   const id=task.chain+":"+task.asset+":"+component+":"+routeName;
   if(journal[id]){
    el("modal-deploy").disabled=true;
@@ -212,7 +212,7 @@ async function executeAssetDeployment(){
  presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
  const report=await postJSON("/admin/api/asset-deploy/reconcile",{id:prepared.id});
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
- presentModalStatus("Deployment dokumentiert. Route bleibt bis zur BLS-Aktivierung gesperrt.","success");
+ presentModalStatus("Deployment dokumentiert. Route ist lokal permissionless registriert.","success");
  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
 }
 async function recoverAssetDeployment(){
@@ -223,7 +223,7 @@ async function recoverAssetDeployment(){
    (workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="native"?"nativeRouter":
      workqueue.inventory.assets[task.asset]?.representations[task.chain]?.role==="synthetic"?"syntheticRouter":"collateralRouter"):"":
    "gateway";
- const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:prepare$/,""):"none";
+ const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:register$/,""):"none";
  const id=chain.name+":"+task.asset+":"+component+":"+routeName;
  const existing=(await get("/admin/api/chain-deploy/status")).intents.entries[id];
  if(!existing)throw Error("Keine gespeicherte Asset-Transaktion");
