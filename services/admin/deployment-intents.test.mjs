@@ -95,22 +95,62 @@ test("unexpected journal metadata is rejected rather than retained",()=>{
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 
-test("only fully documented intent can be discarded; record is not archived",()=>{
- const dir=mkdtempSync(join(tmpdir(),"xita-discarded-"));
+test("successful repository publication deletes the local completion record",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-published-"));
  try{
   const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   store.prepare(input);
-  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
   store.attachHash(input.id,hash);
-  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
   store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
-  assert.throws(()=>store.discardDocumented(input.id,hash),/Only the exact verified/);
-  const path="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
-  store.document(input.id,path);
-  assert.throws(()=>store.discardDocumented(input.id,"0x"+"f".repeat(64)),/Only the exact verified/);
-  assert.deepEqual(store.discardDocumented(input.id,hash),{discarded:true});
+  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  assert.deepEqual(store.document(input.id,receipt),{stage:"documented",receiptPath:receipt});
   assert.deepEqual(store.read(),{version:1,entries:{}});
+  assert.deepEqual(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")),{version:1,entries:{}});
+  assert.doesNotThrow(()=>store.prepare(input));
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("first journal read removes old documented Registry entry without manual path cleanup",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-prelaunch-auto-clean-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   store.prepare(input);
-  assert.equal(store.read().entries[input.id].stage,"prepared");
+  store.attachHash(input.id,hash);
+  store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
+  const old=store.read().entries[input.id];
+  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{
+   [input.id]:{...old,stage:"documented",receiptPath:receipt}
+  }}));
+  assert.deepEqual(store.read(),{version:1,entries:{}});
+  assert.deepEqual(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")),{version:1,entries:{}});
+  assert.doesNotThrow(()=>store.prepare(input));
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("completed-record cleanup preserves all unresolved router and route transactions",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-keep-unresolved-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const route={...input,id:"polygon:XGR:gateway:polygon_to_xgr",asset:"XGR",
+   factory:"0x"+"3".repeat(40),validatorSnapshot:null,parameters:{},
+   transaction:{...input.transaction,to:"0x"+"3".repeat(40)}};
+  store.prepare(route);
+  store.attachHash(route.id,hash);
+  store.prepare(input);
+  store.attachHash(input.id,hash);
+  store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
+  const completed=store.read().entries[input.id];
+  const pending=store.read().entries[route.id];
+  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{
+   [input.id]:{...completed,stage:"documented",receiptPath:receipt},
+   [route.id]:pending
+  }}));
+  const current=store.read();
+  assert.equal(current.entries[input.id],undefined);
+  assert.equal(current.entries[route.id].stage,"submitted");
+  assert.throws(()=>store.prepare(route),/Existing deployment intent/);
+  assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries),[route.id]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
