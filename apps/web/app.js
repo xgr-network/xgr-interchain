@@ -1,4 +1,4 @@
-import {publicDirectoryCatalog} from "./listing-visibility.js";
+import {publicDirectoryCatalog,isDeployedAsset,listingStatus} from "./listing-visibility.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
@@ -6,7 +6,7 @@ import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,rend
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -14,7 +14,7 @@ const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
 const profile=id=>state.catalog.assets[id]?.profile||{name:id,slug:id.toLowerCase(),shortDescription:"",description:"",categories:[],tags:[],links:{},branding:{}};
 const tokenUrl=id=>"/token/"+encodeURIComponent(profile(id).slug);
 const allAssets=()=>Object.keys(state.catalog.assets);
-const publicCatalog=()=>publicDirectoryCatalog(state.catalog);
+const publicCatalog=()=>publicDirectoryCatalog(state.catalog,state.visibility);
 const routes=()=>asset().routes.routes;
 const activeFor=id=>0;
 const path=()=>decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
@@ -133,10 +133,11 @@ function tokenMarketMarkup(id){
 function token(){
  const id=state.assetId,a=asset(),p=profile(id),canonical=a.metadata.canonical?.chain||"unknown";
  const model=buildExperienceModel(state.catalog,()=>false);
+ const stage=listingStatus(a,state.visibility?.assets?.[id]);
  const chips=(p.categories||[]).map(cat=>'<span class="category-chip">'+x(cat)+'</span>').join(" ");
  return '<div class="columns"><article><a href="/markets" data-nav class="muted">← All tokens</a>'+
  '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(names[canonical]||canonical)+' · Canonical asset</div>'+
- '<h1>'+x(p.name)+' <small>'+x(id)+'</small></h1><span class="tag">'+x(p.verification?.status||"project-maintained")+'</span></div></div>'+
+ '<h1>'+x(p.name)+' <small>'+x(id)+'</small></h1><span class="tag">'+x(stage)+'</span></div></div>'+
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
@@ -240,8 +241,8 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ const universe=buildExperienceModel((p==="/"||p==="/universe"||p==="/plan-route")?publicCatalog():state.catalog,()=>false);
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
@@ -416,7 +417,7 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path()==="/"||path()==="/plan-route"||path().startsWith("/token/"))render();
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/plan-route"||path().startsWith("/token/"))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);

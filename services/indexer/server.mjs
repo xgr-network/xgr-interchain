@@ -8,11 +8,11 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
+import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
 const HOST=process.env.XITA_INDEXER_HOST||"127.0.0.1";
 const evidencePath=process.env.XITA_METRICS_EVIDENCE||null;
-const assetKeys=()=>Object.keys(JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8")).assets);
 function readEvidence(){
  if(!evidencePath)return null;
  const info=statSync(evidencePath);
@@ -63,7 +63,7 @@ export async function handler(req,res){
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
@@ -73,14 +73,18 @@ export async function handler(req,res){
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}
   }
   const metrics=projectMetrics(catalog,readEvidence(),cache.snapshot);
+  let positions=null;
+  try{positions=await readPublicationPositions();}catch{ /* Not zero: public eligibility unavailable. */ }
+  const visibility=derivedVisibility(catalog,positions);
+  if(pathname==="/api/xeta/v1/visibility")return send(200,visibility);
   if(pathname.startsWith("/api/xeta/v1/systems/")){
    const chain=pathname.slice("/api/xeta/v1/systems/".length);
    if(!/^[a-z0-9-]{1,60}$/.test(chain))return send(404,{ok:false,error:"Unknown system"});
    const url=new URL(req.url,"http://localhost");
-   const result=systemRanking(catalog,metrics,chain,{sort:url.searchParams.get("sort"),search:url.searchParams.get("q")||""});
+   const result=systemRanking(catalog,metrics,chain,{sort:url.searchParams.get("sort"),search:url.searchParams.get("q")||"",visibility});
    return result?send(200,result):send(404,{ok:false,error:"Unknown system"});
   }
-  return send(200,metrics);
+  return send(200,{...metrics,visibility});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});

@@ -1,5 +1,5 @@
-// XITA system rankings: GitHub main defines public assets and representations.
-// Verified on-chain collateral/movement and CoinGecko market data only add metrics.
+// XITA system rankings are gated by complete deployment receipts and
+// independent finalized collateral valuation in the read-only indexer DB.
 // No price/TVL estimates and no planets for unranked assets.
 import {verifiedMetrics} from "./leaderboard-data.js";
 import {representationFor} from "./token-representation.js";
@@ -12,20 +12,18 @@ export const rankingSort=s=>SORT.has(s)?s:"lockedUsd";
 export function representationReady(asset,chain){
  const rep=asset?.metadata?.representations?.find(x=>x.chain===chain);
  if(!rep)return false;
- if(rep.representation==="native"&&asset.metadata?.canonical?.chain===chain)return true;
- // A synthetic still under construction has no verified representation address.
- if(!ADDR.test(rep.assetAddress||""))return false;
- // An external published representation must be backed by a deployment ledger.
- const receiptPaths=asset?.deployment?.receiptPaths;
- return Array.isArray(receiptPaths)&&receiptPaths.length>0;
+ const component={native:"nativeRouter",collateral:"collateralRouter",synthetic:"syntheticRouter"}[rep.representation];
+ const indexes=asset?.deployment?.representations||[];
+ return Boolean(component&&indexes.some(row=>row.chain===chain&&row.component===component&&
+   ADDR.test(row.address||"")&&asset?.deployment?.receiptPaths?.includes(row.receiptPath)));
 }
-export function systemRanking(catalog,snapshot,chain,{sort="lockedUsd",search="",limit=MAX_ORBIT_TOKENS}={}){
+export function systemRanking(catalog,snapshot,chain,{sort="lockedUsd",search="",limit=MAX_ORBIT_TOKENS,visibility=null}={}){
  if(!Object.hasOwn(catalog?.chains||{},chain))return null;
  sort=rankingSort(sort);
  const text=String(search||"").trim().toLowerCase().slice(0,80);
  const max=Math.max(1,Math.min(MAX_ORBIT_TOKENS,Number.isSafeInteger(limit)?limit:MAX_ORBIT_TOKENS));
  const candidates=Object.entries(catalog.assets||{}).filter(([id,asset])=>
-   isPublicAsset(id,asset)&&representationReady(asset,chain));
+   isPublicAsset(id,asset,visibility)&&representationReady(asset,chain));
  const matches=candidates.filter(([id,a])=>(id+" "+(a.profile?.name||"")+" "+(a.metadata?.symbol||"")).toLowerCase().includes(text));
  const rows=matches.map(([id,asset])=>{
   const metric=verifiedMetrics(snapshot,id);
