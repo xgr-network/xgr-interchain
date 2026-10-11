@@ -15,6 +15,6 @@
   },
   "confirmations": 128,
   "blsVerifierFormat": "eip2537",
-  "observedInfrastructure": "deployments/mainnet/infrastructure/polygon.json",
+  "observedInfrastructure": "deployments/chains/polygon.json",
   "configurationStatus": "planned-unverified"
 }

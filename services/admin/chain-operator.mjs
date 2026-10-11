@@ -172,7 +172,7 @@ export function createChainOperator({
   if(commit!==entry.sourceCommit){
    // GitHub may have accepted a receipt before the HTTP response was lost.
    // Only an immutable, exact source-commit/tx/wallet receipt can settle it.
-   const receiptDir=join(root,"deployments/mainnet/receipts",chain.name);
+   const receiptDir=join(root,"deployments/receipts",chain.name);
    let match=null;
    try{
     for(const file of readdirSync(receiptDir)){
@@ -183,7 +183,7 @@ export function createChainOperator({
         !eq(record.deployer,entry.wallet)||
         record.chainId!==entry.chainId||record.component!==id.split(":")[1]||
         record.status!=="onchain-deployment-verified")continue;
-     match="deployments/mainnet/receipts/"+chain.name+"/"+file;
+     match="deployments/receipts/"+chain.name+"/"+file;
     }
    }catch(e){if(e.code!=="ENOENT")throw e}
    if(match && entry.stage==="confirmed"){

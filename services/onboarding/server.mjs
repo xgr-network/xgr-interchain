@@ -31,7 +31,7 @@ export async function publishDraft(bundle,{expectedMain,githubCall=github}={}){
  const base=await githubCall("/git/commits/"+expectedMain);
  const entries=[];
  for(const [path,content] of Object.entries(bundle.files)){
-  if(path!=="apps/web/catalog.json"&&!path.startsWith("config/assets/"+bundle.key+"/")&&path!=="deployments/mainnet/assets/"+bundle.key+".json")
+  if(path!=="apps/web/catalog.json"&&!path.startsWith("config/assets/"+bundle.assetId.slice(2,4)+"/"+bundle.key+"/"))
    throw Error("Unsafe path");
   if(path!=="apps/web/catalog.json"){
    // If an asset has already been admitted since the preview, the server

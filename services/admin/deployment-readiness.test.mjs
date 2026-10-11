@@ -7,9 +7,9 @@ import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 test("readiness fails closed and never authorizes wallet execution when evidence is absent",async()=>{
  const root=mkdtempSync(join(tmpdir(),"xita-readiness-"));
  try{
-  mkdirSync(join(root,"config/bootstrap"),{recursive:true});
+  mkdirSync(join(root,"config/chains/example"),{recursive:true});
   mkdirSync(join(root,"config/validators"),{recursive:true});
-  writeFileSync(join(root,"config/bootstrap/example.json"),JSON.stringify({
+  writeFileSync(join(root,"config/chains/example/bootstrap.json"),JSON.stringify({
    chain:"example",chainId:999,sourceFee:{targetWei:null},
    reserve:{minimumWei:null,maxExecutorReimbursementWei:null,perValidatorWei:null}
   }));

@@ -11,11 +11,11 @@
       "validatorRegistry": {
         "address": "0x65a9473b0a7c5ec27127125c05fb4efc29efdba6",
         "runtimeCodeKeccak256": "0xc23060c0226260f29e7a11f79145fe990febd0f2b21fdb5efe22b860c5c8591f",
-        "receiptPath": "deployments/mainnet/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
+        "receiptPath": "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
       }
     },
     "receiptPaths": [
-      "deployments/mainnet/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
+      "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
     ]
   }
 }

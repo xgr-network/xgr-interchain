@@ -5,6 +5,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {formatNative} from "./wallet.js";
+import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 const root=new URL("../../",import.meta.url).pathname;
 test("all main-approved chains derive deployment progress from documented component evidence",()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
@@ -24,8 +25,7 @@ test("all main-approved chains derive deployment progress from documented compon
  // No fixed "prelaunch" expectation: deployment receipts may be added after
  // each mainnet transaction, so these checks must work at any deployment stage.
  for(const chain of chains){
-  const observed=JSON.parse(readFileSync(join(root,
-   "deployments/mainnet/infrastructure/"+chain.name+".json"),"utf8"));
+  const observed=loadChainDeployment(root,inv.chains.find(c=>c.name===chain.name));
   for(const part of chain.components){
    assert.equal(part.status,observed.xitaV315.components[part.key]?"documented":"not-deployed",
     chain.name+" "+part.key+" must follow immutable deployment index");

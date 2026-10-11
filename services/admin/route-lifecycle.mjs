@@ -108,12 +108,16 @@ export function planAssetRoutes(asset,chains,infrastructure){
    const local=existingByChain.get(x.name),remote=existingByChain.get(y.name);
    const routeId=local&&remote?routeInstanceIdV315(asset.assetId,x,y,local,remote):null;
    const gatewayRecords=d.receipts||[];
+   const instance=Array.isArray(d.instances)&&routeId
+     ?d.instances.find(i=>same(i.routeId,routeId)&&i.status==="deployed"):null;
    const verifiedGateways=d.components?.gateways||[];
-   if(verifiedGateways.length>1)throw Error("Ambiguous source Gateway: "+d.name);
-   const gateway=verifiedGateways[0]||null;
+   // Old test fixtures without explicit per-routeId instances remain supported.
+   if(!Array.isArray(d.instances)&&verifiedGateways.length>1)
+    throw Error("Ambiguous source Gateway: "+d.name);
+   const gateway=Array.isArray(d.instances)?(instance?.gateway||null):(verifiedGateways[0]||null);
    if(gateway&&(!routeId||!gatewayRecords.length))
     throw Error("Gateway present without proven router pair");
-   if(routeId&&d.routeIds?.length&&
+   if(!Array.isArray(d.instances)&&routeId&&d.routeIds?.length&&
       (d.routeIds.length!==1||!same(d.routeIds[0],routeId)))
     throw Error("Recorded Route ID does not match router pair: "+d.name);
    const base={

@@ -1,18 +1,18 @@
-# Per-token asset manifests
+# Sharded per-asset XITA manifests
 
-Each real configured token has one directory: <TOKEN>/asset.json, routes.json,
-mainnet.json and metadata.json. These contain the canonical asset identity and decimals,
-representation types, desired one-hop routes and references to the mainnet
-inventory. metadata.json provides public project description, categories, official logo,
-social links and optional market-provider IDs. None of these fields controls
-validator governance or deployment. They do NOT contain deployed contract
-addresses or fee custody.
+Directory: config/assets/<first-byte-of-assetId>/<SYMBOL>/
 
-Separate observation records live in deployments/mainnet/assets/<TOKEN>.json.
-Per-chain shared infrastructure is in deployments/mainnet/infrastructure/.
+Required per configured asset: asset.json (canonical origin identity, assetId,
+representations), metadata.json (website/catalog), listing.json (publication),
+routes.json (desired hub-directed chain pairs).
 
-Solidity remains shared in contracts/. A new XDC or other token directory
-must not imply that chain infrastructure, a token adapter or a v3.1.4 route
-has been deployed or governance-approved.
+The prefix is the first two hex digits after 0x in the canonical keccak assetId.
+For XGR, 0xa758... maps to config/assets/a7/XGR/.
 
-Read docs/MULTI_ASSET_LAYOUT.md and run the manifest validation before changes.
+No mainnet.json, no deployment receipts and no contract addresses for future
+wrapped representations are stored here. Actual verified routers and distinct
+route instances are stored only under deployments/assets/<shard>/<SYMBOL>/.
+
+Directory status/listing is not permission to deploy or register a route:
+registration is permissionless on-chain. Review docs/REPOSITORY_LAYOUT.md and
+run node tools/validate-manifests.mjs before submission.

@@ -5,7 +5,7 @@
   "slug": "xgr",
   "name": "XGR",
   "shortDescription": "Native asset of XGRChain and the XETA EVM interchain hub.",
-  "description": "XGR is the native asset of XGRChain, an EVM-compatible blockchain. XETA (XGR EVM Token Alliance) provides validator-quorum-governed token transfers between XGRChain and supported external EVM networks. Individual transfer routes become available only after independent deployment verification and governance activation.",
+  "description": "XGR is the native asset of XGRChain, an EVM-compatible blockchain. XITA (XGR Interchain Token Alliance) supports permissionless route registration between XGRChain and supported EVM networks. A route is publicly usable only after verified source and destination deployments and authenticated message delivery; validators attest messages, not route admission.",
   "categories": [
     "Layer 1",
     "Blockchain Infrastructure",

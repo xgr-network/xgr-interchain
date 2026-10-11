@@ -3,6 +3,7 @@
 // This only prepares directory manifests; it NEVER creates a contract or activates a route.
 import {canonicalAssetId} from "../admin/asset-state.mjs";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
+import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 
 const HEX=/^0x[0-9a-f]{40}$/i;
 const ZERO=/^0x0{40}$/i;
@@ -98,9 +99,10 @@ export function normalizeApplication(raw,inventory){
 }
 export function buildManifestBundle(raw,catalog){
  const {normalized:a,binary}=normalizeApplication(raw,catalog);
- const key=a.symbol,base="config/assets/"+key;
+ const key=a.symbol;
  const candidate={asset:key,canonical:{chain:a.canonicalChain,representation:"collateral",tokenAddress:a.canonicalAddress}};
  const assetId=canonicalAssetId(candidate,catalog.chains);
+ const base=assetConfigFolder(key,assetId);
  if(Object.values(catalog.assets||{}).some(asset=>asset.metadata?.assetId===assetId))
   note("An asset with this original token already exists");
  const chains=[a.canonicalChain,"xgrchain",...a.targets].filter((key,i,arr)=>arr.indexOf(key)===i);
@@ -131,15 +133,12 @@ export function buildManifestBundle(raw,catalog){
   verification:{status:"project-maintained",proof:null}};
  const routeConfig={schemaVersion:1,kind:"asset-routes",asset:key,network:"mainnet",
   protocol:"XITA-v3.1.5",routingHub:"xgrchain",routes};
- const mainnet={schemaVersion:1,kind:"asset-network-config",asset:key,network:"mainnet",
-  routeManifest:base+"/routes.json",deploymentManifest:"deployments/mainnet/assets/"+key+".json",
-  notes:"Directory listing and route intentions only; on-chain deployment and activation are independent."};
- const deployment={schemaVersion:2,kind:"asset-deployment",network:"mainnet",asset:key,assetId,
-  sourceManifest:base+"/asset.json",receiptPaths:[]};
+ const deployment={schemaVersion:3,kind:"asset-deployment",network:"mainnet",asset:key,assetId,
+  sourceManifest:base+"/asset.json",receiptPaths:[],representations:[],routeDeployments:[],present:false};
  const listing={schemaVersion:1,kind:"xita-asset-listing",asset:key,status:"accepted",basis:"review-merged",publicProof:null};
  const proposedCatalog={
   chains:catalog.chains,infrastructure:catalog.infrastructure,
-  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,mainnet,deployment,listing}}
+  assets:{...catalog.assets,[key]:{metadata,profile,listing,routes:routeConfig,deployment}}
  };
  const errors=validateCatalog(proposedCatalog);
  if(errors.length)note("Generated manifest failed validation: "+errors.slice(0,4).join("; "));
@@ -148,9 +147,7 @@ export function buildManifestBundle(raw,catalog){
   [base+"/asset.json"]:json(metadata),
   [base+"/metadata.json"]:json(profile),
   [base+"/routes.json"]:json(routeConfig),
-  [base+"/mainnet.json"]:json(mainnet),
   [base+"/listing.json"]:json(listing),
-  ["deployments/mainnet/assets/"+key+".json"]:json(deployment),
   ["apps/web/catalog.json"]:json({schemaVersion:1,...proposedCatalog})
  };
  return {key,slug:a.slug,assetId,files,

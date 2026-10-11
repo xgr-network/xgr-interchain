@@ -13,18 +13,19 @@ const application={
 };
 test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const b=buildManifestBundle(application,catalog);
- assert.equal(Object.keys(b.files).length,7);
- const listing=JSON.parse(b.files["config/assets/EXMP/listing.json"]);
+ assert.equal(Object.keys(b.files).length,5);
+ const base="config/assets/"+b.assetId.slice(2,4)+"/EXMP";
+ const listing=JSON.parse(b.files[base+"/listing.json"]);
  assert.equal(listing.status,"accepted");
- const asset=JSON.parse(b.files["config/assets/EXMP/asset.json"]);
- const routes=JSON.parse(b.files["config/assets/EXMP/routes.json"]);
+ const asset=JSON.parse(b.files[base+"/asset.json"]);
+ const routes=JSON.parse(b.files[base+"/routes.json"]);
  assert.equal(asset.canonical.tokenAddress,application.canonicalAddress);
  assert.match(asset.assetId,/^0x[0-9a-f]{64}$/);
  assert.equal(routes.routes.length,4);
  assert.ok(routes.routes.every(x=>[x.sourceChain,x.destinationChain].includes("xgrchain")));
  assert.equal(routes.routes.filter(x=>x.sourceChain==="xgrchain").length,2);
- const deployment=JSON.parse(b.files["deployments/mainnet/assets/EXMP.json"]);
- assert.deepEqual(deployment.receiptPaths,[]);
+ assert.equal(Object.keys(b.files).some(p=>p.startsWith("deployments/")),false);
+ assert.equal(Object.keys(b.files).some(p=>p.includes("mainnet.json")),false);
  const newCat=JSON.parse(b.files["apps/web/catalog.json"]);
  assert.deepEqual(validateCatalog(newCat),[]);
 });
@@ -46,6 +47,7 @@ test("never leak private contact information into generated public files",()=>{
 
 test("CoinGecko pricing metadata is recorded in generated profile",()=>{
  const b=buildManifestBundle({...application,priceSource:"coingecko",coingeckoId:"ethereum"},catalog);
- const p=JSON.parse(b.files["config/assets/EXMP/metadata.json"]);
+ const base="config/assets/"+b.assetId.slice(2,4)+"/EXMP";
+ const p=JSON.parse(b.files[base+"/metadata.json"]);
  assert.equal(p.market.priceSource,"coingecko");assert.equal(p.market.coingeckoId,"ethereum");
 });

@@ -5,7 +5,8 @@
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
-import {readFileSync} from "node:fs";
+import {readFileSync,existsSync} from "node:fs";
+import {assetDeploymentFolder,chainDeploymentPath,loadChainDeployment,loadAssetDeployment} from "../../tools/manifest-layout.mjs";
 import {join} from "node:path";
 import {isDeepStrictEqual} from "node:util";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
@@ -135,7 +136,7 @@ export function deploymentReceiptPath(record){
     !h32(record.transactionHash)||!address(record.address))
   throw Error("Invalid immutable deployment receipt path");
  // A Factory transaction may create multiple contracts: include address.
- return "deployments/mainnet/receipts/"+
+ return "deployments/receipts/"+
    record.chain+"/"+record.transactionHash.slice(2)+"-"+record.address.slice(2)+".json";
 }
 function encodeJSON(o){return JSON.stringify(o,null,2)+"\n";}
@@ -213,78 +214,130 @@ export async function publishDeploymentBatch(root,inputs,{
   if(r.ok)throw Error("Deployment receipt already exists: "+entry.path);
   if(r.status!==404)throw Error("Cannot confirm append-only GitHub receipt path");
  }
- // Each asset has exactly one git-tracked index of its deployment receipts.
- // This index is updated in the SAME Git commit as the immutable receipts.
- // The operator never needs to copy addresses or edit JSON manually.
- const byAsset=new Map(),updatedAssets=new Map();
- for(const receipt of receipts){
-  if(receipt.asset===null)continue;
-  const arr=byAsset.get(receipt.asset)||[];
-  arr.push(deploymentReceiptPath(receipt));
-  byAsset.set(receipt.asset,arr);
- }
- for(const [asset,added] of byAsset){
-  const path="deployments/mainnet/assets/"+asset+".json";
-  const existing=await request("/contents/"+path+"?ref=main");
-  if(!existing.ok||typeof existing.json.content!=="string"||
-     existing.json.encoding!=="base64")
-    throw Error("Cannot read canonical deployment index for "+asset);
-  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\s/g,""),"base64").toString("utf8"));
-  const local=JSON.parse((await import("node:fs")).readFileSync(
-    (await import("node:path")).join(root,path),"utf8"));
-  if(JSON.stringify(original)!==JSON.stringify(local))
-    throw Error("Asset deployment index on GitHub differs from approved main checkout");
-  if(original.schemaVersion!==2||original.asset!==asset||
-     original.assetId!==approvedWorkInventory(root).assets[asset].assetId||
-     !Array.isArray(original.receiptPaths))
-    throw Error("Deployment index identity mismatch for "+asset);
-  for(const file of added){
-   if(original.receiptPaths.includes(file))throw Error("Already indexed deployment receipt "+file);
-   original.receiptPaths.push(file);
+ // Each index is created only when its first verified receipt exists.
+ async function optionalIndex(path){
+  const r=await request("/contents/"+path+"?ref=main"),localPath=join(root,path);
+  if(!r.ok){
+   if(r.status!==404||existsSync(localPath))throw Error("Unresolved deployment index: "+path);
+   return null;
   }
-  original.receiptPaths.sort();
-  updatedAssets.set(asset,original);
-  entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
+  if(!existsSync(localPath)||typeof r.json?.content!=="string"||r.json.encoding!=="base64")
+   throw Error("Deployment index not present in approved checkout: "+path);
+  const remote=JSON.parse(Buffer.from(r.json.content.replace(/\s/g,""),"base64").toString("utf8"));
+  const local=JSON.parse(readFileSync(localPath,"utf8"));
+  if(JSON.stringify(remote)!==JSON.stringify(local))
+   throw Error("Deployment index differs from approved main checkout: "+path);
+  return remote;
  }
- // Update the canonical per-chain infrastructure index in the SAME atomic
- // Git commit as its immutable on-chain verified receipts. This is not the
- // fee-quorum transaction journal (it has no deployed bytecode).
- const infraComponents=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+ const inventory=approvedWorkInventory(root);
+ const routers=new Set(["nativeRouter","syntheticRouter","collateralRouter"]);
+ const byAsset=new Map(),updatedAssets=new Map();
+ for(const r of receipts)if(r.asset!==null){
+  const arr=byAsset.get(r.asset)||[];arr.push(r);byAsset.set(r.asset,arr);
+ }
+ for(const [asset,records] of byAsset){
+  const info=inventory.assets[asset];
+  if(!info)throw Error("Unknown verified asset: "+asset);
+  const base=assetDeploymentFolder(asset,info.assetId);
+  const representationPath=base+"/representations.json";
+  let reps=await optionalIndex(representationPath);
+  if(reps&&(reps.kind!=="asset-representations"||reps.schemaVersion!==1||
+    reps.asset!==asset||!equal(reps.assetId,info.assetId)||!Array.isArray(reps.representations)))
+   throw Error("Representation index binding mismatch: "+asset);
+  const normalized=structuredClone(loadAssetDeployment(root,asset,info.assetId));
+  const routeIndexes=new Map();
+  let reprUpdated=false;
+  for(const receipt of records){
+   const path=deploymentReceiptPath(receipt);
+   if(routers.has(receipt.component)){
+    if(!reps)reps={schemaVersion:1,kind:"asset-representations",asset,assetId:info.assetId,representations:[]};
+    const item={chain:receipt.chain,component:receipt.component,
+      address:receipt.address,runtimeCodeKeccak256:receipt.runtimeCodeKeccak256,receiptPath:path};
+    if(reps.representations.some(v=>v.receiptPath===path||
+      (v.chain===item.chain&&equal(v.address,item.address))))
+     throw Error("Duplicate asset representation: "+path);
+    reps.representations.push(item);
+    normalized.representations.push(item);
+    normalized.receiptPaths.push(path);
+    reprUpdated=true;
+    continue;
+   }
+   if(!["gateway","feeVault"].includes(receipt.component))
+    throw Error("Unknown asset deployment component: "+receipt.component);
+   const routeId=receipt.provenance?.routeId?.toLowerCase();
+   const planned=info.routes.find(r=>r.name===receipt.routeName);
+   if(!h32(routeId)||!planned||planned.source!==receipt.chain)
+    throw Error("Missing bound routeId or wrong directed source for "+receipt.component);
+   const routePath=base+"/routes/"+routeId.slice(2)+".json";
+   let route=routeIndexes.get(routePath);
+   if(!route){
+    route=await optionalIndex(routePath);
+    if(!route)route={schemaVersion:1,kind:"asset-route-deployment",asset,assetId:info.assetId,
+      routeId,routeName:planned.name,sourceChain:planned.source,
+      destinationChain:planned.destination,components:{},receiptPaths:[]};
+    if(route.kind!=="asset-route-deployment"||route.schemaVersion!==1||
+       route.asset!==asset||!equal(route.assetId,info.assetId)||
+       !equal(route.routeId,routeId)||route.routeName!==planned.name||
+       route.sourceChain!==planned.source||route.destinationChain!==planned.destination)
+     throw Error("Route instance binding mismatch: "+routePath);
+    route=structuredClone(route);routeIndexes.set(routePath,route);
+   }
+   if(route.components[receipt.component]||route.receiptPaths.includes(path))
+    throw Error("Route component already indexed: "+receipt.component);
+   route.components[receipt.component]={
+     address:receipt.address,runtimeCodeKeccak256:receipt.runtimeCodeKeccak256,receiptPath:path
+   };
+   route.receiptPaths.push(path);
+   normalized.receiptPaths.push(path);
+  }
+  if(reprUpdated){
+   reps.representations.sort((a,b)=>a.chain.localeCompare(b.chain)||a.address.localeCompare(b.address));
+   normalized.representations.sort((a,b)=>a.chain.localeCompare(b.chain)||a.address.localeCompare(b.address));
+   entries.push({path:representationPath,mode:"100644",type:"blob",content:encodeJSON(reps)});
+  }
+  for(const [path,route] of routeIndexes){
+   route.receiptPaths.sort();
+   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(route)});
+   const index=normalized.routeDeployments.findIndex(x=>equal(x.routeId,route.routeId));
+   if(index<0)normalized.routeDeployments.push(structuredClone(route));
+   else normalized.routeDeployments[index]=structuredClone(route);
+  }
+  normalized.receiptPaths.sort();normalized.present=true;
+  normalized.routeDeployments.sort((a,b)=>a.routeId.localeCompare(b.routeId));
+  updatedAssets.set(asset,normalized);
+ }
+ // Non-XGR chains get their first deployment file ONLY on the first receipt.
+ const infraParts=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer",
+   "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
  const byChain=new Map(),updatedInfrastructure=new Map();
- for(const receipt of receipts){
-  if(receipt.asset!==null||!infraComponents.has(receipt.component))continue;
-  const arr=byChain.get(receipt.chain)||[];
-  arr.push(receipt);byChain.set(receipt.chain,arr);
+ for(const r of receipts)if(r.asset===null&&infraParts.has(r.component)){
+  const arr=byChain.get(r.chain)||[];arr.push(r);byChain.set(r.chain,arr);
  }
  for(const [chain,records] of byChain){
-  const path="deployments/mainnet/infrastructure/"+chain+".json";
-  const existing=await request("/contents/"+path+"?ref=main");
-  if(!existing.ok||typeof existing.json.content!=="string"||
-     existing.json.encoding!=="base64")throw Error("Missing approved chain deployment index "+chain);
-  const original=JSON.parse(Buffer.from(existing.json.content.replace(/\\s/g,""),"base64").toString("utf8"));
-  const local=JSON.parse((await import("node:fs")).readFileSync(
-    (await import("node:path")).join(root,path),"utf8"));
-  if(JSON.stringify(original)!==JSON.stringify(local)||
-     original.chain!==chain||original.kind!=="infrastructure-deployment"||
-     original.xitaV315?.schemaVersion!==1||
-     !Array.isArray(original.xitaV315.receiptPaths)||
-     typeof original.xitaV315.components!=="object")
-    throw Error("Chain infrastructure index differs from approved main");
-  for(const receipt of records){
-   if(original.xitaV315.components[receipt.component])
-    throw Error("Existing chain infrastructure component cannot be silently replaced: "+receipt.component);
-   const receiptPath=deploymentReceiptPath(receipt);
-   if(original.xitaV315.receiptPaths.includes(receiptPath))
-    throw Error("Already indexed chain infrastructure receipt");
-   original.xitaV315.components[receipt.component]={
-    address:receipt.address,runtimeCodeKeccak256:receipt.runtimeCodeKeccak256,
-    receiptPath
+  const chainInfo=inventory.chains.find(x=>x.name===chain);
+  if(!chainInfo)throw Error("Unapproved chain: "+chain);
+  const path=chainDeploymentPath(chain);
+  const remote=await optionalIndex(path);
+  const value=remote?structuredClone(remote):loadChainDeployment(root,chainInfo);
+  if(value.kind!=="infrastructure-deployment"||value.chain!==chain||
+     value.chainId!==chainInfo.chainId||value.domainId!==chainInfo.domainId||
+     value.xitaV315?.schemaVersion!==1||
+     !Array.isArray(value.xitaV315.receiptPaths)||
+     typeof value.xitaV315.components!=="object")
+   throw Error("Chain infrastructure index identity mismatch: "+chain);
+  delete value.present;
+  for(const r of records){
+   if(value.xitaV315.components[r.component])
+    throw Error("Cannot overwrite deployed chain component: "+r.component);
+   const receiptPath=deploymentReceiptPath(r);
+   value.xitaV315.components[r.component]={
+    address:r.address,runtimeCodeKeccak256:r.runtimeCodeKeccak256,receiptPath
    };
-   original.xitaV315.receiptPaths.push(receiptPath);
+   value.xitaV315.receiptPaths.push(receiptPath);
   }
-  original.xitaV315.receiptPaths.sort();
-  updatedInfrastructure.set(chain,original);
-  entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
+  value.xitaV315.receiptPaths.sort();
+  entries.push({path,mode:"100644",type:"blob",content:encodeJSON(value)});
+  updatedInfrastructure.set(chain,{...value,present:true});
  }
  // Same immutable receipt commit must include the rebuilt public snapshot.
  // Otherwise the next ./manage.sh update fails --check, blocking UI publication.

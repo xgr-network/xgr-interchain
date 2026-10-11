@@ -5,6 +5,7 @@ import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
+import {chainBootstrapPath} from "../../tools/manifest-layout.mjs";
 const equal=(x,y)=>typeof x==="string"&&typeof y==="string"&&x.toLowerCase()===y.toLowerCase();
 const safeChain=n=>typeof n==="string"&&/^[a-z][a-z0-9-]*$/.test(n);
 const approvedFields=["minimumWei","maxExecutorReimbursementWei","perValidatorWei"];
@@ -32,7 +33,7 @@ export async function readDeploymentReadiness({
 }){
  if(!safeChain(chain?.name)||!inventory?.chains?.some(c=>c.name===chain.name&&c.chainId===chain.chainId))
   throw Error("Chain is not in approved GitHub inventory");
- const config=loadJSON(join(root,"config/bootstrap",chain.name+".json"));
+ const config=loadJSON(join(root,chainBootstrapPath(chain.name)));
  const initial=loadJSON(join(root,"config/validators/initial.json"));
  const origin=inventory.chains.find(c=>c.chainId===initial.originChainId);
  if(!origin||config.chain!==chain.name||config.chainId!==chain.chainId)

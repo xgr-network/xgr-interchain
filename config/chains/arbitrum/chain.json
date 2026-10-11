@@ -15,6 +15,6 @@
   },
   "confirmations": 64,
   "blsVerifierFormat": "eip2537",
-  "observedInfrastructure": "deployments/mainnet/infrastructure/arbitrum.json",
+  "observedInfrastructure": "deployments/chains/arbitrum.json",
   "configurationStatus": "planned-unverified"
 }

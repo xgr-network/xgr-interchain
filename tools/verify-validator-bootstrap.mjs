@@ -14,8 +14,8 @@ if(!name||!file||!/^[a-z][a-z0-9-]*$/.test(name)){
 }
 function load(relative){return JSON.parse(readFileSync(join(root,relative),"utf8"))}
 try{
- const chain=load("config/chains/"+name+".json");
- const bootstrap=load("config/bootstrap/"+name+".json");
+ const chain=load("config/chains/"+name+"/chain.json");
+ const bootstrap=load("config/chains/"+name+"/bootstrap.json");
  const validators=load("config/validators/initial.json").validators;
  const rawText=readFileSync(resolve(file),"utf8");
  let proof;

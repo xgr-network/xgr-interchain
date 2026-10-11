@@ -4,7 +4,7 @@ import {keccak256} from "../../apps/web/keccak.mjs";
 import {verifyDeploymentReceipt,deploymentReceiptPath,publishDeploymentBatch,updatedDeploymentWebCatalog} from "./deployment-ledger.mjs";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
-const loadFixtureInfrastructure=()=>JSON.parse(readFileSync(join(process.cwd(),"deployments/mainnet/infrastructure/xgrchain.json"),"utf8"));
+const loadFixtureInfrastructure=()=>JSON.parse(readFileSync(join(process.cwd(),"deployments/chains/xgrchain.json"),"utf8"));
 const SHA="a".repeat(40), TX="0x"+"b".repeat(64), BLOCK="0x"+"c".repeat(64);
 const ADDRESS="0x"+"1".repeat(40),WALLET="0x"+"2".repeat(40);
 const BYTECODE="0x6001600055", HASH=keccak256(Uint8Array.from(Buffer.from(BYTECODE.slice(2),"hex")));
@@ -29,7 +29,7 @@ test("receipt verifies canonical block, correct chain and artifact runtime kecca
  assert.equal(r.status,"onchain-deployment-verified");
  assert.equal(r.runtimeCodeKeccak256,HASH);
  assert.equal(r.approval.sourceCommit,SHA);
- assert.match(deploymentReceiptPath(r),/^deployments\/mainnet\/receipts\/base\/[0-9a-f]{64}-[0-9a-f]{40}\.json$/);
+ assert.match(deploymentReceiptPath(r),/^deployments\/receipts\/base\/[0-9a-f]{64}-[0-9a-f]{40}\.json$/);
 });
 test("spoofed chain, failed tx, noncanonical block and altered runtime all fail",async()=>{
  await assert.rejects(()=>verifyDeploymentReceipt(process.cwd(),params,{rpc:rpcWith({chainId:"0x89"})}),/network/);
@@ -51,14 +51,16 @@ test("atomic deployment catalog includes new infrastructure component and asset 
  const infrastructure=loadFixtureInfrastructure();
  const original=JSON.parse(updatedDeploymentWebCatalog(process.cwd()));
  assert.deepEqual(original.infrastructure.xgrchain.xitaV315,infrastructure.xitaV315);
- const file="deployments/mainnet/receipts/xgrchain/"+ "a".repeat(64)+"-"+"b".repeat(40)+".json";
+ const file="deployments/receipts/xgrchain/"+ "a".repeat(64)+"-"+"b".repeat(40)+".json";
  infrastructure.xitaV315.components.factory={
   address:"0x"+"b".repeat(40),runtimeCodeKeccak256:"0x"+"c".repeat(64),receiptPath:file
  };
  infrastructure.xitaV315.receiptPaths.push(file);
  const asset=structuredClone(original.assets.XGR.deployment);
- const assetReceipt="deployments/mainnet/receipts/xgrchain/"+ "d".repeat(64)+"-"+"e".repeat(40)+".json";
+ const assetReceipt="deployments/receipts/xgrchain/"+ "d".repeat(64)+"-"+"e".repeat(40)+".json";
  asset.receiptPaths.push(assetReceipt);
+ asset.representations.push({chain:"xgrchain",component:"nativeRouter",
+   address:"0x"+"e".repeat(40),runtimeCodeKeccak256:"0x"+"f".repeat(64),receiptPath:assetReceipt});
  const updated=parse(updatedDeploymentWebCatalog(process.cwd(),{
   infrastructure:new Map([["xgrchain",infrastructure]]),
   assets:new Map([["XGR",asset]])

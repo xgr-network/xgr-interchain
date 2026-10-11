@@ -13,7 +13,7 @@ test("native XGR has deterministic canonical asset ID",()=>{
 test("all six XGR routes remain attached to ONE asset and one deployment index",()=>{
  const inv=approvedWorkInventory(root),asset=inv.assets.XGR;
  assert.equal(asset.routeCount,6);
- assert.equal(asset.deploymentManifest,"deployments/mainnet/assets/XGR.json");
+ assert.equal(asset.deploymentManifest,"deployments/assets/a7/XGR");
  assert.equal(asset.status,"not-deployed");
  assert.equal(asset.receiptCount,0);
  assert.equal(asset.routes.every(r=>r.assetId===asset.assetId&&r.status==="not-deployed"),true);

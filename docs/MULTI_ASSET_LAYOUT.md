@@ -1,15 +1,25 @@
-# XETA v3.1.4 asset and chain layout
+# XITA v3.1.5 multi-asset layout
 
-config/chains/<chain>.json: chain/domain identity, RPC and verifier format. Chain entries do not imply confirmed deployment.
-config/assets/<ASSET>/{asset,routes,mainnet}.json: canonical token identity, representations, desired pairs, governance planning.
-deployments/mainnet/infrastructure/<chain>.json: independently observed shared Mailbox/Hook, RegistryV2, ISM and BLS verifier, with null values while pending.
-deployments/mainnet/assets/<ASSET>.json: only verified token-specific routes, routers, Gateways, FeeVaults and governance transactions.
-contracts/: chain-neutral XETA ILN security and deployment source. script/DeployXETA.s.sol: current generic deployment script.
+See [REPOSITORY_LAYOUT.md](./REPOSITORY_LAYOUT.md) for the normative tree.
 
-Example: XGR is native on XGRChain (1643) and new synthetic wXGR on Base, Polygon and Arbitrum. Six directed one-hop spokes are planned; each has separate source-native fee. Two-hop external-to-external UX always crosses XGRChain and needs a future sponsor/forwarder before it can be XGR-wallet-free. This repository does not claim deployment of that sponsor.
+Each asset has one directory under config/assets/<shard>/<SYMBOL>/ with exactly
+four JSONs: asset.json, metadata.json, listing.json and routes.json. Routes
+here are configured directed intentions and do not constitute deployed on-chain
+registrations or validator governance approvals.
 
-## Onboarding
-Use GitHub PR or a web form that creates the same manifest proposal and manual review. Project onboarding is free. A merge never activates a route without validator quorum. No inactive route is disabled; default UI and featured lists may be reordered without compromising direct redemption access. See docs/XETA_ONBOARDING.md.
+Only verified deployments appear in deployments/ as sparse per-chain,
+per-representation and per-actual-routeId JSON files. Native verifier
+capabilities stay in config/chains/<chain>/bootstrap.json. Receipt JSONs
+are append-only and cryptographically checked.
 
-## Validation
-Run node tools/validate-manifests.mjs and node --test tools/validate-manifests.test.mjs before promotion. Full Forge, JS and on-chain E2E are separate requirements. No unverified address is ever populated simply to satisfy static checks.
+The generated apps/web/catalog.json and the Admin API derive from the same
+config and verified deployment records. An unavailable indexer or RPC may
+block live bridging, but it may not fabricate missing deployment addresses.
+
+Adding an EVM chain needs only a config/chains/<chain>/chain.json and
+bootstrap.json. Adding an asset creates only its four config JSONs and an
+updated generated catalog; NOT an empty deployment file.
+
+XGRChain (1643) remains the mandatory hub. Every allowed one-hop route has
+the hub as exactly one endpoint. Spoke-to-spoke journeys are two independent
+hops, never an invented direct route or implicit sponsor.

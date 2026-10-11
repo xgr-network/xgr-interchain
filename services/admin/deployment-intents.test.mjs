@@ -20,7 +20,7 @@ test("write-ahead wallet intent is persistent and cannot be broadcast twice",()=
   open().attachHash(input.id,hash);
   assert.equal(open().read().entries[input.id].txHash,hash);
   assert.throws(()=>open().attachHash(input.id,"0x"+"f".repeat(64)),/replace/);
-  assert.throws(()=>open().document(input.id,"deployments/mainnet/receipts/polygon/x.json"),/canonical/);
+  assert.throws(()=>open().document(input.id,"deployments/receipts/polygon/x.json"),/canonical/);
   open().confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
   assert.equal(open().read().entries[input.id].stage,"confirmed");
   assert.throws(()=>open().prepare(input),/Existing deployment intent/);
@@ -102,7 +102,7 @@ test("successful repository publication deletes the local completion record",()=
   store.prepare(input);
   store.attachHash(input.id,hash);
   store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
-  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  const receipt="deployments/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
   assert.deepEqual(store.document(input.id,receipt),{stage:"documented",receiptPath:receipt});
   assert.deepEqual(store.read(),{version:1,entries:{}});
   assert.deepEqual(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")),{version:1,entries:{}});
@@ -118,7 +118,7 @@ test("first journal read removes old documented Registry entry without manual pa
   store.attachHash(input.id,hash);
   store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
   const old=store.read().entries[input.id];
-  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  const receipt="deployments/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
   writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{
    [input.id]:{...old,stage:"documented",receiptPath:receipt}
   }}));
@@ -142,7 +142,7 @@ test("completed-record cleanup preserves all unresolved router and route transac
   store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"1".repeat(64)});
   const completed=store.read().entries[input.id];
   const pending=store.read().entries[route.id];
-  const receipt="deployments/mainnet/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  const receipt="deployments/receipts/polygon/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
   writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{
    [input.id]:{...completed,stage:"documented",receiptPath:receipt},
    [route.id]:pending

@@ -5,11 +5,12 @@
 import {readdirSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {keccak256} from "../../apps/web/keccak.mjs";
+import {listAssetFolders,loadAssetDeployment,assetConfigFolder} from "../../tools/manifest-layout.mjs";
 
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/;
 const ASSET_ID=/^0x[0-9a-fA-F]{64}$/;
 const SHA=/^[0-9a-fA-F]{40}$/;
-const RECEIPT_PATH=/^deployments\/mainnet\/receipts\/([a-z][a-z0-9-]*)\/([a-f0-9]{64})-([a-f0-9]{40})\.json$/;
+const RECEIPT_PATH=/^deployments\/receipts\/([a-z][a-z0-9-]*)\/([a-f0-9]{64})-([a-f0-9]{40})\.json$/;
 const ZERO="0x"+"00".repeat(20);
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const read=(root,p)=>JSON.parse(readFileSync(join(root,p),"utf8"));
@@ -88,31 +89,38 @@ export function routeState(route,receipts){
  };
  // Recorded != active. Routes remain "deployed" at most until an actual
  // reciprocal BLS-verified activation record is separately verified.
- const ready=identifiers.length===1&&Object.values(components).every(a=>a.length===1);
+ const instances=identifiers.map(id=>{
+  const matching=records.filter(r=>clean(r.routeId||r.provenance?.routeId)===id);
+  const gateways=matching.filter(r=>r.component==="gateway"&&r.chain===route.source).map(r=>r.address);
+  const feeVaults=matching.filter(r=>r.component==="feeVault"&&r.chain===route.source).map(r=>r.address);
+  const complete=gateways.length===1&&feeVaults.length===1&&
+    components.sourceRouters.length>0&&components.destinationRouters.length>0;
+  return {routeId:id,gateway:gateways[0]||null,feeVault:feeVaults[0]||null,
+    sourceRouters:components.sourceRouters,destinationRouters:components.destinationRouters,
+    status:complete?"deployed":"partial"};
+ });
+ const ready=instances.some(i=>i.status==="deployed");
  const status=records.length===0?"not-deployed":ready?"deployed":"partial";
- return {...route,routeIds:identifiers,components,receipts:records.map(r=>r.receiptPath),
+ return {...route,routeIds:identifiers,instances,components,receipts:records.map(r=>r.receiptPath),
   receiptCount:records.length,status,
   note:ready?"Contracts documented, activation still requires live BLS verification":
    records.length?"Incomplete or unpaired on-chain deployment evidence":"No verified deployments recorded"};
 }
 export function buildAssetState(root,chains,isHubHop){
  const assets={},routes=[],ids=new Map();
- const names=readdirSync(join(root,"config/assets"),{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>d.name).sort();
- for(const key of names){
-  const cfg=read(root,"config/assets/"+key+"/asset.json");
-  const desired=read(root,"config/assets/"+key+"/routes.json");
-  const pointer=read(root,"config/assets/"+key+"/mainnet.json");
-  const depPath="deployments/mainnet/assets/"+key+".json";
-  if(cfg.asset!==key||desired.asset!==key||pointer.asset!==key||
-     pointer.deploymentManifest!==depPath||pointer.routeManifest!=="config/assets/"+key+"/routes.json")
+ for(const {key,path,asset:cfg,assetId:folderAssetId} of listAssetFolders(root)){
+  const desired=read(root,path+"/routes.json");
+  const depPath="deployments/assets/"+folderAssetId.slice(2,4)+"/"+key;
+  if(cfg.asset!==key||desired.asset!==key||path!==assetConfigFolder(key,folderAssetId))
     throw Error("Configuration/deployment link mismatch: "+key);
   const assetId=canonicalAssetId(cfg,chains);
+  if(!equal(assetId,folderAssetId))throw Error("Asset folder ID does not match canonical contract: "+key);
   if(ids.has(assetId))throw Error("Duplicate canonical Asset ID: "+key+" and "+ids.get(assetId));
   ids.set(assetId,key);
-  const deployed=read(root,depPath);
-  if(deployed.kind!=="asset-deployment"||deployed.schemaVersion!==2||
+  const deployed=loadAssetDeployment(root,key,assetId);
+  if(deployed.kind!=="asset-deployment"||deployed.schemaVersion!==3||
      deployed.asset!==key||!equal(deployed.assetId,assetId)||
-     deployed.sourceManifest!=="config/assets/"+key+"/asset.json"||
+     deployed.sourceManifest!==path+"/asset.json"||
      !Array.isArray(deployed.receiptPaths))
     throw Error("Deployment manifest must point to EXACT canonical asset: "+key);
   const declared=desired.routes||[];
@@ -152,7 +160,7 @@ export function buildAssetState(root,chains,isHubHop){
    status,routeCount:boundRoutes.length,deployedRoutes,withEvidence,
    receiptCount:receipts.length,representations:byChain,
    routes:boundRoutes,
-   manifest:"config/assets/"+key+"/asset.json",deploymentManifest:depPath};
+   manifest:path+"/asset.json",deploymentManifest:depPath};
   assets[key]=record;
   routes.push(...boundRoutes);
  }

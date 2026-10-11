@@ -65,7 +65,7 @@ export function deploymentJournal({dir,chains=[]}){
     if(!item||!TX.test(txHash||"")||item.txHash!==txHash.toLowerCase())throw Error("Unknown or mismatched journal transaction");
     const transitions={submitted:["confirmed","failed"],confirmed:["documented"],failed:[],documented:[]};
     if(!transitions[item.stage].includes(stage))throw Error("Invalid journal transition");
-    if(stage==="documented"&&(!evidence||typeof evidence.path!=="string"||!evidence.path.startsWith("deployments/mainnet/receipts/")))
+    if(stage==="documented"&&(!evidence||typeof evidence.path!=="string"||!evidence.path.startsWith("deployments/receipts/")))
      throw Error("Verified GitHub receipt reference required");
     item.stage=stage;item.updatedAt=new Date().toISOString();
     if(evidence)item.evidence=evidence;return item;

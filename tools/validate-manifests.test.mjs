@@ -36,7 +36,7 @@ test("recorded XITA deployments are valid; unauthorized metadata or malformed bi
  const altered=copy();
  altered.infrastructure.xgrchain.xitaV315.components.badLegacyComponent={
   address:"0x"+"1".repeat(40),runtimeCodeKeccak256:"0x"+"2".repeat(64),
-  receiptPath:"deployments/mainnet/receipts/xgrchain/"+"3".repeat(64)+"-"+"1".repeat(40)+".json"
+  receiptPath:"deployments/receipts/xgrchain/"+"3".repeat(64)+"-"+"1".repeat(40)+".json"
  };
  assert.ok(validateCatalog(altered).some(s=>s.includes("invalid component deployment binding")));
 });
