@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {approvedWorkInventory} from "./main-gate.mjs";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {formatNative} from "./wallet.js";
 const root=new URL("../../",import.meta.url).pathname;
@@ -19,9 +21,16 @@ test("all main-approved chains derive deployment progress from documented compon
    documented===chain.required?"documented":documented>0?"partial":"not-deployed",
    chain.name+" derived deployment status");
  }
- const xgr=chains.find(c=>c.name==="xgrchain");
- assert.equal(xgr.components.find(p=>p.key==="validatorRegistry").status,"documented");
- assert.equal(xgr.status,"partial","one recorded registry is not a complete working bridge");
+ // No fixed "prelaunch" expectation: deployment receipts may be added after
+ // each mainnet transaction, so these checks must work at any deployment stage.
+ for(const chain of chains){
+  const observed=JSON.parse(readFileSync(join(root,
+   "deployments/mainnet/infrastructure/"+chain.name+".json"),"utf8"));
+  for(const part of chain.components){
+   assert.equal(part.status,observed.xitaV315.components[part.key]?"documented":"not-deployed",
+    chain.name+" "+part.key+" must follow immutable deployment index");
+  }
+ }
 });
 test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
