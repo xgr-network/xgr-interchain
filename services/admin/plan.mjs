@@ -13,11 +13,8 @@ export function validateDeployTopology(catalog){
     const chain=catalog.chains[name],infra=catalog.infrastructure?.[name];
     if(!infra||infra.chainId!==chain.chainId||infra.domainId!==chain.domainId)
       throw Error("Chain infrastructure mismatch: "+name);
-    for(const key of ["mailbox","merkleTreeHook"]){
-      const v=infra.hyperlaneCore?.[key];
-      if(typeof v!=="string"||!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
-        throw Error("Missing Hyperlane "+name+" "+key);
-    }
+    // Transport remains a separate future deployment gate. The plan API
+    // must remain readable while no historical Mailbox/Hook is configured.
   }
   const routes=catalog.assets?.XGR?.routes?.routes||[];
   for(const [name,source,dest] of [["xgr_to_base","xgrchain","base"],["base_to_xgr","base","xgrchain"]]){
@@ -30,8 +27,8 @@ export function validateDeployTopology(catalog){
 export function buildPlan(catalog){
   validateDeployTopology(catalog);
   const plan=[
-    step("rpc_xgr","xgrchain","preflight",[],"Verify XGRChain RPC, canonical Mailbox and MerkleTreeHook code."),
-    step("rpc_base","base","preflight",[],"Verify Base RPC, canonical Mailbox and MerkleTreeHook code."),
+    step("rpc_xgr","xgrchain","preflight",[],"Verify XGRChain RPC; new XITA transport is not yet deployed."),
+    step("rpc_base","base","preflight",[],"Verify Base RPC; new XITA transport is not yet deployed."),
     step("bls_base","base","security",["rpc_base"],"Prove EIP-2537 positive and negative BLS vectors on Base.",{mandatoryProof:true}),
     step("verifier_base","base","deploy",["bls_base"],"Deploy the approved EIP-2537 verifier.",{component:"blsVerifier"}),
     step("registry_xgr","xgrchain","deploy",["rpc_xgr"],"Deploy V3 with verified XGR PoS keys and proof of possession.",{component:"validatorRegistry",mandatoryProof:true}),
