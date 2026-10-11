@@ -162,6 +162,7 @@ async function openAssetModal(taskId){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
+ el("modal-discard").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
