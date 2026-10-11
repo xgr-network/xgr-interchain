@@ -4,13 +4,24 @@ import {approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {formatNative} from "./wallet.js";
 const root=new URL("../../",import.meta.url).pathname;
-test("all four main-approved chains carry explicit v3.1.5 deployment gaps",()=>{
+test("all main-approved chains derive deployment progress from documented component evidence",()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?4:5) && c.components.length===c.required));
- assert.ok(chains.every(c=>c.status==="not-deployed"));
+ // The approved inventory can be partially deployed: XGRChain already has
+ // a documented ValidatorRegistry, but still requires the other components.
+ // Status and progress must track the evidence in the component inventory.
+ for(const chain of chains){
+  const documented=chain.components.filter(p=>p.status==="documented").length;
+  assert.equal(chain.documented,documented,chain.name+" documented count");
+  assert.equal(chain.status,
+   documented===chain.required?"documented":documented>0?"partial":"not-deployed",
+   chain.name+" derived deployment status");
+ }
+ assert.equal(chains.find(c=>c.name==="xgrchain")
+  .components.find(p=>p.key==="validatorRegistry").status,"documented");
 });
 test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
