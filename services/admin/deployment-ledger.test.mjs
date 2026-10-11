@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {keccak256} from "../../apps/web/keccak.mjs";
-import {verifyDeploymentReceipt,deploymentReceiptPath,publishDeploymentBatch} from "./deployment-ledger.mjs";
+import {verifyDeploymentReceipt,deploymentReceiptPath,publishDeploymentBatch,updatedDeploymentWebCatalog} from "./deployment-ledger.mjs";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+const loadFixtureInfrastructure=()=>JSON.parse(readFileSync(join(process.cwd(),"deployments/mainnet/infrastructure/xgrchain.json"),"utf8"));
 const SHA="a".repeat(40), TX="0x"+"b".repeat(64), BLOCK="0x"+"c".repeat(64);
 const ADDRESS="0x"+"1".repeat(40),WALLET="0x"+"2".repeat(40);
 const BYTECODE="0x6001600055", HASH=keccak256(Uint8Array.from(Buffer.from(BYTECODE.slice(2),"hex")));
@@ -41,4 +44,33 @@ test("cannot publish fake receipt, no GitHub token or mismatched main",async()=>
   git:a=>a[0]==="symbolic-ref"?"main":a[0]==="rev-parse"?SHA:"",
   fetcher:async()=>({ok:true,json:async()=>({object:{sha:SHA}})})
  }),/not authorized/);
+});
+
+test("atomic deployment catalog includes new infrastructure component and asset receipts",()=>{
+ const {parse}=JSON;
+ const infrastructure=loadFixtureInfrastructure();
+ const original=JSON.parse(updatedDeploymentWebCatalog(process.cwd()));
+ assert.deepEqual(original.infrastructure.xgrchain.xitaV315,infrastructure.xitaV315);
+ const file="deployments/mainnet/receipts/xgrchain/"+ "a".repeat(64)+"-"+"b".repeat(40)+".json";
+ infrastructure.xitaV315.components.factory={
+  address:"0x"+"b".repeat(40),runtimeCodeKeccak256:"0x"+"c".repeat(64),receiptPath:file
+ };
+ infrastructure.xitaV315.receiptPaths.push(file);
+ const asset=structuredClone(original.assets.XGR.deployment);
+ const assetReceipt="deployments/mainnet/receipts/xgrchain/"+ "d".repeat(64)+"-"+"e".repeat(40)+".json";
+ asset.receiptPaths.push(assetReceipt);
+ const updated=parse(updatedDeploymentWebCatalog(process.cwd(),{
+  infrastructure:new Map([["xgrchain",infrastructure]]),
+  assets:new Map([["XGR",asset]])
+ }));
+ assert.equal(updated.infrastructure.xgrchain.xitaV315.components.factory.address,"0x"+"b".repeat(40));
+ assert.ok(updated.assets.XGR.deployment.receiptPaths.includes(assetReceipt));
+ assert.deepEqual(parse(updatedDeploymentWebCatalog(process.cwd())).assets.XGR.deployment,original.assets.XGR.deployment);
+});
+test("deployment catalog generation fails closed on invalid overrides",()=>{
+ const bad={schemaVersion:1,components:{factory:{address:"INVALID",runtimeCodeKeccak256:"0x"+"f".repeat(64),receiptPath:"invalid"}},receiptPaths:["invalid"]};
+ assert.throws(()=>updatedDeploymentWebCatalog(process.cwd(),{infrastructure:new Map([["xgrchain",{
+  ...loadFixtureInfrastructure(),xitaV315:bad
+ }]])}),/invalid component deployment binding/);
+ assert.throws(()=>updatedDeploymentWebCatalog(process.cwd(),{assets:new Map([["UNKNOWN",{}]])}),/Unknown deployment asset/);
 });
