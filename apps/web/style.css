@@ -803,3 +803,32 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
  .ux-dashboard .ux-alliance-intro,.ux-dashboard .ux-dashboard-ranking,.ux-dashboard .ux-dashboard-outro{width:calc(100% - 22px)}
  .ux-dashboard-token-cap{font-size:13px}
 }
+
+
+/* Clear, dual-audience Northstar hero without changing the 3D world. */
+.ux-dashboard .ux-ns-hero-copy{width:min(36vw,530px)}
+.ux-dashboard .ux-ns-hero-copy h1{font-size:clamp(59px,5.1vw,100px);max-width:540px;line-height:1.02}
+.ux-dashboard .ux-ns-promise{display:flex;flex-direction:column;gap:4px;margin-bottom:17px;font-size:clamp(17px,1.3vw,23px);line-height:1.37}
+.ux-dashboard .ux-ns-promise span{display:block;color:#c5d9f6}
+.ux-dashboard .ux-ns-subline{max-width:415px;line-height:1.75}
+.ux-dashboard .ux-ns-actions{margin-top:28px}
+.ux-dashboard .ux-ns-primary,.ux-dashboard .ux-ns-secondary{min-height:48px}
+.ux-alliance-audience{min-height:370px}
+.ux-alliance-audience h3{font-size:clamp(19px,1.7vw,24px);line-height:1.27}
+.ux-alliance-audience .ux-alliance-steps{display:grid;gap:11px;margin:8px 0 4px}
+.ux-alliance-steps>span{display:flex;gap:12px;align-items:center;color:#c6d6eb;font-size:12px}
+.ux-alliance-steps small{display:grid;place-items:center;flex:0 0 28px;height:28px;border:1px solid #4c6e92;border-radius:50%;font-size:10px;color:#a9cbee}
+.ux-alliance-audience-projects .ux-alliance-steps small{border-color:#806b4e;color:#e9cd9a}
+.ux-alliance-audience>a{font-size:13px;color:#c7e0ff}
+@media(max-width:1080px){
+ .ux-dashboard .ux-ns-hero-copy{width:min(40vw,460px)}
+ .ux-dashboard .ux-ns-hero-copy h1{font-size:clamp(52px,6vw,78px)}
+}
+@media(max-width:700px){
+ .ux-dashboard .ux-ns-hero-copy{width:calc(100% - 42px);max-width:410px}
+ .ux-dashboard .ux-ns-hero-copy h1{font-size:clamp(49px,12vw,69px)}
+ .ux-dashboard .ux-ns-promise{font-size:17px;gap:3px}
+ .ux-dashboard .ux-ns-subline{font-size:12px;max-width:345px}
+ .ux-dashboard .ux-ns-actions{margin-top:18px}
+ .ux-alliance-audience{min-height:335px}
+}
