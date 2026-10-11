@@ -234,7 +234,7 @@ function northstarCards(model,metrics=null){
 function allianceIntro(){
  return '<section class="ux-alliance-intro" id="about-xita"><div class="ux-alliance-heading"><span class="ux-kicker">THE ALLIANCE BEHIND THE UNIVERSE</span>'+
   '<h2>XGR Interchain <em>Token Alliance.</em></h2>'+
-  '<p>XITA is the complete interchain ecosystem behind the Universe: XGRChain v3.x, its Proof-of-Stake validators, permissionless smart contracts, routing infrastructure and the Token Alliance. The portal is your gateway to that infrastructure, not the infrastructure itself.</p>'+
+  '<p>Take your token beyond its home chain. XITA brings projects and token holders together across blockchain ecosystems: introduce your project, reach new communities and explore independent cross-chain routes through XGRChain. The underlying validator network and smart contracts make that connectivity possible.</p>'+
   '<div class="ux-alliance-pillars"><span>XGRChain v3.x hub</span><span>PoS validator security</span><span>Permissionless smart contracts</span><span>Interchain Token Alliance</span></div></div>'+
   '<div class="ux-alliance-audiences">'+
   '<article class="ux-alliance-audience ux-alliance-audience-holders">'+
@@ -249,7 +249,7 @@ function allianceIntro(){
   '<article class="ux-alliance-audience ux-alliance-audience-projects">'+
   '<div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span>'+
   '<h3>Bring your token to new chains.</h3>'+
-  '<p>Introduce your project to the Alliance and explore independently deployable routes through XGRChain. A directory listing and an active bridge are separate milestones.</p>'+
+  '<p>Make your token discoverable to a wider audience and explore new blockchain communities. Join the XITA directory, present your project and build independent routes to additional networks as they become supported. Listings and live transfers are verified separately.</p>'+
   '<div class="ux-alliance-steps" aria-label="How projects participate in XITA">'+
   '<span><small>01</small>Present your project</span>'+
   '<span><small>02</small>Deploy a route</span>'+
@@ -316,35 +316,36 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed"){
   '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section></div>';
 }
 const faqGroups=[
- {label:"01 · THE ALLIANCE",title:"XITA Ecosystem",items:[
-  ["What does XITA stand for?","XITA stands for XGR Interchain Token Alliance. It is the broader interchain ecosystem: XGRChain v3.x and its PoS validators, the public token-routing smart contracts, messaging and relaying infrastructure, indexing, and the Alliance for participating token projects. This website is its public interface, not the protocol itself."],
-  ["Why is XGRChain the hub?","Every directed v3.1.5 route has XGRChain, EVM chain ID and Hyperlane domain 1643, as exactly one endpoint. Moving between two external chains means two separate hops through XGRChain, each with its own route and source-chain fee."],
-  ["Is XITA decentralized and permissionless?","The v3.1.5 design uses a public Factory for independent route deployment and registration. No XGR organization approval or separate BLS vote is required to register a route. Individual messages are protected by validator BLS verification. A public listing or a route appearing in the UI is not an authorization or guarantee of availability."],
-  ["Is XITA already fully deployed?","The public catalog includes configured networks and routes, but production availability depends on independently verified counterpart contracts, on-chain evidence and successful security tests. Individual routes must be checked before use."]
+ {label:"01 · THE OPPORTUNITY",title:"Why XITA?",items:[
+  ["What is XITA?","XITA — the XGR Interchain Token Alliance — helps token projects reach beyond one blockchain. Present your token to a wider audience, explore additional networks and connect with holders through the XGRChain interchain ecosystem. XITA combines project discovery, independent cross-chain routes and the infrastructure that makes those routes possible."],
+  ["Why bring a token to more blockchains?","A token that is accessible on multiple networks can reach communities that might never visit its home chain. XITA helps projects explore that opportunity while giving holders a way to discover chain-specific representations and check available routes. Adoption, liquidity and exchange listings are not guaranteed."],
+  ["What can token holders do?","Discover tokens from participating projects, explore which networks they target and check whether a route is verified and available. Once a route is active, its token page provides the relevant transfer interface."],
+  ["What makes XITA different?","XGRChain connects the participating blockchain ecosystems as a common hub. Projects can independently register their routes rather than needing discretionary Alliance approval, while validators secure individual interchain messages. The Alliance adds a place for projects and holders to discover that ecosystem."]
  ]},
- {label:"02 · TOKEN HOLDERS",title:"For Token Holders",items:[
-  ["What can I do as a token holder?","Explore listed tokens and their chain representations, check a potential route in Plan a Route, and use the token-specific bridge interface only after that route is independently verified as available."],
-  ["How do cross-chain transfers work?","A source-chain router dispatches an authenticated interchain message. Destination verification and delivery depend on the route's exact contracts and validator security checks. Moving from one external chain to another requires two independent operations through XGRChain; the second hop is not automatically executed for you."],
-  ["What is a wrapped or synthetic token?","A token representation on a destination chain is not the original asset. Collateralized or native routes lock the appropriate source asset; authenticated synthetic routes mint or burn their representation according to the route design. Check the canonical origin and router addresses."],
-  ["What if a relayer goes offline?","Relayers can be replaced. A transfer may remain pending if a message has not been delivered, so use verified message and transaction status rather than assuming an automatic refund. Recovery and retry behavior must be verified for the deployed route."],
-  ["What fees apply?","The v3.1.5 design uses one validator fee denominated in the native currency of each source chain, plus transaction gas. A two-hop journey requires two source-chain transactions and their associated fees. Fees must be read from the actual source-chain registry."]
+ {label:"02 · TOKEN PROJECTS",title:"Grow Beyond Your Home Chain",items:[
+  ["Why should my project join XITA?","Put your project in front of a broader cross-chain audience. An XITA listing presents your token and its ecosystem, while independently deployed routes can extend where holders interact with it. Joining does not promise new liquidity, trading venues or users; it creates a path to broader visibility and connectivity."],
+  ["How do I get started?","Choose Bring Your Token, describe your project and original token contract, and select the networks you want to explore. The onboarding flow prepares your public project information. Deploying and verifying interchain routes is a separate step."],
+  ["Do I need permission to connect another chain?","No central Alliance vote is required for a project to deploy and register a route through the permissionless XITA Factory. The required counterpart contracts and security checks must still be in place before the portal offers bridging to holders."],
+  ["Does XITA provide liquidity or exchange listings?","No. XITA provides project discovery and interchain connectivity infrastructure; it does not automatically create exchange listings, liquidity pools, market makers or trading demand. Projects and their communities can pursue those opportunities independently."],
+  ["Can I add routes as my project grows?","Yes. Routes are registered independently for exact source and destination router pairs. A project can explore additional supported chains without replacing its original token; each route requires its own proper deployment and verification."]
  ]},
- {label:"03 · TOKEN PROJECTS",title:"For Token Projects",items:[
-  ["How can a token project join?","Use Join to prepare and publish a project listing. Listing in the XITA directory is separate from creating and verifying on-chain routes; a listing does not automatically activate bridging."],
-  ["Can projects deploy routes without central approval?","The public v3.1.5 Factory is designed for independent deployment and registration of router pairs and route-specific gateways. There is no separate human route-admission vote. The destination still verifies exact messages using the validator security mechanism."],
-  ["Does a project need its own validator network?","The XITA architecture uses the XGRChain validator security system for interchain message verification. Projects still need correctly deployed and verified routers, counterpart contracts and sufficient operational readiness."],
-  ["Can multiple routes exist for the same asset?","Yes. The route identity includes its directional chain IDs and the specific source and destination router addresses. Independent router pairs may have different route IDs for the same original asset."]
+ {label:"03 · TOKEN HOLDERS",title:"Explore and Move Tokens",items:[
+  ["Can I move tokens between different worlds?","When the required routes have been deployed and independently verified, you can use the token-specific bridge interface to move supported representations between chains. Until then, a network connection on the map is only a configuration, not an available transfer."],
+  ["How do transfers between two external chains work?","XGRChain is the hub. A journey from one external network to another requires two separate transfers: from the source chain to XGRChain, and from XGRChain to the destination. The second transfer is not automatically executed."],
+  ["What is a wrapped token?","A wrapped or synthetic representation lets an asset be used on another network. It is not the original asset on its home chain. Always check the canonical token and the independently verified bridge contract addresses."],
+  ["What happens if a relayer is unavailable?","Relayers can be replaced. If message delivery is interrupted, the transfer may remain pending until recovered or completed. Follow verified transaction and message statuses rather than assuming an automatic refund."],
+  ["What does bridging cost?","You pay source-chain gas and the validator fee specified by that chain's registry. A two-hop transfer requires two separately paid steps; fees vary by chain and must be read from deployed contracts."]
  ]},
- {label:"04 · SECURITY & METRICS",title:"Protocol, Security & Metrics",items:[
-  ["What does BLS verification protect?","Validator BLS signatures protect specific message and checkpoint verification at delivery. They do not serve as a separate permission vote for adding a route to the v3.1.5 registry."],
-  ["What is the difference between configured and verified routes?","Configured means recorded in a public manifest or registry view. A route should be offered for public transfer only after its deployed contracts and reciprocal counterparty bindings are independently checked."],
-  ["What are Locked TVL and Moved via XGR?","Locked TVL is the currently verified USD value of net collateral in independent escrow routers. Moved via XGR is cumulative verified journey volume, counted once per end-user journey even when it has two hops. Unknown or incomplete evidence is not shown as zero."],
-  ["Where does token market capitalization come from?","Asset-wide market capitalization can use sourced market-provider data such as CoinGecko when configured. It does not represent the value locked in XITA, does not prove a route is active and must never be reported as bridge TVL."]
+ {label:"04 · TRUST & TRANSPARENCY",title:"How XITA Is Secured",items:[
+  ["Who secures the interchain network?","XGRChain's Proof-of-Stake validator security infrastructure verifies individual cross-chain messages using BLS signatures. XGRChain v3.x, routers, gateways and registries together form the protocol behind the Alliance."],
+  ["Does a listed route mean I can use it?","Not necessarily. Public listing and configured topology are separate from completed contract deployment, counterpart verification and readiness for real transfers. XITA marks route availability from independently verified evidence."],
+  ["What are Locked TVL and Moved via XGR?","Locked TVL measures verified collateral currently held in bridge escrows. Moved via XGR measures completed transfer journey volume without double-counting two-hop journeys. If reliable finalized evidence is unavailable, the dashboard does not invent a value."],
+  ["Is market capitalization the same as XITA liquidity?","No. Market capitalization describes the broader token supply at sourced market prices, not funds held by the interchain infrastructure. XITA does not present market cap as locked TVL or as evidence of route activation."]
  ]}
 ];
 export function renderFAQ(){
  return '<div class="ux-app ux-faq-page"><div class="ux-kicker">XGR INTERCHAIN TOKEN ALLIANCE · KNOWLEDGE BASE</div>'+
-  '<h1>Understand XITA.</h1><p class="ux-lead">From permissionless token routing to interchain security: answers for holders, projects and builders.</p>'+
+  '<h1>Understand XITA.</h1><p class="ux-lead">Discover why projects join, how token holders can explore new networks and what protects interchain transfers.</p>'+
   '<div class="ux-faq-groups">'+faqGroups.map(group=>
     '<section class="ux-faq-group"><div class="ux-faq-group-head"><span class="ux-kicker">'+esc(group.label)+'</span><h2>'+esc(group.title)+'</h2></div>'+
     '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
