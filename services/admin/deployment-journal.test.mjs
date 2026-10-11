@@ -17,7 +17,7 @@ test("journal remains durable and never sends duplicate transactions",()=>{
   assert.throws(()=>reopened.reconcile({id:base.id,txHash:base.txHash,stage:"documented"}),/Invalid journal transition/);
   reopened.reconcile({id:base.id,txHash:base.txHash,stage:"confirmed"});
   assert.throws(()=>reopened.reconcile({id:base.id,txHash:base.txHash,stage:"documented"}),/receipt reference/);
-  reopened.reconcile({id:base.id,txHash:base.txHash,stage:"documented",evidence:{path:"deployments/mainnet/receipts/base/a.json"}});
+  reopened.reconcile({id:base.id,txHash:base.txHash,stage:"documented",evidence:{path:"deployments/receipts/base/a.json"}});
   assert.equal(journal(dir).read().entries[base.id].stage,"documented");
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

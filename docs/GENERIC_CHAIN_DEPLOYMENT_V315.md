@@ -2,9 +2,8 @@
 
 ## Contract
 
-Adding a valid EVM-chain definition under `config/chains/<slug>.json`, its
-`config/bootstrap/<slug>.json` and its canonical
-`deployments/mainnet/infrastructure/<slug>.json` makes it appear in the
+Adding a valid EVM-chain definition under `config/chains/<slug>/chain.json`, its
+`config/chains/<slug>/bootstrap.json` makes it appear in the
 Deployment Center automatically. No Base, Polygon, or other per-chain UI
 implementation is permitted. The single XGRChain hub (1643/1643) remains
 mandatory for all directed routes.

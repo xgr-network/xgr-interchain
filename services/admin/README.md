@@ -54,7 +54,7 @@ subdeployments must match its factory event and caller. The expected runtime
 code fingerprint must come from the main-approved build, **not the browser**.
 
 Verified records are immutable files under
-`deployments/mainnet/receipts/<chain>/<transaction-hash>-<address>.json`.
+`deployments/receipts/<chain>/<transaction-hash>-<address>.json`.
 The whole transaction batch is atomically committed as one new fast-forward
 commit to GitHub main using a least-privilege GitHub writer token. Existing
 receipt paths are never overwritten. Files include addresses, tx/block hashes,

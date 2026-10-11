@@ -8,13 +8,13 @@ outside a reviewed GitHub state transition.
 |---|---|---|---|
 | pending_review | Open Alliance onboarding PR | No public page | Hidden |
 | rejected | Closed, unmerged onboarding PR | No public page | Hidden |
-| accepted | Merged onboarding PR + config/assets/<TOKEN>/listing.json | Direct-link | Hidden |
+| accepted | Merged onboarding PR + config/assets/<shard>/<SYMBOL>/listing.json | Direct-link | Hidden |
 | public | Approved GitHub state commit, validated finalized transfer and pricing proof | Direct-link | Visible |
 
 XGR is a protocol-hub exception, pinned public in versioned config.
 
 **Submission:** A valid onboarding PR adds the asset config, route intentions,
-unactivated deployment inventory, listing.json with status=accepted, and
+listing.json with status=accepted, but NO unverified deployment index, and
 generated catalog.json. PR authors do not get approval to deploy contracts;
 deployment is the separate wallet-controlled permissionless service.
 

@@ -6,11 +6,11 @@ without validator vote or a separate activation transaction.
 
 ## Clean starting state
 
-- All new XITA infrastructure has `components: {}` and `receiptPaths: []`.
+- Undeployed chains have no deployment file; the loader projects empty components in memory only.
 - No old XITA receipt files, archives or deployed Registry V2 references remain
   in the current deployment configuration.
-- Existing Hyperlane Mailbox and MerkleTreeHook are shared chain infrastructure;
-  they are not deployments of the new XITA stack.
+- Historical Hyperlane transport addresses are not active XITA deployment evidence.
+  Any required fresh transport must be independently deployed and verified.
 - The first XITA ValidatorRegistry deployment is V3. A fresh address is
   recorded only after a new finalized wallet transaction is verified.
 - Previously broadcast transactions remain permanently visible on-chain,

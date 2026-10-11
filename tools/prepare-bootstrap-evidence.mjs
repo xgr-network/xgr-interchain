@@ -13,10 +13,10 @@ if(!/^[a-z][a-z0-9-]*$/.test(chainName||"")||!snapshotPath||!proofDir||!outputPa
 function load(path){return JSON.parse(readFileSync(path,"utf8"))}
 const config=(p)=>load(join(root,p));
 try{
- const chain=config("config/chains/"+chainName+".json");
+ const chain=config("config/chains/"+chainName+"/chain.json");
  const initial=config("config/validators/initial.json");
- const origin=config("config/chains/xgrchain.json");
- const bootstrap=config("config/bootstrap/"+chainName+".json");
+ const origin=config("config/chains/xgrchain/chain.json");
+ const bootstrap=config("config/chains/"+chainName+"/bootstrap.json");
  const snapshot=load(resolve(snapshotPath));
  const proofs=initial.validators.map((_,i)=>readFileSync(resolve(proofDir,"validator-"+(i+1)+".txt"),"utf8"));
  const {candidate,report}=await prepareBootstrapEvidence({chain,originChain:origin,bootstrap,initial,snapshot,proofs});

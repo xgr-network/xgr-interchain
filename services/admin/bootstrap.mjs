@@ -2,6 +2,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {selector} from "../../apps/web/keccak.mjs";
 import {rpcCall} from "./inspector.mjs";
+import {chainBootstrapPath} from "../../tools/manifest-layout.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[a-f0-9]{2})*$/i;
@@ -12,7 +13,7 @@ function decodeUint(x){if(!/^0x[0-9a-f]{64}$/i.test(x||""))throw Error("Invalid 
 const abiView=(rpc,url,to,signature)=>rpc(url,"eth_call",[{to,data:selector(signature)},"latest"]);
 
 export function bootstrapPlan(root,chain){
- const cfg=JSON.parse(readFileSync(join(root,"config/bootstrap",chain.name+".json"),"utf8"));
+ const cfg=JSON.parse(readFileSync(join(root,chainBootstrapPath(chain.name)),"utf8"));
  if(cfg.schemaVersion!==1||cfg.kind!=="xita-validator-fee-bootstrap"||
     cfg.chain!==chain.name||cfg.chainId!==chain.chainId||
     cfg.destinationDomain!==chain.domainId||cfg.membershipOriginChainId!==1643||

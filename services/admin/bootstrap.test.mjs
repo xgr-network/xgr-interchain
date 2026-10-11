@@ -17,7 +17,7 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
  assert.equal(bootstraps.length,inventory.chains.length);
  for(const [index,chain] of inventory.chains.entries()){
   const plan=bootstraps[index];
-  const cfg=config("config/bootstrap/"+chain.name+".json");
+  const cfg=config("config/chains/"+chain.name+"/bootstrap.json");
   assert.equal(plan.chain,chain.name);
   assert.equal(plan.chainId,chain.chainId);
   assert.equal(plan.domainId,chain.domainId);
@@ -50,7 +50,7 @@ test("verified evidence may move a chain from 0/3 to 3/3 without changing the te
  const chain=inventory.chains.find(c=>c.chainId===1643);
  assert.ok(chain);
  const plan=bootstrapPlan(root,chain);
- const manifest=config("config/bootstrap/"+chain.name+".json");
+ const manifest=config("config/chains/"+chain.name+"/bootstrap.json");
  const count=manifest.validatorSnapshot.validators.length;
  assert.equal(plan.validatorCount,count);
  assert.equal(plan.expectedValidatorCount,config("config/validators/initial.json").validators.length);

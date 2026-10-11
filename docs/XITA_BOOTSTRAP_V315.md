@@ -6,8 +6,8 @@ production-ready one-click deployment process.
 
 ## Bootstrapping each chain
 
-For each chain approved under `config/chains/<chain>.json`,
-`config/bootstrap/<chain>.json` specifies:
+For each chain approved under `config/chains/<chain>/chain.json`,
+`config/chains/<chain>/bootstrap.json` specifies:
 
 - Immutable origin chain 1643 (XGR PoS), target chain ID/domain
 - Finalized XGR PoS validator snapshot height, ordered validator addresses
@@ -68,9 +68,9 @@ exactly one fee per physical source chain, never per asset or router route.
 ## Immutable GitHub documentation
 
 Every verified contract transaction adds an immutable receipt and
-updates `deployments/mainnet/infrastructure/<chain>.json` in the same
+creates or updates `deployments/chains/<chain>.json` in the same
 GitHub fast-forward commit. Asset router/gateway receipts instead update
-`deployments/mainnet/assets/<asset>.json` using the canonical Asset ID.
+the sparse `deployments/assets/<shard>/<SYMBOL>/` representation or route file using the canonical Asset ID.
 
 The **initial fee** must be attested as part of the Registry/Factory deployment constructor binding; it is not a signed quorum update. A later **fee update is not a contract deployment**: it needs a separate
 verified governance-event journal with proposal ID, setId, nonce,

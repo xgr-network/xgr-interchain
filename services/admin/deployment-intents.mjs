@@ -146,7 +146,7 @@ export function deploymentIntents({directory,chains}){
   },
   document(id,path){
    if(!ID.test(id||"")||typeof path!=="string"||
-      !/^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(path))
+      !/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(path))
     throw Error("Invalid canonical verified receipt path");
    return mutate(s=>{
     const e=s.entries[id];

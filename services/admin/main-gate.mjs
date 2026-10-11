@@ -5,6 +5,7 @@ import {execFileSync} from "node:child_process";
 import {readdirSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {buildAssetState} from "./asset-state.mjs";
+import {chainConfigPath} from "../../tools/manifest-layout.mjs";
 
 const SHA=/^[0-9a-f]{40}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
@@ -79,9 +80,9 @@ export async function assertCurrentMain(root,options={}){
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"));}
 export function approvedWorkInventory(root){
  const chains={},assets={},routes=[];
- for(const file of readdirSync(join(root,"config/chains")).filter(n=>n.endsWith(".json"))){
-   const name=file.slice(0,-5);
-   const chain=load(root,"config/chains/"+file);
+ for(const dir of readdirSync(join(root,"config/chains"),{withFileTypes:true}).filter(d=>d.isDirectory())){
+   const name=dir.name;
+   const chain=load(root,chainConfigPath(name));
    if(name!==chain.name||!Number.isSafeInteger(chain.chainId)||!Number.isSafeInteger(chain.domainId))
      throw Error("Invalid main chain definition: "+name);
    if((chain.chainId===1643)!==(chain.domainId===1643))throw Error("Spoofed hub identity");

@@ -3,13 +3,14 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {rpcCall} from "./inspector.mjs";
+import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const CODE=/^0x(?:[a-f0-9]{2})+$/i;
 const executableParts=["validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"];
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"))}
 export function infrastructureInventory(root,chains) {
  return chains.map(c=>{
-  const observed=load(root,c.observedInfrastructure);
+  const observed=loadChainDeployment(root,c);
   if(observed.chain!==c.name||observed.chainId!==c.chainId||observed.domainId!==c.domainId)
    throw Error("Chain infrastructure manifest mismatch: "+c.name);
   const core={}; // Legacy infrastructure is intentionally excluded.
@@ -20,7 +21,7 @@ export function infrastructureInventory(root,chains) {
   const components=requiredParts.map(key=>{
    const item=verified[key],valid=item&&ADDRESS.test(item.address||"")&&
      /^0x[a-f0-9]{64}$/i.test(item.runtimeCodeKeccak256||"")&&
-     typeof item.receiptPath==="string" && item.receiptPath.startsWith("deployments/mainnet/receipts/"+c.name+"/");
+     typeof item.receiptPath==="string" && item.receiptPath.startsWith("deployments/receipts/"+c.name+"/");
    return {key,address:valid?item.address:null,status:valid?"documented":"not-deployed"};
   });
   const count=components.filter(x=>x.status==="documented").length;

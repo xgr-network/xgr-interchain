@@ -15,5 +15,5 @@
   },
   "confirmations": 12,
   "blsVerifierFormat": "eip2537",
-  "observedInfrastructure": "deployments/mainnet/infrastructure/base.json"
+  "observedInfrastructure": "deployments/chains/base.json"
 }

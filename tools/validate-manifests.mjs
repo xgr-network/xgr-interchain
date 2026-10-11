@@ -1,19 +1,25 @@
 #!/usr/bin/env node
-import {readFileSync,readdirSync} from "node:fs";
+import {readdirSync,readFileSync} from "node:fs";
 import {join,resolve,dirname} from "node:path";
+import {chainConfigPath,loadChainDeployment,listAssetFolders,loadAssetDeployment,assetConfigFolder,chainDeploymentPath} from "./manifest-layout.mjs";
+import {canonicalAssetId} from "../services/admin/asset-state.mjs";
 import {fileURLToPath} from "node:url";
 export const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const address=x=>typeof x==="string"&&/^0x[0-9a-f]{40}$/i.test(x)&&!/^0x0{40}$/.test(x);
 const hash=x=>typeof x==="string"&&/^0x[0-9a-f]{64}$/i.test(x)&&!/^0x0{64}$/.test(x);
-const fee=x=>typeof x==="string"&&/^[1-9][0-9]*$/.test(x);
-function json(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"))}
-function files(root,rel){return readdirSync(join(root,rel),{withFileTypes:true}).filter(x=>x.isFile()&&x.name.endsWith(".json")).map(x=>x.name)}
+const RECEIPT=/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/;
+const read=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
 export function loadCatalog(root=ROOT){
  const chains={},assets={},infrastructure={};
- for(const file of files(root,"config/chains")){const n=file.slice(0,-5);chains[n]=json(root,"config/chains/"+file)}
- for(const chain of Object.keys(chains))infrastructure[chain]=json(root,"deployments/mainnet/infrastructure/"+chain+".json");
- for(const dir of readdirSync(join(root,"config/assets"),{withFileTypes:true}).filter(x=>x.isDirectory())){
-  const n=dir.name;assets[n]={metadata:json(root,`config/assets/${n}/asset.json`),profile:json(root,`config/assets/${n}/metadata.json`),listing:json(root,`config/assets/${n}/listing.json`),routes:json(root,`config/assets/${n}/routes.json`),mainnet:json(root,`config/assets/${n}/mainnet.json`),deployment:json(root,`deployments/mainnet/assets/${n}.json`)};
+ for(const dir of readdirSync(join(root,"config/chains"),{withFileTypes:true}).filter(x=>x.isDirectory())){
+  const chain=read(root,chainConfigPath(dir.name));
+  if(chain.name!==dir.name)throw Error("Chain folder/identity mismatch: "+dir.name);
+  chains[dir.name]=chain;
+  infrastructure[dir.name]=loadChainDeployment(root,chain);
+ }
+ for(const item of listAssetFolders(root)){
+  const {key,path,asset,assetId}=item;
+  assets[key]={metadata:asset,profile:read(root,path+"/metadata.json"),listing:read(root,path+"/listing.json"),routes:read(root,path+"/routes.json"),deployment:loadAssetDeployment(root,key,assetId)};
  }
  return {chains,assets,infrastructure};
 }
@@ -30,11 +36,11 @@ export function validateCatalog({chains,assets,infrastructure}){
   check(Array.isArray(c.rpcUrls)&&c.rpcUrls.length>0&&c.rpcUrls.every(x=>typeof x==="string"&&x.startsWith("https://")),p+": invalid RPC");
   check(Number.isSafeInteger(c.confirmations)&&c.confirmations>=1,p+": invalid confirmations");
   check(["compressed","eip2537"].includes(c.blsVerifierFormat),p+": invalid verifier");
-  check(c.observedInfrastructure===`deployments/mainnet/infrastructure/${name}.json`,p+": wrong inventory path");
+  check(c.observedInfrastructure===chainDeploymentPath(name),p+": wrong inventory path");
   const inf=infrastructure[name];check(!!inf,p+": infrastructure missing");if(!inf)continue;
   check(inf.kind==="infrastructure-deployment"&&inf.chain===name&&inf.chainId===c.chainId&&inf.domainId===c.domainId,p+": mismatched infrastructure");
   check(!Object.hasOwn(inf,"ilnV314"),p+": legacy infrastructure block forbidden");
-  check(Object.keys(inf).every(k=>["schemaVersion","kind","network","chain","chainId","domainId","xitaV315"].includes(k)),
+  check(Object.keys(inf).every(k=>["schemaVersion","kind","network","chain","chainId","domainId","xitaV315","present"].includes(k)),
     p+": legacy infrastructure address fields forbidden");
   const v315=inf.xitaV315;
   check(v315?.schemaVersion===1&&Array.isArray(v315?.receiptPaths)&&
@@ -46,7 +52,7 @@ export function validateCatalog({chains,assets,infrastructure}){
     check(allowed.has(component)&&address(item?.address)&&
       hash(item?.runtimeCodeKeccak256)&&
       typeof item?.receiptPath==="string"&&
-      /^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(item.receiptPath)&&
+      /^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(item.receiptPath)&&
       v315.receiptPaths.includes(item.receiptPath),p+": invalid component deployment binding "+component);
    }
   }
@@ -56,7 +62,8 @@ export function validateCatalog({chains,assets,infrastructure}){
  }
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){
-  const p="config/assets/"+name,{metadata:m,profile:pub,routes:r,mainnet:mn,deployment:d,listing:ls}=a;
+  const {metadata:m,profile:pub,routes:r,deployment:d,listing:ls}=a;
+  const p=assetConfigFolder(name,m.assetId);
   // A submitted tx hash or GitHub commit reference is NOT proof of successful
   // delivery. Until the finality-aware receipt verifier is shipped, third-party
   // assets must stay accepted (direct-link only), never public.
@@ -114,14 +121,46 @@ export function validateCatalog({chains,assets,infrastructure}){
     pairs.add(rt.sourceChain+":"+rt.destinationChain);
   }
   for(const rt of r.routes||[])check(pairs.has(rt.destinationChain+":"+rt.sourceChain),p+": missing reverse route "+rt.name);
-  check(mn.routeManifest===p+"/routes.json"&&mn.deploymentManifest===`deployments/mainnet/assets/${name}.json`,p+": invalid manifest linkage");
-  const canonical=chains[m.canonical?.chain];
-  const assetId=canonical&&m.canonical?.representation==="native"&&canonical.chainId===1643
-    ? "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0":null;
-  check(assetId!==null||address(m.canonical?.tokenAddress),p+": missing original token address");
-  check(d.kind==="asset-deployment"&&d.asset===name&&d.schemaVersion===2&&d.network==="mainnet"&&d.sourceManifest===p+"/asset.json"&&Array.isArray(d.receiptPaths),p+": invalid asset deployment binding");
-  if(assetId!==null)check(d.assetId===assetId&&m.assetId===assetId,p+": canonical asset ID mismatch");
-  check(d.receiptPaths.every(x=>typeof x==="string"&&/^deployments\/mainnet\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(x)),p+": invalid deployment receipt reference");
+  check(!Object.hasOwn(a,"mainnet"),p+": redundant legacy mainnet manifest forbidden");
+
+  let computedId=null;
+  try{computedId=canonicalAssetId(m,chains)}
+  catch(error){check(false,p+": canonical identity invalid: "+error.message)}
+  check(computedId!==null&&String(m.assetId).toLowerCase()===computedId,p+": canonical asset ID mismatch");
+  check(computedId!==null&&String(d.assetId).toLowerCase()===computedId,p+": canonical asset ID mismatch in deployment");
+  check(d.kind==="asset-deployment"&&d.asset===name&&d.schemaVersion===3&&
+    d.network==="mainnet"&&String(d.assetId).toLowerCase()===String(m.assetId).toLowerCase()&&
+    d.sourceManifest===p+"/asset.json"&&Array.isArray(d.receiptPaths)&&
+    Array.isArray(d.representations)&&Array.isArray(d.routeDeployments),p+": invalid asset deployment binding");
+  check(d.receiptPaths.every(x=>typeof x==="string"&&RECEIPT.test(x)),p+": invalid deployment receipt reference");
+  const deployedRouters=new Set();
+  for(const repr of d.representations||[]){
+   check(chains[repr.chain]&&["nativeRouter","syntheticRouter","collateralRouter"].includes(repr.component)&&
+     address(repr.address)&&hash(repr.runtimeCodeKeccak256)&&RECEIPT.test(repr.receiptPath)&&
+     d.receiptPaths.includes(repr.receiptPath),p+": invalid representation deployment");
+   const id=repr.chain+":"+repr.address?.toLowerCase();
+   check(!deployedRouters.has(id),p+": duplicate representation deployment");
+   deployedRouters.add(id);
+  }
+  const routed=new Set();
+  for(const route of d.routeDeployments||[]){
+   check(hash(route.routeId)&&!routed.has(route.routeId),p+": invalid or duplicate route ID");
+   routed.add(route.routeId);
+   check(route.kind==="asset-route-deployment"&&route.asset===name&&
+     String(route.assetId).toLowerCase()===String(m.assetId).toLowerCase()&&
+     typeof route.routeName==="string"&&names.has(route.routeName)&&
+     r.routes.some(v=>v.name===route.routeName&&v.sourceChain===route.sourceChain&&v.destinationChain===route.destinationChain),
+     p+": route deployment not bound to declared endpoints");
+   const components=route.components||{};
+   check(Object.keys(components).length>0&&Object.keys(components).every(k=>["gateway","feeVault"].includes(k)),
+     p+": invalid route deployment components");
+   for(const item of Object.values(components)){
+    check(address(item?.address)&&hash(item?.runtimeCodeKeccak256)&&RECEIPT.test(item.receiptPath)&&
+      d.receiptPaths.includes(item.receiptPath),p+": invalid route component receipt");
+   }
+   check(Array.isArray(route.receiptPaths)&&
+     Object.values(components).every(c=>route.receiptPaths.includes(c.receiptPath)),p+": route receipt index mismatch");
+  }
 
  }
  return errors;

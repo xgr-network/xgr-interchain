@@ -16,5 +16,5 @@
   },
   "confirmations": 1,
   "blsVerifierFormat": "compressed",
-  "observedInfrastructure": "deployments/mainnet/infrastructure/xgrchain.json"
+  "observedInfrastructure": "deployments/chains/xgrchain.json"
 }

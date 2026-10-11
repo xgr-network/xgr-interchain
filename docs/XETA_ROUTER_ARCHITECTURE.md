@@ -15,21 +15,19 @@ ERC-20 mint/burn use different Solidity transfer operations.
 - An external spoke must bridge through XGRChain (domain 1643); the common
   router enforces this. Direct Base <-> Polygon is forbidden.
 
-## Governance and bootstrap
+## Permissionless route registration and bootstrap (v3.1.5)
 
-Deploy shared infrastructure and the physical-chain asset router first.
-Deploy the source route Gateway pointing to the already-deployed shared router.
-Obtain current validator quorum and apply ROUTE_ADD on the source ILNRegistry.
-Any caller may then bootstrapXETARoute(destinationDomain, routeId).
+Deploy the shared per-chain security infrastructure and routers first. Any
+caller may register a directed hub route using the public Factory. It creates
+and binds the source Gateway/FeeVault and immutable router references
+atomically; no route-add quorum, separate enable vote or administrator key
+exists. The identity includes assetId, domains and both router addresses.
+The destination BLS ISM authenticates exact message/checkpoint delivery.
 
-Bootstrap validates the registry's route, current enabled state, source
-chain/domain, router identity, Mailbox and Hook, native fee and all four immutable
-bindings reported by the deployed ILNGateway. The remote destination address
-is enrolled only once and cannot be mutated by an owner (none is retained).
-
-Source-domain route disable blocks new outbound transfers. Successful
-incoming transfers still use Hyperlane Mailbox-only handle() with enrolled
-remote router checks. Normal validator fees remain mandatory and positive.
+GitHub deployment records follow only from verified on-chain receipts and
+live safety checks. Removing a directory listing cannot disable any route.
+A route may not be offered as live in the frontend without verified remote
+counterpart, supply-binding and real transfer tests.
 
 ## Security boundaries
 
