@@ -5,7 +5,7 @@ import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsync
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 import {deploymentParameters} from "./deployment-parameters.mjs";
-const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|factory|sourceRegistry)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
+const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
 const H256=/^[0-9a-f]{64}$/i;
@@ -52,7 +52,8 @@ export function deploymentIntents({directory,chains}){
  const read=()=>{
   try{
    const s=JSON.parse(readFileSync(file,"utf8"));
-   if(s.version!==1||!s.entries||Array.isArray(s.entries))
+   if(s.version!==1||!s.entries||Array.isArray(s.entries)||
+      Object.keys(s).length!==2||Object.keys(s).some(k=>k!=="version"&&k!=="entries"))
     throw Error("Deployment intent journal schema mismatch");
    for(const [id,e] of Object.entries(s.entries)){
     if(id!==e.id)throw Error("Deployment journal identity changed");

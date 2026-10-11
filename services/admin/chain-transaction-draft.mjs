@@ -12,15 +12,19 @@ const ZERO="0x"+"0".repeat(40);
 const deployed=(infra,key)=>infra.components.find(p=>p.key===key)?.address||null;
 const nonzero=x=>ADDR.test(x||"")&&x.toLowerCase()!==ZERO;
 const load=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
-export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
-const contractFor={blsVerifier:"XGRInterchainBLSVerifier",
+export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
+ syntheticRouterDeployer:"XETASyntheticRouterDeployer",
+ collateralRouterDeployer:"XETACollateralRouterDeployer",
+ blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XGRILNInterchainISMV2",factory:"XETATokenFactoryV315"};
 const typesFor={
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],
- factory:["uint64","uint32","address","address","address","address","uint256","uint256"]
+ nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
+ factory:["uint64","uint32","address","address","address","address","uint256","uint256","address","address","address"]
 };
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
 function exactArtifact(root,component,compiled){
@@ -95,7 +99,10 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   if(!Number.isSafeInteger(gas)||gas<21000)throw Error("Missing approved defaultDestinationGasLimit");
   values=[chain.chainId,chain.domainId,requirePresent(infrastructure,"validatorRegistry"),
    core.mailbox,core.merkleTreeHook,requirePresent(infrastructure,"ism"),
-   gas,p.sourceFeeWei];
+   gas,p.sourceFeeWei,
+   requirePresent(infrastructure,"nativeRouterDeployer"),
+   requirePresent(infrastructure,"syntheticRouterDeployer"),
+   requirePresent(infrastructure,"collateralRouterDeployer")];
  }
  const artifactData=exactArtifact(root,component,artifact);
  return {id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,

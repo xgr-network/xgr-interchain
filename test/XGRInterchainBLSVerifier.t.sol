@@ -17,6 +17,16 @@ contract XGRInterchainBLSVerifierTest is Test {
         verifier = new XGRInterchainBLSVerifier();
     }
 
+    function testRejectsPairingIdentityForgeryAndInfinityMembers() public view {
+        bytes[] memory keys=new bytes[](1);
+        keys[0]=new bytes(128);
+        assertFalse(verifier.verify(bytes("arbitrary signed payload"),keys,hex"01",new bytes(256)));
+        keys[0]=EIP2537_PUBLIC_KEY;
+        assertFalse(verifier.verify(bytes("arbitrary signed payload"),keys,hex"01",new bytes(256)));
+        keys[0]=new bytes(128);
+        assertFalse(verifier.verify(bytes("arbitrary signed payload"),keys,hex"01",EIP2537_SIGNATURE));
+    }
+
     function testKryptologyVectorVerifies() public view {
         bytes[] memory keys = new bytes[](1);
         keys[0] = EIP2537_PUBLIC_KEY;

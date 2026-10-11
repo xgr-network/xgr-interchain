@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {deploymentIntents} from "./deployment-intents.mjs";
@@ -72,5 +72,25 @@ test("simulation-generated creation transaction is accepted by persistent journa
   const saved=open.prepare({...input,transaction:{...simulation.transaction,nonce:"0x0"}});
   assert.equal(saved.transaction.to,null);
   assert.equal(open.read().entries[input.id].transaction.to,null);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("new XITA Registry V3 starts with a clean unarchived wallet journal",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-fresh-start-"));
+ try{
+  const open=()=>deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  assert.deepEqual(open().read(),{version:1,entries:{}});
+  open().prepare({...input,id:"xgrchain:validatorRegistry",chainId:1643});
+  const state=JSON.parse(readFileSync(join(dir,"intents.json"),"utf8"));
+  assert.deepEqual(Object.keys(state).sort(),["entries","version"]);
+  assert.equal(state.entries["xgrchain:validatorRegistry"].stage,"prepared");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("unexpected journal metadata is rejected rather than retained",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-clean-journal-"));
+ try{
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{},unexpected:{}}));
+  const store=deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  assert.throws(()=>store.read(),/schema mismatch/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

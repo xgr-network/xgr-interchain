@@ -21,7 +21,10 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   if(kind==="address"?!same(observed,expected):observed!==BigInt(expected))
    throw Error("On-chain constructor binding mismatch: "+signature);
  };
- if(component==="blsVerifier")return true;
+ // These three immutable deployment modules have no constructor bindings.
+ // Exact compiler-pinned runtime verification is mandatory in reconcileDeployedContract.
+ if(["blsVerifier","nativeRouterDeployer","syntheticRouterDeployer",
+     "collateralRouterDeployer"].includes(component))return true;
  if(component==="validatorRegistry"){
   const v=infra.components.find(c=>c.key==="blsVerifier")?.address||bootstrap.verifierAddress;
   if(!ADDR.test(v||""))throw Error("Verifier address not established");
@@ -65,6 +68,17 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("defaultDestinationGasLimit()",chain.defaultDestinationGasLimit);
   await check("mailbox()",infra.hyperlane.mailbox,"address");
   await check("merkleTreeHook()",infra.hyperlane.merkleTreeHook,"address");
+  // Reject an otherwise matching Factory that points at unverified/deceptive
+  // subdeployers. These immutable constructor bindings define token security.
+  for(const [getterName,componentName] of [
+   ["nativeDeployer()","nativeRouterDeployer"],
+   ["syntheticDeployer()","syntheticRouterDeployer"],
+   ["collateralDeployer()","collateralRouterDeployer"]
+  ]){
+   const target=infra.components.find(c=>c.key===componentName)?.address;
+   if(!ADDR.test(target||""))throw Error("Unverified Factory module: "+componentName);
+   await check(getterName,target,"address");
+  }
  }else if(component==="sourceRegistry"){
   const factory=infra.components.find(c=>c.key==="factory")?.address;
   if(!ADDR.test(factory||""))throw Error("Source Registry Factory missing");

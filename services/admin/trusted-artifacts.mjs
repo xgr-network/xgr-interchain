@@ -17,6 +17,9 @@ const exec=promisify(execFile);
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
 const SHA=/^[0-9a-f]{40}$/i;
 const SOURCE={
+ nativeRouterDeployer:"XETANativeRouterDeployer",
+ syntheticRouterDeployer:"XETASyntheticRouterDeployer",
+ collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XGRILNInterchainISMV2",
@@ -29,10 +32,11 @@ const SOURCE={
  feeVault:"XGRILNFeeVault"
 };
 const TYPES={
+ nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],
- factory:["uint64","uint32","address","address","address","address","uint256","uint256"],
+ factory:["uint64","uint32","address","address","address","address","uint256","uint256","address","address","address"],
  nativeRouter:["address","address","address","address","uint256"],
  syntheticRouter:["address","address","address","address","uint256","uint8","string","string"],
  collateralRouter:["address","address","address","address","address","uint256"],

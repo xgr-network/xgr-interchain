@@ -33,17 +33,13 @@ export function validateCatalog({chains,assets,infrastructure}){
   check(c.observedInfrastructure===`deployments/mainnet/infrastructure/${name}.json`,p+": wrong inventory path");
   const inf=infrastructure[name];check(!!inf,p+": infrastructure missing");if(!inf)continue;
   check(inf.kind==="infrastructure-deployment"&&inf.chain===name&&inf.chainId===c.chainId&&inf.domainId===c.domainId,p+": mismatched infrastructure");
-  check(inf.ilnV314&&["unverified-not-activated","verified-deployed"].includes(inf.ilnV314.status),p+": invalid infrastructure state");
-  if(inf.ilnV314?.status==="unverified-not-activated")check(["sourceRegistry","destinationRegistryV2","destinationIsmV2","blsVerifier"].every(k=>inf.ilnV314[k]===null),p+": pending infrastructure contains deployed security addresses");
-  else {
-   check(Number.isSafeInteger(inf.ilnV314.verifiedAtBlock)&&inf.ilnV314.verifiedAtBlock>0,p+": missing verifiedAtBlock");
-   check(["sourceRegistry","destinationRegistryV2","destinationIsmV2","blsVerifier"].every(k=>inf.ilnV314[k]===null||address(inf.ilnV314[k])),p+": invalid contract address");
-  }
+  check(!Object.hasOwn(inf,"ilnV314"),p+": legacy infrastructure block forbidden");
   const v315=inf.xitaV315;
   check(v315?.schemaVersion===1&&Array.isArray(v315?.receiptPaths)&&
-    typeof v315?.components==="object"&&!Array.isArray(v315?.components),p+": invalid XITA v3.1.5 deployment index");
+    typeof v315?.components==="object"&&v315.components!==null&&!Array.isArray(v315.components)&&
+    Object.keys(v315).every(k=>["schemaVersion","components","receiptPaths"].includes(k)),p+": invalid XITA v3.1.5 deployment index");
   if(v315?.components&&typeof v315.components==="object"){
-   const allowed=new Set(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
+   const allowed=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
    for(const [component,item] of Object.entries(v315.components)){
     check(allowed.has(component)&&address(item?.address)&&
       hash(item?.runtimeCodeKeccak256)&&

@@ -46,7 +46,16 @@ function renderAssets(){
 let currentWallet=null;
 let chainObservations=new Map();
 let liveBootstrap=new Map();
-const coreTitles={blsVerifier:"BLS-Verifier",validatorRegistry:"ValidatorRegistry",ism:"Security Module",factory:"Factory",sourceRegistry:"Source Registry"};
+const coreTitles={
+ blsVerifier:"BLS-Verifier",
+ validatorRegistry:"ValidatorRegistry V3",
+ ism:"Interchain Security Module",
+ nativeRouterDeployer:"Native Router Deployer (einmalig)",
+ syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
+ collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
+ factory:"Permissionless Token Factory",
+ sourceRegistry:"ILN Source Registry"
+};
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
 let deploymentReadiness=new Map();
@@ -74,7 +83,7 @@ function renderInfrastructure(){
     '<button class="address-copy" data-copy="'+esc(part.address)+'" title="'+esc(part.address)+'">'+
      esc(displayAddress(part.address))+' ⧉</button>':
     '<button class="component-pending" data-open-chain="'+esc(c.name)+
-     '" data-open-component="'+esc(part.key)+'">Ausstehend →</button>')+'</div>').join("");
+     '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>')+'</div>').join("");
   const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
   const money=n=>n==null?"":moneyInWei(n,c);
   const liveRows=live?.validatorSetId?
@@ -90,11 +99,7 @@ function renderInfrastructure(){
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
    '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
-   '<div class="chain-components">'+verifierRow+tasks+'</div>'+
-   (c.documented<c.required?
-    '<div class="chain-bootstrap-summary"><span>Bootstrap</span><span>'+
-    esc(cleanBootstrapStatus(c.name))+'</span></div>':"")+
-   liveRows+
+   '<div class="chain-components">'+verifierRow+tasks+'</div>'+    liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
    '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
    '"></div></div></article>';
@@ -298,11 +303,21 @@ async function openContractModal(chainName,component){
    "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
 
+  // Chain contracts are deployed in canonical dependency order. Never offer
+  // a signing step while a preceding core module is still missing.
+  const stepIndex=infra.components.findIndex(p=>p.key===component);
+  const missingPrerequisites=infra.components.slice(0,stepIndex)
+    .filter(p=>p.status!=="documented").map(p=>coreTitles[p.key]||p.key);
   if(existing){
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    presentModalStatus("Vorherige Transaktion: "+existing.stage+
     ". Zuerst wiederherstellen – niemals erneut senden.","warn");
+   return;
+  }
+  if(missingPrerequisites.length){
+   el("modal-deploy").disabled=true;
+   presentModalStatus("Zuerst deployen und verifizieren: "+missingPrerequisites.join(", "), "warn");
    return;
   }
   // Gas preview works with a clean checked-out main even if GitHub is temporarily unavailable.

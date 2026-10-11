@@ -115,7 +115,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
    result.liveValidatorReservesWei[address]=BigInt("0x"+detail.slice(130,194)).toString();
   }
   result.validatorCountOnChain=plan.initialValidators.length;
- }else result.missing.push("ValidatorRegistryV2 noch nicht deployed");
+ }else result.missing.push("ValidatorRegistry V3 noch nicht deployed");
  const factory=observed?.components.find(c=>c.key==="factory")?.address;
  if(factory){
   const [gas,initialFee]=await Promise.all([

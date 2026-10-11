@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {rpcCall} from "./inspector.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const CODE=/^0x(?:[a-f0-9]{2})+$/i;
-const executableParts=["validatorRegistry","ism","factory","sourceRegistry"];
+const executableParts=["validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"];
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"))}
 export function infrastructureInventory(root,chains) {
  return chains.map(c=>{

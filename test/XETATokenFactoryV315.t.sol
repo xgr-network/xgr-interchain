@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
+import {XETACollateralRouterDeployer} from "../contracts/XETACollateralRouterDeployer.sol";
+import {XETASyntheticRouterDeployer} from "../contracts/XETASyntheticRouterDeployer.sol";
+import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.sol";
 import {XGRILNRegistryV315} from "../contracts/XGRILNRegistryV315.sol";
 import {XGRILNProtocol} from "../contracts/XGRILNProtocol.sol";
 import {XETAGuardedSyntheticWarpRouter} from "../contracts/XETAGuardedSyntheticWarpRouter.sol";
@@ -35,7 +38,8 @@ contract XETATokenFactoryV315Test is Test {
         mailbox = new XITAMailboxV315Mock(DOMAIN);
         factory = new XETATokenFactoryV315(
             CHAIN, DOMAIN, address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 250_000, 100
+            address(mailbox), address(mailbox), address(mailbox), 250_000, 100,
+            address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
     }

@@ -1,15 +1,6 @@
 // Deterministic deployment graph: no arbitrary commands, private keys or governance bypass.
 export const HUB=1643;
 export const SUPPORTED=["xgrchain","base"];
-const SCRIPT={
-  verifier:"script/DeployXETA.s.sol:DeployXETAEIP2537Verifier",
-  validatorRegistry:"script/DeployXETA.s.sol:DeployXETARegistryV3",
-  sourceRegistry:"script/DeployXETA.s.sol:DeployXETAILNRegistry",
-  ism:"script/DeployXETA.s.sol:DeployXETAISM",
-  nativeRouter:"script/DeployXETARouters.s.sol:DeployXETANativeAssetRouter",
-  syntheticRouter:"script/DeployXETARouters.s.sol:DeployXETASyntheticAssetRouter",
-  gateway:"script/DeployXETA.s.sol:DeployXETAGateway"
-};
 function step(id,chain,kind,dependsOn,description,extra={}){
   return {id,chain,kind,dependsOn,description,...extra};
 }
@@ -41,24 +32,30 @@ export function buildPlan(catalog){
   const plan=[
     step("rpc_xgr","xgrchain","preflight",[],"Verify XGRChain RPC, canonical Mailbox and MerkleTreeHook code."),
     step("rpc_base","base","preflight",[],"Verify Base RPC, canonical Mailbox and MerkleTreeHook code."),
-    step("bls_base","base","security",["rpc_base"],"Prove EIP-2537 precompile support on Base with independent positive and negative BLS test vectors. Never assume EVM compatibility proves it.",{mandatoryProof:true}),
-    step("verifier_base","base","deploy",["bls_base"],"Deploy the dedicated EIP-2537 BLS verifier.",{script:SCRIPT.verifier}),
-    step("registry_xgr","xgrchain","deploy",["rpc_xgr"],"Bootstrap destination ValidatorRegistryV3 with the actual active validator keys and possession proofs; use native XGR BLS verifier.",{script:SCRIPT.validatorRegistry,requires:["MEMBERSHIP_ORIGIN_CHAIN_ID","BLS_VERIFIER","BLS_VERIFIER_FORMAT","MINIMUM_DEACTIVATION_RESERVE_WEI","MAX_EXECUTOR_REIMBURSEMENT_WEI","INITIAL_RESERVE_WEI","VALIDATOR_COUNT","VALIDATOR_N_ADDRESS","VALIDATOR_N_BLS_COMPRESSED","VALIDATOR_N_BLS_EIP2537","VALIDATOR_N_POSSESSION_PROOF"]}),
-    step("registry_base","base","deploy",["verifier_base"],"Bootstrap RegistryV3 using verified EIP-2537 verifier, active validator set and PoP.",{script:SCRIPT.validatorRegistry}),
-    step("iln_xgr","xgrchain","deploy",["registry_xgr"],"Deploy source ILNRegistry bound to local RegistryV3.",{script:SCRIPT.sourceRegistry}),
-    step("iln_base","base","deploy",["registry_base"],"Deploy source ILNRegistry bound to local RegistryV3.",{script:SCRIPT.sourceRegistry}),
-    step("ism_xgr","xgrchain","deploy",["registry_xgr"],"Deploy route-aware destination ISM V2.",{script:SCRIPT.ism}),
-    step("ism_base","base","deploy",["registry_base"],"Deploy route-aware destination ISM V2.",{script:SCRIPT.ism}),
-    step("router_xgr","xgrchain","deploy",["iln_xgr","ism_xgr"],"Deploy one Gateway-only native XGR router.",{script:SCRIPT.nativeRouter}),
-    step("router_base","base","deploy",["iln_base","ism_base"],"Deploy one zero-supply wXGR synthetic router.",{script:SCRIPT.syntheticRouter}),
-    step("gateway_xgr","xgrchain","deploy",["router_xgr"],"Deploy source Gateway XGRChain to Base and its constructor-created FeeVault.",{script:SCRIPT.gateway}),
-    step("gateway_base","base","deploy",["router_base"],"Deploy source Gateway Base to XGRChain and FeeVault.",{script:SCRIPT.gateway}),
-    step("bindings","both","verify",["gateway_xgr","gateway_base"],"Verify router-owner security, source registry bindings, correct Gateway/FeeVault, destination ISM, fee quotes, and zero initial wXGR supply.",{mandatoryProof:true}),
-    step("register_xgr","xgrchain","register",["bindings"],"Register XGRChain to Base route atomically via public Factory.registerRoute, without a validator route vote.",{mandatoryProof:true}),
-     step("register_base","base","register",["bindings","register_xgr"],"Register Base to XGRChain reciprocal route atomically; independently verify route bindings.",{mandatoryProof:true}),
-     step("e2e_outbound","both","e2e",["register_base"],"Small XGR lock to Base wXGR mint: validate source receipt, message-specific BLS quorum and destination Mailbox delivery.",{mandatoryProof:true}),
-     step("e2e_return","both","e2e",["e2e_outbound"],"Small wXGR burn to XGR unlock, validator fee claims, and permissionless replay-safe recovery.",{mandatoryProof:true}),
-    step("publish","both","publish",["e2e_return"],"Only after independent on-chain evidence, write deployment manifests and activate XETA UI routes.",{mandatoryProof:true})
+    step("bls_base","base","security",["rpc_base"],"Prove EIP-2537 positive and negative BLS vectors on Base.",{mandatoryProof:true}),
+    step("verifier_base","base","deploy",["bls_base"],"Deploy the approved EIP-2537 verifier.",{component:"blsVerifier"}),
+    step("registry_xgr","xgrchain","deploy",["rpc_xgr"],"Deploy V3 with verified XGR PoS keys and proof of possession.",{component:"validatorRegistry",mandatoryProof:true}),
+    step("registry_base","base","deploy",["verifier_base"],"Deploy V3 with the verified BLS signer set.",{component:"validatorRegistry",mandatoryProof:true}),
+    step("ism_xgr","xgrchain","deploy",["registry_xgr"],"Deploy asset-bound destination ISM.",{component:"ism"}),
+    step("ism_base","base","deploy",["registry_base"],"Deploy asset-bound destination ISM.",{component:"ism"}),
+    step("native_deployer_xgr","xgrchain","deploy",["registry_xgr"],"Deploy reusable, independent native router deployment module.",{component:"nativeRouterDeployer"}),
+    step("synthetic_deployer_xgr","xgrchain","deploy",["registry_xgr"],"Deploy reusable, independent synthetic router module.",{component:"syntheticRouterDeployer"}),
+    step("collateral_deployer_xgr","xgrchain","deploy",["registry_xgr"],"Deploy reusable, independent collateral router module.",{component:"collateralRouterDeployer"}),
+    step("native_deployer_base","base","deploy",["registry_base"],"Deploy reusable, independent native router module.",{component:"nativeRouterDeployer"}),
+    step("synthetic_deployer_base","base","deploy",["registry_base"],"Deploy reusable, independent synthetic router module.",{component:"syntheticRouterDeployer"}),
+    step("collateral_deployer_base","base","deploy",["registry_base"],"Deploy reusable, independent collateral router module.",{component:"collateralRouterDeployer"}),
+    step("factory_xgr","xgrchain","deploy",["ism_xgr","native_deployer_xgr","synthetic_deployer_xgr","collateral_deployer_xgr"],"Deploy small permissionless Factory using independently verified immutable modules.",{component:"factory"}),
+    step("factory_base","base","deploy",["ism_base","native_deployer_base","synthetic_deployer_base","collateral_deployer_base"],"Deploy small permissionless Factory using independently verified immutable modules.",{component:"factory"}),
+    step("iln_xgr","xgrchain","factory-call",["factory_xgr"],"Create the canonical source ILNRegistry via public Factory.deployRegistry().",{component:"sourceRegistry"}),
+    step("iln_base","base","factory-call",["factory_base"],"Create the canonical source ILNRegistry via public Factory.deployRegistry().",{component:"sourceRegistry"}),
+    step("router_xgr","xgrchain","factory-call",["iln_xgr"],"Deploy native XGR router via permissionless Factory."),
+    step("router_base","base","factory-call",["iln_base"],"Deploy zero-supply wrapped XGR router via permissionless Factory."),
+    step("register_xgr","xgrchain","factory-call",["router_xgr","router_base"],"Register the XGR-to-Base route; creates Gateway and FeeVault atomically, without validator vote."),
+    step("register_base","base","factory-call",["register_xgr"],"Register Base-to-XGR reciprocal route; creates Gateway and FeeVault atomically, without validator vote."),
+    step("bindings","both","verify",["register_base"],"Independently verify token identity, reciprocal router bindings, runtime and final receipts.",{mandatoryProof:true}),
+    step("e2e_outbound","both","e2e",["bindings"],"Execute small XGR->Base transfer using message-specific BLS and Mailbox verification.",{mandatoryProof:true}),
+    step("e2e_return","both","e2e",["e2e_outbound"],"Execute Base->XGR reverse transfer; verify replay resistance and fee claims.",{mandatoryProof:true}),
+    step("publish","both","publish",["e2e_return"],"Publish independently verified contract addresses and routable UI state.",{mandatoryProof:true})
   ];
   const seen=new Set();
   for(const s of plan){

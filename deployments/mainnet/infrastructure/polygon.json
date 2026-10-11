@@ -9,13 +9,6 @@
     "mailbox": null,
     "merkleTreeHook": null
   },
-  "ilnV314": {
-    "status": "unverified-not-activated",
-    "sourceRegistry": null,
-    "destinationRegistryV2": null,
-    "destinationIsmV2": null,
-    "blsVerifier": null
-  },
   "xitaV315": {
     "schemaVersion": 1,
     "components": {},

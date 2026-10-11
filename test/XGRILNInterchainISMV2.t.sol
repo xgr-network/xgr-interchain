@@ -7,6 +7,18 @@ import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
 import {XGRILNProtocol} from "../contracts/XGRILNProtocol.sol";
 import {MockXGRInterchainBLSVerifier} from "../contracts/test/MockXGRInterchainBLSVerifier.sol";
 
+contract MockInboundAssetBoundRouter {
+    function verifyInboundRoute(uint64, uint32, address, bytes32) external pure returns (bool) {
+        return true;
+    }
+}
+
+contract MockRejectInboundAssetRouter {
+    function verifyInboundRoute(uint64, uint32, address, bytes32) external pure returns (bool) {
+        return false;
+    }
+}
+
 contract XGRILNInterchainISMV2Test is Test {
     XGRILNInterchainISMV2 internal ism;
 
@@ -61,6 +73,7 @@ contract XGRILNInterchainISMV2Test is Test {
             );
 
         ism = new XGRILNInterchainISMV2(address(registry));
+        vm.etch(DEST_ROUTER, address(new MockInboundAssetBoundRouter()).code);
     }
 
     function testCheckpointPayloadMatchesGoCanonicalVector() public pure {
@@ -90,6 +103,22 @@ contract XGRILNInterchainISMV2Test is Test {
             hex"5847525f494c4e5f434845434b504f494e545f56320000000000002105000021050000066baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000000000009000000000001e2405555555555555555555555555555555555555555111111111111111111111111111111111111111166666666666666666666666666666666666666662222222222222222222222222222222222222222333333333333333333333333333333333333333344444444444444444444444444444444444444440000000000000000000000000000000000000000000000000000000000003039bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00000011";
 
         assertEq(XGRILNProtocol.encodeCheckpointPayload(payload), expected);
+    }
+
+    function testValidQuorumCannotAuthorizeWrongDestinationAsset() public {
+        vm.etch(DEST_ROUTER,address(new MockRejectInboundAssetRouter()).code);
+        bytes memory message=_message();
+        bytes32 messageId=keccak256(message);
+        bytes32[32] memory proof=_singleLeafProof();
+        bytes32 root=_branchRoot(messageId,proof,0);
+        bytes memory metadata=abi.encode(
+            uint32(0), proof, SOURCE_CHAIN_ID, SOURCE_DOMAIN,
+            DESTINATION_DOMAIN, ROUTE_ID, uint64(1), uint64(123456),
+            SOURCE_REGISTRY, SOURCE_GATEWAY, SOURCE_ROUTER, SOURCE_MAILBOX,
+            SOURCE_HOOK, DEST_ROUTER, uint256(1000), messageId,root,
+            uint32(0),hex"03",_bytes(96,0x77)
+        );
+        assertFalse(ism.verify(metadata,message));
     }
 
     function testMessageSpecificRouteAuthorizationVerifies() public view {

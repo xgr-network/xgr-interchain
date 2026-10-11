@@ -6,13 +6,14 @@ const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const word=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
 const chain={name:"polygon",chainId:137,domainId:137,blsVerifierFormat:"eip2537",defaultDestinationGasLimit:250000};
 const infra={hyperlane:{mailbox:addr(1),merkleTreeHook:addr(2)},
- components:[{key:"validatorRegistry",address:addr(3)},{key:"ism",address:addr(4)},{key:"factory",address:addr(5)}]};
+ components:[{key:"validatorRegistry",address:addr(3)},{key:"ism",address:addr(4)}, {key:"nativeRouterDeployer",address:addr(6)},{key:"syntheticRouterDeployer",address:addr(7)}, {key:"collateralRouterDeployer",address:addr(8)},{key:"factory",address:addr(5)}]};
 const bootstrap={proposedFeeWei:"100000000000"};
 const values={
  "localChainId()":word(137),"localDomain()":word(137),
  "validatorRegistry()":word(3),"destinationIsm()":word(4),
  "initialSourceFeeWei()":word(100000000000n),
  "mailbox()":word(1),"merkleTreeHook()":word(2),
+ "nativeDeployer()":word(6),"syntheticDeployer()":word(7),"collateralDeployer()":word(8),
  "defaultDestinationGasLimit()":word(250000)
 };
 const signatures=new Map(Object.entries(values).map(([s,v])=>[selector(s),v]));
@@ -54,4 +55,26 @@ test("initial SourceRegistry fee must equal deployed Factory when nonce zero",as
  await assert.rejects(()=>verifyChainBindings({rpc:async(_url,_method,args)=>signatures.get(args[0].data),
   url:"https://test.invalid",component:"sourceRegistry",address:addr(10),
   chain,bootstrap,infra}),/differs from on-chain Factory/);
+});
+
+test("every independent module reconciles without a bogus constructor-binding requirement",async()=>{
+ for(const component of ["nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"]){
+  assert.equal(await verifyChainBindings({
+   rpc:async()=>{throw Error("No getters exist on a stateless deployer")},
+   url:"https://test.invalid",component,address:addr(11),chain,bootstrap,infra
+  }),true);
+ }
+});
+test("factory may not bind a substituted router deployment module",async()=>{
+ const rpc=async(_url,_method,args)=>args[0].data===selector("nativeDeployer()")
+   ?word(99):signatures.get(args[0].data);
+ await assert.rejects(()=>verifyChainBindings({rpc,url:"https://test.invalid",
+  component:"factory",address:addr(9),chain,bootstrap,infra}),/binding mismatch/);
+});
+test("factory must have all three independently documented router modules",async()=>{
+ const incomplete={...infra,components:infra.components.filter(x=>x.key!=="collateralRouterDeployer")};
+ await assert.rejects(()=>verifyChainBindings({
+  rpc:async(_url,_method,args)=>signatures.get(args[0].data),
+  url:"https://test.invalid",component:"factory",address:addr(9),chain,bootstrap,infra:incomplete
+ }),/Unverified Factory module/);
 });

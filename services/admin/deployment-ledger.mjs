@@ -10,7 +10,7 @@ const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
 const COMPONENTS=new Set([
- "blsVerifier","validatorRegistry","ism","factory","sourceRegistry",
+ "blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
  "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault"
 ]);
 const EVENTS={

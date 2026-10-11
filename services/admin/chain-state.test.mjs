@@ -9,9 +9,8 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
- assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?4:5) && c.components.length===c.required));
- // The approved inventory can be partially deployed: XGRChain already has
- // a documented ValidatorRegistry, but still requires the other components.
+ assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?7:8) && c.components.length===c.required));
+ // Before Registry V3 deployment there are no active XITA component receipts.
  // Status and progress must track the evidence in the component inventory.
  for(const chain of chains){
   const documented=chain.components.filter(p=>p.status==="documented").length;
@@ -21,7 +20,7 @@ test("all main-approved chains derive deployment progress from documented compon
    chain.name+" derived deployment status");
  }
  assert.equal(chains.find(c=>c.name==="xgrchain")
-  .components.find(p=>p.key==="validatorRegistry").status,"documented");
+  .components.find(p=>p.key==="validatorRegistry").status,"not-deployed");
 });
 test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);

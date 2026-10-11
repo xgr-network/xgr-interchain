@@ -6,6 +6,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {XGRILNProtocol} from "../contracts/XGRILNProtocol.sol";
 import {XGRILNRegistryV315} from "../contracts/XGRILNRegistryV315.sol";
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
+import {XETACollateralRouterDeployer} from "../contracts/XETACollateralRouterDeployer.sol";
+import {XETASyntheticRouterDeployer} from "../contracts/XETASyntheticRouterDeployer.sol";
+import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.sol";
 import {XETAGuardedCollateralWarpRouterV315} from "../contracts/XETAGuardedCollateralWarpRouterV315.sol";
 import {XETAGuardedSyntheticWarpRouter} from "../contracts/XETAGuardedSyntheticWarpRouter.sol";
 import {ILNGateway} from "../contracts/ILNGateway.sol";
@@ -45,7 +48,8 @@ contract XETAOpenRouteFactoryV315Test is Test {
         mailbox = new XITAOpenMailboxMock(uint32(BASE));
         factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100,
+            address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
         token = new XITAMockERC20();

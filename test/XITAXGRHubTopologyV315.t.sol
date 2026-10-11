@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {XGRILNProtocol} from "../contracts/XGRILNProtocol.sol";
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
+import {XETACollateralRouterDeployer} from "../contracts/XETACollateralRouterDeployer.sol";
+import {XETASyntheticRouterDeployer} from "../contracts/XETASyntheticRouterDeployer.sol";
+import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.sol";
 import {MockLocalGovernanceRegistry} from "../contracts/test/MockLocalGovernanceRegistry.sol";
 
 contract XITATopologyMailboxMock {
@@ -78,7 +81,8 @@ contract XITAXGRHubTopologyV315Test is Test {
         vm.expectRevert(XETATokenFactoryV315.InvalidConfiguration.selector);
         new XETATokenFactoryV315(
             HUB, uint32(POLYGON), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100,
+            address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
     }
 
@@ -90,7 +94,8 @@ contract XITAXGRHubTopologyV315Test is Test {
             new XITATopologyMailboxMock(uint32(BASE));
         XETATokenFactoryV315 factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000, 100
+            address(mailbox), address(mailbox), address(mailbox), 200_000, 100,
+            address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
         factory.deployRegistry();
         address router = factory.deployWrappedXGRRouter(bytes32(uint256(1)));

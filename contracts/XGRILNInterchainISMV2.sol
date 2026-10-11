@@ -4,6 +4,11 @@ pragma solidity ^0.8.24;
 import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
 import {XGRILNProtocol} from "./XGRILNProtocol.sol";
 
+interface IXETAInboundAssetVerifier {
+    function verifyInboundRoute(uint64 originChainId, uint32 originDomain,
+        address originRouter, bytes32 signedOriginRouteId) external view returns (bool);
+}
+
 /// @notice Generic destination ISM for XGR Interchain v3.1.3.
 /// @dev One instance can verify any legitimate route terminating at the
 ///      destination represented by the canonical ValidatorRegistryV2.
@@ -152,6 +157,17 @@ contract XGRILNInterchainISMV2 {
             _messageRecipient(message) !=
             bytes32(uint256(uint160(destinationRouter)))
         ) return false;
+
+        // Critical trust boundary: a valid source checkpoint alone is insufficient.
+        // A foreign ERC20 must never unlock native XGR (or any unrelated asset)
+        // held by the legitimate destination router. Verify that the signed
+        // source RouteID is derived from the recipient's OWN canonical asset.
+        (bool bound, bytes memory binding) = destinationRouter.staticcall(
+            abi.encodeCall(IXETAInboundAssetVerifier.verifyInboundRoute,
+                (sourceChainId, sourceDomain, sourceRouter, routeId))
+        );
+        if (!bound || binding.length != 32 || !abi.decode(binding, (bool)))
+            return false;
 
         bytes32 actualMessageId = keccak256(message);
         if (actualMessageId != authorizedMessageId) return false;
