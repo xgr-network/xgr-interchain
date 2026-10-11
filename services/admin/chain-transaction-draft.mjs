@@ -14,7 +14,7 @@ const nonzero=x=>ADDR.test(x||"")&&x.toLowerCase()!==ZERO;
 const load=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
 export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
 const contractFor={blsVerifier:"XGRInterchainBLSVerifier",
- validatorRegistry:"XGRInterchainValidatorRegistryV2",
+ validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XGRILNInterchainISMV2",factory:"XETATokenFactoryV315"};
 const typesFor={
  blsVerifier:[],

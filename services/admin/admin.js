@@ -158,11 +158,6 @@ async function openAssetModal(taskId){
  el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
  el("contract-deploy-dialog").showModal();
- if(false){
-  el("modal-deploy").disabled=true;
-  presentModalStatus("Nicht mehr verwendet","warn");
-  return;
- }
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
   const graph=workqueue.inventory.assets[task.asset];

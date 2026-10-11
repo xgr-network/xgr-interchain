@@ -18,7 +18,7 @@ const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
 const SHA=/^[0-9a-f]{40}$/i;
 const SOURCE={
  blsVerifier:"XGRInterchainBLSVerifier",
- validatorRegistry:"XGRInterchainValidatorRegistryV2",
+ validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XGRILNInterchainISMV2",
  factory:"XETATokenFactoryV315",
  sourceRegistry:"XGRILNRegistryV315",
