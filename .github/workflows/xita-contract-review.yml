@@ -1,0 +1,41 @@
+name: XITA Contract Review
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and administration regression
+        run: |
+          set -euo pipefail
+          find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check services/admin/admin.js
+          node --test services/admin/*.test.mjs
+
+  solidity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install pinned Solidity dependencies
+        run: |
+          set -euo pipefail
+          cd vendor
+          npm install --no-audit --no-fund
+      - name: Install forge-std test dependency
+        run: |
+          set -euo pipefail
+          forge install foundry-rs/forge-std --no-commit
+      - name: Compile and execute contract tests
+        run: |
+          set -euo pipefail
+          forge test -vv
