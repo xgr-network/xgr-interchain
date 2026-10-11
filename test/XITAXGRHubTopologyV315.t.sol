@@ -95,10 +95,10 @@ contract XITAXGRHubTopologyV315Test is Test {
         factory.deployRegistry();
         address router = factory.deployWrappedXGRRouter(bytes32(uint256(1)));
         vm.expectRevert(XETATokenFactoryV315.InvalidDestination.selector);
-        factory.prepareRoute(router, POLYGON, uint32(POLYGON), A, address(0));
+        factory.registerRoute(router, POLYGON, uint32(POLYGON), A, address(0));
         vm.expectRevert(XETATokenFactoryV315.InvalidDestination.selector);
-        factory.prepareRoute(router, POLYGON, uint32(HUB), A, address(0));
+        factory.registerRoute(router, POLYGON, uint32(HUB), A, address(0));
         vm.expectRevert(XETATokenFactoryV315.InvalidDestination.selector);
-        factory.prepareRoute(router, HUB, uint32(POLYGON), A, address(0));
+        factory.registerRoute(router, HUB, uint32(POLYGON), A, address(0));
     }
 }

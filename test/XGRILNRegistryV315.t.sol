@@ -43,25 +43,6 @@ contract XGRILNRegistryV315Test is Test {
         );
     }
 
-    function _safetyProof(bytes32 id)
-        internal view returns (XGRILNRegistryV315.RouteSafetyProofV315 memory)
-    {
-        return XGRILNRegistryV315.RouteSafetyProofV315({
-            destinationDomain: HUB_DOMAIN,
-            routeId: id,
-            reverseRouteId: XGRILNProtocol.routeInstanceIdV315(
-                assetId, HUB, HUB_DOMAIN, CHAIN, DOMAIN, PEER, address(this)
-            ),
-            remoteRegistry: address(0x1231),
-            remoteFactory: address(0x1232),
-            remoteGateway: address(0x1233),
-            remoteRouterCodeHash: keccak256("remote"),
-            localRouterCodeHash: address(this).codehash,
-            setId: validators.setId(),
-            validUntil: uint64(block.timestamp + 600)
-        });
-    }
-
     function testInitialFeeIsPresentWithoutQuorum() public {
         assertEq(registry.validatorFeeWei(), 100);
         assertEq(registry.sourceFeeNonce(), 0);
@@ -73,31 +54,15 @@ contract XGRILNRegistryV315Test is Test {
         new XGRILNRegistryV315(CHAIN, DOMAIN, address(validators), address(this), 0);
     }
 
-    function testRegisteredRouteIsPreparedButNotActive() public {
-        registry.applySourceFee(_fee(1,100),hex"03",hex"01");
+    function testRegistrationIsActiveWithoutValidatorApproval() public {
+        validators.setResult(false);
         bytes32 id = _route();
-        bytes32 expected = XGRILNProtocol.routeInstanceIdV315(
-            assetId,CHAIN,DOMAIN,HUB,HUB_DOMAIN,address(this),PEER
-        );
-        assertEq(id,expected);
-        assertTrue(registry.exists(HUB_DOMAIN,id));
         (,,,,,,,uint256 fee,bool enabled) = registry.getRoute(HUB_DOMAIN,id);
-        assertEq(fee,0);
-        assertFalse(enabled);
-    }
-
-    function testTechnicalSafetyAttestationActivatesSharedSourceFee() public {
-        registry.applySourceFee(_fee(1,100),hex"03",hex"01");
-        bytes32 id = _route();
-        registry.confirmRouteInstance(_safetyProof(id),hex"03",hex"01");
-        (,,,,,,,uint256 fee,bool enabled) = registry.getRoute(HUB_DOMAIN,id);
+        assertTrue(enabled);
         assertEq(fee,100);
-        assertTrue(enabled);
-        registry.applySourceFee(_fee(2,250),hex"03",hex"01");
-        (,,,,,,,fee,enabled) = registry.getRoute(HUB_DOMAIN,id);
-        assertEq(fee,250);
-        assertTrue(enabled);
-        assertEq(registry.sourceFeeNonce(),2);
+        assertEq(registry.sourceFeeNonce(),0);
+        vm.expectRevert(XGRILNRegistryV315.InvalidFeeQuorum.selector);
+        registry.applySourceFee(_fee(1,250),hex"03",hex"01");
     }
 
     function testTwoRegistrationsCannotClaimTheSameRouterPair() public {
@@ -124,15 +89,6 @@ contract XGRILNRegistryV315Test is Test {
             assetId,137,137,address(this),address(0),
             address(this),address(this),address(this),address(this),PEER
         );
-    }
-
-    function testSafetyProofMustMatchImmutableLocalRouter() public {
-        registry.applySourceFee(_fee(1,100),hex"03",hex"01");
-        bytes32 id = _route();
-        XGRILNRegistryV315.RouteSafetyProofV315 memory p = _safetyProof(id);
-        p.localRouterCodeHash = keccak256("fake");
-        vm.expectRevert(XGRILNRegistryV315.InvalidRouteSafetyProof.selector);
-        registry.confirmRouteInstance(p,hex"03",hex"01");
     }
 
     function testSourceFeeSignatureQuorumAndReplayProtection() public {

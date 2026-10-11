@@ -14,7 +14,7 @@ interface IXITATokenRouter {
     function bootstrapXETARoute(uint32 destinationDomain, bytes32 routeId) external;
 }
 
-/// @notice Immutable permissionless factory; no exclusive asset registration.
+/// @notice Immutable permissionless factory; route registration never needs a BLS vote.
 /// @dev All assets, including native XGR, use the same route instance ID.
 /// Routers deploy first and bind to an independently deployed remote router
 /// second, avoiding circular cross-chain CREATE2 address dependencies.
@@ -33,21 +33,20 @@ contract XETATokenFactoryV315 {
     mapping(address => bytes32) public assetIdForRouter;
     mapping(address => bytes32) public representedAssetId;
     mapping(address => address) public routerCreator;
-    mapping(address => mapping(uint32 => bool)) public routeForDomainPrepared;
+    mapping(address => mapping(uint32 => bool)) public routeForDomainRegistered;
 
     error InvalidConfiguration();
     error RegistryNotDeployed();
     error InvalidOrigin();
     error WrongChain();
     error RouterUnauthorized();
-    error RouteAlreadyPrepared();
+    error RouteAlreadyRegistered();
     error InvalidDestination();
-    error InvalidRouteActivation();
+    error InvalidRouteRegistration();
 
     event RegistryDeployed(address indexed registry);
     event RouterDeployed(bytes32 indexed assetId, address indexed router, address indexed creator);
-    event RoutePrepared(bytes32 indexed routeId, address indexed router, address indexed gateway);
-    event RouteActivated(bytes32 indexed routeId, address indexed router, uint32 indexed destinationDomain);
+    event RouteRegistered(bytes32 indexed routeId, address indexed router, address indexed gateway);
 
     constructor(
         uint64 chainId_, uint32 domain_, address validatorRegistry_,
@@ -162,10 +161,10 @@ contract XETATokenFactoryV315 {
         _remember(xgrAssetId(), router, true);
     }
 
-    /// @notice Public route enrollment by creator of THIS router instance.
+    /// @notice Atomic permissionless route registration and local router bootstrap.
     /// @dev Anyone may deploy their own routers and register their own routes.
     /// Multiple routes for the same asset and direction are permitted.
-    function prepareRoute(
+    function registerRoute(
         address sourceRouter, uint64 destinationChainId,
         uint32 destinationDomain, address destinationRouter, address destinationToken
     ) external returns (bytes32 routeId, address gateway) {
@@ -179,8 +178,8 @@ contract XETATokenFactoryV315 {
             (destinationChainId == 1643) != (destinationDomain == 1643) ||
             (localChainId != 1643 && destinationChainId != 1643))
             revert InvalidDestination();
-        if (routeForDomainPrepared[sourceRouter][destinationDomain])
-            revert RouteAlreadyPrepared();
+        if (routeForDomainRegistered[sourceRouter][destinationDomain])
+            revert RouteAlreadyRegistered();
 
         routeId = XGRILNProtocol.routeInstanceIdV315(
             assetId, localChainId, localDomain, destinationChainId,
@@ -189,30 +188,16 @@ contract XETATokenFactoryV315 {
         gateway = address(new ILNGateway{
             salt: keccak256(abi.encode("XITA_GATEWAY_V315", routeId))
         }(address(registry), routeId, destinationDomain, sourceRouter, false));
-        routeForDomainPrepared[sourceRouter][destinationDomain] = true;
+        routeForDomainRegistered[sourceRouter][destinationDomain] = true;
         bytes32 registered = registry.registerRouteInstance(
             assetId, destinationChainId, destinationDomain,
             IXITATokenRouter(sourceRouter).token(), destinationToken,
             gateway, sourceRouter, mailbox, merkleTreeHook, destinationRouter
         );
-        if (registered != routeId) revert InvalidRouteActivation();
-        emit RoutePrepared(routeId, sourceRouter, gateway);
-    }
-
-    /// @notice Technical transfer-safety attestation, NOT permission to list
-    /// a token. The validator set checks objective reciprocal chain facts.
-    /// A failed proof reverts without changing registration or collateral.
-    function activateRoute(
-        XGRILNRegistryV315.RouteSafetyProofV315 calldata proof,
-        bytes calldata signerBitmap, bytes calldata aggregateSignature
-    ) external {
-        _requireRegistry();
-        registry.confirmRouteInstance(proof, signerBitmap, aggregateSignature);
-        (,,, address router,,,,, bool enabled) =
-            registry.getRoute(proof.destinationDomain, proof.routeId);
-        if (!enabled || assetIdForRouter[router] == bytes32(0))
-            revert InvalidRouteActivation();
-        IXITATokenRouter(router).bootstrapXETARoute(proof.destinationDomain, proof.routeId);
-        emit RouteActivated(proof.routeId, router, proof.destinationDomain);
+        if (registered != routeId) revert InvalidRouteRegistration();
+        // The source Gateway, FeeVault and enrolled remote router are atomic.
+        // A later BLS quorum attests individual messages, not permission to route.
+        IXITATokenRouter(sourceRouter).bootstrapXETARoute(destinationDomain, routeId);
+        emit RouteRegistered(routeId, sourceRouter, gateway);
     }
 }

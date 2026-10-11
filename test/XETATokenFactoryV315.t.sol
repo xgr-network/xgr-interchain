@@ -51,26 +51,6 @@ contract XETATokenFactoryV315Test is Test {
         registry.applySourceFee(p, hex"03", hex"01");
     }
 
-    function _proof(bytes32 id, address localRouter)
-        internal view returns (XGRILNRegistryV315.RouteSafetyProofV315 memory p)
-    {
-        p = XGRILNRegistryV315.RouteSafetyProofV315({
-            destinationDomain: uint32(HUB),
-            routeId: id,
-            reverseRouteId: XGRILNProtocol.routeInstanceIdV315(
-                factory.xgrAssetId(), HUB, uint32(HUB),
-                CHAIN, DOMAIN, REMOTE_ROUTER, localRouter
-            ),
-            remoteRegistry: address(0x1001),
-            remoteFactory: address(0x1002),
-            remoteGateway: address(0x1003),
-            remoteRouterCodeHash: keccak256("remote code"),
-            localRouterCodeHash: localRouter.codehash,
-            setId: validators.setId(),
-            validUntil: uint64(block.timestamp + 5 minutes)
-        });
-    }
-
     function testRegistryIsFactoryBoundSingleton() public {
         assertEq(factory.deployRegistry(), address(registry));
         assertEq(registry.factory(), address(factory));
@@ -96,43 +76,28 @@ contract XETATokenFactoryV315Test is Test {
         factory.deployNativeXGRRouter(bytes32(uint256(1)));
     }
 
-    function testPreparedXGRRouteHasNoEarlyTransferAuthority() public {
-        _setFee(1, 100);
+    function testRouteRegistersAndBootstrapsAtomicallyWithoutQuorum() public {
+        validators.setResult(false);
         address local = factory.deployWrappedXGRRouter(bytes32(uint256(1)));
-        (bytes32 id, address gateway) = factory.prepareRoute(
+        (bytes32 id, address gateway) = factory.registerRoute(
             local, HUB, uint32(HUB), REMOTE_ROUTER, address(0)
         );
         bytes32 expected = XGRILNProtocol.routeInstanceIdV315(
-            factory.xgrAssetId(), CHAIN, DOMAIN,
-            HUB, uint32(HUB), local, REMOTE_ROUTER
+            factory.xgrAssetId(), CHAIN, DOMAIN, HUB, uint32(HUB), local, REMOTE_ROUTER
         );
-        assertEq(id, expected);
-        assertTrue(registry.exists(uint32(HUB), id));
-        assertEq(ILNGateway(gateway).routeId(), id);
-        assertEq(ILNGateway(gateway).warpRouter(), local);
-        (,,,,,,,,bool enabled) = registry.getRoute(uint32(HUB), id);
-        assertFalse(enabled);
-        vm.expectRevert(XETATokenFactoryV315.RouteAlreadyPrepared.selector);
-        factory.prepareRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
-    }
-
-    function testPreparedRouteCanBeActivatedWithTechnicalQuorumProof() public {
-        _setFee(1, 100);
-        address local = factory.deployWrappedXGRRouter(bytes32(uint256(3)));
-        (bytes32 id,) = factory.prepareRoute(
-            local, HUB, uint32(HUB), REMOTE_ROUTER, address(0)
-        );
-        factory.activateRoute(_proof(id, local), hex"03", hex"01");
-        (,,,,,,,uint256 fee, bool enabled) = registry.getRoute(uint32(HUB), id);
+        assertEq(id,expected);
+        assertTrue(registry.exists(uint32(HUB),id));
+        assertEq(ILNGateway(gateway).routeId(),id);
+        assertEq(ILNGateway(gateway).warpRouter(),local);
+        (,,,,,,,uint256 fee,bool enabled)=registry.getRoute(uint32(HUB),id);
         assertTrue(enabled);
-        assertEq(fee, 100);
-        assertEq(XETAGuardedSyntheticWarpRouter(local).xetaRouteIdForDomain(uint32(HUB)), id);
+        assertEq(fee,100);
+        assertEq(XETAGuardedSyntheticWarpRouter(local).xetaRouteIdForDomain(uint32(HUB)),id);
         assertEq(XETAGuardedSyntheticWarpRouter(local).routers(uint32(HUB)),
             bytes32(uint256(uint160(REMOTE_ROUTER))));
-        _setFee(2, 200);
-        (,,,,,,,fee,enabled) = registry.getRoute(uint32(HUB), id);
-        assertTrue(enabled);
-        assertEq(fee, 200);
+        assertTrue(factory.routeForDomainRegistered(local,uint32(HUB)));
+        vm.expectRevert(XETATokenFactoryV315.RouteAlreadyRegistered.selector);
+        factory.registerRoute(local,HUB,uint32(HUB),REMOTE_ROUTER,address(0));
     }
 
     function testCannotRegisterUnconfiguredOrForeignOwnedRouter() public {
@@ -140,16 +105,16 @@ contract XETATokenFactoryV315Test is Test {
         address local = factory.deployWrappedXGRRouter(bytes32(uint256(4)));
         vm.expectRevert(XETATokenFactoryV315.RouterUnauthorized.selector);
         vm.prank(address(0xBEEF));
-        factory.prepareRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
+        factory.registerRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
         vm.expectRevert(XETATokenFactoryV315.RouterUnauthorized.selector);
-        factory.prepareRoute(address(0x1234), HUB, uint32(HUB), REMOTE_ROUTER, address(0));
+        factory.registerRoute(address(0x1234), HUB, uint32(HUB), REMOTE_ROUTER, address(0));
     }
 
-    function testInitialFeeAllowsRoutePreparationWithoutQuorum() public {
+    function testInitialFeeAllowsRegistrationWithoutQuorum() public {
         address local = factory.deployWrappedXGRRouter(bytes32(uint256(5)));
-        (bytes32 id,) = factory.prepareRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
+        (bytes32 id,) = factory.registerRoute(local, HUB, uint32(HUB), REMOTE_ROUTER, address(0));
         assertTrue(id != bytes32(0));
-        assertTrue(factory.routeForDomainPrepared(local, uint32(HUB)));
+        assertTrue(factory.routeForDomainRegistered(local, uint32(HUB)));
         assertEq(registry.sourceFeeNonce(), 0);
     }
 }
