@@ -1,10 +1,9 @@
 // The only server-backed, main-authorized core deployment coordinator.
 // EIP-1193 wallet signs in the browser. All transactions are server-authored;
 // browser input may select chain/component and provide the public wallet/hash.
-import {resolve,join} from "node:path";
-import {execFileSync} from "node:child_process";
+import {resolve} from "node:path";
 import {checkedLocalMain} from "./main-gate.mjs";
-import {readdirSync,readFileSync} from "node:fs";
+import {recoverPublishedReceipt} from "./deployment-recovery.mjs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
@@ -161,44 +160,21 @@ export function createChainOperator({
   if(!chain||id!==chain.name+":"+id.split(":")[1])throw Error("Unknown chain");
   if(entry.stage==="prepared")
    throw Error("Wallet hash not reconciled; inspect sender nonce before any retry");
-  // A confirmed transaction may have lost GitHub connectivity. Always
-  // re-verify the SAME tx and retry only the GitHub append, never broadcast.
+  // Check remote GitHub main for an already published receipt; no git pull
+  // or second transaction is allowed inside the read-only Admin service.
   const previouslyConfirmed=entry.stage==="confirmed";
-  // A confirmed hash cannot cause another broadcast. Refresh verified
-  // GitHub receipt state in case the writer succeeded before an HTTP loss.
-  if(entry.stage==="confirmed"){
-   checkedLocalMain(root);
-   execFileSync("git",["pull","--ff-only","origin","main"],{
-    cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
+  if(previouslyConfirmed){
+   const recovered=await recoverPublishedReceipt({
+    entry,chain,component:id.split(":")[1],rpc
    });
-  }
-  // A new main may have advanced independently after signature. Never replace
-  // sourceCommit to evade the main-only publisher check.
-  const {commit,infrastructure,bootstrap}=await approved(chain.name);
-  if(commit!==entry.sourceCommit){
-   // GitHub may have accepted a receipt before the HTTP response was lost.
-   // Only an immutable, exact source-commit/tx/wallet receipt can settle it.
-   const receiptDir=join(root,"deployments/mainnet/receipts",chain.name);
-   let match=null;
-   try{
-    for(const file of readdirSync(receiptDir)){
-     if(!file.startsWith(entry.txHash.slice(2).toLowerCase()+"-")||!file.endsWith(".json"))continue;
-     const record=JSON.parse(readFileSync(join(receiptDir,file),"utf8"));
-     if(!eq(record.transactionHash,entry.txHash)||
-        !eq(record.approval?.sourceCommit,entry.sourceCommit)||
-        !eq(record.deployer,entry.wallet)||
-        record.chainId!==entry.chainId||record.component!==id.split(":")[1]||
-        record.status!=="onchain-deployment-verified")continue;
-     match="deployments/mainnet/receipts/"+chain.name+"/"+file;
-    }
-   }catch(e){if(e.code!=="ENOENT")throw e}
-   if(match && entry.stage==="confirmed"){
-    journal.document(id,match);
-    return {stage:"documented",receiptPath:match,recoveredFromGitHub:true};
+   if(recovered){
+    journal.document(id,recovered.receiptPath);
+    return {stage:"documented",receiptPath:recovered.receiptPath,
+     commit:recovered.commit,address:recovered.address,txHash:entry.txHash,
+     recoveredFromGitHub:true,serverUpdateRequired:checkedLocalMain(root)!==recovered.commit};
    }
-   // Same signed transaction may outlive an Admin code update. Continue
-   // only when artifact bytes and on-chain constructor bindings still match.
   }
+  const {commit,infrastructure,bootstrap}=await approved(chain.name);
   const built=await build(root,commit);
   const artifact=built.artifacts[id.split(":")[1]];
   if(!artifact||artifact.artifactHash!==entry.artifactHash||
@@ -222,11 +198,8 @@ export function createChainOperator({
    throw Error("GitHub publisher did not return a new main commit; intent retained");
   if(checkedLocalMain(root)!==commit)
    throw Error("Local main moved during receipt publication; intent retained");
-  execFileSync("git",["pull","--ff-only","origin","main"],{
-   cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
-  });
-  if(checkedLocalMain(root)!==published.commit.toLowerCase())
-   throw Error("Post-publication checkout differs from GitHub receipt commit");
+  // The GitHub fast-forward commit is the publication receipt. The
+  // operator refreshes the read-only checkout using manage.sh update.
   const path=deploymentReceiptPath(result.verified);
   journal.document(id,path);
   return {stage:"documented",receiptPath:path,commit:published.commit,

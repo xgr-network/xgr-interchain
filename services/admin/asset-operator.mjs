@@ -2,7 +2,7 @@
 // append-only verified GitHub evidence as chain infrastructure deployments.
 // Registered gateway is immediately enabled; transfers remain BLS-secured.
 import {resolve} from "node:path";
-import {execFileSync} from "node:child_process";
+import {recoverPublishedReceipt} from "./deployment-recovery.mjs";
 import {assertCurrentMain,approvedWorkInventory,checkedLocalMain} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
@@ -156,13 +156,26 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   return j.attachHash(id,txHash);
  }
  async function reconcile({id}){
-  const main=await mainCheck(root),inventory=approvedWorkInventory(root);
+  const inventory=approvedWorkInventory(root);
   const j=journal(inventory.chains),entry=j.read().entries[id];
   if(!entry?.asset)throw Error("Unknown asset intent");
   if(!["submitted","confirmed"].includes(entry.stage))
    throw Error("Wallet broadcast unknown; check nonce/hash without resending");
-  // Main may advance during finality. Compare immutable artifact bytes below.
-  const chain=inventory.chains.find(x=>x.chainId===entry.chainId),url=chain.rpcUrls[0];
+  const chain=inventory.chains.find(x=>x.chainId===entry.chainId);
+  if(!chain)throw Error("Unknown chain for asset recovery");
+  if(entry.stage==="confirmed"){
+   const recovered=await recoverPublishedReceipt({
+    entry,chain,component:entry.id.split(":")[2],asset:entry.asset,rpc
+   });
+   if(recovered){
+    j.document(id,recovered.receiptPath);
+    return {stage:"documented",receiptPath:recovered.receiptPath,
+     address:recovered.address,txHash:entry.txHash,commit:recovered.commit,
+     recoveredFromGitHub:true,serverUpdateRequired:checkedLocalMain(root)!==recovered.commit};
+   }
+  }
+  // Resolve only the stored wallet transaction, never broadcast again.
+  const main=await mainCheck(root),url=chain.rpcUrls[0];
   const tx=await rpc(url,"eth_getTransactionByHash",[entry.txHash]);
   if(!tx||!equal(tx.from,entry.wallet)||!equal(tx.input,entry.transaction.data)||
      !equal(tx.to,entry.transaction.to)||BigInt(tx.nonce)!==BigInt(entry.transaction.nonce))
@@ -218,9 +231,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const result=await publish(root,inputs,{rpc});
   if(!/^[0-9a-f]{40}$/i.test(result.commit||""))throw Error("Receipt publication not confirmed");
   if(checkedLocalMain(root)!==main)throw Error("Main changed during receipt publication");
-  execFileSync("git",["pull","--ff-only","origin","main"],{
-   cwd:root,encoding:"utf8",timeout:30000,maxBuffer:524288});
-  if(checkedLocalMain(root)!==result.commit.toLowerCase())throw Error("Checkout differs from published receipt commit");
+  // An accepted GitHub commit is final; no git pull in the Admin service.
   const path=deploymentReceiptPath({kind:"xita-v315-deployment-receipt",chain:chain.name,
    transactionHash:entry.txHash,address});
   j.document(id,path);
