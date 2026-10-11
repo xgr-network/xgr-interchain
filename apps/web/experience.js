@@ -249,7 +249,7 @@ function allianceIntro(){
   '<article class="ux-alliance-audience ux-alliance-audience-projects">'+
   '<div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span>'+
   '<h3>Bring your token to new chains.</h3>'+
-  '<p>Reach new communities without bearing the contract deployment costs for an approved route. Apply to the Alliance, pass XGR's project review and have XGR fund and arrange the deployment. Once the first real transfer is confirmed, your token receives its public XITA listing.</p>'+
+  '<p>Reach new communities without bearing the contract deployment costs for an approved route. Apply to the Alliance, pass the XGR project review and have XGR fund and arrange the deployment. Once the first real transfer is confirmed, your token receives its public XITA listing.</p>'+
   '<div class="ux-alliance-steps" aria-label="How projects participate in XITA">'+
   '<span><small>01</small>Apply and pass project review</span>'+
   '<span><small>02</small>XGR sponsors route deployment</span>'+
