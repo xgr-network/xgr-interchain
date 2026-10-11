@@ -404,7 +404,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  function resize(){
   if(!gl)return;
   const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
-  const dpr=Math.min(window.devicePixelRatio||1,1.65);
+  const dpr=Math.min(window.devicePixelRatio||1,1.3);
   const px=Math.round(w*dpr),py=Math.round(h*dpr);
   if(canvas.width!==px||canvas.height!==py){canvas.width=px;canvas.height=py;gl.viewport(0,0,px,py);}
  }
@@ -444,7 +444,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gpu=createGPU(gl);
    resize();
    const rnd=random(1643),arr=[];
-   for(let i=0;i<(compact?850:1900);i++){
+   for(let i=0;i<(compact?650:950);i++){
     const y=rnd()*2-1,a=rnd()*TWO_PI,r=90+rnd()*330;
     const length=Math.sqrt(1-y*y);
     arr.push(Math.cos(a)*length*r,y*r,Math.sin(a)*length*r);
@@ -578,7 +578,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.bindBuffer(gl.ARRAY_BUFFER,stars.buffer);
   gl.enableVertexAttribArray(sp.pos);gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.80,.87,1.0,.82);
-  gl.uniform1f(sp.size,2.6);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
+  gl.uniform1f(sp.size,2.0);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
   // A focused system dissolves its abstract galaxy dust into catalog tokens.
   for(const disc of stellarDiscs){
@@ -657,7 +657,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
         item.portal?.27:item.orbital.inclination*.62,0,.12));
        if(moon===0){
         const tint=item.portal?[.79,.67,.48]:item.color.map(c=>clamp(c*.48+.22,0,1));
-        body(gpu.sphere,satellite,item.radius*(item.portal?.15:.13),tint,0,frame,IDENTITY,eye,vp);
+        point(satellite,item.radius*640,tint,.78,vp);
        }else{
         point(satellite,item.radius*400,
           item.color.map(c=>Math.min(1,c*.42+.39)),.52,vp);
