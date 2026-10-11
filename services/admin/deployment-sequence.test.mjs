@@ -17,6 +17,14 @@ test("all chains in GitHub configs get independent generic steps and format-spec
  assert.equal(hub.steps[0].component,"nativeVerifier");
  assert.equal(eip.steps[0].component,"blsVerifier");
  assert.equal(plan.chains.find(c=>c.name==="base").initialFeeWei,"100000000000");
+ for(const c of plan.chains){
+  const names=c.steps.map(s=>s.component);
+  for(const module of ["nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"]){
+   assert.ok(names.indexOf(module)>names.indexOf("ism"));
+   assert.ok(names.indexOf(module)<names.indexOf("factory"));
+   assert.ok(c.steps.find(s=>s.component==="factory").dependsOn.includes(module));
+  }
+ }
  assert.equal(plan.assets.find(a=>a.key==="XGR").routes.length,inventory.assets.XGR.routes.length);
  assert.ok(plan.chains.flatMap(c=>c.steps).every(s=>s.status!=="ready"));
 });
