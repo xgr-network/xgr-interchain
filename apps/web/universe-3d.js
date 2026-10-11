@@ -91,7 +91,7 @@ function makeSphere(stacks=24,slices=36){
  }
  return {vertices,normals,indices};
 }
-function makeTorus(radius=1,tube=.018,around=84,across=8){
+function makeTorus(radius=1,tube=.006,around=96,across=6){
  const vertices=[],normals=[],indices=[];
  for(let i=0;i<=around;i++){
   const a=i*TWO_PI/around,ca=Math.cos(a),sa=Math.sin(a);
@@ -404,7 +404,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  function resize(){
   if(!gl)return;
   const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
-  const dpr=Math.min(window.devicePixelRatio||1,1.65);
+  const dpr=Math.min(window.devicePixelRatio||1,1.3);
   const px=Math.round(w*dpr),py=Math.round(h*dpr);
   if(canvas.width!==px||canvas.height!==py){canvas.width=px;canvas.height=py;gl.viewport(0,0,px,py);}
  }
@@ -444,7 +444,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gpu=createGPU(gl);
    resize();
    const rnd=random(1643),arr=[];
-   for(let i=0;i<(compact?850:1900);i++){
+   for(let i=0;i<(compact?650:950);i++){
     const y=rnd()*2-1,a=rnd()*TWO_PI,r=90+rnd()*330;
     const length=Math.sqrt(1-y*y);
     arr.push(Math.cos(a)*length*r,y*r,Math.sin(a)*length*r);
@@ -490,7 +490,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
    gl.uniformMatrix4fv(sp.vp,false,vp);
    gl.uniform4f(sp.color,...disc.item.color,opacity);
-   gl.uniform1f(sp.size,disc.item.portal?3.0:2.5);
+   gl.uniform1f(sp.size,disc.item.portal?1.65:1.2);
    gl.uniform1f(sp.fixed,1);
    gl.uniform1f(sp.background,1);
    gl.drawArrays(gl.POINTS,0,disc.count);
@@ -578,50 +578,41 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.bindBuffer(gl.ARRAY_BUFFER,stars.buffer);
   gl.enableVertexAttribArray(sp.pos);gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.80,.87,1.0,.82);
-  gl.uniform1f(sp.size,2.6);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
+  gl.uniform1f(sp.size,2.0);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
   // A focused system dissolves its abstract galaxy dust into catalog tokens.
   for(const disc of stellarDiscs){
    const fade=focused?(disc.item.system.key===selectedKey?1-focusBlend:1-clamp(focusBlend*1.4,0,1)):1-focusBlend;
    if(fade<=.01)continue;
    dustCloud(disc,systemPosition(disc.item,frame,reducedMotion),vp,frame,
-    (disc.item.portal?.80:.70)*fade);
+    (disc.item.portal?.40:.12)*fade);
   }
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=(item.portal?.56:.36)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
-   point(systemPosition(item,frame,reducedMotion),item.radius*10500,item.color,intensity*1.30,vp);
-   point(systemPosition(item,frame,reducedMotion),item.radius*4200,item.color,intensity*.93,vp);
+   const intensity=(item.portal?.40:.18)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
+   point(systemPosition(item,frame,reducedMotion),item.radius*9600,item.color,intensity,vp);
+   point(systemPosition(item,frame,reducedMotion),item.radius*3400,item.color,intensity*.64,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
-  // Galaxy rings fade into real catalog-listed planet orbits on focus.
-  for(const item of topology.systems){
-   if(focused&&item.system.key!==selectedKey&&focusBlend>.86)continue;
-   if(focused&&item.system.key===selectedKey&&focusBlend>.96)continue;
-   const center=systemPosition(item,frame,reducedMotion);
-   if(item.portal){
-    const t=reducedMotion?0:frame*.07;
-    body(gpu.torus,center,item.radius*1.90,[1.0,.79,.43],2,frame,
-      rotation(.88,.12+t,.20),eye,vp);
-    body(gpu.torus,center,item.radius*2.32,[.94,.66,.29],2,frame,
-      rotation(1.30,.42-t*.53,-.36),eye,vp);
-    body(gpu.torus,center,item.radius*1.55,[1.0,.90,.71],2,frame,
-      rotation(.54,.23+t*.47,-.26),eye,vp);
-    // Distant halo filaments surround the core; these are decorative, not transfer events.
-    body(gpu.torus,center,item.radius*2.74,[.57,.44,.26],2,frame,
-      rotation(.39,.21-t*.19,.59),eye,vp);
-   }else{
-    body(gpu.torus,center,item.radius*1.84,item.color.map(c=>c*.85),2,frame,
-      rotation(.82+item.orbital.inclination,item.orbital.node,.19),eye,vp);
-    body(gpu.torus,center,item.radius*2.38,item.color.map(c=>c*.50),2,frame,
-      rotation(.48,item.orbital.node+.8,.35),eye,vp);
-    // Thin secondary elliptical traces create the layered Northstar silhouette.
-    body(gpu.torus,center,item.radius*2.86,item.color.map(c=>c*.42),2,frame,
-      rotation(1.19,item.orbital.node+.43,-.27),eye,vp);
+  // Northstar: one fine ring per spoke, two warm rings around the hub.
+   for(const item of topology.systems){
+    if(focused&&item.system.key!==selectedKey&&focusBlend>.86)continue;
+    if(focused&&item.system.key===selectedKey&&focusBlend>.96)continue;
+    const center=systemPosition(item,frame,reducedMotion);
+    const t=reducedMotion?0:frame*.019;
+    if(item.portal){
+     body(gpu.torus,center,item.radius*1.62,[.75,.58,.32],2,frame,
+       rotation(.64,.24+t,-.19),eye,vp);
+     body(gpu.torus,center,item.radius*2.28,[.57,.43,.25],2,frame,
+       rotation(1.21,.41-t*.57,.24),eye,vp);
+    }else{
+     body(gpu.torus,center,item.radius*1.63,
+       item.color.map(c=>c*.46+.07),2,frame,
+       rotation(.72+item.orbital.inclination*.42,item.orbital.node*.42,.12),eye,vp);
+    }
    }
-  }
-  // Do not paint misleading global ellipses around the network.
+   // Do not paint misleading global ellipses around the network.
    if(focusBlend<.96)for(const link of paths){
    const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
    const vertices=[],steps=92;
@@ -629,7 +620,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
    gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
-   line(link.geometry,link.active?[.58,.85,1.0]:[.60,.72,.91],(link.active?.80:.35)*(1-focusBlend*.93),vp);
+   line(link.geometry,link.active?[.58,.85,1.0]:[.60,.72,.91],(link.active?.52:.20)*(1-focusBlend*.93),vp);
   }
   if(focusBlend>.72)for(const ring of orbitPaths){
    if(!ring.planet||ring.planet.system.system.key!==selectedKey)continue;
@@ -652,18 +643,27 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     if(focused&&item.system.key!==selectedKey&&focusBlend>.9)continue;
     const center=systemPosition(item,frame,reducedMotion);
     body(gpu.sphere,center,item.radius,item.color,item.portal?1:0,frame,IDENTITY,eye,vp);
-    // Decorative satellite moons only: never catalog tokens or activation indicators.
-    if(!focused||item.system.key===selectedKey){
-     for(let moon=0;moon<2;moon++){
-      const angle=(moon/2)*TWO_PI+(reducedMotion?0:frame*.035)*(moon%2?-1:1);
-      const radial=item.radius*(item.portal?2.18:2.35)+moon*.23;
-      const satellite=add(center,rotate([Math.cos(angle)*radial,
-        Math.sin(angle*1.13)*item.radius*.43,Math.sin(angle)*radial*.72],
-        item.portal?.32:item.orbital.inclination,0,.12));
-      point(satellite,item.radius*(moon===0?750:520),
-       item.color.map(c=>Math.min(1,c*.66+.26)),.76,vp);
+    // Deterministic tiny moons and points; decorative, not assets.
+     if(!focused||item.system.key===selectedKey){
+      const key=item.system.key;
+      const seed=[...key].reduce((h,c)=>(Math.imul(h,33)+c.charCodeAt(0))>>>0,1643);
+      const rnd=random(seed),moonCount=item.portal?3:1+(seed%2);
+      for(let moon=0;moon<moonCount;moon++){
+       const phase=rnd()*TWO_PI;
+       const radial=item.radius*(1.92+rnd()*.63);
+       const angle=phase+(reducedMotion?0:frame*.010)*(moon%2?-1:1);
+       const satellite=add(center,rotate([Math.cos(angle)*radial,
+        Math.sin(angle*.7)*item.radius*.24,Math.sin(angle)*radial*.68],
+        item.portal?.27:item.orbital.inclination*.62,0,.12));
+       if(moon===0){
+        const tint=item.portal?[.79,.67,.48]:item.color.map(c=>clamp(c*.48+.22,0,1));
+        point(satellite,item.radius*640,tint,.78,vp);
+       }else{
+        point(satellite,item.radius*400,
+          item.color.map(c=>Math.min(1,c*.42+.39)),.52,vp);
+       }
+      }
      }
-    }
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));

@@ -7,19 +7,19 @@ const catalog={chains:{xgrchain:{chainId:1643},base:{chainId:8453},polygon:{chai
  XGR:{metadata:{canonical:{chain:"xgrchain"},representations:[
  {chain:"xgrchain",symbol:"XGR",representation:"native"},
  {chain:"base",symbol:"wXGR",representation:"synthetic"}]}}}};
-test("stellar geometry exists for each chain and includes real depth",()=>{
+test("Northstar decoration keeps subtle hub dust and no spoke particle clouds",()=>{
  const t=createUniverseTopology(buildExperienceModel(catalog));
  assert.equal(sceneComposition(t).hub,1);
  assert.equal(sceneComposition(t).inclinedOrbits,3);
  assert.equal(sceneComposition(t).nativeOrWrappedPlanets,0);
  for(const system of t.systems){
   const disc=makeStellarDisc(system);
-  assert.ok(disc.length>700);
+  assert.equal(disc.length,system.portal?340*3:0);
   assert.ok(disc.every(Number.isFinite));
-  assert.ok(new Set(Array.from(disc).filter((_,i)=>i%3===1).map(n=>n.toFixed(3))).size>40);
+  if(system.portal)assert.ok(new Set(Array.from(disc).filter((_,i)=>i%3===1).map(n=>n.toFixed(3))).size>40);
   const next=placeStellarDisc(disc,[3,4,5],5,system);
   assert.equal(next.length,disc.length);
-  assert.notDeepEqual(Array.from(next.slice(0,3)),Array.from(disc.slice(0,3)));
+  if(system.portal)assert.notDeepEqual(Array.from(next.slice(0,3)),Array.from(disc.slice(0,3)));
  }
  assert.equal(makeSystemOrbitTrack(t.byKey.get("xgrchain")).length,0);
  assert.ok(makeSystemOrbitTrack(t.byKey.get("base")).length>300);
