@@ -239,13 +239,13 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState):p==="/universe"?renderUniverse(universe,state.experience.system,state.leaderboard):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard):p==="/universe"?renderUniverse(universe,state.experience.system,state.leaderboard):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
  if(p==="/"||p==="/universe"){
   const host=document.querySelector("#xita-3d");
-  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:p==="/",selected:state.experience.system,onFocus:key=>{
+  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:false,selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
    if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key,state.leaderboard).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
@@ -415,7 +415,7 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path().startsWith("/token/"))render();
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path()==="/"||path().startsWith("/token/"))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);

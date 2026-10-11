@@ -179,56 +179,144 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
     '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal safety activation. The old bridge is retired.</p></div>';
 }
 
-export function renderDashboard(model,selection={},apiState="not-deployed"){
-  const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
-  const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:model.chains.find(c=>c.key!==source)?.key||source;
-  const assetId=model.assets.some(a=>a.id===selection.asset)?selection.asset:model.assets[0]?.id||"";
-  const plan=previewRoute(model,source,target,assetId);
-  const verified=model.routes.filter(r=>r.active).length;
-  const firstAsset=model.assets.find(a=>a.id===assetId);
-  return '<div class="ux-app ux-dashboard"><div class="ux-header-row"><div><div class="ux-kicker">INTERCHAIN OPERATIONS · XITA</div>'+
-    '<h1>Interchain <span>Dashboard</span></h1><p class="ux-lead">Discover connected blockchain systems, inspect routes and prepare transfers through XGRChain.</p></div>'+
-    '<a data-nav class="ux-universe-link" href="/universe"><span class="ux-mini-galaxy">◎</span><span><strong>Explore the XITA Universe</strong><small>Systems, assets and interchain journeys</small></span><span>↗</span></a></div>'+
-    '<div class="ux-metrics">'+metric("Configured systems",String(model.chains.length),"From public chain inventory")+
-    metric("Verified active routes",String(verified),model.routes.length+" configured directed routes")+
-    metric("Listed assets",String(model.assets.length),"Not a token verification claim")+
-    metric("Event indexer",apiState==="ready"?"Available":"Unavailable",apiState==="ready"?"Indexed records may be viewed on token pages":"No estimated transfer statistics")+'</div>'+
-    '<div class="ux-dashboard-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · Journey planner</span><span class="ux-label">XGR HUB</span></div>'+
-    '<h2>Plan a transfer</h2><p class="ux-muted">Choose systems and a token. Only activated contracts can receive funds.</p>'+
-    '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin" data-xita-origin>'+chainOptions(model,source)+'</select>'+
-    '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset" data-xita-asset>'+assetOptions(model,assetId)+'</select>'+
-    '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination" data-xita-destination>'+chainOptions(model,target)+'</select>'+
-    '<div class="ux-divider"></div><div class="ux-kicker">Route path</div>'+routePath(model,plan)+
-    '<div class="ux-route-status">'+pill(plan.active)+'<p>'+esc(plan.reason)+'</p></div>'+
-    '<p class="ux-small">Gateway quotes and source-native validator fees are fetched only on the token page. No synthetic pricing or transit times.</p>'+
-    (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer <span>↗</span></a>':
-    '<a class="ux-button is-disabled" data-nav href="/markets">Browse tokens <span>↗</span></a>')+'</section>'+
-    '<section class="ux-panel ux-map-panel"><div class="ux-panel-head"><div><div class="ux-kicker">02 · Network topology</div><h2>XITA Universe <span class="ux-soft">(configured)</span></h2></div><a data-nav href="/universe" class="ux-mini-link">Expand ↗</a></div>'+
-    '<div id="xita-3d" class="ux-3d-stage is-compact"><canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive three dimensional XITA universe. Drag to rotate, scroll to zoom, use arrow keys."></canvas><div class="ux-3d-labels" aria-hidden="true"></div><div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGR hub">◎ XGR Hub</button></div><div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3><p class="ux-3d-focus-count"></p><div class="ux-3d-asset-links"></div><div class="ux-orbit-tools"><label>Rank by <select id="ux-orbit-sort"><option value="lockedUsd">Locked TVL</option><option value="marketCapUsd">Market cap</option><option value="movedUsd">Moved via XGR</option></select></label><input type="search" id="ux-orbit-search" placeholder="Search tokens…" aria-label="Search tokens"></div><div id="ux-ranked-tokens" class="ux-ranked-tokens">Select a chain to load sourced rankings.</div></div><div class="ux-3d-hint">Drag to orbit · Scroll to zoom · Right-drag to pan · Click a star to explore</div><div class="ux-3d-status">Reading configured routes</div></div>'+
-    '<div class="ux-map-caption">Each external-to-external journey traverses XGRChain. Network lines show topology, not live availability.</div></section>'+
-    '<aside class="ux-panel ux-overview-panel"><div class="ux-panel-head"><div><div class="ux-kicker">03 · System inventory</div><h2>Connected worlds</h2></div></div>'+
-    '<div class="ux-chain-list">'+model.chains.map(c=>'<button type="button" data-xita-system="'+esc(c.key)+'" class="ux-chain-row'+(c.key===selection.system?" is-selected":"")+'">'+
-    '<span class="ux-chain-symbol'+(c.key===HUB?" is-hub":"")+'"></span><span><strong>'+esc(c.label)+'</strong><small>'+c.tokens.length+' listed assets</small></span>'+
-    '<span class="ux-label">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div>'+
-    '<div class="ux-divider"></div><p class="ux-small">Select a system to explore its tokens and route availability.</p><a class="ux-mini-link ux-bottom-link" data-nav href="/markets">Browse tokens →</a></aside></div>'+
-    '<section class="ux-panel ux-discovery"><div><div class="ux-kicker">ASSET DISCOVERY</div><h2>Explore token worlds</h2><p class="ux-muted">Each token profile contains its own transfer interface, verified route inventory and delivery checks.</p></div>'+
-    '<div class="ux-discovery-assets">'+model.assets.slice(0,4).map(a=>'<a data-nav class="ux-discovery-item" href="'+esc(tokenLink(a))+'"><span class="ux-token-sphere"></span><strong>'+esc(a.id)+'</strong><span>Explore ↗</span></a>').join("")+
-    '<a data-nav class="ux-discovery-item" href="/markets"><strong>All assets</strong><span>Directory ↗</span></a></div></section></div>';
+
+function northstarStage(model,{universe=false}={}){
+ const active=model.routes.filter(route=>route.active).length;
+ const systems=model.chains.length;
+ const introActions=universe?
+  '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
+  '<a data-nav class="ux-ns-secondary" href="/">Back to dashboard</a>':
+  '<a data-nav class="ux-ns-primary" href="/universe">Explore Universe <span aria-hidden="true">→</span></a>'+
+  '<a class="ux-ns-secondary" href="#ux-journey-planner">Plan a route</a>';
+ return '<div id="xita-3d" class="ux-3d-stage ux-ns-stage" data-northstar="1">'+
+  '<canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive 3D universe with configured blockchain systems. Select a star to explore its tokens."></canvas>'+
+  '<div class="ux-3d-labels"></div>'+
+  '<div class="ux-ns-hero-copy"><div class="ux-ns-overline">INTERCONNECTED WORLDS</div>'+
+  '<h1>The XITA <em>Universe</em></h1>'+
+  '<p class="ux-ns-promise">One hub. Many ecosystems.<br>A more connected onchain future.</p>'+
+  '<p class="ux-ns-subline">Discover blockchain systems, explore their assets, and inspect routes through XGRChain.</p>'+
+  '<div class="ux-ns-actions">'+introActions+'</div>'+
+  '<div class="ux-ns-signature"><span class="ux-ns-signature-mark" aria-hidden="true">✧</span><span>A UNIFIED INTERCHAIN FUTURE<br>BUILT AROUND XGRCHAIN</span></div></div>'+
+  '<div class="ux-ns-network-status"><span class="ux-ns-overline">NETWORK INVENTORY</span>'+
+  '<strong>'+systems+' configured systems</strong>'+
+  '<small>'+active+' verified active directed routes</small>'+
+  '<small class="ux-ns-network-note">Topology preview · no simulated activity</small></div>'+
+  '<div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGRChain hub">◎ XGR Hub</button></div>'+
+  '<div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3>'+
+  '<p class="ux-3d-focus-count"></p><div class="ux-3d-asset-links"></div></div>'+
+  '<div class="ux-3d-hint">Drag to orbit · Scroll to zoom · Select a star to explore tokens · Home to reset</div>'+
+  '<div class="ux-3d-status">XGR gateway · configured routes only</div></div>';
 }
+
+function northstarCards(model,metrics=null){
+ const active=model.routes.filter(route=>route.active).length;
+ const visibleChains=model.chains;
+ const spokes=model.chains.filter(c=>c.key!==HUB).slice(0,3);
+ const xgr=verifiedMetrics(metrics,"XGR");
+ const value=xgr?.marketCapUsd??null;
+ const marketSource=metrics?.assets?.XGR?.market;
+ const sourced=marketSource?.status==="market-data"&&marketSource.source==="coingecko";
+ const marketText=sourced&&value!==null?formatUsd(value):"—";
+ const previewSpokes=model.chains.filter(c=>c.key!==HUB);
+ const journeyKeys=previewSpokes.length>=2?[previewSpokes[0].key,HUB,previewSpokes[1].key]:
+  previewSpokes.length===1?[HUB,previewSpokes[0].key]:[HUB];
+ const journeyAsset=model.assets[0]?.id||"";
+ const journeyPath=journeyKeys.length>=2?previewRoute(model,journeyKeys[0],journeyKeys[journeyKeys.length-1],journeyAsset):
+  {active:false,configured:false};
+ const routeRows=spokes.map(chain=>{
+  const pair=model.routes.filter(r=>(r.source===HUB&&r.destination===chain.key)||
+   (r.destination===HUB&&r.source===chain.key));
+  const live=pair.filter(r=>r.active).length;
+  return '<div class="ux-ns-route-row"><span class="ux-ns-route-glyph"></span>'+
+    '<strong>'+esc(chain.label)+' ↔ XGR</strong><small>'+live+' / '+pair.length+' verified</small></div>';
+ }).join("");
+ return '<section class="ux-ns-deck" aria-label="XITA network overview">'+
+  '<article class="ux-ns-card ux-ns-card-systems"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">◎</span>'+
+  '<h2>Supported systems</h2><span class="ux-ns-card-count">'+visibleChains.length+'</span></div>'+
+  '<div class="ux-ns-system-list">'+visibleChains.map(c=>
+    '<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
+    '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
+    '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":"Configured")+'</small>'+
+    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div></article>'+
+  '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span>'+
+  '<h2>Directed routes</h2><span class="ux-ns-card-count">'+model.routes.length+'</span></div>'+
+  '<div class="ux-ns-card-message">'+active+' verified active · '+model.routes.length+' configured</div>'+
+  '<div class="ux-ns-route-list">'+(routeRows||'<p class="ux-small">No configured spokes</p>')+'</div>'+
+  '<a class="ux-ns-card-link" href="#ux-journey-planner">Inspect route plan →</a></article>'+
+  '<article class="ux-ns-card ux-ns-hub-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span>'+
+  '<h2>Hub: XGRChain</h2><span class="ux-ns-pill">CORE</span></div>'+
+  '<div class="ux-ns-hub-graphic"><span class="ux-ns-orb is-hub"></span>'+
+  '<p>The interchain gateway connecting configured EVM worlds.</p></div>'+
+  '<div class="ux-ns-market"><span>Asset-wide XGR market cap</span><strong>'+esc(marketText)+'</strong></div>'+
+  '<div class="ux-ns-market-note">'+(sourced&&value!==null?
+   'CoinGecko sourced · not bridge TVL':'External market data unavailable · no estimated TVL')+'</div></article>'+
+  '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⌁</span>'+
+  '<h2>Journey preview</h2><span class="ux-ns-outline-tag">2 hops max.</span></div>'+
+  '<div class="ux-ns-journey">'+
+  journeyKeys.map((key,i)=>'<span class="ux-ns-orb is-'+esc(key)+'"></span>'+
+   (i<journeyKeys.length-1?'<span class="ux-ns-journey-line"></span>':"")).join("")+'</div>'+
+  '<div class="ux-ns-journey-labels">'+journeyKeys.map(key=>
+   '<span>'+esc(model.chains.find(c=>c.key===key)?.label||key)+'</span>').join("")+'</div>'+
+  '<div class="ux-ns-journey-summary"><span>Route status</span><strong>'+
+   (journeyPath.active?"Verified active":journeyPath.configured?"Not activated":"Not configured")+'</strong></div>'+
+  '<a class="ux-ns-card-link" href="#ux-journey-planner">Plan a transfer →</a></article></section>';
+}
+
+export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null){
+ const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
+ const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:
+  model.chains.find(c=>c.key!==source)?.key||source;
+ const assetId=model.assets.some(a=>a.id===selection.asset)?selection.asset:model.assets[0]?.id||"";
+ const plan=previewRoute(model,source,target,assetId);
+ const active=model.routes.filter(r=>r.active).length;
+ const firstAsset=model.assets.find(a=>a.id===assetId);
+ return '<div class="ux-app ux-dashboard ux-northstar-page">'+
+  northstarStage(model)+northstarCards(model,metrics)+
+  '<section class="ux-ns-operations" id="ux-journey-planner">'+
+  '<div class="ux-ns-ops-intro"><span class="ux-kicker">INTERCHAIN OPERATIONS · XITA</span>'+
+  '<h2>Interchain Dashboard</h2><p class="ux-muted">Inspect route possibilities and configure a future transfer. Every transaction remains disabled until its routes are verified.</p></div>'+
+  '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · JOURNEY PLANNER</span><span class="ux-label">XGR HUB</span></div>'+
+  '<h2>Plan a transfer</h2><p class="ux-muted">Choose systems and an asset. Only verified, activated routes can receive funds.</p>'+
+  '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions(model,source)+'</select>'+
+  '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions(model,assetId)+'</select>'+
+  '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
+  '<div class="ux-divider"></div><div class="ux-kicker">ROUTE PATH</div>'+routePath(model,plan)+
+  '<div class="ux-route-status">'+pill(plan.active)+'<p>'+esc(plan.reason)+'</p></div>'+
+  '<p class="ux-small">No transfer timings, bridge TVL or transaction availability are inferred from the diagram.</p>'+
+  (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
+   '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
+  '<aside class="ux-panel ux-ns-operations-data"><div class="ux-kicker">02 · VERIFIED NETWORK FACTS</div>'+
+  '<h2>Current network state</h2><p class="ux-muted">The public catalog describes intended topology. Deployment and finality verification are independent.</p>'+
+  '<div class="ux-ns-facts"><div><span>Configured systems</span><strong>'+model.chains.length+'</strong></div>'+
+  '<div><span>Configured directed routes</span><strong>'+model.routes.length+'</strong></div>'+
+  '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
+  '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
+  '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment, safety verification and independent activation.</p></div>'+
+  '<div class="ux-ns-explore-links"><a data-nav href="/universe">Open interactive Universe ↗</a>'+
+  '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section>'+
+  '<section class="ux-panel ux-discovery"><div><div class="ux-kicker">ASSET DISCOVERY</div>'+
+  '<h2>Explore token worlds</h2><p class="ux-muted">Open a token profile to inspect its representations, status and bridge interface.</p></div>'+
+  '<div class="ux-discovery-assets">'+model.assets.slice(0,4).map(a=>
+   '<a data-nav class="ux-discovery-item" href="'+esc(tokenLink(a))+'">'+
+   '<span class="ux-token-sphere"></span><strong>'+esc(a.id)+'</strong><span>Explore ↗</span></a>').join("")+
+  '<a data-nav class="ux-discovery-item" href="/markets"><strong>Browse tokens</strong><span>Directory ↗</span></a></div></section></div>';
+}
+
 export function renderUniverse(model,selected=HUB,metrics=null){
-  const active=model.routes.filter(r=>r.active).length;
-  const total=model.chains.length;
-  return '<div class="ux-app ux-universe-page"><div class="ux-universe-hero"><div class="ux-kicker">INTERCONNECTED WORLDS · THE XITA UNIVERSE</div>'+
-    '<h1>The XITA <em>Universe.</em></h1><p class="ux-lead">Every blockchain is its own world. XGRChain is the interstellar gateway connecting them.</p>'+
-    '<p class="ux-muted">Explore the configured systems and their token representations. Every spoke-to-spoke journey consists of two separate, independently authenticated transfers.</p>'+
-    '<div class="ux-hero-actions"><a class="ux-button" data-nav href="/markets">Explore tokens ↗</a><a class="ux-outline-button" data-nav href="/">Back to dashboard</a></div></div>'+
-    '<div class="ux-universe-layout"><div class="ux-universe-main"><div class="ux-map-bar"><span class="ux-kicker">SYSTEM MAP · '+total+' CONFIGURED</span>'+
-    '<span class="ux-small">'+active+' verified active directed routes</span></div>'+'<div id="xita-3d" class="ux-3d-stage"><canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive three dimensional XITA universe. Drag to rotate, scroll to zoom, use arrow keys."></canvas><div class="ux-3d-labels" aria-hidden="true"></div><div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGR hub">◎ XGR Hub</button></div><div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3><p class="ux-3d-focus-count"></p><div class="ux-3d-asset-links"></div></div><div class="ux-3d-hint">Drag to orbit · Scroll to zoom · Right-drag to pan · Click a star to explore</div><div class="ux-3d-status">Reading configured routes</div></div>'+
-    '<div class="ux-map-caption">XGRChain is the only intermediate system. Paths indicate eligible topology; unactivated routes cannot bridge.</div></div>'+
-    '<aside class="ux-panel ux-details" id="ux-selected-details" aria-live="polite">'+systemDetails(model,selected,metrics)+'</aside></div>'+
-    '<section class="ux-panel ux-below"><div><div class="ux-kicker">BEYOND THE STAR MAP</div><h2>All configured systems</h2><p class="ux-muted">The map shows a limited number of systems to remain readable as XITA grows. The directory includes every configured chain.</p></div>'+
-    '<div class="ux-universe-directory">'+model.chains.map(c=>'<button type="button" data-xita-system="'+esc(c.key)+'" class="ux-directory-item'+(selected===c.key?" is-selected":"")+'">'+
-    '<span class="ux-chain-symbol'+(c.key===HUB?" is-hub":"")+'"></span><strong>'+esc(c.label)+'</strong><small>'+c.tokens.length+' assets</small><span>Explore ↗</span></button>').join("")+'</div></section></div>';
+ const active=model.routes.filter(r=>r.active).length;
+ return '<div class="ux-app ux-universe-page ux-northstar-page">'+northstarStage(model,{universe:true})+
+  '<div class="ux-ns-universe-intro"><span class="ux-kicker">EXPLORE THE XITA NETWORK</span>'+
+  '<strong>'+model.chains.length+' configured systems · '+active+' verified active directed routes</strong>'+
+  '<span>Choose a planet to focus a chain, then select a listed token to open its bridge page.</span></div>'+
+  '<div class="ux-ns-universe-grid"><section class="ux-panel ux-ns-worlds"><div class="ux-panel-head"><div>'+
+  '<span class="ux-kicker">SYSTEM DISCOVERY</span><h2>Explore configured worlds</h2></div></div>'+
+  '<p class="ux-muted">XGRChain is the hub. Spoke-to-spoke journeys require two independent routes; dashed lines do not indicate live transfers.</p>'+
+  '<div class="ux-universe-directory">'+model.chains.map(c=>
+   '<button type="button" data-xita-system="'+esc(c.key)+'" class="ux-directory-item'+(selected===c.key?" is-selected":"")+'">'+
+   '<span class="ux-chain-symbol'+(c.key===HUB?" is-hub":"")+'"></span>'+
+   '<strong>'+esc(c.label)+'</strong><small>'+c.tokens.length+' listed assets</small><span>Explore ↗</span></button>').join("")+'</div></section>'+
+  '<aside class="ux-panel ux-details" id="ux-selected-details" aria-live="polite">'+
+   systemDetails(model,selected,metrics)+'</aside></div></div>';
 }
 export function renderRoutes(model){
   return '<div class="ux-app ux-routes-page"><div class="ux-kicker">XITA · VERIFIED NETWORK INVENTORY</div><h1>Directed <span>Routes</span></h1>'+
