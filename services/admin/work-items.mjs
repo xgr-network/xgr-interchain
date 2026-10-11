@@ -8,7 +8,8 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
   for(const part of chain.components){
    if(part.status==="documented")continue;
    const blockers=[];
-   if(!core)blockers.push("Hyperlane Mailbox/Hook nicht dokumentiert");
+   if(!core&&["factory","sourceRegistry"].includes(part.key))
+    blockers.push("Frischer XITA-Nachrichtentransport fehlt");
    const previous=chain.components.slice(0,chain.components.indexOf(part));
    if(previous.some(p=>p.status!=="documented"))blockers.push("Vorherige Chain-Komponenten fehlen");
    const plan=planByChain.get(chain.name);

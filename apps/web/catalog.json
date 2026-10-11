@@ -250,13 +250,6 @@
       "chain": "xgrchain",
       "chainId": 1643,
       "domainId": 1643,
-      "hyperlaneCore": {
-        "mailbox": "0x5632409bc2f0e8bAc4AaF43654D4FFc7822C9c79",
-        "merkleTreeHook": "0xeD98Af715b5a72dCD412567eb086d48225CDDACF",
-        "domainRoutingIsm": "0xAf03B407FED3c4857A24Be9ac8EC64b7d178AA51",
-        "validatorAnnounce": "0x1814Be3E608883cA510707d3dc6f31792FD5CAaF"
-      },
-      "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack.",
       "xitaV315": {
         "schemaVersion": 1,
         "components": {
@@ -278,13 +271,6 @@
       "chain": "base",
       "chainId": 8453,
       "domainId": 8453,
-      "hyperlaneCore": {
-        "mailbox": "0xeA87ae93Fa0019a82A727bfd3eBd1cFCa8f64f1D",
-        "merkleTreeHook": "0x19dc38aeae620380430C200a6E990D5Af5480117",
-        "validatorAnnounce": "0x182E8d7c5F1B06201b102123FC7dF0EaeB445a7B",
-        "interchainGasPaymaster": "0xc3F23848Ed2e04C0c6d41bd7804fa8f89F940B94"
-      },
-      "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack.",
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},
@@ -298,10 +284,6 @@
       "chain": "polygon",
       "chainId": 137,
       "domainId": 137,
-      "hyperlaneCore": {
-        "mailbox": null,
-        "merkleTreeHook": null
-      },
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},
@@ -315,10 +297,6 @@
       "chain": "arbitrum",
       "chainId": 42161,
       "domainId": 42161,
-      "hyperlaneCore": {
-        "mailbox": null,
-        "merkleTreeHook": null
-      },
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},

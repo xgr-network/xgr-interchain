@@ -34,6 +34,8 @@ export function validateCatalog({chains,assets,infrastructure}){
   const inf=infrastructure[name];check(!!inf,p+": infrastructure missing");if(!inf)continue;
   check(inf.kind==="infrastructure-deployment"&&inf.chain===name&&inf.chainId===c.chainId&&inf.domainId===c.domainId,p+": mismatched infrastructure");
   check(!Object.hasOwn(inf,"ilnV314"),p+": legacy infrastructure block forbidden");
+  check(Object.keys(inf).every(k=>["schemaVersion","kind","network","chain","chainId","domainId","xitaV315"].includes(k)),
+    p+": legacy infrastructure address fields forbidden");
   const v315=inf.xitaV315;
   check(v315?.schemaVersion===1&&Array.isArray(v315?.receiptPaths)&&
     typeof v315?.components==="object"&&v315.components!==null&&!Array.isArray(v315.components)&&
@@ -48,8 +50,9 @@ export function validateCatalog({chains,assets,infrastructure}){
       v315.receiptPaths.includes(item.receiptPath),p+": invalid component deployment binding "+component);
    }
   }
-  const core=inf.hyperlaneCore;
-  check(!!core&&((core.mailbox===null&&core.merkleTreeHook===null)||(address(core.mailbox)&&address(core.merkleTreeHook))),p+": inconsistent Mailbox/Hook");
+  // No pre-XITA Mailbox, Hook, ISM or ValidatorAnnounce address is a
+  // deployment proof. Fresh transport must be introduced explicitly
+  // and independently verified before any Factory deployment.
  }
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){

@@ -12,6 +12,14 @@ test("rejects legacy infrastructure metadata",()=>{
  const x=copy();x.infrastructure.polygon.ilnV314={status:"unverified-not-activated"};
  assert.ok(validateCatalog(x).some(s=>s.includes("legacy infrastructure block forbidden")));
 });
+test("legacy Hyperlane addresses cannot enter a fresh XITA deployment manifest",()=>{
+ const x=copy();
+ for(const [name,infra] of Object.entries(x.infrastructure)){
+  assert.equal(Object.hasOwn(infra,"hyperlaneCore"),false,name+" contains historical transport addresses");
+ }
+ x.infrastructure.xgrchain.hyperlaneCore={mailbox:"0x"+"1".repeat(40)};
+ assert.ok(validateCatalog(x).some(e=>e.includes("legacy infrastructure address fields forbidden")));
+});
 test("recorded XITA deployments are valid; unauthorized metadata or malformed bindings fail",()=>{
  const x=copy();
  assert.deepEqual(validateCatalog(x),[]);
