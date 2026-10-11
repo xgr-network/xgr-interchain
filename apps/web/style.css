@@ -449,7 +449,7 @@ header small{font-size:8px;letter-spacing:.24em}
 header nav{gap:clamp(18px,2.2vw,40px);height:100%}
 header nav a{position:relative;color:#cbd8eb;font-size:13px;height:100%;display:inline-flex;align-items:center}
 header nav a:hover{color:#fff}
-header nav a[href="/universe"]:focus-visible:after{content:"";position:absolute;height:2px;inset:auto 0 0;background:#c2dfff}
+header nav a:focus-visible:after{content:"";position:absolute;height:2px;inset:auto 0 0;background:#c2dfff}
 header #connect{background:#0c1b30c2;border:1px solid #46617e8c;box-shadow:inset 0 1px #ffffff0d}
 .ux-northstar-page{position:relative;min-width:0;padding:0 0 20px}
 .ux-northstar-page.ux-app{color:#edf5ff}
@@ -712,3 +712,19 @@ main:has(>.ux-northstar-page){
 @media(prefers-reduced-motion:reduce){
  .ux-ns-stage .ux-ns-hero-copy,.ux-ns-primary,.ux-ns-secondary{transition:none}
 }
+
+/* Standalone route-planning and FAQ pages, with the existing Northstar language. */
+.ux-plan-page{max-width:1550px;margin:0 auto;padding:28px 18px 60px}
+main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
+.ux-plan-page .ux-ns-operations{margin:28px auto;width:min(100%,1180px)}
+.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.ux-faq-page{max-width:950px;margin:35px auto 75px;padding:16px 22px}
+.ux-faq-page>h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;margin:17px 0}
+.ux-faq-list{display:grid;gap:12px;margin-top:35px}
+.ux-faq-item{background:linear-gradient(145deg,#111f34e8,#081323ea);border:1px solid #344c6c;border-radius:12px;padding:0 20px}
+.ux-faq-item summary{position:relative;cursor:pointer;padding:22px 30px 22px 0;font-size:16px;font-weight:600;color:#eaf2ff}
+.ux-faq-item summary::marker{color:#c9b17b}
+.ux-faq-item[open]{border-color:#6a85a2}
+.ux-faq-item p{margin:0;padding:0 0 22px;line-height:1.75;color:#afc3da;font-size:14px}
+.ux-faq-footer{display:flex;flex-wrap:wrap;gap:14px;margin-top:35px}
+@media(max-width:700px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:1fr}.ux-faq-page{padding:10px 16px}}
