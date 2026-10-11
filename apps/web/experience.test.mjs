@@ -144,3 +144,17 @@ test("dashboard never treats partial TVL as verified and planner stays on its ow
  assert.match(planner,/id="ux-destination"/);
  assert.match(planner,/id="ux-journey-planner"/);
 });
+
+test("Northstar hero explains holders and projects with matching actions",()=>{
+ const html=renderDashboard(buildExperienceModel(catalog));
+ assert.match(html,/Explore the <em>Universe\.<\/em>/);
+ assert.match(html,/Move tokens between worlds/);
+ assert.match(html,/Bring your token to new chains/);
+ assert.match(html,/href="\/plan-route">Explore Routes/);
+ assert.match(html,/href="\/join">Bring Your Token/);
+ assert.match(html,/FOR TOKEN HOLDERS/);
+ assert.match(html,/FOR TOKEN PROJECTS/);
+ assert.match(html,/Check route availability/);
+ assert.match(html,/A directory listing and an active bridge are separate milestones/);
+ assert.doesNotMatch(html,/id="ux-journey-planner"/);
+});
