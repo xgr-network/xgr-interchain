@@ -2,8 +2,7 @@
 // append-only verified GitHub evidence as chain infrastructure deployments.
 // Registered gateway is immediately enabled; transfers remain BLS-secured.
 import {resolve} from "node:path";
-import {execFileSync} from "node:child_process";
-import {assertCurrentMain,approvedWorkInventory,checkedLocalMain} from "./main-gate.mjs";
+import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
@@ -217,15 +216,13 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    runtimeKeccak:inputs[0].expectedRuntimeKeccak256});
   const result=await publish(root,inputs,{rpc});
   if(!/^[0-9a-f]{40}$/i.test(result.commit||""))throw Error("Receipt publication not confirmed");
-  if(checkedLocalMain(root)!==main)throw Error("Main changed during receipt publication");
-  execFileSync("git",["pull","--ff-only","origin","main"],{
-   cwd:root,encoding:"utf8",timeout:30000,maxBuffer:524288});
-  if(checkedLocalMain(root)!==result.commit.toLowerCase())throw Error("Checkout differs from published receipt commit");
+  // The published GitHub commit is authoritative. Never run git pull inside
+  // the read-only Admin service; a later manage.sh update syncs the checkout.
   const path=deploymentReceiptPath({kind:"xita-v315-deployment-receipt",chain:chain.name,
    transactionHash:entry.txHash,address});
   j.document(id,path);
   return {stage:"documented",address,txHash:entry.txHash,receiptPath:path,
-    activation:"permissionless-registered"};
+    activation:"permissionless-registered",checkoutUpdateRequired:true};
  }
  async function cancelPrepared({id,createdAt}){
   const all=approvedWorkInventory(root);
