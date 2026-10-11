@@ -9,7 +9,7 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
- assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?4:5) && c.components.length===c.required));
+ assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?7:8) && c.components.length===c.required));
  // The approved inventory can be partially deployed: XGRChain already has
  // a documented ValidatorRegistry, but still requires the other components.
  // Status and progress must track the evidence in the component inventory.
