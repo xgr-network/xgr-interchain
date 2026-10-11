@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {deploymentIntents} from "./deployment-intents.mjs";
@@ -72,5 +72,26 @@ test("simulation-generated creation transaction is accepted by persistent journa
   const saved=open.prepare({...input,transaction:{...simulation.transaction,nonce:"0x0"}});
   assert.equal(saved.transaction.to,null);
   assert.equal(open.read().entries[input.id].transaction.to,null);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("historical V2 receipt archived without replaying or deleting its evidence",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-v2-migration-"));
+ try{
+  const activeId="xgrchain:validatorRegistry";
+  const old={...input,id:activeId,chainId:1643,stage:"documented",
+    txHash:hash,receiptPath:"deployments/mainnet/receipts/xgrchain/"+
+     "483f10ad275a0dc116eef3acba799516201cbcfd653c931217876091b48b7f14-"+
+     "df9724d03dbe353311d7d74aa5923927d48b77ab.json"};
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{[activeId]:old}}));
+  const store=deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  const before=store.read();
+  assert.equal(before.entries[activeId],undefined);
+  assert.equal(before.historical["xgrchain:validatorRegistryV2"].txHash,hash);
+  const v3={...input,id:activeId,chainId:1643};
+  store.prepare(v3);
+  const after=JSON.parse(readFileSync(join(dir,"intents.json"),"utf8"));
+  assert.equal(after.entries[activeId].stage,"prepared");
+  assert.equal(after.historical["xgrchain:validatorRegistryV2"].receiptPath,old.receiptPath);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
