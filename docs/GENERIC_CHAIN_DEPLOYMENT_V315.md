@@ -28,16 +28,17 @@ fee must be checked before approval.
    estimation tied to the exact main source SHA.
 5. **Wallet deployment**: chain selection and wallet confirmation on the
    actual chain; no backend private keys. Verifier (if required),
-   ValidatorRegistryV2, ISM, Factory and factory-owned SourceRegistry.
+   ValidatorRegistry V3, ISM, three reusable router deployers,
+   Factory and factory-owned SourceRegistry.
    Durable write-ahead transaction journal and recovery prevent replay.
 6. **Receipts**: finalized canonical receipt, constructor parameter and
    bytecode verification. Atomic append-only main commit for receipts
    and per-chain infrastructure index; never resend mined transactions
    after a GitHub failure.
-7. **Asset routes**: public Factory creates routers and two separate
-   prepared directed routes. Validators independently attest factual
-   reciprocal counterpart security. On-chain BLS quorum activates
-   each direction; prepared alone is not enabled.
+7. **Asset routes**: the public Factory creates routers and atomically
+   registers directed routes with Gateway and FeeVault. No human approval,
+   validator vote or separate activation is required. The destination ISM
+   verifies BLS attestations of the individual transfer messages.
 8. **E2E**: both directions, retry/replay and interrupted relayer tests
    before users can bridge.
 
@@ -68,7 +69,7 @@ config makes deployment **selectable**, not automatically safe to broadcast.
    remains locked and is reconciled by the known nonce, transaction hash and
    receipt; never send a duplicate.
 6. After finalized canonical receipt verification, runtime Keccak and
-   immutable/getter verification, the contract address and historical receipt
+   immutable/getter verification, the contract address and new finalized receipt
    are appended to GitHub main, and the server updates its clean checkout.
 7. The live ValidatorRegistry is authoritative for minimum reserve,
    reimbursement ceiling and actual per-validator reserves. The Factory is
@@ -79,13 +80,12 @@ config makes deployment **selectable**, not automatically safe to broadcast.
    current-gas-price estimate remains visibly **unapproved**, never treated
    as a protocol rule.
 
-The reserve and initial fee fields in legacy `config/bootstrap/*.json`
-remain tolerated only as historical, read-only compatibility hints. No new
-deployment writes to them or uses them as an on-chain authority.
+Only the current Registry V3 and SourceRegistry are operational authorities.
+There are no archived prelaunch XITA deployment receipts.
 
 This is not proof of a successful real mainnet deployment: software CI and
 read-only proof tests must pass; the operator must authorize a small first
-live transaction and inspect the actual chain receipt. Router/Gateway
-creation and BLS route activation remain separate stages.
+live transaction and inspect the actual chain receipt. Route registration is permissionless and immediately active locally;
+individual deliveries still require authenticated BLS messages.
 
 `./manage.sh deploy` publishes the WEBSITE only, never chain contracts.

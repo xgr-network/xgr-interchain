@@ -1,16 +1,34 @@
-# XETA v3.1.4 — verified deployment state
-The desired topology is XGRChain (1643) <-> Base (8453), Polygon (137), Arbitrum One (42161). Each route requires a source ILNRegistry, source Gateway and FeeVault, version-pinned Gateway-only Warp Router, destination ValidatorRegistryV2, route-aware ISM, and source quorum governance approval.
+# XITA v3.1.5 — fresh prelaunch deployment
 
-## Status
-All new v3.1.4 gateway, router, vault and governance fields remain NULL in deployments/mainnet/ until independently verified on-chain. No XETA route is marked active by this repository. Known Hyperlane Mailbox and MerkleTreeHook addresses are infrastructure observations only; XETA routers and security contracts need separate verified deployments. Polygon and Arbitrum network endpoint configurations are provisional until tested.
+XGRChain (chain/domain 1643) is the mandatory routing hub. Spoke-to-spoke
+transfers are two authenticated hops. Route registration is permissionless,
+without validator vote or a separate activation transaction.
 
-## Launch gate
-1. Deploy real upstream-compatible Gateway-only routers; direct transferRemote() must revert, while Gateway calls and Mailbox inbound calls succeed.
-2. Test XGR/wXGR lock/mint and burn/unlock on each spoke.
-3. Prove XGR native BLS and each external destination EIP-2537 on real chains.
-4. Verify native quote, separate source validator fees, historical claims, destination confirmations, exact source receipt and Merkle inclusion.
-5. Run permissionless delivery and replay/rotation recovery tests with identical messageId.
-6. Record actual deployed addresses, transaction hashes and source registry governance proofs before changing any route from pending-governance to active.
-7. Confirm frozen xgr-node v3.1.4 API compatibility without node changes.
+## Clean starting state
 
-Mainnet inventories: deployments/mainnet/infrastructure/*.json and deployments/mainnet/assets/XGR.json.
+- All new XITA infrastructure has `components: {}` and `receiptPaths: []`.
+- No old XITA receipt files, archives or deployed Registry V2 references remain
+  in the current deployment configuration.
+- Existing Hyperlane Mailbox and MerkleTreeHook are shared chain infrastructure;
+  they are not deployments of the new XITA stack.
+- The first XITA ValidatorRegistry deployment is V3. A fresh address is
+  recorded only after a new finalized wallet transaction is verified.
+- Previously broadcast transactions remain permanently visible on-chain,
+  independently of this clean prelaunch repository.
+
+## Deploy once per chain
+
+1. Validate RPC, on-chain Hyperlane core and BLS positive/negative vectors.
+2. Deploy the BLS verifier where required and ValidatorRegistry V3 with PoP.
+3. Deploy ISM and the three reusable router deployment modules.
+4. Deploy the small permissionless Factory and its SourceRegistry.
+5. Deploy per-asset routers; each directed registration atomically creates a
+   Gateway and FeeVault without validator voting.
+6. Verify both directions, authenticated BLS checkpoint delivery, replay and
+   recovery, source-native fees and Claim payouts.
+7. Verify XGRChain's mandatory two-hop flow before public availability.
+
+The wallet write-ahead journal is local server state, **not** part of Git.
+Before a clean prelaunch reset, the operator must verify there are no pending
+or unreconciled transactions. Never automatically erase a submitted intent
+just to permit a new broadcast.

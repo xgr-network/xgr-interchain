@@ -10,8 +10,7 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?7:8) && c.components.length===c.required));
- // The V2 receipt remains historically documented, but only a verified V3
- // is allowed to fill the active ValidatorRegistry slot.
+ // Before Registry V3 deployment there are no active XITA component receipts.
  // Status and progress must track the evidence in the component inventory.
  for(const chain of chains){
   const documented=chain.components.filter(p=>p.status==="documented").length;

@@ -5,24 +5,6 @@ import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsync
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 import {deploymentParameters} from "./deployment-parameters.mjs";
-// Exact, immutable, independently documented V2 registry receipt.
-// This one-time archival migration NEVER touches the blockchain or retries a tx.
-const HISTORIC_V2_RECEIPT="deployments/mainnet/receipts/xgrchain/"+
-  "483f10ad275a0dc116eef3acba799516201cbcfd653c931217876091b48b7f14-"+
-  "df9724d03dbe353311d7d74aa5923927d48b77ab.json";
-const HISTORIC_V2_INTENT="xgrchain:validatorRegistry";
-function archiveKnownV2Receipt(s){
- const record=s.entries[HISTORIC_V2_INTENT];
- if(!record)return s;
- if(record.stage!=="documented"||record.receiptPath!==HISTORIC_V2_RECEIPT)
-  return s; // fail closed: no migration of pending/unknown transactions
- const key="xgrchain:validatorRegistryV2";
- if(s.historical?.[key]&&JSON.stringify(s.historical[key])!==JSON.stringify(record))
-  throw Error("Conflicting historical V2 journal record");
- s.historical={...(s.historical||{}),[key]:record};
- delete s.entries[HISTORIC_V2_INTENT];
- return s;
-}
 const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
@@ -70,13 +52,14 @@ export function deploymentIntents({directory,chains}){
  const read=()=>{
   try{
    const s=JSON.parse(readFileSync(file,"utf8"));
-   if(s.version!==1||!s.entries||Array.isArray(s.entries))
+   if(s.version!==1||!s.entries||Array.isArray(s.entries)||
+      Object.keys(s).length!==2||Object.keys(s).some(k=>k!=="version"&&k!=="entries"))
     throw Error("Deployment intent journal schema mismatch");
    for(const [id,e] of Object.entries(s.entries)){
     if(id!==e.id)throw Error("Deployment journal identity changed");
     approve(e);
    }
-   return archiveKnownV2Receipt(s);
+   return s;
   }catch(e){if(e.code==="ENOENT")return {version:1,entries:{}};throw e}
  };
  const mutate=fn=>{

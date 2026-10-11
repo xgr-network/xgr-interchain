@@ -44,15 +44,14 @@ export function createChainOperator({
   if(component==="validatorRegistry" || component==="blsVerifier")return;
   const registry=infrastructure.components.find(p=>p.key==="validatorRegistry")?.address;
   if(!registry)throw Error("Verified ValidatorRegistry V3 required before further deployment");
-  // The deployed V2 remains an immutable historical receipt. It must never
-  // silently authorize deployment of a new ISM/Factory as if it were V3.
+  // Fail closed until the currently configured V3 is verified on chain.
   const {selector}=await import("../../apps/web/keccak.mjs");
   let version;
   try{
    version=await rpc(chain.rpcUrls[0],"eth_call",[
     {to:registry,data:selector("registryVersion()")},"latest"]);
   }catch{
-   throw Error("Legacy ValidatorRegistry V2 detected. V3 migration required; do not sign");
+   throw Error("ValidatorRegistry V3 verification failed; do not sign");
   }
   if(typeof version!=="string"||!/^0x[0-9a-f]{64}$/i.test(version)||
      BigInt(version)!==3n)

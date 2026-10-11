@@ -75,23 +75,22 @@ test("simulation-generated creation transaction is accepted by persistent journa
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 
-test("historical V2 receipt archived without replaying or deleting its evidence",()=>{
- const dir=mkdtempSync(join(tmpdir(),"xita-v2-migration-"));
+test("new XITA Registry V3 starts with a clean unarchived wallet journal",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-fresh-start-"));
  try{
-  const activeId="xgrchain:validatorRegistry";
-  const old={...input,id:activeId,chainId:1643,stage:"documented",
-    txHash:hash,receiptPath:"deployments/mainnet/receipts/xgrchain/"+
-     "483f10ad275a0dc116eef3acba799516201cbcfd653c931217876091b48b7f14-"+
-     "df9724d03dbe353311d7d74aa5923927d48b77ab.json"};
-  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{[activeId]:old}}));
+  const open=()=>deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  assert.deepEqual(open().read(),{version:1,entries:{}});
+  open().prepare({...input,id:"xgrchain:validatorRegistry",chainId:1643});
+  const state=JSON.parse(readFileSync(join(dir,"intents.json"),"utf8"));
+  assert.deepEqual(Object.keys(state).sort(),["entries","version"]);
+  assert.equal(state.entries["xgrchain:validatorRegistry"].stage,"prepared");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("unexpected journal metadata is rejected rather than retained",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-clean-journal-"));
+ try{
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{},unexpected:{}}));
   const store=deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
-  const before=store.read();
-  assert.equal(before.entries[activeId],undefined);
-  assert.equal(before.historical["xgrchain:validatorRegistryV2"].txHash,hash);
-  const v3={...input,id:activeId,chainId:1643};
-  store.prepare(v3);
-  const after=JSON.parse(readFileSync(join(dir,"intents.json"),"utf8"));
-  assert.equal(after.entries[activeId].stage,"prepared");
-  assert.equal(after.historical["xgrchain:validatorRegistryV2"].receiptPath,old.receiptPath);
+  assert.throws(()=>store.read(),/schema mismatch/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

@@ -99,11 +99,7 @@ function renderInfrastructure(){
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
    '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
-   '<div class="chain-components">'+verifierRow+tasks+'</div>'+    (c.name==="xgrchain"&&c.components.some(p=>p.key==="validatorRegistry"&&p.status!=="documented")?    '<small>Frühere V2-Registry: historisch archiviert · neue V3 noch nicht deployed.</small>':"")+
-   (c.documented<c.required?
-    '<div class="chain-bootstrap-summary"><span>Bootstrap</span><span>'+
-    esc(cleanBootstrapStatus(c.name))+'</span></div>':"")+
-   liveRows+
+   '<div class="chain-components">'+verifierRow+tasks+'</div>'+    liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
    '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
    '"></div></div></article>';

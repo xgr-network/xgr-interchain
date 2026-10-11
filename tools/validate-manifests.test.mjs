@@ -8,7 +8,18 @@ test("rejects missing reverse route",()=>{const x=copy();x.assets.XGR.routes.rou
 test("rejects external-to-external direct routes",()=>{const x=copy(),r=x.assets.XGR.routes.routes[0];r.sourceChain="base";r.destinationChain="polygon";assert.ok(validateCatalog(x).some(s=>s.includes("direct external-to-external")))});
 test("rejects phantom chain",()=>{const x=copy();x.assets.XGR.routes.routes[0].destinationChain="unknown";assert.ok(validateCatalog(x).some(s=>s.includes("invalid route endpoints")))});
 test("asset deployment manifest is keyed by original asset ID",()=>{const x=copy();x.assets.XGR.deployment.assetId="0x"+"1".repeat(64);assert.ok(validateCatalog(x).some(s=>s.includes("canonical asset ID mismatch")))});
-test("rejects fabricated planned chain security",()=>{const x=copy();x.infrastructure.polygon.ilnV314.sourceRegistry="0x"+"2".repeat(40);assert.ok(validateCatalog(x).some(s=>s.includes("pending infrastructure")))});
+test("rejects legacy infrastructure metadata",()=>{
+ const x=copy();x.infrastructure.polygon.ilnV314={status:"unverified-not-activated"};
+ assert.ok(validateCatalog(x).some(s=>s.includes("legacy infrastructure block forbidden")));
+});
+test("no prelaunch XITA receipt or archive exists in any chain manifest",()=>{
+ const x=copy();
+ for(const inf of Object.values(x.infrastructure)){
+  assert.deepEqual(inf.xitaV315,{schemaVersion:1,components:{},receiptPaths:[]});
+ }
+ x.infrastructure.xgrchain.xitaV315.history={};
+ assert.ok(validateCatalog(x).some(s=>s.includes("invalid XITA v3.1.5 deployment index")));
+});
 test("rejects duplicate domains",()=>{const x=copy();x.chains.base.domainId=1643;assert.ok(validateCatalog(x).some(s=>s.includes("duplicate chainId or domainId")))});
 test("unverified asset has no deployment receipts",()=>{const x=copy();assert.deepEqual(x.assets.XGR.deployment.receiptPaths,[])});
 test("rejects missing token profile logo",()=>{const c=copy();c.assets.XGR.profile.branding.logoUrl=null;assert.ok(validateCatalog(c).some(e=>e.includes("profile branding")))});

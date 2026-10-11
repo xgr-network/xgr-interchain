@@ -256,29 +256,11 @@
         "domainRoutingIsm": "0xAf03B407FED3c4857A24Be9ac8EC64b7d178AA51",
         "validatorAnnounce": "0x1814Be3E608883cA510707d3dc6f31792FD5CAaF"
       },
-      "ilnV314": {
-        "status": "unverified-not-activated",
-        "sourceRegistry": null,
-        "destinationRegistryV2": null,
-        "destinationIsmV2": null,
-        "blsVerifier": null
-      },
       "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack.",
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},
-        "receiptPaths": [
-          "deployments/mainnet/receipts/xgrchain/483f10ad275a0dc116eef3acba799516201cbcfd653c931217876091b48b7f14-df9724d03dbe353311d7d74aa5923927d48b77ab.json"
-        ],
-        "historicalDeployments": {
-          "validatorRegistryV2": {
-            "address": "0xdf9724d03dbe353311d7d74aa5923927d48b77ab",
-            "runtimeCodeKeccak256": "0x5a73860cecc7b3e77958f5f303321c826db4d48ede52fefb82b161221be8af01",
-            "receiptPath": "deployments/mainnet/receipts/xgrchain/483f10ad275a0dc116eef3acba799516201cbcfd653c931217876091b48b7f14-df9724d03dbe353311d7d74aa5923927d48b77ab.json",
-            "role": "historical-only",
-            "note": "Immutable V2 receipt; not active Registry V3 authority."
-          }
-        }
+        "receiptPaths": []
       }
     },
     "base": {
@@ -293,13 +275,6 @@
         "merkleTreeHook": "0x19dc38aeae620380430C200a6E990D5Af5480117",
         "validatorAnnounce": "0x182E8d7c5F1B06201b102123FC7dF0EaeB445a7B",
         "interchainGasPaymaster": "0xc3F23848Ed2e04C0c6d41bd7804fa8f89F940B94"
-      },
-      "ilnV314": {
-        "status": "unverified-not-activated",
-        "sourceRegistry": null,
-        "destinationRegistryV2": null,
-        "destinationIsmV2": null,
-        "blsVerifier": null
       },
       "infrastructureNote": "Existing Hyperlane Mailbox/Hook addresses are observed chain infrastructure; V1 security, router and token deployments are NOT part of the new XETA stack.",
       "xitaV315": {
@@ -319,13 +294,6 @@
         "mailbox": null,
         "merkleTreeHook": null
       },
-      "ilnV314": {
-        "status": "unverified-not-activated",
-        "sourceRegistry": null,
-        "destinationRegistryV2": null,
-        "destinationIsmV2": null,
-        "blsVerifier": null
-      },
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},
@@ -342,13 +310,6 @@
       "hyperlaneCore": {
         "mailbox": null,
         "merkleTreeHook": null
-      },
-      "ilnV314": {
-        "status": "unverified-not-activated",
-        "sourceRegistry": null,
-        "destinationRegistryV2": null,
-        "destinationIsmV2": null,
-        "blsVerifier": null
       },
       "xitaV315": {
         "schemaVersion": 1,
