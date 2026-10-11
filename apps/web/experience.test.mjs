@@ -86,3 +86,20 @@ test("CoinGecko market cap in Universe is asset-wide and independent of route ac
  const without=renderUniverse(model,"polygon");
  assert.doesNotMatch(without,/ux-market-card/);
 });
+
+test("Northstar home and Universe share the immersive stage without changing route data",()=>{
+ const model=buildExperienceModel(catalog,()=>false);
+ const home=renderDashboard(model,{},"not-deployed");
+ const universe=renderUniverse(model,"base");
+ assert.match(home,/ux-ns-stage/);
+ assert.match(universe,/ux-ns-stage/);
+ assert.match(home,/ux-ns-deck/);
+ assert.match(home,/ux-ns-card-systems/);
+ assert.match(home,/ux-journey-planner/);
+ assert.match(home,/No transfer timings/);
+ assert.match(universe,/ux-selected-details/);
+ assert.match(universe,/Explore configured worlds/);
+ assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
+ assert.doesNotMatch(home,/XDC/);
+ assert.match(home,/Arbitrum|Polygon/);
+});
