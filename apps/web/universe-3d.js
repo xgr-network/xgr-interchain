@@ -75,7 +75,7 @@ function projectionOf(position,viewProjection,width,height){
  return {x:(x/w+1)*width/2,y:(1-y/w)*height/2,z:z/w,depth:w,
   visible:Math.abs(x/w)<1.3&&Math.abs(y/w)<1.3&&z/w>-1.2&&z/w<1.2};
 }
-function makeSphere(stacks=22,slices=32){
+function makeSphere(stacks=24,slices=36){
  const vertices=[],normals=[],indices=[];
  for(let y=0;y<=stacks;y++){
   const phi=y*Math.PI/stacks;
@@ -91,7 +91,7 @@ function makeSphere(stacks=22,slices=32){
  }
  return {vertices,normals,indices};
 }
-function makeTorus(radius=1,tube=.025,around=76,across=9){
+function makeTorus(radius=1,tube=.018,around=84,across=8){
  const vertices=[],normals=[],indices=[];
  for(let i=0;i<=around;i++){
   const a=i*TWO_PI/around,ca=Math.cos(a),sa=Math.sin(a);
@@ -159,23 +159,23 @@ const sphereFS=[
  'float details=fbm(vLocal*14.0+surf*1.9);',
  'vec3 color;',
  'if(uKind>1.5){',
- ' color=uColor*(1.25+.20*sin(vLocal.x*28.+uTime*.18))+vec3(.11,.15,.19)*rim;',
+ ' color=uColor*(1.45+.20*sin(vLocal.x*28.+uTime*.18))+vec3(.20,.24,.31)*rim;',
  '}else if(uKind>.5){',
  ' float plasma=fbm(vLocal*9.0+surf*2.2+vec3(0.,uTime*.025,0.));',
  ' float veins=pow(max(0.0,sin(plasma*16.0+vLocal.y*8.0)),3.0);',
  ' vec3 warm=mix(uColor*.66,uColor*1.26+.12,clamp(plasma*.94+veins*.27,0.,1.));',
- ' color=warm*(.90+.21*details)+uColor*rim*.64;',
+ ' color=warm*(1.12+.30*details)+vec3(1.0,.83,.51)*rim*.88;',
  '}else{',
- ' float land=smoothstep(.39,.65,surf+.11*(details-.5));',
- ' float bands=.5+.5*sin(vLocal.y*29.0+surf*6.0);',
- ' vec3 ocean=uColor*.46+vec3(.018,.045,.075);',
- ' vec3 high=uColor*.99+vec3(.08,.10,.11)*bands;',
+ ' float land=smoothstep(.36,.67,surf+.16*(details-.5));',
+ ' float bands=.5+.5*sin(vLocal.y*21.0+surf*7.0);',
+ ' vec3 ocean=uColor*.33+vec3(.019,.041,.080);',
+ ' vec3 high=uColor*(.86+.30*bands)+vec3(.14,.14,.15)*pow(details,2.0);',
  ' vec3 material=mix(ocean,high,land);',
- ' float light=.15+.85*ndl;',
- ' float clouds=smoothstep(.64,.83,details+.12*surf);',
+ ' float light=.20+.95*ndl;',
+ ' float clouds=smoothstep(.57,.83,details+.15*surf);',
  ' float spec=pow(max(0.0,dot(reflect(-litDir,n),viewDir)),24.0);',
- ' color=material*light+vec3(.2,.25,.29)*spec*.22+uColor*clouds*.14;',
- ' color+=uColor*rim*(.23+.15*ndl);',
+ ' color=material*light+vec3(.38,.46,.57)*spec*.30+vec3(.66,.76,.92)*clouds*.18;',
+ ' color+=mix(uColor,vec3(.65,.82,1.0),.36)*rim*(.52+.18*ndl);',
  '}',
  'gl_FragColor=vec4(max(color,vec3(0.0)),1.0);',
  '}'
@@ -232,7 +232,7 @@ function createGPU(gl){
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
- if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:2.80,portal:true});
+ if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:3.60,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
   // Balanced initial composition; each orbit keeps an independent spatial axis.
@@ -246,7 +246,7 @@ function createTopology(model){
    axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
    speed:.0019+(i%5)*.00065,inclination:.21+(i%4)*.13,node:i*.81};
   systems.push({system:spokes[i],orbital,position:[...orbital.origin],
-   color:chainColor(spokes[i].key,i+1),radius:2.30,portal:false});
+   color:chainColor(spokes[i].key,i+1),radius:2.85,portal:false});
  }
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
@@ -311,9 +311,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=compact?47:57;
- const camera={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
- const wanted={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
+ const initialDistance=compact?47:45;
+ const camera={target:compact?[0,0,0]:[-8,0,0],distance:initialDistance,yaw:.07,pitch:.18};
+ const wanted={target:compact?[0,0,0]:[-8,0,0],distance:initialDistance,yaw:.07,pitch:.18};
  let focused=false,focusBlend=0;
  const allPick=[];
  const status=root.querySelector(".ux-3d-status");
@@ -359,7 +359,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  };
  function home(){
   focused=false;selectedKey=HUB;
-  wanted.target=[0,0,0];wanted.distance=initialDistance;wanted.yaw=.09;wanted.pitch=.19;
+  wanted.target=compact?[0,0,0]:[-8,0,0];wanted.distance=initialDistance;wanted.yaw=.07;wanted.pitch=.18;
   rebuildPlanets();
   setFocusUI();
   onFocus(HUB);
@@ -608,11 +608,17 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
       rotation(1.30,.42-t*.53,-.36),eye,vp);
     body(gpu.torus,center,item.radius*1.55,[1.0,.90,.71],2,frame,
       rotation(.54,.23+t*.47,-.26),eye,vp);
+    // Distant halo filaments surround the core; these are decorative, not transfer events.
+    body(gpu.torus,center,item.radius*2.74,[.57,.44,.26],2,frame,
+      rotation(.39,.21-t*.19,.59),eye,vp);
    }else{
     body(gpu.torus,center,item.radius*1.84,item.color.map(c=>c*.85),2,frame,
       rotation(.82+item.orbital.inclination,item.orbital.node,.19),eye,vp);
     body(gpu.torus,center,item.radius*2.38,item.color.map(c=>c*.50),2,frame,
       rotation(.48,item.orbital.node+.8,.35),eye,vp);
+    // Thin secondary elliptical traces create the layered Northstar silhouette.
+    body(gpu.torus,center,item.radius*2.86,item.color.map(c=>c*.42),2,frame,
+      rotation(1.19,item.orbital.node+.43,-.27),eye,vp);
    }
   }
   // Do not paint misleading global ellipses around the network.
@@ -644,7 +650,20 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    if(entry.type==="star"){
     const item=entry.item;
     if(focused&&item.system.key!==selectedKey&&focusBlend>.9)continue;
-    body(gpu.sphere,systemPosition(item,frame,reducedMotion),item.radius,item.color,1,frame,IDENTITY,eye,vp);
+    const center=systemPosition(item,frame,reducedMotion);
+    body(gpu.sphere,center,item.radius,item.color,item.portal?1:0,frame,IDENTITY,eye,vp);
+    // Decorative satellite moons only: never catalog tokens or activation indicators.
+    if(!focused||item.system.key===selectedKey){
+     for(let moon=0;moon<2;moon++){
+      const angle=(moon/2)*TWO_PI+(reducedMotion?0:frame*.035)*(moon%2?-1:1);
+      const radial=item.radius*(item.portal?2.18:2.35)+moon*.23;
+      const satellite=add(center,rotate([Math.cos(angle)*radial,
+        Math.sin(angle*1.13)*item.radius*.43,Math.sin(angle)*radial*.72],
+        item.portal?.32:item.orbital.inclination,0,.12));
+      point(satellite,item.radius*(moon===0?750:520),
+       item.color.map(c=>Math.min(1,c*.66+.26)),.76,vp);
+     }
+    }
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));
