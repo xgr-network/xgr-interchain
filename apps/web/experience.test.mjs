@@ -41,7 +41,7 @@ test("dashboard and inventory do not invent real-time operational metrics",()=>{
   assert.match(html,/Awaiting complete verified evidence/);
   assert.match(html,/Verified active/);
   assert.doesNotMatch(html,/99\.9%|18 seconds|In Transit/);
-  assert.match(renderRoutes(model),/Source-native validator fees are chain-wide/);
+  assert.match(renderRoutes(model),/Alliance projects start with an application and XGR review/);
 });
 test("catalog-sourced strings are escaped in markup",()=>{
   const hostile={...catalog,chains:{...catalog.chains,foreign:{chainId:999,domainId:999,name:'<img src=x onerror=alert(1)>',nativeCurrency:{symbol:'ETH'}}}};
@@ -117,7 +117,7 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  assert.match(faq,/Understand XITA/);
  assert.match(faq,/XGR Interchain Token Alliance/);
  assert.match(faq,/Why should my project join XITA/);
- assert.match(faq,/broader cross-chain audience/);
+ assert.match(faq,/positive XGR review/);
  assert.match(faq,/Does XITA provide DEX liquidity or exchange listings/);
  assert.match(faq,/XGR sponsors the complete deployment/);
  assert.match(faq,/Locked TVL and Moved via XGR/);
