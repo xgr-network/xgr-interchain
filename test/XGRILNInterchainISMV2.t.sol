@@ -7,6 +7,12 @@ import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
 import {XGRILNProtocol} from "../contracts/XGRILNProtocol.sol";
 import {MockXGRInterchainBLSVerifier} from "../contracts/test/MockXGRInterchainBLSVerifier.sol";
 
+contract MockInboundAssetBoundRouter {
+    function verifyInboundRoute(uint64, uint32, address, bytes32) external pure returns (bool) {
+        return true;
+    }
+}
+
 contract XGRILNInterchainISMV2Test is Test {
     XGRILNInterchainISMV2 internal ism;
 
@@ -61,6 +67,7 @@ contract XGRILNInterchainISMV2Test is Test {
             );
 
         ism = new XGRILNInterchainISMV2(address(registry));
+        vm.etch(DEST_ROUTER, address(new MockInboundAssetBoundRouter()).code);
     }
 
     function testCheckpointPayloadMatchesGoCanonicalVector() public pure {

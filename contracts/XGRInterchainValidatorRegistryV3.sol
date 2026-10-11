@@ -18,7 +18,6 @@ contract XGRInterchainValidatorRegistryV3 {
     uint8 public constant VERIFIER_FORMAT_EIP2537 = 2;
     uint256 private constant EXECUTOR_GAS_OVERHEAD = 35_000;
     uint256 private constant MAX_MEMBERSHIP_VALIDITY = 10 minutes;
-    uint256 public constant MAX_VALIDATORS = 25;
     bytes private constant HALF_BLS_FIELD =
         hex"0d0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd555";
 
@@ -130,7 +129,6 @@ contract XGRInterchainValidatorRegistryV3 {
             maxExecutorReimbursementWei_ == 0 ||
             minimumDeactivationReserveWei_ < maxExecutorReimbursementWei_ ||
             initialValidators_.length == 0 ||
-            initialValidators_.length > MAX_VALIDATORS ||
             initialValidators_.length != initialBLSPublicKeys_.length ||
             initialValidators_.length != initialBLSPublicKeysEIP2537_.length ||
             initialValidators_.length != initialBLSPossessionProofs_.length
@@ -240,6 +238,25 @@ contract XGRInterchainValidatorRegistryV3 {
     }
 
     /// @notice Cheap recipient view for source-chain ILN fee accounting.
+    /// @notice Constant-size live epoch getter for O(1) transfer-time fee accrual.
+    function getFeeRecipientCountAndSetId() external view returns (uint256 count, uint64 currentSetId) {
+        return (activeValidators.length, setId);
+    }
+
+    /// @notice Historical membership index (1-based, or 0 if not in set).
+    /// @dev Archives are immutable; resolved at claim time, never in bridge hot path.
+    function getFeeRecipientIndexForSet(uint64 requestedSetId, address validator)
+        external view returns (uint256 indexPlusOne, uint256 count)
+    {
+        if (!verificationSetSnapshotExists[requestedSetId]) return (0, 0);
+        address[] storage members = verificationSetSnapshots[requestedSetId].validators;
+        count = members.length;
+        for (uint256 i = 0; i < count; ++i) {
+            if (members[i] == validator) return (i + 1, count);
+        }
+        return (0, count);
+    }
+
     function getFeeRecipients() external view returns (address[] memory validators, uint64 currentSetId) {
         return (activeValidators, setId);
     }
@@ -577,7 +594,6 @@ contract XGRInterchainValidatorRegistryV3 {
             transition.blsPublicKey, transition.blsPublicKeyEIP2537))])
             revert InvalidTransition();
         if (
-            activeValidators.length >= MAX_VALIDATORS ||
             (verifierKeyFormat == VERIFIER_FORMAT_EIP2537 &&
                 !_matchesCompressedKey(transition.blsPublicKey, transition.blsPublicKeyEIP2537)) ||
             validatorInfo[transition.validator].active ||

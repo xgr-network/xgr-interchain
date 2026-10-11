@@ -19,6 +19,10 @@ interface IXGRInterchainValidatorSetV2 {
         view
         returns (address[] memory validators, uint64 currentSetId);
 
+    function getFeeRecipientCountAndSetId() external view returns (uint256 count, uint64 currentSetId);
+    function getFeeRecipientIndexForSet(uint64 requestedSetId, address validator)
+        external view returns (uint256 indexPlusOne, uint256 count);
+
     function getValidatorSet()
         external
         view
