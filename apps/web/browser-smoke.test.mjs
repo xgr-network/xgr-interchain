@@ -85,7 +85,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/plan-route","Plan a Route"],["/faq","Understand XITA."],["/token/xgr","Token deployment pending"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
+  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/plan-route","Plan a Route"],["/faq","Understand XITA."],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
@@ -93,7 +93,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    if(path==="/universe"){assert.match(html,/ux-3d-canvas/,"Legacy universe should resolve to the dashboard");}
    if(path==="/plan-route"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
-   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/First real transfer/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
+   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
