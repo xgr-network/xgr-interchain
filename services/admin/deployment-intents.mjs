@@ -92,6 +92,20 @@ export function deploymentIntents({directory,chains}){
     return entry;
    });
   },
+  // The operator must first independently verify this DOCUMENTED transaction
+  // on the canonical chain. No archived evidence or hidden migration path.
+  discardDocumented(id,txHash){
+   if(!ID.test(id||"")||!TX.test(txHash||""))
+    throw Error("Invalid documented intent identity");
+   return mutate(s=>{
+    const entry=s.entries[id];
+    if(!entry||entry.stage!=="documented"||
+       entry.txHash?.toLowerCase()!==txHash.toLowerCase())
+     throw Error("Only the exact verified, documented intent may be discarded");
+    delete s.entries[id];
+    return {discarded:true};
+   });
+  },
   attachHash(id,hash){
    if(!ID.test(id||"")||!TX.test(hash||""))throw Error("Invalid signed wallet transaction hash");
    return mutate(s=>{

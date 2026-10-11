@@ -250,6 +250,12 @@ http.createServer(async(req,res)=>{
   if(req.method==="GET"&&path==="/admin/api/chain-deploy/status"){
    return reply(res,200,{ok:true,mode:"wallet-assisted",intents:operator.status()});
   }
+  if(req.method==="POST"&&path==="/admin/api/chain-deploy/discard-documented"){
+   const item=await bodyJSON(req);
+   return reply(res,200,{ok:true,result:await operator.discardDocumented({
+     id:item.id,txHash:item.txHash
+   })});
+  }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/prepare"){
    const item=await bodyJSON(req);
    const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet,parameters:item.parameters||{}});
