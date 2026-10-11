@@ -61,8 +61,9 @@ contract XGRILNRegistryV315Test is Test {
         assertTrue(enabled);
         assertEq(fee,100);
         assertEq(registry.sourceFeeNonce(),0);
+        XGRILNProtocol.SourceFeeProposalV315 memory p = _fee(1,250);
         vm.expectRevert(XGRILNRegistryV315.InvalidFeeQuorum.selector);
-        registry.applySourceFee(_fee(1,250),hex"03",hex"01");
+        registry.applySourceFee(p,hex"03",hex"01");
     }
 
     function testTwoRegistrationsCannotClaimTheSameRouterPair() public {
