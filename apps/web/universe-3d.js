@@ -75,7 +75,7 @@ function projectionOf(position,viewProjection,width,height){
  return {x:(x/w+1)*width/2,y:(1-y/w)*height/2,z:z/w,depth:w,
   visible:Math.abs(x/w)<1.3&&Math.abs(y/w)<1.3&&z/w>-1.2&&z/w<1.2};
 }
-function makeSphere(stacks=48,slices=72){
+function makeSphere(stacks=30,slices=46){
  const vertices=[],normals=[],indices=[];
  for(let y=0;y<=stacks;y++){
   const phi=y*Math.PI/stacks;
@@ -91,7 +91,7 @@ function makeSphere(stacks=48,slices=72){
  }
  return {vertices,normals,indices};
 }
-function makeTorus(radius=1,tube=.018,around=128,across=10){
+function makeTorus(radius=1,tube=.018,around=84,across=8){
  const vertices=[],normals=[],indices=[];
  for(let i=0;i<=around;i++){
   const a=i*TWO_PI/around,ca=Math.cos(a),sa=Math.sin(a);
@@ -654,8 +654,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     body(gpu.sphere,center,item.radius,item.color,item.portal?1:0,frame,IDENTITY,eye,vp);
     // Decorative satellite moons only: never catalog tokens or activation indicators.
     if(!focused||item.system.key===selectedKey){
-     for(let moon=0;moon<(item.portal?5:3);moon++){
-      const angle=(moon/(item.portal?5:3))*TWO_PI+(reducedMotion?0:frame*.035)*(moon%2?-1:1);
+     for(let moon=0;moon<2;moon++){
+      const angle=(moon/2)*TWO_PI+(reducedMotion?0:frame*.035)*(moon%2?-1:1);
       const radial=item.radius*(item.portal?2.18:2.35)+moon*.23;
       const satellite=add(center,rotate([Math.cos(angle)*radial,
         Math.sin(angle*1.13)*item.radius*.43,Math.sin(angle)*radial*.72],
