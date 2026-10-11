@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {approvedWorkInventory} from "./main-gate.mjs";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {formatNative} from "./wallet.js";
 const root=new URL("../../",import.meta.url).pathname;
@@ -10,8 +12,8 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?7:8) && c.components.length===c.required));
- // Before Registry V3 deployment there are no active XITA component receipts.
- // Status and progress must track the evidence in the component inventory.
+ // A verified deployment receipt may now exist. Progress must be derived
+ // from the currently documented, immutable per-chain component evidence.
  for(const chain of chains){
   const documented=chain.components.filter(p=>p.status==="documented").length;
   assert.equal(chain.documented,documented,chain.name+" documented count");
@@ -19,8 +21,16 @@ test("all main-approved chains derive deployment progress from documented compon
    documented===chain.required?"documented":documented>0?"partial":"not-deployed",
    chain.name+" derived deployment status");
  }
- assert.equal(chains.find(c=>c.name==="xgrchain")
-  .components.find(p=>p.key==="validatorRegistry").status,"not-deployed");
+ // No fixed "prelaunch" expectation: deployment receipts may be added after
+ // each mainnet transaction, so these checks must work at any deployment stage.
+ for(const chain of chains){
+  const observed=JSON.parse(readFileSync(join(root,
+   "deployments/mainnet/infrastructure/"+chain.name+".json"),"utf8"));
+  for(const part of chain.components){
+   assert.equal(part.status,observed.xitaV315.components[part.key]?"documented":"not-deployed",
+    chain.name+" "+part.key+" must follow immutable deployment index");
+  }
+ }
 });
 test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);

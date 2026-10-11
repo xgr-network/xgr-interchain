@@ -12,13 +12,25 @@ test("rejects legacy infrastructure metadata",()=>{
  const x=copy();x.infrastructure.polygon.ilnV314={status:"unverified-not-activated"};
  assert.ok(validateCatalog(x).some(s=>s.includes("legacy infrastructure block forbidden")));
 });
-test("no prelaunch XITA receipt or archive exists in any chain manifest",()=>{
+test("recorded XITA deployments are valid; unauthorized metadata or malformed bindings fail",()=>{
  const x=copy();
+ assert.deepEqual(validateCatalog(x),[]);
  for(const inf of Object.values(x.infrastructure)){
-  assert.deepEqual(inf.xitaV315,{schemaVersion:1,components:{},receiptPaths:[]});
+  const index=inf.xitaV315;
+  assert.equal(index.schemaVersion,1);
+  for(const binding of Object.values(index.components)){
+   assert.ok(index.receiptPaths.includes(binding.receiptPath));
+   assert.match(binding.runtimeCodeKeccak256,/^0x[0-9a-f]{64}$/i);
+  }
  }
  x.infrastructure.xgrchain.xitaV315.history={};
  assert.ok(validateCatalog(x).some(s=>s.includes("invalid XITA v3.1.5 deployment index")));
+ const altered=copy();
+ altered.infrastructure.xgrchain.xitaV315.components.badLegacyComponent={
+  address:"0x"+"1".repeat(40),runtimeCodeKeccak256:"0x"+"2".repeat(64),
+  receiptPath:"deployments/mainnet/receipts/xgrchain/"+"3".repeat(64)+"-"+"1".repeat(40)+".json"
+ };
+ assert.ok(validateCatalog(altered).some(s=>s.includes("invalid component deployment binding")));
 });
 test("rejects duplicate domains",()=>{const x=copy();x.chains.base.domainId=1643;assert.ok(validateCatalog(x).some(s=>s.includes("duplicate chainId or domainId")))});
 test("unverified asset has no deployment receipts",()=>{const x=copy();assert.deepEqual(x.assets.XGR.deployment.receiptPaths,[])});
