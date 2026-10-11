@@ -172,8 +172,9 @@ contract XETATokenFactoryV315 {
         bytes32 assetId = assetIdForRouter[sourceRouter];
         if (assetId == bytes32(0) || routerCreator[sourceRouter] != msg.sender)
             revert RouterUnauthorized();
-        if (destinationChainId == 0 || destinationChainId == localChainId ||
-            destinationDomain == 0 || destinationDomain == localDomain ||
+        // XGRILNProtocol.routeInstanceIdV315 rejects zero chain/domain IDs.
+        if (destinationChainId == localChainId ||
+            destinationDomain == localDomain ||
             destinationRouter == address(0) ||
             (destinationChainId == 1643) != (destinationDomain == 1643) ||
             (localChainId != 1643 && destinationChainId != 1643))
