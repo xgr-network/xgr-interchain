@@ -167,7 +167,9 @@ const sphereFS=[
  ' float plasma=fbm(vLocal*9.0+surf*2.2+vec3(0.,uTime*.025,0.));',
  ' float veins=pow(max(0.0,sin(plasma*16.0+vLocal.y*8.0)),3.0);',
  ' vec3 warm=mix(uColor*.66,uColor*1.26+.12,clamp(plasma*.94+veins*.27,0.,1.));',
- ' color=warm*(1.12+.30*details)+vec3(1.0,.83,.51)*rim*.88;',
+ ' float sunDay=smoothstep(-.20,.20,dot(n,litDir));',
+ ' float sunLight=.23+.77*sunDay*(.22+.78*ndl);',
+ ' color=warm*(1.02+.21*details)*sunLight+vec3(1.0,.83,.51)*rim*(.08+.22*sunDay);',
  '}else{',
  ' float land=smoothstep(.36,.67,surf+.16*(details-.5));',
  ' float bands=.5+.5*sin(vLocal.y*21.0+surf*7.0);',
@@ -339,8 +341,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
  const initialDistance=compact?47:45;
- const camera={target:compact?[0,0,0]:[-8,0,0],distance:initialDistance,yaw:.07,pitch:.18};
- const wanted={target:compact?[0,0,0]:[-8,0,0],distance:initialDistance,yaw:.07,pitch:.18};
+ const camera={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
+ const wanted={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
  let focused=false,focusBlend=0;
  const allPick=[];
  const status=root.querySelector(".ux-3d-status");
@@ -386,7 +388,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  };
  function home(){
   focused=false;selectedKey=HUB;
-  wanted.target=compact?[0,0,0]:[-8,0,0];wanted.distance=initialDistance;wanted.yaw=.07;wanted.pitch=.18;
+  wanted.target=[0,0,0];wanted.distance=initialDistance;wanted.yaw=.07;wanted.pitch=.18;
   rebuildPlanets();
   setFocusUI();
   onFocus(HUB);
@@ -533,7 +535,12 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform1f(shader.scale,scale);
   gl.uniform3fv(shader.color,color);
   gl.uniform3fv(shader.eye,eye);
-  gl.uniform3fv(shader.light,WORLD_LIGHT_DIRECTION);
+  // Eye-relative key light: a stable upper-left terminator when the viewer orbits.
+  const forward=norm(sub(camera.target,eye));
+  const right=norm([forward[2],0,-forward[0]]);
+  const up=norm([right[1]*forward[2]-right[2]*forward[1],right[2]*forward[0]-right[0]*forward[2],right[0]*forward[1]-right[1]*forward[0]]);
+  const light=norm(add(add(mul(right,-.76),mul(up,.71)),mul(forward,-.93)));
+  gl.uniform3fv(shader.light,light);
   gl.uniform1f(shader.kind,kind);
   gl.uniform1f(shader.time,time);
   gl.drawElements(gl.TRIANGLES,geometry.count,gl.UNSIGNED_SHORT,0);
@@ -602,12 +609,14 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     if(focused&&item.system.key!==selectedKey&&focusBlend>.86)continue;
     if(focused&&item.system.key===selectedKey&&focusBlend>.96)continue;
     const center=systemPosition(item,frame,reducedMotion);
-    const t=0; // XGR itself and its two gold rings stay still.
+    const t=0; // fixed orbital ornaments around XGR
     if(item.portal){
-     body(gpu.torus,center,item.radius*1.62,[.75,.58,.32],2,frame,
-       rotation(.64,.24+t,-.19),eye,vp);
-     body(gpu.torus,center,item.radius*2.28,[.57,.43,.25],2,frame,
-       rotation(1.21,.41-t*.57,.24),eye,vp);
+     body(gpu.torus,center,item.radius*1.66,[.93,.76,.49],2,frame,
+       rotation(.42,.33+t,-.47),eye,vp);
+     body(gpu.torus,center,item.radius*2.10,[.72,.56,.36],2,frame,
+       rotation(1.00,-.28,.54),eye,vp);
+     body(gpu.torus,center,item.radius*2.48,[.53,.40,.27],2,frame,
+       rotation(.69,.63,-.12),eye,vp);
     }else{
      body(gpu.torus,center,item.radius*1.63,
        item.color.map(c=>c*.46+.07),2,frame,
