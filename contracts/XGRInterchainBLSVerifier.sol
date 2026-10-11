@@ -33,7 +33,8 @@ contract XGRInterchainBLSVerifier is IXGRInterchainBLSVerifier {
         bytes calldata signerBitmap,
         bytes calldata aggregateSignature
     ) external view returns (bool) {
-        if (aggregateSignature.length != G2_LENGTH || publicKeys.length == 0 || signerBitmap.length == 0) {
+        if (aggregateSignature.length != G2_LENGTH || publicKeys.length == 0 || signerBitmap.length == 0 ||
+            _isInfinity(aggregateSignature)) {
             return false;
         }
 
@@ -57,6 +58,8 @@ contract XGRInterchainBLSVerifier is IXGRInterchainBLSVerifier {
         for (uint256 i = 0; i < publicKeys.length; i++) {
             if (publicKeys[i].length != G1_LENGTH) return (false, bytes(""));
             if (!_bitmapContains(signerBitmap, i)) continue;
+            // Pairing accepts the group identity; an identity signer must never count.
+            if (_isInfinity(publicKeys[i])) return (false, bytes(""));
 
             if (!haveSigner) {
                 aggregatePublicKey = publicKeys[i];
@@ -70,7 +73,7 @@ contract XGRInterchainBLSVerifier is IXGRInterchainBLSVerifier {
             aggregatePublicKey = sum;
         }
 
-        if (!haveSigner) return (false, bytes(""));
+        if (!haveSigner || _isInfinityMemory(aggregatePublicKey)) return (false, bytes(""));
         return (true, aggregatePublicKey);
     }
 
@@ -84,6 +87,29 @@ contract XGRInterchainBLSVerifier is IXGRInterchainBLSVerifier {
         bytes memory pairingInput = bytes.concat(leftPair, rightPair);
         (bool pairingOK, bytes memory pairingResult) = BLS12_PAIRING.staticcall(pairingInput);
         return pairingOK && pairingResult.length == 32 && uint256(bytes32(pairingResult)) == 1;
+    }
+
+    /// @dev EIP-2537 represents the infinity point as all-zero uncompressed bytes.
+    ///      Reject it explicitly: a pairing with both sides at infinity succeeds.
+    function _isInfinity(bytes calldata point) private pure returns (bool) {
+        uint256 nonzero;
+        // Only called for 128 or 256 byte point representations.
+        for (uint256 i; i < point.length; i += 32) {
+            uint256 word;
+            assembly { word := calldataload(add(point.offset, i)) }
+            nonzero |= word;
+        }
+        return nonzero == 0;
+    }
+
+    function _isInfinityMemory(bytes memory point) private pure returns (bool) {
+        uint256 nonzero;
+        for (uint256 i; i < point.length; i += 32) {
+            uint256 word;
+            assembly { word := mload(add(add(point, 32), i)) }
+            nonzero |= word;
+        }
+        return nonzero == 0;
     }
 
     function _bitmapContains(bytes calldata bitmap, uint256 index) internal pure returns (bool) {

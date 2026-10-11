@@ -18,6 +18,9 @@ contract XGRInterchainValidatorRegistryV3 {
     uint8 public constant VERIFIER_FORMAT_EIP2537 = 2;
     uint256 private constant EXECUTOR_GAS_OVERHEAD = 35_000;
     uint256 private constant MAX_MEMBERSHIP_VALIDITY = 10 minutes;
+    uint256 public constant MAX_VALIDATORS = 25;
+    bytes private constant HALF_BLS_FIELD =
+        hex"0d0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd555";
 
     struct Validator {
         bool active;
@@ -75,7 +78,9 @@ contract XGRInterchainValidatorRegistryV3 {
     ) external {
         if (validator == address(0) || blsKey.length != BLS_PUBLIC_KEY_LENGTH ||
             blsKeyEIP2537.length != BLS_PUBLIC_KEY_EIP2537_LENGTH ||
-            possessionProof.length == 0) revert InvalidTransition();
+            possessionProof.length == 0 ||
+            (verifierKeyFormat == VERIFIER_FORMAT_EIP2537 && !_matchesCompressedKey(blsKey, blsKeyEIP2537)))
+            revert InvalidTransition();
 
         bytes[] memory keys = new bytes[](1);
         keys[0] = _verificationKey(blsKey, blsKeyEIP2537);
@@ -125,6 +130,7 @@ contract XGRInterchainValidatorRegistryV3 {
             maxExecutorReimbursementWei_ == 0 ||
             minimumDeactivationReserveWei_ < maxExecutorReimbursementWei_ ||
             initialValidators_.length == 0 ||
+            initialValidators_.length > MAX_VALIDATORS ||
             initialValidators_.length != initialBLSPublicKeys_.length ||
             initialValidators_.length != initialBLSPublicKeysEIP2537_.length ||
             initialValidators_.length != initialBLSPossessionProofs_.length
@@ -173,6 +179,7 @@ contract XGRInterchainValidatorRegistryV3 {
             blsKeyEIP2537.length != BLS_PUBLIC_KEY_EIP2537_LENGTH ||
             activeIndexPlusOne[validator] != 0 ||
             activeBLSKeyOwner[keyHash] != address(0) ||
+            (verifierKeyFormat == VERIFIER_FORMAT_EIP2537 && !_matchesCompressedKey(blsKey, blsKeyEIP2537)) ||
             possessionProof.length == 0
         ) revert InvalidBootstrap();
 
@@ -532,12 +539,47 @@ contract XGRInterchainValidatorRegistryV3 {
         return eip2537;
     }
 
+    /// @dev The compressed 48-byte BLS key and the EIP-2537 128-byte key
+    ///      MUST encode the same G1 point. On EIP verifier chains, the
+    ///      compressed key alone cannot be trusted for uniqueness or node identity.
+    ///      Identity points and non-canonical flags are excluded.
+    function _matchesCompressedKey(bytes memory compressed, bytes memory uncompressed)
+        private pure returns (bool)
+    {
+        if (compressed.length != 48 || uncompressed.length != 128) return false;
+        // BLS compressed flag on, infinity flag off; sign flag is checked below.
+        if ((uint8(compressed[0]) & 0xC0) != 0x80) return false;
+        for (uint256 i; i < 16; ++i) {
+            if (uncompressed[i] != 0 || uncompressed[64 + i] != 0) return false;
+        }
+        if ((uint8(compressed[0]) & 0x1F) != uint8(uncompressed[16])) return false;
+        for (uint256 i = 1; i < 48; ++i) {
+            if (compressed[i] != uncompressed[16 + i]) return false;
+        }
+        // The BLS G1 compressed sign is the lexicographic sign of Y.
+        // Compare the 381-bit coordinate with (p-1)/2 without big integer math.
+        bool yIsLexicographicallyLargest;
+        for (uint256 i; i < 48; ++i) {
+            uint8 actual = uint8(uncompressed[80 + i]);
+            uint8 half = uint8(HALF_BLS_FIELD[i]);
+            if (actual > half) {
+                yIsLexicographicallyLargest = true;
+                break;
+            }
+            if (actual < half) break;
+        }
+        return ((uint8(compressed[0]) & 0x20) != 0) == yIsLexicographicallyLargest;
+    }
+
     function _applyAdd(MembershipTransition calldata transition) internal {
         bytes32 keyHash = keccak256(transition.blsPublicKey);
         if (!possessionVerified[keccak256(abi.encode(transition.validator,
             transition.blsPublicKey, transition.blsPublicKeyEIP2537))])
             revert InvalidTransition();
         if (
+            activeValidators.length >= MAX_VALIDATORS ||
+            (verifierKeyFormat == VERIFIER_FORMAT_EIP2537 &&
+                !_matchesCompressedKey(transition.blsPublicKey, transition.blsPublicKeyEIP2537)) ||
             validatorInfo[transition.validator].active ||
             activeIndexPlusOne[transition.validator] != 0 ||
             activeBLSKeyOwner[keyHash] != address(0)

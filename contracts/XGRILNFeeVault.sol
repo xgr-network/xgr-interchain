@@ -10,7 +10,7 @@ import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
 ///      already accrued claimable balance survives membership changes.
 ///      NO relayer-supplied list, mirrored snapshot, or secondary quorum exists.
 contract XGRILNFeeVault {
-    uint256 internal constant MAX_VALIDATORS = 128;
+    uint256 internal constant MAX_VALIDATORS = 25;
 
     IXGRInterchainValidatorSetV2 public immutable validatorRegistry;
     address public immutable gateway;

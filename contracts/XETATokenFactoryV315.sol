@@ -187,7 +187,8 @@ contract XETATokenFactoryV315 {
         );
         gateway = address(new ILNGateway{
             salt: keccak256(abi.encode("XITA_GATEWAY_V315", routeId))
-        }(address(registry), routeId, destinationDomain, sourceRouter, false));
+        }(address(registry), routeId, destinationDomain, sourceRouter,
+          IXITATokenRouter(sourceRouter).token() == address(0)));
         routeForDomainRegistered[sourceRouter][destinationDomain] = true;
         bytes32 registered = registry.registerRouteInstance(
             assetId, destinationChainId, destinationDomain,
