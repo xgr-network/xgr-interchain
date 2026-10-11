@@ -241,7 +241,7 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }

@@ -728,3 +728,78 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
 .ux-faq-item p{margin:0;padding:0 0 22px;line-height:1.75;color:#afc3da;font-size:14px}
 .ux-faq-footer{display:flex;flex-wrap:wrap;gap:14px;margin-top:35px}
 @media(max-width:700px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:1fr}.ux-faq-page{padding:10px 16px}}
+
+/* XITA Alliance dashboard: generous editorial introduction + validated data only. */
+.ux-dashboard .ux-ns-deck.ux-ns-overview-deck{margin-bottom:0}
+.ux-ns-overview-deck .ux-ns-card{min-height:225px}
+.ux-ns-network-numbers{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:21px 0 10px}
+.ux-ns-network-numbers>div{display:flex;flex-direction:column;gap:6px}
+.ux-ns-network-numbers>div+div{padding-left:15px;border-left:1px solid #30445c}
+.ux-ns-network-numbers strong{font-size:29px;color:#eaf3ff;font-variant-numeric:tabular-nums}
+.ux-ns-network-numbers span,.ux-ns-evidence{color:#90a9c6;font-size:10px}
+.ux-ns-overview-deck .ux-ns-card>.ux-small{font-size:11px;line-height:1.65;color:#9fb7d0;margin:11px 0 0}
+.ux-ns-value{font-size:clamp(26px,3vw,38px);letter-spacing:-.055em;line-height:1.25;color:#f5f8ff;margin:20px 0 4px;font-variant-numeric:tabular-nums}
+.ux-ns-evidence{display:block;margin-top:auto;padding-top:14px;color:#8ea5bb}
+.ux-ns-card-tvl .ux-ns-value{color:#e9d9b3}
+.ux-dashboard .ux-alliance-intro,.ux-dashboard .ux-dashboard-ranking,.ux-dashboard .ux-dashboard-outro{
+ width:min(calc(100% - 70px),1450px);margin:68px auto 0;
+}
+.ux-alliance-intro{display:grid;grid-template-columns:minmax(290px,.8fr) minmax(0,1.2fr);gap:30px;align-items:stretch}
+.ux-alliance-heading{padding:25px 15px 25px 0;display:flex;flex-direction:column;gap:16px}
+.ux-alliance-heading h2,.ux-dashboard-ranking h2,.ux-dashboard-outro h2{
+ font-family:Georgia,"Times New Roman",serif;font-size:clamp(32px,3.6vw,55px);font-weight:400;letter-spacing:-.055em;line-height:1.08;margin:0
+}
+.ux-alliance-heading h2 em,.ux-dashboard-ranking h2 em{font-style:normal;color:#b4cee9}
+.ux-alliance-heading>p{font-size:15px;color:#a9bfd8;line-height:1.9;max-width:480px;margin:0}
+.ux-alliance-pillars{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:14px}
+.ux-alliance-pillars span{font-size:10px;color:#bdcde1;padding:7px 10px;border:1px solid #34506e99;border-radius:20px;background:#0e1e3288}
+.ux-alliance-audiences{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ux-alliance-audience{display:flex;flex-direction:column;gap:14px;min-height:293px;padding:29px 24px;border:1px solid #354963;border-radius:13px;background:linear-gradient(140deg,#12223bdb,#071427f5);box-shadow:0 15px 45px #0006}
+.ux-alliance-symbol{display:grid;place-items:center;width:46px;height:46px;border:1px solid #587dac80;border-radius:12px;font-size:28px;color:#badbff;background:#172d4b80}
+.ux-alliance-symbol.is-gold{border-color:#96784e;color:#f6dc9f;background:#352b2070}
+.ux-alliance-audience h3{font-size:20px;margin:0;letter-spacing:-.03em}
+.ux-alliance-audience p{font-size:12px;line-height:1.85;color:#aabfd8;margin:0}
+.ux-alliance-audience a{font-size:12px;font-weight:650;color:#b6d9ff;margin-top:auto;align-self:flex-start;padding-top:12px}
+.ux-alliance-audience a:hover{text-decoration:underline;color:white}
+.ux-dashboard-ranking{border:1px solid #31486494;border-radius:15px;background:linear-gradient(140deg,#0d1c32dd,#071225eb);padding:30px}
+.ux-dashboard-ranking-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px}
+.ux-dashboard-ranking-head>div{display:grid;gap:12px}
+.ux-dashboard-ranking-head p{margin:0;font-size:12px;line-height:1.7;color:#9fb6d0;max-width:650px}
+.ux-dashboard-ranking-head>a{font-size:12px;color:#bedcff;white-space:nowrap}
+.ux-dashboard-token-table{border:1px solid #2b426080;border-radius:10px;overflow:hidden;margin-top:25px}
+.ux-dashboard-token-header,.ux-dashboard-token-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px}
+.ux-dashboard-token-header{color:#8fa9c8;background:#11213a;font-size:10px;text-transform:uppercase;letter-spacing:.15em}
+.ux-dashboard-token-row{border-top:1px solid #30445d7b;background:#0a1729a1;color:#eef6ff}
+.ux-dashboard-token-row:hover{background:#182f4ad1}
+.ux-dashboard-token-name{display:flex;align-items:center;gap:16px}
+.ux-dashboard-token-rank{width:23px;font-size:12px;color:#8ca5c2}
+.ux-dashboard-token-name .ux-token-sphere{flex-shrink:0;width:27px;height:27px}
+.ux-dashboard-token-name>span:last-child{display:flex;flex-direction:column;gap:3px}
+.ux-dashboard-token-name strong{font-size:13px}
+.ux-dashboard-token-name small{font-size:10px;color:#90a8c3}
+.ux-dashboard-token-cap{font-size:16px;font-variant-numeric:tabular-nums}
+.ux-dashboard-empty{display:grid;gap:10px;margin-top:24px;padding:27px;background:#08172a;border:1px dashed #395778;border-radius:9px}
+.ux-dashboard-empty strong{font-size:17px}.ux-dashboard-empty p{font-size:12px;line-height:1.6;color:#90a9c3;margin:0}
+.ux-dashboard-source{margin:15px 0 0;font-size:10px;color:#8fa9c7}
+.ux-dashboard-outro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:30px;border:1px solid #344b67;border-radius:12px;background:linear-gradient(90deg,#16273e9e,#0b1829c4)}
+.ux-dashboard-outro h2{font-size:32px;margin:7px 0 10px}
+.ux-dashboard-outro p{font-size:12px;color:#9bb2cb;margin:0}
+.ux-dashboard-outro-links{display:flex;flex-wrap:wrap;gap:12px}
+.ux-dashboard-outro-links a{padding:12px 15px;border:1px solid #58718d;border-radius:8px;font-size:12px;color:#dcecff;white-space:nowrap}
+.ux-dashboard-outro-links a:hover{border-color:#c2d8f4;background:#18304c}
+.ux-faq-groups{display:grid;gap:45px;margin:45px 0 0}
+.ux-faq-group-head{display:grid;gap:9px;margin-bottom:15px}
+.ux-faq-group-head h2{font-size:27px;font-weight:650;margin:0}
+@media(max-width:1100px){
+ .ux-alliance-intro{grid-template-columns:1fr;gap:15px}
+ .ux-dashboard .ux-alliance-intro,.ux-dashboard .ux-dashboard-ranking,.ux-dashboard .ux-dashboard-outro{width:calc(100% - 34px)}
+}
+@media(max-width:700px){
+ .ux-alliance-audiences{grid-template-columns:1fr}
+ .ux-alliance-audience{min-height:220px}
+ .ux-dashboard-ranking{padding:18px}
+ .ux-dashboard-ranking-head,.ux-dashboard-outro{align-items:stretch;flex-direction:column}
+ .ux-dashboard-ranking-head h2{font-size:33px}
+ .ux-dashboard .ux-alliance-intro,.ux-dashboard .ux-dashboard-ranking,.ux-dashboard .ux-dashboard-outro{width:calc(100% - 22px)}
+ .ux-dashboard-token-cap{font-size:13px}
+}

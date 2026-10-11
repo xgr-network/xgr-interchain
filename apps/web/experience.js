@@ -1,5 +1,5 @@
 import {representationFor} from "./token-representation.js";
-import {verifiedMetrics,formatUsd} from "./leaderboard-data.js";
+import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
 // The token detail page remains the only bridge execution entry point.
@@ -208,61 +208,68 @@ function northstarStage(model,{universe=false}={}){
   '<div class="ux-3d-status">XGR gateway · configured routes only</div></div>';
 }
 
-function northstarCards(model,metrics=null){
- const active=model.routes.filter(route=>route.active).length;
- const visibleChains=model.chains;
- const spokes=model.chains.filter(c=>c.key!==HUB).slice(0,3);
- const xgr=verifiedMetrics(metrics,"XGR");
- const value=xgr?.marketCapUsd??null;
- const marketSource=metrics?.assets?.XGR?.market;
- const sourced=marketSource?.status==="market-data"&&marketSource.source==="coingecko";
- const marketText=sourced&&value!==null?formatUsd(value):"—";
- const previewSpokes=model.chains.filter(c=>c.key!==HUB);
- const journeyKeys=previewSpokes.length>=2?[previewSpokes[0].key,HUB,previewSpokes[1].key]:
-  previewSpokes.length===1?[HUB,previewSpokes[0].key]:[HUB];
- const journeyAsset=model.assets[0]?.id||"";
- const journeyPath=journeyKeys.length>=2?previewRoute(model,journeyKeys[0],journeyKeys[journeyKeys.length-1],journeyAsset):
-  {active:false,configured:false};
- const routeRows=spokes.map(chain=>{
-  const pair=model.routes.filter(r=>(r.source===HUB&&r.destination===chain.key)||
-   (r.destination===HUB&&r.source===chain.key));
-  const live=pair.filter(r=>r.active).length;
-  return '<div class="ux-ns-route-row"><span class="ux-ns-route-glyph"></span>'+
-    '<strong>'+esc(chain.label)+' ↔ XGR</strong><small>'+live+' / '+pair.length+' verified</small></div>';
- }).join("");
- return '<section class="ux-ns-deck" aria-label="XITA network overview">'+
-  '<article class="ux-ns-card ux-ns-card-systems"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">◎</span>'+
-  '<h2>Supported systems</h2><span class="ux-ns-card-count">'+visibleChains.length+'</span></div>'+
-  '<div class="ux-ns-system-list">'+visibleChains.map(c=>
-    '<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
-    '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
-    '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":"Configured")+'</small>'+
-    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div></article>'+
-  '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span>'+
-  '<h2>Directed routes</h2><span class="ux-ns-card-count">'+model.routes.length+'</span></div>'+
-  '<div class="ux-ns-card-message">'+active+' verified active · '+model.routes.length+' configured</div>'+
-  '<div class="ux-ns-route-list">'+(routeRows||'<p class="ux-small">No configured spokes</p>')+'</div>'+
-  '<a class="ux-ns-card-link" href="/plan-route">Inspect route plan →</a></article>'+
-  '<article class="ux-ns-card ux-ns-hub-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span>'+
-  '<h2>Hub: XGRChain</h2><span class="ux-ns-pill">CORE</span></div>'+
-  '<div class="ux-ns-hub-graphic"><span class="ux-ns-orb is-hub"></span>'+
-  '<p>The interchain gateway connecting configured EVM worlds.</p></div>'+
-  '<div class="ux-ns-market"><span>Asset-wide XGR market cap</span><strong>'+esc(marketText)+'</strong></div>'+
-  '<div class="ux-ns-market-note">'+(sourced&&value!==null?
-   'CoinGecko sourced · not bridge TVL':'External market data unavailable · no estimated TVL')+'</div></article>'+
-  '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⌁</span>'+
-  '<h2>Journey preview</h2><span class="ux-ns-outline-tag">2 hops max.</span></div>'+
-  '<div class="ux-ns-journey">'+
-  journeyKeys.map((key,i)=>'<span class="ux-ns-orb is-'+esc(key)+'"></span>'+
-   (i<journeyKeys.length-1?'<span class="ux-ns-journey-line"></span>':"")).join("")+'</div>'+
-  '<div class="ux-ns-journey-labels">'+journeyKeys.map(key=>
-   '<span>'+esc(model.chains.find(c=>c.key===key)?.label||key)+'</span>').join("")+'</div>'+
-  '<div class="ux-ns-journey-summary"><span>Route status</span><strong>'+
-   (journeyPath.active?"Verified active":journeyPath.configured?"Not verified":"Not configured")+'</strong></div>'+
-  '<a class="ux-ns-card-link" href="/plan-route">Plan a transfer →</a></article></section>';
-}
 
-export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null){
+function northstarCards(model,metrics=null){
+ const active=model.routes.filter(r=>r.active).length;
+ const rows=model.chains;
+ return '<section class="ux-ns-deck ux-ns-overview-deck" aria-label="XITA network overview">'+
+  '<article class="ux-ns-card ux-ns-card-systems"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">◎</span><h2>Supported systems</h2><span class="ux-ns-card-count">'+rows.length+'</span></div>'+
+  '<div class="ux-ns-system-list">'+rows.map(c=>'<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
+    '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
+    '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":"Configured network")+'</small>'+
+    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div></article>'+
+  '<article class="ux-ns-card ux-ns-network-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span><h2>Interchain network</h2><span class="ux-ns-pill">XGR HUB</span></div>'+
+   '<div class="ux-ns-network-numbers"><div><strong>'+model.routes.length+'</strong><span>Configured directions</span></div><div><strong>'+active+'</strong><span>Verified active</span></div></div>'+
+   '<p class="ux-small">Routes connect to XGRChain. A configured route is not automatically safe to use.</p>'+
+   '<a class="ux-ns-card-link" data-nav href="/plan-route">Check route availability →</a></article>'+
+  '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
+   '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
+   '<p class="ux-small">Verified net collateral held in route-specific escrows.</p>'+
+   '<span class="ux-ns-evidence"> '+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
+  '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR</h2></div>'+
+   '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.movedUsd))+'</strong>'+
+   '<p class="ux-small">Cumulative completed interchain journey value, counted once per journey.</p>'+
+   '<span class="ux-ns-evidence">'+(metrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article></section>';
+}
+function allianceIntro(){
+ return '<section class="ux-alliance-intro" id="about-xita"><div class="ux-alliance-heading"><span class="ux-kicker">THE ALLIANCE BEHIND THE UNIVERSE</span>'+
+  '<h2>XGR Interchain <em>Token Alliance.</em></h2><p>XITA is more than a bridge interface. It combines XGRChain v3.x, its Proof-of-Stake validators, permissionless interchain smart contracts, routing infrastructure and the Token Alliance into one open ecosystem.</p>'+
+  '<div class="ux-alliance-pillars"><span>XGRChain hub</span><span>PoS validator security</span><span>Permissionless routes</span><span>Cross-chain token ecosystems</span></div></div>'+
+  '<div class="ux-alliance-audiences"><article class="ux-alliance-audience"><div class="ux-alliance-symbol">◈</div><span class="ux-kicker">FOR TOKEN HOLDERS</span><h3>Your tokens. More networks.</h3>'+
+  '<p>Discover supported assets, inspect independently verified routes and reach token-specific transfer interfaces when available.</p>'+
+  '<a data-nav href="/markets">Explore tokens <span aria-hidden="true">↗</span></a></article>'+
+  '<article class="ux-alliance-audience"><div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span><h3>Bring your token into the Universe.</h3>'+
+  '<p>Explore permissionless route infrastructure, publish your project profile and prepare participation in the XGR Interchain Token Alliance.</p>'+
+  '<a data-nav href="/join">Join the Alliance <span aria-hidden="true">↗</span></a></article></div></section>';
+}
+// UI-only top ten: only public assets and independently sourced market caps.
+export function dashboardMarketRows(catalog,metrics){
+ const rows=buildLeaderboardRows(catalog,metrics).filter(row=>row.marketCapUsd!==null);
+ return rankAssets(rows,"marketCapUsd","desc").slice(0,10);
+}
+function dashboardTopTokens(catalog,metrics){
+ const rows=dashboardMarketRows(catalog,metrics);
+ return '<section class="ux-dashboard-ranking" id="top-tokens"><div class="ux-dashboard-ranking-head"><div><span class="ux-kicker">ASSET DISCOVERY · SOURCED MARKETS</span>'+
+  '<h2>Top Tokens <em>by Market Cap</em></h2><p>Up to ten publicly listed assets, ranked only when independent market data is available. Market cap is not bridge TVL.</p></div>'+
+  '<a data-nav href="/markets">Browse tokens ↗</a></div>'+
+  (rows.length?'<div class="ux-dashboard-token-table"><div class="ux-dashboard-token-header"><span>Rank / asset</span><span>Market capitalization</span></div>'+
+   rows.map((row,i)=>'<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'"><span class="ux-dashboard-token-name">'+
+    '<span class="ux-dashboard-token-rank">'+String(i+1).padStart(2,"0")+'</span><span class="ux-token-sphere" aria-hidden="true"></span><span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
+    '<strong class="ux-dashboard-token-cap">'+esc(formatUsd(row.marketCapUsd))+'</strong></a>').join("")+'</div>':
+    '<div class="ux-dashboard-empty"><span class="ux-kicker">MARKET RANKING PENDING</span><strong>No sourced market capitalizations yet.</strong>'+
+    '<p>Tokens will be ranked here when public listings and independent market data are available. No estimated values are displayed.</p></div>')+
+  '<p class="ux-small ux-dashboard-source">Ranking: published assets only · Market prices from eligible external sources · Transfer and TVL metrics require finalized on-chain evidence.</p></section>';
+}
+export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null){
+ return '<div class="ux-app ux-dashboard ux-northstar-page">'+
+  northstarStage(model)+northstarCards(model,metrics)+allianceIntro()+
+  dashboardTopTokens(catalog||{assets:{}},metrics)+
+  '<section class="ux-dashboard-outro"><div><span class="ux-kicker">DISCOVER · CONNECT · EXPAND</span>'+
+  '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+
+  '<div class="ux-dashboard-outro-links"><a data-nav href="/faq">Read the FAQ →</a><a data-nav href="/plan-route">Plan a Route →</a></div></section></div>';
+}
+// A real standalone planner; no longer extracted from dashboard markup.
+export function renderPlanRoute(model,selection={},apiState="not-deployed"){
  const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
  const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:
   model.chains.find(c=>c.key!==source)?.key||source;
@@ -270,13 +277,11 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
  const plan=previewRoute(model,source,target,assetId);
  const active=model.routes.filter(r=>r.active).length;
  const firstAsset=model.assets.find(a=>a.id===assetId);
- return '<div class="ux-app ux-dashboard ux-northstar-page">'+
-  northstarStage(model)+northstarCards(model,metrics)+
-  '<section class="ux-ns-operations" id="ux-journey-planner">'+
-  '<div class="ux-ns-ops-intro"><span class="ux-kicker">INTERCHAIN OPERATIONS · XITA</span>'+
-  '<h2>Interchain Dashboard</h2><p class="ux-muted">Inspect route possibilities and configure a future transfer. Every transaction remains disabled until its routes are verified.</p></div>'+
+ return '<div class="ux-app ux-plan-page ux-northstar-page">'+
+  '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro"><span class="ux-kicker">INTERCHAIN OPERATIONS · XITA</span>'+
+  '<h1>Plan a Route</h1><p class="ux-muted">Inspect configured directions and verify availability. A route preview is never an instruction to send funds.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · JOURNEY PLANNER</span><span class="ux-label">XGR HUB</span></div>'+
-  '<h2>Plan a transfer</h2><p class="ux-muted">Choose systems and an asset. Only independently verified route contracts should be offered to users.</p>'+
+  '<h2>Plan a transfer</h2><p class="ux-muted">Only independently verified route contracts should be offered to users.</p>'+
   '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions(model,source)+'</select>'+
   '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions(model,assetId)+'</select>'+
   '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
@@ -286,49 +291,51 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
    '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
   '<aside class="ux-panel ux-ns-operations-data"><div class="ux-kicker">02 · VERIFIED NETWORK FACTS</div>'+
-  '<h2>Current network state</h2><p class="ux-muted">The public catalog describes intended topology. Deployment and finality verification are independent.</p>'+
+  '<h2>Current network state</h2><p class="ux-muted">A catalog listing is not proof of complete reciprocal deployment or finalized transfer security.</p>'+
   '<div class="ux-ns-facts"><div><span>Configured systems</span><strong>'+model.chains.length+'</strong></div>'+
   '<div><span>Configured directed routes</span><strong>'+model.routes.length+'</strong></div>'+
   '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
   '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
   '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment and independent reciprocal verification before users should bridge.</p></div>'+
   '<div class="ux-ns-explore-links"><a data-nav href="/#xita-3d">Open interactive Universe ↗</a>'+
-  '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section>'+
-  '<section class="ux-panel ux-discovery"><div><div class="ux-kicker">ASSET DISCOVERY</div>'+
-  '<h2>Explore token worlds</h2><p class="ux-muted">Open a token profile to inspect its representations, status and bridge interface.</p></div>'+
-  '<div class="ux-discovery-assets">'+model.assets.slice(0,4).map(a=>
-   '<a data-nav class="ux-discovery-item" href="'+esc(tokenLink(a))+'">'+
-   '<span class="ux-token-sphere"></span><strong>'+esc(a.id)+'</strong><span>Explore ↗</span></a>').join("")+
-  '<a data-nav class="ux-discovery-item" href="/markets"><strong>Browse tokens</strong><span>Directory ↗</span></a></div></section></div>';
+  '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section></div>';
 }
-
-// Standalone planner uses the same route validation and UI controls as the dashboard.
-export function renderPlanRoute(model,selection={},apiState="not-deployed"){
- const dashboard=renderDashboard(model,selection,apiState,null);
- const start=dashboard.indexOf('<section class="ux-ns-operations"');
- const end=dashboard.indexOf('<section class="ux-panel ux-discovery"',start);
- if(start<0||end<0)throw Error("Route planner markup missing");
- const section=dashboard.slice(start,end).replace('id="ux-journey-planner"','id="ux-journey-planner"')
-   .replace('<h2>Interchain Dashboard</h2>','<h1>Plan a Route</h1>');
- return '<div class="ux-app ux-plan-page ux-northstar-page">'+section+'</div>';
-}
-const faqEntries=[
- ["What is XITA?","XITA is an interchain experience built around the XGRChain hub. It displays configured networks, assets and potential routes; configuration is not proof that bridging is available."],
- ["Why does XGRChain sit at the center?","XGRChain is the hub for the supported topology. A journey between two external chains consists of two separate directed operations through XGRChain."],
- ["Can I bridge a token right now?","Only verified and activated deployments can support actual transfers. Use Plan a Route to inspect availability before opening a token bridge interface. Never transfer funds to a configured-only route."],
- ["How are routes verified?","Each direction requires independent deployment and safety evidence. A drawn connection or a listed asset does not by itself prove that the route is active."],
- ["Where do tokens appear?","The overview shows chain systems with decorative moons. Select a chain in the dashboard to reveal its actual catalog-listed token representations."],
- ["Is market capitalization the same as bridge TVL?","No. Market capitalization describes the asset-wide market value and can come from a third-party market provider. Bridge TVL requires verified on-chain custody evidence."],
- ["Do I need a specific relayer?","The route interface is a convenience layer. Transaction requirements depend on each verified deployment; XITA must not suggest a transfer is available before verification."],
- ["How can a project participate?","Visit Join to prepare an asset listing application. Publication, deployment and activation are separate stages."]
+const faqGroups=[
+ {label:"01 · THE ALLIANCE",title:"XITA Ecosystem",items:[
+  ["What does XITA stand for?","XITA stands for XGR Interchain Token Alliance. It is the broader interchain ecosystem: XGRChain v3.x and its PoS validators, the public token-routing smart contracts, messaging and relaying infrastructure, indexing, and the Alliance for participating token projects. This website is its public interface, not the protocol itself."],
+  ["Why is XGRChain the hub?","Every directed v3.1.5 route has XGRChain, EVM chain ID and Hyperlane domain 1643, as exactly one endpoint. Moving between two external chains means two separate hops through XGRChain, each with its own route and source-chain fee."],
+  ["Is XITA decentralized and permissionless?","The v3.1.5 design uses a public Factory for independent route deployment and registration. No XGR organization approval or separate BLS vote is required to register a route. Individual messages are protected by validator BLS verification. A public listing or a route appearing in the UI is not an authorization or guarantee of availability."],
+  ["Is XITA already fully deployed?","The public catalog includes configured networks and routes, but production availability depends on independently verified counterpart contracts, on-chain evidence and successful security tests. Individual routes must be checked before use."]
+ ]},
+ {label:"02 · TOKEN HOLDERS",title:"For Token Holders",items:[
+  ["What can I do as a token holder?","Explore listed tokens and their chain representations, check a potential route in Plan a Route, and use the token-specific bridge interface only after that route is independently verified as available."],
+  ["How do cross-chain transfers work?","A source-chain router dispatches an authenticated interchain message. Destination verification and delivery depend on the route's exact contracts and validator security checks. Moving from one external chain to another requires two independent operations through XGRChain; the second hop is not automatically executed for you."],
+  ["What is a wrapped or synthetic token?","A token representation on a destination chain is not the original asset. Collateralized or native routes lock the appropriate source asset; authenticated synthetic routes mint or burn their representation according to the route design. Check the canonical origin and router addresses."],
+  ["What if a relayer goes offline?","Relayers can be replaced. A transfer may remain pending if a message has not been delivered, so use verified message and transaction status rather than assuming an automatic refund. Recovery and retry behavior must be verified for the deployed route."],
+  ["What fees apply?","The v3.1.5 design uses one validator fee denominated in the native currency of each source chain, plus transaction gas. A two-hop journey requires two source-chain transactions and their associated fees. Fees must be read from the actual source-chain registry."]
+ ]},
+ {label:"03 · TOKEN PROJECTS",title:"For Token Projects",items:[
+  ["How can a token project join?","Use Join to prepare and publish a project listing. Listing in the XITA directory is separate from creating and verifying on-chain routes; a listing does not automatically activate bridging."],
+  ["Can projects deploy routes without central approval?","The public v3.1.5 Factory is designed for independent deployment and registration of router pairs and route-specific gateways. There is no separate human route-admission vote. The destination still verifies exact messages using the validator security mechanism."],
+  ["Does a project need its own validator network?","The XITA architecture uses the XGRChain validator security system for interchain message verification. Projects still need correctly deployed and verified routers, counterpart contracts and sufficient operational readiness."],
+  ["Can multiple routes exist for the same asset?","Yes. The route identity includes its directional chain IDs and the specific source and destination router addresses. Independent router pairs may have different route IDs for the same original asset."]
+ ]},
+ {label:"04 · SECURITY & METRICS",title:"Protocol, Security & Metrics",items:[
+  ["What does BLS verification protect?","Validator BLS signatures protect specific message and checkpoint verification at delivery. They do not serve as a separate permission vote for adding a route to the v3.1.5 registry."],
+  ["What is the difference between configured and verified routes?","Configured means recorded in a public manifest or registry view. A route should be offered for public transfer only after its deployed contracts and reciprocal counterparty bindings are independently checked."],
+  ["What are Locked TVL and Moved via XGR?","Locked TVL is the currently verified USD value of net collateral in independent escrow routers. Moved via XGR is cumulative verified journey volume, counted once per end-user journey even when it has two hops. Unknown or incomplete evidence is not shown as zero."],
+  ["Where does token market capitalization come from?","Asset-wide market capitalization can use sourced market-provider data such as CoinGecko when configured. It does not represent the value locked in XITA, does not prove a route is active and must never be reported as bridge TVL."]
+ ]}
 ];
 export function renderFAQ(){
- return '<div class="ux-app ux-faq-page"><div class="ux-kicker">XITA · HELP CENTER</div><h1>Frequently Asked Questions</h1>'+
-  '<p class="ux-lead">Understand the hub, token worlds and when an interchain transfer is actually available.</p>'+
-  '<div class="ux-faq-list">'+faqEntries.map(([question,answer])=>
-   '<details class="ux-faq-item"><summary>'+esc(question)+'</summary><p>'+esc(answer)+'</p></details>').join('')+'</div>'+
+ return '<div class="ux-app ux-faq-page"><div class="ux-kicker">XGR INTERCHAIN TOKEN ALLIANCE · KNOWLEDGE BASE</div>'+
+  '<h1>Understand XITA.</h1><p class="ux-lead">From permissionless token routing to interchain security: answers for holders, projects and builders.</p>'+
+  '<div class="ux-faq-groups">'+faqGroups.map(group=>
+    '<section class="ux-faq-group"><div class="ux-faq-group-head"><span class="ux-kicker">'+esc(group.label)+'</span><h2>'+esc(group.title)+'</h2></div>'+
+    '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
+      '<details class="ux-faq-item"><summary>'+esc(q)+'</summary><p>'+esc(answer)+'</p></details>').join("")+'</div></section>').join("")+'</div>'+
   '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/plan-route">Plan a Route →</a>'+
-  '<a class="ux-ns-secondary" data-nav href="/markets">Explore Tokens ↗</a></div></div>';
+  '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a></div></div>';
 }
 export function renderUniverse(model,selected=HUB,metrics=null){
  const active=model.routes.filter(r=>r.active).length;
