@@ -6,7 +6,13 @@ import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 const HASH=/^0x[0-9a-f]{64}$/i;
 const NUMBER=/^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/;
 const nowIso=n=>new Date(n).toISOString();
-const validUsd=s=>NUMBER.test(String(s??""))&&Number.isFinite(Number(s))&&Number(s)>=0;
+const usdUnits=s=>{
+ const literal=String(s??"");
+ if(!NUMBER.test(literal)||!Number.isFinite(Number(literal)))return null;
+ const [integer,fraction=""]=literal.split(".");
+ return BigInt(integer)*100000000n+BigInt(fraction.padEnd(8,"0"));
+};
+const validUsd=s=>usdUnits(s)!==null;
 function normalizedRow(raw,now,maxAgeMs,id){
  const at=Date.parse(raw?.asOf);
  if(!raw||String(raw.assetId||"").toLowerCase()!==id.toLowerCase()||
@@ -21,7 +27,7 @@ export function derivedVisibility(catalog,positions=null,{now=Date.now()}={}){
  const minimum=policy?.minimumLockedUsd;
  const maxAge=policy?.maxEvidenceAgeSeconds;
  const policyValid=policy?.kind==="xita-publication-policy"&&policy.schemaVersion===1&&
-   (minimum===null||typeof minimum==="number"&&Number.isFinite(minimum)&&minimum>0)&&
+   (minimum===null||typeof minimum==="number"&&minimum>0&&validUsd(minimum))&&
    Number.isSafeInteger(maxAge)&&maxAge>=60&&maxAge<=86400;
  const assets={};
  for(const [key,entry] of Object.entries(catalog?.assets||{})){
@@ -30,9 +36,11 @@ export function derivedVisibility(catalog,positions=null,{now=Date.now()}={}){
    assets[key]={assetId,status:"prospect",deployment:"prospect",lockedUsd:null,asOf:null};
    continue;
   }
-  const valid=policyValid&&minimum!==null&&normalizedRow(positions?.[key],now,maxAge*1000,assetId);
+  const position=positions?.[key];
+  const valid=policyValid&&minimum!==null&&normalizedRow(position,now,maxAge*1000,assetId);
   assets[key]=valid?
-   {assetId,status:valid.lockedUsd>=minimum?"public":"accepted",deployment:"deployed",...valid}:
+   {assetId,status:usdUnits(position.lockedUsd)>=usdUnits(minimum)?"public":"accepted",
+    deployment:"deployed",...valid}:
    {assetId,status:"unknown",deployment:"deployed",lockedUsd:null,asOf:null};
  }
  return {schemaVersion:1,kind:"xita-visibility-v1",minimumLockedUsd:policyValid?minimum:null,

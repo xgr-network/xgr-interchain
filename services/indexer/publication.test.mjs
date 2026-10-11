@@ -20,6 +20,8 @@ test("publication threshold is NOT selected in GitHub yet",()=>{
 test("verified valuation crosses future configurable threshold in both directions",()=>{
  assert.equal(status(20,good(19.99)),"accepted");
  assert.equal(status(20,good(20)),"public");
+ assert.equal(status(20.00000001,good("20.00000000")),"accepted");
+ assert.equal(status(20.00000001,good("20.00000001")),"public");
  assert.equal(status(20,good(0)),"accepted");
  assert.equal(status(20,good(21)),"public");
 });

@@ -22,6 +22,16 @@ test("all router and route receipts are required for deployed token",()=>{
  unrelated.deployment.routeDeployments[0].components.gateway.receiptPath="outside/repo.json";
  assert.equal(isDeployedAsset(unrelated),false);
 });
+test("multiple documented route instances do not invalidate an otherwise complete direction",()=>{
+ const a=asset();
+ const extra=structuredClone(a.deployment.routeDeployments[0]);
+ extra.routeId="0x"+"9".repeat(64);
+ extra.components={gateway:null,feeVault:null};
+ a.deployment.routeDeployments.push(extra);
+ assert.equal(isDeployedAsset(a),true);
+ a.deployment.routeDeployments[0].components={gateway:null,feeVault:null};
+ assert.equal(isDeployedAsset(a),false);
+});
 test("derived accepted and public visibility are reversible without touching GitHub",()=>{
  const a=asset(),catalog={assets:{ABC:a}};
  assert.equal(listingStatus(a,view("accepted").assets.ABC),"accepted");

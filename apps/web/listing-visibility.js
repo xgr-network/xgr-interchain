@@ -32,11 +32,11 @@ export function isDeployedAsset(entry){
   routeNames.add(route.name);
   const records=deployment.routeDeployments.filter(r=>r.routeName===route.name&&
    r.sourceChain===route.sourceChain&&r.destinationChain===route.destinationChain);
-  if(records.length!==1)return false;
-  const record=records[0];
-  if(!HASH.test(record.routeId||"")||!bound(record.components?.gateway)||
-    !bound(record.components?.feeVault)||
-    ![record.components.gateway.receiptPath,record.components.feeVault.receiptPath].every(p=>references.has(p)))return false;
+  // A configured direction may have multiple independent route instances.
+  // Require at least one fully verified instance; ignore incomplete extras.
+  if(!records.some(record=>HASH.test(record.routeId||"")&&bound(record.components?.gateway)&&
+    bound(record.components?.feeVault)&&
+    [record.components.gateway.receiptPath,record.components.feeVault.receiptPath].every(p=>references.has(p))))return false;
  }
  return true;
 }
