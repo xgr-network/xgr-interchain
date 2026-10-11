@@ -113,8 +113,8 @@ async function preflight(catalog){
    status.chainIdOk=BigInt(actual)===BigInt(chain.chainId);
    if(!status.chainIdOk)throw Error("RPC chain ID mismatch");
    const [mailbox,hook]=await Promise.all([
-    probe(url,"eth_getCode",[infra.hyperlaneCore.mailbox,"latest"]),
-    probe(url,"eth_getCode",[infra.hyperlaneCore.merkleTreeHook,"latest"])
+    probe(url,"eth_getCode",[infra.hyperlaneCore?.mailbox||"0x"+"0".repeat(40),"latest"]),
+    probe(url,"eth_getCode",[infra.hyperlaneCore?.merkleTreeHook||"0x"+"0".repeat(40),"latest"])
    ]);
    status.mailboxCode=typeof mailbox==="string"&&mailbox!=="0x";
    status.hookCode=typeof hook==="string"&&hook!=="0x";

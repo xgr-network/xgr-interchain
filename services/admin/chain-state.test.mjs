@@ -41,7 +41,7 @@ test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
  };
  const result=await verifyChainInfrastructure(chains.filter(c=>c.name==="base"),{rpc});
  assert.equal(result[0].rpc,true);
- assert.equal(result[0].core,true);
+ assert.equal(result[0].core,false);
  assert.equal(result[0].status,"not-deployed");
 });
 test("wallet wei/ETH formatting keeps exact integer precision",()=>{

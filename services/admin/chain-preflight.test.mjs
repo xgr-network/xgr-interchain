@@ -34,7 +34,7 @@ test("any config-selected compressed verifier gets read-only smoke test",async()
 test("config-selected EIP2537 never probes native address",async()=>{
  const c={...chain,name:"new-spoke",blsVerifierFormat:"eip2537"};
  const result=await inspectConfiguredChain({chain:c,core,bootstrap:{chain:"new-spoke",chainId:777,verifierAddress:null},rpc:mock({eip:true})});
- assert.equal(result.basicRpcPreflightOK,false); // missing Hyperlane core code in mock
+ assert.equal(result.basicRpcPreflightOK,true); // preflight no longer requires legacy transport
  assert.equal(result.eip2537PrecompileVerified,true);
  assert.equal(result.eip2537VectorsPassed,EIP2537_VECTORS.length);
  assert.equal(result.readyToDeploy,false);

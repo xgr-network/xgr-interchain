@@ -90,9 +90,9 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   values=[requirePresent(infrastructure,"validatorRegistry")];
  }else if(component==="factory"){
   const p=deploymentParameters(component,parameters);
-  const core=infrastructure.hyperlane;
+  const core=infrastructure.hyperlane||{};
   if(!nonzero(core.mailbox)||!nonzero(core.merkleTreeHook))
-   throw Error("Unverified Hyperlane core");
+   throw Error("Fresh XITA Mailbox/Hook not documented; Factory blocked");
   const gas=p.defaultDestinationGasLimit;
   // No silently invented gas parameter. Until an approved gas limit exists,
   // factory construction is deliberately blocked.

@@ -5,10 +5,6 @@
   "chain": "arbitrum",
   "chainId": 42161,
   "domainId": 42161,
-  "hyperlaneCore": {
-    "mailbox": null,
-    "merkleTreeHook": null
-  },
   "xitaV315": {
     "schemaVersion": 1,
     "components": {},

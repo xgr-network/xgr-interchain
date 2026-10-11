@@ -34,7 +34,7 @@ export function negativeCompressedBlsCalldata(){
 
 const CODE=/^0x(?:[0-9a-f]{2})+$/i;
 export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall}){
- if(!chain||!core||!bootstrap||bootstrap.chain!==chain.name||bootstrap.chainId!==chain.chainId)
+ if(!chain||!bootstrap||bootstrap.chain!==chain.name||bootstrap.chainId!==chain.chainId)
   throw Error("Configuration identity mismatch");
  const url=chain.rpcUrls?.[0];
  if(!/^https:\/\//.test(url||""))throw Error("No approved HTTPS RPC");
@@ -44,14 +44,13 @@ export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall})
   const remote=await rpc(url,"eth_chainId",[]);
   if(BigInt(remote)!==BigInt(chain.chainId))throw Error("RPC chain ID mismatch");
   result.chainIdVerified=true;
-  const [block,price,mail,hook]=await Promise.all([
-   rpc(url,"eth_blockNumber",[]),rpc(url,"eth_gasPrice",[]),
-   rpc(url,"eth_getCode",[core.mailbox,"latest"]),
-   rpc(url,"eth_getCode",[core.merkleTreeHook,"latest"])
+  const [block,price]=await Promise.all([
+   rpc(url,"eth_blockNumber",[]),rpc(url,"eth_gasPrice",[])
   ]);
   result.head=BigInt(block).toString();result.gasPriceWei=BigInt(price).toString();
   result.standardTransferGasFloorWei=(BigInt(price)*21000n).toString();
-  result.mailboxCode=CODE.test(mail||"");result.merkleTreeHookCode=CODE.test(hook||"");
+  result.mailboxCode=false;result.merkleTreeHookCode=false;
+  result.transportReady=false;
   if(chain.blsVerifierFormat==="compressed"){
    if(!/^0x[a-f0-9]{40}$/i.test(bootstrap.verifierAddress||""))
     throw Error("Configured native verifier address missing");
@@ -69,7 +68,7 @@ export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall})
    result.eip2537MalformedInputRejected=vectors.malformedRejected;
    result.verifierStatus="EIP-2537 precompiles verified; deployed BLS verifier and real PoP pending";
   } else throw Error("Unsupported BLS verifier format");
-  result.basicRpcPreflightOK=Boolean(result.chainIdVerified&&result.mailboxCode&&result.merkleTreeHookCode&&
+  result.basicRpcPreflightOK=Boolean(result.chainIdVerified&&
     (chain.blsVerifierFormat!=="compressed"||result.nativeNegativeVectorRejected)&&
     (chain.blsVerifierFormat!=="eip2537"||result.eip2537PrecompileVerified));
  }catch(e){result.error=String(e.message||e).slice(0,200);result.basicRpcPreflightOK=false;}

@@ -12,7 +12,7 @@ export function infrastructureInventory(root,chains) {
   const observed=load(root,c.observedInfrastructure);
   if(observed.chain!==c.name||observed.chainId!==c.chainId||observed.domainId!==c.domainId)
    throw Error("Chain infrastructure manifest mismatch: "+c.name);
-  const core=observed.hyperlaneCore||{};
+  const core={}; // Legacy infrastructure is intentionally excluded.
   const verified=(observed.xitaV315?.components)||{};
   if(!["compressed","eip2537"].includes(c.blsVerifierFormat))
    throw Error("Unsupported configured verifier format: "+c.name);
@@ -39,9 +39,7 @@ export async function verifyChainInfrastructure(chains,{rpc=rpcCall}={}){
    const remote=await rpc(url,"eth_chainId",[]);
    if(BigInt(remote)!==BigInt(c.chainId))throw Error("RPC chain mismatch");
    result.rpc=true;
-   const addresses=[c.hyperlane.mailbox,c.hyperlane.merkleTreeHook].filter(Boolean);
-   const coreCodes=await Promise.all(addresses.map(a=>rpc(url,"eth_getCode",[a,"latest"])));
-   result.core=addresses.length===2&&coreCodes.every(code=>CODE.test(code||""));
+   // Fresh transport requires new on-chain deployment evidence; no historical fallback.
    for(const part of c.components){
     if(!part.address){result.components.push({...part,live:false});continue}
     const code=await rpc(url,"eth_getCode",[part.address,"latest"]);

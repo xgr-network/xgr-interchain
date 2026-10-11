@@ -38,8 +38,8 @@ export async function probeChain(catalog,chainName,rpc=rpcCall){
   if(BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain ID mismatch");
   status.rpc=true;status.head=Number(BigInt(head));
   const [mailbox,hook]=await Promise.all([
-   rpc(url,"eth_getCode",[infra.hyperlaneCore.mailbox,"latest"]),
-   rpc(url,"eth_getCode",[infra.hyperlaneCore.merkleTreeHook,"latest"])
+   rpc(url,"eth_getCode",[infra.hyperlaneCore?.mailbox||"0x"+"0".repeat(40),"latest"]),
+   rpc(url,"eth_getCode",[infra.hyperlaneCore?.merkleTreeHook||"0x"+"0".repeat(40),"latest"])
   ]);
   status.mailbox=typeof mailbox==="string"&&/^0x[0-9a-f]+$/i.test(mailbox)&&mailbox.length>2;
   status.merkleTreeHook=typeof hook==="string"&&/^0x[0-9a-f]+$/i.test(hook)&&hook.length>2;
@@ -89,8 +89,8 @@ export async function inspectContract({catalog,step,address,txHash=null,known={}
   await getter("Destination domain","destinationDomain()","uint",domain);
   await getter("Validator registry","registry()","address",configuredExpected(known,"registry_"+(step.chain==="base"?"base":"xgr")));
  }else if(kind==="router"){
-  await getter("Hyperlane Mailbox","mailbox()","address",clean(infra.hyperlaneCore.mailbox));
-  await getter("MerkleTreeHook","hook()","address",clean(infra.hyperlaneCore.merkleTreeHook));
+  await getter("Hyperlane Mailbox","mailbox()","address",clean(infra.hyperlaneCore?.mailbox||"0x"+"0".repeat(40)));
+  await getter("MerkleTreeHook","hook()","address",clean(infra.hyperlaneCore?.merkleTreeHook||"0x"+"0".repeat(40)));
   await getter("ILN source registry","xetaRegistry()","address",configuredExpected(known,"iln_"+(step.chain==="base"?"base":"xgr")));
  }else if(kind==="gateway"){
   const other=step.chain==="base"?"xgrchain":"base";

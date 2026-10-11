@@ -74,6 +74,8 @@ function renderInfrastructure(){
   const cfg=chains.find(x=>x.name===c.name);
   const native=cfg?.blsVerifierFormat==="compressed";
   const verifier=(workqueue.bootstrap||[]).find(x=>x.chain===c.name)?.verifierAddress;
+  const displayCount=c.documented+Number(Boolean(native&&verifier));
+  const displayTotal=c.required+Number(native);
   const verifierRow=native&&verifier?
    '<div class="component-row"><span>Nativer BLS-Verifier</span><span class="component-address">'+
    '<button class="address-copy" data-copy="'+esc(verifier)+'" title="'+esc(verifier)+'">'+esc(displayAddress(verifier))+
@@ -98,7 +100,7 @@ function renderInfrastructure(){
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
-   '<span class="status">'+c.documented+'/'+c.required+' Contracts</span></div>'+
+   '<span class="status">'+displayCount+'/'+displayTotal+' Komponenten</span></div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
    '<div class="chain-components">'+verifierRow+tasks+'</div>'+    liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
