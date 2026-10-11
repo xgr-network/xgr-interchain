@@ -22,13 +22,13 @@ try{
  const chrome=process.env.XITA_BROWSER||"chromium";
  const args=["--headless","--no-sandbox","--disable-dev-shm-usage",
  "--enable-unsafe-swiftshader","--use-gl=angle","--use-angle=swiftshader","--disable-background-timer-throttling",
- "--window-size=1600,1450","--hide-scrollbars","--virtual-time-budget=1000",
+ "--window-size=1600,1000","--hide-scrollbars","--virtual-time-budget=800",
  "--screenshot="+output,"http://127.0.0.1:"+server.address().port+"/universe"];
  await new Promise((ok,fail)=>{
   const proc=spawn(chrome,args,{stdio:["ignore","ignore","pipe"]});
   let errors="";
   proc.stderr.on("data",part=>errors+=part.toString());
-  const timer=setTimeout(()=>{proc.kill();fail(new Error("Chromium screenshot timeout"))},40000);
+  const timer=setTimeout(()=>{proc.kill();fail(new Error("Chromium screenshot timeout"))},90000);
   proc.on("error",e=>{clearTimeout(timer);fail(e)});
   proc.on("close",code=>{clearTimeout(timer);code===0?ok():fail(new Error("Chromium screenshot failed: "+errors.slice(-1800)))});
  });
