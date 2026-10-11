@@ -1,4 +1,3 @@
-import {makeSystemOrbitTrack} from "./universe-scene.js";
 import {representationFor} from "./token-representation.js";
 import {systemTokenPlanets} from "./universe-token-layout.js";
 // XITA Universe 3D v2 — mouse-first, hierarchical exploration using native WebGL.
@@ -250,31 +249,75 @@ function makeDecorations(item){
   solid:index===0
  }));
 }
+const orbitSeed=key=>[...key].reduce((h,c)=>(Math.imul(h,33)+c.charCodeAt(0))>>>0,1643);
+// Kepler-like ellipses have their focus at the fixed XGR hub. Independent
+// ascending nodes/inclinations add real depth instead of parallel flat rings.
+function orbitPoint(o,angle){
+ const e=o.eccentricity;
+ const r=o.radius*(1-e*e)/(1+e*Math.cos(angle));
+ return rotate([r*Math.cos(angle),r*Math.sin(angle),0],o.inclination,0,o.node);
+}
+function makeChainOrbit(key,index,total){
+ const rnd=random(orbitSeed(key)^0x9e3779b9);
+ const band=Math.floor(index/7),slot=index%7,inBand=Math.min(7,total-band*7);
+ const targetAngle=-Math.PI/3+slot*TWO_PI/inBand+band*.37+
+  (rnd()-.5)*Math.min(.18,.3/inBand);
+ const node=rnd()*TWO_PI,inclination=.23+rnd()*.70;
+ const o={
+  radius:19+band*11+(index%3-1)*1.4+rnd()*1.3,
+  eccentricity:.035+rnd()*.08,
+  phase:targetAngle-node,
+  inclination,node,
+  speed:(.0075+(index%7)*.0016+rnd()*.0009)/(1+band*.32)
+ };
+ o.origin=orbitPoint(o,o.phase);
+ o.axis=norm(rotate([0,0,1],inclination,0,node));
+ return o;
+}
+export function overviewHubLinks(model,byKey){
+ const hub=byKey.get(HUB);
+ if(!hub)return [];
+ const links=new Map();
+ for(const route of model.routes||[]){
+  const source=route.source,destination=route.destination;
+  if((source===HUB)===(destination===HUB))continue;
+  const spokeKey=source===HUB?destination:source,spoke=byKey.get(spokeKey);
+  if(!spoke||spoke.portal)continue;
+  const current=links.get(spokeKey);
+  if(current)current.active=current.active||route.active===true;
+  else links.set(spokeKey,{from:hub,to:spoke,active:route.active===true});
+ }
+ return [...links.values()].sort((a,b)=>a.to.system.key.localeCompare(b.to.system.key));
+}
+// Complete continuous hub-to-spoke lines. Every two consecutive line segments
+// share one vertex; exact endpoints touch the corresponding systems.
+export function hubSpokeSegments(a,b,count=48){
+ const n=Math.max(2,Math.min(128,Math.floor(count)));
+ const delta=sub(b,a);
+ let bend=norm(cross(delta,[0,0,1]));
+ if(Math.hypot(...bend)<.0001)bend=norm(cross(delta,[0,1,0]));
+ const rise=Math.min(2.1,Math.hypot(...delta)*.075);
+ const at=t=>t<=0?[...a]:t>=1?[...b]:
+  add(add(mul(a,1-t),mul(b,t)),mul(bend,Math.sin(Math.PI*t)*rise));
+ const out=new Float32Array(n*6);
+ for(let i=0;i<n;i++){
+  out.set(at(i/n),i*6);out.set(at((i+1)/n),i*6+3);
+ }
+ return out;
+}
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
  if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:3.60,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
-  // Balanced initial composition; each orbit keeps an independent spatial axis.
-  const ring=Math.floor(i/7),within=i%7,perRing=Math.min(7,count-ring*7);
-  const theta=-2.48+within*TWO_PI/perRing+ring*.36;
-  const r=16+(i%3)*2+ring*8;
-  // Depth-balanced starting positions, with deterministic fallback for new systems.
-  const anchors={base:[-12,12,-2.6],arbitrum:[-14,-11,2.3],polygon:[17,-10,-3.8],xdc:[19,10,1.5]};
-  const origin=anchors[spokes[i].key]||[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2];
-  const orbital={origin,
-   axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
-   speed:.018+(i%5)*.003,inclination:.21+(i%4)*.13,node:i*.81};
+  const key=spokes[i].key,orbital=makeChainOrbit(key,i,count);
   systems.push({system:spokes[i],orbital,position:[...orbital.origin],
-   color:chainColor(spokes[i].key,i+1),radius:2.85,portal:false});
+   color:chainColor(key,i+1),radius:2.85,portal:false});
  }
  for(const item of systems)item.decorations=makeDecorations(item);
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
- const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
-  .map(c=>({from:byKey.get(HUB),to:byKey.get(c.key),
-   active:model.routes.some(r=>(r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key)&&r.active)}))
-  .filter(v=>v.from&&v.to);
+ const links=overviewHubLinks(model,byKey);
  // Orbit planets are populated on demand from indexed, eligible top-ranked assets.
  // Never materialize every catalog token as a WebGL body.
  const planets=[];
@@ -287,10 +330,8 @@ export const createUniverseTopology=createTopology;
 // Stable orbital elements prevent the former shared flat-plane rotation.
 export function orbitPosition(elements,time,reduced=false){
  if(elements.portal)return [0,0,0];
- const o=elements.orbital,v=o.origin;
- if(reduced)return [...v];
- const a=time*o.speed,k=o.axis,ca=Math.cos(a),sa=Math.sin(a);
- return add(add(mul(v,ca),mul(cross(k,v),sa)),mul(k,dot(k,v)*(1-ca)));
+ const o=elements.orbital;
+ return orbitPoint(o,o.phase+(reduced?0:time*o.speed));
 }
 function systemPosition(item,time,reduced=false){return orbitPosition(item,time,reduced)}
 // The satellite follows its parent chain in a separate inclined local orbit.
@@ -340,7 +381,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let gl=null,gpu=null,frame=0,viewProjection=null,last=0,raf=0,disposed=false,visible=true;
  const reducedMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches||false;
  const farthest=Math.max(0,...topology.systems.map(x=>Math.hypot(...x.position)));
- const initialDistance=compact?47:45;
+ const initialDistance=Math.max(compact?47:45,farthest*(compact?1.85:1.95));
  const camera={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
  const wanted={target:[0,0,0],distance:initialDistance,yaw:.07,pitch:.18};
  let focused=false,focusBlend=0;
@@ -440,32 +481,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  function bufferLine(values){
   return {buffer:gpu.makeBuffer(gl.ARRAY_BUFFER,new Float32Array(values)),count:values.length/3};
  }
- function createPath(a,b,active){
-  const positions=[],steps=92;
-  const pointAt=t=>{
-   const p=add(mul(a,1-t),mul(b,t));
-   return add(p,[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2.0]);
-  };
-  for(let i=0;i<steps;i++){
-   if(!active&&i%13>7)continue;
-   const from=pointAt(i/steps),to=pointAt((i+1)/steps);
-   positions.push(...from,...to);
-  }
-  return bufferLine(positions);
- }
- function createDynamicPath(a,b,active){
-   const vertices=[],steps=56;
-   const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
-   for(let i=0;i<steps;i++){if(!active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
-   const buf=gpu.makeBuffer(gl.ARRAY_BUFFER,new Float32Array(vertices));
-   return {buffer:buf,count:vertices.length/3};
-  }
-  function createOrbit(item,p){
-  const arr=[],N=80,c=systemPosition(item,0,true);
-  for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
-  return bufferLine(arr);
- }
- let paths=[],orbitPaths=[],systemTracks=[],stars=null,pointBuffer=null;
+ let paths=[],orbitPaths=[],stars=null,pointBuffer=null;
  function initialize(){
   try{
    gl=canvas.getContext("webgl",{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:false,powerPreference:"low-power"});
@@ -480,12 +496,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    }
    stars=bufferLine(arr);
    pointBuffer=gpu.makeBuffer(gl.ARRAY_BUFFER,new Float32Array([0,0,0]));
-   paths=topology.links.map(link=>({...link,geometry:createPath(link.from.position,link.to.position,link.active)}));
+   paths=topology.links.map(link=>({...link,geometry:bufferLine(new Float32Array(48*6))}));
    // Reuse six GPU orbit buffers across sort/filter changes; do not leak buffers.
    orbitPaths=Array.from({length:6},()=>({planet:null,geometry:bufferLine(new Float32Array(80*2*3))}));
-    systemTracks=topology.systems.filter(item=>!item.portal).map(item=>({
-     item,geometry:bufferLine(makeSystemOrbitTrack(item))
-    }));
    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
    gl.enable(gl.BLEND);
    root.dataset.renderer="webgl";
@@ -623,16 +636,17 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
        rotation(.72+item.orbital.inclination*.42,item.orbital.node*.42,.12),eye,vp);
     }
    }
-   // Do not paint misleading global ellipses around the network.
+   // Overview paths are exclusively XGR-to-spoke, never detached orbit arcs.
    if(focusBlend<.96)for(const link of paths){
-   const a=systemPosition(link.from,frame,reducedMotion),b=systemPosition(link.to,frame,reducedMotion);
-   const vertices=[],steps=92;
-   const pointAt=t=>add(add(mul(a,1-t),mul(b,t)),[0,Math.sin(Math.PI*t)*3.6,Math.sin(Math.PI*t)*2]);
-   for(let i=0;i<steps;i++){if(!link.active&&i%5>1)continue;vertices.push(...pointAt(i/steps),...pointAt((i+1)/steps));}
-   gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
-   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),gl.DYNAMIC_DRAW);
-   line(link.geometry,link.active?[.58,.85,1.0]:[.60,.72,.91],(link.active?.52:.20)*(1-focusBlend*.93),vp);
-  }
+    const a=systemPosition(link.from,frame,reducedMotion);
+    const b=systemPosition(link.to,frame,reducedMotion);
+    const vertices=hubSpokeSegments(a,b);
+    gl.bindBuffer(gl.ARRAY_BUFFER,link.geometry.buffer);
+    gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
+    link.geometry.count=vertices.length/3;
+    line(link.geometry,link.active?[.58,.85,1.0]:[.60,.72,.91],
+      (link.active?.48:.18)*(1-focusBlend*.93),vp);
+   }
   if(focusBlend>.72)for(const ring of orbitPaths){
    if(!ring.planet||ring.planet.system.system.key!==selectedKey)continue;
    const verts=[],N=80,c=systemPosition(ring.planet.system,frame,reducedMotion);
