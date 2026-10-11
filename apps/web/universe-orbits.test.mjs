@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {orbitPosition,decorativePosition,WORLD_LIGHT_DIRECTION,createUniverseTopology} from "./universe-3d.js";
+import {orbitPosition,decorativePosition,WORLD_LIGHT_DIRECTION,createUniverseTopology,overviewHubLinks,hubSpokeSegments} from "./universe-3d.js";
 import {buildExperienceModel} from "./experience.js";
 const catalog={chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},base:{chainId:8453,domainId:8453,nativeCurrency:{symbol:"ETH"}},polygon:{chainId:137,domainId:137,nativeCurrency:{symbol:"POL"}},arbitrum:{chainId:42161,domainId:42161,nativeCurrency:{symbol:"ETH"}}},assets:{}};
 test("the gateway stays central and spokes use distinct inclined 3D orbital planes",()=>{
@@ -40,4 +40,48 @@ test("illumination is one normalized fixed world-space direction",()=>{
  assert.equal(WORLD_LIGHT_DIRECTION.length,3);
  assert.ok(Math.abs(Math.hypot(...WORLD_LIGHT_DIRECTION)-1)<1e-12);
  assert.ok(Object.isFrozen(WORLD_LIGHT_DIRECTION));
+});
+
+test("overview only draws real configured hub-to-spoke edges, never loose fragments",()=>{
+ const model=buildExperienceModel(catalog);
+ model.routes=[
+  {source:"base",destination:"xgrchain",active:false},
+  {source:"xgrchain",destination:"base",active:true},
+  {source:"polygon",destination:"xgrchain",active:false},
+  {source:"base",destination:"polygon",active:true},
+  {source:"unknown",destination:"xgrchain",active:true}
+ ];
+ const topology=createUniverseTopology(model);
+ const links=overviewHubLinks(model,topology.byKey);
+ assert.deepEqual(links.map(e=>e.to.system.key),["base","polygon"]);
+ assert.ok(links.every(e=>e.from.system.key==="xgrchain"));
+ assert.equal(links.find(e=>e.to.system.key==="base").active,true);
+ for(const link of links){
+  const a=orbitPosition(link.from,40),b=orbitPosition(link.to,40);
+  const v=hubSpokeSegments(a,b);
+  assert.equal(v.length,48*6);
+  assert.deepEqual(Array.from(v.slice(0,3)),a);
+  assert.ok(Math.hypot(...v.slice(-3).map((x,i)=>x-b[i]))<.00001);
+  for(let i=0;i<47;i++){
+   const end=v.slice(i*6+3,i*6+6),next=v.slice(i*6+6,i*6+9);
+   assert.deepEqual(end,next,"continuous route without detached sections");
+  }
+ }
+});
+test("orbital planes, speeds and phases stay generic for arbitrary configured systems",()=>{
+ const chains={xgrchain:{chainId:1643}};
+ for(let i=0;i<20;i++)chains["network-"+String(i).padStart(2,"0")]={chainId:9000+i};
+ const t=createUniverseTopology(buildExperienceModel({chains,assets:{}}));
+ const spokes=t.systems.filter(s=>!s.portal);
+ assert.equal(spokes.length,20);
+ assert.equal(new Set(spokes.map(s=>s.orbital.node.toFixed(8))).size,20);
+ assert.equal(new Set(spokes.map(s=>s.orbital.speed.toFixed(8))).size,20);
+ assert.equal(new Set(spokes.map(s=>s.orbital.inclination.toFixed(8))).size,20);
+ for(const sec of [0,10,120,1000]){
+  assert.ok(spokes.every(s=>orbitPosition(s,sec).every(Number.isFinite)));
+  assert.deepEqual(orbitPosition(t.byKey.get("xgrchain"),sec),[0,0,0]);
+ }
+ assert.equal(t.planets.length,0);
+ const a=createUniverseTopology(buildExperienceModel({chains,assets:{}}));
+ assert.deepEqual(spokes.map(s=>s.orbital),a.systems.filter(s=>!s.portal).map(s=>s.orbital));
 });
