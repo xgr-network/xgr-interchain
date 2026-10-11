@@ -832,3 +832,5 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
  .ux-dashboard .ux-ns-actions{margin-top:18px}
  .ux-alliance-audience{min-height:335px}
 }
+
+.ja-application-journey{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 24px}.ja-application-journey span{display:inline-flex;align-items:center;gap:8px;border:1px solid #39536d;border-radius:18px;background:#122237;color:#c2d6ef;padding:8px 11px;font-size:11px}.ja-application-journey b{color:#f1d8a6;font-size:11px}

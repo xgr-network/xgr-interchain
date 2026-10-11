@@ -93,7 +93,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    if(path==="/universe"){assert.match(html,/ux-3d-canvas/,"Legacy universe should resolve to the dashboard");}
    if(path==="/plan-route"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
-   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
+   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/First real transfer/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
