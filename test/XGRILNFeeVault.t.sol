@@ -112,6 +112,30 @@ contract XGRILNFeeVaultTest is Test {
         assertEq(A.balance,0);
     }
 
+    function testAccrualGasIsIndependentOfActiveSetSize() public {
+        address[] memory few = new address[](3);
+        address[] memory many = new address[](32);
+        for(uint i;i<many.length;i++){
+            many[i]=address(uint160(0x1000+i));
+            if(i<3) few[i]=many[i];
+        }
+        registry.setMembers(few);
+        vm.prank(GATEWAY);
+        uint256 start = gasleft();
+        vault.allocate{value:3200}(bytes32(uint256(101)));
+        uint256 fewGas=start-gasleft();
+
+        registry.setMembers(many);
+        vm.prank(GATEWAY);
+        start=gasleft();
+        vault.allocate{value:3200}(bytes32(uint256(102)));
+        uint256 manyGas=start-gasleft();
+        emit log_named_uint("3 validator allocation gas",fewGas);
+        emit log_named_uint("32 validator allocation gas",manyGas);
+        assertLt(manyGas,fewGas+25000);
+        assertEq(vault.claimable(many[31]),100);
+    }
+
     function testClaimCannotBeRepeated() public {
         _snapshot(1, 1, _members(A, B));
         vm.prank(GATEWAY);
