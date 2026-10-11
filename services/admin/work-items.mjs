@@ -31,7 +31,7 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
    items.push({kind:"route",id:asset.key+":"+route.name,asset:asset.key,assetId:asset.assetId,
     title:asset.key+" / "+route.source+" → "+route.destination,chain:route.source,
     status:"blocked",reason:missing.length?"Chain-Infrastruktur fehlt: "+missing.join(", "):
-      "Router/Gateway-Factory-Transaktionen und BLS-Gegenstellenprüfung ausstehend"});
+      "Router/Gateway-Registrierung und unabhängige Gegenstellenprüfung ausstehend"});
   }
  }
  return items;
