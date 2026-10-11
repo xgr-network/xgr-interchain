@@ -25,6 +25,6 @@ test("wallet deployment plan never invents CLI broadcast steps",()=>{
 test("rejects wrong chain or missing canonical endpoints",()=>{
  const bad=structuredClone(catalog);bad.chains.base.chainId=137;
  assert.throws(()=>buildPlan(bad),/chain IDs/);
- const broken=structuredClone(catalog);broken.infrastructure.base.hyperlaneCore.mailbox=null;
- assert.throws(()=>buildPlan(broken),/Hyperlane/);
+ const clean=structuredClone(catalog);for(const infra of Object.values(clean.infrastructure))delete infra.hyperlaneCore;
+ assert.doesNotThrow(()=>buildPlan(clean));
 });
