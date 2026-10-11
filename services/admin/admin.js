@@ -1,5 +1,6 @@
 import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
 import {apiJSON} from "./api-client.mjs";
+import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
 async function postJSON(p,data){return apiJSON(fetch,p,{method:"POST",data});}
@@ -212,7 +213,11 @@ async function executeAssetDeployment(){
  const txHash=await broadcastDeploymentIntent(prepared);
  await postJSON("/admin/api/asset-deploy/hash",{id:prepared.id,txHash});
  presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
- const report=await postJSON("/admin/api/asset-deploy/reconcile",{id:prepared.id});
+ const report=await awaitDeploymentReceipt(
+  ()=>postJSON("/admin/api/asset-deploy/reconcile",{id:prepared.id}),{
+   onPending:r=>presentModalStatus("Transaktion "+(r.reason==="confirmations"?"wartet auf Finalität":"wartet auf Receipt")+
+    " – derselbe Hash, keine weitere Wallet-Signatur.","warn")
+  });
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
  presentModalStatus("Deployment dokumentiert. Route ist lokal permissionless registriert.","success");
  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
@@ -234,7 +239,10 @@ async function recoverAssetDeployment(){
   if(!txHash)throw Error("Unbekannter Broadcast-Status bleibt gesperrt");
   await postJSON("/admin/api/asset-deploy/hash",{id,txHash});
  }
- const outcome=await postJSON("/admin/api/asset-deploy/reconcile",{id});
+ const outcome=await awaitDeploymentReceipt(
+  ()=>postJSON("/admin/api/asset-deploy/reconcile",{id}),{
+   attempts:6,onPending:()=>presentModalStatus("Warte auf dieselbe Asset-Transaktion …","warn")
+  });
  presentModalStatus("Wiederhergestellt: "+outcome.result.stage,"success");
  if(outcome.result.stage==="documented"){
   el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
@@ -380,7 +388,12 @@ async function executeModalDeployment(){
   presentModalStatus("Transaktion gesendet · Hash wird gesichert …");
   await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
   presentModalStatus("Warte auf Receipt und On-Chain-Verifikation …");
-  const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
+  const result=await awaitDeploymentReceipt(
+   ()=>postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id}),{
+    onPending:r=>presentModalStatus("Transaktion "+
+      (r.reason==="confirmations"?"wartet auf Bestätigungen":"wartet auf On-Chain-Receipt")+
+      " – keine weitere Wallet-Signatur.","warn")
+   });
   if(result.result.stage==="pending"){presentModalStatus("Transaktion gesendet, Receipt noch ausstehend. Bitte Wiederherstellung später erneut nutzen.","warn");return;}
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
@@ -421,7 +434,10 @@ async function recoverModalDeployment(){
    if(!hash)return presentModalStatus("Unbekannter Broadcast-Status. Transaktion bleibt gesperrt.","warn");
    await postJSON("/admin/api/chain-deploy/hash",{id,txHash:hash});
   }
-  const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
+  const result=await awaitDeploymentReceipt(
+   ()=>postJSON("/admin/api/chain-deploy/reconcile",{id}),{
+    attempts:6,onPending:()=>presentModalStatus("Prüfe dieselbe Wallet-Transaktion erneut …","warn")
+   });
   presentModalStatus(result.result.stage==="pending"?"Transaktion noch ausstehend; später erneut prüfen.":"Wiederherstellung: "+result.result.stage,result.result.stage==="pending"?"warn":"success");
   if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await loadMainWorkqueue()}
  }catch(e){presentModalStatus("Wiederherstellung blockiert: "+e.message,"error")}
