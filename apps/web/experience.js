@@ -251,7 +251,7 @@ function dashboardTopTokens(catalog,metrics){
  const rows=dashboardMarketRows(catalog,metrics);
  return '<section class="ux-dashboard-ranking" id="top-tokens"><div class="ux-dashboard-ranking-head"><div><span class="ux-kicker">ASSET DISCOVERY · SOURCED MARKETS</span>'+
   '<h2>Top Tokens <em>by Market Cap</em></h2><p>Up to ten publicly listed assets, ranked only when independent market data is available. Market cap is not bridge TVL.</p></div>'+
-  '<a data-nav href="/markets">Explore all tokens ↗</a></div>'+
+  '<a data-nav href="/markets">Browse tokens ↗</a></div>'+
   (rows.length?'<div class="ux-dashboard-token-table"><div class="ux-dashboard-token-header"><span>Rank / asset</span><span>Market capitalization</span></div>'+
    rows.map((row,i)=>'<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'"><span class="ux-dashboard-token-name">'+
     '<span class="ux-dashboard-token-rank">'+String(i+1).padStart(2,"0")+'</span><span class="ux-token-sphere" aria-hidden="true"></span><span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
