@@ -186,8 +186,8 @@ function northstarStage(model,{universe=false}={}){
  const introActions=universe?
   '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
   '<a data-nav class="ux-ns-secondary" href="/">Back to dashboard</a>':
-  '<a data-nav class="ux-ns-primary" href="/universe">Explore Universe <span aria-hidden="true">→</span></a>'+
-  '<a class="ux-ns-secondary" href="#ux-journey-planner">Plan a route</a>';
+  '<a data-nav class="ux-ns-primary" href="/#xita-3d">Explore Universe <span aria-hidden="true">→</span></a>'+
+  '<a class="ux-ns-secondary" href="/plan-route">Plan a route</a>';
  return '<div id="xita-3d" class="ux-3d-stage ux-ns-stage" data-northstar="1">'+
   '<canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive 3D universe with configured blockchain systems. Select a star to explore its tokens."></canvas>'+
   '<div class="ux-3d-labels"></div>'+
@@ -242,7 +242,7 @@ function northstarCards(model,metrics=null){
   '<h2>Directed routes</h2><span class="ux-ns-card-count">'+model.routes.length+'</span></div>'+
   '<div class="ux-ns-card-message">'+active+' verified active · '+model.routes.length+' configured</div>'+
   '<div class="ux-ns-route-list">'+(routeRows||'<p class="ux-small">No configured spokes</p>')+'</div>'+
-  '<a class="ux-ns-card-link" href="#ux-journey-planner">Inspect route plan →</a></article>'+
+  '<a class="ux-ns-card-link" href="/plan-route">Inspect route plan →</a></article>'+
   '<article class="ux-ns-card ux-ns-hub-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span>'+
   '<h2>Hub: XGRChain</h2><span class="ux-ns-pill">CORE</span></div>'+
   '<div class="ux-ns-hub-graphic"><span class="ux-ns-orb is-hub"></span>'+
@@ -259,7 +259,7 @@ function northstarCards(model,metrics=null){
    '<span>'+esc(model.chains.find(c=>c.key===key)?.label||key)+'</span>').join("")+'</div>'+
   '<div class="ux-ns-journey-summary"><span>Route status</span><strong>'+
    (journeyPath.active?"Verified active":journeyPath.configured?"Not verified":"Not configured")+'</strong></div>'+
-  '<a class="ux-ns-card-link" href="#ux-journey-planner">Plan a transfer →</a></article></section>';
+  '<a class="ux-ns-card-link" href="/plan-route">Plan a transfer →</a></article></section>';
 }
 
 export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null){
@@ -292,7 +292,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
   '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
   '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment and independent reciprocal verification before users should bridge.</p></div>'+
-  '<div class="ux-ns-explore-links"><a data-nav href="/universe">Open interactive Universe ↗</a>'+
+  '<div class="ux-ns-explore-links"><a data-nav href="/#xita-3d">Open interactive Universe ↗</a>'+
   '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section>'+
   '<section class="ux-panel ux-discovery"><div><div class="ux-kicker">ASSET DISCOVERY</div>'+
   '<h2>Explore token worlds</h2><p class="ux-muted">Open a token profile to inspect its representations, status and bridge interface.</p></div>'+
@@ -302,6 +302,34 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<a data-nav class="ux-discovery-item" href="/markets"><strong>Browse tokens</strong><span>Directory ↗</span></a></div></section></div>';
 }
 
+// Standalone planner uses the same route validation and UI controls as the dashboard.
+export function renderPlanRoute(model,selection={},apiState="not-deployed"){
+ const dashboard=renderDashboard(model,selection,apiState,null);
+ const start=dashboard.indexOf('<section class="ux-ns-operations"');
+ const end=dashboard.indexOf('<section class="ux-panel ux-discovery"',start);
+ if(start<0||end<0)throw Error("Route planner markup missing");
+ const section=dashboard.slice(start,end).replace('id="ux-journey-planner"','id="ux-journey-planner"')
+   .replace('<h2>Interchain Dashboard</h2>','<h1>Plan a Route</h1>');
+ return '<div class="ux-app ux-plan-page ux-northstar-page">'+section+'</div>';
+}
+const faqEntries=[
+ ["What is XITA?","XITA is an interchain experience built around the XGRChain hub. It displays configured networks, assets and potential routes; configuration is not proof that bridging is available."],
+ ["Why does XGRChain sit at the center?","XGRChain is the hub for the supported topology. A journey between two external chains consists of two separate directed operations through XGRChain."],
+ ["Can I bridge a token right now?","Only verified and activated deployments can support actual transfers. Use Plan a Route to inspect availability before opening a token bridge interface. Never transfer funds to a configured-only route."],
+ ["How are routes verified?","Each direction requires independent deployment and safety evidence. A drawn connection or a listed asset does not by itself prove that the route is active."],
+ ["Where do tokens appear?","The overview shows chain systems with decorative moons. Select a chain in the dashboard to reveal its actual catalog-listed token representations."],
+ ["Is market capitalization the same as bridge TVL?","No. Market capitalization describes the asset-wide market value and can come from a third-party market provider. Bridge TVL requires verified on-chain custody evidence."],
+ ["Do I need a specific relayer?","The route interface is a convenience layer. Transaction requirements depend on each verified deployment; XITA must not suggest a transfer is available before verification."],
+ ["How can a project participate?","Visit Join to prepare an asset listing application. Publication, deployment and activation are separate stages."]
+];
+export function renderFAQ(){
+ return '<div class="ux-app ux-faq-page"><div class="ux-kicker">XITA · HELP CENTER</div><h1>Frequently Asked Questions</h1>'+
+  '<p class="ux-lead">Understand the hub, token worlds and when an interchain transfer is actually available.</p>'+
+  '<div class="ux-faq-list">'+faqEntries.map(([question,answer])=>
+   '<details class="ux-faq-item"><summary>'+esc(question)+'</summary><p>'+esc(answer)+'</p></details>').join('')+'</div>'+
+  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/plan-route">Plan a Route →</a>'+
+  '<a class="ux-ns-secondary" data-nav href="/markets">Explore Tokens ↗</a></div></div>';
+}
 export function renderUniverse(model,selected=HUB,metrics=null){
  const active=model.routes.filter(r=>r.active).length;
  return '<div class="ux-app ux-universe-page ux-northstar-page">'+northstarStage(model,{universe:true})+
