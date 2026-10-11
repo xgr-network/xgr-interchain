@@ -118,8 +118,8 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  assert.match(faq,/XGR Interchain Token Alliance/);
  assert.match(faq,/Why should my project join XITA/);
  assert.match(faq,/broader cross-chain audience/);
- assert.match(faq,/Does XITA provide liquidity or exchange listings/);
- assert.match(faq,/No central Alliance vote/);
+ assert.match(faq,/Does XITA provide DEX liquidity or exchange listings/);
+ assert.match(faq,/XGR sponsors the complete deployment/);
  assert.match(faq,/Locked TVL and Moved via XGR/);
  assert.match(faq,/href="\/plan-route"/);
 });
@@ -158,6 +158,16 @@ test("Northstar hero explains holders and projects with matching actions",()=>{
  assert.match(html,/FOR TOKEN HOLDERS/);
  assert.match(html,/FOR TOKEN PROJECTS/);
  assert.match(html,/Check route availability/);
- assert.match(html,/Listings and live transfers are verified separately/);
+ assert.match(html,/first real transfer is confirmed/);
  assert.doesNotMatch(html,/id="ux-journey-planner"/);
+});
+
+test("partner program publicly describes review, sponsorship and first-transfer listing",()=>{
+ const faq=renderFAQ(),home=renderDashboard(buildExperienceModel(catalog));
+ for(const content of [faq,home]){
+  assert.match(content,/review/i);
+  assert.match(content,/sponsor/i);
+  assert.match(content,/first (verified )?real transfer/i);
+ }
+ assert.doesNotMatch(faq,/discretionary Alliance approval|No central Alliance vote|permissionless XITA Factory/i);
 });
