@@ -98,7 +98,7 @@ export function planAssetRoutes(asset,chains,infrastructure){
   if(done.has(id))continue;
   done.add(id);
   const reverse=byDirection.get(r.destination+"->"+r.source);
-  if(!reverse)throw Error("Reciprocal hub route is required for safe activation: "+r.name);
+  if(!reverse)throw Error("Reciprocal hub route is required for canonical bidirectional routing: "+r.name);
   const a=chainMap.get(r.source),b=chainMap.get(r.destination);
   const ra=existingByChain.get(a.name),rb=existingByChain.get(b.name);
   // The route identity is unknowable until BOTH verified router addresses
@@ -123,21 +123,17 @@ export function planAssetRoutes(asset,chains,infrastructure){
     routeId,gateway,representationKey:asset.key+":"+x.name+":representation",
     remoteRepresentationKey:asset.key+":"+y.name+":representation"
    };
-   const prepared={...base,id:asset.key+":"+d.name+":prepare",
-    kind:"route-prepare",status:gateway?"documented":"blocked",
-    action:gateway?"reuse-prepared":"prepare-route",
+   const prepared={...base,id:asset.key+":"+d.name+":register",
+    kind:"route-register",status:gateway?"documented":"blocked",
+    action:gateway?"reuse-registered":"register-route",
     dependsOn:[base.representationKey,base.remoteRepresentationKey,
       x.name+":sourceRegistry",y.name+":sourceRegistry"]};
-   const safety={...base,id:asset.key+":"+d.name+":activate",kind:"route-activate",
-    status:"requires-live-bls-attestation",action:"attest-and-activate",
-    dependsOn:[asset.key+":"+d.name+":prepare",
-      asset.key+":"+ (d===r?reverse.name:r.name)+":prepare"]};
-   operations.push(prepared,safety);
+   operations.push(prepared);
    return {name:d.name,routeId,gateway,localRouter:local,remoteRouter:remote,
-    prepared:Boolean(gateway),active:"unknown-requires-live-rpc"};
+    registered:Boolean(gateway),active:"unknown-requires-live-rpc"};
   });
   pairs.push({id:asset.key+":"+id,asset:asset.key,chains:[a.name,b.name],
-   directions,readyForAttestation:directions.every(x=>x.prepared)});
+   directions,registeredBothDirections:directions.every(x=>x.registered)});
  }
  return {asset:asset.key,assetId:asset.assetId,canonicalChain:asset.canonicalChain,
   canonicalToken:asset.canonicalToken,metadata:{name:asset.name,symbol:asset.symbol,decimals:asset.decimals},representations,
@@ -148,6 +144,6 @@ export function planCatalogRoutes(inventory,infrastructure){
  const assets=Object.values(inventory.assets).map(asset=>
   planAssetRoutes(asset,inventory.chains,infrastructure));
  return {schemaVersion:1,mode:"main-driven-protocol-plan",assets,
-  actionOrder:["deploy-chain-trust","deploy-router-once","prepare-forward",
-   "prepare-reverse","verify-remote-facts","activate-with-bls","e2e-both-directions"]};
+  actionOrder:["deploy-chain-trust","deploy-router-once","register-forward",
+   "register-reverse","verify-remote-facts","e2e-both-directions"]};
 }

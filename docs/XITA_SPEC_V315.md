@@ -18,7 +18,7 @@ Every **single directed route** MUST have XGRChain at EXACTLY ONE endpoint:
 - To transfer Base -> Polygon the protocol performs TWO separate directed
   routes: Base -> XGRChain, then XGRChain -> Polygon.
 - Both `XGRILNProtocol.routeInstanceIdV315` and
-  `XETATokenFactoryV315.prepareRoute` must enforce these constraints.
+  `XETATokenFactoryV315.registerRoute` must enforce these constraints.
 
 No chain or UI can override this rule.
 
@@ -55,8 +55,7 @@ Each source-chain registry has one immutable record per
 - **Hop identity**: sourceChainId, sourceDomain, destinationDomain, routeId.
 - **Gateway binding**: its exact local Gateway address, Mailbox and
   MerkleTreeHook. The Gateway binds this route and source Router immutably.
-- **State**: initially PREPARED (enabled=false); only a verified BLS
-  counterpart safety attestation may activate it (enabled=true).
+- **State**: atomic registration immediately enables a route on its source chain. BLS protects individual messages, not route admission.
 - **Fee**: read dynamically from the source Registry's SINGLE
   `validatorFeeWei`; it is NOT individually configured for each route.
 
@@ -69,31 +68,18 @@ inbound delivery, and burns on authenticated outbound dispatch.
 A native-XGR Router holds the native XGR escrow for its own route.
 Independent routes never share authority to withdraw each other's funds.
 
-## Open, two-step route creation
+## Permissionless registration
 
-1. Deploy XITA's fixed-code Factory and its registry once per chain.
-   Deploy local Router A and local Router B independently via their public
-   respective Factories. Only the creator controls the initial binding of
-   that individual Router; anyone can create another independent Router.
-2. Learn and verify both deployed addresses. On EACH direction's source
-   chain call `prepareRoute(localRouter, remoteChainId, remoteDomain,
-   remoteRouter, remoteToken)`. The Factory checks the XGRChain-only
-   topology and writes the immutable pending route with its new Gateway.
-3. Registration itself requires no validator vote. The route is still
-   **inert**: Gateway quotes/bridging and Router dispatch must reject it.
-4. Independent safety verification checks finalized counterparty
-   chain facts: reciprocal route record, authenticated original token
-   and metadata, Router codehashes, Gateway/Factory provenance, Mailbox,
-   ISM, collateral semantics and intended bidirectional pair.
-5. The validator BLS aggregate certifies those objective transfer-safety
-   facts, NOT project membership. Anyone may submit the signed proof to
-   `activateRoute`. Activation and Router bootstrap must be atomic.
-6. Only after BOTH directions are independently active may the frontend
-   offer a bidirectional bridge. A relayer is replaceable; failure of a
-   relayer must not grant authority over assets.
-
-An unproven first registration can never block another independent route.
-No party gains an "official" token identity by registering first.
+1. Anyone may deploy their independent local router at the public Factory.
+2. Once both router addresses are known, the creator calls
+   `registerRoute(sourceRouter, destinationChainId, destinationDomain, destinationRouter, destinationToken)`
+   on the source chain. Gateway, FeeVault, route storage and router binding are atomic.
+3. There is NO BLS vote, separate activation, CLI governance step or human approval.
+4. Before offering public bidirectional bridging the frontend/indexer checks the
+   finalized counterpart registration, remote bytecode and token identity.
+   Indexer discoverability is advisory and cannot veto a route.
+5. The destination ISM requires a BLS quorum for each exact message/checkpoint,
+   with the original message ID and Merkle proof. Relayers remain replaceable.
 
 ## Source-chain validator fee
 
@@ -106,23 +92,17 @@ setId must match the current set and the signed proposal has an expiry.
 Historical receipts must be interpreted using the fee at the original
 source block, not today's current value.
 
-## Objective BLS route safety proof
+## Message-specific BLS safety
 
-The signed payload is `abi.encode` of exactly 21 ABI words (672 bytes):
-
-`keccak256("XITA_ROUTE_SAFETY_V315"), sourceChainId, sourceDomain, sourceRegistry, routeId, assetId, destinationChainId, destinationDomain, sourceToken, destinationToken, sourceRouter, destinationRouter, gateway, reverseRouteId, remoteRegistry, remoteFactory, remoteGateway, localRouterCodeHash, remoteRouterCodeHash, setId, validUntil`.
-
-Source Solidity checks immutable LOCAL route facts, local codehash,
-reverse ID, current set and expiry; the signing participants must first
-verify authentic REMOTE facts on a finalized chain state. A caller's remote
-address, codehash or symbol is not itself remote proof. Nonce/replay and
-metadata/collateral semantics must remain fail-closed.
+BLS attests individual cross-chain message delivery, not route inclusion.
+The destination ISM must verify the exact source router, destination router,
+authorized message ID, Merkle proof and destination validator set.
+The off-chain indexer must not advertise an unverified counterparty.
 
 ## Non-deployment gates
 
 - Solidity unit tests, fuzz/property tests and end-to-end two-chain tests.
-- Real validator-side fact checking, genuine BLS vectors, signing and
-  submission of the exact remote-pair safety payload.
+- Real validator-side message checkpoint verification and genuine BLS vectors.
 - Full native-XGR and ERC20 lock/mint/burn/unlock in both directions.
 - Relayer loss, retries/replay, partial delivery, validator rotations,
   withdrawal recovery and historical source-fee snapshots.
