@@ -38,8 +38,8 @@ test("unknown or unverified routes never become executable",()=>{
 test("dashboard and inventory do not invent real-time operational metrics",()=>{
   const model=buildExperienceModel(catalog);
   const html=renderDashboard(model,{},"error");
-  assert.match(html,/Unavailable/);
-  assert.match(html,/Not verified/);
+  assert.match(html,/Awaiting complete verified evidence/);
+  assert.match(html,/Verified active/);
   assert.doesNotMatch(html,/99\.9%|18 seconds|In Transit/);
   assert.match(renderRoutes(model),/Source-native validator fees are chain-wide/);
 });
@@ -114,7 +114,7 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  assert.match(planner,/Not verified/);
  assert.doesNotMatch(planner,/ux-3d-canvas/);
  const faq=renderFAQ();
- assert.match(faq,/Frequently Asked Questions/);
+ assert.match(faq,/Understand XITA/);
  assert.match(faq,/XGR Interchain Token Alliance/);
  assert.match(faq,/No XGR organization approval/);
  assert.match(faq,/Locked TVL and Moved via XGR/);
