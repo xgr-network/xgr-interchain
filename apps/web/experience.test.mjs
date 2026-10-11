@@ -39,7 +39,7 @@ test("dashboard and inventory do not invent real-time operational metrics",()=>{
   const model=buildExperienceModel(catalog);
   const html=renderDashboard(model,{},"error");
   assert.match(html,/Unavailable/);
-  assert.match(html,/Not activated/);
+  assert.match(html,/Not verified/);
   assert.doesNotMatch(html,/99\.9%|18 seconds|In Transit/);
   assert.match(renderRoutes(model),/Source-native validator fees are chain-wide/);
 });
