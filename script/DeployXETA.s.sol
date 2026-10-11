@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
+import {XETACollateralRouterDeployer} from "../contracts/XETACollateralRouterDeployer.sol";
+import {XETASyntheticRouterDeployer} from "../contracts/XETASyntheticRouterDeployer.sol";
+import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.sol";
 import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
 import {XGRInterchainBLSVerifier} from "../contracts/XGRInterchainBLSVerifier.sol";
 import {XGRInterchainValidatorRegistryV3} from "../contracts/XGRInterchainValidatorRegistryV3.sol";
@@ -218,7 +221,9 @@ contract DeployXETAFactoryV315 is DeployXETABase {
 
         vm.startBroadcast();
         factory = new XETATokenFactoryV315(
-            chainId, domain, validators, mailbox_, hook_, ism_, gasLimit, initialFeeWei
+            chainId, domain, validators, mailbox_, hook_, ism_, gasLimit, initialFeeWei,
+            address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()),
+            address(new XETACollateralRouterDeployer())
         );
         factory.deployRegistry();
         vm.stopBroadcast();

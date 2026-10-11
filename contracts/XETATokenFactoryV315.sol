@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 import {XGRILNProtocol} from "./XGRILNProtocol.sol";
 import {XGRILNRegistryV315} from "./XGRILNRegistryV315.sol";
 import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
-import {XETAGuardedNativeWarpRouter} from "./XETAGuardedNativeWarpRouter.sol";
-import {XETAGuardedSyntheticWarpRouter} from "./XETAGuardedSyntheticWarpRouter.sol";
-import {XETAGuardedCollateralWarpRouterV315} from "./XETAGuardedCollateralWarpRouterV315.sol";
+import {XETANativeRouterDeployer} from "./XETANativeRouterDeployer.sol";
+import {XETASyntheticRouterDeployer} from "./XETASyntheticRouterDeployer.sol";
+import {XETACollateralRouterDeployer} from "./XETACollateralRouterDeployer.sol";
 import {ILNGateway} from "./ILNGateway.sol";
 
 interface IXITATokenRouter {
@@ -27,6 +27,9 @@ contract XETATokenFactoryV315 {
     address public immutable destinationIsm;
     uint256 public immutable defaultDestinationGasLimit;
     uint256 public immutable initialSourceFeeWei;
+    XETANativeRouterDeployer public immutable nativeDeployer;
+    XETASyntheticRouterDeployer public immutable syntheticDeployer;
+    XETACollateralRouterDeployer public immutable collateralDeployer;
 
     XGRILNRegistryV315 public registry;
 
@@ -50,13 +53,16 @@ contract XETATokenFactoryV315 {
 
     constructor(
         uint64 chainId_, uint32 domain_, address validatorRegistry_,
-        address mailbox_, address hook_, address ism_, uint256 gasLimit_, uint256 initialSourceFeeWei_
+        address mailbox_, address hook_, address ism_, uint256 gasLimit_, uint256 initialSourceFeeWei_,
+        address nativeDeployer_, address syntheticDeployer_, address collateralDeployer_
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
             (chainId_ == 1643) != (domain_ == 1643) ||
             validatorRegistry_ == address(0) || validatorRegistry_.code.length == 0 ||
             mailbox_ == address(0) || mailbox_.code.length == 0 ||
-            hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0 || initialSourceFeeWei_ == 0)
+            hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0 || initialSourceFeeWei_ == 0 ||
+            nativeDeployer_.code.length == 0 || syntheticDeployer_.code.length == 0 ||
+            collateralDeployer_.code.length == 0)
             revert InvalidConfiguration();
         IXGRInterchainValidatorSetV2 validators =
             IXGRInterchainValidatorSetV2(validatorRegistry_);
@@ -70,6 +76,9 @@ contract XETATokenFactoryV315 {
         destinationIsm = ism_;
         defaultDestinationGasLimit = gasLimit_;
         initialSourceFeeWei = initialSourceFeeWei_;
+        nativeDeployer = XETANativeRouterDeployer(nativeDeployer_);
+        syntheticDeployer = XETASyntheticRouterDeployer(syntheticDeployer_);
+        collateralDeployer = XETACollateralRouterDeployer(collateralDeployer_);
     }
 
     function deployRegistry() external returns (address) {
@@ -108,10 +117,8 @@ contract XETATokenFactoryV315 {
         if (assetId == bytes32(0))
             assetId = XGRILNProtocol.assetIdV315(localChainId, originalToken, 1);
         bytes32 salt = keccak256(abi.encode("XITA_COLLATERAL_V315", msg.sender, salt_, assetId, originalToken));
-        router = address(new XETAGuardedCollateralWarpRouterV315{salt: salt}(
-            originalToken, address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit
-        ));
+        router = collateralDeployer.deploy(originalToken, address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit, salt);
         _remember(assetId, router, false);
     }
 
@@ -131,10 +138,8 @@ contract XETATokenFactoryV315 {
             "XITA_SYNTHETIC_V315", msg.sender, salt_, assetId, decimals_,
             keccak256(bytes(name_)), keccak256(bytes(symbol_))
         ));
-        router = address(new XETAGuardedSyntheticWarpRouter{salt: salt}(
-            address(registry), mailbox, merkleTreeHook, destinationIsm,
-            defaultDestinationGasLimit, decimals_, name_, symbol_
-        ));
+        router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit, decimals_, name_, symbol_, salt);
         _remember(assetId, router, true);
     }
 
@@ -142,10 +147,8 @@ contract XETATokenFactoryV315 {
         if (localChainId != 1643 || localDomain != 1643) revert WrongChain();
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_NATIVE_XGR_V315", msg.sender, salt_));
-        router = address(new XETAGuardedNativeWarpRouter{salt: salt}(
-            address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit
-        ));
+        router = nativeDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit, salt);
         _remember(xgrAssetId(), router, false);
     }
 
@@ -153,11 +156,8 @@ contract XETATokenFactoryV315 {
         if (localChainId == 1643 || localDomain == 1643) revert WrongChain();
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_WRAPPED_XGR_V315", msg.sender, salt_));
-        router = address(new XETAGuardedSyntheticWarpRouter{salt: salt}(
-            address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit,
-            18, "Wrapped XGR", "wXGR"
-        ));
+        router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+            destinationIsm, defaultDestinationGasLimit, 18, "Wrapped XGR", "wXGR", salt);
         _remember(xgrAssetId(), router, true);
     }
 
