@@ -299,7 +299,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<div class="ux-discovery-assets">'+model.assets.slice(0,4).map(a=>
    '<a data-nav class="ux-discovery-item" href="'+esc(tokenLink(a))+'">'+
    '<span class="ux-token-sphere"></span><strong>'+esc(a.id)+'</strong><span>Explore ↗</span></a>').join("")+
-  '<a data-nav class="ux-discovery-item" href="/markets"><strong>All assets</strong><span>Directory ↗</span></a></div></section></div>';
+  '<a data-nav class="ux-discovery-item" href="/markets"><strong>Browse tokens</strong><span>Directory ↗</span></a></div></section></div>';
 }
 
 export function renderUniverse(model,selected=HUB,metrics=null){
