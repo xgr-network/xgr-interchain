@@ -85,7 +85,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","XGR Interchain"],["/universe","The XITA"],["/plan-route","Plan a Route"],["/faq","Frequently Asked Questions"],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
+  for(const [path,expected] of [["/","XGR Interchain"],["/universe","The XITA"],["/plan-route","Plan a Route"],["/faq","Understand XITA."],["/token/xgr","Bridge XGR"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
