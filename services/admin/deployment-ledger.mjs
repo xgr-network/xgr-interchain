@@ -218,7 +218,7 @@ export async function publishDeploymentBatch(root,inputs,{
  // Update the canonical per-chain infrastructure index in the SAME atomic
  // Git commit as its immutable on-chain verified receipts. This is not the
  // fee-quorum transaction journal (it has no deployed bytecode).
- const infraComponents=new Set(["blsVerifier","validatorRegistry","ism","factory","sourceRegistry"]);
+ const infraComponents=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
  const byChain=new Map();
  for(const receipt of receipts){
   if(receipt.asset!==null||!infraComponents.has(receipt.component))continue;

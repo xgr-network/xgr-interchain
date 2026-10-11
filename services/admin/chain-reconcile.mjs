@@ -115,13 +115,17 @@ export async function reconcileDeployedContract({
     (entry.transaction.to===null?tx.to!==null:!same(tx.to,entry.transaction.to)))
   throw Error("Observed transaction does not match durable wallet intent");
  const receipt=await rpc(url,"eth_getTransactionReceipt",[entry.txHash]);
- if(!receipt)throw Error("Transaction pending; do not rebroadcast");
+ if(!receipt)return {pending:true,reason:"receipt",txHash:entry.txHash};
  if(BigInt(receipt.status)!==1n)throw Error("On-chain transaction failed; manual review required");
  const component=entry.id.split(":")[1];
  const address=component==="sourceRegistry"
   ? await getter(rpc,url,entry.transaction.to,"registry()").then(asAddr)
   : receipt.contractAddress;
  if(!ADDR.test(address||""))throw Error("No deployed component address");
+ const head=await rpc(url,"eth_blockNumber",[]);
+ if(BigInt(head)<BigInt(receipt.blockNumber)||
+    BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(chain.confirmations||1))
+   return {pending:true,reason:"confirmations",txHash:entry.txHash};
  const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(receipt.blockNumber).toString(16)]);
  const hash=verifyRuntimeTemplate(artifact,code);
  await verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra:infrastructure});

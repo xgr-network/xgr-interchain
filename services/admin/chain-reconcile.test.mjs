@@ -78,3 +78,22 @@ test("factory must have all three independently documented router modules",async
   url:"https://test.invalid",component:"factory",address:addr(9),chain,bootstrap,infra:incomplete
  }),/Unverified Factory module/);
 });
+
+test("receipt absence returns resumable pending without touching chain constructor",async()=>{
+ const {reconcileDeployedContract}=await import("./chain-reconcile.mjs");
+ const addr="0x"+"2".repeat(40),txHash="0x"+"f".repeat(64),wallet="0x"+"a".repeat(40);
+ const entry={stage:"submitted",chainId:137,id:"polygon:blsVerifier",txHash,wallet,
+  transaction:{from:wallet,to:null,nonce:"0x1",value:"0x0",data:"0x6001"}};
+ const rpc=async(_url,method)=>{
+  if(method==="eth_chainId")return "0x89";
+  if(method==="eth_getTransactionByHash")return {from:wallet,to:null,nonce:"0x1",
+    value:"0x0",input:"0x6001"};
+  if(method==="eth_getTransactionReceipt")return null;
+  throw Error("Unexpected side effect: "+method);
+ };
+ const result=await reconcileDeployedContract({
+  root:process.cwd(),entry,chain:{name:"polygon",chainId:137},bootstrap:{},
+  infrastructure:{},artifact:{component:"blsVerifier"},rpc,url:"https://rpc.invalid"
+ });
+ assert.deepEqual(result,{pending:true,reason:"receipt",txHash});
+});
