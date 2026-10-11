@@ -7,6 +7,7 @@ import {assertCurrentMain,approvedWorkInventory,checkedLocalMain} from "./main-g
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
+import {verifyPrepared} from "./prepared-override.mjs";
 import {trustedBuild,verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
@@ -222,6 +223,18 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   return {stage:"documented",address,txHash:entry.txHash,receiptPath:path,
     activation:"permissionless-registered"};
  }
+ async function cancelPrepared({id,createdAt}){
+  const all=approvedWorkInventory(root);
+  const j=journal(all.chains);
+  const e=j.read().entries[id];
+  if(!e||e.createdAt!==createdAt||e.stage!=="prepared")
+   throw Error("Only exact prepared draft can be cancelled");
+  const chain=all.chains.find(c=>c.chainId===e.chainId);
+  if(!chain)throw Error("Unknown chain");
+  await mainCheck(root);
+  await verifyPrepared({entry:e,chain,rpc});
+  return j.cancelPrepared(id,createdAt);
+ }
  const status=()=>journal(approvedWorkInventory(root).chains).read();
- return {preview,prepare,hash,reconcile,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,status};
 }
