@@ -161,19 +161,23 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   if(!entry?.asset)throw Error("Unknown asset intent");
   if(!["submitted","confirmed"].includes(entry.stage))
    throw Error("Wallet broadcast unknown; check nonce/hash without resending");
-  if(main!==entry.sourceCommit)
-   throw Error("GitHub main changed; reconcile existing confirmed receipts manually, never resubmit");
+  // Main may advance during finality. Compare immutable artifact bytes below.
   const chain=inventory.chains.find(x=>x.chainId===entry.chainId),url=chain.rpcUrls[0];
   const tx=await rpc(url,"eth_getTransactionByHash",[entry.txHash]);
   if(!tx||!equal(tx.from,entry.wallet)||!equal(tx.input,entry.transaction.data)||
      !equal(tx.to,entry.transaction.to)||BigInt(tx.nonce)!==BigInt(entry.transaction.nonce))
    throw Error("On-chain asset transaction differs from persisted intent");
   const receipt=await rpc(url,"eth_getTransactionReceipt",[entry.txHash]);
-  if(!receipt)throw Error("Transaction not confirmed; retry reconciliation without broadcast");
+  if(!receipt)return {stage:"pending",reason:"receipt",txHash:entry.txHash};
   if(BigInt(receipt.status)!==1n)throw Error("Transaction reverted; manual inspection required");
-  const built=await build(root,entry.sourceCommit);
+  const head=await rpc(url,"eth_blockNumber",[]);
+  if(BigInt(head)<BigInt(receipt.blockNumber)||
+     BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(chain.confirmations||1))
+   return {stage:"pending",reason:"confirmations",txHash:entry.txHash};
+  const built=await build(root,main);
   const artifact=built.artifacts[entry.id.split(":")[2]];
-  if(!artifact||artifact.buildHash!==entry.buildHash||artifact.artifactHash!==entry.artifactHash)
+  if(!artifact||artifact.artifactHash!==entry.artifactHash||
+     (main===entry.sourceCommit&&artifact.buildHash!==entry.buildHash))
    throw Error("Trusted build differs from original signed intent");
   const factory=entry.factory;
   const gateway=entry.id.split(":")[2]==="gateway";
@@ -186,7 +190,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    if(!a)throw Error("Missing pinned artifact: "+component);
    const code=await rpc(url,"eth_getCode",[contractAddress,"0x"+BigInt(receipt.blockNumber).toString(16)]);
    const runtime=verifyRuntimeTemplate(a,code);
-   inputs.push({sourceCommit:entry.sourceCommit,chain:chain.name,asset:entry.asset,
+   inputs.push({sourceCommit:main,chain:chain.name,asset:entry.asset,
     routeName:gateway?entry.routeName:null,component,contractAddress,
     txHash:entry.txHash,expectedRuntimeKeccak256:runtime,
     expectedDeployer:entry.wallet,provenance});
@@ -213,7 +217,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    runtimeKeccak:inputs[0].expectedRuntimeKeccak256});
   const result=await publish(root,inputs,{rpc});
   if(!/^[0-9a-f]{40}$/i.test(result.commit||""))throw Error("Receipt publication not confirmed");
-  if(checkedLocalMain(root)!==entry.sourceCommit)throw Error("Main changed during receipt publication");
+  if(checkedLocalMain(root)!==main)throw Error("Main changed during receipt publication");
   execFileSync("git",["pull","--ff-only","origin","main"],{
    cwd:root,encoding:"utf8",timeout:30000,maxBuffer:524288});
   if(checkedLocalMain(root)!==result.commit.toLowerCase())throw Error("Checkout differs from published receipt commit");

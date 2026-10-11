@@ -196,11 +196,13 @@ export function createChainOperator({
     journal.document(id,match);
     return {stage:"documented",receiptPath:match,recoveredFromGitHub:true};
    }
-   throw Error("GitHub main advanced; hold signed transaction for manual source-commit reconciliation");
+   // Same signed transaction may outlive an Admin code update. Continue
+   // only when artifact bytes and on-chain constructor bindings still match.
   }
   const built=await build(root,commit);
   const artifact=built.artifacts[id.split(":")[1]];
-  if(artifact.buildHash!==entry.buildHash||artifact.artifactHash!==entry.artifactHash)
+  if(!artifact||artifact.artifactHash!==entry.artifactHash||
+     (commit===entry.sourceCommit&&artifact.buildHash!==entry.buildHash))
    throw Error("Recompiled artifact differs from original wallet-intent build");
   const verified={...bootstrap,
    reserve:entry.parameters?.minimumWei?{minimumWei:entry.parameters.minimumWei,maxExecutorReimbursementWei:entry.parameters.maxExecutorReimbursementWei,perValidatorWei:entry.parameters.perValidatorWei}:bootstrap.reserve,
@@ -213,12 +215,12 @@ export function createChainOperator({
   if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
-  const published=await publish(root,[result.input],{rpc});
+  const published=await publish(root,[{...result.input,sourceCommit:commit}],{rpc});
   // GitHub now has a NEW main SHA. The next UI step must immediately use
   // that approved manifest, not a stale server checkout or a second TX.
   if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
    throw Error("GitHub publisher did not return a new main commit; intent retained");
-  if(checkedLocalMain(root)!==entry.sourceCommit)
+  if(checkedLocalMain(root)!==commit)
    throw Error("Local main moved during receipt publication; intent retained");
   execFileSync("git",["pull","--ff-only","origin","main"],{
    cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512

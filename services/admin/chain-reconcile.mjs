@@ -122,6 +122,10 @@ export async function reconcileDeployedContract({
   ? await getter(rpc,url,entry.transaction.to,"registry()").then(asAddr)
   : receipt.contractAddress;
  if(!ADDR.test(address||""))throw Error("No deployed component address");
+ const head=await rpc(url,"eth_blockNumber",[]);
+ if(BigInt(head)<BigInt(receipt.blockNumber)||
+    BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(chain.confirmations||1))
+   return {pending:true,reason:"confirmations",txHash:entry.txHash};
  const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(receipt.blockNumber).toString(16)]);
  const hash=verifyRuntimeTemplate(artifact,code);
  await verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra:infrastructure});
