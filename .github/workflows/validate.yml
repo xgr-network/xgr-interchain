@@ -50,8 +50,14 @@ jobs:
           set -euo pipefail
           node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs
 
-      - name: Validate indexer server tests
-        run: node --test services/indexer/server.test.mjs services/indexer/coingecko.test.mjs services/indexer/finality-observer.test.mjs
+      - name: Validate indexer metrics server
+        run: node --test services/indexer/server.test.mjs
+
+      - name: Validate CoinGecko adapter
+        run: node --test services/indexer/coingecko.test.mjs
+
+      - name: Validate finalized route observer
+        run: node --test services/indexer/finality-observer.test.mjs
 
       - name: Validate derived publication policy
         run: node --test services/indexer/publication.test.mjs
