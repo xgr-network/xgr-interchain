@@ -1,4 +1,4 @@
-import {makeStellarDisc,placeStellarDisc,makeSystemOrbitTrack} from "./universe-scene.js";
+import {makeSystemOrbitTrack} from "./universe-scene.js";
 import {representationFor} from "./token-representation.js";
 import {systemTokenPlanets} from "./universe-token-layout.js";
 // XITA Universe 3D v2 — mouse-first, hierarchical exploration using native WebGL.
@@ -12,6 +12,9 @@ const mul=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
 const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
 const norm=a=>mul(a,1/(Math.hypot(...a)||1));
+// The light direction is inertial in world coordinates; moving the camera,
+// rotating a body or orbiting a system never moves this light source.
+export const WORLD_LIGHT_DIRECTION=Object.freeze(norm([-.72,.74,1.12]));
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 const mix=(a,b,t)=>a+(b-a)*t;
 const near=(a,b,eps=.001)=>Math.abs(a-b)<=eps;
@@ -142,7 +145,7 @@ const sphereVS=[
 // No downloaded textures, per-token requests or external shaders.
 const sphereFS=[
  'precision mediump float;',
- 'uniform vec3 uColor;uniform vec3 uEye;uniform float uTime;uniform float uKind;',
+ 'uniform vec3 uColor;uniform vec3 uEye;uniform vec3 uLightDir;uniform float uTime;uniform float uKind;',
  'varying vec3 vNormal;varying vec3 vWorld;varying vec3 vLocal;',
  'float hash(vec3 p){p=fract(p*0.3183099+vec3(.19,.31,.43));p*=17.0;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}',
  'float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);',
@@ -151,11 +154,11 @@ const sphereFS=[
  'float fbm(vec3 p){float v=0.0,a=.5;for(int i=0;i<4;i++){v+=noise(p)*a;p*=2.04;a*=.5;}return v;}',
  'void main(){',
  'vec3 n=normalize(vNormal),viewDir=normalize(uEye-vWorld);',
- 'vec3 litDir=normalize(vec3(-.58,.75,1.1));',
+ 'vec3 litDir=normalize(uLightDir);',
  'float ndl=max(0.0,dot(n,litDir));',
  'float facing=max(0.0,dot(n,viewDir));',
  'float rim=pow(1.0-facing,3.4);',
- 'float surf=fbm(vLocal*4.8+vec3(uTime*.009,0.,.8));',
+ 'float surf=fbm(vLocal*4.8+vec3(0.,0.,.8));',
  'float details=fbm(vLocal*14.0+surf*1.9);',
  'vec3 color;',
  'if(uKind>1.5){',
@@ -171,11 +174,12 @@ const sphereFS=[
  ' vec3 ocean=uColor*.33+vec3(.019,.041,.080);',
  ' vec3 high=uColor*(.86+.30*bands)+vec3(.14,.14,.15)*pow(details,2.0);',
  ' vec3 material=mix(ocean,high,land);',
- ' float light=.20+.95*ndl;',
+ ' float daylight=smoothstep(-.13,.24,dot(n,litDir));',
+' float light=.085+daylight*(.17+.83*ndl);',
  ' float clouds=smoothstep(.57,.83,details+.15*surf);',
  ' float spec=pow(max(0.0,dot(reflect(-litDir,n),viewDir)),24.0);',
- ' color=material*light+vec3(.38,.46,.57)*spec*.30+vec3(.66,.76,.92)*clouds*.18;',
- ' color+=mix(uColor,vec3(.65,.82,1.0),.36)*rim*(.52+.18*ndl);',
+ ' color=material*light+vec3(.38,.46,.57)*spec*.25*daylight+vec3(.66,.76,.92)*clouds*.13*daylight;',
+ ' color+=mix(uColor,vec3(.65,.82,1.0),.36)*rim*(.035+.32*daylight);',
  '}',
  'gl_FragColor=vec4(max(color,vec3(0.0)),1.0);',
  '}'
@@ -207,7 +211,7 @@ function createGPU(gl){
  const mesh={p:meshP,pos:attrib(meshP,"aPos"),normal:attrib(meshP,"aNormal"),
   vp:uniform(meshP,"uViewProjection"),rot:uniform(meshP,"uRotation"),
   center:uniform(meshP,"uCenter"),scale:uniform(meshP,"uScale"),
-  color:uniform(meshP,"uColor"),eye:uniform(meshP,"uEye"),kind:uniform(meshP,"uKind"),time:uniform(meshP,"uTime")};
+  color:uniform(meshP,"uColor"),eye:uniform(meshP,"uEye"),light:uniform(meshP,"uLightDir"),kind:uniform(meshP,"uKind"),time:uniform(meshP,"uTime")};
  const lines={p:lineP,pos:attrib(lineP,"aPos"),vp:uniform(lineP,"uViewProjection"),color:uniform(lineP,"uColor")};
  const sprites={p:spriteP,pos:attrib(spriteP,"aPos"),vp:uniform(spriteP,"uViewProjection"),
   color:uniform(spriteP,"uColor"),size:uniform(spriteP,"uSize"),
@@ -221,13 +225,28 @@ function createGPU(gl){
    n:makeBuffer(gl.ARRAY_BUFFER,new Float32Array(info.normals)),
    i:makeBuffer(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(info.indices)),count:info.indices.length};
  }
- const sphere=createGeometry(makeSphere()),torus=createGeometry(makeTorus());
+ const sphere=createGeometry(makeSphere()),moon=createGeometry(makeSphere(10,16)),torus=createGeometry(makeTorus());
  const point=makeBuffer(gl.ARRAY_BUFFER,new Float32Array([0,0,0]));
  function dispose(){
   buffers.forEach(b=>gl.deleteBuffer(b));
   [meshP,lineP,spriteP].forEach(p=>gl.deleteProgram(p));
  }
- return {mesh,lines,sprites,sphere,torus,point,makeBuffer,dispose};
+ return {mesh,lines,sprites,sphere,moon,torus,point,makeBuffer,dispose};
+}
+// Only visual companions: deterministic and wholly independent of token data.
+function makeDecorations(item){
+ const seed=[...item.system.key].reduce((h,c)=>(Math.imul(h,33)+c.charCodeAt(0))>>>0,1643);
+ const rand=random(seed),count=item.portal?2:1+(seed%2);
+ return Array.from({length:count},(_,index)=>({
+  phase:rand()*TWO_PI,
+  orbit:item.radius*(2.0+rand()*.55),
+  inclination:.15+rand()*.46,
+  node:rand()*TWO_PI,
+  speed:(.14+rand()*.09)*(index%2===0?1:-1),
+  radius:item.radius*(index===0?.135:.075),
+  color:item.portal?[.67,.64,.55]:item.color.map(c=>clamp(c*.43+.28,0,1)),
+  solid:index===0
+ }));
 }
 function createTopology(model){
  const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
@@ -244,10 +263,11 @@ function createTopology(model){
   const origin=anchors[spokes[i].key]||[Math.cos(theta)*r,Math.sin(theta)*r*.69,(i%3-1)*2.2];
   const orbital={origin,
    axis:norm([Math.sin(i*1.7+.4)*.48,1,Math.cos(i*1.17+.8)*.54]),
-   speed:.0019+(i%5)*.00065,inclination:.21+(i%4)*.13,node:i*.81};
+   speed:.018+(i%5)*.003,inclination:.21+(i%4)*.13,node:i*.81};
   systems.push({system:spokes[i],orbital,position:[...orbital.origin],
    color:chainColor(spokes[i].key,i+1),radius:2.85,portal:false});
  }
+ for(const item of systems)item.decorations=makeDecorations(item);
  const byKey=new Map(systems.map(s=>[s.system.key,s]));
  const links=spokes.filter(c=>model.routes.some(r=>r.source===c.key&&r.destination===HUB||r.source===HUB&&r.destination===c.key))
   .map(c=>({from:byKey.get(HUB),to:byKey.get(c.key),
@@ -271,6 +291,13 @@ export function orbitPosition(elements,time,reduced=false){
  return add(add(mul(v,ca),mul(cross(k,v),sa)),mul(k,dot(k,v)*(1-ca)));
 }
 function systemPosition(item,time,reduced=false){return orbitPosition(item,time,reduced)}
+// The satellite follows its parent chain in a separate inclined local orbit.
+export function decorativePosition(item,decoration,time,reduced=false){
+ const angle=decoration.phase+(reduced?0:time*decoration.speed);
+ const local=rotate([Math.cos(angle)*decoration.orbit,0,
+  Math.sin(angle)*decoration.orbit*.82],decoration.inclination,decoration.node,0);
+ return add(systemPosition(item,time,reduced),local);
+}
 function tokenOrbitPoint(p,angle,center){
  return add(center,rotate([Math.cos(angle)*p.orbit,0,Math.sin(angle)*p.orbit*.82],
   p.inclination,p.node,p.twist));
@@ -436,7 +463,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(let i=0;i<N;i++)arr.push(...tokenOrbitPoint(p,TWO_PI*i/N,c),...tokenOrbitPoint(p,TWO_PI*(i+1)/N,c));
   return bufferLine(arr);
  }
- let paths=[],orbitPaths=[],stellarDiscs=[],systemTracks=[],stars=null,pointBuffer=null;
+ let paths=[],orbitPaths=[],systemTracks=[],stars=null,pointBuffer=null;
  function initialize(){
   try{
    gl=canvas.getContext("webgl",{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:false,powerPreference:"low-power"});
@@ -454,10 +481,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    paths=topology.links.map(link=>({...link,geometry:createPath(link.from.position,link.to.position,link.active)}));
    // Reuse six GPU orbit buffers across sort/filter changes; do not leak buffers.
    orbitPaths=Array.from({length:6},()=>({planet:null,geometry:bufferLine(new Float32Array(80*2*3))}));
-    stellarDiscs=topology.systems.map(item=>{
-     const local=makeStellarDisc(item),scratch=new Float32Array(local.length);
-     return {item,local,scratch,buffer:gpu.makeBuffer(gl.ARRAY_BUFFER,scratch),count:local.length/3};
-    });
     systemTracks=topology.systems.filter(item=>!item.portal).map(item=>({
      item,geometry:bufferLine(makeSystemOrbitTrack(item))
     }));
@@ -480,21 +503,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform4f(shader.color,color[0],color[1],color[2],alpha);
   gl.drawArrays(gl.LINES,0,geometry.count);
  }
- function dustCloud(disc,center,vp,time,opacity){
-   const positions=placeStellarDisc(disc.local,center,time,disc.item,disc.scratch);
-   gl.bindBuffer(gl.ARRAY_BUFFER,disc.buffer);
-   gl.bufferData(gl.ARRAY_BUFFER,positions,gl.DYNAMIC_DRAW);
-   const sp=gpu.sprites;
-   gl.useProgram(sp.p);
-   gl.enableVertexAttribArray(sp.pos);
-   gl.vertexAttribPointer(sp.pos,3,gl.FLOAT,false,0,0);
-   gl.uniformMatrix4fv(sp.vp,false,vp);
-   gl.uniform4f(sp.color,...disc.item.color,opacity);
-   gl.uniform1f(sp.size,disc.item.portal?1.65:1.2);
-   gl.uniform1f(sp.fixed,1);
-   gl.uniform1f(sp.background,1);
-   gl.drawArrays(gl.POINTS,0,disc.count);
-  }
   function point(position,size,color,opacity,vp,background=false){
   const shader=gpu.sprites;
   gl.useProgram(shader.p);
@@ -525,6 +533,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform1f(shader.scale,scale);
   gl.uniform3fv(shader.color,color);
   gl.uniform3fv(shader.eye,eye);
+  gl.uniform3fv(shader.light,WORLD_LIGHT_DIRECTION);
   gl.uniform1f(shader.kind,kind);
   gl.uniform1f(shader.time,time);
   gl.drawElements(gl.TRIANGLES,geometry.count,gl.UNSIGNED_SHORT,0);
@@ -580,13 +589,6 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.80,.87,1.0,.82);
   gl.uniform1f(sp.size,2.0);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
-  // A focused system dissolves its abstract galaxy dust into catalog tokens.
-  for(const disc of stellarDiscs){
-   const fade=focused?(disc.item.system.key===selectedKey?1-focusBlend:1-clamp(focusBlend*1.4,0,1)):1-focusBlend;
-   if(fade<=.01)continue;
-   dustCloud(disc,systemPosition(disc.item,frame,reducedMotion),vp,frame,
-    (disc.item.portal?.40:.12)*fade);
-  }
   // Soft additive stellar corona, kept restrained to the website palette.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
@@ -600,7 +602,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     if(focused&&item.system.key!==selectedKey&&focusBlend>.86)continue;
     if(focused&&item.system.key===selectedKey&&focusBlend>.96)continue;
     const center=systemPosition(item,frame,reducedMotion);
-    const t=reducedMotion?0:frame*.019;
+    const t=0; // XGR itself and its two gold rings stay still.
     if(item.portal){
      body(gpu.torus,center,item.radius*1.62,[.75,.58,.32],2,frame,
        rotation(.64,.24+t,-.19),eye,vp);
@@ -642,34 +644,28 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
     const item=entry.item;
     if(focused&&item.system.key!==selectedKey&&focusBlend>.9)continue;
     const center=systemPosition(item,frame,reducedMotion);
-    body(gpu.sphere,center,item.radius,item.color,item.portal?1:0,frame,IDENTITY,eye,vp);
-    // Deterministic tiny moons and points; decorative, not assets.
-     if(!focused||item.system.key===selectedKey){
-      const key=item.system.key;
-      const seed=[...key].reduce((h,c)=>(Math.imul(h,33)+c.charCodeAt(0))>>>0,1643);
-      const rnd=random(seed),moonCount=item.portal?3:1+(seed%2);
-      for(let moon=0;moon<moonCount;moon++){
-       const phase=rnd()*TWO_PI;
-       const radial=item.radius*(1.92+rnd()*.63);
-       const angle=phase+(reducedMotion?0:frame*.010)*(moon%2?-1:1);
-       const satellite=add(center,rotate([Math.cos(angle)*radial,
-        Math.sin(angle*.7)*item.radius*.24,Math.sin(angle)*radial*.68],
-        item.portal?.27:item.orbital.inclination*.62,0,.12));
-       if(moon===0){
-        const tint=item.portal?[.79,.67,.48]:item.color.map(c=>clamp(c*.48+.22,0,1));
-        point(satellite,item.radius*640,tint,.78,vp);
-       }else{
-        point(satellite,item.radius*400,
-          item.color.map(c=>Math.min(1,c*.42+.39)),.52,vp);
-       }
+    const bodyRotation=item.portal?IDENTITY:rotation(
+      .10+item.orbital.inclination*.30,frame*.075+item.orbital.node,.08);
+     body(gpu.sphere,center,item.radius,item.color,item.portal?1:0,frame,bodyRotation,eye,vp);
+    // Small pseudo-random satellites are decorative, never token planets.
+    // Hierarchy: orbiting chain -> companion; XGR remains at world origin.
+    if(!focused||item.system.key===selectedKey){
+     for(const decoration of item.decorations){
+      const satellite=decorativePosition(item,decoration,frame,reducedMotion);
+      if(decoration.solid){
+       body(gpu.moon,satellite,decoration.radius,decoration.color,0,frame,
+        rotation(0,frame*.05,0),eye,vp);
+      }else{
+       point(satellite,item.radius*420,decoration.color,.60,vp);
       }
      }
+    }
    }else{
     const p=entry.planet;
     const col=p.system.color.map(v=>clamp(v*.64+.18,0,1));
      const presence=focused?focusBlend:1;
     if(presence>.45)point(entry.position,p.radius*2700,col,.27*presence,vp);
-    body(gpu.sphere,entry.position,p.radius*(focused?presence:1.5),col,0,frame,IDENTITY,eye,vp);
+    body(gpu.sphere,entry.position,p.radius*(focused?presence:1.5),col,0,frame,rotation(.08,frame*.09+p.phase,0),eye,vp);
     if(p.index%3===1&&presence>.82)body(gpu.torus,entry.position,p.radius*1.72,
      col.map(x=>x*.9),2,frame,rotation(.5,.2,.3),eye,vp);
    }
