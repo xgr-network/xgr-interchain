@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderTokenBridge} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge} from "./experience.js";
 
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
@@ -102,4 +102,18 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
  assert.doesNotMatch(home,/XDC/);
  assert.match(home,/Polygon/);
+});
+
+test("new Plan a Route and FAQ pages reuse safe planner and show verified-state guidance",()=>{
+ const model=buildExperienceModel(catalog,()=>false);
+ const planner=renderPlanRoute(model,{},"error");
+ assert.match(planner,/Plan a Route/);
+ assert.match(planner,/id="ux-origin"/);
+ assert.match(planner,/id="ux-destination"/);
+ assert.match(planner,/Not verified/);
+ assert.doesNotMatch(planner,/ux-3d-canvas/);
+ const faq=renderFAQ();
+ assert.match(faq,/Frequently Asked Questions/);
+ assert.match(faq,/configuration is not proof/i);
+ assert.match(faq,/href="\/plan-route"/);
 });
