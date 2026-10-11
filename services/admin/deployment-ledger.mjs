@@ -5,6 +5,10 @@
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+import {isDeepStrictEqual} from "node:util";
+import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 
 const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
@@ -136,6 +140,32 @@ export function deploymentReceiptPath(record){
 }
 function encodeJSON(o){return JSON.stringify(o,null,2)+"\n";}
 
+/** Rebuild the website snapshot from the exact main-approved source manifests
+ * and this batch's verified deployment indexes. The website is NEVER a
+ * source of contract truth and must be pinned to the same atomic Git commit.
+ * Fail closed when the checked-out main already has a stale generated catalog.
+ */
+export function updatedDeploymentWebCatalog(root,{
+  assets=new Map(),infrastructure=new Map()
+}={}){
+ const canonical=loadCatalog(root);
+ const baseline={schemaVersion:1,...canonical};
+ const published=JSON.parse(readFileSync(join(root,"apps/web/catalog.json"),"utf8"));
+ if(!isDeepStrictEqual(published,baseline))
+  throw Error("Web catalog differs from approved main; regenerate and commit before recording deployments");
+ for(const [asset,index] of assets){
+  if(!Object.hasOwn(canonical.assets,asset))throw Error("Unknown deployment asset "+asset);
+  canonical.assets[asset].deployment=index;
+ }
+ for(const [chain,index] of infrastructure){
+  if(!Object.hasOwn(canonical.infrastructure,chain))throw Error("Unknown deployment chain "+chain);
+  canonical.infrastructure[chain]=index;
+ }
+ const errors=validateCatalog(canonical);
+ if(errors.length)throw Error("Deployment-generated web catalog invalid: "+errors.join("; "));
+ return encodeJSON({schemaVersion:1,...canonical});
+}
+
 /** Single GitHub fast-forward commit for all receipts produced by one Deploy
  * run. On any GitHub conflict/failure, the local journal MUST retain proof for
  * retry: no blockchain transaction can ever be rolled back by a GitHub error.
@@ -186,7 +216,7 @@ export async function publishDeploymentBatch(root,inputs,{
  // Each asset has exactly one git-tracked index of its deployment receipts.
  // This index is updated in the SAME Git commit as the immutable receipts.
  // The operator never needs to copy addresses or edit JSON manually.
- const byAsset=new Map();
+ const byAsset=new Map(),updatedAssets=new Map();
  for(const receipt of receipts){
   if(receipt.asset===null)continue;
   const arr=byAsset.get(receipt.asset)||[];
@@ -213,13 +243,14 @@ export async function publishDeploymentBatch(root,inputs,{
    original.receiptPaths.push(file);
   }
   original.receiptPaths.sort();
+  updatedAssets.set(asset,original);
   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
  }
  // Update the canonical per-chain infrastructure index in the SAME atomic
  // Git commit as its immutable on-chain verified receipts. This is not the
  // fee-quorum transaction journal (it has no deployed bytecode).
  const infraComponents=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
- const byChain=new Map();
+ const byChain=new Map(),updatedInfrastructure=new Map();
  for(const receipt of receipts){
   if(receipt.asset!==null||!infraComponents.has(receipt.component))continue;
   const arr=byChain.get(receipt.chain)||[];
@@ -252,7 +283,18 @@ export async function publishDeploymentBatch(root,inputs,{
    original.xitaV315.receiptPaths.push(receiptPath);
   }
   original.xitaV315.receiptPaths.sort();
+  updatedInfrastructure.set(chain,original);
   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(original)});
+ }
+ // Same immutable receipt commit must include the rebuilt public snapshot.
+ // Otherwise the next ./manage.sh update fails --check, blocking UI publication.
+ if(updatedAssets.size||updatedInfrastructure.size){
+  entries.push({
+   path:"apps/web/catalog.json",mode:"100644",type:"blob",
+   content:updatedDeploymentWebCatalog(root,{
+    assets:updatedAssets,infrastructure:updatedInfrastructure
+   })
+  });
  }
  const commitInfo=await request("/git/commits/"+main);
  if(!commitInfo.ok||!SHA.test(commitInfo.json?.tree?.sha||""))
