@@ -11,15 +11,15 @@ test("all plan steps are ordered and explicit",()=>{
  const steps=buildPlan(catalog),known=new Set();
  for(const s of steps){for(const d of s.dependsOn)assert.equal(known.has(d),true);known.add(s.id)}
  assert.equal(steps.at(-1).id,"publish");
- assert.equal(steps.find(s=>s.id==="register_xgr").dependsOn.includes("bindings"),true);
+ assert.equal(steps.find(s=>s.id==="register_xgr").dependsOn.includes("router_base"),true);
  assert.equal(steps.some(s=>s.kind==="governance" || s.id.startsWith("governance_")),false);
- assert.equal(steps.find(s=>s.id==="e2e_outbound").dependsOn.includes("register_base"),true);
+ assert.equal(steps.find(s=>s.id==="e2e_outbound").dependsOn.includes("bindings"),true);
  assert.equal(steps.some(s=>s.script&&s.kind!=="deploy"),false);
 });
-test("CLI plans never include keys or arbitrary paths",()=>{
+test("wallet deployment plan never invents CLI broadcast steps",()=>{
  for(const s of buildPlan(catalog)){
    const cmd=renderStepCommand(s);
-   if(cmd){assert.match(cmd,/^forge script script\/DeployXETA/);assert.match(cmd,/--broadcast$/);assert.doesNotMatch(cmd,/private-key|;|&&/)}
+   assert.equal(cmd,null);
  }
 });
 test("rejects wrong chain or missing canonical endpoints",()=>{
