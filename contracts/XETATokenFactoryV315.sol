@@ -58,7 +58,7 @@ contract XETATokenFactoryV315 {
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
             (chainId_ == 1643) != (domain_ == 1643) ||
-            validatorRegistry_ == address(0) || validatorRegistry_.code.length == 0 ||
+            validatorRegistry_ == address(0) ||
             mailbox_ == address(0) || mailbox_.code.length == 0 ||
             hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0 || initialSourceFeeWei_ == 0 ||
             nativeDeployer_.code.length == 0 || syntheticDeployer_.code.length == 0 ||
@@ -185,14 +185,15 @@ contract XETATokenFactoryV315 {
             assetId, localChainId, localDomain, destinationChainId,
             destinationDomain, sourceRouter, destinationRouter
         );
+        address sourceToken = IXITATokenRouter(sourceRouter).token();
         gateway = address(new ILNGateway{
             salt: keccak256(abi.encode("XITA_GATEWAY_V315", routeId))
         }(address(registry), routeId, destinationDomain, sourceRouter,
-          IXITATokenRouter(sourceRouter).token() == address(0)));
+          sourceToken == address(0)));
         routeForDomainRegistered[sourceRouter][destinationDomain] = true;
         bytes32 registered = registry.registerRouteInstance(
             assetId, destinationChainId, destinationDomain,
-            IXITATokenRouter(sourceRouter).token(), destinationToken,
+            sourceToken, destinationToken,
             gateway, sourceRouter, mailbox, merkleTreeHook, destinationRouter
         );
         if (registered != routeId) revert InvalidRouteRegistration();
