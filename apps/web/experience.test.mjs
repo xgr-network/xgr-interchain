@@ -158,6 +158,6 @@ test("Northstar hero explains holders and projects with matching actions",()=>{
  assert.match(html,/FOR TOKEN HOLDERS/);
  assert.match(html,/FOR TOKEN PROJECTS/);
  assert.match(html,/Check route availability/);
- assert.match(html,/A directory listing and an active bridge are separate milestones/);
+ assert.match(html,/Listings and live transfers are verified separately/);
  assert.doesNotMatch(html,/id="ux-journey-planner"/);
 });
