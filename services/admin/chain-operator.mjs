@@ -2,7 +2,6 @@
 // EIP-1193 wallet signs in the browser. All transactions are server-authored;
 // browser input may select chain/component and provide the public wallet/hash.
 import {resolve,join} from "node:path";
-import {execFileSync} from "node:child_process";
 import {checkedLocalMain} from "./main-gate.mjs";
 import {readdirSync,readFileSync} from "node:fs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
@@ -164,14 +163,9 @@ export function createChainOperator({
   // A confirmed transaction may have lost GitHub connectivity. Always
   // re-verify the SAME tx and retry only the GitHub append, never broadcast.
   const previouslyConfirmed=entry.stage==="confirmed";
-  // A confirmed hash cannot cause another broadcast. Refresh verified
-  // GitHub receipt state in case the writer succeeded before an HTTP loss.
-  if(entry.stage==="confirmed"){
-   checkedLocalMain(root);
-   execFileSync("git",["pull","--ff-only","origin","main"],{
-    cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
-   });
-  }
+  // Reconciliation must not mutate .git: the Admin process may run in a
+  // read-only filesystem. Existing confirmed receipts are matched against
+  // the current, separately updated main checkout below.
   // A new main may have advanced independently after signature. Never replace
   // sourceCommit to evade the main-only publisher check.
   const {commit,infrastructure,bootstrap}=await approved(chain.name);
@@ -216,21 +210,15 @@ export function createChainOperator({
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
   const published=await publish(root,[{...result.input,sourceCommit:commit}],{rpc});
-  // GitHub now has a NEW main SHA. The next UI step must immediately use
-  // that approved manifest, not a stale server checkout or a second TX.
+  // The publisher verified GitHub's new main ref. Finalize this intent now:
+  // the Admin service cannot git-pull inside its read-only deployment.
+  // The next transaction is gated until ./manage.sh update syncs main.
   if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
    throw Error("GitHub publisher did not return a new main commit; intent retained");
-  if(checkedLocalMain(root)!==commit)
-   throw Error("Local main moved during receipt publication; intent retained");
-  execFileSync("git",["pull","--ff-only","origin","main"],{
-   cwd:root,encoding:"utf8",timeout:30000,maxBuffer:1024*512
-  });
-  if(checkedLocalMain(root)!==published.commit.toLowerCase())
-   throw Error("Post-publication checkout differs from GitHub receipt commit");
   const path=deploymentReceiptPath(result.verified);
   journal.document(id,path);
   return {stage:"documented",receiptPath:path,commit:published.commit,
-   address:result.contractAddress,txHash:entry.txHash};
+   address:result.contractAddress,txHash:entry.txHash,checkoutUpdateRequired:true};
  }
  async function cancelPrepared({id,createdAt}){
   const all=approvedWorkInventory(root);
