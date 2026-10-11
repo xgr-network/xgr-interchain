@@ -49,6 +49,9 @@ contract XGRInterchainValidatorRegistryV3 {
 
     uint64 public setId;
 
+    /// @notice Explicit migration fingerprint for fail-closed deployment checks.
+    function registryVersion() external pure returns (uint256) { return 3; }
+
     mapping(address => Validator) private validatorInfo;
     address[] private activeValidators;
     mapping(address => uint256) private activeIndexPlusOne;

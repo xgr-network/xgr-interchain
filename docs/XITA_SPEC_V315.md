@@ -115,3 +115,12 @@ The off-chain indexer must not advertise an unverified counterparty.
 this route identity.** Existing validator checkpoint messages use
 Route ID bytes32; the additional safety onboarding flow belongs in
 XITA's own interchain infrastructure. No automatic production deploy.
+
+## Registry V3 migration gate
+
+The historical XGRChain Registry V2 receipt stays immutable. The next generation
+Registry V3 adds permissionless `provePossession()` for new validator keys and
+requires a valid proof before quorum-approved `applyMembership(ADD)`.
+Future new ISM/Factory deployments are fail-closed until an independently
+verified V3 is documented. This branch does not overwrite the V2 receipt or
+automatically migrate the existing 2.25 XGR reserve. No node changes.

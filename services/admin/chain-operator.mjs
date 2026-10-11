@@ -40,9 +40,28 @@ export function createChainOperator({
   const bootstrap=bootstrapPlan(root,chain);
   return {commit,inventory:all,chain,infrastructure,bootstrap};
  }
+ async function requireVersionThree(chain,infrastructure,component){
+  if(component==="validatorRegistry" || component==="blsVerifier")return;
+  const registry=infrastructure.components.find(p=>p.key==="validatorRegistry")?.address;
+  if(!registry)throw Error("Verified ValidatorRegistry V3 required before further deployment");
+  // The deployed V2 remains an immutable historical receipt. It must never
+  // silently authorize deployment of a new ISM/Factory as if it were V3.
+  const {selector}=await import("../../apps/web/keccak.mjs");
+  let version;
+  try{
+   version=await rpc(chain.rpcUrls[0],"eth_call",[
+    {to:registry,data:selector("registryVersion()")},"latest"]);
+  }catch{
+   throw Error("Legacy ValidatorRegistry V2 detected. V3 migration required; do not sign");
+  }
+  if(typeof version!=="string"||!/^0x[0-9a-f]{64}$/i.test(version)||
+     BigInt(version)!==3n)
+   throw Error("ValidatorRegistry V3 not verified on chain; no dependent deployment");
+ }
  async function preview({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName,{previewOnly:true});
+  await requireVersionThree(chain,infrastructure,component);
   const values=deploymentParameters(component,parameters);
   const journal=journals(all.chains);
   if(journal.read().entries[chain.name+":"+component])
@@ -75,6 +94,7 @@ export function createChainOperator({
  async function prepare({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
+  await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
   if(journal.read().entries[chain.name+":"+component])
    throw Error("Existing wallet intent must be reconciled before any new request");
