@@ -210,13 +210,19 @@ function northstarStage(model,{universe=false}={}){
 
 function northstarCards(model,metrics=null){
  const active=model.routes.filter(route=>route.active).length;
- const visibleChains=model.chains.slice(0,5);
+ const visibleChains=model.chains;
  const spokes=model.chains.filter(c=>c.key!==HUB).slice(0,3);
  const xgr=verifiedMetrics(metrics,"XGR");
  const value=xgr?.marketCapUsd??null;
  const marketSource=metrics?.assets?.XGR?.market;
  const sourced=marketSource?.status==="market-data"&&marketSource.source==="coingecko";
  const marketText=sourced&&value!==null?formatUsd(value):"—";
+ const previewSpokes=model.chains.filter(c=>c.key!==HUB);
+ const journeyKeys=previewSpokes.length>=2?[previewSpokes[0].key,HUB,previewSpokes[1].key]:
+  previewSpokes.length===1?[HUB,previewSpokes[0].key]:[HUB];
+ const journeyAsset=model.assets[0]?.id||"";
+ const journeyPath=journeyKeys.length>=2?previewRoute(model,journeyKeys[0],journeyKeys[journeyKeys.length-1],journeyAsset):
+  {active:false,configured:false};
  const routeRows=spokes.map(chain=>{
   const pair=model.routes.filter(r=>(r.source===HUB&&r.destination===chain.key)||
    (r.destination===HUB&&r.source===chain.key));
@@ -231,7 +237,7 @@ function northstarCards(model,metrics=null){
     '<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
     '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
     '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":"Configured")+'</small>'+
-    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Planned")+'</span></button>').join("")+'</div></article>'+
+    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div></article>'+
   '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span>'+
   '<h2>Directed routes</h2><span class="ux-ns-card-count">'+model.routes.length+'</span></div>'+
   '<div class="ux-ns-card-message">'+active+' verified active · '+model.routes.length+' configured</div>'+
@@ -246,11 +252,13 @@ function northstarCards(model,metrics=null){
    'CoinGecko sourced · not bridge TVL':'External market data unavailable · no estimated TVL')+'</div></article>'+
   '<article class="ux-ns-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⌁</span>'+
   '<h2>Journey preview</h2><span class="ux-ns-outline-tag">2 hops max.</span></div>'+
-  '<div class="ux-ns-journey"><span class="ux-ns-orb is-base"></span><span class="ux-ns-journey-line"></span>'+
-  '<span class="ux-ns-orb is-hub"></span><span class="ux-ns-journey-line"></span>'+
-  '<span class="ux-ns-orb is-polygon"></span></div>'+
-  '<div class="ux-ns-journey-labels"><span>Base</span><span>XGR Hub</span><span>Polygon</span></div>'+
-  '<div class="ux-ns-journey-summary"><span>Route status</span><strong>Not activated</strong></div>'+
+  '<div class="ux-ns-journey">'+
+  journeyKeys.map((key,i)=>'<span class="ux-ns-orb is-'+esc(key)+'"></span>'+
+   (i<journeyKeys.length-1?'<span class="ux-ns-journey-line"></span>':"")).join("")+'</div>'+
+  '<div class="ux-ns-journey-labels">'+journeyKeys.map(key=>
+   '<span>'+esc(model.chains.find(c=>c.key===key)?.label||key)+'</span>').join("")+'</div>'+
+  '<div class="ux-ns-journey-summary"><span>Route status</span><strong>'+
+   (journeyPath.active?"Verified active":journeyPath.configured?"Not activated":"Not configured")+'</strong></div>'+
   '<a class="ux-ns-card-link" href="#ux-journey-planner">Plan a transfer →</a></article></section>';
 }
 
