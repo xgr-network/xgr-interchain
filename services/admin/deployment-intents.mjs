@@ -1,6 +1,7 @@
-// XITA v3.1.5 durable WRITE-AHEAD wallet intent.
-// Persist before asking EIP-1193 wallet to broadcast. A crash, failed wallet
-// callback or GitHub outage may never generate a second tx for the same step.
+// XITA v3.1.5 TEMPORARY wallet write-ahead log, not a deployment index.
+// Before wallet broadcast persist an unresolved transaction. GitHub main is
+// the ONLY authority for completed deployments; finalized intents are deleted.
+// Never silently drop prepared, submitted or confirmed-but-unpublished intents.
 import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsyncSync,unlinkSync} from "node:fs";
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
@@ -9,6 +10,7 @@ const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|nativeRouterD
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
 const H256=/^[0-9a-f]{64}$/i;
+// "documented" exists solely to recognize and purge earlier on-disk records.
 const PHASES=new Set(["prepared","submitted","confirmed","documented"]);
 const validHex=s=>typeof s==="string"&&/^0x[0-9a-f]+$/i.test(s);
 function validate(e){
@@ -49,7 +51,7 @@ export function deploymentIntents({directory,chains}){
   if(approved.get(e.id.split(":")[0])!==e.chainId)
    throw Error("Intent chain no longer approved by configured main inventory");
  };
- const read=()=>{
+ const readRaw=()=>{
   try{
    const s=JSON.parse(readFileSync(file,"utf8"));
    if(s.version!==1||!s.entries||Array.isArray(s.entries)||
@@ -67,7 +69,11 @@ export function deploymentIntents({directory,chains}){
   let fd;
   try{
    fd=openSync(lock,"wx",0o600);
-   const s=read(),out=fn(s);
+   const s=readRaw();
+   // Atomic normalization on every write, including preparing a redeploy.
+   for(const [id,e] of Object.entries(s.entries))
+    if(e.stage==="documented")delete s.entries[id];
+   const out=fn(s);
    const tmp=join(dir,"."+randomUUID()+".tmp");
    writeFileSync(tmp,JSON.stringify(s,null,2)+"\n",{mode:0o600,flag:"wx"});
    const fileHandle=openSync(tmp,"r");
@@ -80,6 +86,18 @@ export function deploymentIntents({directory,chains}){
    if(fd!==undefined){closeSync(fd);unlinkSync(lock);}
   }
  };
+ // One-time cleanup in the *actual* Admin state directory, whether the
+ // service uses the default path or XGR_ADMIN_STATE_DIR. Old documented
+ // rows cannot block a new deployment after deletion from GitHub.
+ // The write-ahead safety lock for in-flight transactions remains intact.
+ const read=()=>{
+  const state=readRaw();
+  if(Object.values(state.entries).some(e=>e.stage==="documented")){
+   mutate(s=>null);
+   return readRaw();
+  }
+  return state;
+ };
  return {
   read,
   prepare(e){
@@ -90,20 +108,6 @@ export function deploymentIntents({directory,chains}){
      throw Error("Existing deployment intent must be reconciled; never re-broadcast");
     s.entries[entry.id]=entry;
     return entry;
-   });
-  },
-  // The operator must first independently verify this DOCUMENTED transaction
-  // on the canonical chain. No archived evidence or hidden migration path.
-  discardDocumented(id,txHash){
-   if(!ID.test(id||"")||!TX.test(txHash||""))
-    throw Error("Invalid documented intent identity");
-   return mutate(s=>{
-    const entry=s.entries[id];
-    if(!entry||entry.stage!=="documented"||
-       entry.txHash?.toLowerCase()!==txHash.toLowerCase())
-     throw Error("Only the exact verified, documented intent may be discarded");
-    delete s.entries[id];
-    return {discarded:true};
    });
   },
   attachHash(id,hash){
@@ -138,8 +142,10 @@ export function deploymentIntents({directory,chains}){
    return mutate(s=>{
     const e=s.entries[id];
     if(!e||e.stage!=="confirmed")throw Error("Only verified transactions can be documented");
-    e.stage="documented";e.receiptPath=path;
-    e.updatedAt=new Date().toISOString();return e;
+    // Caller has published the receipt and verified the new local GitHub
+    // main commit. The local journal has no role after successful completion.
+    delete s.entries[id];
+    return {stage:"documented",receiptPath:path};
    });
   }
  };

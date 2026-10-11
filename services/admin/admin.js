@@ -162,7 +162,6 @@ async function openAssetModal(taskId){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("modal-recover").hidden=true;
- el("modal-discard").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
@@ -253,7 +252,6 @@ async function openContractModal(chainName,component){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;
  el("modal-recover").hidden=true;
- el("modal-discard").hidden=true;
  el("modal-parameters").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
@@ -312,12 +310,9 @@ async function openContractModal(chainName,component){
     .filter(p=>p.status!=="documented").map(p=>coreTitles[p.key]||p.key);
   if(existing){
    el("modal-deploy").disabled=true;
-   const stale=component==="validatorRegistry"&&existing.stage==="documented"&&part.status==="not-deployed";
-   el("modal-recover").hidden=stale;
-   el("modal-discard").hidden=!stale;
-   presentModalStatus(stale?
-    "Alter dokumentierter Registry-Eintrag blockiert V3. On-Chain verifizieren und freigeben.":
-    "Vorherige Transaktion: "+existing.stage+". Zuerst wiederherstellen – niemals erneut senden.","warn");
+   el("modal-recover").hidden=false;
+   presentModalStatus("Unabgeschlossene Wallet-Transaktion ("+existing.stage+
+    "). Zuerst wiederherstellen – niemals erneut senden.","warn");
    return;
   }
   if(missingPrerequisites.length){
@@ -388,25 +383,6 @@ async function executeModalDeployment(){
   await loadMainWorkqueue();
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
   "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
-}
-async function discardDocumentedModalIntent(){
- if(!selectedDeployment)return;
- const {chainName,component}=selectedDeployment,id=chainName+":"+component;
- const button=el("modal-discard");button.disabled=true;
- try{
-  const current=await get("/admin/api/chain-deploy/status");
-  const entry=current.intents.entries[id];
-  if(component!=="validatorRegistry"||entry?.stage!=="documented")throw Error("Kein dokumentierter Registry-Alt-Eintrag");
-  if(!window.confirm("Abgeschlossenen Registry-Alt-Eintrag nach On-Chain-Prüfung aus lokalem Journal entfernen? Keine Wallet-Transaktion."))return;
-  presentModalStatus("Prüfe Transaktion, Finalität, Codehash und Registry-Version …");
-  const result=await postJSON("/admin/api/chain-deploy/discard-documented",{id,txHash:entry.txHash});
-  if(!result.result?.reset)throw Error("Freigabe nicht bestätigt");
-  el("modal-discard").hidden=true;
-  presentModalStatus("Alter Eintrag sicher entfernt; V3 kann neu vorbereitet werden.","success");
-  el("contract-deploy-dialog").close();selectedDeployment=null;
-  await loadMainWorkqueue();await openContractModal(chainName,component);
- }catch(e){presentModalStatus("Reset gesperrt: "+e.message,"error")}
- finally{button.disabled=false}
 }
 async function recoverModalDeployment(){
  if(selectedAssetTask){try{await recoverAssetDeployment()}catch(e){presentModalStatus(e.message,"error")}return;}
@@ -512,7 +488,6 @@ el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=nu
 
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
-el("modal-discard").addEventListener("click",discardDocumentedModalIntent);
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
 
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});

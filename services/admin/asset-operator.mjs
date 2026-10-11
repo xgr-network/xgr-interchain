@@ -158,7 +158,6 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const main=await mainCheck(root),inventory=approvedWorkInventory(root);
   const j=journal(inventory.chains),entry=j.read().entries[id];
   if(!entry?.asset)throw Error("Unknown asset intent");
-  if(entry.stage==="documented")return {stage:"documented",receiptPath:entry.receiptPath};
   if(!["submitted","confirmed"].includes(entry.stage))
    throw Error("Wallet broadcast unknown; check nonce/hash without resending");
   if(main!==entry.sourceCommit)

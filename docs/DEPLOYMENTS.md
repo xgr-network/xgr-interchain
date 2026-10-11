@@ -32,3 +32,14 @@ The wallet write-ahead journal is local server state, **not** part of Git.
 Before a clean prelaunch reset, the operator must verify there are no pending
 or unreconciled transactions. Never automatically erase a submitted intent
 just to permit a new broadcast.
+
+## GitHub deployment authority
+
+The Admin wallet journal is a temporary write-ahead log only for `prepared`,
+`submitted` and `confirmed` transactions. Once the verified receipt is
+published and the local GitHub main commit is checked, the journal entry is
+**deleted**, without creating a local archive. The first journal read after
+updating older servers automatically removes old `documented` entries in the
+actual configured state directory. Any unresolved transaction remains locked.
+The GitHub deployment manifests and receipts are the sole authority for
+completed deployments, including routers, Gateways and FeeVaults.

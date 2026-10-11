@@ -17,7 +17,6 @@ import {deploymentIntents} from "./deployment-intents.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
-import {verifyDiscardableDocumentedIntent} from "./discard-documented-intent.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const nonceWord=s=>{
@@ -159,7 +158,6 @@ export function createChainOperator({
   if(!entry)throw Error("Unknown deployment intent");
   const chain=all.chains.find(c=>c.chainId===entry.chainId);
   if(!chain||id!==chain.name+":"+id.split(":")[1])throw Error("Unknown chain");
-  if(entry.stage==="documented")return {stage:"documented",receiptPath:entry.receiptPath};
   if(entry.stage==="prepared")
    throw Error("Wallet hash not reconciled; inspect sender nonce before any retry");
   // A confirmed transaction may have lost GitHub connectivity. Always
@@ -230,25 +228,8 @@ export function createChainOperator({
   return {stage:"documented",receiptPath:path,commit:published.commit,
    address:result.contractAddress,txHash:entry.txHash};
  }
- async function discardDocumented({id,txHash}){
-  if(typeof id!=="string"||!TX.test(txHash||""))
-   throw Error("Invalid stale documented deployment");
-  const all=inventory();
-  const chain=all.chains.find(c=>id===c.name+":validatorRegistry");
-  if(!chain)throw Error("Only a documented, obsolete validator registry may be reset");
-  const {commit,infrastructure}=await approved(chain.name);
-  const current=infrastructure.components.find(x=>x.key==="validatorRegistry");
-  if(current?.status!=="not-deployed"||current.address)
-   throw Error("Registry already documented in main; reset refused");
-  const journal=journals(all.chains),entry=journal.read().entries[id];
-  if(!entry||entry.stage!=="documented"||!eq(entry.txHash,txHash))
-   throw Error("Old transaction not completely documented; reset refused");
-  await verifyDiscardableDocumentedIntent({entry,chain,sourceCommit:commit,rpc});
-  journal.discardDocumented(id,txHash);
-  return {reset:true,component:"validatorRegistry",stage:"not-deployed"};
- }
  const status=()=>{
   const all=inventory();return journals(all.chains).read();
  };
- return {preview,prepare,hash,reconcile,discardDocumented,status};
+ return {preview,prepare,hash,reconcile,status};
 }
