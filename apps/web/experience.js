@@ -186,17 +186,17 @@ function northstarStage(model,{universe=false}={}){
  const introActions=universe?
   '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
   '<a data-nav class="ux-ns-secondary" href="/">Back to dashboard</a>':
-  '<a data-nav class="ux-ns-primary" href="/#xita-3d">Explore Universe <span aria-hidden="true">→</span></a>'+
-  '<a class="ux-ns-secondary" href="/plan-route">Plan a route</a>';
+  '<a data-nav class="ux-ns-primary" href="/plan-route">Explore Routes <span aria-hidden="true">→</span></a>'+
+  '<a data-nav class="ux-ns-secondary" href="/join">Bring Your Token <span aria-hidden="true">↗</span></a>';
  return '<div id="xita-3d" class="ux-3d-stage ux-ns-stage" data-northstar="1">'+
   '<canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive 3D universe with configured blockchain systems. Select a star to explore its tokens."></canvas>'+
   '<div class="ux-3d-labels"></div>'+
-  '<div class="ux-ns-hero-copy"><div class="ux-ns-overline">INTERCONNECTED WORLDS</div>'+
-  '<h1>The XITA <em>Universe</em></h1>'+
-  '<p class="ux-ns-promise">One hub. Many ecosystems.<br>A more connected onchain future.</p>'+
-  '<p class="ux-ns-subline">Discover blockchain systems, explore their assets, and inspect routes through XGRChain.</p>'+
+  '<div class="ux-ns-hero-copy"><div class="ux-ns-overline">XGR INTERCHAIN TOKEN ALLIANCE</div>'+
+  '<h1>Explore the <em>Universe.</em></h1>'+
+  '<p class="ux-ns-promise">Move tokens between worlds.<span>Bring your token to new chains.</span></p>'+
+  '<p class="ux-ns-subline">Discover connected blockchain ecosystems powered by XGRChain v3.x, its Proof-of-Stake validators and permissionless interchain infrastructure.</p>'+
   '<div class="ux-ns-actions">'+introActions+'</div>'+
-  '<div class="ux-ns-signature"><span class="ux-ns-signature-mark" aria-hidden="true">✧</span><span>A UNIFIED INTERCHAIN FUTURE<br>BUILT AROUND XGRCHAIN</span></div></div>'+
+  '<div class="ux-ns-signature"><span class="ux-ns-signature-mark" aria-hidden="true">✧</span><span>ONE HUB · MANY ECOSYSTEMS<br>AN OPEN INTERCHAIN FUTURE</span></div></div>'+
   '<div class="ux-ns-network-status"><span class="ux-ns-overline">NETWORK INVENTORY</span>'+
   '<strong>'+systems+' configured systems</strong>'+
   '<small>'+active+' verified active directed routes</small>'+
@@ -233,14 +233,29 @@ function northstarCards(model,metrics=null){
 }
 function allianceIntro(){
  return '<section class="ux-alliance-intro" id="about-xita"><div class="ux-alliance-heading"><span class="ux-kicker">THE ALLIANCE BEHIND THE UNIVERSE</span>'+
-  '<h2>XGR Interchain <em>Token Alliance.</em></h2><p>XITA is more than a bridge interface. It combines XGRChain v3.x, its Proof-of-Stake validators, permissionless interchain smart contracts, routing infrastructure and the Token Alliance into one open ecosystem.</p>'+
-  '<div class="ux-alliance-pillars"><span>XGRChain hub</span><span>PoS validator security</span><span>Permissionless routes</span><span>Cross-chain token ecosystems</span></div></div>'+
-  '<div class="ux-alliance-audiences"><article class="ux-alliance-audience"><div class="ux-alliance-symbol">◈</div><span class="ux-kicker">FOR TOKEN HOLDERS</span><h3>Your tokens. More networks.</h3>'+
-  '<p>Discover supported assets, inspect independently verified routes and reach token-specific transfer interfaces when available.</p>'+
-  '<a data-nav href="/markets">Explore tokens <span aria-hidden="true">↗</span></a></article>'+
-  '<article class="ux-alliance-audience"><div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span><h3>Bring your token into the Universe.</h3>'+
-  '<p>Explore permissionless route infrastructure, publish your project profile and prepare participation in the XGR Interchain Token Alliance.</p>'+
-  '<a data-nav href="/join">Join the Alliance <span aria-hidden="true">↗</span></a></article></div></section>';
+  '<h2>XGR Interchain <em>Token Alliance.</em></h2>'+
+  '<p>XITA is the complete interchain ecosystem behind the Universe: XGRChain v3.x, its Proof-of-Stake validators, permissionless smart contracts, routing infrastructure and the Token Alliance. The portal is your gateway to that infrastructure, not the infrastructure itself.</p>'+
+  '<div class="ux-alliance-pillars"><span>XGRChain v3.x hub</span><span>PoS validator security</span><span>Permissionless smart contracts</span><span>Interchain Token Alliance</span></div></div>'+
+  '<div class="ux-alliance-audiences">'+
+  '<article class="ux-alliance-audience ux-alliance-audience-holders">'+
+  '<div class="ux-alliance-symbol">◈</div><span class="ux-kicker">FOR TOKEN HOLDERS</span>'+
+  '<h3>Move tokens between worlds.</h3>'+
+  '<p>Find token representations across supported chains, inspect their routes and move assets only when the relevant bridge contracts are independently verified and active.</p>'+
+  '<div class="ux-alliance-steps" aria-label="How token holders use XITA">'+
+  '<span><small>01</small>Discover your token</span>'+
+  '<span><small>02</small>Check route availability</span>'+
+  '<span><small>03</small>Transfer when verified</span></div>'+
+  '<a data-nav href="/plan-route">Explore Routes <span aria-hidden="true">↗</span></a></article>'+
+  '<article class="ux-alliance-audience ux-alliance-audience-projects">'+
+  '<div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span>'+
+  '<h3>Bring your token to new chains.</h3>'+
+  '<p>Introduce your project to the Alliance and explore independently deployable routes through XGRChain. A directory listing and an active bridge are separate milestones.</p>'+
+  '<div class="ux-alliance-steps" aria-label="How projects participate in XITA">'+
+  '<span><small>01</small>Present your project</span>'+
+  '<span><small>02</small>Deploy a route</span>'+
+  '<span><small>03</small>Verify and expand</span></div>'+
+  '<a data-nav href="/join">Bring Your Token <span aria-hidden="true">↗</span></a></article>'+
+  '</div></section>';
 }
 // UI-only top ten: only public assets and independently sourced market caps.
 export function dashboardMarketRows(catalog,metrics){
