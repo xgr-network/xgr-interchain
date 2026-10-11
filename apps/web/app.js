@@ -2,7 +2,7 @@ import {publicDirectoryCatalog} from "./listing-visibility.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderTokenBridge} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -234,29 +234,30 @@ async function updateWalletGas(){
 let cosmos=null;
 function render(){
  if(cosmos){cosmos.dispose();cosmos=null;}
- const p=path();
+ const rawPath=path();
+ if(rawPath==="/universe"){history.replaceState(null,"","/");}
+ const p=rawPath==="/universe"?"/":rawPath;
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel((p==="/"||p==="/universe")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard):p==="/universe"?renderUniverse(universe,state.experience.system,state.leaderboard):p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():(id||p==="/xgr")?token():p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
- if(p==="/"||p==="/universe"){
+ if(p==="/"){
   const host=document.querySelector("#xita-3d");
   if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:false,selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
-   if(details&&p==="/universe")details.innerHTML=renderUniverse(universe,key,state.leaderboard).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
-   if(p==="/universe")void loadSystemRanking(key);
+   if(details)details.innerHTML=renderUniverse(universe,key,state.leaderboard).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+   void loadSystemRanking(key);
   },onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
-  if(p==="/universe"&&state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
+  if(state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
  }
  document.querySelectorAll("[data-xita-system]").forEach(button=>button.addEventListener("click",()=>{
    state.experience.system=button.dataset.xitaSystem;
-   if(p==="/"){history.pushState(null,"","/universe");render();}
-   else if(cosmos)cosmos.focus(state.experience.system);
+   if(cosmos)cosmos.focus(state.experience.system);
  }));
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
@@ -374,7 +375,7 @@ async function loadPublicData(){
   const priceReply=settled[1+2*assetIds.length+i];
   if(priceReply?.status==="fulfilled")state.prices[id]=priceReply.value;
  }
- if(state.catalog&&path()!=="/universe")render();
+ if(state.catalog)render();
 }
 
 let systemRequest=0;
@@ -415,7 +416,7 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path()==="/"||path().startsWith("/token/"))render();
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;if(path()==="/markets"||path()==="/"||path()==="/plan-route"||path().startsWith("/token/"))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
