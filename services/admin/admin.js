@@ -381,6 +381,7 @@ async function executeModalDeployment(){
   await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
   presentModalStatus("Warte auf Receipt und On-Chain-Verifikation …");
   const result=await postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id});
+  if(result.result.stage==="pending"){presentModalStatus("Transaktion gesendet, Receipt noch ausstehend. Bitte Wiederherstellung später erneut nutzen.","warn");return;}
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
@@ -421,7 +422,7 @@ async function recoverModalDeployment(){
    await postJSON("/admin/api/chain-deploy/hash",{id,txHash:hash});
   }
   const result=await postJSON("/admin/api/chain-deploy/reconcile",{id});
-  presentModalStatus("Wiederherstellung: "+result.result.stage,"success");
+  presentModalStatus(result.result.stage==="pending"?"Transaktion noch ausstehend; später erneut prüfen.":"Wiederherstellung: "+result.result.stage,result.result.stage==="pending"?"warn":"success");
   if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await loadMainWorkqueue()}
  }catch(e){presentModalStatus("Wiederherstellung blockiert: "+e.message,"error")}
 }

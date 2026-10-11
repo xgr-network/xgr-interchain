@@ -209,6 +209,7 @@ export function createChainOperator({
   const effectiveChain={...chain,defaultDestinationGasLimit:entry.parameters?.defaultDestinationGasLimit||chain.defaultDestinationGasLimit};
   const result=await reconcileDeployedContract({
    root,entry,chain:effectiveChain,bootstrap:verified,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
+  if(result.pending)return {stage:"pending",reason:result.reason,txHash:entry.txHash};
   if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
