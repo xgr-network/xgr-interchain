@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-publication-policy",
+  "minimumLockedUsd": null,
+  "maxEvidenceAgeSeconds": 900
+}

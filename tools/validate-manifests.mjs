@@ -19,13 +19,19 @@ export function loadCatalog(root=ROOT){
  }
  for(const item of listAssetFolders(root)){
   const {key,path,asset,assetId}=item;
-  assets[key]={metadata:asset,profile:read(root,path+"/metadata.json"),listing:read(root,path+"/listing.json"),routes:read(root,path+"/routes.json"),deployment:loadAssetDeployment(root,key,assetId)};
+  assets[key]={metadata:asset,profile:read(root,path+"/metadata.json"),routes:read(root,path+"/routes.json"),deployment:loadAssetDeployment(root,key,assetId)};
  }
- return {chains,assets,infrastructure};
+ return {chains,assets,infrastructure,publication:read(root,"config/publication.json")};
 }
-export function validateCatalog({chains,assets,infrastructure}){
+export function validateCatalog({chains,assets,infrastructure,publication}){
  const errors=[];const check=(condition,detail)=>{if(!condition)errors.push(detail)};
  const ids=new Set(),domains=new Set(),routeKeys=new Set();
+ check(publication?.schemaVersion===1&&publication?.kind==="xita-publication-policy"&&
+   (publication.minimumLockedUsd===null||(typeof publication.minimumLockedUsd==="number"&&
+   Number.isFinite(publication.minimumLockedUsd)&&publication.minimumLockedUsd>0))&&
+   Number.isSafeInteger(publication.maxEvidenceAgeSeconds)&&publication.maxEvidenceAgeSeconds>=60&&
+   publication.maxEvidenceAgeSeconds<=86400,
+   "config/publication.json: invalid publication policy");
  check(chains.xgrchain?.chainId===1643&&chains.xgrchain?.domainId===1643,"XGRChain must remain canonical hub 1643");
  check(Object.keys(chains).length>=2,"missing spoke chains");
  for(const [name,c] of Object.entries(chains)){
@@ -62,15 +68,11 @@ export function validateCatalog({chains,assets,infrastructure}){
  }
  check(Object.keys(assets).length>=1,"no assets defined");
  for(const [name,a] of Object.entries(assets)){
-  const {metadata:m,profile:pub,routes:r,deployment:d,listing:ls}=a;
+  const {metadata:m,profile:pub,routes:r,deployment:d}=a;
   const p=assetConfigFolder(name,m.assetId);
-  // A submitted tx hash or GitHub commit reference is NOT proof of successful
-  // delivery. Until the finality-aware receipt verifier is shipped, third-party
-  // assets must stay accepted (direct-link only), never public.
-  const listingValid=ls?.schemaVersion===1&&ls.kind==="xita-asset-listing"&&
-    ls.asset===name&&(ls.status==="accepted"&&ls.basis==="review-merged"&&ls.publicProof===null||
-    ls.status==="public"&&name==="XGR"&&ls.basis==="protocol-hub"&&ls.publicProof===null);
-  check(listingValid,p+": missing or invalid GitHub listing publication evidence");
+  // Publication is derived from verified deployments and the indexer database,
+  // NEVER from a manually edited listing.json or an unverified transaction hash.
+  check(!Object.hasOwn(a,"listing"),p+": legacy listing state forbidden");
   check(m.kind==="asset-config"&&m.schemaVersion===1&&m.asset===name&&Number.isInteger(m.decimals)&&m.decimals>=0&&m.decimals<=36,p+": invalid asset metadata");
   
   const publicName=x=>typeof x==="string"&&x.length>=1&&x.length<=120&&x.trim()===x;
