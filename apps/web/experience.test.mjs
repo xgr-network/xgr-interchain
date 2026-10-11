@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows} from "./experience.js";
 
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
@@ -95,8 +95,9 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.match(universe,/ux-ns-stage/);
  assert.match(home,/ux-ns-deck/);
  assert.match(home,/ux-ns-card-systems/);
- assert.match(home,/ux-journey-planner/);
- assert.match(home,/No transfer timings/);
+ assert.doesNotMatch(home,/ux-journey-planner|id="ux-origin"|Journey preview/);
+ assert.match(home,/XGR Interchain/);
+ assert.match(home,/Top Tokens/);
  assert.match(universe,/ux-selected-details/);
  assert.match(universe,/Explore configured worlds/);
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
@@ -114,6 +115,32 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  assert.doesNotMatch(planner,/ux-3d-canvas/);
  const faq=renderFAQ();
  assert.match(faq,/Frequently Asked Questions/);
- assert.match(faq,/configuration is not proof/i);
+ assert.match(faq,/XGR Interchain Token Alliance/);
+ assert.match(faq,/No XGR organization approval/);
+ assert.match(faq,/Locked TVL and Moved via XGR/);
  assert.match(faq,/href="\/plan-route"/);
+});
+
+test("public ranking only includes independently sourced market caps and no unlisted tokens",()=>{
+ const published=(id,slug)=>({profile:{name:id,slug},listing:{kind:"xita-asset-listing",asset:id,status:"public"}});
+ const c={assets:{A:published("A","a"),B:published("B","b"),HIDDEN:{
+  profile:{name:"HIDDEN",slug:"hidden"},listing:{kind:"xita-asset-listing",asset:"HIDDEN",status:"accepted"}}}};
+ const row=(id,cap)=>({assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
+  marketCapUsd:cap,priceUsd:1,circulating:cap},custody:{status:"unavailable"},movement:{status:"unavailable"}});
+ const snapshot={kind:"xita-asset-metrics-v1",schemaVersion:1,assets:{A:row("A",100),B:row("B",200),HIDDEN:row("HIDDEN",1000000)}};
+ assert.deepEqual(dashboardMarketRows(c,snapshot).map(r=>r.id),["B","A"]);
+ assert.deepEqual(dashboardMarketRows(c,null),[]);
+});
+test("dashboard never treats partial TVL as verified and planner stays on its own page",()=>{
+ const model=buildExperienceModel(catalog);
+ const data={schemaVersion:1,kind:"xita-asset-metrics-v1",totals:null,assets:{}};
+ const home=renderDashboard(model,{},"ready",data);
+ assert.match(home,/Locked TVL/);
+ assert.match(home,/Moved via XGR/);
+ assert.match(home,/Awaiting complete verified evidence/);
+ assert.doesNotMatch(home,/id="ux-origin"|id="ux-journey-planner"/);
+ const planner=renderPlanRoute(model,{},"ready");
+ assert.match(planner,/id="ux-origin"/);
+ assert.match(planner,/id="ux-destination"/);
+ assert.match(planner,/id="ux-journey-planner"/);
 });
