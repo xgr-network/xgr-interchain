@@ -116,7 +116,10 @@ test("new Plan a Route and FAQ pages reuse safe planner and show verified-state 
  const faq=renderFAQ();
  assert.match(faq,/Understand XITA/);
  assert.match(faq,/XGR Interchain Token Alliance/);
- assert.match(faq,/No XGR organization approval/);
+ assert.match(faq,/Why should my project join XITA/);
+ assert.match(faq,/broader cross-chain audience/);
+ assert.match(faq,/Does XITA provide liquidity or exchange listings/);
+ assert.match(faq,/No central Alliance vote/);
  assert.match(faq,/Locked TVL and Moved via XGR/);
  assert.match(faq,/href="\/plan-route"/);
 });
