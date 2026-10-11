@@ -1,6 +1,6 @@
 // XITA asset transaction coordinator: same wallet, durable journal and
 // append-only verified GitHub evidence as chain infrastructure deployments.
-// Prepared gateway is NOT an active BLS-confirmed route.
+// Registered gateway is immediately enabled; transfers remain BLS-secured.
 import {resolve} from "node:path";
 import {execFileSync} from "node:child_process";
 import {assertCurrentMain,approvedWorkInventory,checkedLocalMain} from "./main-gate.mjs";
@@ -55,16 +55,16 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   if(!ADDR.test(wallet||""))throw Error("Wallet required");
   const ctx=await context(taskId),{task,asset,chain,infrastructure,chainInfra,commit,inventory}=ctx;
   const j=journal(inventory.chains);
-  const routeName=task.kind==="gateway"?task.id.slice(asset.asset.length+1).replace(/:prepare$/,""):null;
+  const routeName=task.kind==="gateway"?task.id.slice(asset.asset.length+1).replace(/:register$/,""):null;
   const id=chain.name+":"+asset.asset+":"+(task.kind==="router"?
    asset.representations.find(x=>x.chain===chain.name)?.component:"gateway")+":"+(routeName||"none");
   if(j.read().entries[id])throw Error("Existing asset transaction must be recovered, never broadcast twice");
   if(task.blockers.length)throw Error("Other deployments required: "+task.blockers.join(", "));
   if(task.status!=="ready-for-independent-validation")throw Error("Task dependencies incomplete");
   const source=chain;
-  const r=asset.routes.find(x=>x.kind==="route-prepare"&&
+  const r=asset.routes.find(x=>x.kind==="route-register"&&
     (task.kind==="gateway"?x.name===routeName:x.source===chain.name));
-  const other=r?.destination||asset.routes.find(x=>x.kind==="route-prepare"&&x.destination===chain.name)?.source;
+  const other=r?.destination||asset.routes.find(x=>x.kind==="route-register"&&x.destination===chain.name)?.source;
   const destination=inventory.chains.find(x=>x.name===other);
   if(!destination)throw Error("Canonical hub counterpart missing");
   const destInfra=infrastructure.find(x=>x.name===destination.name);
@@ -102,12 +102,12 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    if(!equal(wordAddress(creator),wallet))throw Error("Wallet must be the source Router creator");
    wordAddress(sourceToken);const destToken=wordAddress(destinationToken);
    // Live on-chain source registry rejects duplicate preparation.
-   const prepared=await view(rpc,url,factory,"routeForDomainPrepared(address,uint32)",
+   const prepared=await view(rpc,url,factory,"routeForDomainRegistered(address,uint32)",
     ["address","uint32"],[r.router,destination.domainId]);
-   if(BigInt(prepared)!==0n)throw Error("Route already prepared on source Factory");
+   if(BigInt(prepared)!==0n)throw Error("Route already registered on source Factory");
    transaction=factoryRouteDraft({asset,source,destination,
     sourceInfrastructure:chainInfra,destinationInfrastructure:destInfra,
-    route:{...r,destinationToken:destToken},action:"prepare-route"}).transaction;
+    route:{...r,destinationToken:destToken},action:"register-route"}).transaction;
   }
   const prepared={chain:chain.name,chainId:chain.chainId,component:task.kind==="router"?"router":"gateway",
    transaction};
@@ -178,7 +178,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const factory=entry.factory;
   const gateway=entry.id.split(":")[2]==="gateway";
   const address=eventAddresses(receipt,factory,gateway?
-   "RoutePrepared(bytes32,address,address)":"RouterDeployed(bytes32,address,address)",gateway?3:2);
+   "RouteRegistered(bytes32,address,address)":"RouterDeployed(bytes32,address,address)",gateway?3:2);
   if(!liveAddr(address))throw Error("Factory created zero contract address");
   const inputs=[];
   async function append(component,contractAddress,provenance){
@@ -221,7 +221,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    transactionHash:entry.txHash,address});
   j.document(id,path);
   return {stage:"documented",address,txHash:entry.txHash,receiptPath:path,
-    activation:"pending-BLS-safety-attestation"};
+    activation:"permissionless-registered"};
  }
  const status=()=>journal(approvedWorkInventory(root).chains).read();
  return {preview,prepare,hash,reconcile,status};

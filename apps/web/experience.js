@@ -11,7 +11,7 @@ const POSITIONS = [
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const chainLabel = (key,chain) => LABELS[key] || chain?.name || key;
 const tokenLink = token => "/token/"+encodeURIComponent(token.slug);
-const pill = (isActive) => '<span class="ux-badge '+(isActive?"is-verified":"is-pending")+'">'+(isActive?"Verified active":"Not activated")+"</span>";
+const pill = (isActive) => '<span class="ux-badge '+(isActive?"is-verified":"is-pending")+'">'+(isActive?"Verified active":"Not verified")+"</span>";
 const valueOrDash = value => value===null||value===undefined ? "—" : String(value);
 
 export function buildExperienceModel(catalog, isVerified = () => false) {
@@ -52,7 +52,7 @@ export function previewRoute(model,source,destination,assetId){
   const hops=path.slice(1).map((to,i)=>model.routes.find(r=>r.assetId===assetId&&r.source===path[i]&&r.destination===to)||null);
   const configured=hops.every(Boolean);
   const active=configured&&hops.every(r=>r.active);
-  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet verified and activated.":hops.length===2?"Two independent transfers are required; the second hop is not automated.":"A verified single-hop route is available.";
+  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet independently verified for delivery.":hops.length===2?"Two independent transfers are required; the second hop is not automated.":"A verified single-hop route is available.";
   return {path,hops,configured,active,reason};
 }
 
@@ -81,7 +81,7 @@ export function universeMap(model,selected,compact=false){
     '<span class="ux-map-grid" aria-hidden="true"></span><svg class="ux-lanes" viewBox="0 0 1000 560" preserveAspectRatio="none" aria-hidden="true">'+lanes+'</svg>'+
     (hub?systemNode(hub,{x:50,y:50},selected,compact):"")+
     spokes.map((s,i)=>systemNode(s,POSITIONS[i],selected,compact)).join("")+
-    '<div class="ux-map-legend">XGRChain is the mandatory transit hub · Dashed paths are not proof of activation</div></div>';
+    '<div class="ux-map-legend">XGRChain is the mandatory transit hub · Dashed paths do not prove secure delivery</div></div>';
 }
 
 function systemDetails(model,selected,metrics=null){
@@ -163,7 +163,7 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
     '<div class="ux-hop-detail"><span class="ux-kicker">Directed hops</span>'+
     (plan.hops.length?plan.hops.map((r,i)=>'<div class="ux-hop"><strong>'+esc(model.chains.find(c=>c.key===plan.path[i])?.label||plan.path[i])+
       ' → '+esc(model.chains.find(c=>c.key===plan.path[i+1])?.label||plan.path[i+1])+'</strong>'+
-      '<span>'+(r?"Configured · not activated":"Route not configured")+'</span></div>').join(""):'<p class="ux-small">No valid path.</p>')+'</div>'+
+      '<span>'+(r?"Configured · delivery unverified":"Route not configured")+'</span></div>').join(""):'<p class="ux-small">No valid path.</p>')+'</div>'+
     '<label class="ux-field" for="ux-token-amount">Amount ('+esc(assetId)+')</label>'+
     '<input id="ux-token-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0" value="'+esc(amount)+'">'+
     '<div class="ux-wallet-gas"><strong>Wallet & gas</strong>'+
@@ -176,7 +176,7 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
     '</div>'+
     '<div class="ux-route-status"><p><strong>Transfer execution unavailable.</strong> This release has no verified v3.1.5 Gateway adapter or active reciprocal route pair. No fees, quotes or destination deliveries are invented.</p></div>'+
     '<button type="button" disabled class="ux-button ux-disabled">Bridge unavailable · awaiting verified deployment</button>'+
-    '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal safety activation. The old bridge is retired.</p></div>';
+    '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal contract bindings and message-specific BLS. The old bridge is retired.</p></div>';
 }
 
 
@@ -258,7 +258,7 @@ function northstarCards(model,metrics=null){
   '<div class="ux-ns-journey-labels">'+journeyKeys.map(key=>
    '<span>'+esc(model.chains.find(c=>c.key===key)?.label||key)+'</span>').join("")+'</div>'+
   '<div class="ux-ns-journey-summary"><span>Route status</span><strong>'+
-   (journeyPath.active?"Verified active":journeyPath.configured?"Not activated":"Not configured")+'</strong></div>'+
+   (journeyPath.active?"Verified active":journeyPath.configured?"Not verified":"Not configured")+'</strong></div>'+
   '<a class="ux-ns-card-link" href="#ux-journey-planner">Plan a transfer →</a></article></section>';
 }
 
@@ -276,7 +276,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<div class="ux-ns-ops-intro"><span class="ux-kicker">INTERCHAIN OPERATIONS · XITA</span>'+
   '<h2>Interchain Dashboard</h2><p class="ux-muted">Inspect route possibilities and configure a future transfer. Every transaction remains disabled until its routes are verified.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · JOURNEY PLANNER</span><span class="ux-label">XGR HUB</span></div>'+
-  '<h2>Plan a transfer</h2><p class="ux-muted">Choose systems and an asset. Only verified, activated routes can receive funds.</p>'+
+  '<h2>Plan a transfer</h2><p class="ux-muted">Choose systems and an asset. Only independently verified route contracts should be offered to users.</p>'+
   '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions(model,source)+'</select>'+
   '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions(model,assetId)+'</select>'+
   '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
@@ -291,7 +291,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<div><span>Configured directed routes</span><strong>'+model.routes.length+'</strong></div>'+
   '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
   '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
-  '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment, safety verification and independent activation.</p></div>'+
+  '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment and independent reciprocal verification before users should bridge.</p></div>'+
   '<div class="ux-ns-explore-links"><a data-nav href="/universe">Open interactive Universe ↗</a>'+
   '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section>'+
   '<section class="ux-panel ux-discovery"><div><div class="ux-kicker">ASSET DISCOVERY</div>'+
@@ -321,8 +321,8 @@ export function renderUniverse(model,selected=HUB,metrics=null){
 export function renderRoutes(model){
   return '<div class="ux-app ux-routes-page"><div class="ux-kicker">XITA · VERIFIED NETWORK INVENTORY</div><h1>Directed <span>Routes</span></h1>'+
     '<p class="ux-lead">Every route has XGRChain as exactly one endpoint. A cross-spoke journey requires two independently verified directed routes.</p>'+
-    '<div class="ux-metrics">'+metric("Configured routes",String(model.routes.length),"Inventory, not activation")+
-    metric("Verified active",String(model.routes.filter(r=>r.active).length),"Fail-closed activation state")+
+    '<div class="ux-metrics">'+metric("Configured routes",String(model.routes.length),"Inventory, not proof of delivery")+
+    metric("Verified active",String(model.routes.filter(r=>r.active).length),"Fail-closed verified route state")+
     metric("Network hub","XGRChain","EVM chain and domain 1643")+'</div>'+
     '<div class="ux-panel"><div class="ux-panel-head"><h2>Route inventory</h2><span class="ux-label">Deployment required for transfer</span></div>'+
     '<div class="ux-routes-table"><div class="ux-table-head"><span>Asset</span><span>Source</span><span>Destination</span><span>Verification</span><span>Token</span></div>'+
@@ -330,5 +330,5 @@ export function renderRoutes(model){
     '<span>'+esc(model.chains.find(c=>c.key===r.destination)?.label||r.destination)+'</span>'+pill(r.active)+
     '<a data-nav href="'+esc(tokenLink(model.assets.find(a=>a.id===r.assetId)||{slug:r.assetId.toLowerCase()}))+'">Details ↗</a></div>').join("")+
     (model.routes.length?"":'<p class="ux-muted">No configured routes.</p>')+'</div></div>'+
-    '<p class="ux-small">Route registration is permissionless in v3.1.5. Activation requires objective validator BLS safety attestation; there is no per-route fee governance. Source-native validator fees are chain-wide.</p></div>';
+    '<p class="ux-small">Route registration and router bootstrap need no validator vote or CLI approval. Each transfer still requires message-specific BLS attestation. Source-native validator fees are chain-wide.</p></div>';
 }

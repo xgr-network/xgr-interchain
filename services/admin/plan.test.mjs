@@ -11,8 +11,9 @@ test("all plan steps are ordered and explicit",()=>{
  const steps=buildPlan(catalog),known=new Set();
  for(const s of steps){for(const d of s.dependsOn)assert.equal(known.has(d),true);known.add(s.id)}
  assert.equal(steps.at(-1).id,"publish");
- assert.equal(steps.find(s=>s.id==="governance_xgr").dependsOn.includes("bindings"),true);
- assert.equal(steps.find(s=>s.id==="e2e_outbound").dependsOn.includes("bootstrap_base"),true);
+ assert.equal(steps.find(s=>s.id==="register_xgr").dependsOn.includes("bindings"),true);
+ assert.equal(steps.some(s=>s.kind==="governance" || s.id.startsWith("governance_")),false);
+ assert.equal(steps.find(s=>s.id==="e2e_outbound").dependsOn.includes("register_base"),true);
  assert.equal(steps.some(s=>s.script&&s.kind!=="deploy"),false);
 });
 test("CLI plans never include keys or arbitrary paths",()=>{

@@ -38,19 +38,19 @@ test("each direction gets its own route instance, same two router addresses reve
   sourceInfrastructure:infra(hub),destinationInfrastructure:infra(base),
   route:{source:"xgrchain",destination:"base",name:"xgr_to_base",
     router:addr(11),remoteRouter:addr(12),destinationToken:addr(12),routeId:id},
-  action:"prepare-route"});
+  action:"register-route"});
  const reverse=factoryRouteDraft({asset,source:base,destination:hub,
   sourceInfrastructure:infra(base),destinationInfrastructure:infra(hub),
   route:{source:"base",destination:"xgrchain",name:"base_to_xgr",
     router:addr(12),remoteRouter:addr(11),destinationToken:addr(0),routeId:"0x"+"c".repeat(64)},
-  action:"prepare-route"});
+  action:"register-route"});
  assert.equal(forward.component,"gateway");
  assert.equal(reverse.component,"gateway");
  assert.notEqual(forward.transaction.data,reverse.transaction.data);
  assert.throws(()=>factoryRouteDraft({asset,source:base,destination:hub,
   sourceInfrastructure:infra(base),destinationInfrastructure:infra(hub),
   route:{source:"base",destination:"xgrchain",router:addr(12),
-   remoteRouter:addr(11),routeId:id,gateway:addr(18)},action:"prepare-route"}),/unprepared/);
+   remoteRouter:addr(11),routeId:id,gateway:addr(18)},action:"register-route"}),/unregistered/);
 });
 
 test("generic ERC20 synthetic includes origin, metadata and salt",()=>{

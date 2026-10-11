@@ -59,27 +59,7 @@ contract XETAOpenRouteFactoryV315Test is Test {
         registry.applySourceFee(proposal, hex"03", hex"01");
     }
 
-    function _proof(bytes32 id, address local, address peer)
-        internal view returns (XGRILNRegistryV315.RouteSafetyProofV315 memory)
-    {
-        bytes32 assetId = XGRILNProtocol.assetIdV315(BASE, address(token), 1);
-        return XGRILNRegistryV315.RouteSafetyProofV315({
-            destinationDomain: uint32(HUB),
-            routeId: id,
-            reverseRouteId: XGRILNProtocol.routeInstanceIdV315(
-                assetId, HUB, uint32(HUB), BASE, uint32(BASE), peer, local
-            ),
-            remoteRegistry: address(0xB123),
-            remoteFactory: address(0xB456),
-            remoteGateway: address(0xB789),
-            remoteRouterCodeHash: keccak256("remote router"),
-            localRouterCodeHash: local.codehash,
-            setId: validators.setId(),
-            validUntil: uint64(block.timestamp + 600)
-        });
-    }
-
-    function testSameAssetCanHaveIndependentPreparedRoutes() public {
+    function testSameAssetCanHaveIndependentRegisteredRoutes() public {
         (bytes32 a,address first) = factory.deployCollateralRouter(
             address(token),bytes32(uint256(1)));
         (bytes32 b,address second) = factory.deployCollateralRouter(
@@ -87,53 +67,47 @@ contract XETAOpenRouteFactoryV315Test is Test {
         assertEq(a, b);
         assertTrue(first != second);
         (bytes32 idA,address gatewayA) =
-            factory.prepareRoute(first,HUB,uint32(HUB),PEER_A,PEER_A);
+            factory.registerRoute(first,HUB,uint32(HUB),PEER_A,PEER_A);
         (bytes32 idB,address gatewayB) =
-            factory.prepareRoute(second,HUB,uint32(HUB),PEER_B,PEER_B);
+            factory.registerRoute(second,HUB,uint32(HUB),PEER_B,PEER_B);
         assertTrue(idA != idB);
         assertTrue(gatewayA != gatewayB);
         assertTrue(registry.exists(uint32(HUB),idA));
         assertTrue(registry.exists(uint32(HUB),idB));
         (,,,,,,,,bool enabledA) = registry.getRoute(uint32(HUB),idA);
         (,,,,,,,,bool enabledB) = registry.getRoute(uint32(HUB),idB);
-        assertFalse(enabledA);
-        assertFalse(enabledB);
+        assertTrue(enabledA);
+        assertTrue(enabledB);
         assertEq(XETAGuardedCollateralWarpRouterV315(first).token(),address(token));
         assertEq(XETAGuardedCollateralWarpRouterV315(second).token(),address(token));
-        vm.expectRevert(ILNGateway.InvalidRoute.selector);
-        ILNGateway(gatewayA).quoteILN(uint32(HUB),bytes32(uint256(1)),1 ether);
+        (uint256 fee,,,) = ILNGateway(gatewayA).quoteILN(uint32(HUB),bytes32(uint256(1)),1 ether);
+        assertEq(fee,100);
     }
 
-    function testFalseRemoteProofCannotActivateRoute() public {
+    function testPermissionlessRegistrationWithoutValidatorVote() public {
         (,address local) = factory.deployCollateralRouter(address(token),bytes32(uint256(3)));
-        (bytes32 id,) = factory.prepareRoute(local,HUB,uint32(HUB),PEER_A,PEER_A);
-        XGRILNRegistryV315.RouteSafetyProofV315 memory proof = _proof(id,local,PEER_A);
-        proof.localRouterCodeHash = keccak256("spoofed local code");
-        vm.expectRevert(XGRILNRegistryV315.InvalidRouteSafetyProof.selector);
-        factory.activateRoute(proof,hex"03",hex"01");
-        proof.localRouterCodeHash = local.codehash;
         validators.setResult(false);
-        vm.expectRevert(XGRILNRegistryV315.InvalidRouteSafetyProof.selector);
-        factory.activateRoute(proof,hex"03",hex"01");
-        (,,,,,,,,bool enabled) = registry.getRoute(uint32(HUB),id);
-        assertFalse(enabled);
+        (bytes32 id,address gateway) = factory.registerRoute(local,HUB,uint32(HUB),PEER_A,PEER_A);
+        (,,,,,,,uint256 fee,bool enabled) = registry.getRoute(uint32(HUB),id);
+        assertTrue(enabled);
+        assertEq(fee,100);
+        assertEq(ILNGateway(gateway).warpRouter(),local);
     }
 
     function testActivatedCollateralRouteDoesNotUseOtherEscrow() public {
         (,address local) = factory.deployCollateralRouter(address(token),bytes32(uint256(4)));
         (,address second) = factory.deployCollateralRouter(address(token),bytes32(uint256(5)));
-        (bytes32 id,address gateway) = factory.prepareRoute(
+        (bytes32 id,address gateway) = factory.registerRoute(
             local,HUB,uint32(HUB),PEER_A,PEER_A
         );
-        (bytes32 other,) = factory.prepareRoute(
+        (bytes32 other,) = factory.registerRoute(
             second,HUB,uint32(HUB),PEER_B,PEER_B
         );
-        factory.activateRoute(_proof(id,local,PEER_A),hex"03",hex"01");
         (,,,,,,,uint256 fee,bool enabled) = registry.getRoute(uint32(HUB),id);
         assertTrue(enabled);
         assertEq(fee,100);
         (,,,,,,,,bool otherEnabled) = registry.getRoute(uint32(HUB),other);
-        assertFalse(otherEnabled);
+        assertTrue(otherEnabled);
         token.approve(gateway,100 ether);
         bytes32 recipient = bytes32(uint256(uint160(address(0xCAFE))));
         (uint256 validatorFee,,uint256 total,uint256 quotedToken) =
@@ -166,6 +140,6 @@ contract XETAOpenRouteFactoryV315Test is Test {
             address(token),bytes32(uint256(8))
         );
         vm.expectRevert(XETATokenFactoryV315.InvalidDestination.selector);
-        factory.prepareRoute(router,137,137,PEER_A,PEER_A);
+        factory.registerRoute(router,137,137,PEER_A,PEER_A);
     }
 }

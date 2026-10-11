@@ -6,7 +6,7 @@ const ADDR=/^0x[0-9a-f]{40}$/i,H32=/^0x[0-9a-f]{64}$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const address=word=>"0x"+BigInt("0x"+word).toString(16).padStart(40,"0");
 export async function checkLiveActivation(task,chain,infrastructure,rpc){
- if(task.kind!=="activation"||!H32.test(task.routeId||"")||
+ if(task.kind!=="registration"||!H32.test(task.routeId||"")||
     !ADDR.test(task.gateway||"")||!ADDR.test(task.router||""))
   throw Error("Missing canonical Gateway and Router for live route");
  const registry=infrastructure.components.find(x=>x.key==="sourceRegistry")?.address;
@@ -33,12 +33,12 @@ export async function pendingLiveRouteTasks(tasks,chains,infrastructures,rpc){
  const c=new Map(chains.map(x=>[x.name,x]));
  const i=new Map(infrastructures.map(x=>[x.name,x]));
  const results=await Promise.all(tasks.map(async task=>{
-  if(task.kind!=="activation")return task;
+  if(task.kind!=="registration")return task;
   try{
    const verified=await checkLiveActivation(task,c.get(task.chain),i.get(task.chain),rpc);
-   return verified.enabled?null:{...task,status:"requires-validator-quorum",liveChecked:true};
+   return verified.enabled?null:{...task,status:"registration-not-active",liveChecked:true};
   }catch(e){
-   return {...task,status:"activation-state-unverified",liveChecked:false,
+   return {...task,status:"registration-state-unverified",liveChecked:false,
     blockers:["Live-Status unklar: "+String(e.message).slice(0,180)]};
   }
  }));

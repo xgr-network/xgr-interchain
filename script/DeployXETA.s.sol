@@ -6,7 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
 import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
 import {XGRInterchainBLSVerifier} from "../contracts/XGRInterchainBLSVerifier.sol";
-import {XGRInterchainValidatorRegistryV2} from "../contracts/XGRInterchainValidatorRegistryV2.sol";
+import {XGRInterchainValidatorRegistryV3} from "../contracts/XGRInterchainValidatorRegistryV3.sol";
 
 /// @notice XITA v3.1.5 independent deployment scripts.
 /// @dev Deploy the BLS verifier/validator registry/ISM, then deploy the
@@ -112,10 +112,10 @@ contract DeployXETAEIP2537Verifier is DeployXETABase {
 /// @notice Deploy the validator set trust anchor for this source/destination.
 /// @dev The same local RegistryV2 is also the governance authority for the
 ///      ILN Registry when this physical chain acts as a source chain.
-contract DeployXETARegistryV2 is DeployXETABase {
+contract DeployXETARegistryV3 is DeployXETABase {
     function run()
         external
-        returns (XGRInterchainValidatorRegistryV2 registry)
+        returns (XGRInterchainValidatorRegistryV3 registry)
     {
         _localChainId();
         uint32 localDomain = _localDomain();
@@ -159,7 +159,7 @@ contract DeployXETARegistryV2 is DeployXETABase {
             reservePerValidator * validators.length;
 
         vm.startBroadcast();
-        registry = new XGRInterchainValidatorRegistryV2{
+        registry = new XGRInterchainValidatorRegistryV3{
             value: deploymentValue
         }(
             membershipOriginChainId,

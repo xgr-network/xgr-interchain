@@ -15,8 +15,8 @@ const COMPONENTS=new Set([
 ]);
 const EVENTS={
  "factory-router":{sig:"RouterDeployed(bytes32,address,address)",topicIndex:2},
- "factory-gateway":{sig:"RoutePrepared(bytes32,address,address)",topicIndex:3},
- "factory-feevault":{sig:"RoutePrepared(bytes32,address,address)",topicIndex:3},
+ "factory-gateway":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
+ "factory-feevault":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
  "factory-registry":{sig:"RegistryDeployed(address)",topicIndex:1}
 };
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();

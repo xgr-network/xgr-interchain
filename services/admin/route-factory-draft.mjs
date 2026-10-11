@@ -73,11 +73,11 @@ export function factoryRouteDraft({asset,source,destination,sourceInfrastructure
   }
   throw Error("Unsupported representation");
  }
- if(action==="prepare-route"){
+ if(action==="register-route"){
   if(!route||route.source!==source.name||route.destination!==destination.name||
      !valid(route.router)||!valid(route.remoteRouter)||
      !HASH.test(route.routeId||"")||route.gateway)
-   throw Error("Both verified routers and an unprepared directed route required");
+   throw Error("Both verified routers and an unregistered directed route required");
   if(!valid(remoteRegistry))throw Error("Counterparty chain registry required");
   const local=sourceInfrastructure.components.find(c=>c.key==="factory")?.address;
   if(!eq(local,factory))throw Error("Factory identity mismatch");
@@ -86,9 +86,9 @@ export function factoryRouteDraft({asset,source,destination,sourceInfrastructure
   const destToken=route.destinationToken;
   if(!ADDR.test(destToken||""))throw Error("Verified destination router token() missing");
   return {component:"gateway",asset:asset.asset,routeName:route.name,
-   chain:source.name,id:asset.asset+":"+route.name+":prepare",
-   routeId:route.routeId,expectedEvent:"RoutePrepared(bytes32,address,address)",
-   transaction:call(factory,"prepareRoute(address,uint64,uint32,address,address)",
+   chain:source.name,id:asset.asset+":"+route.name+":register",
+   routeId:route.routeId,expectedEvent:"RouteRegistered(bytes32,address,address)",
+   transaction:call(factory,"registerRoute(address,uint64,uint32,address,address)",
     ["address","uint64","uint32","address","address"],
     [route.router,destination.chainId,destination.domainId,route.remoteRouter,destToken])};
  }
@@ -108,21 +108,8 @@ export function nextAssetRouteTasks(inventory,infrastructure){
     kind:"router",action:rep.deployMethod,blockers:deps,status:deps.length?"waiting-infrastructure":"ready-for-independent-validation"});
   }
   for(const pair of asset.pairs){
-   if(pair.readyForAttestation){
-    for(const d of pair.directions){
-     const sourceRoute=asset.routes.find(x=>x.name===d.name&&x.kind==="route-activate");
-     if(sourceRoute)items.push({
-      id:asset.asset+":"+d.name+":activate",asset:asset.asset,chain:sourceRoute.source,
-      kind:"activation",action:"validator-quorum-confirmation",routeId:d.routeId,
-      gateway:d.gateway,router:d.localRouter,
-      destinationDomain:sourceRoute.destinationDomain,
-      blockers:["Independently verified reciprocal route safety BLS quorum"],
-      status:"requires-validator-quorum"
-     });
-    }
-   }
    for(const d of pair.directions){
-    if(d.prepared)continue;
+    if(d.registered)continue;
     const blockers=[];
     if(!valid(d.localRouter)||!valid(d.remoteRouter))blockers.push("Router-Paar");
     for(const name of pair.chains){
@@ -130,8 +117,8 @@ export function nextAssetRouteTasks(inventory,infrastructure){
       if(!valid(infra.get(name)?.components.find(c=>c.key===component)?.address))
        blockers.push(name+":"+component);
     }
-    items.push({id:asset.asset+":"+d.name+":prepare",asset:asset.asset,
-     chain:asset.routes.find(r=>r.kind==="route-prepare"&&r.name===d.name)?.source,kind:"gateway",action:"prepareRoute",
+    items.push({id:asset.asset+":"+d.name+":register",asset:asset.asset,
+     chain:asset.routes.find(r=>r.kind==="route-register"&&r.name===d.name)?.source,kind:"gateway",action:"registerRoute",
      blockers,status:blockers.length?"waiting-dependencies":"ready-for-independent-validation"});
    }
   }

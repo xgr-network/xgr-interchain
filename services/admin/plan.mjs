@@ -3,7 +3,7 @@ export const HUB=1643;
 export const SUPPORTED=["xgrchain","base"];
 const SCRIPT={
   verifier:"script/DeployXETA.s.sol:DeployXETAEIP2537Verifier",
-  validatorRegistry:"script/DeployXETA.s.sol:DeployXETARegistryV2",
+  validatorRegistry:"script/DeployXETA.s.sol:DeployXETARegistryV3",
   sourceRegistry:"script/DeployXETA.s.sol:DeployXETAILNRegistry",
   ism:"script/DeployXETA.s.sol:DeployXETAISM",
   nativeRouter:"script/DeployXETARouters.s.sol:DeployXETANativeAssetRouter",
@@ -43,10 +43,10 @@ export function buildPlan(catalog){
     step("rpc_base","base","preflight",[],"Verify Base RPC, canonical Mailbox and MerkleTreeHook code."),
     step("bls_base","base","security",["rpc_base"],"Prove EIP-2537 precompile support on Base with independent positive and negative BLS test vectors. Never assume EVM compatibility proves it.",{mandatoryProof:true}),
     step("verifier_base","base","deploy",["bls_base"],"Deploy the dedicated EIP-2537 BLS verifier.",{script:SCRIPT.verifier}),
-    step("registry_xgr","xgrchain","deploy",["rpc_xgr"],"Bootstrap destination ValidatorRegistryV2 with the actual active validator keys and possession proofs; use native XGR BLS verifier.",{script:SCRIPT.validatorRegistry,requires:["MEMBERSHIP_ORIGIN_CHAIN_ID","BLS_VERIFIER","BLS_VERIFIER_FORMAT","MINIMUM_DEACTIVATION_RESERVE_WEI","MAX_EXECUTOR_REIMBURSEMENT_WEI","INITIAL_RESERVE_WEI","VALIDATOR_COUNT","VALIDATOR_N_ADDRESS","VALIDATOR_N_BLS_COMPRESSED","VALIDATOR_N_BLS_EIP2537","VALIDATOR_N_POSSESSION_PROOF"]}),
-    step("registry_base","base","deploy",["verifier_base"],"Bootstrap RegistryV2 using verified EIP-2537 verifier, active validator set and PoP.",{script:SCRIPT.validatorRegistry}),
-    step("iln_xgr","xgrchain","deploy",["registry_xgr"],"Deploy source ILNRegistry bound to local RegistryV2.",{script:SCRIPT.sourceRegistry}),
-    step("iln_base","base","deploy",["registry_base"],"Deploy source ILNRegistry bound to local RegistryV2.",{script:SCRIPT.sourceRegistry}),
+    step("registry_xgr","xgrchain","deploy",["rpc_xgr"],"Bootstrap destination ValidatorRegistryV3 with the actual active validator keys and possession proofs; use native XGR BLS verifier.",{script:SCRIPT.validatorRegistry,requires:["MEMBERSHIP_ORIGIN_CHAIN_ID","BLS_VERIFIER","BLS_VERIFIER_FORMAT","MINIMUM_DEACTIVATION_RESERVE_WEI","MAX_EXECUTOR_REIMBURSEMENT_WEI","INITIAL_RESERVE_WEI","VALIDATOR_COUNT","VALIDATOR_N_ADDRESS","VALIDATOR_N_BLS_COMPRESSED","VALIDATOR_N_BLS_EIP2537","VALIDATOR_N_POSSESSION_PROOF"]}),
+    step("registry_base","base","deploy",["verifier_base"],"Bootstrap RegistryV3 using verified EIP-2537 verifier, active validator set and PoP.",{script:SCRIPT.validatorRegistry}),
+    step("iln_xgr","xgrchain","deploy",["registry_xgr"],"Deploy source ILNRegistry bound to local RegistryV3.",{script:SCRIPT.sourceRegistry}),
+    step("iln_base","base","deploy",["registry_base"],"Deploy source ILNRegistry bound to local RegistryV3.",{script:SCRIPT.sourceRegistry}),
     step("ism_xgr","xgrchain","deploy",["registry_xgr"],"Deploy route-aware destination ISM V2.",{script:SCRIPT.ism}),
     step("ism_base","base","deploy",["registry_base"],"Deploy route-aware destination ISM V2.",{script:SCRIPT.ism}),
     step("router_xgr","xgrchain","deploy",["iln_xgr","ism_xgr"],"Deploy one Gateway-only native XGR router.",{script:SCRIPT.nativeRouter}),
@@ -54,12 +54,10 @@ export function buildPlan(catalog){
     step("gateway_xgr","xgrchain","deploy",["router_xgr"],"Deploy source Gateway XGRChain to Base and its constructor-created FeeVault.",{script:SCRIPT.gateway}),
     step("gateway_base","base","deploy",["router_base"],"Deploy source Gateway Base to XGRChain and FeeVault.",{script:SCRIPT.gateway}),
     step("bindings","both","verify",["gateway_xgr","gateway_base"],"Verify router-owner security, source registry bindings, correct Gateway/FeeVault, destination ISM, fee quotes, and zero initial wXGR supply.",{mandatoryProof:true}),
-    step("governance_xgr","xgrchain","governance",["bindings"],"Collect current XGRChain source validator 2/3 approvals and execute ROUTE_ADD through node CLI. Route becomes enabled upon execution.",{mandatoryProof:true}),
-    step("bootstrap_xgr","xgrchain","bootstrap",["governance_xgr"],"Permissionlessly bootstrap XGRChain router toward Base using the approved route ID.",{mandatoryProof:true}),
-    step("governance_base","base","governance",["bindings","bootstrap_xgr"],"Collect and execute Base source route quorum; never bypass local validator set.",{mandatoryProof:true}),
-    step("bootstrap_base","base","bootstrap",["governance_base"],"Bootstrap Base router toward XGRChain; verify reciprocal router identities.",{mandatoryProof:true}),
-    step("e2e_outbound","both","e2e",["bootstrap_base"],"Small XGR lock to Base wXGR mint: validate source receipt, quorum metadata and destination Mailbox delivery.",{mandatoryProof:true}),
-    step("e2e_return","both","e2e",["e2e_outbound"],"Small wXGR burn to XGR unlock, validator fee claims, and permissionless replay-safe recovery.",{mandatoryProof:true}),
+    step("register_xgr","xgrchain","register",["bindings"],"Register XGRChain to Base route atomically via public Factory.registerRoute, without a validator route vote.",{mandatoryProof:true}),
+     step("register_base","base","register",["bindings","register_xgr"],"Register Base to XGRChain reciprocal route atomically; independently verify route bindings.",{mandatoryProof:true}),
+     step("e2e_outbound","both","e2e",["register_base"],"Small XGR lock to Base wXGR mint: validate source receipt, message-specific BLS quorum and destination Mailbox delivery.",{mandatoryProof:true}),
+     step("e2e_return","both","e2e",["e2e_outbound"],"Small wXGR burn to XGR unlock, validator fee claims, and permissionless replay-safe recovery.",{mandatoryProof:true}),
     step("publish","both","publish",["e2e_return"],"Only after independent on-chain evidence, write deployment manifests and activate XETA UI routes.",{mandatoryProof:true})
   ];
   const seen=new Set();

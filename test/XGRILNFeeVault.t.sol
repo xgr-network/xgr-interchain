@@ -96,6 +96,22 @@ contract XGRILNFeeVaultTest is Test {
         separateVault.allocate{value: 1}(MESSAGE_1);
     }
 
+    function testPublicClaimableGetterDoesNotTransferUntilClaim() public {
+        _snapshot(1, 1, _members(A, B));
+        vm.prank(GATEWAY);
+        vault.allocate{value: 12}(MESSAGE_1);
+        assertEq(vault.claimable(A),6);
+        assertEq(vault.claimable(B),6);
+        assertEq(A.balance,0);
+        assertEq(B.balance,0);
+        assertEq(address(vault).balance,12);
+        vm.prank(B);
+        vault.claim();
+        assertEq(vault.claimable(B),0);
+        assertEq(vault.claimable(A),6);
+        assertEq(A.balance,0);
+    }
+
     function testClaimCannotBeRepeated() public {
         _snapshot(1, 1, _members(A, B));
         vm.prank(GATEWAY);

@@ -29,26 +29,26 @@ test("new Base spoke creates ONE wrapped router for both directed paths",()=>{
  assert.equal(p.representations.filter(x=>x.chain==="base"&&x.action==="deploy-once").length,1);
  assert.equal(p.representations.find(x=>x.chain==="base").deployMethod,"deployWrappedXGRRouter");
  assert.equal(p.representations.find(x=>x.chain==="xgrchain").action,"reuse-verified");
- assert.equal(p.routes.filter(x=>x.kind==="route-prepare"&&x.source==="base").length,1);
- assert.equal(p.routes.filter(x=>x.kind==="route-prepare"&&x.destination==="base").length,1);
+ assert.equal(p.routes.filter(x=>x.kind==="route-register"&&x.source==="base").length,1);
+ assert.equal(p.routes.filter(x=>x.kind==="route-register"&&x.destination==="base").length,1);
  assert.ok(p.routes.every(x=>x.routeId===null));
 });
 test("return route REUSES existing synthetic mint/burn router",()=>{
  const p=planAssetRoutes(make({base:addr(2)}),chains,infra);
  const b=p.representations.find(x=>x.chain==="base");
  assert.equal(b.action,"reuse-verified");
- const outward=p.routes.find(x=>x.kind==="route-prepare"&&x.name==="xgr_to_base");
- const inbound=p.routes.find(x=>x.kind==="route-prepare"&&x.name==="base_to_xgr");
+ const outward=p.routes.find(x=>x.kind==="route-register"&&x.name==="xgr_to_base");
+ const inbound=p.routes.find(x=>x.kind==="route-register"&&x.name==="base_to_xgr");
  assert.equal(outward.router,addr(1));assert.equal(outward.remoteRouter,addr(2));
  assert.equal(inbound.router,addr(2));assert.equal(inbound.remoteRouter,addr(1));
  assert.notEqual(outward.routeId,inbound.routeId);
- assert.equal(p.pairs[0].readyForAttestation,false);
+ assert.equal(p.pairs[0].registeredBothDirections,false);
 });
 test("Polygon is the same process without chain-specific branches",()=>{
  const p=planAssetRoutes(make({base:addr(2)}),chains,infra);
  assert.equal(p.representations.find(x=>x.chain==="polygon").action,"deploy-once");
  assert.equal(p.pairs.length,2);
- assert.equal(p.routes.filter(x=>x.kind==="route-activate").length,4);
+ assert.equal(p.routes.filter(x=>x.kind==="route-register").length,4);
 });
 test("duplicate or mismatched router observations always fail closed",()=>{
  const a=make({base:addr(2)});
@@ -57,7 +57,7 @@ test("duplicate or mismatched router observations always fail closed",()=>{
  const b=make({base:addr(2)});b.routes[0].routeIds=["0x"+"f".repeat(64)];
  assert.throws(()=>planAssetRoutes(b,chains,infra),/Route ID does not match/);
 });
-test("unidirectional or direct spoke route is not activatable",()=>{
+test("unidirectional or direct spoke route is not registrable",()=>{
  const a=make();a.routes=a.routes.filter(x=>x.name!=="base_to_xgr");
  assert.throws(()=>planAssetRoutes(a,chains,infra),/Reciprocal/);
  const b=make();b.routes[0].source="polygon";
