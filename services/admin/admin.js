@@ -222,7 +222,7 @@ async function executeAssetDeployment(){
   });
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
  presentModalStatus("Deployment dokumentiert. Route ist lokal permissionless registriert.","success");
- el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+ el("contract-deploy-dialog").close();selectedAssetTask=null;await waitForDeploymentSync(report.result);
 }
 async function recoverAssetDeployment(){
  const task=selectedAssetTask;
@@ -247,7 +247,7 @@ async function recoverAssetDeployment(){
   });
  presentModalStatus("Wiederhergestellt: "+outcome.result.stage,"success");
  if(outcome.result.stage==="documented"){
-  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+  el("contract-deploy-dialog").close();selectedAssetTask=null;await waitForDeploymentSync(outcome.result);
  }
 }
 async function openContractModal(chainName,component){
@@ -400,7 +400,7 @@ async function executeModalDeployment(){
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
-  await loadMainWorkqueue();
+  await waitForDeploymentSync(result.result);
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
   "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
 }
@@ -441,7 +441,7 @@ async function recoverModalDeployment(){
     attempts:6,onPending:()=>presentModalStatus("Prüfe dieselbe Wallet-Transaktion erneut …","warn")
    });
   presentModalStatus(result.result.stage==="pending"?"Transaktion noch ausstehend; später erneut prüfen.":"Wiederherstellung: "+result.result.stage,result.result.stage==="pending"?"warn":"success");
-  if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await loadMainWorkqueue()}
+  if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await waitForDeploymentSync(result.result)}
  }catch(e){presentModalStatus("Wiederherstellung blockiert: "+e.message,"error")}
 }
 function formatBalance(b,c){return formatNative(b,c.nativeCurrency.decimals||18)+" "+c.nativeCurrency.symbol;}
@@ -480,6 +480,30 @@ function renderQueue(){} // No separate work queue: cards are the actionable int
 function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
  for(const link of document.querySelectorAll(".sidebar [data-view]"))link.classList.toggle("active",link.dataset.view===name);
+}
+async function waitForDeploymentSync(result){
+ const commit=result?.commit;
+ if(!result?.autoSyncQueued||!commit){
+  el("main-status").textContent="Deployment in GitHub dokumentiert. Server-Sync ausstehend; bei Bedarf ./manage.sh update ausführen.";
+  await loadMainWorkqueue();
+  return;
+ }
+ el("main-status").textContent="Verifiziert und in GitHub dokumentiert. Synchronisiere Deployment-Daten …";
+ for(let attempt=0;attempt<20;attempt++){
+  await new Promise(resolve=>setTimeout(resolve,800));
+  try{
+   const state=await get("/admin/api/workqueue");
+   if(!state.readOnly&&state.commit===commit){
+    await loadMainWorkqueue();
+    return;
+   }
+   if(state.remoteCommit&&state.remoteCommit!==commit){
+    break; // Unrelated main change; never silently authorize a different revision.
+   }
+  }catch{}
+ }
+ await loadMainWorkqueue();
+ el("main-status").textContent="Deployment auf GitHub bestätigt. Lokale Synchronisierung nicht abgeschlossen; Sync-Service prüfen oder ./manage.sh update verwenden.";
 }
 async function loadMainWorkqueue(){
  el("main-status").textContent="Aktuellen GitHub main prüfen …";
