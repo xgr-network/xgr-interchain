@@ -29,7 +29,8 @@ const SOURCE={
  syntheticRouter:"XETAGuardedSyntheticWarpRouter",
  collateralRouter:"XETAGuardedCollateralWarpRouterV315",
  gateway:"ILNGateway",
- feeVault:"XGRILNFeeVault"
+ feeVault:"XGRILNFeeVault",
+ transportBundle:"XITAFreshTransportV315",mailbox:"Mailbox",merkleTreeHook:"MerkleTreeHook",requiredHook:"ProtocolFee"
 };
 const TYPES={
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
@@ -41,7 +42,8 @@ const TYPES={
  syntheticRouter:["address","address","address","address","uint256","uint8","string","string"],
  collateralRouter:["address","address","address","address","address","uint256"],
  gateway:["address","bytes32","uint32","address","bool"],
- feeVault:["address","address","bytes32","uint32"]
+ feeVault:["address","address","bytes32","uint32"],
+ transportBundle:["uint32","address"],mailbox:["uint32"],merkleTreeHook:["address"],requiredHook:["uint256","uint256","address","address"]
 };
 const digest=s=>createHash("sha256").update(s).digest("hex");
 const hexBytes=s=>Uint8Array.from(Buffer.from(s.slice(2),"hex"));

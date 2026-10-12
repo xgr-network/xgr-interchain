@@ -22,7 +22,8 @@ test("configured chains do not create phantom deployment files",()=>{
  assert.equal(existsSync(join(root,registry.receiptPath)),true);
  const bootstrap=JSON.parse(readFileSync(join(root,chainBootstrapPath("xgrchain")),"utf8"));
  assert.equal(bootstrap.verifierAddress,"0x0000000000000000000000000000000000002040");
- assert.equal(Object.keys(catalog.infrastructure.xgrchain.xitaV315.components).length,1);
+ assert.ok(Object.keys(catalog.infrastructure.xgrchain.xitaV315.components).length>=2);
+ assert.equal(catalog.infrastructure.xgrchain.xitaV315.components.ism.address.toLowerCase(),"0x8c4585952a5960fe1238414eba409288aa4bb47a");
  assert.deepEqual(validateCatalog(catalog),[]);
 });
 test("XGR sharded config has no deployed asset representations or route files",()=>{

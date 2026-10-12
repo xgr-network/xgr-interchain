@@ -22,6 +22,8 @@ contract XITAFreshTransportV315 {
 
     error InvalidTransportConfiguration();
 
+    event TransportDeployed(address indexed mailbox, address indexed merkleTreeHook, address indexed requiredHook);
+
     constructor(uint32 domain_, address ism_) {
         if (domain_ == 0 || block.chainid != domain_ || ism_.code.length == 0 ||
             IXITATransportISM(ism_).destinationDomain() != domain_)
@@ -42,5 +44,6 @@ contract XITAFreshTransportV315 {
         requiredHook = p;
         destinationIsm = ism_;
         localDomain = domain_;
+        emit TransportDeployed(address(m),address(h),address(p));
     }
 }
