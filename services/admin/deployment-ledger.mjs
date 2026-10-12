@@ -55,7 +55,10 @@ function proveCreation(receipt,componentAddress,provenance){
   return {kind:"create"};
  }
  const event=EVENTS[provenance.kind];
- if(!event||!address(provenance.factory)||!equal(receipt.to,provenance.factory)||
+ const transport=provenance.kind.startsWith("transport-");
+ if(!event||!address(provenance.factory)||
+    (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
+      !equal(receipt.to,provenance.factory))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
@@ -310,7 +313,7 @@ export async function publishDeploymentBatch(root,inputs,{
   updatedAssets.set(asset,normalized);
  }
  // Non-XGR chains get their first deployment file ONLY on the first receipt.
- const infraParts=new Set(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer",
+ const infraParts=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer",
    "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
  const byChain=new Map(),updatedInfrastructure=new Map();
  for(const r of receipts)if(r.asset===null&&infraParts.has(r.component)){
