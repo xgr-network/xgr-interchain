@@ -7,6 +7,7 @@ import {MockXGRILNRegistry} from "../contracts/test/MockXGRILNRegistry.sol";
 import {IXGRILNRegistry} from "../contracts/IXGRILNRegistry.sol";
 
 contract XITARejectingReceiver {
+    address public immutable owner = msg.sender;
     bool public accept;
     uint256 public received;
     receive() external payable {
@@ -15,6 +16,7 @@ contract XITARejectingReceiver {
     }
     function setAccept(bool enabled) external { accept = enabled; }
     function redeem(XETAGuardedNativeWarpRouter router, address payable dest) external {
+        require(msg.sender == owner, "not owner");
         router.withdrawPendingNativeXGR(dest);
     }
 }
