@@ -22,6 +22,11 @@ contract AuditBLSHarness is XGRInterchainBLSVerifier {
     }
 }
 contract AuditMailbox {
+    address public registry;
+    function setRegistry(address value) external { registry = value; }
+    function mailbox() external view returns (address) { return address(this); }
+    function destinationDomain() external view returns (uint32) { return localDomain; }
+
     uint32 public immutable localDomain;uint256 private count;
     constructor(uint32 d){localDomain=d;}
     function quoteDispatch(uint32,bytes32,bytes calldata,bytes calldata,address) external pure returns(uint256){return 0;}
@@ -66,7 +71,7 @@ contract XITAPredeployCryptoReview is Test {
 }
 contract XITAPredeployOperationalReview is Test {
     function factory(uint32 d) internal returns(XETATokenFactoryV315 f,AuditMailbox m){
-        vm.chainId(d);m=new AuditMailbox(d);MockLocalGovernanceRegistry v=new MockLocalGovernanceRegistry(d);
+        vm.chainId(d);m=new AuditMailbox(d);m.setRegistry(address(v));MockLocalGovernanceRegistry v=new MockLocalGovernanceRegistry(d);
         v.setResult(false); // Route admission must not need a validator vote.
         f=new XETATokenFactoryV315(d,d,address(v),address(m),address(m),address(m),500000,100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),

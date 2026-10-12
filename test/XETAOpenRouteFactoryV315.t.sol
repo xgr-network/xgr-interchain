@@ -19,6 +19,11 @@ contract XITAMockERC20 is ERC20 {
 }
 
 contract XITAOpenMailboxMock {
+    address public registry;
+    function setRegistry(address value) external { registry = value; }
+    function mailbox() external view returns (address) { return address(this); }
+    function destinationDomain() external view returns (uint32) { return localDomain; }
+
     uint32 public immutable localDomain;
     uint256 public count;
     constructor(uint32 domain) { localDomain = domain; }
@@ -46,6 +51,7 @@ contract XETAOpenRouteFactoryV315Test is Test {
         vm.chainId(BASE);
         validators = new MockLocalGovernanceRegistry(uint32(BASE));
         mailbox = new XITAOpenMailboxMock(uint32(BASE));
+        mailbox.setRegistry(address(validators));
         factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
             address(mailbox), address(mailbox), address(mailbox), 200_000, 100,

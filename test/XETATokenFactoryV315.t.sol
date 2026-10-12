@@ -13,6 +13,11 @@ import {ILNGateway} from "../contracts/ILNGateway.sol";
 import {MockLocalGovernanceRegistry} from "../contracts/test/MockLocalGovernanceRegistry.sol";
 
 contract XITAMailboxV315Mock {
+    address public registry;
+    function setRegistry(address value) external { registry = value; }
+    function mailbox() external view returns (address) { return address(this); }
+    function destinationDomain() external view returns (uint32) { return localDomain; }
+
     uint32 public immutable localDomain;
     constructor(uint32 domain) { localDomain = domain; }
     function quoteDispatch(uint32, bytes32, bytes calldata, bytes calldata, address)
@@ -36,6 +41,7 @@ contract XETATokenFactoryV315Test is Test {
         vm.chainId(CHAIN);
         validators = new MockLocalGovernanceRegistry(DOMAIN);
         mailbox = new XITAMailboxV315Mock(DOMAIN);
+        mailbox.setRegistry(address(validators));
         factory = new XETATokenFactoryV315(
             CHAIN, DOMAIN, address(validators),
             address(mailbox), address(mailbox), address(mailbox), 250_000, 100,
