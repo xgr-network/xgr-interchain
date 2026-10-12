@@ -1,3 +1,4 @@
+import {CHAIN_COMPONENTS} from "./chain-transaction-draft.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync} from "node:fs";
@@ -164,5 +165,45 @@ test("cancel only a matching prepared draft, not a submitted tx",()=>{
   assert.deepEqual(st.cancelPrepared(e.id,e.createdAt),{discarded:true});
   st.prepare(input);st.attachHash(e.id,hash);
   assert.throws(()=>st.cancelPrepared(e.id,st.read().entries[e.id].createdAt),/Only the exact/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("every deployable chain component can be journaled before its FIRST wallet signing",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-intent-all-chain-components-"));
+ try{
+  const open=deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  for(const component of CHAIN_COMPONENTS){
+   const parameters=component==="validatorRegistry"
+    ?input.parameters:component==="factory"
+    ?{sourceFeeWei:"1",defaultDestinationGasLimit:100000}:{};
+   const entry={...input,id:"xgrchain:"+component,chainId:1643,parameters,
+    validatorSnapshot:component==="validatorRegistry"?input.validatorSnapshot:null,
+    transaction:{...input.transaction,to:component==="sourceRegistry"?wallet:null}};
+   const prepared=open.prepare(entry);
+   assert.equal(prepared.stage,"prepared",component);
+   assert.equal(open.read().entries[entry.id].id,entry.id,component);
+  }
+  assert.equal(Object.keys(open.read().entries).length,CHAIN_COMPONENTS.length);
+  assert.throws(()=>open.prepare({...input,id:"xgrchain:unknownComponent",chainId:1643,parameters:{}}),
+   /Malformed deployment intent identity/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("fresh XITA transport bundle intent survives journal transitions and remains non-rebroadcastable",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-intent-transport-bundle-"));
+ try{
+  const open=deploymentIntents({directory:dir,chains:[{name:"xgrchain",chainId:1643}]});
+  const entry={...input,id:"xgrchain:transportBundle",chainId:1643,
+   parameters:{},validatorSnapshot:null,transaction:{...input.transaction,to:null}};
+  const prepared=open.prepare(entry);
+  assert.equal(prepared.txHash,null);
+  assert.throws(()=>open.prepare(entry),/Existing deployment intent/);
+  open.attachHash(entry.id,hash);
+  assert.equal(open.read().entries[entry.id].stage,"submitted");
+  open.confirm(entry.id,hash,{contractAddress:wallet,
+   runtimeKeccak:"0x"+"f".repeat(64)});
+  assert.equal(open.read().entries[entry.id].stage,"confirmed");
+  const receipt="deployments/receipts/xgrchain/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  open.document(entry.id,receipt);
+  assert.equal(open.read().entries[entry.id],undefined);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
