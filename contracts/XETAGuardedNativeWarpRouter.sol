@@ -9,6 +9,33 @@ import {XETARouterCore} from "./XETARouterCore.sol";
 /// @dev Exactly ONE native XGR router on XGRChain serves every XGR spoke.
 ///      No owner, public initializer, LP-vault or alternate dispatch path.
 contract XETAGuardedNativeWarpRouter is XETARouterCore {
+    mapping(address => uint256) public pendingNativeXGR;
+    uint256 public totalPendingNativeXGR;
+    uint256 private claimLock = 1;
+
+    error NoPendingNativeXGR();
+    error InvalidPayoutRecipient();
+    error NativeClaimReentrancy();
+    error NativePayoutFailed();
+
+    event NativeDeliveryDeferred(address indexed recipient, uint256 amount);
+    event PendingNativeXGRWithdrawn(address indexed beneficiary, address indexed payoutRecipient, uint256 amount);
+
+    /// @notice Only the original recipient can authorize an alternative payout.
+    function withdrawPendingNativeXGR(address payable payoutRecipient) external {
+        if (claimLock != 1) revert NativeClaimReentrancy();
+        if (payoutRecipient == address(0)) revert InvalidPayoutRecipient();
+        uint256 amount = pendingNativeXGR[msg.sender];
+        if (amount == 0) revert NoPendingNativeXGR();
+        claimLock = 2;
+        pendingNativeXGR[msg.sender] = 0;
+        totalPendingNativeXGR -= amount;
+        (bool paid,) = payoutRecipient.call{value: amount}("");
+        if (!paid) revert NativePayoutFailed();
+        emit PendingNativeXGRWithdrawn(msg.sender, payoutRecipient, amount);
+        claimLock = 1;
+    }
+
     constructor(
         address registry_,
         address mailbox_,
@@ -38,7 +65,14 @@ contract XETAGuardedNativeWarpRouter is XETARouterCore {
     }
 
     function _transferTo(address recipient, uint256 amount) internal override {
-        NativeCollateral._transferTo(recipient, amount);
+        // Only an authenticated Mailbox.handle reaches this code.
+        // A rejecting recipient cannot block subsequent message settlement.
+        (bool paid,) = payable(recipient).call{value: amount, gas: 30_000}("");
+        if (!paid) {
+            pendingNativeXGR[recipient] += amount;
+            totalPendingNativeXGR += amount;
+            emit NativeDeliveryDeferred(recipient, amount);
+        }
     }
 
     receive() external payable {}
