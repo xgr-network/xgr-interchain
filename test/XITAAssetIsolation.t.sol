@@ -15,6 +15,9 @@ import {ILNGateway} from "../contracts/ILNGateway.sol";
 import {MockLocalGovernanceRegistry} from "../contracts/test/MockLocalGovernanceRegistry.sol";
 
 contract AuditMessageMailbox {
+    address public registry;
+    function setRegistry(address value) external {registry=value;}
+    function mailbox() external view returns(address){return address(this);}
     uint32 public immutable localDomain;
     bytes public lastMessage;
     uint32 private nonce;
@@ -45,6 +48,7 @@ contract XITAAssetIsolationAudit is Test {
         AuditBLSHarness bls=new AuditBLSHarness();XGRInterchainValidatorRegistryV3 validators=registry(bls,1643);
         XGRILNInterchainISMV2 ism=new XGRILNInterchainISMV2(address(validators));
         AuditMessageMailbox hubMailbox=new AuditMessageMailbox(1643);
+        hubMailbox.setRegistry(address(validators));
         XETATokenFactoryV315 hub=new XETATokenFactoryV315(1643,1643,address(validators),address(hubMailbox),address(hubMailbox),address(ism),500000,100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),
           address(new XETACollateralRouterDeployer()));
@@ -54,7 +58,9 @@ contract XITAAssetIsolationAudit is Test {
 
         vm.chainId(137);AuditMessageMailbox sourceMailbox=new AuditMessageMailbox(137);
         MockLocalGovernanceRegistry sourceValidators=new MockLocalGovernanceRegistry(137);
-        XETATokenFactoryV315 source=new XETATokenFactoryV315(137,137,address(sourceValidators),address(sourceMailbox),address(sourceMailbox),address(ism),500000,100,
+        sourceMailbox.setRegistry(address(sourceValidators));
+        XGRILNInterchainISMV2 sourceIsm=new XGRILNInterchainISMV2(address(sourceValidators));
+        XETATokenFactoryV315 source=new XETATokenFactoryV315(137,137,address(sourceValidators),address(sourceMailbox),address(sourceMailbox),address(sourceIsm),500000,100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),
           address(new XETACollateralRouterDeployer()));
         source.deployRegistry();AuditERC20 unrelated=new AuditERC20();

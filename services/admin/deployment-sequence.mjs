@@ -32,11 +32,12 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   add("validatorRegistry","Initiale ValidatorRegistry", "deploy",[verifierComponent],
    [...b.missing,"Finalisierten PoS-Snapshot und chain-gebundene BLS-PoPs verifizieren"]);
   add("ism","Interchain Security Module","deploy",["validatorRegistry"]);
+  add("transportBundle","XITA Mailbox + MerkleTreeHook (atomar)","deploy",["ism"]);
   add("nativeRouterDeployer","Einmaliger Native-Router-Deployer","deploy",["validatorRegistry","ism"]);
   add("syntheticRouterDeployer","Einmaliger Synthetic-Router-Deployer","deploy",["validatorRegistry","ism"]);
   add("collateralRouterDeployer","Einmaliger Collateral-Router-Deployer","deploy",["validatorRegistry","ism"]);
   add("factory","Permissionless Factory mit Initialgebühr","deploy",
-   ["validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"],
+   ["validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"],
    [b.proposedFeeWei===null?"Source-Chain-Initialgebühr in GitHub main fehlt":"Konstruktor-Gebühr "+b.proposedFeeWei+" Wei prüfen"]);
   add("sourceRegistry","Factory-eigene Source-Registry","factory-call",["factory"],["Fee Nonce 0 und Factory-Bindung nachweisen"]);
   const verifiedComponents=steps.filter(s=>s.status==="documented").length;

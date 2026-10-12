@@ -10,6 +10,11 @@ import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.so
 import {MockLocalGovernanceRegistry} from "../contracts/test/MockLocalGovernanceRegistry.sol";
 
 contract XITATopologyMailboxMock {
+    address public registry;
+    function setRegistry(address value) external { registry = value; }
+    function mailbox() external view returns (address) { return address(this); }
+    function destinationDomain() external view returns (uint32) { return localDomain; }
+
     uint32 public immutable localDomain;
     constructor(uint32 domain) { localDomain = domain; }
 }
@@ -92,6 +97,7 @@ contract XITAXGRHubTopologyV315Test is Test {
             new MockLocalGovernanceRegistry(uint32(BASE));
         XITATopologyMailboxMock mailbox =
             new XITATopologyMailboxMock(uint32(BASE));
+        mailbox.setRegistry(address(validators));
         XETATokenFactoryV315 factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
             address(mailbox), address(mailbox), address(mailbox), 200_000, 100,

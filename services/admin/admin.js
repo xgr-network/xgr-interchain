@@ -50,7 +50,7 @@ let liveBootstrap=new Map();
 const coreTitles={
  blsVerifier:"BLS-Verifier",
  validatorRegistry:"ValidatorRegistry V3",
- ism:"Interchain Security Module",
+ ism:"Interchain Security Module",transportBundle:"Frischer XITA-Transport (Mailbox + Hook)",
  nativeRouterDeployer:"Native Router Deployer (einmalig)",
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
  collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
@@ -96,6 +96,7 @@ function renderInfrastructure(){
     Object.entries(live.liveValidatorReservesWei||{}).map(([address,value])=>
      '<div>'+esc(displayAddress(address))+': '+esc(money(value))+'</div>').join("")+
     (live.liveFactoryGasLimit?'<div>Factory-Zielgas: '+esc(live.liveFactoryGasLimit)+'</div>':'')+
+    (c.hyperlane?.mailbox?'<div>Mailbox: '+esc(c.hyperlane.mailbox)+'</div><div>MerkleTreeHook: '+esc(c.hyperlane.merkleTreeHook)+'</div>':'')+
     (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";

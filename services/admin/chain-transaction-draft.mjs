@@ -12,17 +12,17 @@ const ZERO="0x"+"0".repeat(40);
 const deployed=(infra,key)=>infra.components.find(p=>p.key===key)?.address||null;
 const nonzero=x=>ADDR.test(x||"")&&x.toLowerCase()!==ZERO;
 const load=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
-export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
 const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  syntheticRouterDeployer:"XETASyntheticRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
- ism:"XGRILNInterchainISMV2",factory:"XETATokenFactoryV315"};
+ ism:"XGRILNInterchainISMV2",transportBundle:"XITAFreshTransportV315",factory:"XETATokenFactoryV315"};
 const typesFor={
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
- ism:["address"],
+ ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
  factory:["uint64","uint32","address","address","address","address","uint256","uint256","address","address","address"]
 };
@@ -88,9 +88,12 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   value="0x"+(BigInt(reserve.perValidatorWei)*BigInt(vs.length)).toString(16);
  }else if(component==="ism"){
   values=[requirePresent(infrastructure,"validatorRegistry")];
+ }else if(component==="transportBundle"){
+  values=[chain.domainId,requirePresent(infrastructure,"ism")];
  }else if(component==="factory"){
   const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane||{};
+  if(!deployed(infrastructure,"transportBundle"))throw Error("Fresh, receipt-verified XITA transport bundle missing");
   if(!nonzero(core.mailbox)||!nonzero(core.merkleTreeHook))
    throw Error("Fresh XITA Mailbox/Hook not documented; Factory blocked");
   const gas=p.defaultDestinationGasLimit;
