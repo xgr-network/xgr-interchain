@@ -49,3 +49,5 @@ Prior to enabling a transport transaction in the Admin, implement:
 
 `XITA_SPEC_V315.md` still identifies live mainnet acceptance as incomplete.
 Do not submit a Factory creation transaction until these gates are closed.
+
+The generic Admin wallet workqueue now includes `transportBundle` after ISM. A single transaction deploys its children. The reconciler checks the bundled Mailbox, MerkleTreeHook and RequiredHook bytecode and exact on-chain bindings and sends four append-only receipts to GitHub in one batch. A missing or mismatched child blocks publication and the downstream Factory. The compiled Solidity artifact seal covers bundle and all children.

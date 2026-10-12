@@ -15,14 +15,17 @@ const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
 const COMPONENTS=new Set([
- "blsVerifier","validatorRegistry","ism","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
+ "blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
  "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault"
 ]);
 const EVENTS={
  "factory-router":{sig:"RouterDeployed(bytes32,address,address)",topicIndex:2},
  "factory-gateway":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
  "factory-feevault":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
- "factory-registry":{sig:"RegistryDeployed(address)",topicIndex:1}
+ "factory-registry":{sig:"RegistryDeployed(address)",topicIndex:1},
+ "transport-mailbox":{sig:"TransportDeployed(address,address,address)",topicIndex:1},
+ "transport-merkle-hook":{sig:"TransportDeployed(address,address,address)",topicIndex:2},
+ "transport-required-hook":{sig:"TransportDeployed(address,address,address)",topicIndex:3}
 };
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const address=x=>ADDR.test(x||"")&&!/^0x0{40}$/i.test(x);

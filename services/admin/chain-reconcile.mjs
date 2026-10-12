@@ -55,6 +55,12 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   if(!ADDR.test(v||""))throw Error("Registry missing during ISM verification");
   await check("registry()",v,"address");
   await check("destinationDomain()",chain.domainId);
+ }else if(component==="transportBundle"){
+  const ism=infra.components.find(c=>c.key==="ism")?.address;
+  if(!ADDR.test(ism||""))throw Error("Destination ISM missing for transport");
+  await check("destinationIsm()",ism,"address");
+  await check("localDomain()",chain.domainId);
+  // Full child checks occur separately before a single atomic GitHub batch.
  }else if(component==="factory"){
   const registry=infra.components.find(c=>c.key==="validatorRegistry")?.address;
   const ism=infra.components.find(c=>c.key==="ism")?.address;
@@ -97,6 +103,43 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   }
  }else throw Error("Unknown infrastructure component");
  return true;
+}
+// Verify every bundle-created child contract independently at the deployment
+// block. All constructor/runtime bindings are validated before GitHub write.
+export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifacts,blockNumber}){
+ const addresses={};
+ const asChild=async(signature,component)=>{
+  const result=await getter(rpc,url,bundle,signature);
+  const address=asAddr(result);
+  if(!ADDR.test(address)||BigInt(address)===0n)throw Error("Missing transport child: "+component);
+  const artifact=artifacts[component];
+  if(!artifact)throw Error("Missing sealed child artifact: "+component);
+  const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(blockNumber).toString(16)]);
+  const hash=verifyRuntimeTemplate(artifact,code);
+  addresses[component]={address,runtimeKeccak:hash};
+  return address;
+ };
+ const mailbox=await asChild("mailbox()","mailbox");
+ const hook=await asChild("merkleTreeHook()","merkleTreeHook");
+ const required=await asChild("requiredHook()","requiredHook");
+ const check=async(target,signature,expected,kind="address")=>{
+  const actual=await getter(rpc,url,target,signature);
+  const value=kind==="address"?asAddr(actual):asWord(actual);
+  if(kind==="address"?!same(value,expected):value!==BigInt(expected))
+   throw Error("Transport child binding mismatch: "+signature);
+ };
+ await check(mailbox,"localDomain()",chain.domainId,"uint");
+ await check(mailbox,"owner()",bundle);
+ await check(mailbox,"defaultIsm()",ism);
+ await check(mailbox,"defaultHook()",hook);
+ await check(mailbox,"requiredHook()",required);
+ await check(hook,"mailbox()",mailbox);
+ await check(hook,"hookType()",3,"uint");
+ await check(required,"hookType()",8,"uint");
+ await check(required,"protocolFee()",0,"uint");
+ await check(required,"MAX_PROTOCOL_FEE()",0,"uint");
+ await check(required,"owner()",bundle);
+ return addresses;
 }
 export async function reconcileDeployedContract({
  root,entry,chain,bootstrap,infrastructure,artifact,rpc,url
