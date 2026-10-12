@@ -58,9 +58,9 @@ contract XETATokenFactoryV315 {
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
             (chainId_ == 1643) != (domain_ == 1643) ||
-            validatorRegistry_ == address(0) ||
-            mailbox_ == address(0) || mailbox_.code.length == 0 ||
-            hook_ == address(0) || ism_ == address(0) || gasLimit_ == 0 || initialSourceFeeWei_ == 0 ||
+            validatorRegistry_.code.length == 0 ||
+            mailbox_.code.length == 0 || hook_.code.length == 0 ||
+            ism_.code.length == 0 || gasLimit_ == 0 || initialSourceFeeWei_ == 0 ||
             nativeDeployer_.code.length == 0 || syntheticDeployer_.code.length == 0 ||
             collateralDeployer_.code.length == 0)
             revert InvalidConfiguration();
@@ -68,6 +68,26 @@ contract XETATokenFactoryV315 {
             IXGRInterchainValidatorSetV2(validatorRegistry_);
         if (validators.destinationDomain() != domain_ ||
             validators.verifier() == address(0)) revert InvalidConfiguration();
+        // All transport references must identify the SAME local transport.
+        // An unrelated Merkle hook or a foreign-domain Mailbox would make
+        // dispatch proofs unverifiable on the destination chain.
+        (bool mailboxOk, bytes memory mailboxDomain) =
+            mailbox_.staticcall(abi.encodeWithSignature("localDomain()"));
+        (bool hookOk, bytes memory hookMailbox) =
+            hook_.staticcall(abi.encodeWithSignature("mailbox()"));
+        (bool ismOk, bytes memory ismDomain) =
+            ism_.staticcall(abi.encodeWithSignature("destinationDomain()"));
+        (bool ismRegistryOk, bytes memory ismRegistry) =
+            ism_.staticcall(abi.encodeWithSignature("registry()"));
+        if (!mailboxOk || mailboxDomain.length != 32 ||
+            abi.decode(mailboxDomain,(uint32)) != domain_ ||
+            !hookOk || hookMailbox.length != 32 ||
+            abi.decode(hookMailbox,(address)) != mailbox_ ||
+            !ismOk || ismDomain.length != 32 ||
+            abi.decode(ismDomain,(uint32)) != domain_ ||
+            !ismRegistryOk || ismRegistry.length != 32 ||
+            abi.decode(ismRegistry,(address)) != validatorRegistry_)
+            revert InvalidConfiguration();
         localChainId = chainId_;
         localDomain = domain_;
         validatorRegistry = validatorRegistry_;
