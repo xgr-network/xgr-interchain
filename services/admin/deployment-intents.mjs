@@ -6,7 +6,7 @@ import {readFileSync,writeFileSync,renameSync,mkdirSync,openSync,closeSync,fsync
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 import {deploymentParameters} from "./deployment-parameters.mjs";
-const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
+const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|transportBundle|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
 const H256=/^[0-9a-f]{64}$/i;
