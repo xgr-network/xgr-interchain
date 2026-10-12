@@ -48,7 +48,7 @@ contract XITANativeUnlockFallbackTest is Test {
         vm.prank(address(mailbox));
         router.handle(BASE,REMOTE,abi.encodePacked(bytes32(uint256(uint160(to))),amount));
     }
-    function testFailedNativeDeliveryDefersWithoutRevertingAndCanBeClaimed() public {
+    function testRejectingRecipientDefersAndClaimsNativeXGR() public {
         deliver(address(receiver),1 ether);
         assertEq(router.pendingNativeXGR(address(receiver)),1 ether);
         assertEq(router.totalPendingNativeXGR(),1 ether);
@@ -73,7 +73,7 @@ contract XITANativeUnlockFallbackTest is Test {
         router.withdrawPendingNativeXGR(payable(address(this)));
         assertEq(router.pendingNativeXGR(address(receiver)),1 ether);
     }
-    function testFailedWithdrawalCannotEraseCredit() public {
+    function testRevertingWithdrawalPreservesPendingCredit() public {
         deliver(address(receiver),1 ether);
         vm.expectRevert(XETAGuardedNativeWarpRouter.NativePayoutFailed.selector);
         receiver.redeem(router,payable(address(receiver)));
@@ -97,4 +97,34 @@ contract XITANativeUnlockFallbackTest is Test {
         vm.expectRevert(XETAGuardedNativeWarpRouter.NoPendingNativeXGR.selector);
         receiver.redeem(router,payable(address(0xABCD)));
     }
+    function testInsufficientNativeEscrowRevertsInsteadOfCreatingIOU() public {
+        vm.deal(address(router),0);
+        vm.expectRevert(abi.encodeWithSelector(
+            XETAGuardedNativeWarpRouter.InsufficientUnreservedNativeXGR.selector,1 ether,0
+        ));
+        deliver(address(receiver),1 ether);
+        assertEq(router.pendingNativeXGR(address(receiver)),0);
+        assertEq(router.totalPendingNativeXGR(),0);
+    }
+    function testPreviouslyReservedNativeXGRCannotFundNewUnlock() public {
+        deliver(address(receiver),1 ether);
+        assertEq(address(router).balance,3 ether);
+        assertEq(router.totalPendingNativeXGR(),1 ether);
+        vm.expectRevert(abi.encodeWithSelector(
+            XETAGuardedNativeWarpRouter.InsufficientUnreservedNativeXGR.selector,
+            2.1 ether,2 ether
+        ));
+        deliver(address(0xABCD),2.1 ether);
+        assertEq(router.pendingNativeXGR(address(receiver)),1 ether);
+        assertEq(router.totalPendingNativeXGR(),1 ether);
+        deliver(address(0xABCD),2 ether);
+        assertEq(address(0xABCD).balance,2 ether);
+        assertEq(address(router).balance,1 ether);
+        assertEq(router.totalPendingNativeXGR(),1 ether);
+        receiver.redeem(router,payable(address(0xCAFE)));
+        assertEq(address(0xCAFE).balance,1 ether);
+        assertEq(router.totalPendingNativeXGR(),0);
+        assertEq(address(router).balance,0);
+    }
+
 }

@@ -17,6 +17,7 @@ contract XETAGuardedNativeWarpRouter is XETARouterCore {
     error InvalidPayoutRecipient();
     error NativeClaimReentrancy();
     error NativePayoutFailed();
+    error InsufficientUnreservedNativeXGR(uint256 requiredWei, uint256 availableWei);
 
     event NativeDeliveryDeferred(address indexed recipient, uint256 amount);
     event PendingNativeXGRWithdrawn(address indexed beneficiary, address indexed payoutRecipient, uint256 amount);
@@ -65,8 +66,17 @@ contract XETAGuardedNativeWarpRouter is XETARouterCore {
     }
 
     function _transferTo(address recipient, uint256 amount) internal override {
-        // Only an authenticated Mailbox.handle reaches this code.
-        // A rejecting recipient cannot block subsequent message settlement.
+        // Preserve all pending claims BEFORE attempting another native payout.
+        // Insufficient escrow must revert the authenticated message rather
+        // than silently recording an unbacked IOU as a successful delivery.
+        uint256 balance = address(this).balance;
+        uint256 reserved = totalPendingNativeXGR;
+        uint256 available = balance >= reserved ? balance - reserved : 0;
+        if (balance < reserved || available < amount) {
+            revert InsufficientUnreservedNativeXGR(amount, available);
+        }
+        // A rejecting recipient cannot block later, unrelated messages.
+        // Recipient code receives bounded gas; unsuccessful sends retain funds.
         (bool paid,) = payable(recipient).call{value: amount, gas: 30_000}("");
         if (!paid) {
             pendingNativeXGR[recipient] += amount;
