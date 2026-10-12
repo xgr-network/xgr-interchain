@@ -6,6 +6,7 @@ import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
+import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {trustedBuild,verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {simulateChainDraft} from "./chain-transaction-draft.mjs";
@@ -221,8 +222,11 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const path=deploymentReceiptPath({kind:"xita-v315-deployment-receipt",chain:chain.name,
    transactionHash:entry.txHash,address});
   j.document(id,path);
+  let autoSyncQueued=false;
+  try{queueDeploymentSync(stateDir,result.commit);autoSyncQueued=true;}
+  catch(error){console.error("XITA asset recorded; checkout sync needs attention:",String(error.message||error));}
   return {stage:"documented",address,txHash:entry.txHash,receiptPath:path,
-    activation:"permissionless-registered",checkoutUpdateRequired:true};
+    activation:"permissionless-registered",checkoutUpdateRequired:true,autoSyncQueued};
  }
  async function cancelPrepared({id,createdAt}){
   const all=approvedWorkInventory(root);

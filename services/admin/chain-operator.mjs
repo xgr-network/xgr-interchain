@@ -17,6 +17,7 @@ import {verifyPrepared} from "./prepared-override.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
+import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const nonceWord=s=>{
@@ -217,8 +218,12 @@ export function createChainOperator({
    throw Error("GitHub publisher did not return a new main commit; intent retained");
   const path=deploymentReceiptPath(result.verified);
   journal.document(id,path);
+  let autoSyncQueued=false;
+  try{queueDeploymentSync(stateDir,published.commit);autoSyncQueued=true;}
+  catch(error){console.error("XITA receipt recorded; checkout sync needs attention:",String(error.message||error));}
   return {stage:"documented",receiptPath:path,commit:published.commit,
-   address:result.contractAddress,txHash:entry.txHash,checkoutUpdateRequired:true};
+   address:result.contractAddress,txHash:entry.txHash,
+   checkoutUpdateRequired:true,autoSyncQueued};
  }
  async function cancelPrepared({id,createdAt}){
   const all=approvedWorkInventory(root);
