@@ -12,7 +12,7 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
- assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?7:8) && c.components.length===c.required));
+ assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required));
  // A verified deployment receipt may now exist. Progress must be derived
  // from the currently documented, immutable per-chain component evidence.
  for(const chain of chains){
