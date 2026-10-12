@@ -2,12 +2,19 @@
 
 One common XETARouterCore contract contains the entire outbound authorization,
 per-domain route binding, one-time remote enrollment and Hyperlane dispatch.
-Two thin asset adapters exist only because native collateral and synthetic
-ERC-20 mint/burn use different Solidity transfer operations.
+Three asset adapters share the same core: native-coin escrow, canonical
+ERC-20 collateral escrow, and synthetic ERC-20 mint/burn. Their asset transfer
+operations differ, while route identity and authentication remain identical.
 
 ## Deployment cardinality
 
 - XGRChain: **one** native-XGR router for Base, Polygon and Arbitrum.
+- An ERC-20 ORIGINATING on XGRChain: **one** collateral router on XGRChain
+  reused for all spokes; each spoke gets a synthetic representation.
+- An ERC-20 originating on Base (or another spoke): **one** synthetic router
+  on XGRChain reused for later spokes; origin retains its collateral router.
+- Canonical Asset ID is bound to the original chain and token address, not
+  to the token symbol. Existing ERC-20s are not themselves bridge routers.
 - Base/Polygon/Arbitrum: **one** wXGR synthetic router per chain.
 - Each directed source route: **one** route-specific ILNGateway and FeeVault.
 - All routes on a physical chain share the canonical ILNRegistry, validator

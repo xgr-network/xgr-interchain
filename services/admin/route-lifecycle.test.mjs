@@ -70,3 +70,50 @@ test("same canonical pair derives deterministic reverse-distinct route hashes",(
  assert.equal(f,routeInstanceIdV315(assetId,chains[0],chains[1],addr(1),addr(2)));
  assert.throws(()=>routeInstanceIdV315(assetId,chains[1],chains[2],addr(2),addr(3)),/hub/);
 });
+
+const genericPairRoutes=[
+ ["token_xgr_to_base","xgrchain","base"],
+ ["token_base_to_xgr","base","xgrchain"],
+ ["token_xgr_to_polygon","xgrchain","polygon"],
+ ["token_polygon_to_xgr","polygon","xgrchain"]
+].map(([name,source,destination])=>({name,source,destination,
+ receipts:[],components:{gateways:[]},routeIds:[]}));
+const known=(role,component,address)=>({
+ role,deployedContracts:address?[{component,address,routeName:null}]:[]
+});
+test("XGRChain-origin ERC20 uses one collateral router across Base and Polygon",()=>{
+ const p=planAssetRoutes({
+  key:"XERC",assetId,canonicalChain:"xgrchain",canonicalToken:addr(77),
+  representations:{
+   xgrchain:known("collateral","collateralRouter",addr(1)),
+   base:known("synthetic","syntheticRouter",addr(2)),
+   polygon:known("synthetic","syntheticRouter",null)
+  },routes:genericPairRoutes
+ },chains,infra);
+ const hub=p.representations.find(x=>x.chain==="xgrchain");
+ assert.equal(hub.component,"collateralRouter");
+ assert.equal(hub.action,"reuse-verified");
+ assert.equal(hub.router,addr(1));
+ assert.equal(p.representations.find(x=>x.chain==="polygon").action,"deploy-once");
+ assert.equal(p.routes.find(x=>x.name==="token_xgr_to_polygon").router,addr(1));
+ assert.equal(p.routes.find(x=>x.name==="token_xgr_to_base").router,addr(1));
+ assert.equal(p.representations.filter(x=>x.chain==="xgrchain").length,1);
+});
+test("Base-origin ERC20 keeps its XGR synthetic router when Polygon joins",()=>{
+ const p=planAssetRoutes({
+  key:"BASERC",assetId,canonicalChain:"base",canonicalToken:addr(88),
+  representations:{
+   xgrchain:known("synthetic","syntheticRouter",addr(1)),
+   base:known("collateral","collateralRouter",addr(2)),
+   polygon:known("synthetic","syntheticRouter",null)
+  },routes:genericPairRoutes
+ },chains,infra);
+ const hub=p.representations.find(x=>x.chain==="xgrchain");
+ assert.equal(hub.component,"syntheticRouter");
+ assert.equal(hub.action,"reuse-verified");
+ assert.equal(hub.router,addr(1));
+ assert.equal(p.representations.find(x=>x.chain==="base").action,"reuse-verified");
+ assert.equal(p.representations.find(x=>x.chain==="polygon").action,"deploy-once");
+ assert.equal(p.routes.find(x=>x.name==="token_xgr_to_polygon").router,addr(1));
+ assert.equal(p.routes.find(x=>x.name==="token_xgr_to_base").router,addr(1));
+});

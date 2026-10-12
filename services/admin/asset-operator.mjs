@@ -84,7 +84,9 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    if(!representation||representation.action!=="deploy-once")throw Error("Router already deployed");
    const d=factoryRouteDraft({asset,source,destination,
     sourceInfrastructure:chainInfra,destinationInfrastructure:destInfra,
-    representation,action:"deploy-router"});
+    // An ERC20 originating on Base may reach Polygon through XGRChain:
+    // the canonical origin need not be either endpoint of this hop.
+    representation,action:"deploy-router",chains:inventory.chains});
    transaction=d.transaction;
   }else{
    if(!r?.routeId||!liveAddr(r.router)||!liveAddr(r.remoteRouter)||r.gateway)

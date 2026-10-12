@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {factoryRouteDraft,routeSalt,nextAssetRouteTasks} from "./route-factory-draft.mjs";
@@ -78,4 +79,24 @@ test("synthetic second hop resolves canonical origin outside source and destinat
   action:"deploy-router",chains:[chain,source,dest]});
  assert.ok(draft.transaction.data.startsWith("0x"));
  assert.equal(draft.chain,"base");
+});
+
+test("Polygon synthetic resolves canonical Base ERC20 origin outside Polygon-to-XGR hop",()=>{
+ const token=addr(500),asset={asset:"BASERC",assetId,canonicalChain:"base",
+  canonicalToken:token,metadata:{name:"Base ERC20",symbol:"BASERC",decimals:18}};
+ const polygon={name:"polygon",chainId:137,domainId:137};
+ const representation={chain:"polygon",component:"syntheticRouter",router:null};
+ assert.throws(()=>factoryRouteDraft({asset,source:polygon,destination:hub,
+  sourceInfrastructure:infra(polygon),destinationInfrastructure:infra(hub),
+  representation,action:"deploy-router"}),/Canonical source chain/);
+ const prepared=factoryRouteDraft({asset,source:polygon,destination:hub,
+  sourceInfrastructure:infra(polygon),destinationInfrastructure:infra(hub),
+  representation,action:"deploy-router",chains:[base,hub,polygon]});
+ assert.equal(prepared.component,"syntheticRouter");
+ assert.equal(prepared.chain,"polygon");
+ assert.ok(prepared.transaction.data.startsWith("0x"));
+});
+test("admin forwards full chain inventory into router preparation",()=>{
+ const src=readFileSync(new URL("./asset-operator.mjs",import.meta.url),"utf8");
+ assert.match(src,/representation,action:"deploy-router",chains:inventory\.chains/);
 });
