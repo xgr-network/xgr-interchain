@@ -127,3 +127,32 @@ test("an intermediate application change is rejected even if later reverted",()=
  }),/non-receipt/);
  assert.equal(merged,false);
 });
+
+test("independent polling catches a missed watcher receipt commit",async()=>{
+ const {pollVerifiedDeploymentSync}=await import("./deployment-auto-sync.mjs");
+ const dir=mkdtempSync(join(tmpdir(),"xita-poll-"));
+ try{
+  let local=old,merged=0;
+  const git=args=>{
+   if(args[0]==="remote")return "git@github.com:xgr-network/xgr-interchain.git";
+   if(args[0]==="ls-remote")return next+" refs/heads/main";
+   if(args[0]==="rev-parse")return local;
+   throw Error("Unexpected git command "+args.join(" "));
+  };
+  const result=pollVerifiedDeploymentSync(dir,"/tmp",{git,
+   sync:sha=>{assert.equal(sha,next);merged++;local=next;return {updated:true,commit:sha}},
+   publish:()=>({catalogPublished:true})});
+  assert.equal(result.status,"completed");
+  assert.equal(merged,1);
+  assert.equal(pollVerifiedDeploymentSync(dir,"/tmp",{git,sync:()=>{throw Error("unnecessary sync")}}).status,"current");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("polling refuses unapproved Git origin",async()=>{
+ const {pollVerifiedDeploymentSync}=await import("./deployment-auto-sync.mjs");
+ const dir=mkdtempSync(join(tmpdir(),"xita-poll-deny-"));
+ try{
+  assert.throws(()=>pollVerifiedDeploymentSync(dir,"/tmp",{git:args=>args[0]==="remote"?
+   "https://untrusted.invalid/fake.git":next+" refs/heads/main",
+   sync:()=>{throw Error("must not sync")}}),/Unapproved Git origin/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

@@ -1,0 +1,11 @@
+[Unit]
+Description=Retry XITA verified receipt sync if path watcher misses a signal
+
+[Timer]
+OnBootSec=35s
+OnUnitInactiveSec=45s
+RandomizedDelaySec=5s
+Unit=xita-deployment-sync-poll.service
+
+[Install]
+WantedBy=timers.target
