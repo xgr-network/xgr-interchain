@@ -92,6 +92,27 @@ setId must match the current set and the signed proposal has an expiry.
 Historical receipts must be interpreted using the fee at the original
 source block, not today's current value.
 
+## Destination execution gas is independent of Factory
+
+The immutable Factory `defaultDestinationGasLimit` is only a Hyperlane
+dispatch-metadata hint. The fresh XITA MerkleTreeHook ignores this gas field
+and the required ProtocolFee hook is initialized with zero fee. No on-chain
+gas paymaster enforces the hint as a destination EVM transaction limit.
+
+The relayer independently estimates `Mailbox.process(metadata,message)` on
+the actual destination chain, covering ISM/BLS validation and recipient token
+delivery. It adds 30% plus 30,000 gas, verifies this fits under the current
+destination block gas ceiling with 50,000 reserve, and only then submits.
+A different permissionless executor may do its own gas estimation and
+submit the same proof. Inability to estimate or fit gas means no broadcast,
+not token loss. Network-level destination fees are distinct from the
+native source-chain validator fee.
+
+XGRChain launches with a manually confirmed **0.1 XGR** initial
+source-registry validator fee per XGR-source hop, equal to
+`100000000000000000` Wei. Spoke registries use their own native
+currency; later fee changes require BLS validator quorum.
+
 ## Message-specific BLS safety
 
 BLS attests individual cross-chain message delivery, not route inclusion.

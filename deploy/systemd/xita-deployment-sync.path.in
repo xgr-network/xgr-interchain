@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for verified XITA deployment receipts to sync
+
+[Path]
+PathExists=@STATE_DIR@/deployment-sync.request
+Unit=xita-deployment-sync.service
+
+[Install]
+WantedBy=multi-user.target
