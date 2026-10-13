@@ -113,6 +113,29 @@ source-registry validator fee per XGR-source hop, equal to
 `100000000000000000` Wei. Spoke registries use their own native
 currency; later fee changes require BLS validator quorum.
 
+## Wallet-funded permissionless delivery UX
+
+The selected default for each directed hop is two MetaMask confirmations:
+(1) source Gateway.bridge() paying source gas plus native validator fee, and
+(2) target Mailbox.process(metadata,message) paying target-native gas after
+the BLS proof is available. An ERC-20 approval may be an extra transaction.
+Spoke-to-spoke journeys require two hops and therefore four transactions.
+Other permissionless executors may deliver a message instead, but there is
+no obligation to subsidize another wallet's gas.
+
+The read-only planning UI previews native balances on all involved chains,
+verifies RPC chain IDs, and never assumes that a positive balance covers the
+actual live gas fee. The target-native token must be available *before*
+the source transaction. Exact sufficiency requires live source and target
+gas estimates and an explicit fee/amount/allowance quote once the validated
+execution adapter and Merkle/BLS proof API are implemented.
+
+Future optional Starter Gas may help fund the first destination transaction
+without adding mutable protocol governance. No new transport, ISM, router
+deployer, validator contract or gas-paymaster is required by the selected
+self-funded wallet model. The present UI remains fail-closed and cannot
+send a transfer until the deployed reciprocal routes pass end-to-end testing.
+
 ## Message-specific BLS safety
 
 BLS attests individual cross-chain message delivery, not route inclusion.

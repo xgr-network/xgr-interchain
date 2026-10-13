@@ -373,7 +373,7 @@ const faqGroups=[
   ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. The second step is not automatically executed."],
   ["What is a wrapped token?","A wrapped or synthetic representation makes an asset usable on a second chain. It is not the original token on its home network; always check its canonical origin and verified contracts."],
   ["What happens if a relayer is unavailable?","A relayer can be replaced. An interrupted transfer may remain pending until delivery is resumed or recovered. Use the verified transaction and message status rather than assuming an automatic refund."],
-  ["What does a transfer cost?","XGR sponsors route deployment for accepted projects, not every user's transfers. Holders still pay source-chain gas and the applicable validator fee. Two-hop journeys require two separately paid transactions."]
+  ["What does a transfer cost?","XGR sponsors approved route deployment, not user transaction gas. Each directed hop requires source-chain gas, the applicable source-native validator fee, and destination-chain gas for a separate wallet-confirmed Mailbox.process delivery. A two-hop trip requires four payments (plus possible ERC-20 approvals). Check both native gas balances before bridging; Starter Gas is not available yet."]
  ]},
  {label:"04 · TRUST & TRANSPARENCY",title:"Security and Network Facts",items:[
   ["Who secures interchain transfers?","XGRChain's Proof-of-Stake validators secure cross-chain message verification. The XGRChain v3.x network and its interchain smart contracts provide the underlying infrastructure."],

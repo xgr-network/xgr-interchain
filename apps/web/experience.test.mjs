@@ -175,3 +175,34 @@ test("partner program describes review, sponsorship and threshold-based listing"
  }
  assert.doesNotMatch(faq,/discretionary Alliance approval|No central Alliance vote|permissionless XITA Factory/i);
 });
+
+
+test("route preflight shows source, hub, destination gas and four wallet transactions without signing",()=>{
+ const model=buildExperienceModel(catalog,()=>true);
+ const wallet={account:"0x1111111111111111111111111111111111111111",
+  balances:{base:{status:"ready",balanceWei:"1000000000000000000"},
+    xgrchain:{status:"ready",balanceWei:"0"},
+    polygon:{status:"unavailable"}},checkedAt:"2026-10-13T11:00:00Z"};
+ const html=renderPlanRoute(model,{origin:"base",destination:"polygon",asset:"XGR"},"ready",wallet);
+ assert.match(html,/Wallet gas across the full journey/);
+ assert.match(html,/data-gas-chain="base"/);
+ assert.match(html,/data-gas-chain="xgrchain"/);
+ assert.match(html,/data-gas-chain="polygon"/);
+ assert.match(html,/0 XGR · no gas funds/);
+ assert.match(html,/Balance unavailable/);
+ assert.match(html,/Planned MetaMask steps \(4 transactions\)/);
+ assert.match(html,/Mailbox\.process/);
+ assert.match(html,/Positive balance does not mean enough gas/);
+ assert.doesNotMatch(html,/eth_sendTransaction|onclick=.*process/);
+});
+test("unconnected wallet and unverified route never receive execution ability",()=>{
+ const model=buildExperienceModel(catalog,()=>false);
+ const noWallet=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},"ready");
+ assert.match(noWallet,/Connect Wallet to check source, transit and destination native balances/);
+ const rpcDown=renderTokenBridge(model,"XGR",{origin:"base",destination:"xgrchain"},
+  {account:"0x1111111111111111111111111111111111111111",
+   balances:{base:{status:"unavailable"}}});
+ assert.match(rpcDown,/Balance unavailable/);
+ assert.match(rpcDown,/disabled/);
+ assert.match(rpcDown,/Route delivery not verified/);
+});
