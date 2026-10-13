@@ -371,10 +371,15 @@ async function checkModalGas(){
   if(!result.preview?.totalWorstCaseWei)throw Error("Keine gültige Gas-Simulation");
   lastModalPreview={chainName,component,parameters,sourceCommit:result.preview.sourceCommit,wallet:updated.address};
   output.textContent="Gaslimit "+BigInt(result.preview.gasLimit).toString()+
-   " · geschätzter Gesamtbedarf inkl. Constructor-Einlage "+
+   " · geschätzter ETH-/Native-Gesamtbedarf inkl. Gas und Einlage "+
    moneyInWei(result.preview.totalWorstCaseWei,chain)+
-   (chainName==="base"?" (Base L1-Daten- und Operatorgebühren berücksichtigt)":"")+
-   " · Preis-Snapshot: endgültige Werte vor Signatur in MetaMask kontrollieren";
+   (BigInt(result.preview.depositWei||"0")>0n?
+    " · darin enthaltene Validator-Einlage: "+moneyInWei(result.preview.depositWei,chain):"")+
+   (chainName==="base"?
+    " · darin enthaltene Base-L1-Datenfee: "+
+     moneyInWei(result.preview.l1DataFeeUpperBoundWei,chain)+
+    " · Operatorgebühr: "+moneyInWei(result.preview.operatorFeeWei,chain):"")+
+   " · Aktueller Kostensnapshot: vor jeder Signatur in MetaMask prüfen";
   el("modal-deploy").disabled=false;
   presentModalStatus("Gas geprüft. Deployment benötigt Bestätigung in deiner Wallet.");
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
