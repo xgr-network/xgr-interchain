@@ -330,10 +330,16 @@
             "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
             "runtimeCodeKeccak256": "0x4bdf70f0c95dc3e8b2f22c773a2d089c25990ba17a240e3680b8b27f714ca484",
             "receiptPath": "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json"
+          },
+          "sourceRegistry": {
+            "address": "0x590d9d35276661f250e2cdf83d32a0e1cbebac38",
+            "runtimeCodeKeccak256": "0x80f3de0a2a687dd513968607fc38bec5a38053ee68c04b0653716b7332ce2fc4",
+            "receiptPath": "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json"
           }
         },
         "receiptPaths": [
           "deployments/receipts/xgrchain/112a0c4365362bce68c50641b5537b3a40c351a6299e22c5e9335e5f57b67d85-88e5f2aba4bfae19a266a83140a4079f69157c7c.json",
+          "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json",
           "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json",
           "deployments/receipts/xgrchain/40a00402ffb52ec625701cbcc72c053ed1e998a7c80ea77006b1f7cd93e4ca89-e86d6cd451b2f78b6fb3aa9a4723f166134e10f4.json",
           "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-3ea58a78931afbab565c912a2ab4054bf16c044b.json",
