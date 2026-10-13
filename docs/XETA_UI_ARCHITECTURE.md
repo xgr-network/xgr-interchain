@@ -19,9 +19,18 @@ proof and verified reciprocal route deployment.
 ## Transfer UI security contract
 
 The v3.1.5 transfer panel is an interactive **route-planning preview only**,
-not an executable mock bridge. Wallet connection reads account, chain ID and
-native wallet gas balance; no contracts are called or approved. The send button
-is explicitly disabled. Do **not** revive v3.1.4 `quoteILN`, `bridge`,
+not an executable mock bridge. The connected wallet reveals the account and
+active chain; read-only HTTPS JSON-RPC calls retrieve this account's native
+gas balances on all configured chains, verifying each RPC chain ID first.
+The active chain may be read directly through the EIP-1193 wallet.
+Unreachable RPCs or CORS failures are displayed as **unavailable**, never
+misrepresented as zero. The public wallet address is disclosed to public
+chain RPC providers for these balance queries.
+No wallet network switching, approvals, signing, gas quotes or transfers
+are made by the preflight. A nonzero native balance is **not** evidence of
+sufficient gas for a specific transaction; that requires live source and
+destination simulations, fees, allowances and amount checks. The send
+button is explicitly disabled. Do **not** revive v3.1.4 `quoteILN`, `bridge`,
 `ILNGateway` or legacy governance calls as a shortcut.
 
 When the v3.1.5 gateway adapter, deployment manifests, fee journals, and
@@ -30,6 +39,22 @@ ABI flow only after verifying on-chain source and destination contracts,
 the reciprocal route pairing and route activation. A Base -> Polygon route
 is **two independently executed hops** through XGRChain 1643, never a
 direct external-to-external transfer. A second hop sponsor is not implemented.
+
+**Wallet-funded two-transaction-per-hop UX:** for each directed hop
+the user confirms (1) a source Gateway.bridge() transaction paying source
+gas plus the validator fee, followed after validated BLS/Merkle proof by
+(2) a destination Mailbox.process() transaction paying target-native gas.
+External-to-external routes have two hops (four transactions), plus optional
+ERC-20 approvals. The user must already hold target-native currency before
+initiating each hop; the transferred token amount cannot be assumed to fund
+its own delivery. The pure planner now shows balances for source, hub and
+destination with a per-hop step explanation.
+
+Future **Starter Gas** is an optional externally sponsored onboarding
+service and is not implemented. It must neither become a mandatory relayer
+nor grant governance or asset custody. The already verified XGRChain
+ValidatorRegistry, ISM, Mailbox/Hook bundle and router deployer contracts
+remain unchanged by this UI patch.
 
 Universe paths visualize topology and configured inventory only; never infer
 live activation from an illustration or an asset listing.
@@ -46,6 +71,8 @@ node --test apps/web/experience.test.mjs apps/web/keccak.test.mjs
 node --check apps/web/app.js
 node --check apps/web/experience.js
 node --check apps/web/wallet-core.js
+node --check apps/web/wallet-gas.js
+node --test apps/web/wallet-gas.test.mjs
 ```
 
 The static site requires SPA fallback. Always review routes and wallet behavior

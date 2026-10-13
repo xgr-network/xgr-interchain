@@ -5,8 +5,9 @@ import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
+import {readNativeGasBalances} from "./wallet-gas.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -149,7 +150,7 @@ function token(){
  '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
  '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
  '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">Prepared inventory only; not activated</div></div>').join("")+'</div></section>'+
- '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,{account:state.account,chainId:state.walletChainId,nativeBalance:state.walletGas})+'</aside></div>';
+ '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,step:0,status:""};
 function join(){
@@ -218,19 +219,38 @@ async function runJoin(action){
   drawJoin();
  }
 }
+let walletGasRequest=0;
+const walletGasView=()=>({account:state.account,chainId:state.walletChainId,
+ balances:state.walletBalances,checkedAt:state.walletGasCheckedAt,loading:state.walletGasLoading});
 async function updateWalletGas(){
- if(!state.account||!globalThis.ethereum?.request)return;
- try{
-  const chainHex=await globalThis.ethereum.request({method:"eth_chainId"});
-  const balanceHex=await globalThis.ethereum.request({method:"eth_getBalance",params:[state.account,"latest"]});
-  state.walletChainId=Number(BigInt(chainHex));
-  const native=BigInt(balanceHex);
-  state.walletGas=formatUnits(native,18,6);
- }catch{
-  state.walletGas=null;
-  state.walletChainId=null;
+ const request=++walletGasRequest;
+ const account=state.account;
+ if(!account||!state.catalog||!globalThis.ethereum?.request){
+  state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGasLoading=false;
+  if(state.catalog&&(path()==="/plan-route"||path().startsWith("/token/")))render();
+  return;
  }
- if(path().startsWith("/token/"))render();
+ state.walletGasLoading=true;state.walletBalances=null;state.walletGasCheckedAt=null;
+ if(path()==="/plan-route"||path().startsWith("/token/"))render();
+ try{
+  // Read balances only. Never switch chains, sign, approve or submit.
+  const result=await readNativeGasBalances({
+   account,chains:state.catalog.chains,provider:globalThis.ethereum,
+   fetcher:globalThis.fetch.bind(globalThis)
+  });
+  if(request!==walletGasRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+  state.walletChainId=result.walletChainId;
+  state.walletBalances=result.balances;
+  state.walletGasCheckedAt=result.checkedAt;
+ }catch{
+  if(request!==walletGasRequest)return;
+  state.walletBalances=null;state.walletGasCheckedAt=null;
+ }finally{
+  if(request===walletGasRequest){
+   state.walletGasLoading=false;
+   if(path()==="/plan-route"||path().startsWith("/token/"))render();
+  }
+ }
 }
 let cosmos=null;
 function render(){
@@ -242,7 +262,7 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel((p==="/"||p==="/universe"||p==="/plan-route")?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState):p==="/faq"?renderFAQ():p==="/markets"?markets():((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView()):p==="/faq"?renderFAQ():p==="/markets"?markets():((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
  }
@@ -263,6 +283,7 @@ function render(){
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelectorAll("[data-leader-sort]").forEach(button=>button.addEventListener("click",()=>{
    const key=button.dataset.leaderSort;
    if(!["lockedUsd","movedUsd","marketCapUsd"].includes(key))return;
@@ -287,8 +308,8 @@ connect.addEventListener("click",async()=>{
  try{state.account=await connectWallet(globalThis.ethereum);connect.textContent=shorten(state.account);await updateWalletGas();}catch(e){alert(e.message);}
 });
 if(globalThis.ethereum?.on){
- globalThis.ethereum.on("accountsChanged",accounts=>{state.account=Array.isArray(accounts)?accounts[0]||null:null;connect.textContent=state.account?shorten(state.account):"Connect Wallet";state.walletGas=null;void updateWalletGas();if(!state.account)render();});
- globalThis.ethereum.on("chainChanged",()=>{state.walletGas=null;void updateWalletGas();});
+ globalThis.ethereum.on("accountsChanged",accounts=>{state.account=Array.isArray(accounts)&&/^0x[0-9a-f]{40}$/i.test(accounts[0]||"")?accounts[0]:null;connect.textContent=state.account?shorten(state.account):"Connect Wallet";state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;void updateWalletGas();if(!state.account)render();});
+ globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
 }
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("click",event=>{
@@ -348,6 +369,7 @@ async function start(){
   if(!catalog?.assets?.XGR?.routes||!catalog?.infrastructure?.xgrchain||!catalog?.chains?.xgrchain)throw Error("Invalid local catalog");
   state.catalog=catalog;
   render();
+  if(state.account)void updateWalletGas();
   el.dataset.ready="1";
   void loadPublicData();
   void loadLeaderboard();

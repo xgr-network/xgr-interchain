@@ -892,3 +892,26 @@ button,input,select,textarea,table,
  .ux-dashboard .ux-ns-card-head h2{font-size:18px}
  .ux-alliance-audience h3{font-size:25px}
 }
+
+
+/* Read-only multi-chain wallet gas status, not a live transaction quote. */
+.ux-gas-check{margin:16px 0;padding:16px;border:1px solid #2b3d55;border-radius:12px;background:#0b1628}
+.ux-gas-check-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ux-gas-check-heading strong{font-size:13px;letter-spacing:.01em}
+.ux-gas-refresh{color:#b8d9ff;background:#182b44;border:1px solid #375779;border-radius:7px;padding:7px 10px;cursor:pointer;font:inherit;font-size:11px}
+.ux-gas-refresh:disabled{opacity:.5;cursor:default}
+.ux-gas-check-rows{display:grid;gap:8px;margin:12px 0}
+.ux-gas-check-row{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid #2b3d55;border-radius:9px;padding:10px 12px}
+.ux-gas-check-row>div{display:flex;flex-direction:column;gap:3px}
+.ux-gas-check-row strong{font-size:12px}
+.ux-gas-check-row small,.ux-gas-check-row>span{font-size:11px;color:#a9bdd5}
+.ux-gas-check-row>span{text-align:right}
+.ux-gas-check-row.is-empty{border-color:#885349}
+.ux-gas-check-row.is-empty>span{color:#ffc1ab}
+.ux-gas-check-row.is-funded>span{color:#a9d2ff}
+.ux-gas-step-list{margin-top:16px;border-top:1px solid #293c56;padding-top:12px}
+.ux-gas-step-list>strong{font-size:12px}
+.ux-gas-step-list ol{padding-left:19px;font-size:11px;line-height:1.65;color:#afbed1}
+.ux-gas-step-list li{margin:9px 0}
+.ux-gas-check .ux-small{font-size:11px;color:#a9bdd5}
+@media(max-width:700px){.ux-gas-check-row{align-items:flex-start;flex-direction:column}.ux-gas-check-row>span{text-align:left}}
