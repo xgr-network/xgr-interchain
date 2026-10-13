@@ -15,7 +15,9 @@ const executable=browsers.find(name=>{
 });
 function visit(browser,url){
  return new Promise((ok,fail)=>{
-  const args=["--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",
+  // This smoke test verifies boot/navigation; the separate 3D snapshot tests
+  // validate WebGL. Do not drive a perpetual software-GPU render loop here.
+  const args=["--headless","--no-sandbox","--disable-gpu","--disable-webgl","--disable-dev-shm-usage",
     "--disable-extensions","--no-first-run","--disable-background-networking",
     "--virtual-time-budget=5000","--dump-dom",url];
   const child=spawn(browser,args,{stdio:["ignore","pipe","pipe"]});
@@ -91,7 +93,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
    assert.doesNotMatch(html,/Dashboard could not start|Dashboard unavailable/,path+" failed to bootstrap");
    if(path==="/universe"){assert.match(html,/ux-3d-canvas/,"Legacy universe should resolve to the dashboard");}
-   if(path==="/plan-route"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);}
+   if(path==="/plan-route"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/Wallet gas across the full journey/);assert.match(html,/Planned MetaMask steps/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
    if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
@@ -113,7 +115,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   assert.match(joinProbe,/data-join-advance="pass"/,"Continue must advance after valid fields");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
-  for(const name of ["/app.js","/experience.js","/wallet-core.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
+  for(const name of ["/app.js","/experience.js","/wallet-core.js","/wallet-gas.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
  }finally{
   await new Promise(ok=>server.close(ok));
  }

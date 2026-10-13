@@ -25,6 +25,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
     key,label:chainLabel(key,entry),chainId:entry?.chainId??null,
     domainId:entry?.domainId??null,
     nativeCurrency:entry?.nativeCurrency?.symbol||"native",
+    nativeCurrencyDecimals:Number.isInteger(entry?.nativeCurrency?.decimals)&&entry.nativeCurrency.decimals>=0&&entry.nativeCurrency.decimals<=36?entry.nativeCurrency.decimals:18,
     tokens:assets.filter(a=>a.canonical===key||a.representations.some(r=>r.chain===key))
   })).sort((a,b)=>a.key===HUB?-1:b.key===HUB?1:a.label.localeCompare(b.label));
   const chainKeys = new Set(chains.map(c=>c.key));
@@ -144,10 +145,11 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
   if(!connected)detail="Connect wallet to check";
   else if(wallet.loading){status="loading";detail="Checking native balance…"}
   else if(raw?.status==="ready" && /^\d+$/.test(String(raw.balanceWei))){
-   const wei=BigInt(raw.balanceWei),whole=wei/(10n**18n);
-   const part=(wei%(10n**18n)).toString().padStart(18,"0").slice(0,8).replace(/0+$/,"");
+   const wei=BigInt(raw.balanceWei);
+   const decimals=chain.nativeCurrencyDecimals??18,scale=10n**BigInt(decimals);
+   const whole=wei/scale,part=decimals===0?"":(wei%scale).toString().padStart(decimals,"0").slice(0,8).replace(/0+$/,"");
    const fmt=whole.toString()+(part?"."+part:"");
-   const label=wei>0n&&fmt==="0"?"less than 0.00000001":fmt;
+   const label=wei>0n&&fmt==="0"&&decimals>8?"less than 0.00000001":fmt;
    status=wei===0n?"empty":"funded";
    detail=label+" "+symbol+(wei===0n?" · no gas funds":" · fee sufficiency not verified");
   }else if(connected)detail="Balance unavailable · RPC may block browser reads";

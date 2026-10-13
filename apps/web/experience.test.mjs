@@ -206,3 +206,14 @@ test("unconnected wallet and unverified route never receive execution ability",(
  assert.match(rpcDown,/disabled/);
  assert.match(rpcDown,/Route delivery not verified/);
 });
+
+test("native balance formatting respects chain decimals rather than assuming 18",()=>{
+ const modified={...catalog,chains:{...catalog.chains,polygon:{
+  ...catalog.chains.polygon,nativeCurrency:{symbol:"POL",decimals:6}
+ }}};
+ const model=buildExperienceModel(modified);
+ const html=renderPlanRoute(model,{origin:"polygon",destination:"xgrchain",asset:"XGR"},"ready",{
+  account:"0x1111111111111111111111111111111111111111",
+  balances:{polygon:{status:"ready",balanceWei:"1250000"}}});
+ assert.match(html,/1\.25 POL/);
+});
