@@ -915,3 +915,27 @@ button,input,select,textarea,table,
 .ux-gas-step-list li{margin:9px 0}
 .ux-gas-check .ux-small{font-size:11px;color:#a9bdd5}
 @media(max-width:700px){.ux-gas-check-row{align-items:flex-start;flex-direction:column}.ux-gas-check-row>span{text-align:left}}
+
+/* Wallet-gated My Transfers. The link must never appear while hidden. */
+#my-transfers-link[hidden]{display:none!important}
+.ux-my-transfers{max-width:1100px;margin:0 auto}
+.ux-my-transfers>header{padding-bottom:18px}
+.ux-transfer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:14px 0}
+.ux-transfer-actions button,.ux-transfer-lookup button,.ux-transfer-resume{background:#172f4d;color:#e9f4ff;border:1px solid #396087;border-radius:10px;padding:11px 16px;font:inherit;cursor:pointer}
+.ux-transfer-actions button:disabled,.ux-transfer-lookup button:disabled,.ux-transfer-resume:disabled{opacity:.6;cursor:not-allowed}
+.ux-transfer-notice,.ux-transfer-error{border:1px solid #4a6683;padding:12px;border-radius:9px;font-size:13px}
+.ux-transfer-error{border-color:#ae605a}
+.ux-transfer-lookup,.ux-transfer-card{background:#0c182b;border:1px solid #31445c;border-radius:14px;padding:18px;margin:16px 0}
+.ux-transfer-lookup form{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.ux-transfer-lookup label{display:flex;flex-direction:column;gap:7px;font-size:12px;flex:1;min-width:190px}
+.ux-transfer-lookup input,.ux-transfer-lookup select{background:#071321;color:#e2edf9;border:1px solid #3f5676;border-radius:9px;padding:12px;min-width:0;font:inherit}
+.ux-transfer-lookup input{min-width:min(100%,250px)}
+.ux-transfer-card .ux-transfer-head{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}
+.ux-transfer-status{border:1px solid #536985;border-radius:100px;padding:4px 10px;font-size:11px}
+.ux-transfer-status.is-delivered{border-color:#4b936f;color:#91d4b1}
+.ux-transfer-status.is-awaiting-proof,.ux-transfer-status.is-delivery-unknown{border-color:#98744b;color:#f2ca92}
+.ux-transfer-meta{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:6px 0;font-size:12px}
+.ux-transfer-meta code{overflow-wrap:anywhere;color:#c8d9ef}
+.ux-transfer-warning{font-size:12px;color:#e7c394}
+.ux-transfer-cards>h2{margin-top:28px}
+@media(max-width:600px){.ux-transfer-meta{grid-template-columns:minmax(0,1fr);gap:3px}}
