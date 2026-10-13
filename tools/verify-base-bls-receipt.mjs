@@ -4,6 +4,7 @@
 // Never signs, funds, broadcasts or guesses a contract code hash.
 import {readFileSync} from "node:fs";
 import {keccak256} from "../apps/web/keccak.mjs";
+import {normalizeSolc0824IpfsDigest} from "../services/admin/solidity-metadata.mjs";
 const TX="0x47e984a9c05ceb6a16964b32d61f54c2132f85e81b6c43dbe1c1de6994794cfb";
 const ADDRESS="0x1a6610cc7dd0d0f42e22c3608e025d891065814c";
 const SOURCE_COMMIT="b65f045bba92ead56c7bc98626cd472af4f0d5a5";
@@ -60,36 +61,16 @@ async function verifiedFrom(url,runtime){
   code=await call(url,"eth_getCode",[ADDRESS,"latest"]);
   codeBlock="latest";
  }
- if(!hex(code)||code.length!==runtime.length||lower(code)!==lower(runtime)){
-  const byteDiff=(a,b)=>{
-   let i=0;for(;i<Math.min(a.length,b.length);i++)if(a[i]!==b[i])break;
-   return {firstByteDiff:Math.floor((i-2)/2),commonPrefixHexChars:i};
-  };
-  const stripCbor=hexstr=>{
-   if(!hex(hexstr)||hexstr.length<8)return null;
-   const bytesLength=(hexstr.length-2)/2;
-   const metaLength=Number.parseInt(hexstr.slice(-4),16)+2;
-   if(metaLength<2||metaLength>200||metaLength>=bytesLength)return null;
-   return {body:hexstr.slice(0,hexstr.length-2*metaLength),
-    metadata:hexstr.slice(hexstr.length-2*metaLength),
-    bodyBytes:bytesLength-metaLength,metaLength};
-  };
-  const actualParts=stripCbor(code),compiledParts=stripCbor(runtime);
-  console.error("BASE BYTECODE DIAGNOSTICS "+JSON.stringify({
-   provider:url,txHash:TX,contractAddress:ADDRESS,blockNumber:receipt.blockNumber,
-   blockHash:receipt.blockHash,from:receipt.from,status:receipt.status,
-   actualRuntimeHash:hex(code)?hashBytes(code):null,
-   compiledRuntimeHash:hashBytes(runtime),
-   actualBytes:(code.length-2)/2,compiledBytes:(runtime.length-2)/2,
-   ...byteDiff(code,runtime),
-   cbor:{onchain:actualParts?{bodyBytes:actualParts.bodyBytes,metaLength:actualParts.metaLength,metadata:actualParts.metadata}:null,
-    compiled:compiledParts?{bodyBytes:compiledParts.bodyBytes,metaLength:compiledParts.metaLength,metadata:compiledParts.metadata}:null,
-    executableBodyMatches:Boolean(actualParts&&compiledParts&&lower(actualParts.body)===lower(compiledParts.body))},
-   creation:{actualBytes:(tx.input?.length-2)/2,compiledBytes:(creation.length-2)/2,
-    identical:lower(tx.input)===lower(creation),...byteDiff(tx.input||"",creation)}
-  }));
-  throw Error("Deployed Base runtime differs from pinned Foundry XGRInterchainBLSVerifier artifact");
- }
+ // Require identical executable instructions, wrapper, Solidity compiler
+ // version and CBOR structure. The ONLY allowed difference is the 32-byte
+ // IPFS digest inside the exact Solidity 0.8.24 metadata footer. Verify
+ // both on-chain RUNTIME and originally signed CREATION transaction.
+ if(!hex(code)||code.length!==runtime.length||
+    normalizeSolc0824IpfsDigest(code)!==normalizeSolc0824IpfsDigest(runtime)||
+    !hex(tx.input)||tx.input.length!==creation.length||
+    normalizeSolc0824IpfsDigest(tx.input)!==normalizeSolc0824IpfsDigest(creation))
+  throw Error("Base BLS on-chain executable/creation code differs from trusted build outside Solidity IPFS metadata");
+
  const observed=hashBytes(code);
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
