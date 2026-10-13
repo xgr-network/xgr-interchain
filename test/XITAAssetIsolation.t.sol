@@ -60,7 +60,7 @@ contract XITAAssetIsolationAudit is Test {
         MockLocalGovernanceRegistry sourceValidators=new MockLocalGovernanceRegistry(137);
         sourceMailbox.setRegistry(address(sourceValidators));
         XGRILNInterchainISMV2 sourceIsm=new XGRILNInterchainISMV2(address(sourceValidators));
-        XETATokenFactoryV315 source=new XETATokenFactoryV315(137,137,address(sourceValidators),address(sourceMailbox),address(sourceMailbox),address(sourceIsm),500000,100,
+        XETATokenFactoryV315 source=new XETATokenFactoryV315(137,137,address(sourceValidators),address(sourceMailbox),address(sourceMailbox),address(sourceIsm),100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),
           address(new XETACollateralRouterDeployer()));
         source.deployRegistry();AuditERC20 unrelated=new AuditERC20();
