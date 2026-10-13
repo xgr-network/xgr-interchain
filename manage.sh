@@ -178,7 +178,7 @@ health() {
 }
 
 install_sync() {
-  local user group node_bin state_dir service_file path_file
+  local user group node_bin state_dir service_file path_file timer_service_file timer_file
   user="$(id -un)"
   group="$(id -gn)"
   node_bin="$(command -v node)"
@@ -197,20 +197,29 @@ install_sync() {
   }
   service_file="$(mktemp)"
   path_file="$(mktemp)"
-  trap 'rm -f "$service_file" "$path_file"' RETURN
+  timer_file="$(mktemp)"
+  timer_service_file="$(mktemp)"
+  trap 'rm -f "$service_file" "$path_file" "$timer_file" "$timer_service_file"' RETURN
   sed -e "s|@SYNC_USER@|$user|g" -e "s|@SYNC_GROUP@|$group|g" \
       -e "s|@ROOT@|$ROOT|g" -e "s|@STATE_DIR@|$state_dir|g" \
       -e "s|@NODE_BIN@|$node_bin|g" -e "s|@CATALOG_DIR@|$CATALOG_DIR|g" \
       "$ROOT/deploy/systemd/xita-deployment-sync.service.in" > "$service_file"
   sed -e "s|@STATE_DIR@|$state_dir|g" \
       "$ROOT/deploy/systemd/xita-deployment-sync.path.in" > "$path_file"
+  sed -e "s|@SYNC_USER@|$user|g" -e "s|@SYNC_GROUP@|$group|g" \
+      -e "s|@ROOT@|$ROOT|g" -e "s|@STATE_DIR@|$state_dir|g" \
+      -e "s|@NODE_BIN@|$node_bin|g" -e "s|@CATALOG_DIR@|$CATALOG_DIR|g" \
+      "$ROOT/deploy/systemd/xita-deployment-sync-poll.service.in" > "$timer_service_file"
+  cp "$ROOT/deploy/systemd/xita-deployment-sync-poll.timer.in" "$timer_file"
   [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner" >&2; return 1; }
   mkdir -p "$state_dir"
   privileged install -m 0644 "$service_file" /etc/systemd/system/xita-deployment-sync.service
   privileged install -m 0644 "$path_file" /etc/systemd/system/xita-deployment-sync.path
+  privileged install -m 0644 "$timer_service_file" /etc/systemd/system/xita-deployment-sync-poll.service
+  privileged install -m 0644 "$timer_file" /etc/systemd/system/xita-deployment-sync-poll.timer
   privileged systemctl daemon-reload
-  privileged systemctl enable --now xita-deployment-sync.path
-  echo "SUCCESS: verified deployment receipt sync watcher installed."
+  privileged systemctl enable --now xita-deployment-sync.path xita-deployment-sync-poll.timer
+  echo "SUCCESS: receipt watcher and periodic recovery poll installed."
 }
 
 update() {
