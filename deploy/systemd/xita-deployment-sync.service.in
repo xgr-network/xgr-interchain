@@ -10,7 +10,7 @@ Group=@SYNC_GROUP@
 WorkingDirectory=@ROOT@
 Environment=XGR_ADMIN_STATE_DIR=@STATE_DIR@
 Environment=XITA_LIVE_CATALOG=@CATALOG_DIR@/catalog.json
-ExecStart=@NODE_BIN@ @ROOT@/services/admin/deployment-auto-sync-cli.mjs
+ExecStart=/usr/bin/flock -n -E 0 @STATE_DIR@/deployment-sync.lock @NODE_BIN@ @ROOT@/services/admin/deployment-auto-sync-cli.mjs
 TimeoutStartSec=90
 NoNewPrivileges=true
 PrivateTmp=true
