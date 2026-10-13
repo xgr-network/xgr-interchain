@@ -195,7 +195,8 @@ async function previewAssetDeployment(){
  const result=await postJSON("/admin/api/asset-deploy/preview",{taskId:task.id,wallet:wallet.address});
  assetPreview={taskId:task.id,wallet:wallet.address};
  el("modal-gas-result").textContent="Gaslimit "+BigInt(result.preview.simulation.gasLimit).toString()+
-  " · Maximal "+moneyInWei(result.preview.simulation.totalWorstCaseWei,chain);
+  " · aktuelle Preisschätzung "+moneyInWei(result.preview.simulation.totalWorstCaseWei,chain)+
+  " (zusätzliche Rollup-Datengebühren können anfallen; MetaMask zeigt die verbindliche Transaktion)";
  el("modal-deploy").disabled=false;
  presentModalStatus("On-Chain-Vorprüfung erfolgreich. Deployment durch Wallet bestätigen.");
 }
@@ -370,7 +371,10 @@ async function checkModalGas(){
   if(!result.preview?.totalWorstCaseWei)throw Error("Keine gültige Gas-Simulation");
   lastModalPreview={chainName,component,parameters,sourceCommit:result.preview.sourceCommit,wallet:updated.address};
   output.textContent="Gaslimit "+BigInt(result.preview.gasLimit).toString()+
-   " · inkl. Constructor-Einlage bis "+moneyInWei(result.preview.totalWorstCaseWei,chain);
+   " · geschätzter Gesamtbedarf inkl. Constructor-Einlage "+
+   moneyInWei(result.preview.totalWorstCaseWei,chain)+
+   (chainName==="base"?" (Base L1-Daten- und Operatorgebühren berücksichtigt)":"")+
+   " · Preis-Snapshot: endgültige Werte vor Signatur in MetaMask kontrollieren";
   el("modal-deploy").disabled=false;
   presentModalStatus("Gas geprüft. Deployment benötigt Bestätigung in deiner Wallet.");
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}

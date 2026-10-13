@@ -88,6 +88,8 @@ export function createChainOperator({
   return {chain:chain.name,component,sourceCommit:commit,
     gasEstimateWei:simulation.gasEstimateWei,gasLimit:simulation.gasLimit,
     gasPriceWei:simulation.gasPriceWei,totalWorstCaseWei:simulation.totalWorstCaseWei,
+    l1DataFeeUpperBoundWei:simulation.l1DataFeeUpperBoundWei,
+    operatorFeeWei:simulation.operatorFeeWei,
     depositWei:BigInt(draft.transaction.value).toString(),
     parameters:values,mode:"preview-only-no-broadcast-local-clean-main"};
  }
@@ -134,7 +136,9 @@ export function createChainOperator({
   return {mode:"await-wallet-confirmation",commit,id:item.id,chain:chain.name,
    chainId:chain.chainId,component,buildHash:artifact.buildHash,
    simulation:{gas:transaction.gas,gasPriceWei:simulation.gasPriceWei,
-    totalWorstCaseWei:simulation.totalWorstCaseWei},
+    totalWorstCaseWei:simulation.totalWorstCaseWei,
+    l1DataFeeUpperBoundWei:simulation.l1DataFeeUpperBoundWei,
+    operatorFeeWei:simulation.operatorFeeWei},
    transaction,warning:"If wallet broadcast status is uncertain do not retry; reconcile nonce/hash."};
  }
  async function hash({id,txHash}){
