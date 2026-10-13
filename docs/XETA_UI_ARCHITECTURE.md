@@ -86,3 +86,31 @@ search, Universe and rankings show only explicitly public assets. The
 minimum locked USD/USDC-equivalent threshold is currently unset; stale
 or missing evidence is unknown, not zero. See
 [XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md).
+
+## Connected-wallet My Transfers and recovery preflight
+
+**My Transfers is only visible after explicitly authorizing an EIP-1193
+wallet account.** Disconnecting/switching the account removes the navigation,
+clears previous wallet activity and invalidates pending asynchronous reads.
+Unconnected deep links redirect to the public dashboard.
+
+The user may re-enter an original source transaction hash even after changing
+devices. Read-only HTTPS RPC verifies the originating wallet (transaction.from),
+documented source Gateway, successful confirmed receipt, unique canonical
+Gateway ILNOperation(routeId, messageId, domain) and matching Mailbox.Dispatch
+bytes hashed to that same messageId in the very same source transaction.
+Destination Mailbox.delivered(messageId) is independently read. Unavailable
+destination RPC means UNKNOWN, never failed. Replayed/failed/pending source
+transactions must not be mistakenly labelled recoverable.
+
+The bounded recent-block scan helps find transfers of the currently connected
+wallet from canonical, deployed XITA Gateway routes; it is NOT a full history
+indexer and may have gaps (CORS, rate limits, confirmation depth). The source TX
+hash lookup remains the recovery path when older history is unindexed.
+
+**Recovery submission remains deliberately disabled** until the complete v3.1.5
+Merkle/BLS proof distribution endpoint is independently verified, the UI can
+estimate and sign only the *destination* Mailbox.process transaction, and E2E
+tests demonstrate a retry after out-of-gas or user cancellation. There is no
+re-broadcast of original TX1, no private key storage, no proxy upgrade,
+no on-chain governance mutation and no automatic destination gas sponsorship.
