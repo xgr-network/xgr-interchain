@@ -217,3 +217,15 @@ test("native balance formatting respects chain decimals rather than assuming 18"
   balances:{polygon:{status:"ready",balanceWei:"1250000"}}});
  assert.match(html,/1\.25 POL/);
 });
+
+
+test("chain-only gas preflight renders before any token is publicly eligible",()=>{
+ const model=buildExperienceModel({chains:catalog.chains,assets:{}},()=>false);
+ const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base"},"not-deployed");
+ assert.match(html,/Wallet gas across the full journey/);
+ assert.match(html,/Planned MetaMask steps \(2 transactions\)/);
+ assert.match(html,/chain-only gas balance preview/);
+ assert.match(html,/no eligible token route/i);
+ assert.match(html,/Browse tokens/);
+ assert.doesNotMatch(html,/eth_sendTransaction/);
+});

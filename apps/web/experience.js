@@ -177,7 +177,10 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
   '<p class="ux-small">Positive balance does not mean enough gas. Exact transaction gas, validator fee, transferable amount and approvals must be simulated before sending. Checks are snapshots; never start without destination gas already available.</p>'+
   '<div class="ux-gas-step-list"><strong>Planned MetaMask steps ('+(plan.hops.length*2)+' transactions)</strong>'+
   '<ol>'+steps+'</ol></div>'+
-  (!plan.active?'<p class="ux-small">Route delivery not verified. Planning preview only; no signing or sending is enabled.</p>':'')+
+  (!plan.active?'<p class="ux-small">'+
+    (plan.networkOnly?"This is a chain-only gas balance preview; no eligible token route is currently selected. ":
+      "Route delivery not verified. ")+
+    'No signing or sending is enabled.</p>':'')+
   '</section>';
 }
 
@@ -328,6 +331,16 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   model.chains.find(c=>c.key!==source)?.key||source;
  const assetId=model.assets.some(a=>a.id===selection.asset)?selection.asset:model.assets[0]?.id||"";
  const plan=previewRoute(model,source,target,assetId);
+ // Network-only native balance preview is valid even before a token is
+ // publicly listed. Never mark a hypothetical hop as an active route.
+ const pathForBalances=plan.path.length?plan.path:
+  source===target?[]:
+  source===HUB||target===HUB?[source,target]:[source,HUB,target];
+ const gasPlan=plan.path.length?plan:{
+  path:pathForBalances,
+  hops:pathForBalances.slice(1).map(()=>null),
+  active:false,networkOnly:true
+ };
  const active=model.routes.filter(r=>r.active).length;
  const firstAsset=model.assets.find(a=>a.id===assetId);
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
@@ -340,7 +353,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
   '<div class="ux-divider"></div><div class="ux-kicker">ROUTE PATH</div>'+routePath(model,plan)+
   '<div class="ux-route-status">'+pill(plan.active)+'<p>'+esc(plan.reason)+'</p></div>'+
-  renderWalletGasChecklist(model,plan,wallet)+
+  renderWalletGasChecklist(model,gasPlan,wallet)+
   '<p class="ux-small">No transfer timings, bridge TVL or transaction availability are inferred from the diagram.</p>'+
   (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
    '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
