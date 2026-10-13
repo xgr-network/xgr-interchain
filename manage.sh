@@ -5,6 +5,7 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 ADMIN_SERVICE="xita-admin.service"
 SITE_DIR="/var/www/xita"
+CATALOG_DIR="$SITE_DIR/data"
 ADMIN_URL="http://127.0.0.1:${XGR_ADMIN_PORT:-4087}"
 
 usage() {
@@ -22,6 +23,7 @@ Usage: ./manage.sh <command>
   check         Validate current local manifests, UI and admin code
   publish-web   Publish static apps/web and restart the admin
   update        Pull GitHub main, validate, publish web, restart admin
+  install-sync  Install one-shot GitHub deployment receipt auto-sync service
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
 
@@ -113,6 +115,14 @@ prepare_solidity_runtime() {
 }
 
 
+prepare_catalog_store() {
+ local user group
+ user="$(id -un)"; group="$(id -gn)"
+ [[ "$user" != "root" ]] || { echo "Run manage.sh as checkout owner" >&2; return 1; }
+ privileged install -d -m 0755 -o "$user" -g "$group" "$CATALOG_DIR"
+ node "$ROOT/services/admin/deployment-auto-sync-cli.mjs" --publish-catalog
+}
+
 publish_web() {
   local sha release previous next
   require_clean_main
@@ -128,6 +138,9 @@ publish_web() {
   privileged install -d -m 755 "$SITE_DIR/releases" "$release"
   privileged cp -a "$ROOT/apps/web/." "$release/"
   privileged chmod -R a+rX "$release"
+  prepare_catalog_store
+  privileged rm -f "$release/catalog.json"
+  privileged ln -s "$CATALOG_DIR/catalog.json" "$release/catalog.json"
   previous="$(readlink -f "$SITE_DIR/current" 2>/dev/null || true)"
   next="$SITE_DIR/.next-${sha:0:12}-$$"
   privileged ln -s "$release" "$next"
@@ -164,11 +177,48 @@ health() {
   fi
 }
 
+install_sync() {
+  local user group node_bin state_dir service_file path_file
+  user="$(id -un)"
+  group="$(id -gn)"
+  node_bin="$(command -v node)"
+  state_dir="${XGR_ADMIN_STATE_DIR:-$ROOT/runtime-state/admin}"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$group" =~ ^[a-z_][a-z0-9_-]*$ ]] || {
+    echo "ERROR: unsupported service user/group" >&2
+    return 1
+  }
+  [[ "$node_bin" == /* && "$ROOT" == /* && "$state_dir" == /* ]] || {
+    echo "ERROR: only absolute sync paths supported" >&2
+    return 1
+  }
+  [[ "$node_bin$ROOT$state_dir" != *'@'* && "$node_bin$ROOT$state_dir" != *'%'* ]] || {
+    echo "ERROR: unsafe systemd path placeholder" >&2
+    return 1
+  }
+  service_file="$(mktemp)"
+  path_file="$(mktemp)"
+  trap 'rm -f "$service_file" "$path_file"' RETURN
+  sed -e "s|@SYNC_USER@|$user|g" -e "s|@SYNC_GROUP@|$group|g" \
+      -e "s|@ROOT@|$ROOT|g" -e "s|@STATE_DIR@|$state_dir|g" \
+      -e "s|@NODE_BIN@|$node_bin|g" -e "s|@CATALOG_DIR@|$CATALOG_DIR|g" \
+      "$ROOT/deploy/systemd/xita-deployment-sync.service.in" > "$service_file"
+  sed -e "s|@STATE_DIR@|$state_dir|g" \
+      "$ROOT/deploy/systemd/xita-deployment-sync.path.in" > "$path_file"
+  [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner" >&2; return 1; }
+  mkdir -p "$state_dir"
+  privileged install -m 0644 "$service_file" /etc/systemd/system/xita-deployment-sync.service
+  privileged install -m 0644 "$path_file" /etc/systemd/system/xita-deployment-sync.path
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-deployment-sync.path
+  echo "SUCCESS: verified deployment receipt sync watcher installed."
+}
+
 update() {
   require_clean_main
   echo "Updating xgr-interchain from origin/main ..."
   git -C "$ROOT" pull --ff-only origin main
   publish_web
+  install_sync
 }
 
 case "${1:-help}" in
@@ -196,6 +246,7 @@ case "${1:-help}" in
     publish_web
     ;;
   update) update ;;
+  install-sync) install_sync ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

@@ -1,6 +1,7 @@
 import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
+import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
 async function postJSON(p,data){return apiJSON(fetch,p,{method:"POST",data});}
@@ -50,7 +51,7 @@ let liveBootstrap=new Map();
 const coreTitles={
  blsVerifier:"BLS-Verifier",
  validatorRegistry:"ValidatorRegistry V3",
- ism:"Interchain Security Module",transportBundle:"Frischer XITA-Transport (Mailbox + Hook)",
+ ism:"Interchain Security Module",
  nativeRouterDeployer:"Native Router Deployer (einmalig)",
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
  collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
@@ -96,7 +97,6 @@ function renderInfrastructure(){
     Object.entries(live.liveValidatorReservesWei||{}).map(([address,value])=>
      '<div>'+esc(displayAddress(address))+': '+esc(money(value))+'</div>').join("")+
     (live.liveFactoryGasLimit?'<div>Factory-Zielgas: '+esc(live.liveFactoryGasLimit)+'</div>':'')+
-    (c.hyperlane?.mailbox?'<div>Mailbox: '+esc(c.hyperlane.mailbox)+'</div><div>MerkleTreeHook: '+esc(c.hyperlane.merkleTreeHook)+'</div>':'')+
     (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";
@@ -223,7 +223,7 @@ async function executeAssetDeployment(){
   });
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
  presentModalStatus("Deployment dokumentiert. Route ist lokal permissionless registriert.","success");
- el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+ el("contract-deploy-dialog").close();selectedAssetTask=null;await waitForDeploymentSync(report.result);
 }
 async function recoverAssetDeployment(){
  const task=selectedAssetTask;
@@ -248,7 +248,7 @@ async function recoverAssetDeployment(){
   });
  presentModalStatus("Wiederhergestellt: "+outcome.result.stage,"success");
  if(outcome.result.stage==="documented"){
-  el("contract-deploy-dialog").close();selectedAssetTask=null;await loadMainWorkqueue();
+  el("contract-deploy-dialog").close();selectedAssetTask=null;await waitForDeploymentSync(outcome.result);
  }
 }
 async function openContractModal(chainName,component){
@@ -299,13 +299,14 @@ async function openContractModal(chainName,component){
     sourceFeeWei:r.values.sourceFeeWei,
     defaultDestinationGasLimit:chain.defaultDestinationGasLimit
   };
+  const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
   for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei","defaultDestinationGasLimit"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // No JSON file authorizes economics. Historical values are reference only.
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000"}:null;
-   input.value=xgrInitial?.[key]??"";
+   input.value=component==="factory"?String(factoryDefaults?.[key]??""):xgrInitial?.[key]??"";
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
    input.title="Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
@@ -313,6 +314,8 @@ async function openContractModal(chainName,component){
   el("modal-parameter-note").textContent=requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
+    component==="factory"?
+    "Vorausgefüllt: 500.000 Destination-Gas und editierbare Initialgebühr (Gaspreis-Schätzung; bei XGR ohne Schätzung 0,0000001 XGR). Keine Garantie für Executor-Kostendeckung. ":
     "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. ")+
    "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";
@@ -401,7 +404,7 @@ async function executeModalDeployment(){
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
-  await loadMainWorkqueue();
+  await waitForDeploymentSync(result.result);
  }catch(e){el("modal-recover").hidden=false;presentModalStatus(
   "Deployment nicht abgeschlossen: "+e.message+". Bei vorhandener Wallet-Transaktion nur Wiederherstellung verwenden.","error")}
 }
@@ -442,7 +445,7 @@ async function recoverModalDeployment(){
     attempts:6,onPending:()=>presentModalStatus("Prüfe dieselbe Wallet-Transaktion erneut …","warn")
    });
   presentModalStatus(result.result.stage==="pending"?"Transaktion noch ausstehend; später erneut prüfen.":"Wiederherstellung: "+result.result.stage,result.result.stage==="pending"?"warn":"success");
-  if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await loadMainWorkqueue()}
+  if(result.result.stage==="documented"){el("contract-deploy-dialog").close();selectedDeployment=null;await waitForDeploymentSync(result.result)}
  }catch(e){presentModalStatus("Wiederherstellung blockiert: "+e.message,"error")}
 }
 function formatBalance(b,c){return formatNative(b,c.nativeCurrency.decimals||18)+" "+c.nativeCurrency.symbol;}
@@ -481,6 +484,30 @@ function renderQueue(){} // No separate work queue: cards are the actionable int
 function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
  for(const link of document.querySelectorAll(".sidebar [data-view]"))link.classList.toggle("active",link.dataset.view===name);
+}
+async function waitForDeploymentSync(result){
+ const commit=result?.commit;
+ if(!result?.autoSyncQueued||!commit){
+  el("main-status").textContent="Deployment in GitHub dokumentiert. Server-Sync ausstehend; bei Bedarf ./manage.sh update ausführen.";
+  await loadMainWorkqueue();
+  return;
+ }
+ el("main-status").textContent="Verifiziert und in GitHub dokumentiert. Synchronisiere Deployment-Daten …";
+ for(let attempt=0;attempt<20;attempt++){
+  await new Promise(resolve=>setTimeout(resolve,800));
+  try{
+   const state=await get("/admin/api/workqueue");
+   if(!state.readOnly&&state.commit===commit){
+    await loadMainWorkqueue();
+    return;
+   }
+   if(state.remoteCommit&&state.remoteCommit!==commit){
+    break; // Unrelated main change; never silently authorize a different revision.
+   }
+  }catch{}
+ }
+ await loadMainWorkqueue();
+ el("main-status").textContent="Deployment auf GitHub bestätigt. Lokale Synchronisierung nicht abgeschlossen; Sync-Service prüfen oder ./manage.sh update verwenden.";
 }
 async function loadMainWorkqueue(){
  el("main-status").textContent="Aktuellen GitHub main prüfen …";

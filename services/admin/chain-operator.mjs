@@ -11,12 +11,13 @@ import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {inspectConfiguredChain} from "./chain-preflight.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {trustedBuild} from "./trusted-artifacts.mjs";
-import {reconcileDeployedContract,verifyTransportChildren} from "./chain-reconcile.mjs";
+import {reconcileDeployedContract} from "./chain-reconcile.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
+import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const nonceWord=s=>{
@@ -209,22 +210,7 @@ export function createChainOperator({
   if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});
   // Preserve original GitHub issue on failure: do not erase confirmed intent.
-  const inputs=[{...result.input,sourceCommit:commit}];
-  if(id.endsWith(":transportBundle")){
-   const transport=await verifyTransportChildren({rpc,url:chain.rpcUrls[0],
-    bundle:result.contractAddress,chain,
-    ism:infrastructure.components.find(p=>p.key==="ism")?.address,
-    artifacts:built.artifacts,blockNumber:result.verified.blockNumber});
-   for(const [component,child] of Object.entries(transport))inputs.push({
-    sourceCommit:commit,chain:chain.name,component,
-    contractAddress:child.address,txHash:entry.txHash,
-    expectedRuntimeKeccak256:child.runtimeKeccak,expectedDeployer:entry.wallet,
-    provenance:{kind:component==="mailbox"?"transport-mailbox":
-      component==="merkleTreeHook"?"transport-merkle-hook":"transport-required-hook",
-      factory:result.contractAddress}
-   });
-  }
-  const published=await publish(root,inputs,{rpc});
+  const published=await publish(root,[{...result.input,sourceCommit:commit}],{rpc});
   // The publisher verified GitHub's new main ref. Finalize this intent now:
   // the Admin service cannot git-pull inside its read-only deployment.
   // The next transaction is gated until ./manage.sh update syncs main.
@@ -232,8 +218,12 @@ export function createChainOperator({
    throw Error("GitHub publisher did not return a new main commit; intent retained");
   const path=deploymentReceiptPath(result.verified);
   journal.document(id,path);
+  let autoSyncQueued=false;
+  try{queueDeploymentSync(stateDir,published.commit);autoSyncQueued=true;}
+  catch(error){console.error("XITA receipt recorded; checkout sync needs attention:",String(error.message||error));}
   return {stage:"documented",receiptPath:path,commit:published.commit,
-   address:result.contractAddress,txHash:entry.txHash,checkoutUpdateRequired:true};
+   address:result.contractAddress,txHash:entry.txHash,
+   checkoutUpdateRequired:true,autoSyncQueued};
  }
  async function cancelPrepared({id,createdAt}){
   const all=approvedWorkInventory(root);
