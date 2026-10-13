@@ -73,7 +73,7 @@ contract XITAPredeployOperationalReview is Test {
     function factory(uint32 d) internal returns(XETATokenFactoryV315 f,AuditMailbox m){
         vm.chainId(d);m=new AuditMailbox(d);MockLocalGovernanceRegistry v=new MockLocalGovernanceRegistry(d);m.setRegistry(address(v));
         v.setResult(false); // Route admission must not need a validator vote.
-        f=new XETATokenFactoryV315(d,d,address(v),address(m),address(m),address(m),500000,100,
+        f=new XETATokenFactoryV315(d,d,address(v),address(m),address(m),address(m),100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),
           address(new XETACollateralRouterDeployer()));
         f.deployRegistry();

@@ -49,7 +49,7 @@ contract XITAAssetIsolationAudit is Test {
         XGRILNInterchainISMV2 ism=new XGRILNInterchainISMV2(address(validators));
         AuditMessageMailbox hubMailbox=new AuditMessageMailbox(1643);
         hubMailbox.setRegistry(address(validators));
-        XETATokenFactoryV315 hub=new XETATokenFactoryV315(1643,1643,address(validators),address(hubMailbox),address(hubMailbox),address(ism),500000,100,
+        XETATokenFactoryV315 hub=new XETATokenFactoryV315(1643,1643,address(validators),address(hubMailbox),address(hubMailbox),address(ism),100,
           address(new XETANativeRouterDeployer()),address(new XETASyntheticRouterDeployer()),
           address(new XETACollateralRouterDeployer()));
         hub.deployRegistry();address native=hub.deployNativeXGRRouter(bytes32(uint256(1)));
