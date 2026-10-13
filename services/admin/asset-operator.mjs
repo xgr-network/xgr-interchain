@@ -224,7 +224,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   j.document(id,path);
   let autoSyncQueued=false;
   try{queueDeploymentSync(stateDir,result.commit);autoSyncQueued=true;}
-  catch(error){console.error("XITA asset recorded; checkout sync needs attention:",String(error.message||error));}
+  catch(error){console.error("XITA asset sync needs attention:",String(error.message||error));}
   return {stage:"documented",address,txHash:entry.txHash,receiptPath:path,
     activation:"permissionless-registered",commit:result.commit,checkoutUpdateRequired:true,autoSyncQueued};
  }
