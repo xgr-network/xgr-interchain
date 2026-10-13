@@ -32,17 +32,34 @@ test("all main-approved chains derive deployment progress from documented compon
   }
  }
 });
-test("non-XITA Hyperlane core cannot pass as new deployed contracts",async()=>{
+test("Base observes only documented XITA contracts, not undeployed legacy core",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
+ const base=chains.find(c=>c.name==="base");
+ assert.ok(base,"Base must remain an approved spoke");
  const rpc=async (_url,method)=>{
   if(method==="eth_chainId")return "0x2105";
   if(method==="eth_getCode")return "0x6001";
   throw Error("Unknown method");
  };
- const result=await verifyChainInfrastructure(chains.filter(c=>c.name==="base"),{rpc});
- assert.equal(result[0].rpc,true);
- assert.equal(result[0].core,false);
- assert.equal(result[0].status,"not-deployed");
+ const [observed]=await verifyChainInfrastructure([base],{rpc});
+ assert.equal(observed.rpc,true);
+ // A new receipt can legitimately move Base from not-deployed to partial.
+ // Never assume the verified BLS verifier or future deployments do not exist.
+ const trustedCore=Boolean(base.hyperlane.mailbox&&base.hyperlane.merkleTreeHook&&base.hyperlane.requiredHook);
+ assert.equal(observed.core,trustedCore);
+ const documented=base.components.filter(c=>c.status==="documented");
+ assert.equal(observed.components.filter(c=>c.live).length,documented.length);
+ assert.equal(observed.status,
+  documented.length===base.required&&trustedCore?"observed-complete":
+   documented.length?"observed-partial":"not-deployed");
+ // In particular, a chain with no XITA receipts must remain undeployed even
+ // when an RPC would return code for arbitrary historical Hyperlane addresses.
+ const unverified={...base,documented:0,
+  components:base.components.map(c=>({...c,address:null,status:"not-deployed"})),
+  hyperlane:{mailbox:null,merkleTreeHook:null,requiredHook:null,transportBundle:null}};
+ const [legacy]=await verifyChainInfrastructure([unverified],{rpc});
+ assert.equal(legacy.status,"not-deployed");
+ assert.equal(legacy.core,false);
 });
 test("wallet wei/ETH formatting keeps exact integer precision",()=>{
  assert.equal(formatNative("0xde0b6b3a7640000"),"1");
