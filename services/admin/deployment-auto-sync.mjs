@@ -114,8 +114,9 @@ export function syncDeploymentCheckout(root,expectedCommit,{
  // The requested verified receipt commit must remain an ancestor of main.
  // Check EACH intervening commit, not just the net diff; a code change
  // subsequently reverted must never sneak into a live checkout.
- git(["merge-base","--is-ancestor",local,remote]);
+ git(["merge-base","--is-ancestor",local,expectedCommit]);
  git(["merge-base","--is-ancestor",expectedCommit,remote]);
+ git(["merge-base","--is-ancestor",local,remote]);
  const commits=git(["rev-list","--reverse",local+".."+remote]).split(/\s+/).filter(Boolean);
  if(!commits.length||commits.length>32)throw Error("Unexpected receipt sync history length");
  for(const commit of commits){

@@ -50,7 +50,11 @@ test("stale remote commit, dirty checkout, and nonreceipt commit cannot auto-mer
    if(args[0]==="status")return mode==="dirty"?" M contracts/Foo.sol":"";
    if(args[0]==="remote")return mode==="origin"?"https://attacker.example/repo":"git@github.com:xgr-network/xgr-interchain.git";
    if(args[0]==="rev-parse")return args[1]==="HEAD"?old:mode==="stale"?"c".repeat(40):next;
-   if(args[0]==="fetch"||args[0]==="merge-base")return "";
+   if(args[0]==="fetch")return "";
+   if(args[0]==="merge-base"){
+    if(mode==="stale"&&args[2]===next)throw Error("verified commit is not on main");
+    return "";
+   }
    if(args[0]==="rev-list")return args[1]==="--reverse"?next:next+" "+old;
    if(args[0]==="diff-tree")return mode==="code"?"M\tservices/admin/server.mjs":safe;
    if(args[0]==="diff")return mode==="code"?"M\tservices/admin/server.mjs":safe;

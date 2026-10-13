@@ -309,13 +309,18 @@ async function openContractModal(chainName,component){
    input.value=component==="factory"?String(factoryDefaults?.[key]??""):xgrInitial?.[key]??"";
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
-   input.title="Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
+   input.title=component==="factory"?
+    "Editierbarer Constructor-Startwert. Destination-Gas ist ein Hinweis, kein Executor-Gaslimit.":
+    "Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
   }
   el("modal-parameter-note").textContent=requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
     component==="factory"?
-    "Vorausgefüllt: 500.000 Destination-Gas und editierbare Initialgebühr (Gaspreis-Schätzung; bei XGR ohne Schätzung 0,0000001 XGR). Keine Garantie für Executor-Kostendeckung. ":
+    (chainName==="xgrchain"?
+      "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":
+      "Initiale Source-Fee in der nativen Quellchain-Währung; Ketten-Gaspreis nur als unverbindlicher Vorschlag. ")+
+    "500.000 Destination-Gas sind nur Hyperlane-Dispatch-Metadaten, kein Executor-Gaslimit. Der Executor schätzt das tatsächliche Mailbox.process-Gas für jede Nachricht neu. ":
     "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. ")+
    "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";

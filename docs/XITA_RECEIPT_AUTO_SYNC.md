@@ -18,3 +18,9 @@ access and links the website release catalog to it. Receipt-only updates
 atomically refresh that JSON; scripts, Solidity, the Admin process,
 validator nodes and relayers are never restarted by automatic sync.
 Unexpected main changes, Git or artifact failures still require full update.
+
+The XGRChain Factory form preloads 0.1 XGR (100000000000000000 Wei)
+for the initial source-validator fee; other chains use their own currency.
+The suggested 500000 destination gas parameter is only immutable Hyperlane
+metadata, not a cap on Mailbox.process. The runtime relayer estimates the
+actual gas for every destination message separately.

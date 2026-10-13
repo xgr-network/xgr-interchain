@@ -15,6 +15,7 @@ import {
   snapshotNodes,
 } from "./merkle.mjs";
 import { wrapAggregationMetadata } from "./metadata.mjs";
+import { planDestinationProcessGas } from "./gas-planner.mjs";
 import { ILN_OPERATION_EVENT, requireRouteId, encodeCheckpointPayloadV2, encodeISMMetadataV314 } from "./iln-codec.mjs";
 
 const env = (name, fallback = undefined) => {
@@ -692,13 +693,22 @@ async function relayAvailable(state) {
       continue;
     }
 
-    const tx = await destinationMailbox.process(metadata, message);
+    // Simulate the full BLS-verified delivery in this specific destination
+    // block; the immutable Hyperlane dispatch gas hint is never a transaction cap.
+    const estimatedGas=await destinationMailbox.process.estimateGas(metadata,message);
+    const latestBlock=await destinationProvider.getBlock("latest");
+    if(!latestBlock)throw Error("Destination block gas capacity unavailable");
+    const planned=planDestinationProcessGas(estimatedGas,latestBlock.gasLimit);
+    const tx=await destinationMailbox.process(metadata,message,{gasLimit:planned.gasLimit});
     console.log(
       JSON.stringify({
         event: "iln_relay_submitted",
         route: ATTESTATION_ROUTE,
         messageId: id,
         txHash: tx.hash,
+        estimatedGas: planned.estimatedGas.toString(),
+        gasLimit: planned.gasLimit.toString(),
+        destinationBlockGasLimit: planned.blockGasLimit.toString(),
       }),
     );
 
