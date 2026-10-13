@@ -60,8 +60,36 @@ async function verifiedFrom(url,runtime){
   code=await call(url,"eth_getCode",[ADDRESS,"latest"]);
   codeBlock="latest";
  }
- if(!hex(code)||code.length!==runtime.length||lower(code)!==lower(runtime))
+ if(!hex(code)||code.length!==runtime.length||lower(code)!==lower(runtime)){
+  const byteDiff=(a,b)=>{
+   let i=0;for(;i<Math.min(a.length,b.length);i++)if(a[i]!==b[i])break;
+   return {firstByteDiff:Math.floor((i-2)/2),commonPrefixHexChars:i};
+  };
+  const stripCbor=hexstr=>{
+   if(!hex(hexstr)||hexstr.length<8)return null;
+   const bytesLength=(hexstr.length-2)/2;
+   const metaLength=Number.parseInt(hexstr.slice(-4),16)+2;
+   if(metaLength<2||metaLength>200||metaLength>=bytesLength)return null;
+   return {body:hexstr.slice(0,hexstr.length-2*metaLength),
+    metadata:hexstr.slice(hexstr.length-2*metaLength),
+    bodyBytes:bytesLength-metaLength,metaLength};
+  };
+  const actualParts=stripCbor(code),compiledParts=stripCbor(runtime);
+  console.error("BASE BYTECODE DIAGNOSTICS "+JSON.stringify({
+   provider:url,txHash:TX,contractAddress:ADDRESS,blockNumber:receipt.blockNumber,
+   blockHash:receipt.blockHash,from:receipt.from,status:receipt.status,
+   actualRuntimeHash:hex(code)?hashBytes(code):null,
+   compiledRuntimeHash:hashBytes(runtime),
+   actualBytes:(code.length-2)/2,compiledBytes:(runtime.length-2)/2,
+   ...byteDiff(code,runtime),
+   cbor:{onchain:actualParts?{bodyBytes:actualParts.bodyBytes,metaLength:actualParts.metaLength,metadata:actualParts.metadata}:null,
+    compiled:compiledParts?{bodyBytes:compiledParts.bodyBytes,metaLength:compiledParts.metaLength,metadata:compiledParts.metadata}:null,
+    executableBodyMatches:Boolean(actualParts&&compiledParts&&lower(actualParts.body)===lower(compiledParts.body))},
+   creation:{actualBytes:(tx.input?.length-2)/2,compiledBytes:(creation.length-2)/2,
+    identical:lower(tx.input)===lower(creation),...byteDiff(tx.input||"",creation)}
+  }));
   throw Error("Deployed Base runtime differs from pinned Foundry XGRInterchainBLSVerifier artifact");
+ }
  const observed=hashBytes(code);
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
