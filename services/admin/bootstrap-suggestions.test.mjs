@@ -11,8 +11,7 @@ test("missing bootstrap economics receive editable gas-price-based nonapproved e
   minimumWei:"750000000000000000",
   maxExecutorReimbursementWei:"500000000000000000",
   perValidatorWei:"1000000000000000000",
-  sourceFeeWei:"100000000000000",
-  defaultDestinationGasLimit:500000
+  sourceFeeWei:"100000000000000"
  });
  assert.equal(p.totalInitialReserveWei,"3000000000000000000");
  assert.ok(Object.values(p.sources).every(v=>v==="unapproved-estimate"));
@@ -25,8 +24,7 @@ test("approved Base fee and explicitly configured fields override all estimates"
  const p=suggestBootstrapValues({chain:c,bootstrap:b,gasPriceWei:"5000000"});
  assert.deepEqual(p.values,{
   minimumWei:"20000000",maxExecutorReimbursementWei:"10000000",
-  perValidatorWei:"30000000",sourceFeeWei:"100000000000",
-  defaultDestinationGasLimit:350000
+  perValidatorWei:"30000000",sourceFeeWei:"100000000000"
  });
  assert.ok(Object.values(p.sources).every(v=>v==="main"));
 });

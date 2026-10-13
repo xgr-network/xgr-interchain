@@ -3,7 +3,7 @@ const POS=/^[1-9][0-9]*$/;
 const MAX=(1n<<256n)-1n;
 const KEYS={
  validatorRegistry:["minimumWei","maxExecutorReimbursementWei"],
- factory:["sourceFeeWei","defaultDestinationGasLimit"]
+ factory:["sourceFeeWei"]
 };
 export function requiredDeploymentFields(component){
  return KEYS[component]||[];
@@ -17,15 +17,9 @@ export function deploymentParameters(component,raw={}){
  const out={};
  for(const k of keys){
   const value=raw[k];
-  if(k==="defaultDestinationGasLimit"){
-   if(!Number.isSafeInteger(value)||value<21000||value>10000000)
-    throw Error("Destination gas limit must be an integer from 21000 to 10000000");
-   out[k]=value;
-  }else{
-   if(typeof value!=="string"||!POS.test(value)||BigInt(value)>MAX)
-    throw Error("Positive, exact Wei value required for "+k);
-   out[k]=BigInt(value).toString();
-  }
+  if(typeof value!=="string"||!POS.test(value)||BigInt(value)>MAX)
+   throw Error("Positive, exact Wei value required for "+k);
+  out[k]=BigInt(value).toString();
  }
  if(component==="validatorRegistry"&&(
    BigInt(out.minimumWei)<BigInt(out.maxExecutorReimbursementWei)))

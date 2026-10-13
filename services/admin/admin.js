@@ -96,7 +96,6 @@ function renderInfrastructure(){
     '<div>Executor-Limit: '+esc(money(live.liveMaxExecutorReimbursementWei))+'</div>'+
     Object.entries(live.liveValidatorReservesWei||{}).map(([address,value])=>
      '<div>'+esc(displayAddress(address))+': '+esc(money(value))+'</div>').join("")+
-    (live.liveFactoryGasLimit?'<div>Factory-Zielgas: '+esc(live.liveFactoryGasLimit)+'</div>':'')+
     (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";
@@ -131,19 +130,16 @@ function presentModalStatus(message,type=""){const n=el("contract-modal-status")
 function modalValues(component){
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei"]:
-   component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
+   component==="factory"?["sourceFeeWei"]:[];
  const result={};
  for(const key of keys){
   const v=el("modal-"+key).value.trim();
   if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
-  result[key]=key==="defaultDestinationGasLimit"?Number(v):v;
+  result[key]=v;
  }
  if(component==="validatorRegistry"&&
   (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
   throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
- if(component==="factory"&&(!Number.isSafeInteger(result.defaultDestinationGasLimit)||
-  result.defaultDestinationGasLimit<21000||result.defaultDestinationGasLimit>10000000))
-  throw Error("Destination-Gaslimit muss zwischen 21.000 und 10.000.000 liegen");
  return result;
 }
 let lastModalPreview=null;
@@ -280,7 +276,7 @@ async function openContractModal(chainName,component){
   lastModalPreview=null;
   const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
-   component==="factory"?["sourceFeeWei","defaultDestinationGasLimit"]:[];
+   component==="factory"?["sourceFeeWei"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
@@ -296,11 +292,10 @@ async function openContractModal(chainName,component){
   const fromGitHub={
     minimumWei:r.values.minimumReserveWei,
     maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
-    sourceFeeWei:r.values.sourceFeeWei,
-    defaultDestinationGasLimit:chain.defaultDestinationGasLimit
+    sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei","defaultDestinationGasLimit"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // No JSON file authorizes economics. Historical values are reference only.
@@ -310,7 +305,7 @@ async function openContractModal(chainName,component){
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
    input.title=component==="factory"?
-    "Editierbarer Constructor-Startwert. Destination-Gas ist ein Hinweis, kein Executor-Gaslimit.":
+    "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
   }
   el("modal-parameter-note").textContent=requiresValues?
@@ -320,7 +315,7 @@ async function openContractModal(chainName,component){
     (chainName==="xgrchain"?
       "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":
       "Initiale Source-Fee in der nativen Quellchain-Währung; Ketten-Gaspreis nur als unverbindlicher Vorschlag. ")+
-    "500.000 Destination-Gas sind nur Hyperlane-Dispatch-Metadaten, kein Executor-Gaslimit. Der Executor schätzt das tatsächliche Mailbox.process-Gas für jede Nachricht neu. ":
+    "Kein Gaslimit-Eingabefeld: Hyperlane-Metadaten sind intern konstant; bei der Zustellung schätzt MetaMask das tatsächliche Zielgas. ":
     "Einmalige Constructor-Werte. Graue Zahlen sind lediglich Hinweise, keine Konfiguration. ")+
    "Nach Deploy zählt ausschließlich der Live-Contract; GitHub speichert nur Adresse und Receipt.":
    "Keine wirtschaftlichen Eingaben nötig. Verifizierte Vorgänger-Contracts werden live geprüft.";

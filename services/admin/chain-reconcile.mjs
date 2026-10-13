@@ -70,8 +70,6 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("validatorRegistry()",registry,"address");
   await check("destinationIsm()",ism,"address");
   await check("initialSourceFeeWei()",bootstrap.proposedFeeWei);
-  if(!Number.isSafeInteger(chain.defaultDestinationGasLimit)||chain.defaultDestinationGasLimit<21000)throw Error("Approved factory gas limit absent");
-  await check("defaultDestinationGasLimit()",chain.defaultDestinationGasLimit);
   await check("mailbox()",infra.hyperlane.mailbox,"address");
   await check("merkleTreeHook()",infra.hyperlane.merkleTreeHook,"address");
   // Reject an otherwise matching Factory that points at unverified/deceptive

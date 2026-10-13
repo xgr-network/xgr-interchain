@@ -54,7 +54,7 @@ contract XETAOpenRouteFactoryV315Test is Test {
         mailbox.setRegistry(address(validators));
         factory = new XETATokenFactoryV315(
             BASE, uint32(BASE), address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 200_000, 100,
+            address(mailbox), address(mailbox), address(mailbox), 100,
             address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());

@@ -94,8 +94,11 @@ source block, not today's current value.
 
 ## Destination execution gas is independent of Factory
 
-The immutable Factory `defaultDestinationGasLimit` is only a Hyperlane
-dispatch-metadata hint. The fresh XITA MerkleTreeHook ignores this gas field
+The Factory no longer has a destination gas constructor input. Its internal
+`HYPERLANE_DESTINATION_GAS_HINT = 500000` is forwarded to the already
+deployed router-deployer ABI, where GasRouter stores it as immutable
+dispatch metadata, not an EVM execution gas cap.
+The fresh XITA MerkleTreeHook ignores this gas field
 and the required ProtocolFee hook is initialized with zero fee. No on-chain
 gas paymaster enforces the hint as a destination EVM transaction limit.
 

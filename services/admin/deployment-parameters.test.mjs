@@ -8,16 +8,15 @@ test("Registry values are signed as exact component-scoped Wei, never main confi
  assert.equal(v.minimumWei,"750000000000000000");
  assert.ok(!Object.hasOwn(v,"sourceFeeWei"));
 });
-test("Factory gets its own source fee and gas and never inherits Registry economics",()=>{
- const v=deploymentParameters("factory",{sourceFeeWei:"100000000000",defaultDestinationGasLimit:500000});
- assert.equal(v.sourceFeeWei,"100000000000");
- assert.equal(v.defaultDestinationGasLimit,500000);
+test("Factory accepts source-native fee only; router metadata hint is internal",()=>{
+ const v=deploymentParameters("factory",{sourceFeeWei:"100000000000"});
+ assert.deepEqual(v,{sourceFeeWei:"100000000000"});
+ assert.throws(()=>deploymentParameters("factory",{sourceFeeWei:"1",defaultDestinationGasLimit:500000}),/wrong component/);
  assert.deepEqual(deploymentParameters("ism",{}),{});
  assert.deepEqual(deploymentParameters("sourceRegistry",{}),{});
 });
 test("malformed fee, mismatched input and reserve relationships fail before signing",()=>{
- assert.throws(()=>deploymentParameters("factory",{sourceFeeWei:"0",defaultDestinationGasLimit:500000}),/Positive/);
- assert.throws(()=>deploymentParameters("factory",{sourceFeeWei:"1",defaultDestinationGasLimit:1}),/Destination gas/);
+ assert.throws(()=>deploymentParameters("factory",{sourceFeeWei:"0"}),/Positive/);
  assert.throws(()=>deploymentParameters("ism",{sourceFeeWei:"1"}),/wrong component/);
  assert.throws(()=>deploymentParameters("validatorRegistry",{
   minimumWei:"1",maxExecutorReimbursementWei:"2"}),/Reserve/);

@@ -44,7 +44,7 @@ contract XETATokenFactoryV315Test is Test {
         mailbox.setRegistry(address(validators));
         factory = new XETATokenFactoryV315(
             CHAIN, DOMAIN, address(validators),
-            address(mailbox), address(mailbox), address(mailbox), 250_000, 100,
+            address(mailbox), address(mailbox), address(mailbox), 100,
             address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()), address(new XETACollateralRouterDeployer())
         );
         registry = XGRILNRegistryV315(factory.deployRegistry());
@@ -105,6 +105,9 @@ contract XETATokenFactoryV315Test is Test {
         assertEq(XETAGuardedSyntheticWarpRouter(local).xetaRouteIdForDomain(uint32(HUB)),id);
         assertEq(XETAGuardedSyntheticWarpRouter(local).routers(uint32(HUB)),
             bytes32(uint256(uint160(REMOTE_ROUTER))));
+        // Keep the dispatch metadata required by the deployed router modules.
+        // Destination process gas remains independently wallet-estimated.
+        assertEq(XETAGuardedSyntheticWarpRouter(local).xetaDefaultDestinationGasLimit(),500_000);
         assertTrue(factory.routeForDomainRegistered(local,uint32(HUB)));
         vm.expectRevert(XETATokenFactoryV315.RouteAlreadyRegistered.selector);
         factory.registerRoute(local,HUB,uint32(HUB),REMOTE_ROUTER,address(0));
