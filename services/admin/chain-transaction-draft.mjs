@@ -5,6 +5,7 @@ import {join} from "node:path";
 import {encodeAbi,encodeFunctionCall} from "./abi-encoder.mjs";
 import {selector} from "../../apps/web/keccak.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
+import {quoteBaseDeploymentExtras} from "./base-fee-quote.mjs";
 
 const ADDR=/^0x[0-9a-fA-F]{40}$/;
 const HEX=/^0x(?:[0-9a-fA-F]{2})+$/;
@@ -26,6 +27,7 @@ const typesFor={
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
  factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"]
 };
+export const chainDraftConstructorTypes=Object.freeze(typesFor);
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
 function exactArtifact(root,component,compiled){
  if(compiled){
@@ -123,13 +125,22 @@ export async function simulateChainDraft(draft,{rpc,url,from}){
  const price=await rpc(url,"eth_gasPrice",[]);
  if(!/^0x[0-9a-f]+$/i.test(price||""))throw Error("Gas price failed");
  const gas=BigInt(estimate)*120n/100n+1n;
+ // On Base the transaction is additionally charged L1 data-availability
+ // and possibly OP-Stack operator fees. Missing quote MUST block signing.
+ const extra=draft.chainId===8453
+  ?await quoteBaseDeploymentExtras({rpc,url,transactionData:t.data,gasLimit:gas})
+  :{l1DataFeeUpperBoundWei:"0",operatorFeeWei:"0"};
  const balance=await rpc(url,"eth_getBalance",[from,"latest"]);
- const total=gas*BigInt(price)+BigInt(t.value);
+ const total=gas*BigInt(price)+BigInt(t.value)+
+  BigInt(extra.l1DataFeeUpperBoundWei)+BigInt(extra.operatorFeeWei);
  if(!/^0x[0-9a-f]+$/i.test(balance||"")||BigInt(balance)<total)
-  throw Error("Insufficient balance including maximum gas and deposit");
+  throw Error("Insufficient balance for estimated gas, constructor reserve and Base network surcharges");
  return {chain:draft.chain,component:draft.component,operation:draft.operation,
   gasEstimateWei:estimate,gasLimit:"0x"+gas.toString(16),gasPriceWei:price,
+  // This remains a point-in-time estimate; Base L1 fees and gas prices move.
   totalWorstCaseWei:total.toString(),wallet:from,simulated:true,
+  l1DataFeeUpperBoundWei:extra.l1DataFeeUpperBoundWei,
+  operatorFeeWei:extra.operatorFeeWei,
   // eth_estimateGas omits "to" for contract creation. The durable journal
   // requires an explicit null destination to distinguish creation from an
   // incomplete wallet payload. Keep "to" absent in the RPC simulation only.

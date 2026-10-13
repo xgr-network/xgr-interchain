@@ -128,3 +128,20 @@ other Base component in advance.
    wallet recovery path has been exercised on both real chains.
 
 No contract deployment is performed by these software checks.
+
+## Base mainnet ETH cost quotation (no paid calls)
+
+The operator Admin simulator includes the buffered L2 execution-gas price,
+the constructor's reserve deposit, **Base L1 data-availability fees** from
+GasPriceOracle at `0x420000000000000000000000000000000000000F` and
+OP-Stack operator fees. The L1 upper-bound quote uses constructor calldata
+bytes plus a 512-byte transaction-envelope allowance. The OP-Stack quote
+uses the full gas limit, including the 20% headroom. A missing, malformed
+or reverting oracle quote blocks the transaction draft before wallet signing.
+The Base 16,777,216 gas-per-transaction limit is checked.
+
+The Admin's total is a **current estimate, not a fixed upper limit**:
+gas-price and other network-fee parameters may move before MetaMask confirms.
+Inspect the final ETH charge in MetaMask. Validator reserve deposits are
+economically distinct from network fees (collateral vs paid gas).
+No ETH is spent by the estimator.
