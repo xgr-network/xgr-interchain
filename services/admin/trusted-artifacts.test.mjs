@@ -36,3 +36,24 @@ test("Factory trusted ABI is exactly the gas-free ten-argument constructor",()=>
   ...factoryTypes.slice(0,7),"uint256",...factoryTypes.slice(7)
  ]),{component:"factory",commit:"a".repeat(40),forgeVersion:"forge 1.8.5"}),/Unexpected constructor ABI/);
 });
+
+test("Base BLS verifier accepts only a 32-byte Solidity 0.8.24 IPFS digest difference",()=>{
+ const prefix="a2646970667358221220";
+ const suffix="64736f6c63430008180033";
+ const core="0x"+"60".repeat(180);
+ const makeMeta=digest=>core+prefix+digest.repeat(32)+suffix;
+ const build=makeMeta("11"),onchain=makeMeta("22");
+ const code={...raw,deployedBytecode:{object:build,immutableReferences:{}}};
+ const bls=artifactTemplate(code,{component:"blsVerifier",
+  commit:"a".repeat(40),forgeVersion:"forge 1.8.5"});
+ assert.match(verifyRuntimeTemplate(bls,onchain),/^0x[0-9a-f]{64}$/);
+ // Executable tampering is never excused by an IPFS digest difference.
+ assert.throws(()=>verifyRuntimeTemplate(bls,"0x61"+onchain.slice(4)),/differs/);
+ // Compiler version and the CBOR structure MUST be unchanged.
+ assert.throws(()=>verifyRuntimeTemplate(bls,onchain.slice(0,-8)+"08190033"),/differs/);
+ assert.throws(()=>verifyRuntimeTemplate(bls,onchain.replace("a2646970667358221220","a2646970667358221221")),/differs/);
+ // No metadata exception for RouterDeployer or any other XITA contract.
+ const moduleArtifact=artifactTemplate(code,{component:"nativeRouterDeployer",
+  commit:"a".repeat(40),forgeVersion:"forge 1.8.5"});
+ assert.throws(()=>verifyRuntimeTemplate(moduleArtifact,onchain),/differs/);
+});

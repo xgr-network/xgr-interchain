@@ -1,0 +1,28 @@
+name: Verify Base BLS Receipt
+on:
+  pull_request:
+    paths:
+      - tools/verify-base-bls-receipt.mjs
+      - .github/workflows/verify-base-bls-receipt.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-onchain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install Foundry dependencies
+        run: |
+          forge install foundry-rs/forge-std --no-commit
+          npm install --prefix vendor --ignore-scripts --no-audit --no-fund
+      - name: Build pinned XITA BLS verifier
+        run: forge build --force --skip test script
+      - name: Read-only verify Base receipt and deployed bytecode
+        run: node tools/verify-base-bls-receipt.mjs

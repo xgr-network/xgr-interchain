@@ -6,15 +6,15 @@ import {loadCatalog,validateCatalog} from "./validate-manifests.mjs";
 import {chainDeploymentPath,chainBootstrapPath,assetConfigFolder,assetDeploymentFolder,loadAssetDeployment} from "./manifest-layout.mjs";
 const root=new URL("../",import.meta.url).pathname;
 const XGR="0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0";
-test("configured chains do not create phantom deployment files",()=>{
+test("only receipt-verified chains have deployment files",()=>{
  const names=["arbitrum","base","polygon","xgrchain"];
  const catalog=loadCatalog(root);
  assert.deepEqual(Object.keys(catalog.chains),names);
- assert.deepEqual(readdirSync(join(root,"deployments/chains")),["xgrchain.json"]);
+ assert.deepEqual(readdirSync(join(root,"deployments/chains")).sort(),["base.json","xgrchain.json"]);
  for(const name of names){
   const file=chainDeploymentPath(name);
-  assert.equal(existsSync(join(root,file)),name==="xgrchain");
-  assert.equal(catalog.infrastructure[name].present,name==="xgrchain");
+  assert.equal(existsSync(join(root,file)),name==="xgrchain"||name==="base");
+  assert.equal(catalog.infrastructure[name].present,name==="xgrchain"||name==="base");
   assert.equal(existsSync(join(root,chainBootstrapPath(name))),true);
  }
  const registry=catalog.infrastructure.xgrchain.xitaV315.components.validatorRegistry;
