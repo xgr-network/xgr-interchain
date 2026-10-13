@@ -13,8 +13,7 @@ const values={
  "validatorRegistry()":word(3),"destinationIsm()":word(4),
  "initialSourceFeeWei()":word(100000000000n),
  "mailbox()":word(1),"merkleTreeHook()":word(2),
- "nativeDeployer()":word(6),"syntheticDeployer()":word(7),"collateralDeployer()":word(8),
- "defaultDestinationGasLimit()":word(250000)
+ "nativeDeployer()":word(6),"syntheticDeployer()":word(7),"collateralDeployer()":word(8)
 };
 const signatures=new Map(Object.entries(values).map(([s,v])=>[selector(s),v]));
 test("main-pinned Polygon Factory constructor getters verify without Base exceptions",async()=>{
