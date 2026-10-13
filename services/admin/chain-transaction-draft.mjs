@@ -24,7 +24,7 @@ const typesFor={
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
- factory:["uint64","uint32","address","address","address","address","uint256","uint256","address","address","address"]
+ factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"]
 };
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
 function exactArtifact(root,component,compiled){
@@ -96,13 +96,10 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   if(!deployed(infrastructure,"transportBundle"))throw Error("Fresh, receipt-verified XITA transport bundle missing");
   if(!nonzero(core.mailbox)||!nonzero(core.merkleTreeHook))
    throw Error("Fresh XITA Mailbox/Hook not documented; Factory blocked");
-  const gas=p.defaultDestinationGasLimit;
-  // No silently invented gas parameter. Until an approved gas limit exists,
-  // factory construction is deliberately blocked.
-  if(!Number.isSafeInteger(gas)||gas<21000)throw Error("Missing approved defaultDestinationGasLimit");
+  // Pinned 500k Hyperlane dispatch metadata is internal, not a transaction cap.
   values=[chain.chainId,chain.domainId,requirePresent(infrastructure,"validatorRegistry"),
    core.mailbox,core.merkleTreeHook,requirePresent(infrastructure,"ism"),
-   gas,p.sourceFeeWei,
+   p.sourceFeeWei,
    requirePresent(infrastructure,"nativeRouterDeployer"),
    requirePresent(infrastructure,"syntheticRouterDeployer"),
    requirePresent(infrastructure,"collateralRouterDeployer")];

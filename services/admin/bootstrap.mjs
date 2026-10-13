@@ -84,7 +84,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
  const result={...plan,validatorRegistry,sourceRegistry,verified:false,
   validatorSetId:null,validatorCountOnChain:null,feeWei:null,feeNonce:null,
   liveMinimumReserveWei:null,liveMaxExecutorReimbursementWei:null,
-  liveValidatorReservesWei:{},liveFactoryGasLimit:null,liveFactoryInitialFeeWei:null,
+  liveValidatorReservesWei:{},liveFactoryInitialFeeWei:null,
   missing:[]};
  const id=await rpc(url,"eth_chainId",[]);
  if(BigInt(id)!==BigInt(chain.chainId))throw Error("Bootstrap RPC chain mismatch");
@@ -119,11 +119,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
  }else result.missing.push("ValidatorRegistry V3 noch nicht deployed");
  const factory=observed?.components.find(c=>c.key==="factory")?.address;
  if(factory){
-  const [gas,initialFee]=await Promise.all([
-   abiView(rpc,url,factory,"defaultDestinationGasLimit()"),
-   abiView(rpc,url,factory,"initialSourceFeeWei()")
-  ]);
-  result.liveFactoryGasLimit=decodeUint(gas).toString();
+  const initialFee=await abiView(rpc,url,factory,"initialSourceFeeWei()");
   result.liveFactoryInitialFeeWei=decodeUint(initialFee).toString();
  }
  if(sourceRegistry){

@@ -22,7 +22,7 @@ import {XGRInterchainValidatorRegistryV3} from "../contracts/XGRInterchainValida
 /// MAX_EXECUTOR_REIMBURSEMENT_WEI, INITIAL_RESERVE_WEI, VALIDATOR_COUNT,
 /// VALIDATOR_<N>_ADDRESS, _BLS_COMPRESSED, _BLS_EIP2537, _POSSESSION_PROOF.
 /// Factory: LOCAL_REGISTRY_V2, MAILBOX, MERKLE_TREE_HOOK, DESTINATION_ISM,
-/// DEFAULT_DESTINATION_GAS_LIMIT, INITIAL_SOURCE_FEE_WEI.
+/// INITIAL_SOURCE_FEE_WEI. Destination metadata gas hint is internal.
 ///
 /// WARNING: always validate both chain counterparts and signer/BLS
 /// verification before any mainnet transfer. Deployment is not activation.
@@ -213,15 +213,14 @@ contract DeployXETAFactoryV315 is DeployXETABase {
         address mailbox_ = vm.envAddress("MAILBOX");
         address hook_ = vm.envAddress("MERKLE_TREE_HOOK");
         address ism_ = vm.envAddress("DESTINATION_ISM");
-        uint256 gasLimit = vm.envUint("DEFAULT_DESTINATION_GAS_LIMIT");
         uint256 initialFeeWei = vm.envUint("INITIAL_SOURCE_FEE_WEI");
         if (validators == address(0) || mailbox_ == address(0) ||
-            hook_ == address(0) || ism_ == address(0) || gasLimit == 0 || initialFeeWei == 0)
+            hook_ == address(0) || ism_ == address(0) || initialFeeWei == 0)
             revert InvalidEnv();
 
         vm.startBroadcast();
         factory = new XETATokenFactoryV315(
-            chainId, domain, validators, mailbox_, hook_, ism_, gasLimit, initialFeeWei,
+            chainId, domain, validators, mailbox_, hook_, ism_, initialFeeWei,
             address(new XETANativeRouterDeployer()), address(new XETASyntheticRouterDeployer()),
             address(new XETACollateralRouterDeployer())
         );

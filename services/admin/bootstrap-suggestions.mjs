@@ -9,8 +9,7 @@ const POLICY=Object.freeze({
  reimbursementReferenceGas:500000n, // member-exit BLS verification + executor overhead allowance
  minimumReserveReferenceGas:750000n,
  initialReserveReferenceGas:1000000n,
- trialSourceFeeReferenceGas:100n, // nominal low launch fee, NOT relayer gas coverage
- destinationGasLimit:500000
+ trialSourceFeeReferenceGas:100n // nominal low launch fee, NOT relayer gas coverage
 });
 const approved=x=>typeof x==="string"&&POS.test(x)&&BigInt(x)<UINT256;
 export function suggestBootstrapValues({chain,bootstrap,gasPriceWei}){
@@ -26,21 +25,18 @@ export function suggestBootstrapValues({chain,bootstrap,gasPriceWei}){
   minimumWei:(price*POLICY.minimumReserveReferenceGas).toString(),
   maxExecutorReimbursementWei:(price*POLICY.reimbursementReferenceGas).toString(),
   perValidatorWei:(price*POLICY.initialReserveReferenceGas).toString(),
-  sourceFeeWei:(price*POLICY.trialSourceFeeReferenceGas).toString(),
-  defaultDestinationGasLimit:POLICY.destinationGasLimit
+  sourceFeeWei:(price*POLICY.trialSourceFeeReferenceGas).toString()
  };
  const known={
   minimumWei:bootstrap.reserve?.minimumWei,
   maxExecutorReimbursementWei:bootstrap.reserve?.maxExecutorReimbursementWei,
   perValidatorWei:bootstrap.reserve?.perValidatorWei,
-  sourceFeeWei:bootstrap.proposedFeeWei,
-  defaultDestinationGasLimit:chain.defaultDestinationGasLimit
+  sourceFeeWei:bootstrap.proposedFeeWei
  };
  const values={},sources={};
  for(const [key,suggested] of Object.entries(calculated)){
   const v=known[key];
-  const valid=key==="defaultDestinationGasLimit"
-   ?Number.isSafeInteger(v)&&v>=21000&&v<=10000000:approved(v);
+  const valid=approved(v);
   values[key]=valid?v:suggested;
   sources[key]=valid?"main":"unapproved-estimate";
  }
@@ -55,8 +51,7 @@ export function suggestBootstrapValues({chain,bootstrap,gasPriceWei}){
    reimbursementReferenceGas:Number(POLICY.reimbursementReferenceGas),
    minimumReserveReferenceGas:Number(POLICY.minimumReserveReferenceGas),
    initialReserveReferenceGas:Number(POLICY.initialReserveReferenceGas),
-   trialSourceFeeReferenceGas:Number(POLICY.trialSourceFeeReferenceGas),
-   destinationGasLimit:POLICY.destinationGasLimit
+   trialSourceFeeReferenceGas:Number(POLICY.trialSourceFeeReferenceGas)
   },
   note:"Unverbindliche Startwerte aus dem aktuellen Gaspreis, keine gemessene Austrittsgasmenge und keine wirtschaftliche Freigabe. Manuell anpassen und vor dem GitHub-Commit bestaetigen."
  };

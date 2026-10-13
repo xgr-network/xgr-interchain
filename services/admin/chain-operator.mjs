@@ -203,9 +203,8 @@ export function createChainOperator({
    reserve:entry.parameters?.minimumWei?{minimumWei:entry.parameters.minimumWei,maxExecutorReimbursementWei:entry.parameters.maxExecutorReimbursementWei,perValidatorWei:entry.parameters.perValidatorWei}:bootstrap.reserve,
    proposedFeeWei:entry.parameters?.sourceFeeWei||bootstrap.proposedFeeWei,
    initialValidators:bootstrap.initialValidators};
-  const effectiveChain={...chain,defaultDestinationGasLimit:entry.parameters?.defaultDestinationGasLimit||chain.defaultDestinationGasLimit};
   const result=await reconcileDeployedContract({
-   root,entry,chain:effectiveChain,bootstrap:verified,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
+   root,entry,chain,bootstrap:verified,infrastructure,artifact,rpc,url:chain.rpcUrls[0]});
   if(result.pending)return {stage:"pending",reason:result.reason,txHash:entry.txHash};
   if(!previouslyConfirmed)journal.confirm(id,entry.txHash,{
    contractAddress:result.contractAddress,runtimeKeccak:result.runtimeKeccak});

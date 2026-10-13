@@ -25,7 +25,9 @@ contract XETATokenFactoryV315 {
     address public immutable mailbox;
     address public immutable merkleTreeHook;
     address public immutable destinationIsm;
-    uint256 public immutable defaultDestinationGasLimit;
+    // Hyperlane GasRouter metadata hint, NOT a destination execution gas cap.
+    // This internal constant preserves the already-deployed router-deployer ABI.
+    uint256 internal constant HYPERLANE_DESTINATION_GAS_HINT = 500_000;
     uint256 public immutable initialSourceFeeWei;
     XETANativeRouterDeployer public immutable nativeDeployer;
     XETASyntheticRouterDeployer public immutable syntheticDeployer;
@@ -53,14 +55,14 @@ contract XETATokenFactoryV315 {
 
     constructor(
         uint64 chainId_, uint32 domain_, address validatorRegistry_,
-        address mailbox_, address hook_, address ism_, uint256 gasLimit_, uint256 initialSourceFeeWei_,
+        address mailbox_, address hook_, address ism_, uint256 initialSourceFeeWei_,
         address nativeDeployer_, address syntheticDeployer_, address collateralDeployer_
     ) {
         if (chainId_ == 0 || block.chainid != chainId_ || domain_ == 0 ||
             (chainId_ == 1643) != (domain_ == 1643) ||
             validatorRegistry_.code.length == 0 ||
             mailbox_.code.length == 0 || hook_.code.length == 0 ||
-            ism_.code.length == 0 || gasLimit_ == 0 || initialSourceFeeWei_ == 0 ||
+            ism_.code.length == 0 || initialSourceFeeWei_ == 0 ||
             nativeDeployer_.code.length == 0 || syntheticDeployer_.code.length == 0 ||
             collateralDeployer_.code.length == 0)
             revert InvalidConfiguration();
@@ -94,7 +96,6 @@ contract XETATokenFactoryV315 {
         mailbox = mailbox_;
         merkleTreeHook = hook_;
         destinationIsm = ism_;
-        defaultDestinationGasLimit = gasLimit_;
         initialSourceFeeWei = initialSourceFeeWei_;
         nativeDeployer = XETANativeRouterDeployer(nativeDeployer_);
         syntheticDeployer = XETASyntheticRouterDeployer(syntheticDeployer_);
@@ -138,7 +139,7 @@ contract XETATokenFactoryV315 {
             assetId = XGRILNProtocol.assetIdV315(localChainId, originalToken, 1);
         bytes32 salt = keccak256(abi.encode("XITA_COLLATERAL_V315", msg.sender, salt_, assetId, originalToken));
         router = collateralDeployer.deploy(originalToken, address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit, salt);
+            destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, salt);
         _remember(assetId, router, false);
     }
 
@@ -159,7 +160,7 @@ contract XETATokenFactoryV315 {
             keccak256(bytes(name_)), keccak256(bytes(symbol_))
         ));
         router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit, decimals_, name_, symbol_, salt);
+            destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, decimals_, name_, symbol_, salt);
         _remember(assetId, router, true);
     }
 
@@ -168,7 +169,7 @@ contract XETATokenFactoryV315 {
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_NATIVE_XGR_V315", msg.sender, salt_));
         router = nativeDeployer.deploy(address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit, salt);
+            destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, salt);
         _remember(xgrAssetId(), router, false);
     }
 
@@ -177,7 +178,7 @@ contract XETATokenFactoryV315 {
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_WRAPPED_XGR_V315", msg.sender, salt_));
         router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
-            destinationIsm, defaultDestinationGasLimit, 18, "Wrapped XGR", "wXGR", salt);
+            destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, 18, "Wrapped XGR", "wXGR", salt);
         _remember(xgrAssetId(), router, true);
     }
 
