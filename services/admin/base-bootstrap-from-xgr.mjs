@@ -3,7 +3,7 @@
 import {selector} from "../../apps/web/keccak.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {prepareBootstrapEvidence,parsePublicProof} from "./bootstrap-evidence.mjs";
-import {verifyPublicBootstrapOnChain} from "./bls-bootstrap-proof.mjs";
+import {validatePublicBootstrapProof,encodeBlsVerify} from "./bls-bootstrap-proof.mjs";
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const WORD=/^[0-9a-f]{64}$/i;
 const equal=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
@@ -59,11 +59,14 @@ export async function prepareBaseFromXgr({
      vetted[i]?.destinationDomain!==8453||vetted[i]?.originChainId!==1643)
    throw Error("Base-domain PoP differs from deployed XGRChain validator "+(i+1));
  }
- const nativeBootstrap={...bootstrap,verifierAddress:"0x0000000000000000000000000000000000002040"};
  const verifyNative=async(proof)=>{
-  const nativeChain={...xgrChain,blsVerifierFormat:"compressed"};
-  return verifyPublicBootstrapOnChain(proof,{
-   chain:nativeChain,bootstrap:nativeBootstrap,approvedValidators:ordered,rpc});
+  const checked=validatePublicBootstrapProof(proof,{chain:baseChain,approvedValidators:ordered});
+  const output=await rpc(url,"eth_call",[{
+   to:"0x0000000000000000000000000000000000002040",
+   data:encodeBlsVerify(checked.payload,checked.compressedPublicKey,checked.compressedSignature),
+   gas:"0x1e8480"
+  },"latest"]);
+  return {validator:proof.validator,verified:output==="0x"+"0".repeat(63)+"1"};
  };
  // A predeploy cryptographic check on the proven native XGR verifier is
  // possible because the signed BOOTSTRAP payload itself binds Base domain 8453.
