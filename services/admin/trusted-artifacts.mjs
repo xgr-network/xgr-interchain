@@ -45,6 +45,7 @@ const TYPES={
  feeVault:["address","address","bytes32","uint32"],
  transportBundle:["uint32","address"],mailbox:["uint32"],merkleTreeHook:["address"],requiredHook:["uint256","uint256","address","address"]
 };
+export const trustedConstructorTypes=Object.freeze(TYPES);
 const digest=s=>createHash("sha256").update(s).digest("hex");
 const hexBytes=s=>Uint8Array.from(Buffer.from(s.slice(2),"hex"));
 export function artifactTemplate(raw,{component,commit,forgeVersion}){

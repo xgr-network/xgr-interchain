@@ -3,7 +3,8 @@
 // This is an OFFLINE check: no wallet access or RPC transaction is needed.
 import {execFileSync} from "node:child_process";
 import {resolve} from "node:path";
-import {artifactTemplate,SOURCE} from "./trusted-artifacts.mjs";
+import {artifactTemplate,SOURCE,trustedConstructorTypes} from "./trusted-artifacts.mjs";
+import {chainDraftConstructorTypes} from "./chain-transaction-draft.mjs";
 import {readSealedArtifacts,NAMES} from "./sealed-artifacts.mjs";
 
 const root=resolve(process.argv[2]||".");
@@ -13,6 +14,10 @@ const keys=Object.entries(SOURCE);
 const names=new Set(keys.map(([,name])=>name));
 if(keys.length!==NAMES.length||NAMES.some(name=>!names.has(name)))
  throw Error("Trusted component inventory is inconsistent with sealed production artifacts");
+for(const [component,types] of Object.entries(chainDraftConstructorTypes)){
+ if(types.join(",")!==trustedConstructorTypes[component]?.join(","))
+  throw Error("Admin transaction-encoder ABI differs from the trusted compiled-contract ABI: "+component);
+}
 for(const [component,name] of keys){
  const result=artifactTemplate(raws[name],{
   component,commit,forgeVersion:seal.forgeVersion

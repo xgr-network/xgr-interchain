@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {encodeAbi} from "./abi-encoder.mjs";
+import {selector} from "../../apps/web/keccak.mjs";
 import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const base={name:"base",chainId:8453,domainId:8453,blsVerifierFormat:"eip2537"};
@@ -74,4 +75,30 @@ test("real constructor simulation journals explicit null recipient and factory c
   transaction:{...creation.transaction,to:addr(10),value:"0x0"}};
  const called=await simulateChainDraft(registryCall,{rpc:mock,url:"https://xgr.example.org",from});
  assert.equal(called.transaction.to,addr(10));
+});
+
+test("Base EIP2537 contract creation quote accounts for L1 data and operator fees",async()=>{
+ const draft={chain:"base",chainId:8453,component:"blsVerifier",operation:"create",
+  transaction:{to:null,data:"0x"+"12".repeat(100),value:"0x0"}};
+ const rpc=async(_,method,params)=>{
+  if(method==="eth_chainId")return "0x2105";
+  if(method==="eth_estimateGas")return "0x186a0";
+  if(method==="eth_gasPrice")return "0x2540be400";
+  if(method==="eth_getBalance")return "0xffffffffffffffff";
+  if(method==="eth_call"){
+   if(params[0].data.startsWith(selector("getL1FeeUpperBound(uint256)")))
+    return "0x"+(90000000000000n).toString(16).padStart(64,"0");
+   if(params[0].data.startsWith(selector("getOperatorFee(uint256)")))
+    return "0x"+(5000000000000n).toString(16).padStart(64,"0");
+   throw Error("Unexpected Base Oracle method");
+  }
+  throw Error("Unexpected RPC method "+method);
+ };
+ const result=await simulateChainDraft(draft,{rpc,url:"https://base-rpc.example",from:addr(3)});
+ const expected=BigInt(result.gasLimit)*10000000000n+90000000000000n+5000000000000n;
+ assert.equal(result.totalWorstCaseWei,expected.toString());
+ assert.equal(result.l1DataFeeUpperBoundWei,"90000000000000");
+ assert.equal(result.operatorFeeWei,"5000000000000");
+ const broken=async(url,method,params)=>method==="eth_call"?"0x":rpc(url,method,params);
+ await assert.rejects(()=>simulateChainDraft(draft,{rpc:broken,url:"https://base-rpc.example",from:addr(3)}),/GasPriceOracle/);
 });
