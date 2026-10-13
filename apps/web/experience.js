@@ -132,6 +132,53 @@ function metric(label,value,desc){
   return '<div class="ux-metric"><span class="ux-kicker">'+esc(label)+'</span><strong>'+esc(value)+'</strong><small>'+esc(desc)+'</small></div>';
 }
 
+// Read-only route preflight. A positive balance is not a gas cost estimate.
+export function renderWalletGasChecklist(model,plan,wallet={}){
+ if(!plan.path.length)return "";
+ const byKey=Object.fromEntries(model.chains.map(c=>[c.key,c]));
+ const keys=[...new Set(plan.path)];
+ const connected=typeof wallet.account==="string"&&/^0x[0-9a-f]{40}$/i.test(wallet.account);
+ const rows=keys.map((key,i)=>{
+  const chain=byKey[key]||{},raw=wallet.balances?.[key],symbol=chain.nativeCurrency||"native";
+  let status="unavailable",detail="Balance not checked";
+  if(!connected)detail="Connect wallet to check";
+  else if(wallet.loading){status="loading";detail="Checking native balance…"}
+  else if(raw?.status==="ready" && /^\d+$/.test(String(raw.balanceWei))){
+   const wei=BigInt(raw.balanceWei),whole=wei/(10n**18n);
+   const part=(wei%(10n**18n)).toString().padStart(18,"0").slice(0,8).replace(/0+$/,"");
+   const fmt=whole.toString()+(part?"."+part:"");
+   const label=wei>0n&&fmt==="0"?"less than 0.00000001":fmt;
+   status=wei===0n?"empty":"funded";
+   detail=label+" "+symbol+(wei===0n?" · no gas funds":" · fee sufficiency not verified");
+  }else if(connected)detail="Balance unavailable · RPC may block browser reads";
+  return '<div class="ux-gas-check-row is-'+status+'" data-gas-chain="'+esc(key)+'">'+
+   '<div><strong>'+esc(chain.label||key)+'</strong><small>'+
+   esc(i===0?"First source":i===keys.length-1?"Final destination":"Transit hub & next source")+
+   '</small></div><span>'+esc(detail)+'</span></div>';
+ }).join("");
+ const steps=plan.hops.flatMap((hop,i)=>{
+  const from=byKey[plan.path[i]]||{},to=byKey[plan.path[i+1]]||{};
+  return [
+   '<li><strong>Send on '+esc(from.label||plan.path[i])+'</strong> · MetaMask confirms source transfer and pays '+esc(from.nativeCurrency||"native")+
+   ' gas plus the on-chain validator fee. ERC-20 may need an approval first.</li>',
+   '<li><strong>Receive on '+esc(to.label||plan.path[i+1])+'</strong> · wait for verified BLS proof, then pay '+esc(to.nativeCurrency||"native")+
+   ' gas in MetaMask to call Mailbox.process().</li>'
+  ];
+ }).join("");
+ return '<section class="ux-gas-check" aria-label="Wallet gas balance preflight">'+
+  '<div class="ux-gas-check-heading"><strong>Wallet gas across the full journey</strong>'+
+  (connected?'<button type="button" data-xita-gas-refresh class="ux-gas-refresh"'+(wallet.loading?' disabled':'')+'>Refresh balances</button>':'')+'</div>'+
+  (connected?'<p class="ux-small">Account '+esc(wallet.account.slice(0,6)+"…"+wallet.account.slice(-4))+
+    ' · native balances checked via chain RPC; wallet stays on its current network.</p>':
+    '<p class="ux-small">Connect Wallet to check source, transit and destination native balances.</p>')+
+  '<div class="ux-gas-check-rows" aria-live="polite">'+rows+'</div>'+
+  '<p class="ux-small">Positive balance does not mean enough gas. Exact transaction gas, validator fee, transferable amount and approvals must be simulated before sending. Checks are snapshots; never start without destination gas already available.</p>'+
+  '<div class="ux-gas-step-list"><strong>Planned MetaMask steps ('+(plan.hops.length*2)+' transactions)</strong>'+
+  '<ol>'+steps+'</ol></div>'+
+  (!plan.active?'<p class="ux-small">Route delivery not verified. Planning preview only; no signing or sending is enabled.</p>':'')+
+  '</section>';
+}
+
 // Token-first v3.1.5 bridge presentation. There is intentionally no transaction
 // action until on-chain Registry/Router/Gateway pairs and the new ABI adapter
 // are independently verified. Never reuse a legacy v3.1.4 Gateway call.
@@ -143,10 +190,6 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
   const destination=supported.some(c=>c.key===selection.destination&&c.key!==origin)?
     selection.destination:supported.find(c=>c.key!==origin)?.key||origin;
   const plan=previewRoute(model,origin,destination,assetId);
-  const originChain=model.chains.find(c=>c.key===origin);
-  const walletOnSource=Boolean(wallet.account&&Number(wallet.chainId)===Number(originChain?.chainId));
-  const walletChain=model.chains.find(c=>Number(c.chainId)===Number(wallet.chainId));
-  const sourceName=originChain?.label||origin;
   const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
   return '<div class="ux-token-bridge" id="token-bridge"><div class="ux-kicker">XITA v3.1.5 · Token-specific bridge</div>'+
     '<h2>Bridge '+esc(token.name)+'</h2>'+
@@ -166,14 +209,7 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
       '<span>'+(r?"Configured · delivery unverified":"Route not configured")+'</span></div>').join(""):'<p class="ux-small">No valid path.</p>')+'</div>'+
     '<label class="ux-field" for="ux-token-amount">Amount ('+esc(assetId)+')</label>'+
     '<input id="ux-token-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0" value="'+esc(amount)+'">'+
-    '<div class="ux-wallet-gas"><strong>Wallet & gas</strong>'+
-    (wallet.account?
-      '<span>'+esc(wallet.account.slice(0,6)+"…"+wallet.account.slice(-4))+'</span>'+
-      '<p class="ux-small">'+(walletOnSource?
-        'Origin gas balance: '+esc(wallet.nativeBalance??"—")+' '+esc(originChain?.nativeCurrency??"")+' ('+esc(sourceName)+')':
-        'Wallet network: '+esc(walletChain?.label||"unknown")+'. Switch to '+esc(sourceName)+' in your wallet before a future source transfer.')+'</p>':
-      '<p class="ux-small">Connect an EVM wallet to view its native gas balance on the selected origin chain.</p>')+
-    '</div>'+
+    renderWalletGasChecklist(model,plan,wallet)+
     '<div class="ux-route-status"><p><strong>Transfer execution unavailable.</strong> This release has no verified v3.1.5 Gateway adapter or active reciprocal route pair. No fees, quotes or destination deliveries are invented.</p></div>'+
     '<button type="button" disabled class="ux-button ux-disabled">Bridge unavailable · awaiting verified deployment</button>'+
     '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal contract bindings and message-specific BLS. The old bridge is retired.</p></div>';
@@ -284,7 +320,7 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<div class="ux-dashboard-outro-links"><a data-nav href="/faq">Read the FAQ →</a><a data-nav href="/plan-route">Plan a Route →</a></div></section></div>';
 }
 // A real standalone planner; no longer extracted from dashboard markup.
-export function renderPlanRoute(model,selection={},apiState="not-deployed"){
+export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={}){
  const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
  const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:
   model.chains.find(c=>c.key!==source)?.key||source;
@@ -302,6 +338,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed"){
   '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
   '<div class="ux-divider"></div><div class="ux-kicker">ROUTE PATH</div>'+routePath(model,plan)+
   '<div class="ux-route-status">'+pill(plan.active)+'<p>'+esc(plan.reason)+'</p></div>'+
+  renderWalletGasChecklist(model,plan,wallet)+
   '<p class="ux-small">No transfer timings, bridge TVL or transaction availability are inferred from the diagram.</p>'+
   (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
    '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
