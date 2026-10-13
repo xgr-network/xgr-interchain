@@ -9,6 +9,17 @@ import {chainBootstrapPath} from "../../tools/manifest-layout.mjs";
 const equal=(x,y)=>typeof x==="string"&&typeof y==="string"&&x.toLowerCase()===y.toLowerCase();
 const safeChain=n=>typeof n==="string"&&/^[a-z][a-z0-9-]*$/.test(n);
 const approvedFields=["minimumWei","maxExecutorReimbursementWei","perValidatorWei"];
+// Receipt paths are canonical across the deployment ledger, the startup
+// inventory, and the public validator evidence readout. A different chain,
+// address, or historical/legacy layout is never accepted as proof.
+export function validVerifierDeploymentReceipt(chainName,record){
+ if(!safeChain(chainName)||!/^0x[0-9a-f]{40}$/i.test(record?.address||"")||
+    !/^0x[0-9a-f]{64}$/i.test(record?.runtimeCodeKeccak256||"")||
+    typeof record?.receiptPath!=="string")return false;
+ const match=new RegExp("^deployments/receipts/"+chainName+
+  "/[0-9a-f]{64}-([0-9a-f]{40})\\.json$","i").exec(record.receiptPath);
+ return Boolean(match && match[1].toLowerCase()===record.address.slice(2).toLowerCase());
+}
 const readPublic=(path)=>{
  const stat=lstatSync(path);
  if(!stat.isFile()||stat.isSymbolicLink()||stat.size===0||stat.size>128*1024)
@@ -61,10 +72,7 @@ export async function readDeploymentReadiness({
   if(chain.blsVerifierFormat==="eip2537"){
    const infrastructure=loadJSON(join(root,chain.observedInfrastructure));
    const v=infrastructure.xitaV315?.components?.blsVerifier;
-   if(!v||!/^0x[0-9a-f]{40}$/i.test(v.address||"")||
-      !/^0x[0-9a-f]{64}$/i.test(v.runtimeCodeKeccak256||"")||
-      typeof v.receiptPath!=="string"||
-      !v.receiptPath.startsWith("deployments/mainnet/receipts/"+chain.name+"/"))
+   if(!validVerifierDeploymentReceipt(chain.name,v))
     throw Error("EIP-2537 verifier deployment must be independently documented");
    const code=await rpc(chain.rpcUrls[0],"eth_getCode",[v.address,"latest"]);
    if(!/^0x(?:[0-9a-f]{2})+$/i.test(code||"")||
