@@ -94,3 +94,37 @@ retry only the GitHub write. Never replay an already mined transaction.
 
 Do not deploy validator registry or send reserve collateral while any of
 these security prerequisites are unresolved.
+
+## Mainnet-spoke (Base) cost / go-no-go gate
+
+The first Base mainnet transaction is the independent EIP-2537 BLS verifier
+deployment. `config/chains/base/bootstrap.json` currently has no
+on-chain verifier receipt, validator snapshot, or reserve approval. This is
+**not permission to deploy the ValidatorRegistry**, transport, factory or any
+other Base component in advance.
+
+1. Update the local checkout from the latest `main` and confirm
+   the sealed Foundry artifacts pass `node services/admin/verify-sealed-constructors.mjs .`.
+   The Admin preview runs EIP-2537 G1/G2/pairing positive and malformed
+   negative vectors against the EXACT configured Base RPC; these must pass.
+2. For the first `blsVerifier` contract: obtain a successful
+   `eth_estimateGas` simulation before signing, independently check
+   MetaMask network 8453 and ETH max cost, and require canonical receipt plus
+   exact-runtime verification before moving on.
+3. Generate **Base-domain 8453** PoS snapshot and three genuine validator
+   possession proofs. The verified public files and GitHub-approved snapshot
+   must match and the deployed Base BLS verifier must correctly accept their
+   proofs before sending any validator reserve deposit.
+4. Approve immutable minimum and maximum executor reserve amounts and
+   the initial **Base-native** Source Fee. The currently configured fee is
+   100000000000 wei = 0.0000001 ETH, independent of XGRChain's 0.1 XGR.
+   Do not infer an economic approval from a prepopulated form.
+5. Deploy remaining Base components strictly in Admin dependency order,
+   verifying each immutable constructor binding, minimum confirmations,
+   transaction hash, provenance and append-only GitHub receipt *before*
+   the next paid transaction. Keep the existing XGRChain contracts.
+6. Do not fund or deploy any asset router / activate bridge UI until the
+   complete reciprocal real-message BLS/Merkle delivery and self-paid
+   wallet recovery path has been exercised on both real chains.
+
+No contract deployment is performed by these software checks.

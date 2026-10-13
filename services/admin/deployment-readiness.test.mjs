@@ -31,3 +31,17 @@ test("unapproved chain rejected before filesystem operations",async()=>{
  await assert.rejects(()=>readDeploymentReadiness({root:"/",chain:{name:"outsider",chainId:123},
   inventory:{chains:[]},boot:{ready:false},baseDir:"/tmp"}),/not in approved/);
 });
+
+test("Base verifier receipt must use real canonical path and bind exact contract address",async()=>{
+ const {validVerifierDeploymentReceipt}=await import("./deployment-readiness.mjs");
+ const address="0x"+"a".repeat(40);
+ const record={address,runtimeCodeKeccak256:"0x"+"b".repeat(64),
+  receiptPath:"deployments/receipts/base/"+"c".repeat(64)+"-"+"a".repeat(40)+".json"};
+ assert.equal(validVerifierDeploymentReceipt("base",record),true);
+ assert.equal(validVerifierDeploymentReceipt("xgrchain",record),false);
+ assert.equal(validVerifierDeploymentReceipt("base",{...record,
+  receiptPath:"deployments/mainnet/receipts/base/"+"c".repeat(64)+"-"+"a".repeat(40)+".json"}),false);
+ assert.equal(validVerifierDeploymentReceipt("base",{...record,
+  receiptPath:"deployments/receipts/base/"+"c".repeat(64)+"-"+"d".repeat(40)+".json"}),false);
+ assert.equal(validVerifierDeploymentReceipt("base",{...record,receiptPath:"../receipts/base.json"}),false);
+});

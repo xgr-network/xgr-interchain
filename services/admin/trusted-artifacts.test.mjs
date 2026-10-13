@@ -20,3 +20,19 @@ test("constructor bytecode, metadata, overlap and provenance are strictly checke
  assert.throws(()=>artifactTemplate({...raw,deployedBytecode:{...raw.deployedBytecode,immutableReferences:{a:[{start:1,length:12}],b:[{start:5,length:12}]}}},{component:"blsVerifier",commit:"a".repeat(40),forgeVersion:"forge 1.4.0"}),/Overlapping/);
  assert.throws(()=>artifactTemplate(raw,{component:"blsVerifier",commit:"invalid",forgeVersion:"forge 1.4.0"}),/provenance/);
 });
+
+test("Factory trusted ABI is exactly the gas-free ten-argument constructor",()=>{
+ const factoryTypes=["uint64","uint32","address","address","address","address",
+  "uint256","address","address","address"];
+ const shape=types=>({
+  ...raw,abi:[{type:"constructor",inputs:types.map((type,i)=>({type,name:"p"+i}))}]
+ });
+ const ok=artifactTemplate(shape(factoryTypes),{
+  component:"factory",commit:"a".repeat(40),forgeVersion:"forge 1.8.5"
+ });
+ assert.equal(ok.component,"factory");
+ // Regression: the obsolete constructor exposed a second uint256 gas hint.
+ assert.throws(()=>artifactTemplate(shape([
+  ...factoryTypes.slice(0,7),"uint256",...factoryTypes.slice(7)
+ ]),{component:"factory",commit:"a".repeat(40),forgeVersion:"forge 1.8.5"}),/Unexpected constructor ABI/);
+});
