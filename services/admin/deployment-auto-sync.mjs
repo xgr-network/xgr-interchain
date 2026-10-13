@@ -12,6 +12,10 @@ export const SYNC_PROCESSING="deployment-sync.processing";
 export const SYNC_STATUS="deployment-sync.status.json";
 export const LIVE_CATALOG="/var/www/xita/data/catalog.json";
 const SHA=/^[a-f0-9]{40}$/;
+const PUBLIC_GIT_MAIN="https://github.com/xgr-network/xgr-interchain.git";
+const gitForRoot=root=>args=>execFileSync("git",args,{cwd:root,encoding:"utf8",
+ timeout:60000,maxBuffer:1024*1024,
+ env:{...process.env,GIT_TERMINAL_PROMPT:"0"}}).trim();
 const ORIGINS=new Set([
  "git@github.com:xgr-network/xgr-interchain.git",
  "git@github.com:xgr-network/xgr-interchain",
@@ -24,6 +28,17 @@ const RECEIPT=/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40
 const INFRA=/^deployments\/chains\/[a-z][a-z0-9-]*\.json$/;
 const REPRESENTATIONS=/^deployments\/assets\/[a-f0-9]{2}\/[A-Z][A-Z0-9]{0,15}\/representations\.json$/;
 const ROUTE_INDEX=/^deployments\/assets\/[a-f0-9]{2}\/[A-Z][A-Z0-9]{0,15}\/routes\/[a-f0-9]{64}\.json$/;
+// Live main is obtained from a pinned public HTTPS transport, independent
+// of the interactive shell's SSH agent. The repository's origin URL must
+// still be exactly the approved GitHub repository.
+export function verifiedRemoteMain(root,{git=gitForRoot(root)}={}){
+ if(!ORIGINS.has(git(["remote","get-url","origin"])))
+  throw Error("Unapproved Git origin for automatic deployment sync");
+ const output=git(["ls-remote","--exit-code",PUBLIC_GIT_MAIN,"refs/heads/main"]);
+ const match=/^([a-f0-9]{40})\s+refs\/heads\/main$/i.exec(output);
+ if(!match)throw Error("Cannot verify current receipt-only GitHub main");
+ return match[1].toLowerCase();
+}
 function atomicJson(path,record){
  const tmp=path+"."+randomUUID()+".tmp";
  writeFileSync(tmp,JSON.stringify(record)+"\n",{mode:0o600,flag:"wx"});
@@ -109,7 +124,9 @@ export function syncDeploymentCheckout(root,expectedCommit,{
  // publication MUST NOT cause a rebuild or reseal.
  const fingerprint=sourceFingerprint();
  verifyArtifacts(local);
- git(["fetch","--no-tags","origin","main"]);
+ // Fixed, public HTTPS endpoint: the systemd worker must not depend on
+ // an interactive SSH_AUTH_SOCK or shell-only authentication.
+ git(["fetch","--no-tags",PUBLIC_GIT_MAIN,"main"]);
  const remote=git(["rev-parse","FETCH_HEAD"]).toLowerCase();
  // The requested verified receipt commit must remain an ancestor of main.
  // Check EACH intervening commit, not just the net diff; a code change
@@ -135,6 +152,57 @@ export function syncDeploymentCheckout(root,expectedCommit,{
  verifyArtifacts(remote);
  validate();
  return {updated:true,commit:remote,...changes};
+}
+// The .path unit remains the immediate fast path. This independent poll is
+// the recovery path when systemd.path misses the signal, a one-shot service
+// exits before the request is consumed, or an SSH agent is unavailable.
+// It NEVER bypasses syncDeploymentCheckout's per-commit receipt-only gate.
+export function pollVerifiedDeploymentSync(stateDir,root,{
+ git=gitForRoot(root),
+ consume=()=>consumeDeploymentSync(stateDir,root),
+ sync=commit=>syncDeploymentCheckout(root,commit),
+ publish=()=>publishLiveCatalog(root,process.env.XITA_LIVE_CATALOG||LIVE_CATALOG)
+}={}){
+ let pendingFailure=null;
+ if(existsSync(join(stateDir,SYNC_REQUEST))||existsSync(join(stateDir,SYNC_PROCESSING))){
+  try{
+   const result=consume();
+   if(result.status==="completed")return result;
+  }catch(error){pendingFailure=String(error.message||error).slice(0,240)}
+ }
+ let remote=null;
+ try{
+  remote=verifiedRemoteMain(root,{git});
+  const local=git(["rev-parse","HEAD"]).toLowerCase();
+  if(!SHA.test(local))throw Error("Invalid local Git revision");
+  if(local===remote){
+   // A previous receipt job may have merged successfully but failed while
+   // publishing the website catalog. Retry that atomic publication.
+   if(pendingFailure){
+    const publication=publish();
+    atomicJson(join(stateDir,SYNC_STATUS),{
+     status:"current",commit:local,...publication,
+     warning:"A previous receipt-sync request is still blocked: "+pendingFailure
+    });
+   }
+   return {status:"current",commit:local,...(pendingFailure?{pendingFailure}:{})};
+  }
+  const outcome=sync(remote);
+  const publication=publish();
+  atomicJson(join(stateDir,SYNC_STATUS),{
+   status:"completed",...outcome,...publication,
+   ...(pendingFailure?{warning:"Previous sync request needs cleanup: "+pendingFailure}:{})
+  });
+  return {status:"completed",...outcome,...publication,...(pendingFailure?{pendingFailure}:{})};
+ }catch(error){
+  const reason=String(error.message||error);
+  atomicJson(join(stateDir,SYNC_STATUS),{
+   status:"failed",...(remote?{remoteCommit:remote}:{}),
+   error:reason.slice(0,340),
+   ...(pendingFailure?{priorRequestError:pendingFailure}:{})
+  });
+  throw error;
+ }
 }
 export function consumeDeploymentSync(stateDir,root){
  const requested=join(stateDir,SYNC_REQUEST),processing=join(stateDir,SYNC_PROCESSING);
