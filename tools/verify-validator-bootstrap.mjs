@@ -2,6 +2,7 @@
 // Read-only verification of PUBLIC bootstrap-proof JSON, no key-file access.
 // Usage: xgrchain ... bootstrap-proof --json > /tmp/validator-public.json
 //        node tools/verify-validator-bootstrap.mjs <chain> /tmp/validator-public.json
+import {approvedValidatorSet} from "../services/admin/bootstrap.mjs";
 import {readFileSync} from "node:fs";
 import {resolve,join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -16,7 +17,7 @@ function load(relative){return JSON.parse(readFileSync(join(root,relative),"utf8
 try{
  const chain=load("config/chains/"+name+"/chain.json");
  const bootstrap=load("config/chains/"+name+"/bootstrap.json");
- const validators=load("config/validators/initial.json").validators;
+ const validators=approvedValidatorSet(root,bootstrap).validators;
  const rawText=readFileSync(resolve(file),"utf8");
  let proof;
  if(rawText.trimStart().startsWith("{")){
