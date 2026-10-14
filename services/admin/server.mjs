@@ -1,7 +1,7 @@
 import http from "node:http";
 import {readFileSync,writeFileSync,mkdirSync,renameSync} from "node:fs";
 import {randomUUID} from "node:crypto";
-import {inspectContract} from "./inspector.mjs";
+import {inspectContract,rpcCall} from "./inspector.mjs";
 import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -88,19 +88,7 @@ function reply(res,status,data,type="application/json; charset=utf-8"){
  res.writeHead(status,{"Content-Type":type,...headers});
  res.end(typeof data==="string"?data:JSON.stringify(data));
 }
-async function probe(url,method,params){
- const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),5000);
- try{
-  const response=await fetch(url,{method:"POST",signal:controller.signal,
-   headers:{"Content-Type":"application/json"},
-   body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});
-  if(!response.ok)throw Error("RPC HTTP "+response.status);
-  const result=await response.json();
-  if(result.error)throw Error("RPC error");
-  return result.result;
- }finally{clearTimeout(timeout)}
-}
+const probe=rpcCall;
 async function preflight(catalog){
  const results=await Promise.all(Object.values(catalog.chains).map(async chain=>{
   const infra=catalog.infrastructure[chain.name];
@@ -218,7 +206,7 @@ http.createServer(async(req,res)=>{
    const baseDir=process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
      resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public");
    const readiness=await readDeploymentReadiness({root,chain,inventory:queue.inventory,
-    boot,baseDir,mainCurrent:queue.githubApproved});
+    boot,baseDir,mainCurrent:queue.githubApproved,rpc:rpcCall});
    return reply(res,200,{ok:true,commit:queue.commit,readiness});
   }
   if(req.method==="GET"&&path==="/admin/api/route-lifecycle"){

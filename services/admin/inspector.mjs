@@ -15,17 +15,53 @@ function decode(data,type){
  if(type==="bytes32")return data.toLowerCase();
  return BigInt(data).toString();
 }
-export async function rpcCall(url,method,params=[]){
- if(typeof url!=="string"||!/^https:\/\//.test(url))throw Error("RPC URL must use HTTPS");
+// Read-only Base RPC failover. Confirm the destination chain ID before
+// accepting a response from an alternative public endpoint. No wallet write
+// or rebroadcast is ever performed by this transport.
+const BASE_RPC="https://base-rpc.publicnode.com";
+const BASE_ALTERNATES=["https://mainnet.base.org","https://base.llamarpc.com"];
+async function rpcOnce(url,method,params){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
  try{
   const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json"},
-    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),signal:controller.signal});
-  if(!response.ok)throw Error("RPC status "+response.status);
+   body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),signal:controller.signal});
+  if(!response.ok){
+   const error=new Error("RPC status "+response.status);
+   error.rpcHttpStatus=response.status;
+   throw error;
+  }
   const payload=await response.json();
   if(payload.error)throw Error("RPC error: "+String(payload.error.message||"unknown").slice(0,120));
   return payload.result;
  }finally{clearTimeout(timer)}
+}
+export async function rpcCall(url,method,params=[]){
+ if(typeof url!=="string"||!/^https:\/\//.test(url))throw Error("RPC URL must use HTTPS");
+ const endpoints=url===BASE_RPC?[url,...BASE_ALTERNATES]:[url];
+ let last;
+ for(const endpoint of endpoints){
+  try{
+   // Always re-check the fallback chain before trusting its result, and do
+   // not fall back for a valid JSON-RPC execution error.
+   if(endpoint!==url){
+    const id=await rpcOnce(endpoint,"eth_chainId",[]);
+    if(BigInt(id)!==8453n)throw Error("Unexpected Base fallback chain ID");
+   }
+   const value=await rpcOnce(endpoint,method,params);
+   if(method==="eth_chainId"&&endpoint!==url&&BigInt(value)!==8453n)
+    throw Error("Unexpected Base fallback chain ID");
+   return value;
+  }catch(e){
+   if(endpoint!==url&&String(e.message).includes("Unexpected Base fallback chain ID"))
+    throw e;
+   const code=e.rpcHttpStatus;
+   const transient=code===403||code===408||code===429||code>=500||
+    e.name==="AbortError"||e instanceof TypeError;
+   if(!transient||url!==BASE_RPC)throw e;
+   last=e;
+  }
+ }
+ throw Error("Base RPC unavailable on all approved read-only endpoints: "+String(last?.message||"unknown"));
 }
 export async function probeChain(catalog,chainName,rpc=rpcCall){
  const chain=catalog.chains[chainName],infra=catalog.infrastructure[chainName];
