@@ -2,6 +2,7 @@ import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balance
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
+import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
 async function postJSON(p,data){return apiJSON(fetch,p,{method:"POST",data});}
@@ -27,7 +28,7 @@ function renderAssets(){
  assetPage=Math.max(0,Math.min(assetPage,pages-1));
  const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
- '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+'</div>'+
+ '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+(assetTasks.some(t=>t.asset===a.key)?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+'">Alle Schritte deployen</button>':"")+'</div>'+
  '<div class="routes">'+assetTasks.filter(t=>t.asset===a.key).map(t=>
   '<div class="route"><div><strong>'+
   esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
@@ -37,6 +38,8 @@ function renderAssets(){
   '</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
  el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
   b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
+ el("main-workqueue").querySelectorAll("[data-batch-asset]").forEach(b=>
+  b.addEventListener("click",()=>runDeploymentBatch("asset",b.dataset.batchAsset)));
  const pageNode=el("asset-pagination");
  pageNode.innerHTML='<span>'+esc(assets.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
  pageNode.querySelectorAll("button[data-page]").forEach(b=>b.addEventListener("click",()=>{
@@ -100,7 +103,8 @@ function renderInfrastructure(){
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";
   return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
-   '<span class="status">'+displayCount+'/'+displayTotal+' Komponenten</span></div>'+
+   '<span class="status">'+displayCount+'/'+displayTotal+' Komponenten</span>'+
+   (c.documented<c.required?'<button type="button" class="component-pending" data-batch-chain="'+esc(c.name)+'">Chain fertig deployen</button>':"")+'</div>'+
    '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
    '<div class="chain-components">'+verifierRow+tasks+'</div>'+    liveRows+
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
@@ -115,6 +119,8 @@ function renderInfrastructure(){
  el("infrastructure-list").querySelectorAll("[data-open-chain]").forEach(b=>b.addEventListener("click",()=>{
   openContractModal(b.dataset.openChain,b.dataset.openComponent);
  }));
+ el("infrastructure-list").querySelectorAll("[data-batch-chain]").forEach(b=>
+  b.addEventListener("click",()=>runDeploymentBatch("chain",b.dataset.batchChain)));
  el("infrastructure-list").querySelectorAll("button[data-switch]").forEach(b=>b.addEventListener("click",async()=>{
   try{const chain=chains.find(x=>x.name===b.dataset.switch);
    await switchDeploymentChain(chain);await refreshWalletBalances();}
@@ -148,6 +154,7 @@ async function openAssetModal(taskId){
  const task=assetTasks.find(x=>x.id===taskId);
  if(!task)return;
  selectedDeployment=null;selectedAssetTask=task;assetPreview=null;
+ el("modal-deploy").hidden=false;el("batch-stop").hidden=true;
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
  el("contract-modal-title").textContent=task.kind==="router"?
   "Token-Router einmalig bereitstellen":
@@ -173,7 +180,7 @@ async function openAssetModal(taskId){
    graph.representations[task.chain].role==="synthetic"?"syntheticRouter":"collateralRouter";
   const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:register$/,""):"none";
   const id=task.chain+":"+task.asset+":"+component+":"+routeName;
-  if(journal[id]){
+  if(journal[id]&&journal[id].stage!=="prepared"){
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    el("modal-cancel").hidden=journal[id].stage!=="prepared";
@@ -255,6 +262,7 @@ async function openContractModal(chainName,component){
  const part=infra?.components.find(x=>x.key===component);
  if(!chain||!part||part.status==="documented")return;
  selectedAssetTask=null;el("modal-route-context").hidden=true;
+ el("modal-deploy").hidden=false;el("batch-stop").hidden=true;
  selectedDeployment={chainName,component};
  const title=coreTitles[component]||component;
  el("contract-modal-title").textContent=title+" · "+chainName;
@@ -331,7 +339,7 @@ async function openContractModal(chainName,component){
   const stepIndex=infra.components.findIndex(p=>p.key===component);
   const missingPrerequisites=infra.components.slice(0,stepIndex)
     .filter(p=>p.status!=="documented").map(p=>coreTitles[p.key]||p.key);
-  if(existing){
+  if(existing&&existing.stage!=="prepared"){
    el("modal-deploy").disabled=true;
    el("modal-recover").hidden=false;
    el("modal-cancel").hidden=existing.stage!=="prepared";
