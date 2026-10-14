@@ -203,10 +203,34 @@ async function previewAssetDeployment(){
  el("modal-deploy").disabled=false;
  presentModalStatus("On-Chain-Vorprüfung erfolgreich. Deployment durch Wallet bestätigen.");
 }
+async function automaticallyContinuePrevious(type,target){
+ const call=()=>postJSON("/admin/api/deploy/advance",{type,target});
+ let previous=(await call()).result;
+ if(previous.stage==="pending"){
+  const settled=await awaitDeploymentReceipt(call,{
+   attempts:6,
+   onPending:()=>presentModalStatus("Vorherige Wallet-Transaktion wird automatisch geprüft …","warn")
+  });
+  previous=settled.result;
+ }
+ if(previous.stage==="pending")
+  presentModalStatus("Transaktion noch in Prüfung. Erneut auf Deploy klicken; keine manuelle Wiederherstellung erforderlich.","warn");
+ else if(previous.warning)
+  presentModalStatus("Alter Versuch nicht rekonstruierbar. Ein neuer Deploy benötigt eine neue MetaMask-Bestätigung; vorherige Gaskosten können angefallen sein.","warn");
+ return previous;
+}
 async function executeAssetDeployment(){
  const task=selectedAssetTask;
  if(!task)throw Error("Keine Asset-Aufgabe ausgewählt");
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ const previous=await automaticallyContinuePrevious("asset",task.asset);
+ if(previous.stage==="pending"){el("modal-deploy").disabled=false;return;}
+ if(previous.stage==="documented"){
+  presentModalStatus("Vorherige Transaktion automatisch dokumentiert.","success");
+  el("contract-deploy-dialog").close();selectedAssetTask=null;
+  await waitForDeploymentSync(previous);return;
+ }
+ if(previous.stage!=="ready")throw Error("Unbekannter automatischer Fortsetzungsstatus");
  let wallet=await currentWalletState();
  if(!wallet)throw Error("Wallet verbinden");
  if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
@@ -225,7 +249,7 @@ async function executeAssetDeployment(){
   presentModalStatus("MetaMask abgebrochen. Keine Transaktion gesendet; erneuter Deploy möglich.");
   return;
  }
- el("modal-recover").hidden=false;
+
  await postJSON("/admin/api/asset-deploy/hash",{id:prepared.id,txHash});
  presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
  const report=await awaitDeploymentReceipt(
@@ -233,6 +257,11 @@ async function executeAssetDeployment(){
    onPending:r=>presentModalStatus("Transaktion "+(r.reason==="confirmations"?"wartet auf Finalität":"wartet auf Receipt")+
     " – derselbe Hash, keine weitere Wallet-Signatur.","warn")
   });
+ if(report.result.stage==="pending"){
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Transaktion noch ausstehend. Ein erneuter Deploy-Klick prüft automatisch denselben Hash.","warn");
+  return;
+ }
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
  presentModalStatus("Deployment dokumentiert. Route ist lokal permissionless registriert.","success");
  el("contract-deploy-dialog").close();selectedAssetTask=null;await waitForDeploymentSync(report.result);
@@ -423,7 +452,7 @@ async function executeModalDeployment(){
    presentModalStatus("MetaMask abgebrochen. Keine Transaktion gesendet; erneuter Deploy möglich.");
    return;
   }
-  el("modal-recover").hidden=false;
+ 
   presentModalStatus("Transaktion gesendet · Hash wird gesichert …");
   await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
   presentModalStatus("Warte auf Receipt und On-Chain-Verifikation …");
