@@ -12,13 +12,13 @@ function uint(value){
   throw Error("Invalid chain nonce/receipt value");
  return BigInt(value);
 }
-export function matchesWalletIntent(entry,tx){
+export function matchesWalletIntent(entry,tx,{allowWalletNonceDrift=false}={}){
  if(!entry||!tx)return false;
  try{
   const p=entry.transaction;
   return same(tx.from,entry.wallet)&&
    same(tx.input??tx.data,p.data)&&
-   uint(tx.nonce)===uint(p.nonce)&&uint(tx.value)===uint(p.value)&&
+   (allowWalletNonceDrift||uint(tx.nonce)===uint(p.nonce))&&uint(tx.value)===uint(p.value)&&
    (p.to===null?tx.to===null:same(tx.to,p.to))&&
    (tx.chainId==null||uint(tx.chainId)===BigInt(entry.chainId))&&
    TX.test(tx.hash||"");
@@ -84,7 +84,7 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
    // No reliable RPC state: never treat a timeout as an absent transaction.
    return {action:"pending",reason:"rpc-temporarily-unavailable"};
   }
-  if(transaction&&!matchesWalletIntent(entry,transaction))
+  if(transaction&&!matchesWalletIntent(entry,transaction,{allowWalletNonceDrift:true}))
    throw Error("Saved wallet hash differs from signed deployment; cannot automatically discard");
   if(receipt){
    const status=uint(receipt.status);

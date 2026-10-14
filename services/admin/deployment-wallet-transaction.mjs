@@ -11,6 +11,34 @@ export function persistWalletBroadcastHash({journal,id,txHash}){
  const saved=journal.attachHash(id,txHash);
  return {...saved,rpcVerification:"pending"};
 }
+// MetaMask may choose a fresh nonce while signing a prepared transaction if
+// its own pending nonce is ahead of the public RPC used at prepare time.
+// The EIP-1193-returned tx HASH is the identity; a wallet-assigned nonce is
+// valid provided the actual signed sender, calldata, target, value and chain
+// all match. Nonce remains mandatory when recovering an UNKNOWN hash via a
+// historical block, because there the nonce itself identifies the candidate.
+export function compareCommittedWalletTransaction(entry,tx,{strictNonce=false}={}){
+ const mismatched=[];
+ if(!entry?.transaction||!tx)return {matched:false,mismatched:["transaction"],nonceChanged:false};
+ const expected=entry.transaction;
+ if(!same(tx.from,entry.wallet)||!same(tx.from,expected.from))mismatched.push("sender");
+ if(!same(tx.input??tx.data,expected.data))mismatched.push("calldata");
+ if(expected.to===null?tx.to!==null:!same(tx.to,expected.to))mismatched.push("destination");
+ if(tx.hash!=null&&entry.txHash!=null&&!same(tx.hash,entry.txHash))
+  mismatched.push("hash");
+ const numeric=(actual,value,label)=>{
+  try{if(BigInt(actual)!==BigInt(value))mismatched.push(label)}
+  catch{mismatched.push(label)}
+ };
+ numeric(tx.value,expected.value,"value");
+ if(tx.chainId!=null)numeric(tx.chainId,entry.chainId,"chainId");
+ let nonceChanged=false;
+ try{nonceChanged=BigInt(tx.nonce)!==BigInt(expected.nonce)}
+ catch{mismatched.push("nonce")}
+ if(strictNonce&&nonceChanged)mismatched.push("nonce");
+ return {matched:mismatched.length===0,mismatched,nonceChanged,
+  observedNonce:typeof tx.nonce==="string"?tx.nonce:null};
+}
 export async function observeCommittedWalletTransaction({rpc,url,entry}){
  if(typeof rpc!=="function"||!TX.test(entry?.txHash||"")||
     !Number.isSafeInteger(entry?.chainId)||!entry?.transaction)
@@ -39,18 +67,12 @@ export async function observeCommittedWalletTransaction({rpc,url,entry}){
   }
  }
  if(!tx)return {pending:true,reason:"transaction-not-visible",txHash:entry.txHash};
- const committed=entry.transaction;
- let matches=false;
- try{
-  matches=same(tx.from,entry.wallet)&&
-   same(tx.input??tx.data,committed.data)&&
-   BigInt(tx.nonce)===BigInt(committed.nonce)&&
-   BigInt(tx.value)===BigInt(committed.value)&&
-   (committed.to===null?tx.to===null:same(tx.to,committed.to))&&
-   (tx.hash==null||same(tx.hash,entry.txHash))&&
-   (tx.chainId==null||BigInt(tx.chainId)===BigInt(entry.chainId));
- }catch{matches=false}
- if(!matches)
-  throw Error("On-chain wallet transaction does not match the durable signed intent; manual review required, never rebroadcast");
- return {pending:false,tx,txHash:entry.txHash};
+ const proof=compareCommittedWalletTransaction(entry,tx);
+ if(!proof.matched)
+  throw Error("On-chain wallet transaction differs from prepared request ("+
+   proof.mismatched.join(", ")+"); no automatic rebroadcast");
+ // The wallet-returned hash, not a speculative prepare-time nonce, now drives
+ // receipt/runtime/immutable verification; no extra paid transaction is sent.
+ return {pending:false,tx,txHash:entry.txHash,
+  nonceChanged:proof.nonceChanged,observedNonce:proof.observedNonce};
 }
