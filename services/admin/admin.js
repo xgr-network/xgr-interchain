@@ -555,6 +555,11 @@ async function runDeploymentBatch(type,target){
     presentModalStatus("Fertig: Alle geplanten "+(type==="chain"?"Chain-Komponenten":"Token-Router und Routen")+" sind dokumentiert.","success");
     break;
    }
+   if(next.kind==="deferred"){
+    presentModalStatus("Alle aktuell möglichen Token-Deployments abgeschlossen. "+
+     next.pendingCount+" Schritte warten auf weitere Chain-Infrastruktur; nach deren Deployment denselben Token erneut starten.","success");
+    break;
+   }
    if(next.kind==="blocked")
     throw Error("Nächster Schritt "+next.id+" benötigt: "+next.blockers.join(", "));
    const chain=workqueue.inventory.chains.find(c=>c.name===next.chain);
