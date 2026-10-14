@@ -3,7 +3,7 @@
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
-import {readFinalizedXgrRegistrySnapshot} from "./base-bootstrap-from-xgr.mjs";
+import {readFinalizedXgrPoSSnapshot} from "./xgr-pos-snapshot.mjs";
 import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
@@ -90,22 +90,12 @@ export async function readDeploymentReadiness({
     infrastructure.xitaV315?.components?.blsVerifier,chain,rpc);
    proofBootstrap={...config,verifierAddress:address};
   }
-  let snapshot;
-  if(chain.chainId===initial.originChainId){
-   snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));
-   report.snapshotSource="public-pos-snapshot";
-  }else{
-   // All destination chains independently select an approved validator set.
-   // Verify each member against a finalized XGRChain Registry V3 block:
-   // no copied local PoS snapshots, and no assumption all chains choose the
-   // same initial addresses. The destination BLS proofs bind its own domain.
-   const source=loadJSON(join(root,origin.observedInfrastructure));
-   const registry=source.xitaV315?.components?.validatorRegistry;
-   const address=await verifiedRuntime(registry,origin,rpc);
-   snapshot=await readFinalizedXgrRegistrySnapshot({
-    xgrChain:origin,registryAddress:address,initial,rpc});
-   report.snapshotSource="confirmed-xgrchain-registry-v3";
-  }
+  // Initial membership always comes from the XGRChain PoS staking source,
+  // NOT from the separately bootstrapped XGRChain Interchain Registry.
+  // Base, XGRChain and future destination chains can select different active
+  // PoS members without circular dependencies or hand-copied snapshots.
+  const snapshot=await readFinalizedXgrPoSSnapshot({xgrChain:origin,initial,rpc});
+  report.snapshotSource="confirmed-xgrchain-pos-staking-v2";
   const prepared=await prepareBootstrapEvidence({
    chain,originChain:origin,bootstrap:proofBootstrap,
    initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})
