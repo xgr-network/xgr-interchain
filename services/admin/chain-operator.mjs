@@ -74,10 +74,10 @@ export function createChainOperator({
   if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
      baseDir:publicEvidenceDir,mainCurrent:true,rpc});
-   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==3||
+   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
       !readiness.verifiedSnapshot?.validators?.length)
     throw Error("Three independently verified validator proofs required");
-   verified={...bootstrap,validatorCount:3,expectedValidatorCount:3,
+   verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
     validatorSnapshot:readiness.verifiedSnapshot};
   }
   const compiled=await build(root,commit);
@@ -118,10 +118,10 @@ export function createChainOperator({
     root,chain,inventory:all,boot:bootstrap,baseDir:publicEvidenceDir,
     mainCurrent:true,rpc
    });
-   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==3||
+   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
       !readiness.verifiedSnapshot?.validators?.length)
     throw Error("Independently verified PoS/BLS public snapshot unavailable");
-   verified={...bootstrap,validatorCount:3,expectedValidatorCount:3,
+   verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
      validatorSnapshot:readiness.verifiedSnapshot};
   }
   const artifacts=await build(root,commit);
