@@ -45,8 +45,8 @@ test("RPC propagation gaps and outages are pending, not failed",async()=>{
   assert.equal(result.reason,value===null?"transaction-not-visible":"transaction-rpc-unavailable");
  }
 });
-test("wrong wallet, calldata, chain or nonce is permanently rejected",async()=>{
- for(const wrong of [{from:"0x"+"1".repeat(40)},{input:"0x11"},{nonce:"0x8"},{chainId:"0x1"},{to:"0x"+"2".repeat(40)}]){
+test("wrong wallet, calldata, chain or target is permanently rejected",async()=>{
+ for(const wrong of [{from:"0x"+"1".repeat(40)},{input:"0x11"},{chainId:"0x1"},{to:"0x"+"2".repeat(40)}]){
   await assert.rejects(()=>observeCommittedWalletTransaction({url:"https://base.example",
    entry:{...entry,stage:"submitted",txHash:hash},
    rpc:async()=>({from:wallet,input:entry.transaction.data,nonce:entry.transaction.nonce,
@@ -71,4 +71,25 @@ test("original tx is recovered from its receipt block when hash indexing has exp
  });
  assert.equal(result.pending,false);
  assert.deepEqual(seen,["eth_getTransactionByHash","eth_getTransactionReceipt","eth_getBlockByNumber"]);
+});
+
+test("MetaMask may assign a newer nonce without invalidating the exact returned hash",async()=>{
+ const sent={...entry,stage:"submitted",txHash:hash};
+ const actual={from:wallet,hash,input:entry.transaction.data,nonce:"0x8",
+  value:entry.transaction.value,to:null,chainId:"0x2105"};
+ const x=await observeCommittedWalletTransaction({
+  url:"https://base.example",entry:sent,rpc:async()=>actual
+ });
+ assert.equal(x.pending,false);
+ assert.equal(x.nonceChanged,true);
+ assert.equal(x.observedNonce,"0x8");
+});
+test("wallet-assigned nonce does not override wrong destination or calldata",async()=>{
+ const sent={...entry,stage:"submitted",txHash:hash};
+ await assert.rejects(()=>observeCommittedWalletTransaction({
+  url:"https://base.example",entry:sent,rpc:async()=>({
+   from:wallet,hash,input:"0xdead",nonce:"0x8",value:"0x0",
+   to:"0x"+"1".repeat(40),chainId:"0x2105"
+  })
+ }),/calldata, destination/);
 });
