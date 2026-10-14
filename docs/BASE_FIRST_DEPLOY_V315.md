@@ -1,45 +1,45 @@
-# Base first-deployment preflight (XITA v3.1.5)
+# Base first deployment — XITA v3.1.5
 
-The approved initial interchain validator identities live **only** in
-`config/validators/initial.json` (three addresses, fixed order).
-`config/bootstrap/base.json` references that manifest, rather than
-copying its membership. This selection is not a claim that their BLS
-proofs have been checked or that the current PoS set is finalized.
+Base chainId/domain: `8453`. XGRChain hub: `1643`.
+The initial three Interchain validators are **manually selected** in
+`config/validators/initial.json` and referenced by
+`config/chains/base/bootstrap.json` as `genesisValidatorManifest`.
+This is a fixed initial membership list, not the full XGRChain PoS set.
+No other Registry or finality snapshot is needed to create it.
 
-## Before pressing Deploy
+## Actual GitHub deployment status
 
-1. `./manage.sh update` to fetch the current approved GitHub main.
-2. Open Admin > Chains & Onboarding > Base; connect your EVM wallet,
-   switch to chain ID **8453** and check its native **ETH** gas balance.
-3. Resolve the first three identities against a **finalized** XGR PoS
-   validator snapshot; record the snapshot block.
-4. Collect *public* destination-8453 BLS bootstrap proofs and keys for
-   those same three validators, in exactly the committed address order.
-   Never import any private validator keys into the admin.
-5. Configure minimum reserve, maximum reimbursement, and per-validator
-   reserve amounts in wei. The initial Base source validator fee is
-   **0.0000001 ETH = 100000000000 wei**, already approved in
-   `config/bootstrap/base.json`; it is additional to gas.
-6. Verify on Base that the documented Hyperlane mailbox and Merkle hook
-   addresses contain the expected code, that EIP-2537 operations work,
-   and that the verifier/registry construction arguments and runtime
-   build hashes come from the exact GitHub main commit.
-7. Deploy verifier and initial ValidatorRegistry, then ISM, Factory,
-   and Factory-owned source Registry; confirm receipts and bind addresses
-   to `deployments/mainnet/infrastructure/base.json`.
-8. Repeat chain prerequisites on XGRChain before preparing the
-   **XGRChain <-> Base** pair for native XGR/wXGR. Both route directions
-   must have independent safety attestations; all routes involve XGRChain.
+- XGRChain: the v3.1.5 chain infrastructure, including ValidatorRegistry V3,
+  ISM, transport, router deployment modules, Factory and SourceRegistry,
+  is already documented in `deployments/chains/xgrchain.json`.
+- Base: only the fresh EIP-2537 BLS verifier is documented in
+  `deployments/chains/base.json`. The ValidatorRegistry and the remaining
+  reusable infrastructure still require wallet transactions.
+- The XGR-to-Base and Base-to-XGR asset routes remain to be deployed.
 
-## Explicit blockers (as of this change)
+## Operator sequence
 
-The initial source-native fee is now a **positive, immutable Factory constructor parameter** forwarded once to the newly created Registry. The source fee starts at nonce **0**, while later fee changes require a validator quorum, starting at nonce **1**. The approved Base fee is `100000000000` wei in GitHub main. Verify the deployed Factory constructor binds exactly that amount before proceeding.
+1. Run `./manage.sh update`, connect the deployment wallet, and open
+   **Base → Chain fertig deployen** in the Admin UI.
+2. The Admin reads the three existing Base-domain public CLI proofs from its
+   configured `<public-evidence-dir>/base/validator-1.txt` through
+   `validator-3.txt`. It validates each against the deployed Base BLS
+   verifier using read-only `eth_call`. No manual precheck or PoS RPC.
+3. For Registry V3, the signed constructor includes the fixed approved
+   addresses, public BLS keys, proofs and the native ETH reserve deposit:
+   minimum 0.00005 ETH, executor ceiling 0.00003 ETH,
+   initial 0.0001 ETH per validator (0.0003 ETH total for three).
+   Gas is additional and is shown in MetaMask.
+4. The UI selects the correct MetaMask chain, signs one transaction per
+   missing step, verifies its receipt and publishes the canonical GitHub
+   record. It then continues to the next missing chain component.
+   An explicitly rejected/unsent draft is not a permanent recovery gate.
+   A genuine in-flight broadcast is still protected from double submission.
+5. Once Base infrastructure is documented, use
+   **Assets → XGR → Alle Schritte deployen** to create the remaining
+   token routers and register both directed XGR ↔ Base routes.
+   Final E2E transfers and BLS message delivery must be tested separately.
 
-The web Admin deployment button is also still disabled: no
-commit-pinned wallet deployment transaction compiler, durable transaction
-journal or proven BLS safety executor is connected yet. Recording
-addresses back to GitHub is implemented as an isolated trusted backend
-module, not yet as a complete automated one-click cycle.
-
-**Do not fund a new validator registry or send bridged XGR until these
-blockers are closed and the bidirectional end-to-end suite succeeds.**
+There is no backend wallet or private validator key upload. The UI proof
+verification is automatic; the contract constructor independently checks
+the PoPs again. Each paid deployment needs a MetaMask confirmation.
