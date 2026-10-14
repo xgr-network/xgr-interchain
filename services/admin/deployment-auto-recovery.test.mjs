@@ -119,3 +119,28 @@ test("unknown mempool transaction stays pending without second signing",async()=
  assert.equal(result.stage,"pending");
  assert.equal(journal.retired.length,0);
 });
+
+test("an unused earlier draft is retired but a second pending transaction still prevents fresh signing",async()=>{
+ const first=entry(),second={...entry(),id:"base:factory",
+  wallet:other,transaction:{...entry().transaction,from:other},
+  createdAt:"2026-10-14T12:01:00.000Z"};
+ const journal=fakeJournal([first,second]);
+ const probe=async(url,method,args)=>{
+  if(method==="eth_getTransactionCount"){
+   if(args[0].toLowerCase()===other.toLowerCase()&&args[1]==="pending")
+    return "0xa";
+   return "0x9";
+  }
+  return rpc()(url,method,args);
+ };
+ const result=await resumeInterruptedDeployments({
+  journal,chains:[chain],rpc:probe,
+  reconcile:async()=>{throw Error("No known hash for this pending tx")},
+  include:()=>true
+ });
+ assert.equal(result.stage,"pending");
+ assert.equal(result.id,"base:factory");
+ assert.equal(journal.retired.length,1);
+ assert.ok(!journal.read().entries["base:ism"]);
+ assert.ok(journal.read().entries["base:factory"]);
+});
