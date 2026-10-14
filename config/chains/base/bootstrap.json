@@ -14,9 +14,10 @@
     "notes": "Expected initial validators are fixed by initialValidatorsManifest; finality/block/key proofs still required"
   },
   "reserve": {
-    "minimumWei": null,
-    "maxExecutorReimbursementWei": null,
-    "perValidatorWei": null
+    "minimumWei": "50000000000000",
+    "maxExecutorReimbursementWei": "30000000000000",
+    "perValidatorWei": "100000000000000",
+    "notes": "Approved Base initial Registry V3 economics (2026-10-14): 0.00005 ETH minimum, 0.00003 ETH max executor reimbursement, 0.0001 ETH initial reserve per validator (0.0003 ETH for 3), excluding deployment gas. Wallet sender must confirm exact signed value."
   },
   "sourceFee": {
     "targetWei": "100000000000",

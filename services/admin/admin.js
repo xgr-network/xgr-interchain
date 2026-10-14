@@ -301,16 +301,18 @@ async function openContractModal(chainName,component){
   for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
-   // No JSON file authorizes economics. Historical values are reference only.
+   // Main bootstrap economics are the reviewed defaults, not estimates.
+    // Users can review/edit the actual transaction inputs before wallet signing.
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=component==="factory"?String(factoryDefaults?.[key]??""):xgrInitial?.[key]??"";
+   input.value=component==="factory"?String(factoryDefaults?.[key]??""):
+     String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
    input.title=component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
-    "Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
+    "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
   el("modal-parameter-note").textContent=requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?
