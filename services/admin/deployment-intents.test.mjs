@@ -247,3 +247,49 @@ test("an old signed Registry intent with unprovable reserve value cannot be sile
   assert.throws(()=>st.read(),/perValidatorWei/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("interrupted unused or failed intent is archived and no longer blocks a fresh deploy",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-auto-resume-retire-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const first=store.prepare(input);
+  assert.throws(()=>store.retireForFreshWalletAttempt({
+   id:first.id,createdAt:"wrong",reason:"wallet-nonce-unused"}),/changed/);
+  const outcome=store.retireForFreshWalletAttempt({
+   id:first.id,createdAt:first.createdAt,reason:"wallet-nonce-unused"});
+  assert.equal(outcome.stage,"ready");
+  assert.equal(store.read().entries[input.id],undefined);
+  assert.doesNotThrow(()=>store.prepare(input));
+  const second=store.read().entries[input.id];
+  store.attachHash(second.id,hash);
+  assert.equal(store.retireForFreshWalletAttempt({
+   id:second.id,createdAt:second.createdAt,reason:"failed-onchain"}).stage,"ready");
+  assert.doesNotThrow(()=>store.prepare(input));
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("a confirmed deployment CANNOT be silently retired or replaced",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-auto-resume-confirmed-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const e=store.prepare(input);
+  store.attachHash(e.id,hash);
+  store.confirm(e.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
+  assert.throws(()=>store.retireForFreshWalletAttempt({
+   id:e.id,createdAt:e.createdAt,reason:"nonce-replaced"}),/changed/);
+  assert.equal(store.read().entries[e.id].stage,"confirmed");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("replacement hash can be adopted only for an unchanged, submitted original intent",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-auto-resume-replaced-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  const e=store.prepare(input);
+  assert.throws(()=>store.adoptObservedHash(e.id,e.createdAt,"0x"+"d".repeat(64)),/no longer/);
+  store.attachHash(e.id,hash);
+  store.adoptObservedHash(e.id,e.createdAt,"0x"+"d".repeat(64));
+  const latest=store.read().entries[e.id];
+  assert.equal(latest.txHash,"0x"+"d".repeat(64));
+  assert.equal(latest.replacedTxHash,hash);
+  assert.equal(latest.transaction.data,input.transaction.data);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
