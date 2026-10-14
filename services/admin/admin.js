@@ -215,8 +215,10 @@ async function automaticallyContinuePrevious(type,target){
  }
  if(previous.stage==="pending")
   presentModalStatus("Transaktion noch in Prüfung. Erneut auf Deploy klicken; keine manuelle Wiederherstellung erforderlich.","warn");
- else if(previous.warning)
-  presentModalStatus("Alter Versuch nicht rekonstruierbar. Ein neuer Deploy benötigt eine neue MetaMask-Bestätigung; vorherige Gaskosten können angefallen sein.","warn");
+ else if(previous.warning){
+  el("modal-gas-result").textContent="Hinweis: Der vorige Deploy konnte nicht rekonstruiert werden. Ein erneuter Contract-Deploy kann zusätzliche Gas-/Reservekosten und einen undokumentierten Doppelcontract verursachen. MetaMask bestätigt jede neue Transaktion.";
+  presentModalStatus("Alter Versuch nicht rekonstruierbar. Neuer Deploy mit frischer MetaMask-Bestätigung.","warn");
+ }
  return previous;
 }
 async function executeAssetDeployment(){
@@ -542,8 +544,10 @@ async function runDeploymentBatch(type,target){
    }
    if(recovered.stage!=="ready")
     throw Error("Unerwarteter Status bei automatischer Deployment-Fortsetzung");
-   if(recovered.warning)
-    presentModalStatus("Vorheriger Versuch nicht mehr rekonstruierbar. Neuer Deploy benötigt eine frische MetaMask-Bestätigung; alte Kosten können zusätzlich angefallen sein.","warn");
+   if(recovered.warning){
+    el("modal-gas-result").textContent="Hinweis zum erneuten Deploy: Die frühere Transaktion konnte nicht rekonstruiert werden. Zusätzliche Gas-/Reservekosten oder ein doppelter, noch nicht dokumentierter Contract sind möglich. MetaMask fragt erneut nach deiner Bestätigung.";
+    presentModalStatus("Alter Versuch nicht rekonstruierbar. Neuer Deploy nur mit frischer MetaMask-Bestätigung.","warn");
+   }
    const next=type==="chain"?
     nextChainDeployment(workqueue,target):
     nextAssetDeployment(workqueue,assetTasks,target);
