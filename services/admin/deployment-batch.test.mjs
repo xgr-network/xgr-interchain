@@ -34,7 +34,8 @@ test("asset batch creates routers once and registers both directions only after 
  assert.equal(first.id,"XGR:base:representation");
  assert.equal(first.kind,"asset");
  const waiting=nextAssetDeployment(queue,tasks.slice(1),"XGR");
- assert.equal(waiting.kind,"blocked");
+ assert.equal(waiting.kind,"deferred");
+ assert.equal(waiting.pendingCount,2);
  const enabled=tasks.slice(1).map(t=>({...t,blockers:[],status:"ready-for-independent-validation"}));
  assert.equal(nextAssetDeployment(queue,enabled,"XGR").id,"XGR:base_to_xgr:register");
  assert.equal(nextAssetDeployment(queue,enabled.slice(1),"XGR").id,"XGR:xgr_to_base:register");
@@ -49,4 +50,26 @@ test("batch constructor inputs use destination approved and verified values",()=
   evidenceError:"BLS proof rejected"}),/BLS proof rejected/);
  assert.deepEqual(chainDeploymentParameters("factory",{values:{sourceFeeWei:"10"}}),{sourceFeeWei:"10"});
  assert.deepEqual(chainDeploymentParameters("ism",{}),{});
+});
+
+test("token deployment finishes ready steps and defers other spokes until infrastructure exists",()=>{
+ const tasks=[
+ {id:"XGR:base:representation",asset:"XGR",kind:"router",chain:"base",
+  blockers:[],status:"ready-for-independent-validation"},
+ {id:"XGR:polygon:representation",asset:"XGR",kind:"router",chain:"polygon",
+  blockers:["polygon:factory"],status:"waiting-infrastructure"},
+ {id:"XGR:xgr_to_polygon:register",asset:"XGR",kind:"gateway",chain:"xgrchain",
+  blockers:["Router-Paar","polygon:sourceRegistry"],status:"waiting-dependencies"}
+ ];
+ assert.equal(nextAssetDeployment(queue,tasks,"XGR").id,tasks[0].id);
+ const later=nextAssetDeployment(queue,tasks.slice(1),"XGR");
+ assert.equal(later.kind,"deferred");
+ assert.equal(later.pendingCount,2);
+ const enabled=tasks.slice(1).map(t=>({...t,blockers:[],status:"ready-for-independent-validation"}));
+ assert.equal(nextAssetDeployment(queue,enabled,"XGR").id,tasks[1].id);
+});
+test("unknown route state still blocks rather than being silently skipped",()=>{
+ const tasks=[{id:"XGR:xgr_to_base:register",asset:"XGR",chain:"xgrchain",
+  status:"registration-state-unverified",blockers:["Live-Status unklar"]}];
+ assert.equal(nextAssetDeployment(queue,tasks,"XGR").kind,"blocked");
 });
