@@ -23,7 +23,7 @@ test("readiness fails closed and never authorizes wallet execution when evidence
   assert.equal(result.deploymentExecutable,false);
   assert.equal(result.evidenceVerified,false);
   assert.equal(result.values.sourceFeeWei,null);
-  assert.match(result.missing.join(" "),/proofs needed/);
+  assert.match(result.missing.join(" "),/Validator-Bootstrap/);
   assert.match(result.missing.join(" "),/Source-Fee/);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
