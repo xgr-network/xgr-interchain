@@ -181,6 +181,22 @@ export function deploymentIntents({directory,chains}){
     e.updatedAt=new Date().toISOString();return e;
    });
   },
+  adoptObservedHash(id,createdAt,hash){
+   if(!ID.test(id||"")||!createdAt||!TX.test(hash||""))
+    throw Error("Invalid mined wallet replacement identity");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.createdAt!==createdAt||e.stage!=="submitted")
+     throw Error("Observed wallet nonce is no longer recoverable");
+    // This method is used only after fetching the signed transaction
+    // from a block and matching FROM, nonce, calldata, value and chain.
+    // Preserve the previous hash as auditable metadata.
+    e.replacedTxHash=e.txHash;
+    e.txHash=hash.toLowerCase();
+    e.updatedAt=new Date().toISOString();
+    return e;
+   });
+  },
   confirm(id,hash,proof){
    if(!ID.test(id||"")||!TX.test(hash||"")||!proof||
       typeof proof.contractAddress!=="string"||!ADDR.test(proof.contractAddress)||
