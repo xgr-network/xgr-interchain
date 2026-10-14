@@ -40,8 +40,8 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("minimumDeactivationReserveWei()",bootstrap.reserve.minimumWei);
   await check("maxExecutorReimbursementWei()",bootstrap.reserve.maxExecutorReimbursementWei);
   const onChain=await getter(rpc,url,address,"quorumThreshold()");
-  if(!Array.isArray(bootstrap.initialValidators)||bootstrap.initialValidators.length!==3 ||
-     asWord(onChain)!==2n)throw Error("Bootstrap quorum or pinned validator count differs");
+  if(!Array.isArray(bootstrap.initialValidators)||bootstrap.initialValidators.length<3 ||
+     asWord(onChain)!==BigInt(Math.ceil(2*bootstrap.initialValidators.length/3)))throw Error("Bootstrap quorum or pinned validator count differs");
   for(const validator of bootstrap.initialValidators){
    const status=await rpc(url,"eth_call",[{
     to:address,data:selector("getValidatorStatus(address)")+
