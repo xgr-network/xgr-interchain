@@ -4,6 +4,7 @@ import {selector} from "../../apps/web/keccak.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
 import {verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {verifyDeploymentReceipt} from "./deployment-ledger.mjs";
+import {observeCommittedWalletTransaction} from "./deployment-wallet-transaction.mjs";
 const H32=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const asWord=value=>{
@@ -148,13 +149,10 @@ export async function reconcileDeployedContract({
   throw Error("Deployment identity differs from approved chain");
  const chainId=await rpc(url,"eth_chainId",[]);
  if(BigInt(chainId)!==BigInt(chain.chainId))throw Error("RPC network mismatch");
- const tx=await rpc(url,"eth_getTransactionByHash",[entry.txHash]);
- if(!tx)throw Error("Submitted hash not visible: keep intent locked; never resend");
- if(!same(tx.from,entry.wallet)||!same(tx.input,entry.transaction.data)||
-    BigInt(tx.value)!==BigInt(entry.transaction.value)||
-    BigInt(tx.nonce)!==BigInt(entry.transaction.nonce)||
-    (entry.transaction.to===null?tx.to!==null:!same(tx.to,entry.transaction.to)))
-  throw Error("Observed transaction does not match durable wallet intent");
+ const observation=await observeCommittedWalletTransaction({rpc,url,entry});
+ if(observation.pending)return observation;
+ // Only the original, fully matched wallet transaction can reach receipt
+ // and immutable-bytecode verification below. No broadcast path exists here.
  const receipt=await rpc(url,"eth_getTransactionReceipt",[entry.txHash]);
  if(!receipt)return {pending:true,reason:"receipt",txHash:entry.txHash};
  if(BigInt(receipt.status)!==1n)throw Error("On-chain transaction failed; manual review required");

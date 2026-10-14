@@ -6,6 +6,7 @@ import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
+import {persistWalletBroadcastHash,observeCommittedWalletTransaction} from "./deployment-wallet-transaction.mjs";
 import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {trustedBuild,verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
@@ -147,13 +148,11 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   if(!TX.test(txHash||""))throw Error("Invalid transaction hash");
   const inventory=approvedWorkInventory(root),j=journal(inventory.chains),entry=j.read().entries[id];
   if(!entry?.asset)throw Error("Unknown asset wallet intent");
-  const chain=inventory.chains.find(x=>x.chainId===entry.chainId);
-  const tx=await rpc(chain.rpcUrls[0],"eth_getTransactionByHash",[txHash]);
-  if(!tx||!equal(tx.from,entry.wallet)||!equal(tx.input,entry.transaction.data)||
-     !equal(tx.to,entry.transaction.to)||BigInt(tx.value)!==BigInt(entry.transaction.value)||
-     BigInt(tx.nonce)!==BigInt(entry.transaction.nonce))
-   throw Error("Signed transaction does not match immutable asset intent");
-  return j.attachHash(id,txHash);
+  // EIP-1193 hash is committed immediately, even if the RPC has not
+  // indexed it. Reconciliation independently verifies exact input and nonce.
+  if(!inventory.chains.some(x=>x.chainId===entry.chainId))
+   throw Error("Asset wallet intent chain no longer approved");
+  return persistWalletBroadcastHash({journal:j,id,txHash});
  }
  async function reconcile({id}){
   const main=await mainCheck(root),inventory=approvedWorkInventory(root);
@@ -163,10 +162,10 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    throw Error("Wallet broadcast unknown; check nonce/hash without resending");
   // Main may advance during finality. Compare immutable artifact bytes below.
   const chain=inventory.chains.find(x=>x.chainId===entry.chainId),url=chain.rpcUrls[0];
-  const tx=await rpc(url,"eth_getTransactionByHash",[entry.txHash]);
-  if(!tx||!equal(tx.from,entry.wallet)||!equal(tx.input,entry.transaction.data)||
-     !equal(tx.to,entry.transaction.to)||BigInt(tx.nonce)!==BigInt(entry.transaction.nonce))
-   throw Error("On-chain asset transaction differs from persisted intent");
+  const observed=await observeCommittedWalletTransaction({rpc,url,entry});
+  if(observed.pending)return {stage:"pending",reason:observed.reason,txHash:entry.txHash};
+  // Deployed asset receipt is considered only after full sender, chain,
+  // nonce, value, target and calldata match the persisted wallet intent.
   const receipt=await rpc(url,"eth_getTransactionReceipt",[entry.txHash]);
   if(!receipt)return {stage:"pending",reason:"receipt",txHash:entry.txHash};
   if(BigInt(receipt.status)!==1n)throw Error("Transaction reverted; manual inspection required");

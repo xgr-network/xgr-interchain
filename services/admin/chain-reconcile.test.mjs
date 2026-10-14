@@ -96,3 +96,36 @@ test("receipt absence returns resumable pending without touching chain construct
  });
  assert.deepEqual(result,{pending:true,reason:"receipt",txHash});
 });
+
+test("RPC indexing delay after wallet returned hash is an ordinary resumable pending state",async()=>{
+ const {reconcileDeployedContract}=await import("./chain-reconcile.mjs");
+ const wallet="0x"+"a".repeat(40),txHash="0x"+"b".repeat(64);
+ const entry={stage:"submitted",chainId:8453,id:"base:blsVerifier",
+  txHash,wallet,transaction:{from:wallet,to:null,nonce:"0x3",value:"0x0",data:"0x6001"}};
+ const result=await reconcileDeployedContract({
+  root:process.cwd(),entry,chain:{name:"base",chainId:8453},bootstrap:{},
+  infrastructure:{},artifact:{component:"blsVerifier"},url:"https://base.invalid",
+  rpc:async(_url,method)=>{
+   if(method==="eth_chainId")return "0x2105";
+   if(method==="eth_getTransactionByHash")return null;
+   throw Error("No receipt read before transaction visibility");
+  }
+ });
+ assert.deepEqual(result,{pending:true,reason:"transaction-not-visible",txHash});
+});
+test("RPC outage during transaction indexing never triggers another broadcast",async()=>{
+ const {reconcileDeployedContract}=await import("./chain-reconcile.mjs");
+ const wallet="0x"+"a".repeat(40),txHash="0x"+"b".repeat(64);
+ const result=await reconcileDeployedContract({
+  root:process.cwd(),entry:{stage:"submitted",chainId:8453,id:"base:blsVerifier",
+   txHash,wallet,transaction:{from:wallet,to:null,nonce:"0x0",value:"0x0",data:"0x6001"}},
+  chain:{name:"base",chainId:8453},bootstrap:{},infrastructure:{},
+  artifact:{component:"blsVerifier"},url:"https://base.invalid",
+  rpc:async(_url,method)=>{
+   if(method==="eth_chainId")return "0x2105";
+   if(method==="eth_getTransactionByHash")throw Error("429 rate limited");
+   throw Error("No receipt read before transaction visibility");
+  }
+ });
+ assert.deepEqual(result,{pending:true,reason:"transaction-rpc-unavailable",txHash});
+});

@@ -13,6 +13,7 @@ import {chainDraft,simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {trustedBuild} from "./trusted-artifacts.mjs";
 import {reconcileDeployedContract,verifyTransportChildren} from "./chain-reconcile.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
+import {persistWalletBroadcastHash} from "./deployment-wallet-transaction.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
@@ -147,16 +148,12 @@ export function createChainOperator({
   const journal=journals(all.chains);
   const record=journal.read().entries[id];
   if(!record)throw Error("Unknown deployment intent");
-  // A submitted hash MUST be for the pinned payload. May be pending or mined.
-  const chain=all.chains.find(c=>c.chainId===record.chainId);
-  const tx=await rpc(chain.rpcUrls[0],"eth_getTransactionByHash",[txHash]);
-  if(!tx)throw Error("Hash not yet visible on RPC; intent remains locked");
-  if(!eq(tx.from,record.wallet)||!eq(tx.input,record.transaction.data)||
-     BigInt(tx.nonce)!==BigInt(record.transaction.nonce)||
-     BigInt(tx.value)!==BigInt(record.transaction.value)||
-     (record.transaction.to===null?tx.to!==null:!eq(tx.to,record.transaction.to)))
-   throw Error("Wallet submitted non-matching transaction");
-  return journal.attachHash(id,txHash);
+  // Wallet hash must be durably journaled BEFORE any potentially lagging
+  // RPC lookup. Exact sender/nonce/calldata/value/chain are checked later,
+  // BEFORE trusting receipt, bytecode or publishing the deployment.
+  if(!all.chains.some(c=>c.chainId===record.chainId))
+   throw Error("Wallet intent chain no longer approved");
+  return persistWalletBroadcastHash({journal,id,txHash});
  }
  async function reconcile({id}){
   const all=inventory(),journal=journals(all.chains),entry=journal.read().entries[id];
