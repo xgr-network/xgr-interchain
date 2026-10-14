@@ -169,8 +169,6 @@ async function openAssetModal(taskId){
   "Gateway, FeeVault und lokale Router-Bindung werden atomar ohne Validator-Votum registriert.";
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
- el("modal-recover").hidden=true;
- el("modal-cancel").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
   const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
@@ -181,10 +179,7 @@ async function openAssetModal(taskId){
   const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:register$/,""):"none";
   const id=task.chain+":"+task.asset+":"+component+":"+routeName;
   if(journal[id]&&journal[id].stage!=="prepared"){
-   el("modal-deploy").disabled=true;
-   el("modal-recover").hidden=false;
-   el("modal-cancel").hidden=journal[id].stage!=="prepared";
-   presentModalStatus("Transaktion vorhanden ("+journal[id].stage+"). Zuerst wiederherstellen; kein erneutes Senden.","warn");
+   presentModalStatus("Vorherige Transaktion erkannt. Normaler Deploy-Klick setzt sie automatisch fort.","warn");
    return;
   }
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
@@ -282,8 +277,6 @@ async function openContractModal(chainName,component){
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;
- el("modal-recover").hidden=true;
- el("modal-cancel").hidden=true;
  el("modal-parameters").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
@@ -351,14 +344,7 @@ async function openContractModal(chainName,component){
   const stepIndex=infra.components.findIndex(p=>p.key===component);
   const missingPrerequisites=infra.components.slice(0,stepIndex)
     .filter(p=>p.status!=="documented").map(p=>coreTitles[p.key]||p.key);
-  if(existing&&existing.stage!=="prepared"){
-   el("modal-deploy").disabled=true;
-   el("modal-recover").hidden=false;
-   el("modal-cancel").hidden=existing.stage!=="prepared";
-   presentModalStatus("Unabgeschlossene Wallet-Transaktion ("+existing.stage+
-    "). Zuerst wiederherstellen – niemals erneut senden.","warn");
-   return;
-  }
+
   if(missingPrerequisites.length){
    el("modal-deploy").disabled=true;
    presentModalStatus("Zuerst deployen und verifizieren: "+missingPrerequisites.join(", "), "warn");
@@ -371,7 +357,9 @@ async function openContractModal(chainName,component){
    return;
   }
   el("modal-deploy").disabled=false;
-  presentModalStatus("Werte prüfen und Mit Wallet deployen. Gebühren zeigt MetaMask.");
+  presentModalStatus(existing&&existing.stage!=="prepared"
+   ?"Bereits gesendete Transaktion erkannt. Deploy setzt sie automatisch fort."
+   :"Werte prüfen und mit Wallet deployen. Gebühren zeigt MetaMask.");
 
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}
 }
@@ -545,8 +533,6 @@ async function runDeploymentBatch(type,target){
  el("modal-route-context").hidden=true;
  el("modal-gas-result").textContent="";
  el("modal-deploy").hidden=true;
- el("modal-cancel").hidden=true;
- el("modal-recover").hidden=true;
  el("batch-stop").hidden=false;
  if(!dialog.open)dialog.showModal();
  let stepCount=0;
