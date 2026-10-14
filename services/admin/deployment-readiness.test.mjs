@@ -62,7 +62,8 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
   blsVerifierFormat:"eip2537",rpcUrls:["https://base.test"],
   observedInfrastructure:"deployments/chains/base.json"};
  const proofs=validators.map((validator,i)=>{
-  const x=word(i+1).slice(-96),y=word(i+10).slice(-96);
+  const x=BigInt(i+1).toString(16).padStart(96,"0");
+  const y=BigInt(i+10).toString(16).padStart(96,"0");
   const key="0x80"+x.slice(2);
   const full="0x"+"0".repeat(32)+x+"0".repeat(32)+y;
   return {validator,originChainId:1643,destinationDomain:8453,
