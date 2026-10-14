@@ -176,3 +176,34 @@ test("sourceRegistry wrong signed tx with missing receipt cannot be rebroadcast"
  assert.equal(result.action,"pending");
  assert.match(result.reason,/awaiting-receipt/);
 });
+
+test("approved Factory with empty registry enables new wallet attempt despite mismatching saved hash",async()=>{
+ const {selector}=await import("../../apps/web/keccak.mjs");
+ const factory="0x"+"3".repeat(40);
+ const e={...entry("submitted"),id:"base:sourceRegistry",
+  transaction:{...entry().transaction,to:factory,data:selector("deployRegistry()")}};
+ const target={...chain,sourceRegistryFactory:{address:factory,blockNumber:100}};
+ const rpcFactory=async(url,method,params)=>{
+  if(method==="eth_call")return "0x"+"0".repeat(64);
+  return rpc({latest:12,pending:12,transaction:{...tx(),input:"0x12345678"}})(url,method,params);
+ };
+ const result=await classifyInterruptedDeployment({entry:e,chain:target,rpc:rpcFactory});
+ assert.equal(result.action,"retry");
+ assert.equal(result.reason,"source-registry-factory-empty");
+});
+test("already deployed SourceRegistry never initiates another wallet attempt without receipt provenance",async()=>{
+ const {selector}=await import("../../apps/web/keccak.mjs");
+ const factory="0x"+"3".repeat(40),registry="0x"+"4".repeat(40);
+ const e={...entry("submitted"),id:"base:sourceRegistry",
+  transaction:{...entry().transaction,to:factory,data:selector("deployRegistry()")}};
+ const target={...chain,sourceRegistryFactory:{address:factory,blockNumber:100}};
+ const rpcFactory=async(url,method,params)=>{
+  if(method==="eth_call")return "0x"+"0".repeat(24)+registry.slice(2);
+  if(method==="eth_blockNumber")return "0x65";
+  if(method==="eth_getLogs")return [];
+  return rpc()(url,method,params);
+ };
+ const result=await classifyInterruptedDeployment({entry:e,chain:target,rpc:rpcFactory});
+ assert.equal(result.action,"pending");
+ assert.equal(result.reason,"registry-event-not-found");
+});
