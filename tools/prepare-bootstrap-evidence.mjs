@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // No transactions, no private keys, no changes to approved GitHub manifests.
+import {approvedValidatorSet} from "../services/admin/bootstrap.mjs";
 import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {join,resolve,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -14,7 +15,7 @@ function load(path){return JSON.parse(readFileSync(path,"utf8"))}
 const config=(p)=>load(join(root,p));
 try{
  const chain=config("config/chains/"+chainName+"/chain.json");
- const initial=config("config/validators/initial.json");
+ const initial=approvedValidatorSet(root,config("config/chains/"+chainName+"/bootstrap.json"));
  const origin=config("config/chains/xgrchain/chain.json");
  const bootstrap=config("config/chains/"+chainName+"/bootstrap.json");
  const snapshot=load(resolve(snapshotPath));
