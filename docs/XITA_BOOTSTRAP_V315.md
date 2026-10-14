@@ -4,25 +4,16 @@ The latest GitHub `main` authorizes desired chains, assets, routes and
 bootstrap inputs. This file is a **development gate**, not a claim of a
 production-ready one-click deployment process.
 
-## Bootstrapping each chain
+## Bootstrapping each chain (explicit Interchain Genesis)
 
-For each chain approved under `config/chains/<chain>/chain.json`,
-`config/chains/<chain>/bootstrap.json` specifies:
+Every destination defines its initial Interchain validator selection once in
+`config/chains/<chain>/bootstrap.json` through `genesisValidatorManifest`.
+The referenced `config/validators/*.json` is the fixed, manually approved list
+in constructor order. It is **not** the complete XGRChain PoS list; each chain
+may select its own subset. No destination Interchain Registry or XGR PoS
+snapshot needs to exist before the first Registry deployment.
 
-- Immutable origin chain 1643 (XGR PoS), target chain ID/domain
-- Finalized XGR PoS validator snapshot height, ordered validator addresses
-- Each validator's 48-byte compressed BLS public key, 128-byte EIP-2537
-  public key and a destination-bound proof of possession
-- A reserve floor, maximum reimbursable exit fee, per-validator initial
-  stake/reserve in the destination's native currency (integer wei)
-- A proposed single source-chain validator fee in native smallest units;
-  signed fee quorum has a 1–600 second expiry (default 300 seconds).
-
-Both compressed and EIP-2537 formats are required in the registry
-constructor. **Never send validator private keys to the Admin console.**
-
-On validator node v3.1.5, the current CLI creates a destination-specific
-public bootstrap proof:
+The validator CLI creates **public**, destination-specific BLS proofs:
 
 ```bash
 xgrchain ibft interchain bootstrap-proof \
@@ -31,25 +22,25 @@ xgrchain ibft interchain bootstrap-proof \
   --destination-domain 8453
 ```
 
-Each validator must generate a proof for each intended destination domain.
-The CLI currently outputs the EIP-2537 *uncompressed* possession signature,
-but the native XGRChain precompile expects a **96-byte compressed G2 proof**
-in its constructor. That format mismatch must be bridged by a validated
-public signature conversion routine or by a proven compatible exporter.
-Do not simply copy an EIP-2537 signature to a compressed native slot. XGR
-node consensus software must not be changed for this UI feature.
+Save the three existing Base outputs (or N outputs for a future chain) as
+`validator-1.txt`, `validator-2.txt`, etc. in the configured Admin public
+evidence directory for that chain. The Admin reads these automatically at
+Preview/Deploy. It validates address, source ID 1643, destination domain,
+compressed/uncompressed BLS keys and signed payload, then uses an
+**eth_call against the destination's already verified BLS verifier** to
+authenticate each proof. No validator secret is uploaded, no extra wallet
+signature is requested and no gas is spent by these checks.
 
-On destination deployment, the wallet funds
-`validatorCount * perValidatorReserveWei` as `msg.value`. The
-constructor verifies **every** validator's destination-scoped BLS proof,
-sets the immutable initial set and starts with `setId=1`. A rejected PoP
-reverts the entire transaction; it cannot leave a partially trusted set.
+The Registry V3 constructor receives the verified public key/proof arrays
+and the exact native-currency reserve deposit
+(`validatorCount * perValidatorWei`). It independently checks all PoPs,
+creates initial `setId=1`, and reverts atomically if an input is invalid.
+EIP-2537 destinations deploy the BLS verifier once first. XGRChain uses its
+existing native compressed verifier at `0x0000000000000000000000000000000000002040`.
 
-The verifier comes before the validator registry. XGRChain uses the native
-compressed verifier at `0x0000000000000000000000000000000000002040`;
-EIP-2537 chains need a verified deployed BLS verifier and positive/negative
-test vectors. Never equate an EIP-2537-capable EVM with a successfully
-verified EIP-2537 deployment merely because the chain ID matches.
+After Genesis, membership changes are separate BLS-quorum operations
+on **that destination's** live ValidatorRegistry V3. The original selection
+is never re-read dynamically from XGR PoS on the deployment path.
 
 ## Single source-native fee per physical chain
 
@@ -82,8 +73,8 @@ retry only the GitHub write. Never replay an already mined transaction.
 
 ## Release gates
 
-- Validate snapshot membership against finalized XGR PoS before contract
-  creation; compare PoPs with the correct verifier on each destination
+- Validate the approved Genesis validator identities and destination-bound
+  PoPs against the correct deployed verifier before each Registry creation
 - Produce pinned build-artifact hashes and wallet transaction constructors
 - Verify mailbox/hook addresses and EIP-2537 precompiles
 - Store immutable signed transaction hashes before waiting for receipts
@@ -98,10 +89,10 @@ these security prerequisites are unresolved.
 ## Mainnet-spoke (Base) cost / go-no-go gate
 
 The first Base mainnet transaction is the independent EIP-2537 BLS verifier
-deployment. `config/chains/base/bootstrap.json` currently has no
-on-chain verifier receipt, validator snapshot, or reserve approval. This is
-**not permission to deploy the ValidatorRegistry**, transport, factory or any
-other Base component in advance.
+deployment. `config/chains/base/bootstrap.json` contains approved native reserve amounts
+and its fixed initial validator set; the Base verifier is already documented.
+The Admin must still successfully verify the destination PoPs before a paid
+ValidatorRegistry deployment.
 
 1. Update the local checkout from the latest `main` and confirm
    the sealed Foundry artifacts pass `node services/admin/verify-sealed-constructors.mjs .`.
@@ -111,10 +102,9 @@ other Base component in advance.
    `eth_estimateGas` simulation before signing, independently check
    MetaMask network 8453 and ETH max cost, and require canonical receipt plus
    exact-runtime verification before moving on.
-3. Generate **Base-domain 8453** PoS snapshot and three genuine validator
-   possession proofs. The verified public files and GitHub-approved snapshot
-   must match and the deployed Base BLS verifier must correctly accept their
-   proofs before sending any validator reserve deposit.
+3. Reuse the three **Base-domain 8453** public CLI possession proofs.
+   The Admin automatically verifies them against the documented Base BLS
+   verifier before presenting the Registry transaction. No PoS snapshot.
 4. Approve immutable minimum and maximum executor reserve amounts and
    the initial **Base-native** Source Fee. The currently configured fee is
    100000000000 wei = 0.0000001 ETH, independent of XGRChain's 0.1 XGR.
