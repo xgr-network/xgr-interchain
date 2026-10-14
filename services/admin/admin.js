@@ -507,6 +507,109 @@ function setView(name){
  for(const section of document.querySelectorAll(".view"))section.hidden=section.id!==name;
  for(const link of document.querySelectorAll(".sidebar [data-view]"))link.classList.toggle("active",link.dataset.view===name);
 }
+let batchActive=false;
+let batchStopRequested=false;
+const walletRejected=e=>e?.code===4001||e?.code==="ACTION_REJECTED"||
+ /user (rejected|denied|cancelled)|userrejectedrequest/i.test(String(e?.message||""));
+async function runDeploymentBatch(type,target){
+ if(batchActive)return;
+ batchActive=true;batchStopRequested=false;
+ selectedDeployment=null;selectedAssetTask=null;assetPreview=null;
+ const dialog=el("contract-deploy-dialog");
+ el("contract-modal-title").textContent=type==="chain"?"Chain-Infrastruktur deployen":"Token & Routen deployen";
+ el("contract-modal-subtitle").textContent=target+" · fehlende Schritte nacheinander · jede Transaktion durch MetaMask";
+ el("modal-parameters").hidden=true;
+ el("modal-route-context").hidden=true;
+ el("modal-gas-result").textContent="";
+ el("modal-deploy").hidden=true;
+ el("modal-cancel").hidden=true;
+ el("modal-recover").hidden=true;
+ el("batch-stop").hidden=false;
+ if(!dialog.open)dialog.showModal();
+ let stepCount=0;
+ try{
+  let wallet=await currentWalletState();
+  if(!wallet)wallet=await connectDeploymentWallet({onChange:refreshWalletBalances});
+  if(!wallet)throw Error("Wallet konnte nicht verbunden werden");
+  const owner=wallet.address.toLowerCase();
+  for(;stepCount<128;stepCount++){
+   if(batchStopRequested){
+    presentModalStatus("Deployment pausiert. Bereits bestätigte Contracts bleiben dokumentiert.","warn");
+    break;
+   }
+   await loadMainWorkqueue();
+   if(!workqueue||workqueue.readOnly)
+    throw Error("GitHub-main-Sync noch nicht abgeschlossen. Nach der Synchronisierung denselben Deploy-Button erneut klicken.");
+   const next=type==="chain"?
+    nextChainDeployment(workqueue,target):
+    nextAssetDeployment(workqueue,assetTasks,target);
+   if(!next){
+    presentModalStatus("Fertig: Alle geplanten "+(type==="chain"?"Chain-Komponenten":"Token-Router und Routen")+" sind dokumentiert.","success");
+    break;
+   }
+   if(next.kind==="blocked")
+    throw Error("Nächster Schritt "+next.id+" benötigt: "+next.blockers.join(", "));
+   const chain=workqueue.inventory.chains.find(c=>c.name===next.chain);
+   if(!chain)throw Error("Nicht freigegebene Zielchain: "+next.chain);
+   presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Netzwerkwechsel zu "+chain.name+" …");
+   wallet=await currentWalletState();
+   if(!wallet||wallet.address.toLowerCase()!==owner)
+    throw Error("Die verbundene Deploy-Wallet wurde gewechselt");
+   if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+   wallet=await currentWalletState();
+   if(!wallet||wallet.chainId!==chain.chainId||wallet.address.toLowerCase()!==owner)
+    throw Error("MetaMask-Netzwerk bzw. Deploy-Wallet stimmt nicht überein");
+   const core=type==="chain";
+   let params={};
+   if(core&&(next.component==="validatorRegistry"||next.component==="factory")){
+    const evidence=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
+    params=chainDeploymentParameters(next.component,evidence.readiness);
+   }
+   let prepared=null,txHash=null;
+   try{
+    presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Vertragsdaten und Gas geprüft; MetaMask-Bestätigung …");
+    prepared=core?
+     await postJSON("/admin/api/chain-deploy/prepare",{
+      chain:chain.name,component:next.component,wallet:wallet.address,parameters:params
+     }):await postJSON("/admin/api/asset-deploy/prepare",{
+      taskId:next.id,wallet:wallet.address
+     });
+    // EIP-1193 supplies an explicit independent approval for EACH transaction.
+    txHash=await broadcastDeploymentIntent(prepared);
+    presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · TX "+txHash.slice(0,14)+"… verifizieren …");
+    const prefix=core?"/admin/api/chain-deploy":"/admin/api/asset-deploy";
+    await postJSON(prefix+"/hash",{id:prepared.id,txHash});
+    const outcome=await awaitDeploymentReceipt(
+     ()=>postJSON(prefix+"/reconcile",{id:prepared.id}),{
+      onPending:()=>presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Bestätigungen/Receipt ausstehend …")
+     });
+    if(outcome.result?.stage!=="documented")
+     throw Error("Transaktion "+txHash+" gesendet, aber Receipt noch nicht dokumentiert");
+    presentModalStatus("Schritt "+(stepCount+1)+" abgeschlossen · GitHub-Receipt dokumentiert. Nächsten Schritt vorbereiten …","success");
+    await waitForDeploymentSync(outcome.result);
+   }catch(e){
+    if(prepared&&!txHash&&walletRejected(e)){
+     try{
+      await postJSON((core?"/admin/api/chain-deploy":"/admin/api/asset-deploy")+
+       "/cancel-prepared",{id:prepared.id,createdAt:prepared.createdAt});
+      throw Error("MetaMask abgebrochen – keine Transaktion gesendet. Erneuter Deploy jederzeit möglich.");
+     }catch(cancelError){
+      if(String(cancelError.message||"").includes("MetaMask abgebrochen"))throw cancelError;
+      throw Error("MetaMask abgebrochen; Entwurf wird beim nächsten Deploy nach Nonce-Prüfung freigegeben: "+cancelError.message);
+     }
+    }
+    if(txHash)throw Error("Bereits gesendete TX "+txHash+": "+e.message);
+    throw e;
+   }
+  }
+  if(stepCount>=128)throw Error("Schrittlime 128 erreicht; bitte neu starten, damit der Live-Stand geprüft wird");
+ }catch(e){
+  presentModalStatus("Batch pausiert bei Schritt "+(stepCount+1)+": "+e.message,"error");
+ }finally{
+  batchActive=false;el("batch-stop").hidden=true;
+  await loadMainWorkqueue();
+ }
+}
 async function waitForDeploymentSync(result){
  const commit=result?.commit;
  if(!result?.autoSyncQueued||!commit){
@@ -574,10 +677,11 @@ async function loadJobs(){
   el("jobs").innerHTML=d.jobs.length?d.jobs.map(j=>'<article><a href="'+esc(j.url)+'" target="_blank" rel="noopener noreferrer">'+esc(j.title)+'</a><p>#'+j.number+' · '+esc(j.status)+'</p></article>').join(""):"<p>Keine offenen GitHub-Issues.</p>";
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
-el("modal-close").addEventListener("click",()=>el("contract-deploy-dialog").close());
+el("modal-close").addEventListener("click",()=>{if(batchActive)batchStopRequested=true;el("contract-deploy-dialog").close();});
 el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
 
 
+el("batch-stop").addEventListener("click",()=>{batchStopRequested=true;presentModalStatus("Pausiert nach der aktuellen Wallet-Transaktion …","warn");});
 el("modal-deploy").addEventListener("click",executeModalDeployment);
 el("modal-recover").addEventListener("click",recoverModalDeployment);
 el("modal-cancel").addEventListener("click",()=>discardPreparedModal().catch(e=>presentModalStatus(e.message,"error")));
