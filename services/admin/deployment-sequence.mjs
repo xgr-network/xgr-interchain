@@ -30,7 +30,7 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   add(verifierComponent,native?"Konfigurierten nativen BLS-Verifier prüfen":"EIP-2537-Verifier bereitstellen",
    native?"verify":"deploy",[],["Positive und negative BLS-Testvektoren erforderlich"]);
   add("validatorRegistry","Initiale ValidatorRegistry", "deploy",[verifierComponent],
-   [...b.missing,"Finalisierten PoS-Snapshot und chain-gebundene BLS-PoPs verifizieren"]);
+   [...b.missing,"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
   add("ism","Interchain Security Module","deploy",["validatorRegistry"]);
   add("transportBundle","XITA Mailbox + MerkleTreeHook (atomar)","deploy",["ism"]);
   add("nativeRouterDeployer","Einmaliger Native-Router-Deployer","deploy",["validatorRegistry","ism"]);
