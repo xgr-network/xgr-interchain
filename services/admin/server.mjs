@@ -228,6 +228,15 @@ http.createServer(async(req,res)=>{
    const pending=await pendingLiveRouteTasks(tasks,queue.inventory.chains,infrastructure,probe);
    return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending});
   }
+  if(req.method==="POST"&&path==="/admin/api/deploy/advance"){
+   const item=await bodyJSON(req);
+   if(item.type!=="chain"&&item.type!=="asset")
+    throw Error("Unknown deployment continuation type");
+   const result=item.type==="chain"
+    ?await operator.resume({chain:item.target})
+    :await assetOperator.resume({asset:item.target});
+   return reply(res,200,{ok:true,result});
+  }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/preview"){
    const item=await bodyJSON(req);
    const result=await operator.preview({chain:item.chain,component:item.component,
