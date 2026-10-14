@@ -72,6 +72,69 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
  ]);
  const latest=uint(latestRaw),pending=uint(pendingRaw);
  if(pending<latest)throw Error("Inconsistent deployment wallet nonce from RPC");
+ // The approved Factory has exactly one SourceRegistry: it does not
+ // create duplicates. Its live registry() determines whether a new wallet
+ // attempt is needed; old WAL nonce/hash metadata cannot block forever.
+ if(entry.id===chain.name+":sourceRegistry"&&entry.stage!=="confirmed"&&
+    ADDRESS.test(entry.transaction.to||"")&&
+    chain.sourceRegistryFactory?.address&&
+    same(entry.transaction.to,chain.sourceRegistryFactory.address)&&
+    same(entry.transaction.data,selector("deployRegistry()"))&&
+    uint(entry.transaction.value)===0n){
+  let raw;
+  try{raw=await rpc(url,"eth_call",[
+   {to:entry.transaction.to,data:selector("registry()")},"latest"]);}
+  catch{return {action:"pending",reason:"factory-registry-rpc-unavailable"};}
+  if(!/^0x[0-9a-f]{64}$/i.test(raw||""))
+   return {action:"pending",reason:"factory-registry-invalid-rpc-result"};
+  const registry="0x"+BigInt(raw).toString(16).padStart(40,"0");
+  if(BigInt(raw)===0n)
+   return {action:"retry",reason:"source-registry-factory-empty",
+    warning:"On-chain Factory.registry() is empty. The old journal entry is archived; a new MetaMask-confirmed deployRegistry() call is permitted. A concurrent previous transaction may still consume gas."};
+  // A registry exists already. Recover its actual Factory event/transaction
+  // to publish the canonical, immutable GitHub receipt, not a guessed address.
+  const factoryBlock=chain.sourceRegistryFactory.blockNumber;
+  if(!Number.isSafeInteger(factoryBlock)||factoryBlock<1)
+   return {action:"pending",reason:"factory-creation-block-unavailable"};
+  const eventTopic=(await import("../../apps/web/keccak.mjs")).keccak256("RegistryDeployed(address)");
+  const addrTopic="0x"+"0".repeat(24)+registry.slice(2);
+  let candidates=[],head;
+  try{head=uint(await rpc(url,"eth_blockNumber",[]));}
+  catch{return {action:"pending",reason:"registry-event-head-unavailable"};}
+  for(let from=BigInt(factoryBlock);from<=head;from+=1800n){
+   const to=from+1799n>head?head:from+1799n;
+   let logs;
+   try{logs=await rpc(url,"eth_getLogs",[{address:entry.transaction.to,
+    fromBlock:"0x"+from.toString(16),toBlock:"0x"+to.toString(16),
+    topics:[eventTopic,addrTopic]}]);}
+   catch{return {action:"pending",reason:"registry-event-query-unavailable"};}
+   if(!Array.isArray(logs))return {action:"pending",reason:"registry-event-query-invalid"};
+   candidates.push(...logs.filter(log=>log?.removed!==true&&
+    same(log.address,entry.transaction.to)&&
+    Array.isArray(log.topics)&&log.topics.length===2&&
+    same(log.topics[0],eventTopic)&&same(log.topics[1],addrTopic)&&
+    TX.test(log.transactionHash||"")));
+   if(candidates.length>1)return {action:"pending",reason:"registry-events-ambiguous"};
+  }
+  if(candidates.length!==1)return {action:"pending",reason:"registry-event-not-found"};
+  const log=candidates[0],hash=log.transactionHash.toLowerCase();
+  let tx,receipt;
+  try{[tx,receipt]=await Promise.all([
+   rpc(url,"eth_getTransactionByHash",[hash]),
+   rpc(url,"eth_getTransactionReceipt",[hash])]);}
+  catch{return {action:"pending",reason:"registry-creation-receipt-unavailable"};}
+  if(!receipt||!tx||!same(receipt.transactionHash,hash)||
+     !same(receipt.from,entry.wallet)||!same(receipt.to,entry.transaction.to)||
+     uint(receipt.status)!==1n||!same(receipt.blockHash,log.blockHash)||
+     !same(receipt.blockNumber,log.blockNumber))
+   return {action:"pending",reason:"registry-creation-receipt-mismatch"};
+  const verified=compareCommittedWalletTransaction({...entry,txHash:hash},tx);
+  if(!verified.matched||!Array.isArray(receipt.logs)||!receipt.logs.some(x=>
+   same(x.address,entry.transaction.to)&&Array.isArray(x.topics)&&
+   same(x.topics[0],eventTopic)&&same(x.topics[1],addrTopic)))
+   return {action:"pending",reason:"registry-creation-transaction-mismatch"};
+  return {action:"reconcile",txHash:hash,reason:"recovered-from-factory-event"};
+ }
  if(entry.stage==="confirmed")
   return {action:"reconcile",reason:"previously-confirmed"};
  if(entry.txHash){

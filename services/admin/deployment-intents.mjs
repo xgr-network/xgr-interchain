@@ -150,7 +150,7 @@ export function deploymentIntents({directory,chains}){
   retireForFreshWalletAttempt({id,createdAt,reason}){
    const permitted=new Set(["wallet-nonce-unused","failed-onchain",
     "nonce-replaced","pending-nonce-replaced","pending-nonce-untraceable",
-    "old-nonce-consumed-untraceable","source-registry-unrelated-saved-hash"]);
+    "old-nonce-consumed-untraceable","source-registry-unrelated-saved-hash","source-registry-factory-empty"]);
    if(!ID.test(id||"")||typeof createdAt!=="string"||
       !permitted.has(reason))
     throw Error("Invalid automated retry evidence");

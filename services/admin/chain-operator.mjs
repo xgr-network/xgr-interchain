@@ -20,6 +20,7 @@ import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
 import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
+import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const nonceWord=s=>{
@@ -270,8 +271,20 @@ export function createChainOperator({
   // The normal chain plan must never wait for an obsolete journal row.
   const documented=new Set(infrastructureInventory(root,[chain])[0]
    .components.filter(c=>c.status==="documented").map(c=>c.key));
+  const factory=infrastructureInventory(root,[chain])[0].components
+   .find(c=>c.key==="factory"&&c.status==="documented");
+  const approvedFactory=loadChainDeployment(root,chain).xitaV315?.components?.factory;
+  let deploymentBlock=null;
+  if(factory?.address&&approvedFactory?.receiptPath){
+   const receipt=JSON.parse(readFileSync(join(root,approvedFactory.receiptPath),"utf8"));
+   if(eq(receipt.address,factory.address)&&receipt.component==="factory"&&
+      Number.isSafeInteger(receipt.blockNumber))deploymentBlock=receipt.blockNumber;
+  }
+  const scopedChains=all.chains.map(c=>c.name===chainName&&factory?.address
+   ?{...c,sourceRegistryFactory:{address:factory.address,blockNumber:deploymentBlock}}
+   :c);
   return resumeInterruptedDeployments({
-   journal:journals(all.chains),chains:all.chains,rpc,reconcile,
+   journal:journals(all.chains),chains:scopedChains,rpc,reconcile,
    include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
     !documented.has(entry.id.split(":")[1])
   });
