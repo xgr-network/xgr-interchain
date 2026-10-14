@@ -42,7 +42,7 @@ test("Base public PoP precheck reads ONLY XGRChain StakingV2, not an Interchain 
  const rpc=async(url,method,args)=>{
   assert.equal(url,"https://xgr.test");
   if(method==="eth_chainId")return "0x66b";
-  if(method==="eth_blockNumber")return "0x78";
+  if(method==="eth_blockNumber")return "0x77";
   if(method==="eth_getBlockByNumber")return {number:"0x6b",hash};
   if(method!=="eth_call")throw Error("Unexpected method "+method);
   const to=args[0].to.toLowerCase();
