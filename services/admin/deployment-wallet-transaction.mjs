@@ -35,7 +35,7 @@ export async function observeCommittedWalletTransaction({rpc,url,entry}){
      same(t.hash,entry.txHash))||null;
    }
   }catch{
-   return {pending:true,reason:"transaction-block-unavailable",txHash:entry.txHash};
+   return {pending:true,reason:"transaction-not-visible",txHash:entry.txHash};
   }
  }
  if(!tx)return {pending:true,reason:"transaction-not-visible",txHash:entry.txHash};
