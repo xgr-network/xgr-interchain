@@ -15,13 +15,10 @@ try{
  const xgrChain=load(join(root,"config/chains/xgrchain/chain.json"));
  const baseChain=load(join(root,"config/chains/base/chain.json"));
  const bootstrap=load(join(root,"config/chains/base/bootstrap.json"));
- const deployed=load(join(root,"deployments/chains/xgrchain.json"));
- const snapshot=load(join(dir,"pos-snapshot.json"));
  const proofs=initial.validators.map((_,i)=>readFileSync(join(dir,"validator-"+(i+1)+".txt"),"utf8"));
- const registryAddress=deployed.xitaV315?.components?.validatorRegistry?.address;
  const report=await prepareBaseFromXgr({
-  xgrChain,baseChain,registryAddress,initial,bootstrap,snapshot,proofs});
- console.log(JSON.stringify({status:"precheck-only",sourceRegistry:report.registry,
+  xgrChain,baseChain,initial,bootstrap,proofs});
+ console.log(JSON.stringify({status:"precheck-only",sourcePoSStaking:report.staking.address,
   originSnapshotBlock:report.report.snapshotBlock,
   originSnapshotHash:report.report.snapshotHash,
   validatorCount:report.report.verifiedValidatorCount,
