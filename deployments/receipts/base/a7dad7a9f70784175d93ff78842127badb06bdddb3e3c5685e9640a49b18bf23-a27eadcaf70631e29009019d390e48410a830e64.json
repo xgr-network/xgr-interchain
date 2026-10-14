@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "69237f5f2a861f14fb59bc6d4a07cb615ba1b1f0"
+  },
+  "chain": "base",
+  "chainId": 8453,
+  "domainId": 8453,
+  "component": "collateralRouterDeployer",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0xa27eadcaf70631e29009019d390e48410a830e64",
+  "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
+  "transactionHash": "0xa7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23",
+  "blockNumber": 52602602,
+  "blockHash": "0x9cf9937c9ca0b60af3ff11e7e74d55b61d688d7de81e8f5d27cc5c588de9d628",
+  "confirmations": 12,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "create"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-14T16:16:15.275Z"
+}
