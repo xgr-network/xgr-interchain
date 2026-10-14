@@ -34,11 +34,12 @@ test("unsent rejected MetaMask nonce is immediately safe for a new Wallet attemp
  const result=await classifyInterruptedDeployment({entry:entry(),chain,rpc:rpc()});
  assert.deepEqual(result,{action:"retry",reason:"wallet-nonce-unused"});
 });
-test("wallet transaction remains pending when its nonce is occupied but hash unavailable",async()=>{
+test("untraceable occupied pending nonce permits a new explicitly MetaMask-confirmed deployment",async()=>{
  const result=await classifyInterruptedDeployment({entry:entry(),chain,
   rpc:rpc({latest:9,pending:10})});
- assert.equal(result.action,"pending");
- assert.equal(result.reason,"wallet-nonce-still-pending");
+ assert.equal(result.action,"retry");
+ assert.equal(result.reason,"pending-nonce-untraceable");
+ assert.match(result.warning,/additional gas\/reserve costs/);
 });
 test("pending block recovers original wallet hash by exact nonce and calldata",async()=>{
  const result=await classifyInterruptedDeployment({entry:entry(),chain,
@@ -111,16 +112,18 @@ test("normal deploy click automatically recovers a submitted receipt without reb
  assert.equal(called,1);
  assert.equal(journal.retired.length,0);
 });
-test("unknown mempool transaction stays pending without second signing",async()=>{
+test("unknown mempool transaction is auditable and permits an explicit new wallet nonce",async()=>{
  const journal=fakeJournal([entry()]);
  const result=await resumeInterruptedDeployments({journal,chains:[chain],
   rpc:rpc({pending:10}),reconcile:async()=>{throw Error("must not reconcile")},
   include:()=>true});
- assert.equal(result.stage,"pending");
- assert.equal(journal.retired.length,0);
+ assert.equal(result.stage,"ready");
+ assert.equal(result.retryReason,"pending-nonce-untraceable");
+ assert.match(result.warning,/additional gas/);
+ assert.equal(journal.retired.length,1);
 });
 
-test("an unused earlier draft is retired but a second pending transaction still prevents fresh signing",async()=>{
+test("an unused earlier draft is retired but a second IDENTIFIED pending transaction is reconciled first",async()=>{
  const first=entry(),second={...entry(),id:"base:factory",
   wallet:other,transaction:{...entry().transaction,from:other},
   createdAt:"2026-10-14T12:01:00.000Z"};
@@ -133,9 +136,14 @@ test("an unused earlier draft is retired but a second pending transaction still 
   }
   return rpc()(url,method,args);
  };
+ const identified=async(url,method,args)=>{
+  if(method==="eth_getBlockByNumber"&&args[0]==="pending")
+   return {transactions:[tx(replacement,other)]};
+  return probe(url,method,args);
+ };
  const result=await resumeInterruptedDeployments({
-  journal,chains:[chain],rpc:probe,
-  reconcile:async()=>{throw Error("No known hash for this pending tx")},
+  journal,chains:[chain],rpc:identified,
+  reconcile:async()=>({stage:"pending",reason:"receipt"}),
   include:()=>true
  });
  assert.equal(result.stage,"pending");
