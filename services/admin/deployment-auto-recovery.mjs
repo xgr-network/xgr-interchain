@@ -31,6 +31,47 @@ async function lookupMinedNonce(rpc,url,entry,head){
  // nonce exceeds the original nonce, then inspect actual signed tx data.
  // Some RPC providers do not retain historical nonce state. In that case
  // this is best effort, not a blocker for the next MetaMask-confirmed try.
+ const wanted=uint(entry.transaction.nonce);
+ let low=0n,high=head;
+ try{
+  for(let i=0;low<high&&i<40;i++){
+   const mid=(low+high)/2n;
+   const used=uint(await rpc(url,"eth_getTransactionCount",[
+    entry.wallet,"0x"+mid.toString(16)]));
+   if(used>wanted)high=mid;
+   else low=mid+1n;
+  }
+  if(low!==high)return null;
+  const block=await rpc(url,"eth_getBlockByNumber",[
+   "0x"+low.toString(16),true]);
+  return block?.transactions?.find(tx=>tx&&typeof tx==="object"&&
+   same(tx.from,entry.wallet)&&uint(tx.nonce)===wanted)||null;
+ }catch{return null}
+}
+async function lookupPendingNonce(rpc,url,entry){
+ try{
+  const block=await rpc(url,"eth_getBlockByNumber",["pending",true]);
+  return block?.transactions?.find(tx=>tx&&typeof tx==="object"&&
+   same(tx.from,entry.wallet)&&uint(tx.nonce)===uint(entry.transaction.nonce))||null;
+ }catch{return null}
+}
+export async function classifyInterruptedDeployment({entry,chain,rpc}){
+ if(!entry||!chain||!ADDRESS.test(entry.wallet||"")||
+    !["prepared","submitted","confirmed"].includes(entry.stage)||
+    typeof rpc!=="function"||!HEX.test(entry.transaction?.nonce||""))
+  throw Error("Invalid interrupted wallet deployment");
+ const url=chain.rpcUrls?.[0];
+ if(!/^https:\/\//.test(url||"")||chain.chainId!==entry.chainId)
+  throw Error("Unapproved interrupted deployment chain");
+ const chainId=uint(await rpc(url,"eth_chainId",[]));
+ if(chainId!==BigInt(entry.chainId))throw Error("Recovery RPC chain ID mismatch");
+ const wanted=uint(entry.transaction.nonce);
+ const [latestRaw,pendingRaw]=await Promise.all([
+  rpc(url,"eth_getTransactionCount",[entry.wallet,"latest"]),
+  rpc(url,"eth_getTransactionCount",[entry.wallet,"pending"])
+ ]);
+ const latest=uint(latestRaw),pending=uint(pendingRaw);
+ if(pending<latest)throw Error("Inconsistent deployment wallet nonce from RPC");
  // The approved Factory has exactly one SourceRegistry: it does not
  // create duplicates. Its live registry() determines whether a new wallet
  // attempt is needed; old WAL nonce/hash metadata cannot block forever.
@@ -94,47 +135,6 @@ async function lookupMinedNonce(rpc,url,entry,head){
    return {action:"pending",reason:"registry-creation-transaction-mismatch"};
   return {action:"reconcile",txHash:hash,reason:"recovered-from-factory-event"};
  }
- const wanted=uint(entry.transaction.nonce);
- let low=0n,high=head;
- try{
-  for(let i=0;low<high&&i<40;i++){
-   const mid=(low+high)/2n;
-   const used=uint(await rpc(url,"eth_getTransactionCount",[
-    entry.wallet,"0x"+mid.toString(16)]));
-   if(used>wanted)high=mid;
-   else low=mid+1n;
-  }
-  if(low!==high)return null;
-  const block=await rpc(url,"eth_getBlockByNumber",[
-   "0x"+low.toString(16),true]);
-  return block?.transactions?.find(tx=>tx&&typeof tx==="object"&&
-   same(tx.from,entry.wallet)&&uint(tx.nonce)===wanted)||null;
- }catch{return null}
-}
-async function lookupPendingNonce(rpc,url,entry){
- try{
-  const block=await rpc(url,"eth_getBlockByNumber",["pending",true]);
-  return block?.transactions?.find(tx=>tx&&typeof tx==="object"&&
-   same(tx.from,entry.wallet)&&uint(tx.nonce)===uint(entry.transaction.nonce))||null;
- }catch{return null}
-}
-export async function classifyInterruptedDeployment({entry,chain,rpc}){
- if(!entry||!chain||!ADDRESS.test(entry.wallet||"")||
-    !["prepared","submitted","confirmed"].includes(entry.stage)||
-    typeof rpc!=="function"||!HEX.test(entry.transaction?.nonce||""))
-  throw Error("Invalid interrupted wallet deployment");
- const url=chain.rpcUrls?.[0];
- if(!/^https:\/\//.test(url||"")||chain.chainId!==entry.chainId)
-  throw Error("Unapproved interrupted deployment chain");
- const chainId=uint(await rpc(url,"eth_chainId",[]));
- if(chainId!==BigInt(entry.chainId))throw Error("Recovery RPC chain ID mismatch");
- const wanted=uint(entry.transaction.nonce);
- const [latestRaw,pendingRaw]=await Promise.all([
-  rpc(url,"eth_getTransactionCount",[entry.wallet,"latest"]),
-  rpc(url,"eth_getTransactionCount",[entry.wallet,"pending"])
- ]);
- const latest=uint(latestRaw),pending=uint(pendingRaw);
- if(pending<latest)throw Error("Inconsistent deployment wallet nonce from RPC");
  if(entry.stage==="confirmed")
   return {action:"reconcile",reason:"previously-confirmed"};
  if(entry.txHash){
