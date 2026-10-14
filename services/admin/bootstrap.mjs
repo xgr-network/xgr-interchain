@@ -12,23 +12,21 @@ function uint(x){return typeof x==="string" && /^[0-9]+$/.test(x) && BigInt(x)>0
 function decodeUint(x){if(!/^0x[0-9a-f]{64}$/i.test(x||""))throw Error("Invalid ABI uint256 return");return BigInt(x)}
 const abiView=(rpc,url,to,signature)=>rpc(url,"eth_call",[{to,data:selector(signature)},"latest"]);
 
-// Every destination chain may pin its own subset of active XGRChain PoS
-// validator identities. The origin provides membership authority, not an
-// identical required signer set for every spoke network.
-export function approvedValidatorSet(root,config){
- const file=config?.initialValidatorsManifest;
- if(typeof file!=="string"||
-    !/^config\/validators\/(?:initial|[a-z][a-z0-9-]*)\.json$/.test(file))
-  throw Error("Missing approved destination validator-set manifest");
- const initial=JSON.parse(readFileSync(join(root,file),"utf8"));
- const validators=initial.validators;
- if(initial.schemaVersion!==1||initial.kind!=="xita-initial-validator-set"||
-    initial.originChainId!==1643||!Array.isArray(validators)||
-    validators.length<3||validators.length>128||
+// Chain-specific immutable GENESIS selection. The initial Interchain set is
+// explicitly pinned in bootstrap.json, not discovered from PoS or any Registry.
+// The destination verifier separately validates each public CLI BLS possession
+// proof before the constructor can be sent to MetaMask.
+export function approvedValidatorSet(_root,config){
+ const genesis=config?.genesis;
+ if(!genesis||genesis.originChainId!==1643||!Array.isArray(genesis.validators))
+  throw Error("Missing explicit chain Genesis validator selection");
+ const validators=genesis.validators;
+ if((validators.length!==0 && (validators.length<3||validators.length>128))||
     !validators.every(addr)||
     new Set(validators.map(v=>v.toLowerCase())).size!==validators.length)
-  throw Error("Invalid destination-specific pinned validator identities");
- return initial;
+  throw Error("Invalid explicit chain Genesis validator identities");
+ return {schemaVersion:1,kind:"xita-initial-validator-set",
+  originChainId:genesis.originChainId,validators};
 }
 export function bootstrapPlan(root,chain){
  const cfg=JSON.parse(readFileSync(join(root,chainBootstrapPath(chain.name)),"utf8"));
