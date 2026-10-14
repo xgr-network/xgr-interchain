@@ -132,7 +132,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    parameters:{},asset:asset.asset,assetId:asset.assetId,routeName,routeId:facts.routeId,
    factory,validatorSnapshot:null,
    transaction:{...simulation.transaction,nonce}});
-  return {...facts,transaction:entry.transaction};
+  return {...facts,transaction:entry.transaction,createdAt:entry.createdAt};
  }
  async function preview(args){
   const d=await draft(args);
@@ -142,7 +142,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
  async function prepare(args){
   const d=await draft(args,{reserve:true});
   return {id:d.id,chainId:d.chainId,chain:d.chain,component:d.component,
-   transaction:d.transaction,simulation:d.simulation,mode:"await-wallet-confirmation"};
+   transaction:d.transaction,createdAt:d.createdAt,simulation:d.simulation,mode:"await-wallet-confirmation"};
  }
  async function hash({id,txHash}){
   if(!TX.test(txHash||""))throw Error("Invalid transaction hash");
