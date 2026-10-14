@@ -46,7 +46,7 @@ test("Base verifier receipt must use real canonical path and bind exact contract
  assert.equal(validVerifierDeploymentReceipt("base",{...record,receiptPath:"../receipts/base.json"}),false);
 });
 
-test("Base Registry is ready from verified public PoPs and finalized XGR Registry without hand-copied candidate/snapshot",async()=>{
+test("Base Registry is ready from Base public PoPs and confirmed XGR PoS without an origin Interchain Registry or copied snapshot",async()=>{
  const {selector,keccak256}=await import("../../apps/web/keccak.mjs");
  const root=mkdtempSync(join(tmpdir(),"xita-live-base-bootstrap-"));
  const address=i=>"0x"+BigInt(i).toString(16).padStart(40,"0");
@@ -73,8 +73,7 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
     "000000000000066b"+"00002105"+validator.slice(2)+
     "0030"+key.slice(2)+"0080"+full.slice(2)};
  });
- const registry=address(550),verifier=address(551);
- const source={xitaV315:{components:{validatorRegistry:record("xgrchain",registry)}}};
+ const verifier=address(551);
  const dest={xitaV315:{components:{blsVerifier:record("base",verifier)}}};
  const config={chain:"base",chainId:8453,destinationDomain:8453,
   initialValidatorsManifest:"config/validators/initial.json",
@@ -89,7 +88,6 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
   writeFileSync(join(root,"config/chains/base/bootstrap.json"),JSON.stringify(config));
   writeFileSync(join(root,"config/validators/initial.json"),JSON.stringify({
    schemaVersion:1,kind:"xita-initial-validator-set",originChainId:1643,validators}));
-  writeFileSync(join(root,origin.observedInfrastructure),JSON.stringify(source));
   writeFileSync(join(root,chain.observedInfrastructure),JSON.stringify(dest));
   proofs.forEach((proof,i)=>writeFileSync(
    join(root,"public/base/validator-"+(i+1)+".txt"),JSON.stringify(proof)));
@@ -100,22 +98,18 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
     if(method==="eth_blockNumber")return "0x80";
     if(method==="eth_getBlockByNumber")return {number:"0x7f",hash:"0x"+"b".repeat(64)};
     if(method==="eth_call"){
+     assert.equal(args[0].to.toLowerCase(),"0x0000000000000000000000000000000000001001");
+     assert.equal(args[1],"0x7f");
      const sig=args[0].data.slice(0,10);
-     if(sig===selector("getValidator(address)")){
+     if(sig===selector("validators()"))
+      return "0x"+word(32)+word(validators.length)+validators.map(a=>a.slice(2).padStart(64,"0")).join("");
+     if(sig===selector("validatorInfo(address)")){
       const addr="0x"+args[0].data.slice(-40);
       const i=validators.findIndex(a=>a.toLowerCase()===addr.toLowerCase());
       if(i<0)throw Error("Unknown validator in fixture");
       const key=proofs[i].blsPublicKey.slice(2);
-      return "0x"+word(1)+word(96)+word(1000)+word(48)+key+"0".repeat(32);
+      return "0x"+word(1)+word(1)+word(1000)+word(0)+word(160)+word(48)+key+"0".repeat(32);
      }
-     const responses={
-      [selector("destinationDomain()")]:1643,
-      [selector("originChainId()")]:1643,
-      [selector("registryVersion()")]:3,
-      [selector("setId()")]:1,
-      [selector("quorumThreshold()")]:2
-     };
-     if(Object.hasOwn(responses,sig))return "0x"+word(responses[sig]);
     }
    }
    if(url==="https://base.test"&&method==="eth_chainId")return "0x2105";
@@ -131,7 +125,7 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
   assert.equal(result.verifiedValidatorCount,3);
   assert.equal(result.bootstrapReady,true);
   assert.equal(result.manifestMatchesEvidence,true);
-  assert.equal(result.snapshotSource,"confirmed-xgrchain-registry-v3");
+  assert.equal(result.snapshotSource,"confirmed-xgrchain-pos-staking-v2");
   assert.equal(result.verifiedSnapshot.blockNumber,127);
   assert.equal(result.transactionSimulation,"requires-verified-artifact-and-gas-estimation");
   assert.ok(!result.missing.some(v=>v.includes("manual snapshot")));
