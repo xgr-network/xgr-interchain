@@ -33,7 +33,7 @@ export async function readFinalizedXgrRegistrySnapshot({
  xgrChain,registryAddress,initial,rpc=rpcCall
 }){
  if(xgrChain?.chainId!==1643||!ADDR.test(registryAddress||"")||
-    !Array.isArray(initial?.validators)||initial.validators.length!==3||
+    !Array.isArray(initial?.validators)||(initial.validators.length<3||initial.validators.length>128)||
     !initial.validators.every(v=>ADDR.test(v))||
     new Set(initial.validators.map(v=>v.toLowerCase())).size!==3||
     !Number.isSafeInteger(xgrChain.confirmations)||xgrChain.confirmations<1)
@@ -59,10 +59,10 @@ export async function readFinalizedXgrRegistrySnapshot({
     !/^0x[0-9a-f]{64}$/i.test(block.hash||""))
   throw Error("Confirmed XGRChain block unavailable");
  if(BigInt(domain)!==1643n||BigInt(origin)!==1643n||
-    BigInt(version)!==3n||BigInt(setId)<1n||BigInt(quorum)!==2n)
+    BigInt(version)!==3n||BigInt(setId)<1n||BigInt(quorum)<1n)
   throw Error("Confirmed XGRChain Registry V3 identity/quorum mismatch");
  const keys=records.map(record=>decodeValidator(record).key);
- if(new Set(keys.map(k=>k.toLowerCase())).size!==3)
+ if(new Set(keys.map(k=>k.toLowerCase())).size!==initial.validators.length)
   throw Error("Duplicate compressed BLS key in XGRChain Registry V3");
  return {number:Number(number),hash:block.hash,
   validators:initial.validators.map((address,i)=>({
