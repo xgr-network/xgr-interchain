@@ -263,10 +263,17 @@ export function createChainOperator({
  }
  async function resume({chain:chainName}){
   const all=inventory();
-  if(!all.chains.some(c=>c.name===chainName))throw Error("Unapproved deployment chain");
+  const chain=all.chains.find(c=>c.name===chainName);
+  if(!chain)throw Error("Unapproved deployment chain");
+  // A verified, published GitHub receipt is final even if an older
+  // submitted WAL record survived a process restart or lost HTTP reply.
+  // The normal chain plan must never wait for an obsolete journal row.
+  const documented=new Set(infrastructureInventory(root,[chain])[0]
+   .components.filter(c=>c.status==="documented").map(c=>c.key));
   return resumeInterruptedDeployments({
    journal:journals(all.chains),chains:all.chains,rpc,reconcile,
-   include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")
+   include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
+    !documented.has(entry.id.split(":")[1])
   });
  }
  const status=()=>{
