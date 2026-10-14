@@ -250,9 +250,22 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
  async function resume({asset}){
   const all=approvedWorkInventory(root);
   if(!Object.hasOwn(all.assets,asset||""))throw Error("Unapproved deployment asset");
+  const infrastructure=infrastructureInventory(root,all.chains);
+  const {graph,tasks}=nextAssetRouteTasks(all,infrastructure);
+  const selected=graph.assets.find(a=>a.asset===asset);
+  const outstanding=new Set(tasks.filter(t=>t.asset===asset).map(task=>{
+   const representation=selected?.representations.find(x=>x.chain===task.chain);
+   const component=task.kind==="gateway"?"gateway":representation?.component;
+   if(!component)throw Error("Missing approved router representation");
+   const route=task.kind==="gateway"
+    ?task.id.slice(asset.length+1).replace(/:register$/,""):"none";
+   return task.chain+":"+asset+":"+component+":"+route;
+  }));
   return resumeInterruptedDeployments({
    journal:journal(all.chains),chains:all.chains,rpc,reconcile,
-   include:entry=>entry.asset===asset
+   // Already published router/route receipts are authoritative. The task
+   // planner no longer lists these, even if an old WAL entry survived.
+   include:entry=>entry.asset===asset&&outstanding.has(entry.id)
   });
  }
  const status=()=>journal(approvedWorkInventory(root).chains).read();
