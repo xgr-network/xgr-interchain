@@ -4,7 +4,7 @@ import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {approvedValidatorSet} from "./bootstrap.mjs";
-import {readFinalizedXgrRegistrySnapshot} from "./base-bootstrap-from-xgr.mjs";
+import {readFinalizedXgrPoSSnapshot,XGR_POS_STAKING_ADDRESS} from "./xgr-pos-snapshot.mjs";
 import {selector} from "../../apps/web/keccak.mjs";
 const addr=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -23,10 +23,9 @@ test("Base and Polygon may approve DISTINCT PoS validator sets in their own mani
   assert.throws(()=>approvedValidatorSet(root,{initialValidatorsManifest:"config/validators/polygon.json"}),/Invalid/);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
-test("live XGRChain Registry can verify a destination-specific four-member set",async()=>{
+test("a target chain can select four PoS validators absent from the origin Interchain Registry",async()=>{
  const validators=[addr(201),addr(202),addr(203),addr(204)];
  const keys=validators.map((_,i)=>"0x"+BigInt(i+1).toString(16).padStart(96,"0"));
- const registry=addr(550);
  const rpc=async(url,method,args)=>{
   assert.equal(url,"https://origin.test");
   if(method==="eth_chainId")return "0x66b";
@@ -34,30 +33,23 @@ test("live XGRChain Registry can verify a destination-specific four-member set",
   if(method==="eth_getBlockByNumber")return {number:"0x7f",hash:"0x"+"a".repeat(64)};
   if(method==="eth_call"){
    assert.equal(args[1],"0x7f");
-   assert.equal(args[0].to,registry);
+   assert.equal(args[0].to,XGR_POS_STAKING_ADDRESS);
    const calldata=args[0].data,sig=calldata.slice(0,10);
-   if(sig===selector("getValidator(address)")){
+   if(sig===selector("validators()"))
+    return "0x"+word(32)+word(validators.length)+validators.map(a=>a.slice(2).padStart(64,"0")).join("");
+   if(sig===selector("validatorInfo(address)")){
     const v="0x"+calldata.slice(-40).toLowerCase();
     const index=validators.findIndex(a=>a.toLowerCase()===v);
     assert.ok(index>=0);
-    return "0x"+word(1)+word(96)+word(1000)+word(48)+
+    return "0x"+word(1)+word(1)+word(1000)+word(0)+word(160)+word(48)+
      keys[index].slice(2)+"0".repeat(32);
    }
-   const values={
-    [selector("destinationDomain()")]:1643,
-    [selector("originChainId()")]:1643,
-    [selector("registryVersion()")]:3,
-    [selector("setId()")]:9,
-    [selector("quorumThreshold()")]:3
-   };
-   assert.ok(Object.hasOwn(values,sig));
-   return "0x"+word(values[sig]);
+   throw Error("An origin Interchain Registry is not the source of initial PoS membership");
   }
   throw Error("Unexpected RPC method");
  };
- const snapshot=await readFinalizedXgrRegistrySnapshot({
+ const snapshot=await readFinalizedXgrPoSSnapshot({
   xgrChain:{chainId:1643,confirmations:1,rpcUrls:["https://origin.test"]},
-  registryAddress:registry,
   initial:{validators},rpc
  });
  assert.equal(snapshot.number,127);
