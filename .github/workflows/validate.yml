@@ -82,6 +82,15 @@ jobs:
           find runtime/native-relayer -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
           find apps/web -maxdepth 1 \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 -n1 node --check
 
+      - name: Install Chrome for real browser startup and screenshot tests
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+      - name: Expose installed browser to XITA smoke tests
+        shell: bash
+        run: echo "XITA_BROWSER=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+
       - name: Browser startup smoke test
         shell: bash
         run: |
