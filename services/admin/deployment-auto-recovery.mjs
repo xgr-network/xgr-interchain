@@ -111,7 +111,7 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
     if(!/^0x[0-9a-f]{64}$/i.test(current||""))
      return {action:"pending",reason:"source-registry-state-invalid"};
     if(BigInt(current)!==0n)
-     return {action:"reconcile",reason:"source-registry-prove-factory-state"};
+     return {action:"pending",reason:"source-registry-already-exists-unattributed"};
     if(uint(receipt.status)===1n)
      return {action:"retry",reason:"source-registry-unrelated-saved-hash",
       warning:"The saved MetaMask hash belongs to another confirmed transaction. The approved Factory has no SourceRegistry; a new deployment requires explicit MetaMask confirmation."};
