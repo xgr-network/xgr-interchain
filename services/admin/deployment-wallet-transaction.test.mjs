@@ -53,3 +53,22 @@ test("wrong wallet, calldata, chain or nonce is permanently rejected",async()=>{
     value:entry.transaction.value,to:null,chainId:"0x2105",...wrong})}),/does not match/);
  }
 });
+test("original tx is recovered from its receipt block when hash indexing has expired",async()=>{
+ const seen=[];
+ const result=await observeCommittedWalletTransaction({
+  url:"https://base.example",entry:{...entry,stage:"submitted",txHash:hash},
+  rpc:async(_url,method,params)=>{
+   seen.push(method);
+   if(method==="eth_getTransactionByHash")return null;
+   if(method==="eth_getTransactionReceipt")return {status:"0x1",blockNumber:"0x18"};
+   if(method==="eth_getBlockByNumber"){
+    assert.deepEqual(params,["0x18",true]);
+    return {transactions:[{from:wallet,hash,input:entry.transaction.data,
+     nonce:entry.transaction.nonce,value:entry.transaction.value,to:null,chainId:"0x2105"}]};
+   }
+   throw Error("Unexpected RPC call");
+  }
+ });
+ assert.equal(result.pending,false);
+ assert.deepEqual(seen,["eth_getTransactionByHash","eth_getTransactionReceipt","eth_getBlockByNumber"]);
+});
