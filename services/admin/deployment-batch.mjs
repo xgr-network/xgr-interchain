@@ -17,9 +17,20 @@ export function nextAssetDeployment(queue,tasks,assetKey){
  const ready=needed.find(t=>Array.isArray(t.blockers)&&t.blockers.length===0&&
    t.status==="ready-for-independent-validation");
  if(ready)return {...ready,kind:"asset",taskKind:ready.kind};
- const unmet=needed[0];
+ // Defer only EXPECTED missing infrastructure and router-pair dependencies.
+ // These belong to future, separately approved chain deployments and must
+ // never turn an otherwise successful per-token batch into a failure.
+ // Unknown or unverified live state is NOT silently ignored.
+ const deferrable=new Set(["waiting-infrastructure","waiting-dependencies"]);
+ if(needed.every(t=>deferrable.has(t.status)&&
+   Array.isArray(t.blockers)&&t.blockers.length>0)){
+  return {kind:"deferred",asset:assetKey,pendingCount:needed.length,
+   pending:needed.map(t=>({id:t.id,chain:t.chain,blockers:t.blockers}))};
+ }
+ const unmet=needed.find(t=>!deferrable.has(t.status)||
+  !Array.isArray(t.blockers)||t.blockers.length===0)||needed[0];
  return {kind:"blocked",id:unmet.id,chain:unmet.chain,
-  blockers:unmet.blockers||["Route-Status noch nicht unabhängig verifiziert"]};
+  blockers:unmet.blockers||["Routenstatus noch nicht unabhängig verifiziert"]};
 }
 export function chainDeploymentParameters(component,readiness){
  const values=readiness?.values||{};
