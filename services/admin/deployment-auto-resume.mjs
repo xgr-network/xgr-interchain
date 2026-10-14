@@ -14,6 +14,7 @@ export async function resumeInterruptedDeployments({
  const existing=Object.values(journal.read().entries)
   .filter(include)
   .sort((a,b)=>String(a.createdAt||"").localeCompare(String(b.createdAt||"")));
+ let retiredPrevious=null;
  for(const original of existing){
   const current=journal.read().entries[original.id];
   if(!current)continue;
@@ -29,7 +30,11 @@ export async function resumeInterruptedDeployments({
    });
    // The receipt/code might be untraceable on a pruning RPC. We explicitly
    // tell the UI that a NEW MetaMask tx can duplicate prior gas/deployment.
-   return {...retired,warning:verdict.warning||null,chain:chain.name,id:current.id};
+   retiredPrevious={...retired,warning:verdict.warning||null,
+    chain:chain.name,id:current.id};
+   // Another unresolved entry from this batch may still be pending. Do not
+   // sign any new transaction before all earlier intents have been checked.
+   continue;
   }
   if(verdict.action!=="reconcile")throw Error("Unknown recovery classification");
   if(verdict.txHash){
@@ -54,5 +59,5 @@ export async function resumeInterruptedDeployments({
     detail:String(e.message||e).slice(0,220)};
   }
  }
- return {stage:"ready"};
+ return retiredPrevious||{stage:"ready"};
 }
