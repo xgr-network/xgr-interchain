@@ -26,6 +26,48 @@ function decodeValidator(data){
  if(!active||!/^0x[0-9a-f]{96}$/i.test(key))throw Error("Inactive validator or malformed on-chain BLS key");
  return {key,reserve};
 }
+// Build a verified membership snapshot from a CONFIRMED XGRChain Registry V3
+// block. This replaces manual copying of a second PoS snapshot file on Base;
+// the Base-specific PoPs are still independently verified on Base.
+export async function readFinalizedXgrRegistrySnapshot({
+ xgrChain,registryAddress,initial,rpc=rpcCall
+}){
+ if(xgrChain?.chainId!==1643||!ADDR.test(registryAddress||"")||
+    !Array.isArray(initial?.validators)||initial.validators.length!==3||
+    !initial.validators.every(v=>ADDR.test(v))||
+    new Set(initial.validators.map(v=>v.toLowerCase())).size!==3||
+    !Number.isSafeInteger(xgrChain.confirmations)||xgrChain.confirmations<1)
+  throw Error("Invalid XGRChain Registry snapshot request");
+ const url=xgrChain.rpcUrls?.[0];
+ if(!/^https:\/\//.test(url||""))throw Error("Unapproved origin RPC");
+ const [chainId,headHex]=await Promise.all([
+  rpc(url,"eth_chainId",[]),rpc(url,"eth_blockNumber",[])]);
+ if(BigInt(chainId)!==1643n)throw Error("Canonical origin chain ID mismatch");
+ const number=BigInt(headHex)-BigInt(xgrChain.confirmations);
+ if(number<1n||number>BigInt(Number.MAX_SAFE_INTEGER))
+  throw Error("No confirmed origin snapshot block");
+ const tag="0x"+number.toString(16);
+ const [block,domain,origin,version,setId,quorum,...records]=await Promise.all([
+  rpc(url,"eth_getBlockByNumber",[tag,false]),
+  ...["destinationDomain()","originChainId()","registryVersion()","setId()","quorumThreshold()"]
+    .map(signature=>rpc(url,"eth_call",[{to:registryAddress,data:selector(signature)},tag])),
+  ...initial.validators.map(address=>rpc(url,"eth_call",[
+   {to:registryAddress,data:selector("getValidator(address)")+
+    address.slice(2).padStart(64,"0")},tag]))
+ ]);
+ if(!block||BigInt(block.number||"0x0")!==number||
+    !/^0x[0-9a-f]{64}$/i.test(block.hash||""))
+  throw Error("Confirmed XGRChain block unavailable");
+ if(BigInt(domain)!==1643n||BigInt(origin)!==1643n||
+    BigInt(version)!==3n||BigInt(setId)<1n||BigInt(quorum)!==2n)
+  throw Error("Confirmed XGRChain Registry V3 identity/quorum mismatch");
+ const keys=records.map(record=>decodeValidator(record).key);
+ if(new Set(keys.map(k=>k.toLowerCase())).size!==3)
+  throw Error("Duplicate compressed BLS key in XGRChain Registry V3");
+ return {number:Number(number),hash:block.hash,
+  validators:initial.validators.map((address,i)=>({
+   validator:{Address:address,BLSPublicKey:keys[i]}}))};
+}
 export async function prepareBaseFromXgr({
  xgrChain,baseChain,registryAddress,initial,bootstrap,snapshot,proofs,
  rpc=rpcCall,verifyProof

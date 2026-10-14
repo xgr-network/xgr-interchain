@@ -3,6 +3,7 @@
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
+import {readFinalizedXgrRegistrySnapshot} from "./base-bootstrap-from-xgr.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {chainBootstrapPath} from "../../tools/manifest-layout.mjs";
@@ -27,6 +28,17 @@ const readPublic=(path)=>{
  return readFileSync(path,"utf8");
 };
 const loadJSON=p=>JSON.parse(readPublic(p));
+async function verifiedRuntime(record,chain,rpc){
+ if(!validVerifierDeploymentReceipt(chain.name,record))
+  throw Error("Missing canonical deployed contract receipt on "+chain.name);
+ const code=await rpc(chain.rpcUrls[0],"eth_getCode",[record.address,"latest"]);
+ if(!/^0x(?:[0-9a-f]{2})+$/i.test(code||"")||
+    keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex"))).toLowerCase()!==
+    record.runtimeCodeKeccak256.toLowerCase())
+  throw Error("Documented on-chain contract runtime mismatch on "+chain.name);
+ return record.address;
+}
+
 function sameEvidence(a,b,expected){
  if(a?.blockNumber!==b?.blockNumber||!equal(a?.blockHash,b?.blockHash)||
     !Array.isArray(a?.validators)||a.validators.length!==expected.length||
@@ -63,46 +75,71 @@ export async function readDeploymentReadiness({
    perValidatorReserveWei:config.reserve?.perValidatorWei??null},
   missing:[]};
  if(!mainCurrent)report.missing.push("GitHub main ist nicht aktuell bestätigt");
- if(!boot.ready)report.missing.push(...boot.missing);
  try{
-  const snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));
-  const proofs=initial.validators.map((_,i)=>readPublic(join(evidenceDir,"validator-"+(i+1)+".txt")));
-  const candidate=loadJSON(join(evidenceDir,"bootstrap-candidate.json"));
+  // One approved list of three addresses remains pinned to GitHub. Public
+  // domain-bound BLS proofs are mandatory; no duplicate hand-saved candidate.
+  const proofs=initial.validators.map((_,i)=>{
+   try{return readPublic(join(evidenceDir,"validator-"+(i+1)+".txt"));}
+   catch(e){if(e.code==="ENOENT")throw Error("Zielchain-Validator-Nachweis "+(i+1)+" für "+chain.name+" fehlt im Public-Bootstrap-Verzeichnis");throw e;}
+  });
   let proofBootstrap=config;
   if(chain.blsVerifierFormat==="eip2537"){
    const infrastructure=loadJSON(join(root,chain.observedInfrastructure));
-   const v=infrastructure.xitaV315?.components?.blsVerifier;
-   if(!validVerifierDeploymentReceipt(chain.name,v))
-    throw Error("EIP-2537 verifier deployment must be independently documented");
-   const code=await rpc(chain.rpcUrls[0],"eth_getCode",[v.address,"latest"]);
-   if(!/^0x(?:[0-9a-f]{2})+$/i.test(code||"")||
-      keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex"))).toLowerCase()!==
-      v.runtimeCodeKeccak256.toLowerCase())
-    throw Error("On-chain EIP-2537 verifier runtime differs from documented artifact");
-   proofBootstrap={...config,verifierAddress:v.address};
+   const address=await verifiedRuntime(
+    infrastructure.xitaV315?.components?.blsVerifier,chain,rpc);
+   proofBootstrap={...config,verifierAddress:address};
   }
-  const prepared=await prepareBootstrapEvidence({chain,originChain:origin,bootstrap:proofBootstrap,
-   initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})});
-  if(!sameEvidence(candidate.validatorSnapshot,prepared.candidate.validatorSnapshot,initial.validators))
-   throw Error("Local candidate differs from independently verified public evidence");
-  report.verifiedSnapshot=prepared.candidate.validatorSnapshot;
+  let snapshot;
+  try{snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));}
+  catch(e){
+   if(e.code!=="ENOENT"||chain.name!=="base")
+    throw e;
+   // Base can recover the verified PoS/BLS membership directly from the
+   // already-deployed XGRChain Registry V3 at a confirmed origin block.
+   // This removes the need for a second manual snapshot export on Base.
+   const source=loadJSON(join(root,origin.observedInfrastructure));
+   const registry=source.xitaV315?.components?.validatorRegistry;
+   const address=await verifiedRuntime(registry,origin,rpc);
+   snapshot=await readFinalizedXgrRegistrySnapshot({
+    xgrChain:origin,registryAddress:address,initial,rpc});
+   report.snapshotSource="confirmed-xgrchain-registry-v3";
+  }
+  if(!report.snapshotSource)report.snapshotSource="public-pos-snapshot";
+  const prepared=await prepareBootstrapEvidence({
+   chain,originChain:origin,bootstrap:proofBootstrap,
+   initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})
+  });
+  const trusted=prepared.candidate.validatorSnapshot;
+  if(new Set(trusted.validators.map(v=>v.blsPublicKeyCompressed.toLowerCase())).size!==3)
+   throw Error("Duplicate validator BLS keys");
+  // A committed full snapshot, when present, remains a strict commitment.
+  // An EMPTY bootstrap template is not an extra manual deployment gate:
+  // proof material is reconstructed and verified at preview/prepare time.
+  const pinned=config.validatorSnapshot;
+  if(Array.isArray(pinned?.validators)&&pinned.validators.length>0&&
+     !sameEvidence(pinned,trusted,initial.validators))
+   throw Error("GitHub-pinned validator snapshot differs from live verified evidence");
+  report.verifiedSnapshot=trusted;
   report.evidenceVerified=true;
   report.verifiedValidatorCount=prepared.report.verifiedValidatorCount;
   report.originSnapshotBlock=prepared.report.snapshotBlock;
   report.snapshotConfirmedDepth=prepared.report.confirmedDepth;
-  report.manifestMatchesEvidence=sameEvidence(config.validatorSnapshot,
-   prepared.candidate.validatorSnapshot,initial.validators);
-  if(!report.manifestMatchesEvidence)report.missing.push("Validierter Bootstrap muss in GitHub main übernommen werden");
+  report.manifestMatchesEvidence=true;
  }catch(e){
-  report.evidenceError=String(e.message||e).slice(0,160);
-  report.missing.push("Öffentliche Validator- und Snapshot-Evidenz nicht vollständig geprüft");
+  report.evidenceError=String(e.message||e).slice(0,200);
+  report.missing.push("Validator-Bootstrap: "+report.evidenceError);
  }
- for(const key of approvedFields)if(config.reserve?.[key]===null||config.reserve?.[key]===undefined)
-  report.missing.push("Reserveparameter fehlt: "+key);
- if(config.sourceFee?.targetWei===null||config.sourceFee?.targetWei===undefined)
-  report.missing.push("Initiale Source-Fee fehlt");
- if(!report.bootstrapReady||!report.manifestMatchesEvidence||!report.evidenceVerified)
-  report.transactionSimulation="blocked-by-bootstrap";
- else report.transactionSimulation="requires-verified-artifact-and-gas-estimation";
+ const values=config.reserve||{};
+ const positive=value=>typeof value==="string"&&/^[1-9][0-9]*$/.test(value);
+ const economicsReady=approvedFields.every(key=>positive(values[key]))&&
+   BigInt(values.perValidatorWei)>=BigInt(values.minimumWei)&&
+   BigInt(values.minimumWei)>=BigInt(values.maxExecutorReimbursementWei);
+ const feeReady=positive(config.sourceFee?.targetWei);
+ if(!economicsReady)report.missing.push("Reserveparameter fehlen oder sind inkonsistent");
+ if(!feeReady)report.missing.push("Initiale Source-Fee fehlt");
+ report.bootstrapReady=report.evidenceVerified&&economicsReady&&feeReady;
+ if(report.bootstrapReady&&mainCurrent)
+  report.transactionSimulation="requires-verified-artifact-and-gas-estimation";
+ else report.transactionSimulation="blocked-by-bootstrap";
  return report;
 }

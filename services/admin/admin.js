@@ -282,8 +282,8 @@ async function openContractModal(chainName,component){
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
-     r.verifiedValidatorCount+"/3 öffentliche Validatornachweise geprüft · Snapshot "+r.originSnapshotBlock:
-     "Validatornachweise müssen vor dem Deploy geprüft werden"):"";
+     r.verifiedValidatorCount+"/3 Validatoren live geprüft · XGRChain Block "+r.originSnapshotBlock:
+     "Validator-Bootstrap: "+(r.evidenceError||"Prüfung noch nicht abgeschlossen")):"";
   let proposal=null;
   if(requiresValues){
    try{
@@ -347,7 +347,7 @@ async function openContractModal(chainName,component){
   // Gas preview works with a clean checked-out main even if GitHub is temporarily unavailable.
   // The server independently validates the LIVE main before wallet preparation.
   if(component==="validatorRegistry"&&!r.evidenceVerified){
-   presentModalStatus("Öffentliche Validatornachweise auf der Zielchain noch nicht verifiziert.","warn");
+   presentModalStatus("Validator-Bootstrap: "+(r.evidenceError||"BLS-Nachweis nicht bestätigt"),"warn");
    return;
   }
   el("modal-deploy").disabled=false;

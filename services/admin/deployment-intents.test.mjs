@@ -207,3 +207,43 @@ test("fresh XITA transport bundle intent survives journal transitions and remain
   assert.equal(open.read().entries[entry.id],undefined);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("archived Registry V3 record with old two-field reserve schema cannot block a new deployment",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-legacy-completed-"));
+ try{
+  const receipt="deployments/receipts/base/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  const legacy={...input,id:"base:validatorRegistry",chainId:8453,stage:"documented",
+   txHash:hash,receiptPath:receipt,parameters:{
+    minimumWei:"300",maxExecutorReimbursementWei:"100"}};
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{[legacy.id]:legacy}}));
+  const st=deploymentIntents({directory:dir,chains:[{name:"base",chainId:8453}]});
+  assert.deepEqual(st.read(),{version:1,entries:{}});
+  assert.deepEqual(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries,{});
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("old submitted Registry intent is read with original hash, nonce and calldata intact",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-legacy-submitted-"));
+ try{
+  const legacy={...input,id:"base:validatorRegistry",chainId:8453,stage:"submitted",
+   txHash:hash,parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100"},
+   transaction:{...input.transaction,value:"0x384"}};
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{[legacy.id]:legacy}}));
+  const st=deploymentIntents({directory:dir,chains:[{name:"base",chainId:8453}]});
+  const read=st.read().entries[legacy.id];
+  assert.equal(read.parameters.perValidatorWei,"300");
+  assert.deepEqual(read.transaction,legacy.transaction);
+  assert.equal(read.txHash,hash);
+  assert.throws(()=>st.prepare({...input,id:legacy.id,chainId:8453}),
+   /Existing deployment intent/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("an old signed Registry intent with unprovable reserve value cannot be silently rewritten",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-legacy-bad-"));
+ try{
+  const legacy={...input,id:"base:validatorRegistry",chainId:8453,stage:"submitted",
+   txHash:hash,parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100"}};
+  writeFileSync(join(dir,"intents.json"),JSON.stringify({version:1,entries:{[legacy.id]:legacy}}));
+  const st=deploymentIntents({directory:dir,chains:[{name:"base",chainId:8453}]});
+  assert.throws(()=>st.read(),/perValidatorWei/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
