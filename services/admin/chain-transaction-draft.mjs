@@ -72,7 +72,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
  if(component==="validatorRegistry"){
   const p=deploymentParameters(component,parameters);
   if(!bootstrap.initialValidators||bootstrap.validatorCount!==bootstrap.expectedValidatorCount)
-   throw Error("Independently verified destination PoS/BLS signer set required");
+   throw Error("Independently verified destination Genesis BLS signer set required");
   if(!bootstrap.validatorSnapshot?.validators?.length)throw Error("Missing verified validator proof records");
   const format=chain.blsVerifierFormat==="compressed"?1:2;
   const verifier=format===1?bootstrap.verifierAddress:requirePresent(infrastructure,"blsVerifier");
