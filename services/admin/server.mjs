@@ -1,5 +1,5 @@
 import http from "node:http";
-import {readFileSync,writeFileSync,mkdirSync,renameSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,renameSync,existsSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {inspectContract,rpcCall} from "./inspector.mjs";
 import {getJobs,recordJobEvent} from "./github-jobs.mjs";
@@ -120,12 +120,25 @@ const operator=createChainOperator({
  resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
 });
 const dir=dirname(fileURLToPath(import.meta.url));
+function deploymentSyncDiagnostic(){
+ const file=resolve(dataDir,"deployment-sync.status.json");
+ let record=null;
+ try{if(existsSync(file))record=JSON.parse(readFileSync(file,"utf8"));}
+ catch(e){return {phase:"unavailable",error:String(e.message||e).slice(0,160)};}
+ const phase=record?.status||"not-reported";
+ return {phase,commit:record?.commit||null,
+  remoteCommit:record?.remoteCommit||null,
+  ...(record?.error?{error:String(record.error).slice(0,300)}:{}),
+  ...(record?.warning?{warning:String(record.warning).slice(0,240)}:{})};
+}
+
 const staticFiles=new Map([
  ["/admin/",["index.html","text/html; charset=utf-8"]],
  ["/admin/admin.js",["admin.js","text/javascript; charset=utf-8"]],
  ["/admin/api-client.mjs",["api-client.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-poll.mjs",["deployment-poll.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-batch.mjs",["deployment-batch.mjs","text/javascript; charset=utf-8"]],
+ ["/admin/deployment-sync-wait.mjs",["deployment-sync-wait.mjs","text/javascript; charset=utf-8"]],
  ["/admin/factory-defaults.mjs",["factory-defaults.mjs","text/javascript; charset=utf-8"]],
  ["/admin/style.css",["style.css","text/css; charset=utf-8"]],
  ["/admin/wallet.js",["wallet.js","text/javascript; charset=utf-8"]]
@@ -137,6 +150,9 @@ http.createServer(async(req,res)=>{
  try{
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
+  if(req.method==="GET"&&path==="/admin/api/deployment-sync/status"){
+   return reply(res,200,{ok:true,sync:deploymentSyncDiagnostic()});
+  }
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
