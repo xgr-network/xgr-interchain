@@ -302,9 +302,15 @@
             "address": "0xa27eadcaf70631e29009019d390e48410a830e64",
             "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
             "receiptPath": "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json"
+          },
+          "factory": {
+            "address": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370",
+            "runtimeCodeKeccak256": "0xa72f14259b579c5b8e87d4f92bfe5fff94c56c961dca1518f5021bf874596513",
+            "receiptPath": "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json"
           }
         },
         "receiptPaths": [
+          "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json",
           "deployments/receipts/base/06d5ae54895dae24f7051a272eb4eee4db46f182ba2b8ed328d1449125c6d392-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json",
           "deployments/receipts/base/1d39b45134f6b574c618eec12164ca2912dd99fe2d434a954c1405ed030cf7f7-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
           "deployments/receipts/base/20784b967f6af4ec0d184de7d465e717943d941362b9d13e68a86efbb158333b-402d1eabd5b11e517688231a641d027376c6ed10.json",
