@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Read-only cross-chain validator proof validation. No keys, no signing.
+import {approvedValidatorSet} from "../services/admin/bootstrap.mjs";
 import {readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -10,7 +11,7 @@ if(!evidenceDir){console.error("Usage: node tools/check-base-bootstrap.mjs <publ
 const load=path=>JSON.parse(readFileSync(path,"utf8"));
 try{
  const dir=resolve(evidenceDir);
- const initial=load(join(root,"config/validators/initial.json"));
+ const initial=approvedValidatorSet(root,load(join(root,"config/chains/base/bootstrap.json")));
  const xgrChain=load(join(root,"config/chains/xgrchain/chain.json"));
  const baseChain=load(join(root,"config/chains/base/chain.json"));
  const bootstrap=load(join(root,"config/chains/base/bootstrap.json"));

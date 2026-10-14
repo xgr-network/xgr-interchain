@@ -60,7 +60,14 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const routeName=task.kind==="gateway"?task.id.slice(asset.asset.length+1).replace(/:register$/,""):null;
   const id=chain.name+":"+asset.asset+":"+(task.kind==="router"?
    asset.representations.find(x=>x.chain===chain.name)?.component:"gateway")+":"+(routeName||"none");
-  if(j.read().entries[id])throw Error("Existing asset transaction must be recovered, never broadcast twice");
+  const old=j.read().entries[id];
+  if(old?.stage==="prepared"&&reserve){
+   // A retry can replace a previously rejected draft only after its exact
+   // original wallet nonce is shown to be unsent on the target chain.
+   await verifyPrepared({entry:old,chain,rpc});
+   j.cancelPrepared(old.id,old.createdAt);
+  }else if(old&&old.stage!=="prepared")
+   throw Error("Existing broadcast asset transaction needs its receipt before retry");
   if(task.blockers.length)throw Error("Other deployments required: "+task.blockers.join(", "));
   if(task.status!=="ready-for-independent-validation")throw Error("Task dependencies incomplete");
   const source=chain;
@@ -132,7 +139,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    parameters:{},asset:asset.asset,assetId:asset.assetId,routeName,routeId:facts.routeId,
    factory,validatorSnapshot:null,
    transaction:{...simulation.transaction,nonce}});
-  return {...facts,transaction:entry.transaction};
+  return {...facts,transaction:entry.transaction,createdAt:entry.createdAt};
  }
  async function preview(args){
   const d=await draft(args);
@@ -142,7 +149,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
  async function prepare(args){
   const d=await draft(args,{reserve:true});
   return {id:d.id,chainId:d.chainId,chain:d.chain,component:d.component,
-   transaction:d.transaction,simulation:d.simulation,mode:"await-wallet-confirmation"};
+   transaction:d.transaction,createdAt:d.createdAt,simulation:d.simulation,mode:"await-wallet-confirmation"};
  }
  async function hash({id,txHash}){
   if(!TX.test(txHash||""))throw Error("Invalid transaction hash");

@@ -10,11 +10,11 @@ test("readiness fails closed and never authorizes wallet execution when evidence
   mkdirSync(join(root,"config/chains/example"),{recursive:true});
   mkdirSync(join(root,"config/validators"),{recursive:true});
   writeFileSync(join(root,"config/chains/example/bootstrap.json"),JSON.stringify({
-   chain:"example",chainId:999,sourceFee:{targetWei:null},
+   chain:"example",chainId:999,initialValidatorsManifest:"config/validators/initial.json",sourceFee:{targetWei:null},
    reserve:{minimumWei:null,maxExecutorReimbursementWei:null,perValidatorWei:null}
   }));
   writeFileSync(join(root,"config/validators/initial.json"),JSON.stringify({
-   originChainId:1643,validators:["0x"+"1".repeat(40)]
+   schemaVersion:1,kind:"xita-initial-validator-set",originChainId:1643,validators:["0x"+"1".repeat(40),"0x"+"2".repeat(40),"0x"+"3".repeat(40)]
   }));
   const chain={name:"example",chainId:999};
   const result=await readDeploymentReadiness({root,chain,
@@ -77,6 +77,7 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
  const source={xitaV315:{components:{validatorRegistry:record("xgrchain",registry)}}};
  const dest={xitaV315:{components:{blsVerifier:record("base",verifier)}}};
  const config={chain:"base",chainId:8453,destinationDomain:8453,
+  initialValidatorsManifest:"config/validators/initial.json",
   membershipOriginChainId:1643,verifierFormat:"eip2537",
   validatorSnapshot:{blockNumber:null,validators:[]},
   reserve:{minimumWei:"50000000000000",maxExecutorReimbursementWei:"30000000000000",
@@ -87,7 +88,7 @@ test("Base Registry is ready from verified public PoPs and finalized XGR Registr
    mkdirSync(join(root,dir),{recursive:true});
   writeFileSync(join(root,"config/chains/base/bootstrap.json"),JSON.stringify(config));
   writeFileSync(join(root,"config/validators/initial.json"),JSON.stringify({
-   originChainId:1643,validators}));
+   schemaVersion:1,kind:"xita-initial-validator-set",originChainId:1643,validators}));
   writeFileSync(join(root,origin.observedInfrastructure),JSON.stringify(source));
   writeFileSync(join(root,chain.observedInfrastructure),JSON.stringify(dest));
   proofs.forEach((proof,i)=>writeFileSync(

@@ -12,6 +12,24 @@ function uint(x){return typeof x==="string" && /^[0-9]+$/.test(x) && BigInt(x)>0
 function decodeUint(x){if(!/^0x[0-9a-f]{64}$/i.test(x||""))throw Error("Invalid ABI uint256 return");return BigInt(x)}
 const abiView=(rpc,url,to,signature)=>rpc(url,"eth_call",[{to,data:selector(signature)},"latest"]);
 
+// Every destination chain may pin its own subset of active XGRChain PoS
+// validator identities. The origin provides membership authority, not an
+// identical required signer set for every spoke network.
+export function approvedValidatorSet(root,config){
+ const file=config?.initialValidatorsManifest;
+ if(typeof file!=="string"||
+    !/^config\/validators\/(?:initial|[a-z][a-z0-9-]*)\.json$/.test(file))
+  throw Error("Missing approved destination validator-set manifest");
+ const initial=JSON.parse(readFileSync(join(root,file),"utf8"));
+ const validators=initial.validators;
+ if(initial.schemaVersion!==1||initial.kind!=="xita-initial-validator-set"||
+    initial.originChainId!==1643||!Array.isArray(validators)||
+    validators.length<3||validators.length>128||
+    !validators.every(addr)||
+    new Set(validators.map(v=>v.toLowerCase())).size!==validators.length)
+  throw Error("Invalid destination-specific pinned validator identities");
+ return initial;
+}
 export function bootstrapPlan(root,chain){
  const cfg=JSON.parse(readFileSync(join(root,chainBootstrapPath(chain.name)),"utf8"));
  if(cfg.schemaVersion!==1||cfg.kind!=="xita-validator-fee-bootstrap"||
@@ -19,14 +37,7 @@ export function bootstrapPlan(root,chain){
     cfg.destinationDomain!==chain.domainId||cfg.membershipOriginChainId!==1643||
     cfg.verifierFormat!==chain.blsVerifierFormat)
   throw Error("Validator bootstrap manifest identity mismatch: "+chain.name);
- const initialPath="config/validators/initial.json";
- if(cfg.initialValidatorsManifest!==initialPath)throw Error("Missing canonical initial validator manifest");
- const initial=JSON.parse(readFileSync(join(root,initialPath),"utf8"));
- const expected=initial.validators;
- if(initial.schemaVersion!==1||initial.kind!=="xita-initial-validator-set"||
-    initial.originChainId!==1643||!Array.isArray(expected)||expected.length!==3||
-    new Set(expected.map(a=>a.toLowerCase())).size!==3||!expected.every(addr))
-  throw Error("Invalid pinned initial validator identities");
+ const expected=approvedValidatorSet(root,cfg).validators;
  const snapshot=cfg.validatorSnapshot||{},validators=snapshot.validators||[];
  if(validators.length && (validators.length!==expected.length ||
     validators.some((v,i)=>v.address?.toLowerCase()!==expected[i].toLowerCase())))
@@ -57,7 +68,7 @@ export function bootstrapPlan(root,chain){
   fee.governance==="validator-bls-quorum"&&Number.isInteger(fee.ttlSeconds)&&
   fee.ttlSeconds>=1&&fee.ttlSeconds<=600;
  const missing=[];
- if(!validators.length)missing.push("BLS-Schlüssel und PoPs der drei vorgegebenen Validatoren fehlen");
+ if(!validators.length)missing.push("BLS-Schlüssel und PoPs des chain-spezifisch freigegebenen Validator-Sets fehlen");
  if(!snapshot.blockNumber)missing.push("Finalisierter XGR-PoS-Validator-Snapshot fehlt");
  if(!complete&&(!uint(reserve.minimumWei)||!uint(reserve.maxExecutorReimbursementWei)||!uint(reserve.perValidatorWei)))
   missing.push("Reserve-Parameter und Erstattungslimit fehlen");
