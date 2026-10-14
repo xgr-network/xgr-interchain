@@ -75,7 +75,8 @@ export async function prepareBaseFromXgr({
  if(!ADDR.test(registryAddress||"")||initial?.originChainId!==1643||
    xgrChain?.chainId!==1643||baseChain?.chainId!==8453||
    baseChain.domainId!==8453||bootstrap?.destinationDomain!==8453||
-   initial.validators?.length!==3||proofs?.length!==3)
+   !Array.isArray(initial.validators)||initial.validators.length<3||
+   initial.validators.length>128||proofs?.length!==initial.validators.length)
   throw Error("Invalid pinned source/destination bootstrap identity");
  const url=xgrChain.rpcUrls?.[0];
  const id=await rpc(url,"eth_chainId",[]);
