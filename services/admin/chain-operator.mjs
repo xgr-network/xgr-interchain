@@ -15,6 +15,7 @@ import {reconcileDeployedContract,verifyTransportChildren} from "./chain-reconci
 import {deploymentIntents} from "./deployment-intents.mjs";
 import {persistWalletBroadcastHash} from "./deployment-wallet-transaction.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
+import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
@@ -260,8 +261,16 @@ export function createChainOperator({
   await verifyPrepared({entry:e,chain,rpc});
   return j.cancelPrepared(id,createdAt);
  }
+ async function resume({chain:chainName}){
+  const all=inventory();
+  if(!all.chains.some(c=>c.name===chainName))throw Error("Unapproved deployment chain");
+  return resumeInterruptedDeployments({
+   journal:journals(all.chains),chains:all.chains,rpc,reconcile,
+   include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")
+  });
+ }
  const status=()=>{
   const all=inventory();return journals(all.chains).read();
  };
- return {preview,prepare,hash,reconcile,cancelPrepared,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,resume,status};
 }
