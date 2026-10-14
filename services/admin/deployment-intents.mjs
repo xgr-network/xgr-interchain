@@ -52,8 +52,8 @@ function validate(e){
  if(JSON.stringify(parameters)!==JSON.stringify(e.parameters||{}))throw Error("Noncanonical constructor parameters");
  if(e.id.split(":").length===4 && (!e.asset||!e.factory||!ADDR.test(e.factory)|| !["nativeRouter","syntheticRouter","collateralRouter","gateway"].includes(component)))
   throw Error("Invalid asset route journal identity");
- if(component==="validatorRegistry" && (!e.validatorSnapshot||!Array.isArray(e.validatorSnapshot.validators)||e.validatorSnapshot.validators.length!==3))
-  throw Error("Three public validator proofs must be journaled with Registry constructor");
+ if(component==="validatorRegistry" && (!e.validatorSnapshot||!Array.isArray(e.validatorSnapshot.validators)||e.validatorSnapshot.validators.length<3||e.validatorSnapshot.validators.length>128))
+  throw Error("Approved public validator proofs must be journaled with Registry constructor");
  const t=e.transaction;
  if(!t||!ADDR.test(t.from||"")||!HEX.test(t.data||"")||
     t.data.length<10||t.data.length>400000||
