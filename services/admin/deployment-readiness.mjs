@@ -28,7 +28,7 @@ const readPublic=(path)=>{
  return readFileSync(path,"utf8");
 };
 const loadJSON=p=>JSON.parse(readPublic(p));
-async function verifiedRuntime(record,chain,rpc){
+export async function verifiedRuntime(record,chain,rpc){
  if(!validVerifierDeploymentReceipt(chain.name,record))
   throw Error("Missing canonical deployed contract receipt on "+chain.name);
  const code=await rpc(chain.rpcUrls[0],"eth_getCode",[record.address,"latest"]);
