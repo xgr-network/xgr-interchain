@@ -129,7 +129,7 @@ function moneyInWei(wei,chain){
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
  const keys=component==="validatorRegistry"
-  ?["minimumWei","maxExecutorReimbursementWei"]:
+  ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:[];
  const result={};
  for(const key of keys){
@@ -138,7 +138,8 @@ function modalValues(component){
   result[key]=v;
  }
  if(component==="validatorRegistry"&&
-  (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)))
+  (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)||
+    BigInt(result.perValidatorWei)<BigInt(result.minimumWei)))
   throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
  return result;
 }
@@ -293,21 +294,25 @@ async function openContractModal(chainName,component){
   const fromGitHub={
     minimumWei:r.values.minimumReserveWei,
     maxExecutorReimbursementWei:r.values.maxExecutorReimbursementWei,
+    perValidatorWei:r.values.perValidatorReserveWei,
     sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","sourceFeeWei"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
-   // No JSON file authorizes economics. Historical values are reference only.
+   // Main bootstrap economics are the reviewed defaults, not estimates.
+    // Users can review/edit the actual transaction inputs before wallet signing.
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
-    minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000"}:null;
-   input.value=component==="factory"?String(factoryDefaults?.[key]??""):xgrInitial?.[key]??"";
+    minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
+     perValidatorWei:"750000000000000000"}:null;
+   input.value=component==="factory"?String(factoryDefaults?.[key]??""):
+     String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
    input.title=component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
-    "Nur Constructor-Eingabe. Placeholder ist nicht genehmigt oder verbindlich.";
+    "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
   el("modal-parameter-note").textContent=requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?

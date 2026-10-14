@@ -129,3 +129,30 @@ test("RPC outage during transaction indexing never triggers another broadcast",a
  });
  assert.deepEqual(result,{pending:true,reason:"transaction-rpc-unavailable",txHash});
 });
+
+test("Base Registry V3 checks initial reserve per validator against signed value",async()=>{
+ const registry=addr(77),validators=[addr(101),addr(102),addr(103)];
+ const boot={initialValidators:validators,reserve:{
+  minimumWei:"1000",maxExecutorReimbursementWei:"500",perValidatorWei:"2000"}};
+ const responses=new Map(Object.entries({
+  "originChainId()":word(1643),"destinationDomain()":word(8453),
+  "verifier()":word(BigInt(addr(55))),"verifierKeyFormat()":word(2),
+  "setId()":word(1),"minimumDeactivationReserveWei()":word(1000),
+  "maxExecutorReimbursementWei()":word(500),"quorumThreshold()":word(2)
+ }).map(([s,v])=>[selector(s),v]));
+ let liveReserve=2000n;
+ const rpc=async(_url,method,args)=>{
+  assert.equal(method,"eth_call");
+  const s=args[0].data.slice(0,10);
+  if(s===selector("getValidatorStatus(address)"))return word(1)+word(1).slice(2);
+  if(s===selector("getValidator(address)"))
+   return word(1)+word(96).slice(2)+word(liveReserve).slice(2)+word(48).slice(2)+"ab".repeat(48)+"00".repeat(16);
+  return responses.get(s);
+ };
+ const args={rpc,url:"https://base.example",component:"validatorRegistry",address:registry,
+   chain:{name:"base",chainId:8453,domainId:8453,blsVerifierFormat:"eip2537"},
+   bootstrap:boot,infra:{components:[{key:"blsVerifier",address:addr(55)}]}};
+ assert.equal(await verifyChainBindings(args),true);
+ liveReserve=1000n;
+ await assert.rejects(()=>verifyChainBindings(args),/initial reserve differs/);
+});
