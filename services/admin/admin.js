@@ -1,6 +1,7 @@
 import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
+import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -619,28 +620,19 @@ async function runDeploymentBatch(type,target){
  }
 }
 async function waitForDeploymentSync(result){
- const commit=result?.commit;
- if(!result?.autoSyncQueued||!commit){
-  el("main-status").textContent="Deployment in GitHub dokumentiert. Server-Sync ausstehend; bei Bedarf ./manage.sh update ausführen.";
-  await loadMainWorkqueue();
-  return;
- }
- el("main-status").textContent="Verifiziert und in GitHub dokumentiert. Synchronisiere Deployment-Daten …";
- for(let attempt=0;attempt<20;attempt++){
-  await new Promise(resolve=>setTimeout(resolve,800));
-  try{
-   const state=await get("/admin/api/workqueue");
-   if(!state.readOnly&&state.commit===commit){
-    await loadMainWorkqueue();
-    return;
-   }
-   if(state.remoteCommit&&state.remoteCommit!==commit){
-    break; // Unrelated main change; never silently authorize a different revision.
-   }
-  }catch{}
- }
+ const commit=result?.commit||null;
+ el("main-status").textContent="GitHub-Receipt und lokalen Checkout automatisch synchronisieren …";
+ const status=await awaitVerifiedDeploymentCheckout({
+  expectedCommit:commit,
+  readQueue:()=>get("/admin/api/workqueue"),
+  readSyncStatus:()=>get("/admin/api/deployment-sync/status"),
+  paused:()=>batchActive&&batchStopRequested,
+  onWaiting:({diagnostic,message})=>{
+   el("main-status").textContent="Checkout-Sync läuft · "+String(diagnostic?.error||message||"GitHub-Receipt übernehmen").slice(0,180);
+  }
+ });
+ if(status.status==="paused")return;
  await loadMainWorkqueue();
- el("main-status").textContent="Deployment auf GitHub bestätigt. Lokale Synchronisierung nicht abgeschlossen; Sync-Service prüfen oder ./manage.sh update verwenden.";
 }
 async function loadMainWorkqueue(){
  el("main-status").textContent="Aktuellen GitHub main prüfen …";
