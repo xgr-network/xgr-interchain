@@ -1,30 +1,57 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
-const addr=i=>"0x"+i.toString(16).padStart(40,"0");
-const key=i=>"0x"+i.toString(16).padStart(96,"0");
-const chain={name:"demo",chainId:999,domainId:999,blsVerifierFormat:"compressed",rpcUrls:["https://demo.example"]};
-const origin={name:"xgrchain",chainId:1643,confirmations:2,rpcUrls:["https://xgr.example"]};
+const addr=i=>"0x"+BigInt(i).toString(16).padStart(40,"0");
+const word96=i=>BigInt(i).toString(16).padStart(96,"0");
+const chain={name:"demo",chainId:999,domainId:999,
+ blsVerifierFormat:"eip2537",rpcUrls:["https://demo.example"]};
 const initial={originChainId:1643,validators:[addr(1),addr(2),addr(3)]};
-const bootstrap={chain:"demo",chainId:999,destinationDomain:999,membershipOriginChainId:1643,verifierFormat:"compressed",
- verifierAddress:addr(32),sourceFee:{targetWei:null},reserve:{minimumWei:null,perValidatorWei:null,maxExecutorReimbursementWei:null},validatorSnapshot:{blockNumber:null,validators:[]}};
-const snapshot={number:100,hash:"0x"+"a".repeat(64),validators:initial.validators.map((address,i)=>({validator:{Address:address,BLSPublicKey:key(i+1)}}))};
-const proofs=initial.validators.map((validator,i)=>({validator,blsPublicKey:key(i+1),blsPublicKeyEIP2537:"0x"+"aa".repeat(128),possessionProof:"0x"+"bb".repeat(256),originChainId:1643,destinationDomain:999}));
-const rpc=async (_,method)=>method==="eth_chainId"?"0x66b":method==="eth_blockNumber"?"0x80":{number:"0x64",hash:snapshot.hash};
+const bootstrap={chain:"demo",chainId:999,destinationDomain:999,
+ membershipOriginChainId:1643,verifierFormat:"eip2537",verifierAddress:addr(32),
+ validatorSnapshot:{blockNumber:null,validators:[]}};
+const proof=(validator,i)=>{
+ const x=word96(i+1),y=word96(i+9);
+ const publicEip="0x"+"0".repeat(32)+x+"0".repeat(32)+y;
+ const compressed="0x80"+x.slice(2);
+ const sig="0x"+[3,4,5,6].map(n=>"0".repeat(32)+word96(n+i)).join("");
+ const payload="0x"+Buffer.from("XGR_INTERCHAIN_BOOTSTRAP_V1").toString("hex")+
+  BigInt(1643).toString(16).padStart(16,"0")+
+  BigInt(999).toString(16).padStart(8,"0")+validator.slice(2)+
+  "0030"+compressed.slice(2)+"0080"+publicEip.slice(2);
+ return {validator,originChainId:1643,destinationDomain:999,
+  blsPublicKey:compressed,blsPublicKeyEIP2537:publicEip,
+  possessionProof:sig,payload};
+};
+const proofs=initial.validators.map(proof);
 const verifyProof=async p=>({verified:true,validator:p.validator});
-const input={chain,originChain:origin,bootstrap,initial,snapshot,proofs,rpc,verifyProof};
-test("generates candidate in pinned order, leaves actual config untouched",async()=>{
- // Exercise output without BLS vector fixture; a separate live RPC test verifies cryptography.
- // Invalid test signatures intentionally remain untrusted by actual verifier.
- await assert.rejects(()=>prepareBootstrapEvidence(input),/EIP2537 G1 padding must be zero/);
+const input={chain,bootstrap,initial,proofs,verifyProof,
+ rpc:async()=>{throw Error("Origin RPC must never be queried for Genesis");}};
+test("manual Genesis proofs become verified constructor records without any origin snapshot",async()=>{
+ const config=structuredClone(bootstrap);
+ const {candidate,report}=await prepareBootstrapEvidence({...input,proofs:proofs.toReversed()});
+ assert.equal(report.verifiedValidatorCount,3);
+ assert.equal(report.verification,"destination-verifier-verified-genesis");
+ assert.equal(report.snapshotBlock,null);
+ assert.equal(candidate.validatorSnapshot.blockNumber,null);
+ assert.deepEqual(candidate.validatorSnapshot.validators.map(v=>v.address),initial.validators);
+ assert.equal(candidate.validatorSnapshot.validators[0].possessionProof,proofs[0].possessionProof);
+ assert.deepEqual(bootstrap,config);
 });
-test("canonical hash mismatch fails before any signature call",async()=>{
- await assert.rejects(()=>prepareBootstrapEvidence({...input,rpc:async (_,method)=>method==="eth_getBlockByNumber"?{number:"0x64",hash:"0x"+"b".repeat(64)}:rpc(_,method)}),/block hash/);
+test("invalid domain-bound payloads and BLS public keys are rejected",async()=>{
+ const wrongDomain=proofs.map(p=>({...p}));
+ wrongDomain[1].destinationDomain=137;
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:wrongDomain}),/identity or domain/);
+ const wrongKey=proofs.map(p=>({...p}));
+ wrongKey[0].blsPublicKey=proofs[1].blsPublicKey;
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:wrongKey}),/BLS keys differ/);
+ const wrongPayload=proofs.map(p=>({...p}));
+ wrongPayload[2].payload="0x1234";
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:wrongPayload}),/payload mismatch/);
 });
-test("snapshot BLS mismatch fails closed",async()=>{
- const bad={...snapshot,validators:snapshot.validators.map((v,i)=>i===0?{validator:{...v.validator,BLSPublicKey:key(90)}}:v)};
- await assert.rejects(()=>prepareBootstrapEvidence({...input,snapshot:bad}),/PoS and proof BLS/);
-});
-test("insufficient origin head confirmations fails closed",async()=>{
- await assert.rejects(()=>prepareBootstrapEvidence({...input,rpc:async(_,method)=>method==="eth_blockNumber"?"0x65":rpc(_,method)}),/sufficiently confirmed/);
+test("missing, duplicated, or target-verifier-rejected public proofs are rejected",async()=>{
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:proofs.slice(0,2)}),/proofs/);
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:[proofs[0],proofs[0],proofs[2]]}),/Duplicate/);
+ await assert.rejects(()=>prepareBootstrapEvidence({...input,verifyProof:async p=>({
+  verified:p.validator!==initial.validators[1],validator:p.validator
+ })}),/BLS proof rejected by destination verifier/);
 });
