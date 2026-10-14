@@ -80,7 +80,7 @@ export async function readDeploymentReadiness({
   // domain-bound BLS proofs are mandatory; no duplicate hand-saved candidate.
   const proofs=initial.validators.map((_,i)=>{
    try{return readPublic(join(evidenceDir,"validator-"+(i+1)+".txt"));}
-   catch(e){if(e.code==="ENOENT")throw Error("Base-Domain Validator-Nachweis "+(i+1)+" fehlt im Public-Bootstrap-Verzeichnis");throw e;}
+   catch(e){if(e.code==="ENOENT")throw Error("Zielchain-Validator-Nachweis "+(i+1)+" für "+chain.name+" fehlt im Public-Bootstrap-Verzeichnis");throw e;}
   });
   let proofBootstrap=config;
   if(chain.blsVerifierFormat==="eip2537"){
