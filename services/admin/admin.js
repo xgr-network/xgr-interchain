@@ -302,7 +302,7 @@ async function openContractModal(chainName,component){
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
-     r.verifiedValidatorCount+"/3 Validatoren live geprüft · XGRChain Block "+r.originSnapshotBlock:
+     r.verifiedValidatorCount+" Genesis-Validatoren gegen Zielchain-BLS-Verifier geprüft":
      "Validator-Bootstrap: "+(r.evidenceError||"Prüfung noch nicht abgeschlossen")):"";
   let proposal=null;
   if(requiresValues){

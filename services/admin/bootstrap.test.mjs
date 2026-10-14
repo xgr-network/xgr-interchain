@@ -23,8 +23,9 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
   assert.equal(plan.domainId,chain.domainId);
   assert.deepEqual(plan.initialValidators,pinned);
   assert.equal(plan.expectedValidatorCount,pinned.length);
-  assert.equal(plan.validatorCount,cfg.validatorSnapshot.validators.length);
-  assert.ok(plan.validatorCount===0||plan.validatorCount===pinned.length);
+  assert.equal(plan.validatorCount,pinned.length);
+  assert.equal(cfg.genesisValidatorManifest,"config/validators/initial.json");
+  assert.equal(cfg.validatorSource,"explicit-interchain-genesis");
   assert.equal(plan.proposedFeeWei,cfg.sourceFee.targetWei);
   assert.equal(plan.feeInitialization,"factory-constructor-no-quorum");
   if(plan.ready){
@@ -45,17 +46,16 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
  assert.ok(items.every(p=>["blocked","documented"].includes(p.status)));
 });
 
-test("verified evidence may move a chain from 0/3 to 3/3 without changing the test suite",()=>{
+test("the original Interchain Genesis signer set stays pinned even before public proofs are loaded",()=>{
  const inventory=approvedWorkInventory(root);
  const chain=inventory.chains.find(c=>c.chainId===1643);
  assert.ok(chain);
  const plan=bootstrapPlan(root,chain);
  const manifest=config("config/chains/"+chain.name+"/bootstrap.json");
- const count=manifest.validatorSnapshot.validators.length;
- assert.equal(plan.validatorCount,count);
- assert.equal(plan.expectedValidatorCount,config("config/validators/initial.json").validators.length);
- if(count===plan.expectedValidatorCount){
-  assert.ok(manifest.validatorSnapshot.blockNumber>0);
-  assert.deepEqual(manifest.validatorSnapshot.validators.map(v=>v.address),plan.initialValidators);
- }
+ const expected=config("config/validators/initial.json").validators;
+ assert.equal(plan.validatorCount,expected.length);
+ assert.deepEqual(plan.initialValidators,expected);
+ assert.equal(manifest.validatorSnapshot.validators.length,0);
+ assert.equal(manifest.validatorSnapshot.blockNumber,null);
+ // No origin PoS snapshot is required to pin and plan initial membership.
 });

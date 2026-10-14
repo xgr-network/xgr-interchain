@@ -3,7 +3,6 @@
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
-import {readFinalizedXgrPoSSnapshot} from "./xgr-pos-snapshot.mjs";
 import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
@@ -29,7 +28,7 @@ const readPublic=(path)=>{
  return readFileSync(path,"utf8");
 };
 const loadJSON=p=>JSON.parse(readPublic(p));
-async function verifiedRuntime(record,chain,rpc){
+export async function verifiedRuntime(record,chain,rpc){
  if(!validVerifierDeploymentReceipt(chain.name,record))
   throw Error("Missing canonical deployed contract receipt on "+chain.name);
  const code=await rpc(chain.rpcUrls[0],"eth_getCode",[record.address,"latest"]);
@@ -41,8 +40,7 @@ async function verifiedRuntime(record,chain,rpc){
 }
 
 function sameEvidence(a,b,expected){
- if(a?.blockNumber!==b?.blockNumber||!equal(a?.blockHash,b?.blockHash)||
-    !Array.isArray(a?.validators)||a.validators.length!==expected.length||
+ if(!Array.isArray(a?.validators)||a.validators.length!==expected.length||
     !Array.isArray(b?.validators)||b.validators.length!==expected.length)return false;
  const fields=["address","blsPublicKeyCompressed","blsPublicKeyEIP2537","possessionProof"];
  return expected.every((address,i)=>fields.every(field=>
@@ -90,16 +88,14 @@ export async function readDeploymentReadiness({
     infrastructure.xitaV315?.components?.blsVerifier,chain,rpc);
    proofBootstrap={...config,verifierAddress:address};
   }
-  // Initial membership always comes from the XGRChain PoS staking source,
-  // NOT from the separately bootstrapped XGRChain Interchain Registry.
-  // Base, XGRChain and future destination chains can select different active
-  // PoS members without circular dependencies or hand-copied snapshots.
-  const snapshot=await readFinalizedXgrPoSSnapshot({xgrChain:origin,initial,rpc});
-  report.snapshotSource="confirmed-xgrchain-pos-staking-v2";
+  // The hand-picked initial validator manifest is a destination Genesis.
+  // Only domain-bound BLS proofs from the configured public files are
+  // verified against the destination verifier; no origin PoS dependency.
   const prepared=await prepareBootstrapEvidence({
-   chain,originChain:origin,bootstrap:proofBootstrap,
-   initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})
+   chain,bootstrap:proofBootstrap,initial,proofs,rpc,
+   ...(verifyProof?{verifyProof}:{})
   });
+  report.snapshotSource="explicit-interchain-genesis";
   const trusted=prepared.candidate.validatorSnapshot;
   if(new Set(trusted.validators.map(v=>v.blsPublicKeyCompressed.toLowerCase())).size!==initial.validators.length)
    throw Error("Duplicate validator BLS keys");

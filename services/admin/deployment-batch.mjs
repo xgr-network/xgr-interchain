@@ -25,7 +25,7 @@ export function chainDeploymentParameters(component,readiness){
  const values=readiness?.values||{};
  if(component==="validatorRegistry"){
   if(!readiness?.evidenceVerified||!readiness.verifiedValidatorCount)
-   throw Error("Validator-Set nicht verifiziert: "+(readiness?.evidenceError||"fehlende PoS/BLS-Nachweise"));
+   throw Error("Validator-Set nicht verifiziert: "+(readiness?.evidenceError||"fehlende Genesis-BLS-Nachweise"));
   return {minimumWei:values.minimumReserveWei,
    maxExecutorReimbursementWei:values.maxExecutorReimbursementWei,
    perValidatorWei:values.perValidatorReserveWei};

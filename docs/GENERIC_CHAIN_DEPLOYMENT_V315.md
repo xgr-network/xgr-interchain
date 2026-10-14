@@ -11,15 +11,15 @@ mandatory for all directed routes.
 Each chain provides `chainId`, `domainId`, `rpcUrls`,
 `blsVerifierFormat` (compressed or eip2537), confirmations, gas currency
 and an infrastructure manifest. On-chain chain ID, Hyperlane core,
-verifier behavior, chain-bound BLS proofs, live validator set and source
-fee must be checked before approval.
+verifier behavior, explicitly pinned Interchain Genesis identities,
+chain-bound BLS proofs and source fee must be checked before approval.
 
 ## State transitions
 
 1. **Configured**: approved main includes all three canonical manifests.
-2. **Evidence validated**: finalized XGR PoS snapshot, domain-bound
-   bootstrap proofs, reserve and fee parameters. No repeated proof
-   generation for an already verified destination.
+2. **Evidence validated**: explicitly pinned initial Interchain Genesis,
+   destination-domain BLS possession proofs, reserve and fee parameters.
+   No PoS snapshot, dynamic Registry lookup or repeated proof generation.
 3. **Preflight passed**: RPC, chain ID/domain, deployed Hyperlane core,
    working native/EIP-2537 BLS verifier, positive/negative vectors.
 4. **Artifacts pinned**: reproducible Foundry build with constructor,
@@ -49,19 +49,22 @@ config makes deployment **selectable**, not automatically safe to broadcast.
 1. GitHub `main` defines the permitted EVM chains, RPC, BLS verifier
    format and artifacts. Its infrastructure manifests hold **verified address
    references and receipt paths**, not a second copy of current economics.
-2. Public XGR PoS snapshot and domain-bound initial BLS proofs are checked
-   independently at the time of Registry preparation. Existing proof files
-   are reused. A supported EIP-2537 spoke must first deploy a receipt-verified
+2. The hand-approved chain Genesis manifest and domain-bound public BLS
+   proofs are checked automatically at Registry preparation. Existing proof files
+   are reused; no XGR PoS source RPC or other Interchain Registry is required. A supported EIP-2537 spoke must first deploy a receipt-verified
    BLS Verifier, then verify all 3 public PoPs through that contract.
 3. Clicking an outstanding Contract in **Chains & Onboarding** opens a
    component-specific UI dialog. The ValidatorRegistry requests only minimum
    reserve, maximum executor reimbursement, and initial per-validator reserve.
    The Factory requests only initial source-chain fee and default destination
    gas limit. Other chain contracts do not request economic inputs.
-4. These values are **not written to bootstrap JSON or chain JSON**. Their
+4. Approved initial native reserve and fee values are committed in each
+   chain's bootstrap JSON; an operator can still review the exact amount.
+   Actual live economics are held by the deployed contracts. These values are
+   **not rewritten by deploying**. Their
    exact validated decimal/Wei bytes are used to construct the one proposed
    transaction, then persisted with the durable EIP-1193 transaction intent.
-   Gas preview and the actual Wallet transaction are rebuilt from the same
+   Gas preview and the actual wallet transaction are rebuilt from the same
    contract artifacts and parameter values, independently checked against
    the clean current GitHub-main source commit.
 5. Only a wallet may sign/broadcast. An interrupted or ambiguous transaction

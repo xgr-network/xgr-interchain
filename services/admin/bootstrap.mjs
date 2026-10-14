@@ -12,14 +12,14 @@ function uint(x){return typeof x==="string" && /^[0-9]+$/.test(x) && BigInt(x)>0
 function decodeUint(x){if(!/^0x[0-9a-f]{64}$/i.test(x||""))throw Error("Invalid ABI uint256 return");return BigInt(x)}
 const abiView=(rpc,url,to,signature)=>rpc(url,"eth_call",[{to,data:selector(signature)},"latest"]);
 
-// Every destination chain may pin its own subset of active XGRChain PoS
-// validator identities. The origin provides membership authority, not an
-// identical required signer set for every spoke network.
+// Explicit immutable Interchain Genesis selection for EACH destination chain.
+// Separate from the full XGRChain PoS set; does not query a remote registry.
+// Different chains may pin different approved subsets in their own manifests.
 export function approvedValidatorSet(root,config){
- const file=config?.initialValidatorsManifest;
+ const file=config?.genesisValidatorManifest;
  if(typeof file!=="string"||
     !/^config\/validators\/(?:initial|[a-z][a-z0-9-]*)\.json$/.test(file))
-  throw Error("Missing approved destination validator-set manifest");
+  throw Error("Missing explicit destination Genesis validator manifest");
  const initial=JSON.parse(readFileSync(join(root,file),"utf8"));
  const validators=initial.validators;
  if(initial.schemaVersion!==1||initial.kind!=="xita-initial-validator-set"||
@@ -59,8 +59,10 @@ export function bootstrapPlan(root,chain){
    throw Error("BLS PoP not bound to XGR origin and destination domain");
  }
  const reserve=cfg.reserve||{},fee=cfg.sourceFee||{};
- const complete=Number.isSafeInteger(snapshot.blockNumber)&&snapshot.blockNumber>0&&
-  validators.length>0&&uint(reserve.minimumWei)&&uint(reserve.maxExecutorReimbursementWei)&&
+ // Static Genesis readiness only describes approved economic inputs.
+ // Actual public BLS proofs are checked automatically on the TARGET chain at
+ // preview/prepare time; there is no independent PoS snapshot requirement.
+ const complete=expected.length>=3&&uint(reserve.minimumWei)&&uint(reserve.maxExecutorReimbursementWei)&&
   uint(reserve.perValidatorWei)&&
   BigInt(reserve.minimumWei)>=BigInt(reserve.maxExecutorReimbursementWei)&&
   BigInt(reserve.perValidatorWei)>=BigInt(reserve.minimumWei)&&uint(fee.targetWei)&&
@@ -68,16 +70,14 @@ export function bootstrapPlan(root,chain){
   fee.governance==="validator-bls-quorum"&&Number.isInteger(fee.ttlSeconds)&&
   fee.ttlSeconds>=1&&fee.ttlSeconds<=600;
  const missing=[];
- if(!validators.length)missing.push("BLS-Schlüssel und PoPs des chain-spezifisch freigegebenen Validator-Sets fehlen");
- if(!snapshot.blockNumber)missing.push("Finalisierter XGR-PoS-Validator-Snapshot fehlt");
  if(!complete&&(!uint(reserve.minimumWei)||!uint(reserve.maxExecutorReimbursementWei)||!uint(reserve.perValidatorWei)))
   missing.push("Reserve-Parameter und Erstattungslimit fehlen");
  if(!uint(fee.targetWei))missing.push("Initiale Source-Chain-Gebühr in Wei für Factory-Konstruktor fehlt");
  if(fee.initialization!=="factory-constructor-no-quorum")missing.push("Fee-Bootstrap muss ohne Initialquorum im Factory-Konstruktor erfolgen");
  if(!complete&&!missing.length)missing.push("Bootstrap-Parameter inkonsistent");
  return {chain:chain.name,chainId:chain.chainId,domainId:chain.domainId,
-  validatorCount:validators.length,expectedValidatorCount:expected.length,initialValidators:expected,setId:null,ready:complete,missing,
-  reserveWei:complete?(BigInt(reserve.perValidatorWei)*BigInt(validators.length)).toString():null,
+  validatorCount:expected.length,expectedValidatorCount:expected.length,initialValidators:expected,setId:null,ready:complete,missing,
+  reserveWei:complete?(BigInt(reserve.perValidatorWei)*BigInt(expected.length)).toString():null,
   reserve:{minimumWei:reserve.minimumWei??null,maxExecutorReimbursementWei:reserve.maxExecutorReimbursementWei??null,perValidatorWei:reserve.perValidatorWei??null},
   proposedFeeWei:uint(fee.targetWei)?fee.targetWei:null,
   verifierAddress:addr(cfg.verifierAddress)?cfg.verifierAddress:null,
