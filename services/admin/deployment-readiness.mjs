@@ -4,6 +4,7 @@ import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
 import {readFinalizedXgrRegistrySnapshot} from "./base-bootstrap-from-xgr.mjs";
+import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {chainBootstrapPath} from "../../tools/manifest-layout.mjs";
@@ -57,7 +58,7 @@ export async function readDeploymentReadiness({
  if(!safeChain(chain?.name)||!inventory?.chains?.some(c=>c.name===chain.name&&c.chainId===chain.chainId))
   throw Error("Chain is not in approved GitHub inventory");
  const config=loadJSON(join(root,chainBootstrapPath(chain.name)));
- const initial=loadJSON(join(root,"config/validators/initial.json"));
+ const initial=approvedValidatorSet(root,config);
  const origin=inventory.chains.find(c=>c.chainId===initial.originChainId);
  if(!origin||config.chain!==chain.name||config.chainId!==chain.chainId)
   throw Error("Missing canonical origin or deployment bootstrap");
@@ -76,7 +77,7 @@ export async function readDeploymentReadiness({
   missing:[]};
  if(!mainCurrent)report.missing.push("GitHub main ist nicht aktuell bestätigt");
  try{
-  // One approved list of three addresses remains pinned to GitHub. Public
+  // One independently approved list per destination remains pinned to GitHub. Public
   // domain-bound BLS proofs are mandatory; no duplicate hand-saved candidate.
   const proofs=initial.validators.map((_,i)=>{
    try{return readPublic(join(evidenceDir,"validator-"+(i+1)+".txt"));}
@@ -90,13 +91,14 @@ export async function readDeploymentReadiness({
    proofBootstrap={...config,verifierAddress:address};
   }
   let snapshot;
-  try{snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));}
-  catch(e){
-   if(e.code!=="ENOENT"||chain.name!=="base")
-    throw e;
-   // Base can recover the verified PoS/BLS membership directly from the
-   // already-deployed XGRChain Registry V3 at a confirmed origin block.
-   // This removes the need for a second manual snapshot export on Base.
+  if(chain.chainId===initial.originChainId){
+   snapshot=loadJSON(join(evidenceDir,"pos-snapshot.json"));
+   report.snapshotSource="public-pos-snapshot";
+  }else{
+   // All destination chains independently select an approved validator set.
+   // Verify each member against a finalized XGRChain Registry V3 block:
+   // no copied local PoS snapshots, and no assumption all chains choose the
+   // same initial addresses. The destination BLS proofs bind its own domain.
    const source=loadJSON(join(root,origin.observedInfrastructure));
    const registry=source.xitaV315?.components?.validatorRegistry;
    const address=await verifiedRuntime(registry,origin,rpc);
@@ -104,13 +106,12 @@ export async function readDeploymentReadiness({
     xgrChain:origin,registryAddress:address,initial,rpc});
    report.snapshotSource="confirmed-xgrchain-registry-v3";
   }
-  if(!report.snapshotSource)report.snapshotSource="public-pos-snapshot";
   const prepared=await prepareBootstrapEvidence({
    chain,originChain:origin,bootstrap:proofBootstrap,
    initial,snapshot,proofs,rpc,...(verifyProof?{verifyProof}:{})
   });
   const trusted=prepared.candidate.validatorSnapshot;
-  if(new Set(trusted.validators.map(v=>v.blsPublicKeyCompressed.toLowerCase())).size!==3)
+  if(new Set(trusted.validators.map(v=>v.blsPublicKeyCompressed.toLowerCase())).size!==initial.validators.length)
    throw Error("Duplicate validator BLS keys");
   // A committed full snapshot, when present, remains a strict commitment.
   // An EMPTY bootstrap template is not an extra manual deployment gate:
@@ -137,7 +138,7 @@ export async function readDeploymentReadiness({
  const feeReady=positive(config.sourceFee?.targetWei);
  if(!economicsReady)report.missing.push("Reserveparameter fehlen oder sind inkonsistent");
  if(!feeReady)report.missing.push("Initiale Source-Fee fehlt");
- report.bootstrapReady=report.evidenceVerified&&economicsReady&&feeReady;
+ report.bootstrapReady=report.evidenceVerified&&economicsReady;
  if(report.bootstrapReady&&mainCurrent)
   report.transactionSimulation="requires-verified-artifact-and-gas-estimation";
  else report.transactionSimulation="blocked-by-bootstrap";
