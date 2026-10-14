@@ -9,6 +9,7 @@ import {deploymentIntents} from "./deployment-intents.mjs";
 import {persistWalletBroadcastHash,observeCommittedWalletTransaction} from "./deployment-wallet-transaction.mjs";
 import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
+import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
 import {trustedBuild,verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {simulateChainDraft} from "./chain-transaction-draft.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
@@ -246,6 +247,27 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   await verifyPrepared({entry:e,chain,rpc});
   return j.cancelPrepared(id,createdAt);
  }
+ async function resume({asset}){
+  const all=approvedWorkInventory(root);
+  if(!Object.hasOwn(all.assets,asset||""))throw Error("Unapproved deployment asset");
+  const infrastructure=infrastructureInventory(root,all.chains);
+  const {graph,tasks}=nextAssetRouteTasks(all,infrastructure);
+  const selected=graph.assets.find(a=>a.asset===asset);
+  const outstanding=new Set(tasks.filter(t=>t.asset===asset).map(task=>{
+   const representation=selected?.representations.find(x=>x.chain===task.chain);
+   const component=task.kind==="gateway"?"gateway":representation?.component;
+   if(!component)throw Error("Missing approved router representation");
+   const route=task.kind==="gateway"
+    ?task.id.slice(asset.length+1).replace(/:register$/,""):"none";
+   return task.chain+":"+asset+":"+component+":"+route;
+  }));
+  return resumeInterruptedDeployments({
+   journal:journal(all.chains),chains:all.chains,rpc,reconcile,
+   // Already published router/route receipts are authoritative. The task
+   // planner no longer lists these, even if an old WAL entry survived.
+   include:entry=>entry.asset===asset&&outstanding.has(entry.id)
+  });
+ }
  const status=()=>journal(approvedWorkInventory(root).chains).read();
- return {preview,prepare,hash,reconcile,cancelPrepared,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,resume,status};
 }

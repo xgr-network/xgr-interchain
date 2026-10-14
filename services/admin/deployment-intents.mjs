@@ -147,6 +147,28 @@ export function deploymentIntents({directory,chains}){
     delete s.entries[id];return {discarded:true};
    });
   },
+  retireForFreshWalletAttempt({id,createdAt,reason}){
+   const permitted=new Set(["wallet-nonce-unused","failed-onchain",
+    "nonce-replaced","pending-nonce-replaced","pending-nonce-untraceable",
+    "old-nonce-consumed-untraceable"]);
+   if(!ID.test(id||"")||typeof createdAt!=="string"||
+      !permitted.has(reason))
+    throw Error("Invalid automated retry evidence");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.createdAt!==createdAt||
+       !["prepared","submitted"].includes(e.stage))
+     throw Error("Interrupted deployment changed while checking nonce; retry status refresh");
+    // Keep immutable local audit evidence. This file is NOT a deployment
+    // index, and cannot be used to claim an on-chain contract exists.
+    const archive=join(dir,"retired-"+randomUUID()+".json");
+    writeFileSync(archive,JSON.stringify({
+     reason,retiredAt:new Date().toISOString(),entry:e
+    },null,2)+"\n",{mode:0o600,flag:"wx"});
+    delete s.entries[id];
+    return {stage:"ready",retryReason:reason,previousTxHash:e.txHash||null};
+   });
+  },
   attachHash(id,hash){
    if(!ID.test(id||"")||!TX.test(hash||""))throw Error("Invalid signed wallet transaction hash");
    return mutate(s=>{
@@ -157,6 +179,22 @@ export function deploymentIntents({directory,chains}){
       throw Error("Cannot replace a deployment transaction hash");
     e.txHash=hash.toLowerCase();e.stage="submitted";
     e.updatedAt=new Date().toISOString();return e;
+   });
+  },
+  adoptObservedHash(id,createdAt,hash){
+   if(!ID.test(id||"")||!createdAt||!TX.test(hash||""))
+    throw Error("Invalid mined wallet replacement identity");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.createdAt!==createdAt||e.stage!=="submitted")
+     throw Error("Observed wallet nonce is no longer recoverable");
+    // This method is used only after fetching the signed transaction
+    // from a block and matching FROM, nonce, calldata, value and chain.
+    // Preserve the previous hash as auditable metadata.
+    e.replacedTxHash=e.txHash;
+    e.txHash=hash.toLowerCase();
+    e.updatedAt=new Date().toISOString();
+    return e;
    });
   },
   confirm(id,hash,proof){

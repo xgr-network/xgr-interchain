@@ -108,6 +108,7 @@ test("RPC indexing delay after wallet returned hash is an ordinary resumable pen
   rpc:async(_url,method)=>{
    if(method==="eth_chainId")return "0x2105";
    if(method==="eth_getTransactionByHash")return null;
+   if(method==="eth_getTransactionReceipt")return null;
    throw Error("No receipt read before transaction visibility");
   }
  });

@@ -15,6 +15,7 @@ import {reconcileDeployedContract,verifyTransportChildren} from "./chain-reconci
 import {deploymentIntents} from "./deployment-intents.mjs";
 import {persistWalletBroadcastHash} from "./deployment-wallet-transaction.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
+import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
@@ -260,8 +261,23 @@ export function createChainOperator({
   await verifyPrepared({entry:e,chain,rpc});
   return j.cancelPrepared(id,createdAt);
  }
+ async function resume({chain:chainName}){
+  const all=inventory();
+  const chain=all.chains.find(c=>c.name===chainName);
+  if(!chain)throw Error("Unapproved deployment chain");
+  // A verified, published GitHub receipt is final even if an older
+  // submitted WAL record survived a process restart or lost HTTP reply.
+  // The normal chain plan must never wait for an obsolete journal row.
+  const documented=new Set(infrastructureInventory(root,[chain])[0]
+   .components.filter(c=>c.status==="documented").map(c=>c.key));
+  return resumeInterruptedDeployments({
+   journal:journals(all.chains),chains:all.chains,rpc,reconcile,
+   include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
+    !documented.has(entry.id.split(":")[1])
+  });
+ }
  const status=()=>{
   const all=inventory();return journals(all.chains).read();
  };
- return {preview,prepare,hash,reconcile,cancelPrepared,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,resume,status};
 }

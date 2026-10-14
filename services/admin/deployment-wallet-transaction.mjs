@@ -23,6 +23,21 @@ export async function observeCommittedWalletTransaction({rpc,url,entry}){
   // treated as unresolved, never as a reason to send a second wallet tx.
   return {pending:true,reason:"transaction-rpc-unavailable",txHash:entry.txHash};
  }
+ if(!tx){
+  // Some RPC nodes retain the mined receipt and full block but no longer
+  // index the old transaction hash. Recover from the RECEIPT'S exact block,
+  // not from a guessed contract address or a fresh wallet broadcast.
+  try{
+   const receipt=await rpc(url,"eth_getTransactionReceipt",[entry.txHash]);
+   if(receipt?.blockNumber){
+    const block=await rpc(url,"eth_getBlockByNumber",[receipt.blockNumber,true]);
+    tx=block?.transactions?.find(t=>t&&typeof t==="object"&&
+     same(t.hash,entry.txHash))||null;
+   }
+  }catch{
+   return {pending:true,reason:"transaction-not-visible",txHash:entry.txHash};
+  }
+ }
  if(!tx)return {pending:true,reason:"transaction-not-visible",txHash:entry.txHash};
  const committed=entry.transaction;
  let matches=false;
