@@ -13,7 +13,35 @@ const H256=/^[0-9a-f]{64}$/i;
 // "documented" exists solely to recognize and purge earlier on-disk records.
 const PHASES=new Set(["prepared","submitted","confirmed","documented"]);
 const validHex=s=>typeof s==="string"&&/^0x[0-9a-f]+$/i.test(s);
+// Historical Registry transactions funded 3 * minimumWei before the separate
+// perValidatorWei parameter was introduced. Recover that metadata ONLY when
+// it matches the original signed transaction value; never mutate tx bytes.
+function normalizeLegacyRegistry(e){
+ if(!/^[a-z][a-z0-9-]*:validatorRegistry$/.test(e?.id||"")||
+    e.stage==="documented"||!e.parameters||
+    Object.hasOwn(e.parameters,"perValidatorWei")||
+    Object.keys(e.parameters).sort().join(",")!=="maxExecutorReimbursementWei,minimumWei")
+  return;
+ try{
+  const p=deploymentParameters("validatorRegistry",{
+   ...e.parameters,perValidatorWei:e.parameters.minimumWei});
+  if(BigInt(e.transaction?.value)!==3n*BigInt(p.perValidatorWei))return;
+  e.parameters=p;
+ }catch{ /* Bad historical data is still rejected by normal validation. */ }
+}
 function validate(e){
+ if(e?.stage==="documented"){
+  // Already published immutable receipt: obsolete constructor schema is not
+  // allowed to block the status endpoint or later unrelated deployments.
+  const chain=String(e.id||"").split(":")[0];
+  if(!ID.test(e.id||"")||!TX.test(e.txHash||"")||
+     !Number.isSafeInteger(e.chainId)||e.chainId<1||
+     !new RegExp("^deployments/receipts/"+chain+
+      "/[a-f0-9]{64}-[a-f0-9]{40}\\.json$","i").test(e.receiptPath||""))
+   throw Error("Malformed completed deployment record");
+  return;
+ }
+ normalizeLegacyRegistry(e);
  if(!ID.test(e?.id||"")||!SHA.test(e?.sourceCommit||"")||
     !ADDR.test(e?.wallet||"")||!Number.isSafeInteger(e?.chainId)||
     e.chainId<1||!PHASES.has(e?.stage)||
