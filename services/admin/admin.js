@@ -701,7 +701,8 @@ async function loadJobs(){
  }catch(e){el("jobs").textContent="Diagnose nicht verfügbar: "+e.message;}
 }
 el("modal-close").addEventListener("click",()=>{if(batchActive)batchStopRequested=true;el("contract-deploy-dialog").close();});
-el("contract-deploy-dialog").addEventListener("close",()=>{selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
+el("contract-deploy-dialog").addEventListener("cancel",()=>{if(batchActive)batchStopRequested=true;});
+el("contract-deploy-dialog").addEventListener("close",()=>{if(batchActive)batchStopRequested=true;selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
 
 
 el("batch-stop").addEventListener("click",()=>{batchStopRequested=true;presentModalStatus("Pausiert nach der aktuellen Wallet-Transaktion …","warn");});
