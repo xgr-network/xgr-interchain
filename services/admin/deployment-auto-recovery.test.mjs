@@ -73,7 +73,7 @@ test("failed on-chain receipt is reusable, successful receipt is always reconcil
 test("a saved hash with wrong transaction bytes never grants an automatic retry",async()=>{
  assert.equal(matchesWalletIntent(entry(),tx(replacement,other)),false);
  await assert.rejects(()=>classifyInterruptedDeployment({entry:entry("submitted"),chain,
-  rpc:rpc({transaction:tx(replacement,other)})}),/differs from signed deployment/);
+  rpc:rpc({transaction:tx(replacement,other)})}),/differs from the approved deployment/);
 });
 test("confirmed-but-not-published entry must be reconciled, never retired",async()=>{
  const verdict=await classifyInterruptedDeployment({entry:entry("confirmed"),chain,rpc:rpc()});
