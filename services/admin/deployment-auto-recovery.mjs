@@ -111,9 +111,13 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
   if(found&&matchesWalletIntent(entry,found))
    return {action:"reconcile",txHash:found.hash,reason:"recovered-pending-wallet-nonce"};
   if(found)return {action:"retry",reason:"pending-nonce-replaced"};
-  // An unknown pending tx at the same nonce could be our original deploy.
-  // Never silently sign a conflicting transaction while it is in the mempool.
-  return {action:"pending",reason:"wallet-nonce-still-pending"};
+  // The RPC reports a consumed pending nonce but cannot provide the
+  // corresponding signed tx for reconstruction. The operator explicitly
+  // requested forward progress rather than a permanent recovery gate.
+  // A NEW nonce and a NEW MetaMask approval are required. The first tx
+  // may still mine, so the UI must show a visible duplicate-cost warning.
+  return {action:"retry",reason:"pending-nonce-untraceable",
+   warning:"An unknown earlier transaction may still execute. A new MetaMask-confirmed deployment can cause additional gas/reserve costs or an orphaned duplicate contract."};
  }
  if(latest===wanted&&pending===wanted)
   return {action:"retry",reason:"wallet-nonce-unused"};
