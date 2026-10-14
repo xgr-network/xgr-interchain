@@ -1,3 +1,5 @@
+import {selector} from "../../apps/web/keccak.mjs";
+import {compareCommittedWalletTransaction} from "./deployment-wallet-transaction.mjs";
 // Read-only classification for interrupted EIP-1193 transactions.
 // Missing receipts are NOT proof of failure. We first inspect the original
 // wallet nonce and, where available, reconstruct the transaction from the
@@ -84,8 +86,40 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
    // No reliable RPC state: never treat a timeout as an absent transaction.
    return {action:"pending",reason:"rpc-temporarily-unavailable"};
   }
-  if(transaction&&!matchesWalletIntent(entry,transaction,{allowWalletNonceDrift:true}))
-   throw Error("Saved wallet hash differs from signed deployment; cannot automatically discard");
+  if(transaction){
+   // Compare an EXACT wallet-returned hash with the same checker used later
+   // by reconcile. Only historical nonce-based searches require strict nonce.
+   const proof=compareCommittedWalletTransaction(entry,transaction);
+   if(!proof.matched){
+    const factory=entry.transaction.to;
+    const isRegistry=entry.id===chain.name+":sourceRegistry"&&
+     ADDRESS.test(factory||"")&&
+     same(entry.transaction.data,selector("deployRegistry()"))&&
+     uint(entry.transaction.value)===0n;
+    if(!isRegistry)
+     throw Error("Saved wallet transaction differs from the approved deployment ("+
+      proof.mismatched.join(", ")+"); no automatic rebroadcast");
+    if(!receipt)
+     return {action:"pending",reason:"source-registry-hash-mismatch-awaiting-receipt"};
+    // SourceRegistry deployment is idempotent at its already approved Factory.
+    // Only an on-chain zero registry plus a FINALIZED unrelated mined hash
+    // may retire the stale WAL record for a new, explicit MetaMask attempt.
+    let current;
+    try{current=await rpc(url,"eth_call",[
+     {to:factory,data:selector("registry()")},"latest"]);
+    }catch{return {action:"pending",reason:"source-registry-state-unavailable"};}
+    if(!/^0x[0-9a-f]{64}$/i.test(current||""))
+     return {action:"pending",reason:"source-registry-state-invalid"};
+    if(BigInt(current)!==0n)
+     return {action:"reconcile",reason:"source-registry-prove-factory-state"};
+    if(uint(receipt.status)===1n)
+     return {action:"retry",reason:"source-registry-unrelated-saved-hash",
+      warning:"The saved MetaMask hash belongs to another confirmed transaction. The approved Factory has no SourceRegistry; a new deployment requires explicit MetaMask confirmation."};
+    if(uint(receipt.status)===0n)
+     return {action:"retry",reason:"failed-onchain"};
+    throw Error("Invalid on-chain transaction status");
+   }
+  }
   if(receipt){
    const status=uint(receipt.status);
    if(status===0n)return {action:"retry",reason:"failed-onchain"};
