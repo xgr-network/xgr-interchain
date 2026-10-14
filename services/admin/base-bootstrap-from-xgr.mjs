@@ -35,7 +35,7 @@ export async function readFinalizedXgrRegistrySnapshot({
  if(xgrChain?.chainId!==1643||!ADDR.test(registryAddress||"")||
     !Array.isArray(initial?.validators)||(initial.validators.length<3||initial.validators.length>128)||
     !initial.validators.every(v=>ADDR.test(v))||
-    new Set(initial.validators.map(v=>v.toLowerCase())).size!==3||
+    new Set(initial.validators.map(v=>v.toLowerCase())).size!==initial.validators.length||
     !Number.isSafeInteger(xgrChain.confirmations)||xgrChain.confirmations<1)
   throw Error("Invalid XGRChain Registry snapshot request");
  const url=xgrChain.rpcUrls?.[0];
