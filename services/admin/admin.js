@@ -563,6 +563,30 @@ async function runDeploymentBatch(type,target){
    await loadMainWorkqueue();
    if(!workqueue||workqueue.readOnly)
     throw Error("GitHub-main-Sync noch nicht abgeschlossen. Nach der Synchronisierung denselben Deploy-Button erneut klicken.");
+   // Always resume previous same-chain/asset txs BEFORE preparing a new one.
+   // No manual hash dialog or recovery-only action is ever needed.
+   const previous=await postJSON("/admin/api/deploy/advance",{type,target});
+   let recovered=previous.result;
+   if(recovered.stage==="pending"){
+    const settle=await awaitDeploymentReceipt(
+     ()=>postJSON("/admin/api/deploy/advance",{type,target}),{
+      onPending:()=>presentModalStatus("Vorherige Wallet-Transaktion wird automatisch geprüft. Kein neuer MetaMask-Dialog nötig …","warn")
+     });
+    recovered=settle.result;
+   }
+   if(recovered.stage==="pending"){
+    presentModalStatus("Vorherige Transaktion noch nicht endgültig geklärt. Erneut auf Deploy klicken, um automatisch fortzusetzen. "+(recovered.detail||""),"warn");
+    break;
+   }
+   if(recovered.stage==="documented"){
+    presentModalStatus("Vorherige Transaktion automatisch rekonstruiert und dokumentiert. Setze Deploy-Kette fort …","success");
+    await waitForDeploymentSync(recovered);
+    continue;
+   }
+   if(recovered.stage!=="ready")
+    throw Error("Unerwarteter Status bei automatischer Deployment-Fortsetzung");
+   if(recovered.warning)
+    presentModalStatus("Vorheriger Versuch nicht mehr rekonstruierbar. Neuer Deploy benötigt eine frische MetaMask-Bestätigung; alte Kosten können zusätzlich angefallen sein.","warn");
    const next=type==="chain"?
     nextChainDeployment(workqueue,target):
     nextAssetDeployment(workqueue,assetTasks,target);
@@ -621,7 +645,7 @@ async function runDeploymentBatch(type,target){
       throw Error("MetaMask abgebrochen; Entwurf wird beim nächsten Deploy nach Nonce-Prüfung freigegeben: "+cancelError.message);
      }
     }
-    if(txHash)throw Error("Bereits gesendete TX "+txHash+": "+e.message);
+    if(txHash)throw Error("TX "+txHash+" wird beim nächsten normalen Deploy-Klick automatisch weiterverfolgt: "+e.message);
     throw e;
    }
   }
