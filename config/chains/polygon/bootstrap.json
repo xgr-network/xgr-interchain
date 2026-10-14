@@ -5,13 +5,13 @@
   "chainId": 137,
   "destinationDomain": 137,
   "membershipOriginChainId": 1643,
-  "validatorSource": "xgrchain-pos-finalized",
+  "validatorSource": "explicit-interchain-genesis",
   "verifierFormat": "eip2537",
   "verifierAddress": null,
   "validatorSnapshot": {
     "blockNumber": null,
     "validators": [],
-    "notes": "Expected initial validators are fixed by initialValidatorsManifest; finality/block/key proofs still required"
+    "notes": "Initial Interchain validators are manually selected in genesisValidatorManifest. Public destination BLS proofs are automatically checked; no PoS snapshot required"
   },
   "reserve": {
     "minimumWei": null,
@@ -26,5 +26,5 @@
     "notes": "The initial positive fee is a constructor-bound factory parameter. Nonce starts at 0. Only changes after deployment need BLS validator quorum."
   },
   "notes": "EIP-2537 runtime verifier requires proven precompile support and negative/positive BLS vectors before deployment.",
-  "initialValidatorsManifest": "config/validators/initial.json"
+  "genesisValidatorManifest": "config/validators/initial.json"
 }
