@@ -2,7 +2,7 @@
 const POS=/^[1-9][0-9]*$/;
 const MAX=(1n<<256n)-1n;
 const KEYS={
- validatorRegistry:["minimumWei","maxExecutorReimbursementWei"],
+ validatorRegistry:["minimumWei","maxExecutorReimbursementWei","perValidatorWei"],
  factory:["sourceFeeWei"]
 };
 export function requiredDeploymentFields(component){
@@ -22,7 +22,8 @@ export function deploymentParameters(component,raw={}){
   out[k]=BigInt(value).toString();
  }
  if(component==="validatorRegistry"&&(
-   BigInt(out.minimumWei)<BigInt(out.maxExecutorReimbursementWei)))
+   BigInt(out.minimumWei)<BigInt(out.maxExecutorReimbursementWei)||
+   BigInt(out.perValidatorWei)<BigInt(out.minimumWei)))
   throw Error("Reserve per validator >= minimum reserve >= reimbursement ceiling required");
  return out;
 }

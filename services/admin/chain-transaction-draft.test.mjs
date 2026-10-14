@@ -102,3 +102,20 @@ test("Base EIP2537 contract creation quote accounts for L1 data and operator fee
  const broken=async(url,method,params)=>method==="eth_call"?"0x":rpc(url,method,params);
  await assert.rejects(()=>simulateChainDraft(draft,{rpc:broken,url:"https://base-rpc.example",from:addr(3)}),/GasPriceOracle/);
 });
+
+test("Base Registry create draft deposits three exact, independently specified validator reserves",()=>{
+ const validators=[addr(1),addr(2),addr(3)].map(address=>({
+  address,blsPublicKeyCompressed:"0x"+"11".repeat(48),
+  blsPublicKeyEIP2537:"0x"+"22".repeat(128),possessionProof:"0x"+"33".repeat(256)
+ }));
+ const draft=chainDraft({root:process.cwd(),chain:base,
+  infrastructure:{...infra(base),components:[{key:"blsVerifier",address:addr(55)}]},
+  bootstrap:{chain:"base",validatorCount:3,expectedValidatorCount:3,
+    initialValidators:validators.map(x=>x.address),validatorSnapshot:{validators}},
+  component:"validatorRegistry",parameters:{
+    minimumWei:"1000",maxExecutorReimbursementWei:"500",perValidatorWei:"2000"},
+  artifact:{component:"validatorRegistry",creation:"0x60006000"}
+ });
+ assert.equal(BigInt(draft.transaction.value),6000n);
+ assert.notEqual(BigInt(draft.transaction.value),3000n);
+});

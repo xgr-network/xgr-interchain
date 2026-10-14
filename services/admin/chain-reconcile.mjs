@@ -34,7 +34,8 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("verifier()",v,"address");
   await check("verifierKeyFormat()",chain.blsVerifierFormat==="compressed"?1:2);
   await check("setId()",1);
-  if(!bootstrap.reserve?.minimumWei||!bootstrap.reserve?.maxExecutorReimbursementWei)
+  if(!bootstrap.reserve?.minimumWei||!bootstrap.reserve?.maxExecutorReimbursementWei||
+      !bootstrap.reserve?.perValidatorWei)
    throw Error("Approved reserve parameters missing from live verification");
   await check("minimumDeactivationReserveWei()",bootstrap.reserve.minimumWei);
   await check("maxExecutorReimbursementWei()",bootstrap.reserve.maxExecutorReimbursementWei);
@@ -49,7 +50,16 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
    if(!/^0x[0-9a-f]{128}$/i.test(status||"")||
       BigInt("0x"+status.slice(2,66))!==1n||
       BigInt("0x"+status.slice(66,130))!==1n)
-    throw Error("Pinned initial validator missing or inactive in RegistryV2");
+    throw Error("Pinned initial validator missing or inactive in RegistryV3");
+   const detail=await rpc(url,"eth_call",[{
+     to:address,data:selector("getValidator(address)")+
+       encodeAbi(["address"],[validator]).slice(2)
+   },"latest"]);
+   // ABI: (bool active, bytes dynamic BLS public key, uint256 reserveWei).
+   if(!/^0x[0-9a-f]{192,}$/i.test(detail||"")||
+      BigInt("0x"+detail.slice(2,66))!==1n||
+      BigInt("0x"+detail.slice(130,194))!==BigInt(bootstrap.reserve.perValidatorWei))
+    throw Error("Validator initial reserve differs from signed transaction");
   }
  }else if(component==="ism"){
   const v=infra.components.find(c=>c.key==="validatorRegistry")?.address;
