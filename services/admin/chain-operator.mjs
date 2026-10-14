@@ -76,7 +76,7 @@ export function createChainOperator({
      baseDir:publicEvidenceDir,mainCurrent:true,rpc});
    if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
       !readiness.verifiedSnapshot?.validators?.length)
-    throw Error("Three independently verified validator proofs required");
+    throw Error("Destination Genesis BLS proofs not verified");
    verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
     validatorSnapshot:readiness.verifiedSnapshot};
   }
@@ -120,7 +120,7 @@ export function createChainOperator({
    });
    if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
       !readiness.verifiedSnapshot?.validators?.length)
-    throw Error("Independently verified PoS/BLS public snapshot unavailable");
+    throw Error("Destination Genesis BLS proofs not verified");
    verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
      validatorSnapshot:readiness.verifiedSnapshot};
   }
