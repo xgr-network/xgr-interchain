@@ -50,7 +50,7 @@ test("wrong wallet, calldata, chain or target is permanently rejected",async()=>
   await assert.rejects(()=>observeCommittedWalletTransaction({url:"https://base.example",
    entry:{...entry,stage:"submitted",txHash:hash},
    rpc:async()=>({from:wallet,input:entry.transaction.data,nonce:entry.transaction.nonce,
-    value:entry.transaction.value,to:null,chainId:"0x2105",...wrong})}),/does not match/);
+    value:entry.transaction.value,to:null,chainId:"0x2105",...wrong})}),/differs from prepared request/);
  }
 });
 test("original tx is recovered from its receipt block when hash indexing has expired",async()=>{
