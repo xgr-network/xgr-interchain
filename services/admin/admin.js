@@ -211,14 +211,26 @@ async function previewAssetDeployment(){
 async function executeAssetDeployment(){
  const task=selectedAssetTask;
  if(!task)throw Error("Keine Asset-Aufgabe ausgewählt");
- const wallet=await currentWalletState();
+ const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
+ let wallet=await currentWalletState();
  if(!wallet)throw Error("Wallet verbinden");
+ if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+ wallet=await currentWalletState();
+ if(!wallet||wallet.chainId!==chain.chainId)throw Error("Falsche Wallet-Chain");
  el("modal-deploy").disabled=true;
  const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
   taskId:task.id,wallet:wallet.address});
+ presentModalStatus("MetaMask-Transaktion bestätigen oder abbrechen.");
+ let txHash;
+ try{txHash=await broadcastDeploymentIntent(prepared);}
+ catch(e){
+  if(!walletRejected(e))throw e;
+  await postJSON("/admin/api/asset-deploy/cancel-prepared",{id:prepared.id,createdAt:prepared.createdAt});
+  el("modal-deploy").disabled=false;
+  presentModalStatus("MetaMask abgebrochen. Keine Transaktion gesendet; erneuter Deploy möglich.");
+  return;
+ }
  el("modal-recover").hidden=false;
- presentModalStatus("Wallet signiert. Bei Unterbrechung ausschließlich Wiederherstellung verwenden.");
- const txHash=await broadcastDeploymentIntent(prepared);
  await postJSON("/admin/api/asset-deploy/hash",{id:prepared.id,txHash});
  presentModalStatus("Überprüfe Router/Gateway, FeeVault und Block-Receipt …");
  const report=await awaitDeploymentReceipt(
@@ -405,13 +417,24 @@ async function executeModalDeployment(){
  try{
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
   const params=modalValues(component);
-  const state=await currentWalletState();
-  if(!state||state.chainId!==chain.chainId)throw Error("Wallet nicht mit ausgewählter Chain verbunden");
+  let state=await currentWalletState();
+  if(!state)throw Error("Wallet verbinden");
+  if(state.chainId!==chain.chainId)await switchDeploymentChain(chain);
+  state=await currentWalletState();
+  if(!state||state.chainId!==chain.chainId)throw Error("MetaMask-Netzwerk stimmt nicht überein");
   presentModalStatus("Prüfe Contract und bereite MetaMask-Transaktion vor …");
   const prepared=await postJSON("/admin/api/chain-deploy/prepare",
    {chain:chainName,component,wallet:state.address,parameters:params});
-  presentModalStatus("Wallet-Bestätigung ausstehend. Bei Abbruch Wiederherstellung verwenden.");
-  const txHash=await broadcastDeploymentIntent(prepared);
+  presentModalStatus("MetaMask-Transaktion bestätigen oder abbrechen.");
+  let txHash;
+  try{txHash=await broadcastDeploymentIntent(prepared);}
+  catch(e){
+   if(!walletRejected(e))throw e;
+   await postJSON("/admin/api/chain-deploy/cancel-prepared",{id:prepared.id,createdAt:prepared.createdAt});
+   el("modal-deploy").disabled=false;
+   presentModalStatus("MetaMask abgebrochen. Keine Transaktion gesendet; erneuter Deploy möglich.");
+   return;
+  }
   el("modal-recover").hidden=false;
   presentModalStatus("Transaktion gesendet · Hash wird gesichert …");
   await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
