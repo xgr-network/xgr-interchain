@@ -149,7 +149,7 @@ export function deploymentIntents({directory,chains}){
   },
   retireForFreshWalletAttempt({id,createdAt,reason}){
    const permitted=new Set(["wallet-nonce-unused","failed-onchain",
-    "nonce-replaced","pending-nonce-replaced",
+    "nonce-replaced","pending-nonce-replaced","pending-nonce-untraceable",
     "old-nonce-consumed-untraceable"]);
    if(!ID.test(id||"")||typeof createdAt!=="string"||
       !permitted.has(reason))
