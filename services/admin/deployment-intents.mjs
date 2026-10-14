@@ -147,6 +147,28 @@ export function deploymentIntents({directory,chains}){
     delete s.entries[id];return {discarded:true};
    });
   },
+  retireForFreshWalletAttempt({id,createdAt,reason}){
+   const permitted=new Set(["wallet-nonce-unused","failed-onchain",
+    "nonce-replaced","pending-nonce-replaced",
+    "old-nonce-consumed-untraceable"]);
+   if(!ID.test(id||"")||typeof createdAt!=="string"||
+      !permitted.has(reason))
+    throw Error("Invalid automated retry evidence");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.createdAt!==createdAt||
+       !["prepared","submitted"].includes(e.stage))
+     throw Error("Interrupted deployment changed while checking nonce; retry status refresh");
+    // Keep immutable local audit evidence. This file is NOT a deployment
+    // index, and cannot be used to claim an on-chain contract exists.
+    const archive=join(dir,"retired-"+randomUUID()+".json");
+    writeFileSync(archive,JSON.stringify({
+     reason,retiredAt:new Date().toISOString(),entry:e
+    },null,2)+"\n",{mode:0o600,flag:"wx"});
+    delete s.entries[id];
+    return {stage:"ready",retryReason:reason,previousTxHash:e.txHash||null};
+   });
+  },
   attachHash(id,hash){
    if(!ID.test(id||"")||!TX.test(hash||""))throw Error("Invalid signed wallet transaction hash");
    return mutate(s=>{
