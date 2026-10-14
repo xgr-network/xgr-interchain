@@ -140,7 +140,7 @@ export function createChainOperator({
     totalWorstCaseWei:simulation.totalWorstCaseWei,
     l1DataFeeUpperBoundWei:simulation.l1DataFeeUpperBoundWei,
     operatorFeeWei:simulation.operatorFeeWei},
-   transaction,warning:"If wallet broadcast status is uncertain do not retry; reconcile nonce/hash."};
+   transaction,createdAt:item.createdAt,warning:"If wallet broadcast status is uncertain do not retry; reconcile nonce/hash."};
  }
  async function hash({id,txHash}){
   if(!TX.test(txHash||""))throw Error("Invalid signed transaction hash");
