@@ -152,3 +152,27 @@ test("an unused earlier draft is retired but a second IDENTIFIED pending transac
  assert.ok(!journal.read().entries["base:ism"]);
  assert.ok(journal.read().entries["base:factory"]);
 });
+
+test("saved Base SourceRegistry hash with stale unrelated tx is retired ONLY if factory has no registry",async()=>{
+ const factory="0x"+"3".repeat(40),e={...entry("submitted"),id:"base:sourceRegistry",
+  transaction:{from:wallet,to:factory,data:"0x"+(await import("../../apps/web/keccak.mjs")).selector("deployRegistry()").slice(2),
+   nonce:"0x9",value:"0x0",gas:"0x5208"}};
+ const old={...tx(),input:"0x12345678",to:factory};
+ const run=registry=>async(url,method,params)=>{
+  if(method==="eth_call")return "0x"+registry.toString(16).padStart(64,"0");
+  return rpc({transaction:old,receipt:{status:"0x1",blockNumber:"0x20"},latest:10,pending:10})(url,method,params);
+ };
+ const retry=await classifyInterruptedDeployment({entry:e,chain,rpc:run(0n)});
+ assert.equal(retry.action,"retry");
+ assert.equal(retry.reason,"source-registry-unrelated-saved-hash");
+ const live=await classifyInterruptedDeployment({entry:e,chain,rpc:run(3n)});
+ assert.equal(live.action,"pending");
+ assert.equal(live.reason,"source-registry-already-exists-unattributed");
+});
+test("sourceRegistry wrong signed tx with missing receipt cannot be rebroadcast",async()=>{
+ const factory="0x"+"3".repeat(40),e={...entry("submitted"),id:"base:sourceRegistry",
+ transaction:{...entry().transaction,to:factory,data:(await import("../../apps/web/keccak.mjs")).selector("deployRegistry()")}};
+ const result=await classifyInterruptedDeployment({entry:e,chain,rpc:rpc({transaction:tx(),latest:10,pending:10})});
+ assert.equal(result.action,"pending");
+ assert.match(result.reason,/awaiting-receipt/);
+});
