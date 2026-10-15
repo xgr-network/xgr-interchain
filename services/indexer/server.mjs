@@ -9,6 +9,7 @@ import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
+import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
 import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
@@ -114,6 +115,24 @@ export async function handler(req,res){
    }catch(error){
     return send(503,{ok:false,error:"Recovery proof unavailable; never repeat a confirmed source transfer"});
    }
+  }
+  if(pathname==="/api/xeta/v1/transfers/wallet"){
+   const account=parsed.searchParams.get("account");
+   if(!/^0x[0-9a-f]{40}$/i.test(account||""))
+    return send(400,{ok:false,error:"Valid EVM wallet address required"});
+   try{
+    const result=await readWalletTransferIndex(catalog,account,{
+     onlyPending:parsed.searchParams.get("pending")==="1"});
+    return send(result.status==="unavailable"?503:200,{ok:result.status!=="unavailable",...result});
+   }catch{
+    return send(503,{ok:false,error:"Finalized wallet transfer index unavailable"});
+   }
+  }
+  if(pathname==="/api/xeta/v1/transfers/stats"){
+   try{
+    const result=await readTransferIndexStats(catalog);
+    return send(result.status==="unavailable"?503:200,{ok:result.status!=="unavailable",...result});
+   }catch{return send(503,{ok:false,error:"Finalized transfer statistics unavailable"});}
   }
   if(Date.now()>=cache.until){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
