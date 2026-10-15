@@ -341,7 +341,7 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- const universe=buildExperienceModel((p==="/"||p==="/universe"||p==="/plan-route")?publicCatalog():state.catalog,()=>false);
+ const universe=buildExperienceModel(p==="/"||p==="/universe"?publicCatalog():state.catalog,()=>false);
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView()):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,

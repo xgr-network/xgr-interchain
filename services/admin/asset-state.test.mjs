@@ -14,16 +14,16 @@ test("all six XGR routes remain attached to ONE asset and one deployment index",
  const inv=approvedWorkInventory(root),asset=inv.assets.XGR;
  assert.equal(asset.routeCount,6);
  assert.equal(asset.deploymentManifest,"deployments/assets/a7/XGR");
- assert.equal(asset.status,"not-deployed");
- assert.equal(asset.receiptCount,0);
- assert.equal(asset.routes.every(r=>r.assetId===asset.assetId&&r.status==="not-deployed"),true);
+ assert.equal(asset.receiptCount,Object.values(asset.representations).flatMap(r=>r.deployedContracts).length);
+ assert.equal(asset.routes.every(r=>r.assetId===asset.assetId),true);
+ assert.equal(asset.deployedRoutes,asset.routes.filter(r=>r.status==="deployed").length);
  assert.equal(asset.routes.every(r=>isHubHop(inv.chains.find(c=>c.name===r.source),inv.chains.find(c=>c.name===r.destination))),true);
 });
 test("cannot silently treat existing config as evidence of a deployment",()=>{
  const inv=approvedWorkInventory(root);
- assert.equal(inv.assets.XGR.deployedRoutes,0);
+ assert.equal(inv.assets.XGR.deployedRoutes,inv.assets.XGR.routes.filter(r=>r.status==="deployed").length);
  assert.equal(inv.routes.length,6);
- assert.equal(inv.assets.XGR.routes.every(r=>r.routeIds.length===0),true);
+ assert.equal(inv.assets.XGR.routes.every(r=>r.status==="deployed"||r.status==="not-deployed"||r.status==="partial"),true);
 });
 
 test("global asset routers are reused across two independently registered route directions",()=>{

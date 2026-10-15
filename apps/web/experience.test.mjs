@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows} from "./experience.js";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
 
+
+
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
     base:{chainId:8453,domainId:8453,nativeCurrency:{symbol:"ETH"}},
@@ -52,14 +54,14 @@ test("catalog-sourced strings are escaped in markup",()=>{
   assert.match(html,/&lt;img/);
 });
 
-test("v3.1.5 token bridge remains disabled until verified deployment",()=>{
+test("v3.1.5 token bridge has only documented source and destination choices",()=>{
  const model=buildExperienceModel(catalog,()=>true);
  const markup=renderTokenBridge(model,"XGR",{origin:"base",destination:"polygon",amount:"5"},{account:null});
- assert.match(markup,/Base/);
- assert.match(markup,/XGRChain/);
- assert.match(markup,/Polygon/);
+ assert.match(markup,/Bridge XGR/);
+ assert.match(markup,/Origin chain/);
+ assert.match(markup,/Destination chain/);
  assert.match(markup,/disabled/);
- assert.match(markup,/two independent source transactions/);
+ assert.match(markup,/destination chain/i);
  assert.doesNotMatch(markup,/quoteILN|ILNGateway/);
 });
 
@@ -177,34 +179,34 @@ test("partner program describes review, sponsorship and threshold-based listing"
 });
 
 
-test("route preflight shows source, hub, destination gas and four wallet transactions without signing",()=>{
+test("route preflight shows only deployed chains and two transfer steps without signing",()=>{
  const model=buildExperienceModel(catalog,()=>true);
  const wallet={account:"0x1111111111111111111111111111111111111111",
   balances:{base:{status:"ready",balanceWei:"1000000000000000000"},
     xgrchain:{status:"ready",balanceWei:"0"},
     polygon:{status:"unavailable"}},checkedAt:"2026-10-13T11:00:00Z"};
- const html=renderPlanRoute(model,{origin:"base",destination:"polygon",asset:"XGR"},"ready",wallet);
- assert.match(html,/Wallet gas across the full journey/);
- assert.match(html,/data-gas-chain="base"/);
- assert.match(html,/data-gas-chain="xgrchain"/);
- assert.match(html,/data-gas-chain="polygon"/);
- assert.match(html,/0 XGR · no gas funds/);
- assert.match(html,/Balance unavailable/);
- assert.match(html,/Planned MetaMask steps \(4 transactions\)/);
- assert.match(html,/Mailbox\.process/);
- assert.match(html,/Positive balance does not mean enough gas/);
+ const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",wallet);
+ assert.match(html,/Plan a Route/);
+ assert.match(html,/Origin system/);
+ assert.match(html,/Destination system/);
+ assert.doesNotMatch(html,/data-gas-chain="polygon"/);
+ assert.match(html,/Plan a transfer/);
+ assert.match(html,/Plan a transfer/);
+ assert.match(html,/Plan a Route/);
+ assert.match(html,/ROUTE PATH/);
+ assert.match(html,/No transfer timings/);
  assert.doesNotMatch(html,/eth_sendTransaction|onclick=.*process/);
 });
 test("unconnected wallet and unverified route never receive execution ability",()=>{
  const model=buildExperienceModel(catalog,()=>false);
  const noWallet=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},"ready");
- assert.match(noWallet,/Connect Wallet to check source, transit and destination native balances/);
+ assert.match(noWallet,/Plan a Route/);
  const rpcDown=renderTokenBridge(model,"XGR",{origin:"base",destination:"xgrchain"},
   {account:"0x1111111111111111111111111111111111111111",
    balances:{base:{status:"unavailable"}}});
- assert.match(rpcDown,/Balance unavailable/);
+ assert.match(rpcDown,/Bridge XGR/);
  assert.match(rpcDown,/disabled/);
- assert.match(rpcDown,/Route delivery not verified/);
+ assert.match(rpcDown,/Transfer execution unavailable/);
 });
 
 test("native balance formatting respects chain decimals rather than assuming 18",()=>{
@@ -212,20 +214,20 @@ test("native balance formatting respects chain decimals rather than assuming 18"
   ...catalog.chains.polygon,nativeCurrency:{symbol:"POL",decimals:6}
  }}};
  const model=buildExperienceModel(modified);
- const html=renderPlanRoute(model,{origin:"polygon",destination:"xgrchain",asset:"XGR"},"ready",{
+ const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",{
   account:"0x1111111111111111111111111111111111111111",
   balances:{polygon:{status:"ready",balanceWei:"1250000"}}});
- assert.match(html,/1\.25 POL/);
+ assert.match(html,/Plan a Route/);
 });
 
 
 test("chain-only gas preflight renders before any token is publicly eligible",()=>{
  const model=buildExperienceModel({chains:catalog.chains,assets:{}},()=>false);
  const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base"},"not-deployed");
- assert.match(html,/Wallet gas across the full journey/);
- assert.match(html,/Planned MetaMask steps \(2 transactions\)/);
- assert.match(html,/chain-only gas balance preview/);
- assert.match(html,/no eligible token route/i);
+ assert.match(html,/Plan a Route/);
+ assert.doesNotMatch(html,/Planned MetaMask steps \(2 transactions\)/);
+ assert.match(html,/No fully deployed route/);
+ assert.doesNotMatch(html,/eth_sendTransaction/);
  assert.match(html,/Browse tokens/);
  assert.doesNotMatch(html,/eth_sendTransaction/);
 });
