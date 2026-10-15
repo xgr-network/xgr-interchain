@@ -27,7 +27,7 @@ server {
     add_header X-Frame-Options DENY always;
     add_header Permissions-Policy 'camera=(), microphone=(), geolocation=()' always;
     # No inline JS is used in the public app. External project logos may load over HTTPS.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network https://base-rpc.publicnode.com; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
 
     location ^~ /admin/ {
         auth_basic "XITA Operator";
