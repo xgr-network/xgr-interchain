@@ -23,6 +23,11 @@ async function request(provider,method,params=[]){
  if(typeof provider?.request!=="function")throw Error("Connect MetaMask");
  return provider.request({method,params});
 }
+async function validateWalletAccount(provider,account){
+ const accounts=await request(provider,"eth_accounts");
+ if(!Array.isArray(accounts)||!accounts.some(x=>eq(x,account)))
+  throw Error("Connected wallet changed. Reconnect the original wallet");
+}
 async function rpcChain(provider,chain,{allowSwitch=false}={}){
  let current=await request(provider,"eth_chainId");
  if(!QTY.test(current||""))throw Error("Wallet chain ID unavailable");
@@ -114,6 +119,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"]);
  if(!QTY.test(destinationBalance||"")||BigInt(destinationBalance)===0n)
   throw Error("Destination wallet needs native gas BEFORE locking tokens");
+ await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
  await verifyGateway(provider,route,dst.domainId);
  const quoteData=await request(provider,"eth_call",[{to:route.gateway,
@@ -146,6 +152,8 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const estimate=await request(provider,"eth_estimateGas",[tx]);
  const cash=await sourceGasAffordable(provider,account);
  preflightGas(estimate,cash.gasPrice,quote.value,cash.balance);
+ await validateWalletAccount(provider,account);
+ await rpcChain(provider,src);
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
@@ -181,6 +189,7 @@ export async function resumeDelivery({catalog,account,record,provider,
   typeof proof.data!=="string"||!/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(proof.data)||
   !proof.data.toLowerCase().startsWith(selector("process(bytes,bytes)").toLowerCase())||
   proof.value!=="0x0")throw Error("Source-bound destination proof mismatch");
+ await validateWalletAccount(provider,account);
  await rpcChain(provider,dst,{allowSwitch:true});
  // Recheck replay state immediately before signing, never trust an HTTP status.
  const delivered=await request(provider,"eth_call",[{to:mailbox,
@@ -191,6 +200,8 @@ export async function resumeDelivery({catalog,account,record,provider,
  const gas=await request(provider,"eth_estimateGas",[tx]);
  const cash=await sourceGasAffordable(provider,account);
  preflightGas(gas,cash.gasPrice,0n,cash.balance);
+ await validateWalletAccount(provider,account);
+ await rpcChain(provider,dst);
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("No destination transaction hash returned");
  onBroadcast?.({txHash,sourceChain:current.sourceChain});
