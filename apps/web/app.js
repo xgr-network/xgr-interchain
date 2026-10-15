@@ -26,8 +26,15 @@ function refreshTransferLink(){
   items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
  alert.hidden=pending===0;
  if(pending){
-  alert.textContent=pending===1?"1 transfer awaiting delivery →":
-   pending+" transfers awaiting delivery →";
+  const open=transferActivity.items.filter(t=>t.account?.toLowerCase()===
+   state.account?.toLowerCase()&&t.status==="awaiting-proof"&&
+   t.confirmed===true&&t.delivered===false);
+  const specific=pending===1&&open.length===1?
+   (open[0].sourceChain==="xgrchain"?"1 mint pending →":
+    open[0].destinationChain==="xgrchain"?"1 unlock pending →":
+    "1 transfer awaiting delivery →"):null;
+  alert.textContent=specific||
+   (pending===1?"1 transfer awaiting delivery →":pending+" transfers awaiting delivery →");
   alert.title="Original lock/burn confirmed; only the destination mint/unlock may be continued";
  }
 }
