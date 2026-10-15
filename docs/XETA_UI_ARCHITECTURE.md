@@ -135,3 +135,32 @@ replace chain data as the source of truth. Currently, the unsigned recovery
 endpoint additionally requires the existing indexer service and proxy
 location to be deployed; E2E source+target execution and proof-retry on
 production routes must be exercised before calling it proven.
+
+
+### Persistent wallet and movement index (same XITA statistics infrastructure)
+
+The XITA metrics indexer also runs the independent `transfer-index-worker.mjs`
+with a least-privilege PostgreSQL writer. It backfills immutable deployed Gateway
+events from their documented contract deployment blocks to finalized heads,
+verifies matching Mailbox.Dispatch and wallet-initiated source transactions,
+and reconciles finalized `Mailbox.delivered(messageId)` on every destination.
+Its records contain a source-wallet-keyed message ID, original source TX,
+route, source amount when unambiguously decodable, pending/delivered/unknown
+state and canonical checkpoint hash. On reorg its cursor and route facts are
+reconstructed; incomplete route coverage remains explicitly PARTIAL.
+
+`GET /api/xeta/v1/transfers/wallet?account=0x...` is a read-only wallet
+worklist. After wallet connect, the client requests it and shows a header
+alert **only for confirmed source operations with delivered=false**. Click
+the alert to open the existing `/transfer` flow and resume just the target
+mint/unlock. The client falls back to the bounded direct RPC scan while
+the indexer is absent or still backfilling. A missing API response is NOT
+an empty wallet worklist. This indexer is a query accelerator, not the
+source of truth: the actual recovery signature is preceded by canonical
+source receipt, message, proof and destination delivered-state checks.
+
+`GET /api/xeta/v1/transfers/stats` exposes per-asset raw amounts and hop
+event counts split into pending/unknown/delivered, with coverage metadata.
+Do not treat these hop counts as unique end-to-end journeys, market transfer
+value, or USD collateral. Independent custody and pricing evidence are still
+needed for locked TVL and public listing threshold calculations.
