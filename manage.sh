@@ -163,6 +163,25 @@ status() {
   echo "Git revision: $(git -C "$ROOT" rev-parse --short=12 HEAD)"
   printf "Published web: "
   readlink -f "$SITE_DIR/current" || true
+  if [[ -f "$SITE_DIR/current/index.html" ]]; then
+    if grep -q 'href="/transfer" data-nav>Transfer Tokens' "$SITE_DIR/current/index.html"; then
+      echo "Published navigation: Transfer Tokens (new UI)"
+    else
+      echo "WARNING: published static website is OLD (Plan a Route); run ./manage.sh update" >&2
+    fi
+  else
+    echo "WARNING: published index.html is missing" >&2
+  fi
+  local live_html
+  live_html="$(curl -fsS --max-time 8 -H 'Cache-Control: no-cache' \
+    'https://xita.xgr.network/?xita-status=1' 2>/dev/null || true)"
+  if [[ "$live_html" == *'href="/transfer" data-nav>Transfer Tokens'* ]]; then
+    echo "HTTPS navigation: Transfer Tokens (new UI)"
+  elif [[ -n "$live_html" ]]; then
+    echo "WARNING: HTTPS website serves OLD or unexpected index.html; check active nginx root and caching" >&2
+  else
+    echo "WARNING: HTTPS website unavailable for navigation check" >&2
+  fi
   echo "Admin service:"
   privileged systemctl status "$ADMIN_SERVICE" --no-pager --lines=12 || true
   printf "Admin API (/admin/api/plan): "
