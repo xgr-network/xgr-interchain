@@ -196,7 +196,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
  const account="0x1111111111111111111111111111111111111111";
  const record={account,asset:"XGR",status:"awaiting-proof",sourceChain:"xgrchain",
   destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
- const html=renderPlanRoute(model,{},"ready",{account},{items:[record]});
+ const html=renderPlanRoute(model,{},"ready",{account},{items:[record],selectedTxHash:record.txHash});
  assert.match(html,/Continue delivery/);
  assert.match(html,/1 \/ 2/);
  assert.match(html,/xita-open-transfer/);
