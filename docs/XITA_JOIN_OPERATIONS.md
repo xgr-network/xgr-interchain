@@ -12,7 +12,7 @@ Unconfirmed applications expire after 24 hours. Active contact records are limit
 
 Email is used only for confirmation and changes directly relevant to the application (GitHub acceptance/rejection, deployed contracts, independently verified collateral and TVL-based listing). No newsletter, promotional campaign or arbitrary email forwarding. The transaction mail provider must have a valid GDPR-processing arrangement.
 
-**Before enabling public email collection**: update `https://xgr.network/privacy-policy.html` to expressly cover the XITA application flow, purposes and Article 6 GDPR legal basis, service providers, retention, security and contact rights. The generic existing policy covers websites/subdomains and Zoho-based inquiries but does not yet detail this XITA process. The site-wide Imprint and Privacy Policy links are already live.
+**Before enabling public email collection**: review the dedicated `https://xita.xgr.network/privacy-policy.html` and ensure it is published with the XITA-specific data processing and retention notice. to expressly cover the XITA application flow, purposes and Article 6 GDPR legal basis, service providers, retention, security and contact rights. The generic existing policy covers websites/subdomains and Zoho-based inquiries but does not yet detail this XITA process. The site-wide Imprint and Privacy Policy links are already live.
 
 ## Production configuration — not in the repo
 Set these values only in a root-protected service environment file such as `/etc/xita/join.env` (0600), never in Git or browser assets:
