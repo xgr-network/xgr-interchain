@@ -8,6 +8,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
+import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
@@ -55,19 +56,58 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
    source:evidence?"trusted-evidence-file":"no-finalized-chain-evidence"}};
 }
 let cache={until:0,snapshot:null};
+// This is only a process load guard, never a transfer state journal.
+// Recovery source of truth remains canonical on-chain events.
+const recoveryRequests=new Map();
+const MAX_RECOVERY_PROCESS=2;
+const MAX_RECOVERY_RECENT=60;
+const rateLimit=new Map();
+export async function serveUnsignedTransferRecovery({catalog,route,messageId,now=Date.now(),runner=runRecoveryProcess}){
+ const request=resolveRecoveryRoute(catalog,route,messageId);
+ const key=route+":"+request.messageId;
+ // Limit replay and quorum request spam without storing transfer state.
+ for(const [k,ts] of rateLimit)if(ts<=now-60000)rateLimit.delete(k);
+ if(rateLimit.size>=MAX_RECOVERY_RECENT&&!rateLimit.has(key))
+  return {code:429,body:{ok:false,error:"Proof preparation busy; retry later"}};
+ const inFlight=recoveryRequests.get(key);
+ if(inFlight)return {code:202,body:{ok:true,status:"PREPARING",messageId:request.messageId}};
+ if(recoveryRequests.size>=MAX_RECOVERY_PROCESS)
+  return {code:429,body:{ok:false,error:"Proof preparation busy; retry later"}};
+ if((rateLimit.get(key)||0)>now-15000)
+  return {code:429,body:{ok:false,error:"Retry shortly; original source remains unchanged"}};
+ rateLimit.set(key,now);
+ const pending=runner(request);
+ recoveryRequests.set(key,pending);
+ try{
+  const result=await pending;
+  return {code:200,body:{ok:true,...result}};
+ }finally{
+  if(recoveryRequests.get(key)===pending)recoveryRequests.delete(key);
+ }
+}
 export async function handler(req,res){
- const pathname=new URL(req.url,"http://127.0.0.1").pathname;
+ const parsed=new URL(req.url,"http://127.0.0.1");
+ const pathname=parsed.pathname;
  const send=(status,data)=>{
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8",
    "Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||pathname==="/api/xeta/v1/transfer/recovery"))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+  if(pathname==="/api/xeta/v1/transfer/recovery"){
+   const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId");
+   try{
+    const result=await serveUnsignedTransferRecovery({catalog,route,messageId});
+    return send(result.code,result.body);
+   }catch(error){
+    return send(503,{ok:false,error:"Recovery proof unavailable; never repeat a confirmed source transfer"});
+   }
+  }
   if(Date.now()>=cache.until){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}
