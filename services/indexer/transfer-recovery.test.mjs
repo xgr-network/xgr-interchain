@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -62,4 +62,26 @@ test("public recovery endpoint never signs or assumes success, only returns sour
  assert.equal(result.body.status,"READY_UNSIGNED_CALL");
  assert.ok(result.body.data);
  assert.equal(result.body.privateKey,undefined);
+});
+
+test("source transaction hint is optional, syntax validated and only passed as an untrusted locator",()=>{
+ const c=fixture(),msg=hash("4"),tx=hash("5");
+ const hinted=resolveRecoveryRoute(c,"xgr_to_base",msg,"ABC",tx);
+ assert.equal(hinted.env.SOURCE_TX_HASH,tx);
+ assert.equal(resolveRecoveryRoute(c,"xgr_to_base",msg,"ABC").env.SOURCE_TX_HASH,undefined);
+ assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base",msg,"ABC","not-a-hash"),/Invalid source transaction/);
+});
+test("transfer recovery handler passes source receipt hints without accepting them as proof",async()=>{
+ const tx=hash("5"),msg=hash("6"),c=fixture();
+ const result=await serveUnsignedTransferRecovery({catalog:c,route:"xgr_to_base",messageId:msg,asset:"ABC",
+  sourceTxHash:tx,now:Date.now()+300000,runner:async ref=>{
+   assert.equal(ref.env.SOURCE_TX_HASH,tx);
+   return validateUnsignedRecovery({status:"PENDING",messageId:msg},ref);
+  }});
+ assert.equal(result.code,200);assert.equal(result.body.status,"PENDING");
+});
+test("proof CLI failures are categorized without putting raw internals in HTTP responses",()=>{
+ assert.equal(classifyRecoveryFailure({killed:true},"").code,"PROOF_TIMEOUT");
+ assert.equal(classifyRecoveryFailure(new Error("RPC request failed"),"").code,"PROOF_RPC_UNAVAILABLE");
+ assert.equal(classifyRecoveryFailure(null,JSON.stringify({status:"RECOVERY_NOT_READY",error:"Merkle proof unavailable"})).code,"PROOF_RECONSTRUCTION_UNAVAILABLE");
 });
