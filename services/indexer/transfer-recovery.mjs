@@ -86,6 +86,11 @@ export function classifyRecoveryFailure(err,stderr=""){
   try {const value=JSON.parse(line.slice("XITA_RECOVERY_DIAGNOSTIC:".length));
    if(value?.status==="RECOVERY_NOT_READY")parsed=value;}catch{}
  }
+ // Older CLI releases output pretty-printed JSON without the diagnostic tag.
+ // Parse that whole record only when available, never with quote-truncating regex.
+ if(!parsed&&raw.trimStart().startsWith("{")){
+  try{const old=JSON.parse(raw.trim());if(old?.status==="RECOVERY_NOT_READY")parsed=old;}catch{}
+ }
  const detail=String(parsed?.error||err?.message||"").slice(0,650);
  const stage=/^[a-z][a-z0-9-]{1,54}$/.test(parsed?.stage||"")?parsed.stage:"unknown";
  const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
