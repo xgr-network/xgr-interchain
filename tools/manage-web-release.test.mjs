@@ -26,3 +26,17 @@ test("temporary service cleanup cannot leak a RETURN trap into update()",()=>{
  assert.doesNotMatch(shell,/trap [^\n]* RETURN/);
  assert.match(shell,/update\(\) \{[\s\S]*?install_sync/);
 });
+
+test("update always reloads the checkout after pull before publishing or restarting",()=>{
+ const u=shell.split("\nupdate() {")[1]?.split("\n}\n\ncase ")[0];
+ assert.ok(u,"missing update function");
+ assert.match(u,/git -C "\$ROOT" pull --ff-only origin main/);
+ assert.match(u,/exec env XITA_UPDATE_MAIN_SHA="\$checked_out" bash "\$ROOT\/manage\.sh" _complete-update/);
+ assert.doesNotMatch(u,/\bpublish_web\b|\binstall_sync\b|systemctl restart/);
+ const completion=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.match(completion,/require_clean_main/);
+ assert.match(completion,/publish_web/);
+ assert.match(completion,/install_sync/);
+ assert.match(completion,/systemctl restart xita-indexer\.service/);
+ assert.match(shell,/_complete-update\)[\s\S]*?XITA_UPDATE_MAIN_SHA[\s\S]*?complete_update/);
+});
