@@ -3,7 +3,7 @@ import {systemRanking} from "../../apps/web/system-rankings.js";
 // trusted, locally maintained evidence file produced by a finalized-chain verifier.
 // No write API, no GitHub credentials, no simulated numbers, no legacy collateral.
 import {createServer} from "node:http";
-import {readFileSync,statSync} from "node:fs";
+import {readFileSync,statSync,existsSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
@@ -94,11 +94,18 @@ export async function handler(req,res){
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||pathname==="/api/xeta/v1/transfer/recovery"))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+  if(pathname==="/api/xeta/v1/transfer/health"){
+   // Readiness is an execution prerequisite, not an additional manually
+   // managed route state. Never start locking if proof builder is absent.
+   const configured=existsSync(resolve(root,"runtime/native-relayer/recover-iln.mjs"))&&
+    existsSync(resolve(root,"runtime/native-relayer/node_modules/ethers/package.json"));
+   return send(configured?200:503,{ok:configured,proofBuilder:configured?"installed":"unavailable"});
+  }
   if(pathname==="/api/xeta/v1/transfer/recovery"){
    const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId"),asset=parsed.searchParams.get("asset");
    try{
