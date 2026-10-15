@@ -53,6 +53,9 @@ jobs:
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
 
+      - name: Validate unsigned on-chain destination recovery
+        run: node --test services/indexer/transfer-recovery.test.mjs
+
       - name: Validate CoinGecko adapter
         run: node --test services/indexer/coingecko.test.mjs
 
@@ -66,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test apps/web/keccak.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
+          node --test apps/web/keccak.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash
