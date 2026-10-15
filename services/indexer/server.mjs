@@ -62,9 +62,9 @@ const recoveryRequests=new Map();
 const MAX_RECOVERY_PROCESS=2;
 const MAX_RECOVERY_RECENT=60;
 const rateLimit=new Map();
-export async function serveUnsignedTransferRecovery({catalog,route,messageId,now=Date.now(),runner=runRecoveryProcess}){
- const request=resolveRecoveryRoute(catalog,route,messageId);
- const key=route+":"+request.messageId;
+export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,now=Date.now(),runner=runRecoveryProcess}){
+ const request=resolveRecoveryRoute(catalog,route,messageId,asset);
+ const key=asset+":"+route+":"+request.messageId;
  // Limit replay and quorum request spam without storing transfer state.
  for(const [k,ts] of rateLimit)if(ts<=now-60000)rateLimit.delete(k);
  if(rateLimit.size>=MAX_RECOVERY_RECENT&&!rateLimit.has(key))
@@ -100,9 +100,9 @@ export async function handler(req,res){
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
   if(pathname==="/api/xeta/v1/transfer/recovery"){
-   const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId");
+   const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId"),asset=parsed.searchParams.get("asset");
    try{
-    const result=await serveUnsignedTransferRecovery({catalog,route,messageId});
+    const result=await serveUnsignedTransferRecovery({catalog,route,messageId,asset});
     return send(result.code,result.body);
    }catch(error){
     return send(503,{ok:false,error:"Recovery proof unavailable; never repeat a confirmed source transfer"});
