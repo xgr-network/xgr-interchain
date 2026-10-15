@@ -15,5 +15,7 @@ test("XITA notifications arise only from merged GitHub proposal and independentl
  assert.equal(nextPhase(record,approved,snap("public",150)),"listed");
  assert.equal(nextPhase({...record,phase:"listed"},approved,snap("accepted",150)),"delisted");
  assert.equal(nextPhase({...record,phase:"listed"},approved,snap("unknown",null)),"listed");
- assert.equal(nextPhase(record,approved,{...snap("public",150),assets:{EXMP:{...snap("public",150).assets.EXMP,assetId:"0x"+"b".repeat(64)}}),"approved");
+ const wrongAsset=snap("public",150);
+ wrongAsset.assets.EXMP.assetId="0x"+"b".repeat(64);
+ assert.equal(nextPhase(record,approved,wrongAsset),"approved");
 });

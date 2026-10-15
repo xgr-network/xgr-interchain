@@ -144,6 +144,11 @@ export function buildManifestBundle(raw,catalog){
   chains:catalog.chains,infrastructure:catalog.infrastructure,publication:catalog.publication,
   assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,deployment}}
  };
+ // No personal contact information may ever be embedded, even in free-text descriptions.
+ const publicJson=JSON.stringify({metadata,profile,routeConfig});
+ if(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(publicJson)||
+    /contactEmail|privateEmail|applicantEmail/i.test(publicJson))
+   note("Personal email addresses must not appear in public token manifests");
  const errors=validateCatalog(proposedCatalog);
  if(errors.length)note("Generated manifest failed validation: "+errors.slice(0,4).join("; "));
  const json=x=>JSON.stringify(x,null,2)+"\n";

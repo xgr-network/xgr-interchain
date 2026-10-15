@@ -47,6 +47,7 @@ test("never leak private contact information into generated public files",()=>{
  assert.equal(JSON.stringify(b.files).includes("private@example.org"),false);
  assert.equal(JSON.stringify(b.files).includes(application.contactEmail),false);
  assert.equal(b.summary.applicantRole,"founder");
+ assert.throws(()=>buildManifestBundle({...application,description:application.description+" contact me at founder@example.org"},catalog),/Personal email/);
 });
 
 test("CoinGecko pricing metadata is recorded in generated profile",()=>{
