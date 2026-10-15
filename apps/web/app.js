@@ -146,8 +146,9 @@ async function performTransferAction(){
  const account=state.account;
  const selected=selectedRecovery(transferActivity.items,account,transferActivity.selectedTxHash);
  transferActivity.working=true;transferActivity.error="";
+ let broadcastKnown=false;
  transferActivity.notice=selected?"Rechecking original source and destination chains…":
-  "Checking the deployed source Gateway quote…";
+  "Checking recovery readiness, wallet nonce and source route…";
  render();
  try{
   if(selected){
@@ -157,6 +158,7 @@ async function performTransferAction(){
    }
    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
     provider:globalThis.ethereum,onBroadcast:({txHash})=>{
+     broadcastKnown=true;
      transferActivity.notice="Destination TX "+txHash+
       " submitted. Original source transfer is NEVER repeated.";
     }});
@@ -176,6 +178,7 @@ async function performTransferAction(){
   const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
    destination,amount,provider:globalThis.ethereum,
    onBroadcast:({txHash})=>{
+    broadcastKnown=true;
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
     render();
    }});
@@ -186,6 +189,9 @@ async function performTransferAction(){
   else await lookupWalletTransfer(sent.sourceChain,sent.txHash);
  }catch(error){
   transferActivity.error=String(error.message||error);
+  // A failed preflight must not keep displaying a stale in-progress status.
+  // Preserve broadcast evidence when a transaction actually left the wallet.
+  if(!broadcastKnown)transferActivity.notice="";
  }finally{
   if(state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.working=false;

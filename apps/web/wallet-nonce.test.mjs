@@ -17,12 +17,20 @@ test("valid wallet nonces require no fallback",async()=>{
  assert.deepEqual(x,{source:"wallet",nonce:2n});
 });
 test("invalid or missing EIP-1193 nonces are recovered only from verified canonical RPC",async()=>{
- for(const v of [null,undefined,"0x","2","0x02",{}]){
+ for(const v of [null,undefined,"0x","002",{},-1]){
   const x=await ensureNoPendingWalletTransaction({provider:wallet("0x2",v),account,chain,fetcher:rpc()});
   assert.deepEqual(x,{source:"verified-source-rpc",nonce:2n});
  }
  const both=await ensureNoPendingWalletTransaction({provider:wallet(null,null),account,chain,fetcher:rpc()});
  assert.equal(both.nonce,2n);
+});
+test("unambiguous padded hex, decimal and safe numeric nonces are normalized locally",async()=>{
+ for(const [latest,pending] of [["0x02","0x0002"],["2","2"],[2,2],[2n,2n]]){
+  const result=await ensureNoPendingWalletTransaction({
+   provider:wallet(latest,pending),account,chain,fetcher:async()=>{throw Error("not used")}}
+  );
+  assert.deepEqual(result,{source:"wallet",nonce:2n});
+ }
 });
 test("stale injected pending nonce can be reconciled with chain RPC",async()=>{
  const x=await ensureNoPendingWalletTransaction({provider:wallet("0x2","0x1"),account,chain,fetcher:rpc()});

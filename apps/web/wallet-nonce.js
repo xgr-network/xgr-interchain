@@ -1,8 +1,19 @@
 // Secure fallback for injected wallets that return null/nonstandard account nonces.
 import {publicRead} from "./wallet-transfers.js";
-const HEX=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
+const HEX=/^0x[0-9a-f]{1,64}$/i;
+const DECIMAL=/^(?:0|[1-9][0-9]{0,19})$/;
 const ACCOUNT=/^0x[0-9a-f]{40}$/i;
-const quantity=v=>typeof v==="string"&&HEX.test(v)?BigInt(v):null;
+const MAX_NONCE=2n**64n-1n;
+// Some EIP-1193 providers return padded hex, decimal text or a safe integer.
+// Normalize unequivocal uint64 values; do not guess at null or malformed data.
+const quantity=v=>{
+ let n;
+ if(typeof v==="bigint")n=v;
+ else if(typeof v==="number"&&Number.isSafeInteger(v)&&v>=0)n=BigInt(v);
+ else if(typeof v==="string"&&(HEX.test(v)||DECIMAL.test(v)))n=BigInt(v);
+ else return null;
+ return n>=0n&&n<=MAX_NONCE?n:null;
+};
 export async function ensureNoPendingWalletTransaction({provider,account,chain,fetcher=globalThis.fetch}={}){
  if(!ACCOUNT.test(account||"")||!Number.isSafeInteger(chain?.chainId)||typeof provider?.request!=="function")
   throw Error("Wallet nonce check unavailable; no transaction sent.");
