@@ -48,6 +48,8 @@ function upsertTransfer(record){
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
   t.txHash===record.txHash);
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
+ if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
+  transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
  transferActivity.items=[record,...transferActivity.items.filter(t=>
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
  refreshTransferLink();
