@@ -40,7 +40,7 @@ test("resolve proof script only from canonical deployed route and configured cha
  assert.throws(()=>resolveRecoveryRoute(c,"not_real",hash("1"),"ABC"),/deployed route/);
  assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base","bad","ABC"),/Invalid/);
  c.infrastructure.base.present=false;
- assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base",hash("1")),/deployed route/);
+ assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC"),/deployed route/);
 });
 test("accept exactly authorized unsigned Mailbox.process calldata",()=>{
  const c=fixture(),config=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC"),ok=recovered(hash("2"));
