@@ -67,6 +67,10 @@ function sourceProvider(sends,overrides={}){
  }};
 }
 const rpcResponse=(result)=>({ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})});
+const testFetch=(result="0x"+(1n*10n**18n).toString(16))=>async(url,options)=>{
+ if(url==="/api/xeta/v1/transfer/health")return {ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
+ return rpcResponse(JSON.parse(options.body).method==="eth_chainId"?"0x2105":result);
+};
 test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
  assert.equal(amountToUnits("1.125",18),1125000000000000000n);
  assert.throws(()=>amountToUnits("0",18),/positive/);
@@ -77,10 +81,7 @@ test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
 });
 test("source bridge quotes, checks native gas and sends exactly one canonical Gateway call",async()=>{
  const sends=[];
- const fetcher=async(url,options)=>{
-  const {method}=JSON.parse(options.body);
-  return rpcResponse(method==="eth_chainId"?"0x2105":"0x"+(1n*10n**18n).toString(16));
- };
+ const fetcher=testFetch();
  const result=await startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
  assert.equal(result.txHash,sourceTx);
@@ -93,7 +94,7 @@ test("wallet with no destination-native gas never submits source lock",async()=>
  const sends=[];
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider:sourceProvider(sends),
-  fetcher:async(url,options)=>rpcResponse(JSON.parse(options.body).method==="eth_chainId"?"0x2105":"0x0")}),/Destination wallet needs native gas/);
+  fetcher:testFetch("0x0")}),/Destination wallet needs native gas/);
  assert.equal(sends.length,0);
 });
 function sourceLogs(){
@@ -133,7 +134,14 @@ test("an unresolved wallet nonce blocks a second source lock after reload",async
  const sent=[];
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sent,{pendingNonce:true}),
-  fetcher:async(url,options)=>rpcResponse(JSON.parse(options.body).method==="eth_chainId"?
-    "0x2105":"0x"+(1n*10n**18n).toString(16))}),/pending/);
+  fetcher:testFetch()}),/pending/);
  assert.equal(sent.length,0);
+});
+
+test("missing unsigned recovery service must prevent any source token lock",async()=>{
+ const sends=[];
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),
+  fetcher:async()=>({ok:false,status:503})}),/recovery infrastructure unavailable/);
+ assert.equal(sends.length,0);
 });
