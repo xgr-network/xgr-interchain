@@ -295,15 +295,30 @@ install_transfer_api() (
   echo "SUCCESS: local proof builder and public HTTPS transfer health are ready. No wallet/private key was installed."
 )
 
-update() {
+complete_update() {
   require_clean_main
-  echo "Updating xgr-interchain from origin/main ..."
-  git -C "$ROOT" pull --ff-only origin main
   publish_web
   install_sync
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-indexer.service
   fi
+}
+
+update() {
+  require_clean_main
+  echo "Updating xgr-interchain from origin/main ..."
+  git -C "$ROOT" pull --ff-only origin main
+  local checked_out
+  checked_out="$(git -C "$ROOT" rev-parse --verify HEAD)"
+  [[ "$checked_out" =~ ^[0-9a-f]{40}$ ]] || {
+    echo "ERROR: invalid updated Git revision" >&2
+    return 1
+  }
+  # The running Bash process still holds OLD function and trap definitions
+  # when git pull changes manage.sh. Always execute the freshly checked-out
+  # script, even for a no-op pull, before publishing or restarting services.
+  echo "Loading updated manage.sh from ${checked_out:0:12} ..."
+  exec env XITA_UPDATE_MAIN_SHA="$checked_out" bash "$ROOT/manage.sh" _complete-update
 }
 
 case "${1:-help}" in
@@ -318,6 +333,16 @@ case "${1:-help}" in
   restart)
     privileged systemctl restart "$ADMIN_SERVICE"
     privileged systemctl is-active "$ADMIN_SERVICE"
+    ;;
+  _complete-update)
+    # Private handoff from update(): no second pull and no execution of stale
+    # traps or function bodies. Refuse use with a different or dirty checkout.
+    [[ "${XITA_UPDATE_MAIN_SHA:-}" =~ ^[0-9a-f]{40}$ ]] &&
+    [[ "$XITA_UPDATE_MAIN_SHA" == "$(git -C "$ROOT" rev-parse --verify HEAD)" ]] || {
+      echo "ERROR: update re-entry does not match current main." >&2
+      exit 1
+    }
+    complete_update
     ;;
   status) status ;;
   logs) privileged journalctl -u "$ADMIN_SERVICE" -n 100 --no-pager ;;
