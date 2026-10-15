@@ -54,7 +54,7 @@ jobs:
         run: node --test services/indexer/server.test.mjs
 
       - name: Validate unsigned on-chain destination recovery
-        run: node --test services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs
+        run: node --test services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs
 
       - name: Validate indexed on-chain wallet worklist (generic route identities)
         run: node --test services/indexer/transfer-index-store.test.mjs
