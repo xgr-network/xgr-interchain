@@ -70,14 +70,18 @@ export async function readWalletTransferIndex(catalog,account,{
     validator_fee_wei::text AS validator_fee_wei,delivered
     FROM xita_transfer_operations
     WHERE account=$1 AND ($2::boolean IS FALSE OR delivered IS DISTINCT FROM TRUE)
-    ORDER BY source_indexed_at DESC,source_tx_hash DESC LIMIT $3`,
+    ORDER BY (delivered IS DISTINCT FROM TRUE) DESC,source_indexed_at DESC,source_tx_hash DESC LIMIT $3`,
   values:[lowercase(account),onlyPending,limit]
  });
+ const totals=await connected.query({text:`SELECT
+   COUNT(*) FILTER (WHERE delivered IS FALSE)::text AS open,
+   COUNT(*) FILTER (WHERE delivered IS NULL)::text AS unknown
+   FROM xita_transfer_operations WHERE account=$1`,values:[lowercase(account)]});
  const items=rows.rows.map(indexedTransferRow);
+ const summary=totals.rows[0]||{open:"0",unknown:"0"};
  return {kind:"xita-wallet-transfer-index-v1",
   status:coverage.complete?"complete":"partial",wallet:lowercase(account),
-  coverage,items,openCount:items.filter(r=>r.status==="awaiting-proof").length,
-  unknownCount:items.filter(r=>r.status==="delivery-unknown").length,
+  coverage,items,openCount:Number(summary.open),unknownCount:Number(summary.unknown),
   truncated:items.length===limit};
 }
 export async function readTransferIndexStats(catalog,{pool=null,now=Date.now(),routeList=null}={}){
