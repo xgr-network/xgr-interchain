@@ -96,6 +96,9 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.doesNotMatch(home,/ux-journey-planner|id="ux-origin"|Journey preview/);
  assert.match(home,/XGR Interchain/);
  assert.match(home,/Top Tokens/);
+ assert.match(home,/href="\/transfer">Transfer Tokens/);
+ assert.match(home,/href="\/join">Join XITA/);
+ assert.doesNotMatch(home,/Explore Routes|Bring Your Token <span aria-hidden/);
  assert.match(universe,/ux-selected-details/);
  assert.match(universe,/Explore configured worlds/);
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
