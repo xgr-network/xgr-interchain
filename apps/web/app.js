@@ -488,7 +488,9 @@ function render(){
  const match=/^\/token\/([a-z0-9-]{1,80})$/.exec(p);
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
- const universe=buildExperienceModel(p==="/"||p==="/universe"?publicCatalog():state.catalog,()=>false);
+ // Universe is an infrastructure map, not the public TVL-qualified token leaderboard.
+ // Show documented token representations without claiming public listing or live delivery.
+ const universe=buildExperienceModel(state.catalog,()=>false);
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
