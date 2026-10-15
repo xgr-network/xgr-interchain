@@ -90,8 +90,8 @@ The existing indexer provides an additional rebuildable PostgreSQL projection:
    Apply `services/indexer/sql/002_transfer_operations.sql` using your
    database operator credentials.
 2. Install the package's pinned runtime dependencies with
-   `npm install --prefix services/indexer --omit=dev`.
-3. Set the indexer reader `XITA_INDEXER_DATABASE_URL` and create
+   `npm install --prefix services/indexer --omit=dev` and the unsigned recovery client `npm install --prefix runtime/native-relayer --omit=dev`.
+3. Set the indexer reader `XITA_INDEXER_DATABASE_URL` in `/etc/xita/indexer.env` (see `services/indexer/indexer.env.example`) and create
    `/etc/xita/transfer-indexer.env` from
    `services/indexer/transfer-indexer.env.example` with mode 0600, using
    `XITA_TRANSFER_WORKER_DATABASE_URL` for the restricted DB writer.
