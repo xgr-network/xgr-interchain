@@ -18,12 +18,12 @@ export function nextPhase(record,pr,visibility){
  if(!merged)return "under-review";
  const v=visibility?.schemaVersion===1&&visibility.kind==="xita-visibility-v1"
    ?visibility.assets?.[record.input.symbol]:null;
- if(!v||v.assetId?.toLowerCase()!==record.assetId?.toLowerCase())return "approved";
+ if(!v||v.assetId?.toLowerCase()!==record.assetId?.toLowerCase())
+   return ["deployed","first-lock","listed","delisted"].includes(record.phase)?record.phase:"approved";
  if(v.status==="public"&&v.deployment==="deployed"&&
    Number.isFinite(v.lockedUsd)&&v.lockedUsd>0)return "listed";
- if(v.status==="accepted"&&v.deployment==="deployed"&&
-   Number.isFinite(v.lockedUsd)&&v.lockedUsd>0)
-   return record.phase==="listed"?"delisted":"first-lock";
+ if(v.status==="accepted"&&v.deployment==="deployed"&&Number.isFinite(v.lockedUsd))
+   return record.phase==="listed"?"delisted":v.lockedUsd>0?"first-lock":"deployed";
  if(v.deployment==="deployed"&&
    !["listed","delisted","first-lock"].includes(record.phase))return "deployed";
  return ["listed","delisted","first-lock","deployed"].includes(record.phase)?record.phase:"approved";
