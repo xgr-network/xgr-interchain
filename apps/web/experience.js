@@ -312,19 +312,26 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const deployedChains=model.chains.filter(c=>available.has(c.key));
  const deployedAssets=new Set(routes.map(r=>r.asset));
  const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id));
- const origin=available.has(selection.origin)?selection.origin:
+ const openChoice=(progress.items||[]).filter(r=>r.account?.toLowerCase()===
+   wallet.account?.toLowerCase()&&["awaiting-proof","delivery-unknown",
+   "confirming","pending-source","destination-not-deployed"].includes(r.status));
+ const currentWork=openChoice.find(r=>r.txHash===progress.selectedTxHash)||openChoice[0]||null;
+ const requestedOrigin=currentWork?.sourceChain||selection.origin;
+ const requestedDestination=currentWork?.destinationChain||selection.destination;
+ const requestedAsset=currentWork?.asset||selection.asset;
+ const origin=available.has(requestedOrigin)?requestedOrigin:
    deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
- const destination=available.has(selection.destination)&&selection.destination!==origin?
-   selection.destination:deployedChains.find(c=>c.key!==origin)?.key||"";
- const assetId=usableAssets.some(a=>a.id===selection.asset)?
-   selection.asset:usableAssets[0]?.id||"";
+ const destination=available.has(requestedDestination)&&requestedDestination!==origin?
+   requestedDestination:deployedChains.find(c=>c.key!==origin)?.key||"";
+ const assetId=usableAssets.some(a=>a.id===requestedAsset)?
+   requestedAsset:usableAssets[0]?.id||"";
  const path=previewRoute(model,origin,destination,assetId);
  const deployed=path.path.length>1&&path.hops.every((h,i)=>
    routes.some(r=>r.asset===assetId&&r.source===path.path[i]&&
      r.destination===path.path[i+1]));
  const actionable=["awaiting-proof","delivery-unknown","confirming","pending-source",
    "destination-not-deployed"];
- const pending=(progress.items||[]).filter(r=>actionable.includes(r.status));
+ const pending=openChoice.filter(r=>actionable.includes(r.status));
  const active=pending.find(r=>r.txHash===progress.selectedTxHash)||pending[0]||null;
  const connected=typeof wallet.account==="string"&&/^0x[0-9a-f]{40}$/i.test(wallet.account);
  const selected=active&&active.account?.toLowerCase()===wallet.account?.toLowerCase()?active:null;
@@ -374,14 +381,16 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<p class="ux-muted">One transfer page. Select an available route; previously confirmed source transfers are found automatically after wallet connection.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel">'+
   '<div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div>'+
-  '<label class="ux-field" for="ux-asset">Token</label><select id="ux-asset">'+
+  '<label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
   assetOptions({assets:usableAssets},assetId)+'</select>'+
-  '<label class="ux-field" for="ux-origin">From</label><select id="ux-origin">'+
+  '<label class="ux-field" for="ux-origin">From</label><select id="ux-origin"'+(selected?' disabled':'')+'>'+
   chainOptions({chains:deployedChains},origin)+'</select>'+
-  '<label class="ux-field" for="ux-destination">To</label><select id="ux-destination">'+
+  '<label class="ux-field" for="ux-destination">To</label><select id="ux-destination"'+(selected?' disabled':'')+'>'+
   chainOptions({chains:deployedChains},destination)+'</select>'+
   '<label class="ux-field" for="ux-transfer-amount">Amount ('+esc(assetId)+')</label>'+
-  '<input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="0.0" value="'+esc(amount)+'">'+
+  '<input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="'+
+  (selected?'Original amount already locked/burned':'0.0')+'" value="'+(selected?'':esc(amount))+
+  '"'+(selected?' readonly':'')+'>'+
   routePath(model,path)+
   '<div class="ux-route-status">'+
   (deployed?'<span class="ux-badge is-verified">Deployed</span>':
