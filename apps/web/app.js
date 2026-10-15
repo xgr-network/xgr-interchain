@@ -14,10 +14,21 @@ const el=document.querySelector("#app"),connect=document.querySelector("#connect
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 let transferRequest=0;
-const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,report:null,notice:"",error:""};
+const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 function refreshTransferLink(){
+ const connected=validWalletAddress(state.account);
  const link=document.querySelector("#my-transfers-link");
- if(link)link.hidden=!validWalletAddress(state.account);
+ if(link)link.hidden=!connected;
+ const alert=document.querySelector("#wallet-pending-alert");
+ if(!alert)return;
+ const livePending=transferActivity.items.filter(t=>t.status==="awaiting-proof").length;
+ const pending=connected?Math.max(livePending,transferActivity.indexOpenCount||0):0;
+ alert.hidden=pending===0;
+ if(pending){
+  alert.textContent=pending===1?"1 transfer awaiting delivery →":
+   pending+" transfers awaiting delivery →";
+  alert.title="Original lock/burn confirmed; only the destination mint/unlock may be continued";
+ }
 }
 function setConnectedAccount(next){
  const account=validWalletAddress(next)?next:null;
@@ -26,7 +37,7 @@ function setConnectedAccount(next){
  connect.textContent=account?shorten(account):"Connect Wallet";
  if(changed){
   transferRequest++;
-  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,report:null,notice:"",error:""});
+  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
@@ -34,31 +45,68 @@ function setConnectedAccount(next){
  if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
+ const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
+  t.txHash===record.txHash);
+ if(previous?.status==="delivered"&&record.status!=="delivered")return;
  transferActivity.items=[record,...transferActivity.items.filter(t=>
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
+ refreshTransferLink();
 }
 async function scanWalletHistory(){
  const account=state.account;
  if(!account||!state.catalog||transferActivity.scanning)return;
  const marker=++transferRequest;
  transferActivity.scanning=true;transferActivity.scanned=true;transferActivity.error="";
+ transferActivity.indexCoverage=null;transferActivity.indexOpenCount=0;
  if(path()==="/my-transfers"||path()==="/transfer")render();
+ let indexedComplete=false;
  try{
-  const results=await scanRecentWalletTransfers({catalog:state.catalog,account});
-  if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-  for(const record of results.items)upsertTransfer(record);
-  transferActivity.report=results;
-  transferActivity.notice=results.scannedRoutes===0?
-   "No deployed XITA Gateway routes are available. No transfers were inferred.":
-   "Recent wallet events checked on-chain; older transactions can be found by TX hash.";
-  if(results.warnings.length)transferActivity.error=
-   "Some RPC scans failed. Use original source TX hash for older activity.";
+  try{
+   const response=await fetch("/api/xeta/v1/transfers/wallet?"+
+    new URLSearchParams({account,pending:"1"}),{cache:"no-store",
+    credentials:"omit",headers:{accept:"application/json"}});
+   if(response.ok){
+    const data=await response.json();
+    if(data?.kind==="xita-wallet-transfer-index-v1"&&
+     data.wallet?.toLowerCase()===account.toLowerCase()&&
+     ["complete","partial"].includes(data.status)&&Array.isArray(data.items)){
+     if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+     for(const item of data.items.filter(t=>
+       t.account?.toLowerCase()===account.toLowerCase()&&
+       /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
+       ["awaiting-proof","delivery-unknown","delivered"].includes(t.status)))upsertTransfer(item);
+     transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
+      Math.max(0,data.openCount):0;
+     transferActivity.indexCoverage=data.coverage||null;
+     indexedComplete=data.status==="complete"&&data.coverage?.complete===true&&
+      data.truncated!==true;
+     transferActivity.report={source:"indexer",lookback:null,
+      scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
+     transferActivity.notice=indexedComplete?
+      "Wallet history indexed through all finalized deployed route heads.":
+      "Indexer catching up; checking recent chain events directly.";
+     refreshTransferLink();
+    }
+   }
+  }catch{/* Index service can be offline; never equate that with zero open transfers. */}
+  if(!indexedComplete){
+   const result=await scanRecentWalletTransfers({catalog:state.catalog,account});
+   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+   for(const item of result.items)upsertTransfer(item);
+   transferActivity.report=result;
+   transferActivity.notice=result.scannedRoutes===0?
+    "No deployed Gateway routes are recorded in this catalog.":
+    "Recent chain events checked; older history may still exist.";
+   if(result.warnings.length)transferActivity.error=
+    "Some chain RPC reads failed; older transfers can be located by source TX hash.";
+  }
  }catch(error){
-  if(marker!==transferRequest)return;
-  transferActivity.error="Could not scan recent source events: "+String(error.message||error);
+  if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+  transferActivity.error="Wallet transfer discovery unavailable: "+String(error.message||error);
  }finally{
-  if(marker===transferRequest){
+  if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.scanning=false;
+   refreshTransferLink();
    if(path()==="/my-transfers"||path()==="/transfer")render();
   }
  }
