@@ -128,7 +128,7 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
  const pending=await pool.query({text:`SELECT source_chain,route_id,message_id FROM
  xita_transfer_operations WHERE delivered IS DISTINCT FROM TRUE
- ORDER BY delivery_checked_at ASC NULLS FIRST LIMIT $1`,values:[limit]});
+ ORDER BY delivery_attempted_at ASC NULLS FIRST,source_indexed_at ASC LIMIT $1`,values:[limit]});
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
   const route=all.get(row.source_chain+":"+row.route_id);
@@ -143,6 +143,13 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
     values:[row.source_chain,row.message_id,result.delivered]});
    checked++;if(result.delivered)delivered++;
   }catch{unknown++;}
+  finally{
+   // Scheduling metadata only: an RPC timeout does NOT assert delivery status.
+   await pool.query({text:`UPDATE xita_transfer_operations SET
+    delivery_attempted_at=NOW()
+    WHERE source_chain=$1 AND message_id=$2 AND delivered IS DISTINCT FROM TRUE`,
+    values:[row.source_chain,row.message_id]}).catch(()=>{});
+  }
  }
  return {checked,delivered,unknown};
 }
