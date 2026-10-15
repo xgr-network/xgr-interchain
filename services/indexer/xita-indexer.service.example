@@ -9,6 +9,7 @@ User=xgradmin
 WorkingDirectory=/home/xgradmin/repos/xgr-interchain
 Environment=XITA_INDEXER_HOST=127.0.0.1
 Environment=XITA_INDEXER_PORT=4088
+EnvironmentFile=-/etc/xita/indexer.env
 ExecStart=/usr/bin/node services/indexer/server.mjs
 Restart=on-failure
 RestartSec=5
