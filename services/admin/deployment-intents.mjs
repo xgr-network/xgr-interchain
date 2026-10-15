@@ -132,8 +132,9 @@ export function deploymentIntents({directory,chains}){
    const entry={...e,stage:"prepared",txHash:null,createdAt:new Date().toISOString()};
    approve(entry);
    return mutate(s=>{
-    if(s.entries[entry.id])
-     throw Error("Existing deployment intent must be reconciled; never re-broadcast");
+    // Only the CURRENT wallet attempt is retained here. GitHub main alone
+    // determines deployment completion. A new click replaces stale WAL state
+    // without automatic recovery, historical nonce scans or signing twice.
     s.entries[entry.id]=entry;
     return entry;
    });
