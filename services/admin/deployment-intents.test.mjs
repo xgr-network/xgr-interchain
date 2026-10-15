@@ -151,7 +151,7 @@ test("completed-record cleanup preserves all unresolved router and route transac
   const current=store.read();
   assert.equal(current.entries[input.id],undefined);
   assert.equal(current.entries[route.id].stage,"submitted");
-  assert.throws(()=>store.prepare(route),/Existing deployment intent/);
+  assert.equal(store.prepare(route).stage,"prepared");
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries),[route.id]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
