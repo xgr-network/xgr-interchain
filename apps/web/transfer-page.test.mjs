@@ -40,6 +40,6 @@ test("My Transfers never signs and links to the unique transfer recovery flow",(
 test("without deployed routes, import is disabled and does not invent wallet history",()=>{
  const html=renderMyTransfers({account,catalog:{chains:cat.chains,assets:{},infrastructure:cat.infrastructure}});
  assert.match(html,/No deployed source route/);
- assert.match(html,/Automatic full-history indexing is not live yet/);
+ assert.match(html,/Transfer index unavailable/);
  assert.doesNotMatch(html,/data-message-id/);
 });
