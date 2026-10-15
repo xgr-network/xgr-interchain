@@ -223,6 +223,8 @@
         "sourceManifest": "config/assets/a7/XGR/asset.json",
         "receiptPaths": [
           "deployments/receipts/base/7a7a863a2c1dda00434b92cd890c1ab00a4d3123f11247834839940387df59c4-2ca97eff807744f81f13c59a75a8eb0add1c715d.json",
+          "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-376a852700b5e9f965fef28380395d3d20dba0b1.json",
+          "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-664c4982d56dd1a1cf3ccd2f333dd945376c850d.json",
           "deployments/receipts/xgrchain/5f529763f864b9aefa2969e83c877b3603c25692922ccab2d8a933cf764736e3-6c34bb6d69322de6a2a9296b26cf4fb37a11dbe8.json",
           "deployments/receipts/xgrchain/5f529763f864b9aefa2969e83c877b3603c25692922ccab2d8a933cf764736e3-9d7b3ca11befcbb35cb9545a70e436f10d499e17.json",
           "deployments/receipts/xgrchain/c902371d0e95702646edc664f98b9dafe0361a11cb2758708900d88a1aa50ae5-d8022362a018bf72d41e7e71d2690b79043cecd8.json"
@@ -244,6 +246,32 @@
           }
         ],
         "routeDeployments": [
+          {
+            "schemaVersion": 1,
+            "kind": "asset-route-deployment",
+            "asset": "XGR",
+            "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+            "routeId": "0x298892d812c93b2df05e707569bb98a7d776f9bc6aef4d6a1492790744e771b8",
+            "routeName": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain",
+            "components": {
+              "gateway": {
+                "address": "0x376a852700b5e9f965fef28380395d3d20dba0b1",
+                "runtimeCodeKeccak256": "0xf39da2d694c666fb78ca020697c046f09f36684b2b42dcb50a1a8c3376869760",
+                "receiptPath": "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-376a852700b5e9f965fef28380395d3d20dba0b1.json"
+              },
+              "feeVault": {
+                "address": "0x664c4982d56dd1a1cf3ccd2f333dd945376c850d",
+                "runtimeCodeKeccak256": "0xf50247d6999cdb824d974e652597d956eaba0467a18dedd958b377ed4c1acd4c",
+                "receiptPath": "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-664c4982d56dd1a1cf3ccd2f333dd945376c850d.json"
+              }
+            },
+            "receiptPaths": [
+              "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-376a852700b5e9f965fef28380395d3d20dba0b1.json",
+              "deployments/receipts/base/833273867da730360be7ac2c8be3089c00a8406863ef8a3d8451eed07cb251cf-664c4982d56dd1a1cf3ccd2f333dd945376c850d.json"
+            ]
+          },
           {
             "schemaVersion": 1,
             "kind": "asset-route-deployment",
