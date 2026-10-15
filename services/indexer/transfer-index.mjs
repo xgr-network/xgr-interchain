@@ -47,7 +47,8 @@ export function indexedRoutes(catalog,{blockFor=gatewayDeploymentBlock}={}){
  });
 }
 export function bridgeAmountFromTransaction(tx,route){
- if(!tx||!ADDRESS.test(route?.gateway||"")||norm(tx.to)!==norm(route.gateway))return null;
+ if(!tx||!ADDRESS.test(route?.gateway||"")||norm(tx.to)!==norm(route.gateway)||
+  !Number.isSafeInteger(route?.destinationConfig?.domainId))return null;
  const data=String(tx.input??tx.data??"").toLowerCase();
  if(!/^0x[0-9a-f]{200}$/.test(data)||!data.startsWith(BRIDGE_SELECTOR))return null;
  const args=data.slice(10);
