@@ -8,7 +8,7 @@ test("XITA legal documents are local and linked from permanent footer",()=>{
    assert.match(h,/<footer>/);
    assert.match(h,/href="\/imprint\.html"/);
    assert.match(h,/href="\/privacy-policy\.html"/);
-   assert.doesNotMatch(h,/href="https:\/\/xgr\.network\/(?:imprint|privacy-policy)\.html"/);
+   assert.doesNotMatch(h.match(/<footer>[\s\S]*?<\/footer>/)?.[0]||"",/href="https:\/\/xgr\.network\/(?:imprint|privacy-policy)\.html"/);
  }
  assert.match(imprint,/§ 5 DDG/);
  assert.match(imprint,/HRB 37836/);

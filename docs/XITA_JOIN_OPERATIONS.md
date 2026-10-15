@@ -22,13 +22,23 @@ XITA_JOIN_PORT=4090
 XITA_JOIN_PRIVATE_DIR=/var/lib/xita/join
 XITA_JOIN_PUBLIC_URL=https://xita.xgr.network
 XITA_JOIN_WRITER_TOKEN=<FINE_GRAINED_GITHUB_TOKEN_WITH_CONTENTS_AND_PRS_WRITE>
-XITA_JOIN_MAIL_API_URL=https://<PRIVATE_TRUSTED_TRANSACTIONAL_MAIL_GATEWAY>/send
-XITA_JOIN_MAIL_API_TOKEN=<SECRET>
-XITA_JOIN_MAIL_FROM=contact@xgr.network
+SMTP_HOST=smtppro.zoho.eu
+SMTP_PORT=465
+SMTP_USER=contact@xgr.network
+SMTP_PASS=<EXISTING_ZOHO_SMTP_APP_PASSWORD>
+SMTP_FROM=contact@xgr.network
 XITA_COINGECKO_API_KEY=<OPTIONAL_COINGECKO_DEMO_KEY>
 ```
 
-The mail adapter is an operator-provisioned **HTTPS** endpoint. It must authenticate `Authorization: Bearer <token>`, accept JSON `{from,to,subject,text}`, honor the `Idempotency-Key` header, deliver an email and return a 2xx response **only when delivery is accepted**. For Zoho Mail, provide an operator-side adapter with Zoho credentials, not client-side keys. The project does not automatically install or configure Zoho and does not claim mail delivery without this adapter. If any required configuration is absent, `GET /api/xita/join/status` returns `available:false` and public `POST /submit` remains HTTP 503.
+XITA now uses the existing **Zoho SMTP** service directly through Nodemailer, not a second HTTP relay. TLS is mandatory: port 465 uses implicit TLS and port 587 requires STARTTLS. Configure the existing SMTP credentials only in the protected systemd EnvironmentFile. Authentication details never enter the static website, token configurations or PRs. Mail sending is disabled if any SMTP variable is missing, the connection cannot be established securely, or the recipient is not accepted by the server. Notification message IDs are stable per application/event, although SMTP cannot guarantee provider-side exactly-once delivery.
+
+Install the pinned production mail library before starting the Join service:
+
+```sh
+npm install --prefix services/onboarding --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false
+```
+
+An existing operator-managed HTTPS transactional-mail gateway remains supported as a fallback via `XITA_JOIN_MAIL_API_URL`, `XITA_JOIN_MAIL_API_TOKEN`, and `XITA_JOIN_MAIL_FROM`, but no second gateway is necessary for this setup. If neither transport is configured, `GET /api/xita/join/status` returns `available:false` and public `POST /submit` remains HTTP 503.
 
 Create the data directory owned by the same unprivileged service user and enforce 0700:
 
