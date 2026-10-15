@@ -35,7 +35,7 @@ export function routeIndexCoverage(catalog,cursors,{now=Date.now(),maxAgeMs=6000
    Math.abs(now-Date.parse(c.updated_at))<=maxAgeMs;
   return {source:r.sourceChain,destination:r.destinationChain,route:r.routeName,
    scannedTo:scanned,finalizedHead:head,updatedAt:match?iso(c.updated_at):null,
-   complete:Boolean(match&&freshness&&head!==null&&scanned>=head)};
+   complete:Boolean(match&&freshness&&head!==null&&head>=r.deploymentBlock&&scanned>=head)};
  });
  return {complete:detail.length>0&&detail.every(r=>r.complete),
   indexedRoutes:detail.filter(r=>r.complete).length,requiredRoutes:detail.length,
