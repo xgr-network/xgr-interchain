@@ -88,6 +88,16 @@ async function sourceGasAffordable(provider,account,price){
  // The wallet remains final authority for gas and effective fee estimates.
  return {balance:BigInt(nativeBalance),gasPrice:BigInt(gasPrice)};
 }
+async function ensureNoPendingWalletTransaction(provider,account){
+ const [confirmed,pending]=await Promise.all([
+  request(provider,"eth_getTransactionCount",[account,"latest"]),
+  request(provider,"eth_getTransactionCount",[account,"pending"])
+ ]);
+ if(!QTY.test(confirmed||"")||!QTY.test(pending||"")||BigInt(pending)<BigInt(confirmed))
+  throw Error("Wallet nonce state unclear; no new transfer sent");
+ if(BigInt(pending)>BigInt(confirmed))
+  throw Error("A wallet transaction is pending. Wait for its receipt before signing another transfer");
+}
 function preflightGas(estimated,gasPrice,value,balance){
  if(!QTY.test(estimated||""))throw Error("Cannot estimate transaction gas");
  const required=BigInt(estimated)*gasPrice*13n/10n+BigInt(value);
@@ -157,6 +167,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  preflightGas(estimate,cash.gasPrice,quote.value,cash.balance);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src);
+ await ensureNoPendingWalletTransaction(provider,account);
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
@@ -205,6 +216,7 @@ export async function resumeDelivery({catalog,account,record,provider,
  preflightGas(gas,cash.gasPrice,0n,cash.balance);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,dst);
+ await ensureNoPendingWalletTransaction(provider,account);
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("No destination transaction hash returned");
  onBroadcast?.({txHash,sourceChain:current.sourceChain});
