@@ -11,8 +11,8 @@ const normalize=x=>String(x||"").toLowerCase();
 export async function loadCursor(pool,route){
  const result=await pool.query({text:`SELECT source_chain,route_name,gateway,route_id,
  deployment_block,scanned_to,scanned_hash,finalized_head
- FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_name=$2`,
-  values:[route.sourceChain,route.routeName]});
+ FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_id=$2`,
+  values:[route.sourceChain,route.routeId]});
  if(result.rows.length>1)throw Error("Ambiguous transfer cursor");
  const c=result.rows[0];
  if(!c)return null;
@@ -37,10 +37,10 @@ async function withTransaction(pool,fn){
 }
 export async function resetIndexedRoute({pool,route}){
  await withTransaction(pool,async db=>{
-  await db.query({text:"DELETE FROM xita_transfer_operations WHERE source_chain=$1 AND route_name=$2",
-   values:[route.sourceChain,route.routeName]});
-  await db.query({text:"DELETE FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_name=$2",
-   values:[route.sourceChain,route.routeName]});
+  await db.query({text:"DELETE FROM xita_transfer_operations WHERE source_chain=$1 AND route_id=$2",
+   values:[route.sourceChain,route.routeId]});
+  await db.query({text:"DELETE FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_id=$2",
+   values:[route.sourceChain,route.routeId]});
  });
 }
 export async function commitWindow({pool,route,window,records}){
@@ -50,8 +50,8 @@ export async function commitWindow({pool,route,window,records}){
  return withTransaction(pool,async db=>{
   // Lock the route cursor so overlapping workers cannot commit stale windows.
   const cursorResult=await db.query({text:`SELECT scanned_to,scanned_hash FROM
-   xita_transfer_index_cursors WHERE source_chain=$1 AND route_name=$2 FOR UPDATE`,
-   values:[route.sourceChain,route.routeName]});
+   xita_transfer_index_cursors WHERE source_chain=$1 AND route_id=$2 FOR UPDATE`,
+   values:[route.sourceChain,route.routeId]});
   const previous=cursorResult.rows[0],last=previous?Number(previous.scanned_to):route.deploymentBlock-1;
   if(last!==window.from-1)throw Error("Conflicting transfer index cursor; retry from chain");
   for(let i=0;i<window.events.length;i++){
@@ -95,7 +95,7 @@ export async function commitWindow({pool,route,window,records}){
    source_chain,route_name,gateway,route_id,deployment_block,
    scanned_to,scanned_hash,finalized_head,updated_at)
    VALUES($1,$2,$3,$4,$5,$6,$7,$8,NOW())
-   ON CONFLICT(source_chain,route_name) DO UPDATE SET
+   ON CONFLICT(source_chain,route_id) DO UPDATE SET
    gateway=EXCLUDED.gateway,route_id=EXCLUDED.route_id,
    deployment_block=EXCLUDED.deployment_block,scanned_to=EXCLUDED.scanned_to,
    scanned_hash=EXCLUDED.scanned_hash,finalized_head=EXCLUDED.finalized_head,
@@ -125,13 +125,13 @@ export async function scanIndexedRoute({catalog,route,pool,rpc,limit=150}){
  return commitWindow({pool,route,window,records});
 }
 export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
- const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeName,r]));
- const pending=await pool.query({text:`SELECT source_chain,route_name,message_id FROM
+ const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
+ const pending=await pool.query({text:`SELECT source_chain,route_id,message_id FROM
  xita_transfer_operations WHERE delivered IS DISTINCT FROM TRUE
  ORDER BY delivery_checked_at ASC NULLS FIRST LIMIT $1`,values:[limit]});
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
-  const route=all.get(row.source_chain+":"+row.route_name);
+  const route=all.get(row.source_chain+":"+row.route_id);
   if(!route){unknown++;continue;}
   try{
    const result=await checkedDelivery({route,messageId:row.message_id,rpc});
