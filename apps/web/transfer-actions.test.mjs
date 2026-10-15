@@ -58,7 +58,7 @@ function sourceProvider(sends,overrides={}){
    }
   }
   if(method==="eth_estimateGas")return "0x5208";
-  if(method==="eth_getBalance")return word(1n*10n**18n);
+  if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
   if(method==="eth_gasPrice")return "0x3b9aca00";
   if(method==="eth_sendTransaction"){sends.push(params[0]);return sourceTx;}
   if(overrides[method])return overrides[method]({params});
@@ -76,7 +76,10 @@ test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
 });
 test("source bridge quotes, checks native gas and sends exactly one canonical Gateway call",async()=>{
  const sends=[];
- const fetcher=async()=>rpcResponse(word(1n*10n**18n));
+ const fetcher=async(url,options)=>{
+  const {method}=JSON.parse(options.body);
+  return rpcResponse(method==="eth_chainId"?"0x2105":"0x"+(1n*10n**18n).toString(16));
+ };
  const result=await startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
  assert.equal(result.txHash,sourceTx);
@@ -89,7 +92,7 @@ test("wallet with no destination-native gas never submits source lock",async()=>
  const sends=[];
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider:sourceProvider(sends),
-  fetcher:async()=>rpcResponse("0x0")}),/Destination wallet needs native gas/);
+  fetcher:async(url,options)=>rpcResponse(JSON.parse(options.body).method==="eth_chainId"?"0x2105":"0x0")}),/Destination wallet needs native gas/);
  assert.equal(sends.length,0);
 });
 function sourceLogs(){
