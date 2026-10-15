@@ -208,14 +208,6 @@ async function executeAssetDeployment(){
  const task=selectedAssetTask;
  if(!task)throw Error("Keine Asset-Aufgabe ausgewählt");
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
- const previous=await automaticallyContinuePrevious("asset",task.asset);
- if(previous.stage==="pending"){el("modal-deploy").disabled=false;return;}
- if(previous.stage==="documented"){
-  presentModalStatus("Vorherige Transaktion automatisch dokumentiert.","success");
-  el("contract-deploy-dialog").close();selectedAssetTask=null;
-  await waitForDeploymentSync(previous);return;
- }
- if(previous.stage!=="ready")throw Error("Unbekannter automatischer Fortsetzungsstatus");
  let wallet=await currentWalletState();
  if(!wallet)throw Error("Wallet verbinden");
  if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
@@ -393,14 +385,6 @@ async function executeModalDeployment(){
  try{
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
   const params=modalValues(component);
-  const previous=await automaticallyContinuePrevious("chain",chainName);
-  if(previous.stage==="pending"){button.disabled=false;return;}
-  if(previous.stage==="documented"){
-   presentModalStatus("Vorherige Transaktion automatisch dokumentiert. Deploy-Kette aktualisiert.","success");
-   el("contract-deploy-dialog").close();selectedDeployment=null;
-   await waitForDeploymentSync(previous);return;
-  }
-  if(previous.stage!=="ready")throw Error("Unbekannter automatischer Fortsetzungsstatus");
   let state=await currentWalletState();
   if(!state)throw Error("Wallet verbinden");
   if(state.chainId!==chain.chainId)await switchDeploymentChain(chain);
@@ -506,32 +490,6 @@ async function runDeploymentBatch(type,target){
    await loadMainWorkqueue();
    if(!workqueue||workqueue.readOnly)
     throw Error("GitHub-main-Sync noch nicht abgeschlossen. Nach der Synchronisierung denselben Deploy-Button erneut klicken.");
-   // Always resume previous same-chain/asset txs BEFORE preparing a new one.
-   // No manual hash dialog or recovery-only action is ever needed.
-   const previous=await postJSON("/admin/api/deploy/advance",{type,target});
-   let recovered=previous.result;
-   if(recovered.stage==="pending"){
-    const settle=await awaitDeploymentReceipt(
-     ()=>postJSON("/admin/api/deploy/advance",{type,target}),{
-      onPending:()=>presentModalStatus("Vorherige Wallet-Transaktion wird automatisch geprüft. Kein neuer MetaMask-Dialog nötig …","warn")
-     });
-    recovered=settle.result;
-   }
-   if(recovered.stage==="pending"){
-    presentModalStatus("Vorherige Transaktion noch nicht endgültig geklärt. Erneut auf Deploy klicken, um automatisch fortzusetzen. "+(recovered.detail||""),"warn");
-    break;
-   }
-   if(recovered.stage==="documented"){
-    presentModalStatus("Vorherige Transaktion automatisch rekonstruiert und dokumentiert. Setze Deploy-Kette fort …","success");
-    await waitForDeploymentSync(recovered);
-    continue;
-   }
-   if(recovered.stage!=="ready")
-    throw Error("Unerwarteter Status bei automatischer Deployment-Fortsetzung");
-   if(recovered.warning){
-    el("modal-gas-result").textContent="Hinweis zum erneuten Deploy: Die frühere Transaktion konnte nicht rekonstruiert werden. Zusätzliche Gas-/Reservekosten oder ein doppelter, noch nicht dokumentierter Contract sind möglich. MetaMask fragt erneut nach deiner Bestätigung.";
-    presentModalStatus("Alter Versuch nicht rekonstruierbar. Neuer Deploy nur mit frischer MetaMask-Bestätigung.","warn");
-   }
    const next=type==="chain"?
     nextChainDeployment(workqueue,target):
     nextAssetDeployment(workqueue,assetTasks,target);
@@ -600,6 +558,8 @@ async function runDeploymentBatch(type,target){
  }finally{
   batchActive=false;el("batch-stop").hidden=true;
   await loadMainWorkqueue();
+  el("modal-deploy").hidden=false;el("modal-deploy").disabled=false;
+  el("modal-deploy").textContent="Erneut mit Wallet deployen";batchRetry={type,target};
  }
 }
 async function waitForDeploymentSync(result){
