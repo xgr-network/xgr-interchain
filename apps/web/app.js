@@ -370,7 +370,8 @@ async function runJoin(action){
  const d=joinState.data;
  if(action==="back"){joinState.step=Math.max(0,joinState.step-1);joinState.status="";drawJoin();return;}
  if(action==="export"){
-  const blob=new Blob([JSON.stringify({...d,kind:"xita-alliance-application-draft"},null,2)+"\n"],{type:"application/json"});
+  const {contactEmail,...publicDraft}=d;
+   const blob=new Blob([JSON.stringify({...publicDraft,kind:"xita-alliance-application-draft"},null,2)+"\n"],{type:"application/json"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download="xita-alliance-application.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
@@ -381,7 +382,7 @@ async function runJoin(action){
    const fields={name:"name",symbol:"symbol",slug:"slug",website:"website",
      "Short description (15–280 characters)":"shortDescription",
      "Full description (40–5000 characters)":"description",
-     "CoinGecko coin ID":"coingeckoId",
+     "CoinGecko coin ID":"coingeckoId","Contact email":"contactEmail","Relationship to token":"applicantRole",
      "ERC-20 contract address":"canonicalAddress",
      "Canonical chain":"canonicalChain",Decimals:"decimals",
      "Logo URL or PNG":"logoUrl","Token URL slug":"slug","HTTPS website":"website",
@@ -410,7 +411,11 @@ async function runJoin(action){
    const response=await fetch("/api/xita/join/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
    const body=await response.json();
    if(!response.ok||!body.ok)throw Error(body.error||"Backend preview unavailable");
-   joinState.status="Manifest validation passed. "+body.files.length+" files prepared. Automatic PR submission requires verified project identity and a configured server-side GitHub writer; use Export draft until enabled.";
+   joinState.status="CoinGecko identity validated. Sending confirmation email…";drawJoin();
+   const submission=await fetch("/api/xita/join/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
+   const result=await submission.json();
+   if(!submission.ok||!result.ok)throw Error(result.error||"Submit unavailable");
+   joinState.status="Check your email for an application confirmation link. Once confirmed and revalidated, a GitHub Draft PR can be created. No personal contact details enter GitHub.";
   }catch(e){joinState.status="Preview unavailable: "+e.message+". You can still export the local application draft.";}
   drawJoin();
  }

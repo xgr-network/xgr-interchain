@@ -9,7 +9,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
 - `/token/<slug>`: token detail and prospects; link to the only transfer page
 - `/transfer?token=<ASSET>`: single transfer UI with on-chain worklist and destination-only recovery
-- `/join`: four-step Alliance onboarding with live token universe preview, local JSON export, and optional manifest preview backend. GitHub PR publication requires verified identity/session and is disabled until authentication is installed.
+- `/join`: four-step Alliance onboarding with live token universe preview, local JSON export, and optional manifest preview backend. GitHub draft PR creation is gated by confirmed applicant email, independent CoinGecko contract checks and a server-side writer; without configured private storage and email delivery it fails closed.
 
 There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
 v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
@@ -63,7 +63,7 @@ Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` 
 
 ## Join price-source configuration
 
-The home chain must be selected explicitly (no default Base). Step 2 records the original ERC-20 address and optional CoinGecko ID; no asset bridge is enabled by selecting a chain. Onboarding validation requires valid canonical chain and contract. Price feeds are informational and not collateral or route proof.
+The home chain must be selected explicitly (no default Base). Step 2 requires the original ERC-20 address and CoinGecko ID; no asset bridge is enabled by selecting a chain. Onboarding validation requires valid canonical chain and contract. Price feeds are informational and not collateral or route proof.
 
 ## CoinGecko market data in Universe
 

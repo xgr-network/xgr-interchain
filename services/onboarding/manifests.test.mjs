@@ -9,7 +9,7 @@ const application={
  description:"A sample project with valid fields for testing the XITA onboarding manifest generation process.",
  canonicalChain:"base",canonicalAddress:"0x1234567890123456789012345678901234567890",
  decimals:18,targets:["xgrchain","polygon"],categories:["DeFi"],tags:["Cross-chain"],
- logoUrl:"https://example.org/logo.png",priceSource:"none",confirmed:true
+ logoUrl:"https://example.org/logo.png",priceSource:"coingecko",coingeckoId:"example-token",contactEmail:"partner@example.org",applicantRole:"founder",confirmed:true
 };
 test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const b=buildManifestBundle(application,catalog);
@@ -33,6 +33,9 @@ test("reject direct bridge and duplicate canonical token",()=>{
  assert.throws(()=>buildManifestBundle({...application,canonicalChain:"unknown"},catalog),/Unknown canonical/);
  assert.throws(()=>buildManifestBundle({...application,canonicalAddress:"0x0000000000000000000000000000000000000000"},catalog),/Original ERC-20/);
  assert.throws(()=>buildManifestBundle({...application,confirmed:false},catalog),/acknowledgement/);
+ assert.throws(()=>buildManifestBundle({...application,applicantRole:""},catalog),/relationship/);
+ assert.throws(()=>buildManifestBundle({...application,contactEmail:"invalid"},catalog),/email/);
+ assert.throws(()=>buildManifestBundle({...application,priceSource:"none"},catalog),/CoinGecko listing/);
 });
 test("reject unsafe public metadata",()=>{
  assert.throws(()=>buildManifestBundle({...application,name:"<script>alert(1)</script>"},catalog),/Invalid project/);
@@ -42,6 +45,8 @@ test("reject unsafe public metadata",()=>{
 test("never leak private contact information into generated public files",()=>{
  const b=buildManifestBundle({...application,contact:"private@example.org"},catalog);
  assert.equal(JSON.stringify(b.files).includes("private@example.org"),false);
+ assert.equal(JSON.stringify(b.files).includes(application.contactEmail),false);
+ assert.equal(b.summary.applicantRole,"founder");
 });
 
 test("CoinGecko pricing metadata is recorded in generated profile",()=>{
