@@ -348,7 +348,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   progress.scanning?"Looking for your transfers on the chains…":
   connected?"No open transfers found in the scanned range":"Connect your wallet to check balances and open deliveries";
  const formatTokenBalance=(balance)=>{
-  if(balance?.status!=="ready"||!/^\\d+$/.test(balance.balanceRaw||""))return "Unavailable";
+  if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
   const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
   const full=(raw/scale).toString(),remainder=(raw%scale).toString()
    .padStart(balance.decimals||0,"0").slice(0,8).replace(/0+$/,"");
