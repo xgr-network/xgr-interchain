@@ -178,7 +178,7 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
   '<p class="ux-small">Positive balance does not mean enough gas. Exact transaction gas, validator fee, transferable amount and approvals must be simulated before sending. Checks are snapshots; never start without destination gas already available.</p>'+
   (wallet.hideStepList?'':('<div class="ux-gas-step-list"><strong>Planned MetaMask steps ('+(plan.hops.length*2)+' transactions)</strong>'+
   '<ol>'+steps+'</ol></div>'))+
-  (!plan.active?'<p class="ux-small">'+
+  (!plan.active&&!wallet.hideInactiveNote?'<p class="ux-small">'+
     (plan.networkOnly?"This is a chain-only gas balance preview; no eligible token route is currently selected. ":
       "Route delivery not verified. ")+
     'No signing or sending is enabled.</p>':'')+
@@ -338,13 +338,13 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const busy=progress.busy===true||progress.scanning===true;
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
- const actionLabel=!connected?"Connect Wallet":
+ const actionLabel=!connected?"Connect wallet to transfer":
   busy?"Checking on-chain transfers…":
   selected?.status==="awaiting-proof"?"Continue delivery":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
   !isDirect?"Select the first hop via XGRChain":
-  "Transfer Tokens";
+  "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
  const buttonDisabled=busy||connected&&(!deployed&&!selected||!isDirect&&!selected);
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
@@ -354,7 +354,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
   progress.scanning?"Looking for your transfers on the chains…":
   connected&&progress.coverage?.complete?"No outstanding transfers in the indexed finalized range":
-  connected?"Checking recent transfers; full wallet history may still be indexing":
+  connected?"Checking recent transfers before enabling another lock":
   "Connect your wallet to check balances and open deliveries";
  const formatTokenBalance=(balance)=>{
   if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
@@ -363,13 +363,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    .padStart(balance.decimals||0,"0").slice(0,8).replace(/0+$/,"");
   return full+(remainder?"."+remainder:"")+" "+(balance.symbol||assetId);
  };
- const tokenBalanceRows=deployedChains.map(c=>{
-  const balance=wallet.tokenBalances?.[assetId+":"+c.key];
-  return '<div class="ux-gas-check-row"><div><strong>'+esc(c.label)+'</strong>'+
-   '<small>'+esc(assetId)+' balance</small></div><span>'+
-   esc(wallet.loading?"Checking…":connected?formatTokenBalance(balance):"Connect wallet")+
-   '</span></div>';
- }).join("");
+ const sourceBalance=wallet.tokenBalances?.[assetId+":"+origin];
+ const sourceTokenAmount=wallet.loading?"Checking balance…":
+  connected?formatTokenBalance(sourceBalance):"Connect wallet to see balance";
+ const originLabel=model.chains.find(c=>c.key===origin)?.label||origin;
  const activeLabel=selected?'<span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span>':'';
  const options=pending.map(r=>'<option value="'+esc(r.txHash)+'"'+
   (selected?.txHash===r.txHash?' selected':'')+'>'+
@@ -381,30 +378,32 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<p class="ux-muted">One transfer page. Select an available route; previously confirmed source transfers are found automatically after wallet connection.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel">'+
   '<div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div>'+
-  '<label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
-  assetOptions({assets:usableAssets},assetId)+'</select>'+
-  '<label class="ux-field" for="ux-origin">From</label><select id="ux-origin"'+(selected?' disabled':'')+'>'+
-  chainOptions({chains:deployedChains},origin)+'</select>'+
-  '<label class="ux-field" for="ux-destination">To</label><select id="ux-destination"'+(selected?' disabled':'')+'>'+
-  chainOptions({chains:deployedChains},destination)+'</select>'+
-  '<label class="ux-field" for="ux-transfer-amount">Amount ('+esc(assetId)+')</label>'+
+  '<div class="ux-transfer-fields">'+
+  '<div class="ux-transfer-field"><label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
+  assetOptions({assets:usableAssets},assetId)+'</select></div>'+
+  '<div class="ux-transfer-network-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-origin">From</label><select id="ux-origin"'+(selected?' disabled':'')+'>'+
+  chainOptions({chains:deployedChains},origin)+'</select></div>'+
+  '<div class="ux-transfer-direction" aria-hidden="true">→</div>'+
+  '<div class="ux-transfer-field"><label class="ux-field" for="ux-destination">To</label><select id="ux-destination"'+(selected?' disabled':'')+'>'+
+  chainOptions({chains:deployedChains},destination)+'</select></div></div>'+
+  '<div class="ux-transfer-field"><label class="ux-field" for="ux-transfer-amount">Amount ('+esc(assetId)+')</label>'+
   '<input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="'+
   (selected?'Original amount already locked/burned':'0.0')+'" value="'+(selected?'':esc(amount))+
   '"'+(selected?' readonly':'')+'>'+
-  routePath(model,path)+
-  '<div class="ux-route-status">'+
-  (deployed?'<span class="ux-badge is-verified">Deployed</span>':
-   '<span class="ux-badge is-pending">Not deployed</span>')+
-  '<p>'+(deployed?"The source and destination contract pairs are documented.":"Choose two connected, deployed networks.")+'</p></div>'+
-  (tokenBalanceRows?'<section class="ux-gas-check"><div class="ux-gas-check-heading"><strong>Token balances</strong></div>'+
-   '<div class="ux-gas-check-rows">'+tokenBalanceRows+'</div></section>':"")+
-  renderWalletGasChecklist(model,path,{...wallet,hideGasRefresh:true,hideStepList:true})+
-  (pending.length?'<div class="ux-route-status">'+activeLabel+
-   '<label class="ux-field" for="xita-open-transfer">Open transfer'+(pending.length>1?"s":"")+'</label>'+
+  '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
+  esc(sourceTokenAmount)+'</strong></div></div></div>'+
+  (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
+   '<label class="ux-field" for="xita-open-transfer">Open transfer'+(pending.length>1?'s':'')+'</label>'+
    '<select id="xita-open-transfer">'+options+'</select>'+
-   '<p class="ux-small">Only the outstanding destination is continued; the original source is never sent again.</p></div>':'')+
-  '<button type="button" class="ux-button" id="xita-transfer-primary"'+
+   '<p class="ux-small">The original source transaction will NOT be repeated. Continue only the outstanding delivery.</p></div>':'')+
+  '<div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary"'+
    (buttonDisabled?' disabled':'')+'>'+esc(actionLabel)+'</button>'+
+  '<p class="ux-transfer-action-hint">'+
+  esc(!connected?"Connect your wallet to check the route and make a transfer.":
+   selected?"Existing source transfer detected. The original lock will not be repeated.":
+   busy?"Verifying previous on-chain transactions before another send.":
+   deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
+   "Only verified deployed routes can be transferred.")+'</p></div>'+
   '<section class="ux-transfer-progress" role="status" aria-live="polite">'+
   '<strong>'+esc(selected?"1 / 2 · "+statusLabel:
    progress.scanning?"Searching…":deployed?"Ready · "+statusLabel:"No route selected")+'</strong>'+
@@ -414,7 +413,16 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (progress.notice?'<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
   (progress.error?'<p class="ux-transfer-error">'+esc(progress.error)+'</p>':'')+
   '</section>'+
-  '<p class="ux-small">A direct transfer uses source Gateway.bridge and destination Mailbox.process. An ERC-20 allowance can require a separate approval. Existing successful source transfers are never repeated.</p>'+
+  '<details class="ux-transfer-advanced"><summary>Route, network gas &amp; safety checks <span aria-hidden="true">⌄</span></summary>'+
+  '<div class="ux-transfer-advanced-body">'+routePath(model,path)+
+  '<div class="ux-route-status">'+
+  (deployed?'<span class="ux-badge is-verified">Contracts deployed</span>':
+   '<span class="ux-badge is-pending">Route unavailable</span>')+
+  '<p>'+(deployed?"The source and destination contract addresses are documented. Their live bindings, fees and gas requirements are checked again before signing.":
+    "A documented, direct route is required before signing.")+'</p></div>'+
+  renderWalletGasChecklist(model,path,{...wallet,hideStepList:true,hideInactiveNote:deployed})+
+  '</div></details>'+
+  '<p class="ux-transfer-footer-note">A direct transfer uses source Gateway.bridge and destination Mailbox.process. A separate ERC-20 approval may be required. A confirmed source lock is never repeated.</p>'+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
   (connected?'<p class="ux-small">'+(progress.coverage?.complete?
     'Open transfers are indexed across all documented routes.':
@@ -424,7 +432,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<span class="ux-kicker">NETWORK STATUS</span><h2>Available networks</h2>'+
   '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
    deployedChains.length+'</strong></div><div><span>Deployed directed routes</span><strong>'+routes.length+'</strong></div></div>'+
-  '<p class="ux-muted">Transfer status is read from the canonical Gateway and Mailbox contracts. No browser transaction history or additional administrative approval is used.</p>'+
+  '<div class="ux-transfer-explainer"><strong>How your transfer works</strong><ol><li>Check balances, route contracts and fees before signing.</li><li>Lock or burn on the source chain, once.</li><li>After validator proof, confirm delivery on the destination chain.</li></ol><p>Each step is confirmed in your own wallet. No XITA custody or private keys.</p></div>'+
   '</aside></div>'+ 
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
   '</section></div>';

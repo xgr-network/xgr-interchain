@@ -208,3 +208,24 @@ test("no catalog deployment does not invent actionable transfer routes",()=>{
  assert.doesNotMatch(html,/eth_sendTransaction/);
 });
 
+
+test("Transfer CTA appears immediately after amount, before collapsed gas diagnostics",()=>{
+ const model=buildExperienceModel(catalog);
+ const wallet={account:"0x1111111111111111111111111111111111111111",
+  tokenBalances:{"XGR:xgrchain":{status:"ready",balanceRaw:"12000000000000000000",decimals:18,symbol:"XGR"}},
+  balances:{xgrchain:{status:"ready",balanceWei:"12000000000000000000"},
+   base:{status:"ready",balanceWei:"2000000000000000"}}};
+ const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",wallet);
+ assert.ok(html.indexOf('id="ux-transfer-amount"')<html.indexOf('id="xita-transfer-primary"'));
+ assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('class="ux-transfer-advanced"'));
+ assert.match(html,/<details class="ux-transfer-advanced">/);
+ assert.match(html,/Available on XGRChain/);
+ assert.match(html,/12 XGR/);
+ assert.equal((html.match(/Token balances/g)||[]).length,0);
+ assert.match(html,/Gas and contract checks run before MetaMask asks you to sign/);
+ assert.match(html,/Transfer XGR/);
+ assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
+ const noWallet=renderPlanRoute(model,{},"ready");
+ assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("Route, network gas"));
+ assert.match(noWallet,/id="xita-transfer-primary"/);
+});
