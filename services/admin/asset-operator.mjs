@@ -18,6 +18,9 @@ import {selector,keccak256} from "../../apps/web/keccak.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
 const ADDR=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,H32=/^0x[0-9a-f]{64}$/i;
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
+const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
+const trustedWalletActor=(chain,caller,wallet)=>equal(caller,wallet)||
+ (chain.chainId===8453&&equal(caller,BASE_WALLET_EXECUTOR));
 const liveAddr=a=>ADDR.test(a||"")&&!/^0x0{40}$/i.test(a);
 function wordAddress(data){
  if(!H32.test(data||"")||BigInt(data)>=1n<<160n)throw Error("Invalid on-chain address getter");
@@ -102,7 +105,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    ]);
    if(!equal(localId,asset.assetId)||!equal(remoteId,asset.assetId))
     throw Error("Router's on-chain asset identity does not match canonical catalog");
-   if(!equal(wordAddress(creator),wallet))throw Error("Wallet must be the source Router creator");
+   if(!trustedWalletActor(chain,wordAddress(creator),wallet))throw Error("Wallet or its approved Base executor must be the source Router creator");
    wordAddress(sourceToken);const destToken=wordAddress(destinationToken);
    // Live on-chain source registry rejects duplicate preparation.
    const prepared=await view(rpc,url,factory,"routeForDomainRegistered(address,uint32)",
@@ -198,7 +201,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   if(!gateway){
    const assetOnChain=await view(rpc,url,factory,"assetIdForRouter(address)",["address"],[address]);
    const creator=wordAddress(await view(rpc,url,factory,"routerCreator(address)",["address"],[address]));
-   if(!equal(assetOnChain,entry.assetId)||!equal(creator,entry.wallet))
+   if(!equal(assetOnChain,entry.assetId)||!trustedWalletActor(chain,creator,entry.wallet))
     throw Error("Factory router identity or origin wallet mismatch");
    await append(entry.id.split(":")[2],address,{kind:"factory-router",factory,assetId:entry.assetId});
   }else{
