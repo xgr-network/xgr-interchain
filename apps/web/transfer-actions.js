@@ -151,6 +151,9 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    const gas=await request(provider,"eth_estimateGas",[approve]);
    const cash=await sourceGasAffordable(provider,account);
    preflightGas(gas,cash.gasPrice,0n,cash.balance);
+   await validateWalletAccount(provider,account);
+   await rpcChain(provider,src);
+   await ensureNoPendingWalletTransaction(provider,account);
    const approvalHash=await request(provider,"eth_sendTransaction",[approve]);
    const approvalReceipt=await waitForWalletReceipt(provider,approvalHash);
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
