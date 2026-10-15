@@ -157,7 +157,9 @@ async function performTransferAction(){
     return;
    }
    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
-    provider:globalThis.ethereum,onBroadcast:({txHash})=>{
+    provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+     transferActivity.notice=notice;if(path()==="/transfer")render();
+    },onBroadcast:({txHash})=>{
      broadcastKnown=true;
      transferActivity.notice="Destination TX "+txHash+
       " submitted. Original source transfer is NEVER repeated.";
@@ -186,7 +188,34 @@ async function performTransferAction(){
   const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
   if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
   else if(receipt.status!=="0x1")transferActivity.notice="Source TX reverted; no lock/burn was committed.";
-  else await lookupWalletTransfer(sent.sourceChain,sent.txHash);
+  else {
+   // The source receipt is irreversible. Continue this SAME on-chain message,
+   // never start another bridge. The destination still requires a wallet signature.
+   transferActivity.notice="Source confirmed. Preparing verified destination delivery…";
+   if(path()==="/transfer")render();
+   const record=await findWalletSourceTx({catalog:state.catalog,account,
+    sourceChain:sent.sourceChain,txHash:sent.txHash});
+   upsertTransfer(record);
+   if(record.status==="awaiting-proof"){
+    transferActivity.selectedTxHash=record.txHash;
+    const delivered=await resumeDelivery({catalog:state.catalog,account,record,
+     provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+      transferActivity.notice=notice;if(path()==="/transfer")render();
+     },onBroadcast:({txHash})=>{
+      broadcastKnown=true;
+      transferActivity.notice="Destination TX "+txHash+" submitted. Checking delivery…";
+      if(path()==="/transfer")render();
+     }});
+    transferActivity.notice=delivered.status==="delivered"?"Destination delivery confirmed.":
+     delivered.status==="waiting"||delivered.status==="paused"?delivered.notice:
+     delivered.status==="failed"?"Destination transaction failed; source lock remains safe.":
+     "Destination transaction submitted; verifying Mailbox delivery.";
+    if(delivered.status!=="waiting"&&delivered.status!=="paused")
+     await lookupWalletTransfer(sent.sourceChain,sent.txHash);
+   }else{
+    transferActivity.notice="Source transaction recorded. Waiting for confirmations or destination RPC.";
+   }
+  }
  }catch(error){
   transferActivity.error=String(error.message||error);
   // A failed preflight must not keep displaying a stale in-progress status.

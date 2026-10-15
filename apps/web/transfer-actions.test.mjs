@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,quoteCalldata,bridgeCalldata,startTransfer,resumeDelivery} from "./transfer-actions.js";
+import {amountToUnits,quoteCalldata,bridgeCalldata,startTransfer,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 const account=address("e"),srcRouter=address("6"),dstRouter=address("7");
@@ -186,4 +186,24 @@ test("invalid wallet nonce is not bypassed if the canonical RPC is unavailable",
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider:invalid,fetcher}),/Nonce verification failed/);
  assert.equal(sent.length,0);
+});
+
+test("unsigned automatic delivery polling is bounded and never initiates source or target signing",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"xgr_to_base",messageId:hash("4"),sourceTxHash:sourceTx});
+ const results=["PENDING","PREPARING","READY_UNSIGNED_CALL"],calls=[];
+ const outcome=await awaitUnsignedDeliveryProof({query,attempts:5,delayMs:0,sleep:async()=>{},onStatus:x=>calls.push(x),
+  fetcher:async(url)=>{assert.match(url,/sourceTxHash=/);return {ok:true,json:async()=>({ok:true,status:results.shift(),data:"0x1234"})}}});
+ assert.equal(outcome.status,"ready");assert.equal(calls.length,2);
+});
+test("temporary proof service error keeps immutable source lock and retries",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"xgr_to_base",messageId:hash("4")});
+ let i=0;const outcome=await awaitUnsignedDeliveryProof({query,attempts:3,delayMs:0,sleep:async()=>{},
+  fetcher:async()=>++i===1?{ok:false,json:async()=>({ok:false,reason:"PROOF_RPC_UNAVAILABLE"})}:
+   {ok:true,json:async()=>({ok:true,status:"ALREADY_DELIVERED"})}});
+ assert.equal(outcome.status,"delivered");assert.equal(i,2);
+});
+test("fatal backend configuration mismatch blocks automated signing",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"xgr_to_base",messageId:hash("4")});
+ await assert.rejects(awaitUnsignedDeliveryProof({query,attempts:5,delayMs:0,sleep:async()=>{},
+  fetcher:async()=>({ok:false,json:async()=>({reason:"PROOF_CONFIG_MISMATCH"})})}),/configuration mismatch/);
 });
