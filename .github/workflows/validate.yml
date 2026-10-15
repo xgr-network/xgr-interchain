@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs
+          node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs tools/validate-join-pr.test.mjs
 
       - name: Validate read-only transfer Nginx install and repair
         run: node --test tools/transfer-recovery-nginx.test.mjs
