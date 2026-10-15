@@ -61,7 +61,7 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs
+    node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
     node --test tools/transfer-recovery-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
