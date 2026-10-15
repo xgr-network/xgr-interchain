@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-representations",
+  "asset": "XGR",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+  "representations": [
+    {
+      "chain": "xgrchain",
+      "component": "nativeRouter",
+      "address": "0xd8022362a018bf72d41e7e71d2690b79043cecd8",
+      "runtimeCodeKeccak256": "0xe680dc08d8b7db7e51c35a5f81ae0e2928c68c9806892484aad1651e679a36bb",
+      "receiptPath": "deployments/receipts/xgrchain/c902371d0e95702646edc664f98b9dafe0361a11cb2758708900d88a1aa50ae5-d8022362a018bf72d41e7e71d2690b79043cecd8.json"
+    }
+  ]
+}
