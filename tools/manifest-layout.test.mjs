@@ -26,16 +26,17 @@ test("only receipt-verified chains have deployment files",()=>{
  assert.equal(catalog.infrastructure.xgrchain.xitaV315.components.ism.address.toLowerCase(),"0x8c4585952a5960fe1238414eba409288aa4bb47a");
  assert.deepEqual(validateCatalog(catalog),[]);
 });
-test("XGR sharded config has no deployed asset representations or route files",()=>{
+test("XGR sharded config and two deployed directions share the same canonical index",()=>{
  const catalog=loadCatalog(root);
  assert.equal(assetConfigFolder("XGR",XGR),"config/assets/a7/XGR");
  assert.equal(assetDeploymentFolder("XGR",XGR),"deployments/assets/a7/XGR");
  assert.equal(existsSync(join(root,"config/assets/XGR")),false);
- assert.equal(existsSync(join(root,"deployments/assets/a7/XGR")),false);
+ assert.equal(existsSync(join(root,"deployments/assets/a7/XGR")),true);
  const virtual=loadAssetDeployment(root,"XGR",XGR);
- assert.equal(virtual.present,false);
- assert.deepEqual(virtual.routeDeployments,[]);
- assert.deepEqual(virtual.representations,[]);
+ assert.equal(virtual.present,true);
+ assert.equal(virtual.routeDeployments.length,2);
+ assert.equal(virtual.representations.length,2);
+ assert.deepEqual(virtual.routeDeployments.map(r=>r.routeName).sort(),["base_to_xgr","xgr_to_base"]);
  assert.equal(catalog.assets.XGR.routes.routes.length,6);
  assert.equal(Object.hasOwn(catalog.assets.XGR,"mainnet"),false);
 });
