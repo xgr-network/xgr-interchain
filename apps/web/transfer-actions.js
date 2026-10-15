@@ -125,6 +125,16 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const units=amountToUnits(amount,decimals);
  if(source!=="xgrchain"&&destination!=="xgrchain")
   throw Error("Two-hop transfers must be completed one hop at a time");
+ // Require public permissionless recovery proof infrastructure before
+ // locking/burning source assets. This is an execution preflight, never a
+ // separate administrator activation flag.
+ const proofService=await fetcher("/api/xeta/v1/transfer/health",{
+  credentials:"omit",cache:"no-store",headers:{accept:"application/json"}
+ }).catch(()=>null);
+ if(!proofService?.ok)throw Error("Destination recovery infrastructure unavailable; no tokens locked");
+ const proofHealth=await proofService.json().catch(()=>null);
+ if(!proofHealth?.ok||proofHealth.proofBuilder!=="installed")
+  throw Error("Unsigned BLS/Merkle recovery is not ready; no tokens locked");
  // Source gas plus destination gas must exist before locking/burning.
  const destinationRpcId=await publicRead(dst.rpcUrls?.[0],"eth_chainId",[],fetcher);
  if(!QTY.test(destinationRpcId||"")||BigInt(destinationRpcId)!==BigInt(dst.chainId))
