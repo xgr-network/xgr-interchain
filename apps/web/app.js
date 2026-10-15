@@ -8,11 +8,13 @@ import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,scanRecentWalletTransfers} from "./wallet-transfers.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
+import {startTransfer,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
+import {readWalletTokenBalances} from "./wallet-token-balances.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 let transferRequest=0;
-const transferActivity={items:[],scanned:false,scanning:false,report:null,notice:"",error:""};
+const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,report:null,notice:"",error:""};
 function refreshTransferLink(){
  const link=document.querySelector("#my-transfers-link");
  if(link)link.hidden=!validWalletAddress(state.account);
@@ -24,11 +26,12 @@ function setConnectedAccount(next){
  connect.textContent=account?shorten(account):"Connect Wallet";
  if(changed){
   transferRequest++;
-  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,report:null,notice:"",error:""});
+  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,report:null,notice:"",error:""});
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
  if(state.catalog&&(changed||path()==="/my-transfers"))render();
+ if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
  transferActivity.items=[record,...transferActivity.items.filter(t=>
@@ -39,7 +42,7 @@ async function scanWalletHistory(){
  if(!account||!state.catalog||transferActivity.scanning)return;
  const marker=++transferRequest;
  transferActivity.scanning=true;transferActivity.scanned=true;transferActivity.error="";
- if(path()==="/my-transfers")render();
+ if(path()==="/my-transfers"||path()==="/transfer")render();
  try{
   const results=await scanRecentWalletTransfers({catalog:state.catalog,account});
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
@@ -47,16 +50,16 @@ async function scanWalletHistory(){
   transferActivity.report=results;
   transferActivity.notice=results.scannedRoutes===0?
    "No deployed XITA Gateway routes are available. No transfers were inferred.":
-   "Recent confirmed source events checked. This is not a complete historical index.";
+   "Recent wallet events checked on-chain; older transactions can be found by TX hash.";
   if(results.warnings.length)transferActivity.error=
-   "Some RPC scans were unavailable; paste the original source TX hash to retry.";
+   "Some RPC scans failed. Use original source TX hash for older activity.";
  }catch(error){
   if(marker!==transferRequest)return;
   transferActivity.error="Could not scan recent source events: "+String(error.message||error);
  }finally{
   if(marker===transferRequest){
    transferActivity.scanning=false;
-   if(path()==="/my-transfers")render();
+   if(path()==="/my-transfers"||path()==="/transfer")render();
   }
  }
 }
@@ -66,7 +69,7 @@ async function lookupWalletTransfer(sourceChain,txHash){
  const marker=++transferRequest;
  transferActivity.scanning=true;transferActivity.error="";
  transferActivity.notice="Checking the original source transaction and its destination Mailbox…";
- if(path()==="/my-transfers")render();
+ if(path()==="/my-transfers"||path()==="/transfer")render();
  try{
   const record=await findWalletSourceTx({catalog:state.catalog,account,sourceChain,txHash});
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
@@ -81,7 +84,7 @@ async function lookupWalletTransfer(sourceChain,txHash){
  }finally{
   if(marker===transferRequest){
    transferActivity.scanning=false;
-   if(path()==="/my-transfers")render();
+   if(path()==="/my-transfers"||path()==="/transfer")render();
   }
  }
 }
@@ -297,34 +300,37 @@ async function runJoin(action){
 }
 let walletGasRequest=0;
 const walletGasView=()=>({account:state.account,chainId:state.walletChainId,
- balances:state.walletBalances,checkedAt:state.walletGasCheckedAt,loading:state.walletGasLoading});
+  balances:state.walletBalances,tokenBalances:state.walletTokenBalances,
+  checkedAt:state.walletGasCheckedAt,loading:state.walletGasLoading});
 async function updateWalletGas(){
  const request=++walletGasRequest;
  const account=state.account;
  if(!account||!state.catalog||!globalThis.ethereum?.request){
-  state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGasLoading=false;
-  if(state.catalog&&(path()==="/plan-route"||path().startsWith("/token/")))render();
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;state.walletGasLoading=false;
+  if(state.catalog&&(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/")))render();
   return;
  }
- state.walletGasLoading=true;state.walletBalances=null;state.walletGasCheckedAt=null;
- if(path()==="/plan-route"||path().startsWith("/token/"))render();
+ state.walletGasLoading=true;state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;
+ if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
  try{
   // Read balances only. Never switch chains, sign, approve or submit.
-  const result=await readNativeGasBalances({
-   account,chains:state.catalog.chains,provider:globalThis.ethereum,
-   fetcher:globalThis.fetch.bind(globalThis)
-  });
+  const [result,tokenBalances]=await Promise.all([
+   readNativeGasBalances({account,chains:state.catalog.chains,provider:globalThis.ethereum,
+     fetcher:globalThis.fetch.bind(globalThis)}),
+   readWalletTokenBalances({account,catalog:state.catalog})
+  ]);
   if(request!==walletGasRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
   state.walletChainId=result.walletChainId;
   state.walletBalances=result.balances;
+   state.walletTokenBalances=tokenBalances;
   state.walletGasCheckedAt=result.checkedAt;
  }catch{
   if(request!==walletGasRequest)return;
-  state.walletBalances=null;state.walletGasCheckedAt=null;
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;
  }finally{
   if(request===walletGasRequest){
    state.walletGasLoading=false;
-   if(path()==="/plan-route"||path().startsWith("/token/"))render();
+   if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
   }
  }
 }
@@ -333,7 +339,12 @@ function render(){
  if(cosmos){cosmos.dispose();cosmos=null;}
  const rawPath=path();
  if(rawPath==="/universe"){history.replaceState(null,"","/");}
- const p=rawPath==="/universe"?"/":rawPath;
+ if(rawPath==="/plan-route")history.replaceState(null,"","/transfer"+location.search);
+ const p=rawPath==="/universe"?"/":rawPath==="/plan-route"?"/transfer":rawPath;
+ if(p==="/transfer"){
+  const preselect=new URLSearchParams(location.search).get("token");
+  if(preselect&&state.catalog?.assets?.[preselect])state.experience.asset=preselect;
+ }
  if(p==="/my-transfers"&&!state.account){
   history.replaceState(null,"","/");
   return render();
@@ -342,12 +353,21 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel(p==="/"||p==="/universe"?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView()):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
+   items:transferActivity.items,scanning:transferActivity.scanning,
+   busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
+   notice:transferActivity.notice,error:transferActivity.error
+  }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
-   document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
+   document.getElementById(id)?.addEventListener("change",e=>{
+   state.experience[name]=e.target.value;
+   if(name==="asset"&&p==="/transfer")
+    history.replaceState(null,"","/transfer?token="+encodeURIComponent(e.target.value));
+   render();
+  });
  }
  if(p==="/"){
   const host=document.querySelector("#xita-3d");
@@ -366,6 +386,11 @@ function render(){
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelector("#ux-transfer-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelector("#xita-open-transfer")?.addEventListener("change",e=>{
+  transferActivity.selectedTxHash=e.target.value;render();
+ });
+ document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
  document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelector("#xita-scan-transfers")?.addEventListener("click",()=>void scanWalletHistory());
  document.querySelector("#xita-lookup-form")?.addEventListener("submit",event=>{
@@ -380,7 +405,8 @@ function render(){
   }
   void lookupWalletTransfer(sourceChain,txHash);
  });
- if(p==="/my-transfers"&&!transferActivity.scanned&&!transferActivity.scanning)
+ if((p==="/my-transfers"||p==="/transfer")&&state.account&&
+   !transferActivity.scanned&&!transferActivity.scanning)
   void scanWalletHistory();
  document.querySelectorAll("[data-leader-sort]").forEach(button=>button.addEventListener("click",()=>{
    const key=button.dataset.leaderSort;
@@ -408,10 +434,10 @@ connect.addEventListener("click",async()=>{
 if(globalThis.ethereum?.on){
  globalThis.ethereum.on("accountsChanged",accounts=>{
   setConnectedAccount(Array.isArray(accounts)?accounts[0]:null);
-  state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;
   void updateWalletGas();
  });
- globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
+ globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
 }
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("click",event=>{
@@ -542,7 +568,7 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/plan-route"||path().startsWith("/token/"))render();
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
