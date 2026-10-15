@@ -174,7 +174,7 @@ export async function resumeDelivery({catalog,account,record,provider,
   throw Error("Source confirmation or destination availability is unclear; do not sign");
  if(!eq(current.messageId,record.messageId)||!current.routeName)
   throw Error("Unverified original transfer");
- const query=new URLSearchParams({route:current.routeName,messageId:current.messageId});
+ const query=new URLSearchParams({asset:current.asset,route:current.routeName,messageId:current.messageId});
  const response=await fetcher("/api/xeta/v1/transfer/recovery?"+query,{credentials:"omit",
   cache:"no-store",headers:{accept:"application/json"}});
  const proof=await response.json().catch(()=>null);
