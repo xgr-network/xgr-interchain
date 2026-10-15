@@ -974,3 +974,47 @@ body>footer{flex-shrink:0;width:min(100%,1540px);margin-top:auto;align-items:cen
 .ux-legal-page section{padding:2px 0 14px;border-bottom:1px solid #29415b}
 .ux-legal-meta{font-size:.83rem;color:#8ea9c8}
 @media(max-width:680px){body>footer{align-items:flex-start;flex-wrap:wrap;flex-direction:column;padding:24px 18px}.ux-legal-links{justify-content:flex-start}}
+
+
+/* XITA first-transfer focus: action above all diagnostics; token balance displayed once. */
+.ux-plan-page{padding-top:10px}
+main:has(>.ux-plan-page){padding-top:5px}
+.ux-plan-page .ux-ns-operations{margin-top:16px}
+.ux-plan-page .ux-ns-ops-intro{margin-bottom:18px}
+.ux-plan-page .ux-ns-ops-intro h1{margin:8px 0;font-size:clamp(32px,3.5vw,50px)}
+.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1.5fr) minmax(260px,.65fr);align-items:start;gap:22px}
+.ux-transfer-fields{display:grid;gap:13px}
+.ux-transfer-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ux-transfer-field .ux-field{margin:0}
+.ux-transfer-field>select,.ux-transfer-field>input{width:100%;min-width:0;box-sizing:border-box}
+.ux-transfer-network-fields{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);align-items:end;gap:10px}
+.ux-transfer-direction{font-size:22px;color:#a1c0e2;text-align:center;padding-bottom:13px}
+.ux-transfer-available{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:1px 0 4px;color:#9fb7d0;font-size:12px}
+.ux-transfer-available strong{color:#e0ecfb;font-variant-numeric:tabular-nums;font-size:13px}
+.ux-transfer-action{display:grid;gap:8px;margin-top:16px}
+.ux-transfer-action>#xita-transfer-primary{width:100%;min-height:50px;font-size:14px;font-weight:700}
+.ux-transfer-action-hint{font-size:11px;color:#9eb4cc;margin:0;line-height:1.6}
+.ux-transfer-outstanding{padding:13px;margin-top:14px;border:1px solid #9b764e;border-radius:10px;background:#2c241a70}
+.ux-transfer-outstanding .ux-kicker{display:block;margin-bottom:8px;color:#e9c68f}
+.ux-transfer-outstanding select{width:100%;max-width:100%;margin-top:5px}
+.ux-transfer-outstanding .ux-small{margin-bottom:0}
+.ux-plan-page .ux-transfer-progress{display:grid;gap:10px;min-width:0;margin-top:14px;overflow-wrap:anywhere}
+.ux-plan-page .ux-transfer-progress strong{display:block;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.ux-plan-page .ux-transfer-progress progress{display:block;width:100%;max-width:100%;height:7px}
+.ux-plan-page .ux-transfer-progress p{margin:0;line-height:1.5}
+.ux-plan-page .ux-transfer-progress code{overflow-wrap:anywhere}
+.ux-transfer-advanced{margin-top:18px;border:1px solid #304861;border-radius:11px;background:#091629}
+.ux-transfer-advanced>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 15px;color:#c5d9ee;font-size:12px;font-weight:650;list-style:none}
+.ux-transfer-advanced>summary::-webkit-details-marker{display:none}
+.ux-transfer-advanced[open]>summary{border-bottom:1px solid #304861}
+.ux-transfer-advanced-body{padding:13px}
+.ux-transfer-advanced-body .ux-gas-check{margin:12px 0 0;padding:0;border:0;background:transparent}
+.ux-transfer-advanced-body .ux-journey{margin:12px 0}
+.ux-transfer-advanced-body .ux-route-status{margin-top:10px}
+.ux-transfer-footer-note{font-size:11px;line-height:1.7;color:#91a9c4}
+.ux-transfer-explainer{margin-top:15px;border-top:1px solid #304861;padding-top:18px}
+.ux-transfer-explainer strong{font-size:13px;color:#d7e9fc}
+.ux-transfer-explainer ol{padding-left:18px;color:#a6bdd7;font-size:12px;line-height:1.8}
+.ux-transfer-explainer p{font-size:11px;color:#97acc4}
+@media(max-width:900px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.ux-plan-page{padding:10px 12px 40px}.ux-transfer-network-fields{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:6px}.ux-transfer-direction{font-size:17px}.ux-transfer-available{font-size:11px}}

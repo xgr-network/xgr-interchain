@@ -157,3 +157,13 @@ test("missing unsigned recovery service must prevent any source token lock",asyn
   fetcher:async()=>({ok:false,status:503})}),/recovery infrastructure unavailable/);
  assert.equal(sends.length,0);
 });
+
+test("stale XGR RPC pending nonce fails closed with actionable explanation",async()=>{
+ const sent=[];
+ const primary=sourceProvider(sent);
+ const stale={request:async req=>req.method==="eth_getTransactionCount"&&req.params?.[1]==="pending"?"0x1":primary.request(req)};
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:stale,fetcher:testFetch()}),
+  /pending nonce is behind the confirmed chain nonce/);
+ assert.equal(sent.length,0);
+});

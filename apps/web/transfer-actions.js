@@ -93,10 +93,12 @@ async function ensureNoPendingWalletTransaction(provider,account){
   request(provider,"eth_getTransactionCount",[account,"latest"]),
   request(provider,"eth_getTransactionCount",[account,"pending"])
  ]);
- if(!QTY.test(confirmed||"")||!QTY.test(pending||"")||BigInt(pending)<BigInt(confirmed))
-  throw Error("Wallet nonce state unclear; no new transfer sent");
+ if(!QTY.test(confirmed||"")||!QTY.test(pending||""))
+  throw Error("Wallet RPC returned invalid nonce data. No transaction was sent.");
+ if(BigInt(pending)<BigInt(confirmed))
+  throw Error("Wallet RPC pending nonce is behind the confirmed chain nonce. Check that MetaMask uses a fully synced RPC, then retry. No transaction was sent.");
  if(BigInt(pending)>BigInt(confirmed))
-  throw Error("A wallet transaction is pending. Wait for its receipt before signing another transfer");
+  throw Error("Your wallet has a pending transaction. Check MetaMask activity and wait for its receipt before signing another transfer.");
 }
 function preflightGas(estimated,gasPrice,value,balance){
  if(!QTY.test(estimated||""))throw Error("Cannot estimate transaction gas");
