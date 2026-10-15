@@ -228,9 +228,9 @@ http.createServer(async(req,res)=>{
   if(req.method==="GET"&&path==="/admin/api/route-lifecycle"){
    const queue=await readOnlyWorkQueue(root);
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
-   const {graph:lifecycle,tasks}=nextAssetRouteTasks(queue.inventory,infrastructure);
+   const {graph:lifecycle,tasks,eligibleRoutes,eligibleChains}=nextAssetRouteTasks(queue.inventory,infrastructure);
    const pending=await pendingLiveRouteTasks(tasks,queue.inventory.chains,infrastructure,probe);
-   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending});
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending,eligibleRoutes,eligibleChains});
   }
   if(req.method==="POST"&&path==="/admin/api/deploy/advance"){
    const item=await bodyJSON(req);

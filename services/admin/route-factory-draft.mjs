@@ -96,20 +96,45 @@ export function factoryRouteDraft({asset,source,destination,sourceInfrastructure
  }
  throw Error("Unsupported route factory action");
 }
+// A configured chain is NOT deployable until its complete core infrastructure
+// is recorded in immutable GitHub deployment manifests. No wallet/asset/route
+// operation for a not-yet-deployed spoke should be exposed or prepared.
+export function chainReadyForAssetRoutes(chain){
+ const components=chain?.components;
+ return chain?.status==="documented"&&Array.isArray(components)&&
+  components.length>0&&components.every(c=>c.status==="documented"&&valid(c.address))&&
+  ["factory","sourceRegistry"].every(key=>components.some(c=>
+   c.key===key&&c.status==="documented"&&valid(c.address)));
+}
 export function nextAssetRouteTasks(inventory,infrastructure){
+ // Preserve the FULL canonical graph for review and validation. Visibility is
+ // derived separately from BOTH endpoints' verified GitHub chain state.
  const graph=planCatalogRoutes(inventory,infrastructure);
  const chains=new Map(inventory.chains.map(c=>[c.name,c]));
  const infra=new Map(infrastructure.map(c=>[c.name,c]));
- const items=[];
+ const readyChains=new Set(infrastructure.filter(chainReadyForAssetRoutes).map(c=>c.name));
+ const items=[],eligibleRoutes=[];
  for(const asset of graph.assets){
+  // A hub router must only appear if at least one reciprocal spoke route can
+  // eventually use it. Never deploy routers for configured-only networks.
+  const pairs=asset.pairs.filter(pair=>pair.chains.every(name=>readyChains.has(name)));
+  const participating=new Set(pairs.flatMap(pair=>pair.chains));
+  const routeNames=new Set(pairs.flatMap(pair=>pair.directions.map(d=>d.name)));
+  for(const route of asset.routes){
+   if(routeNames.has(route.name))eligibleRoutes.push({
+    asset:asset.asset,name:route.name,source:route.source,destination:route.destination
+   });
+  }
   for(const rep of asset.representations){
+   if(!participating.has(rep.chain))continue;
    const chain=chains.get(rep.chain);
    const deps=["factory","sourceRegistry"].filter(k=>
     !valid(infra.get(chain.name)?.components.find(c=>c.key===k)?.address));
    if(rep.action==="deploy-once")items.push({id:rep.id,asset:asset.asset,chain:chain.name,
-    kind:"router",action:rep.deployMethod,blockers:deps,status:deps.length?"waiting-infrastructure":"ready-for-independent-validation"});
+    kind:"router",action:rep.deployMethod,blockers:deps,
+    status:deps.length?"waiting-infrastructure":"ready-for-independent-validation"});
   }
-  for(const pair of asset.pairs){
+  for(const pair of pairs){
    for(const d of pair.directions){
     if(d.registered)continue;
     const blockers=[];
@@ -120,10 +145,11 @@ export function nextAssetRouteTasks(inventory,infrastructure){
        blockers.push(name+":"+component);
     }
     items.push({id:asset.asset+":"+d.name+":register",asset:asset.asset,
-     chain:asset.routes.find(r=>r.kind==="route-register"&&r.name===d.name)?.source,kind:"gateway",action:"registerRoute",
-     blockers,status:blockers.length?"waiting-dependencies":"ready-for-independent-validation"});
+     chain:asset.routes.find(r=>r.kind==="route-register"&&r.name===d.name)?.source,
+     kind:"gateway",action:"registerRoute",blockers,
+     status:blockers.length?"waiting-dependencies":"ready-for-independent-validation"});
    }
   }
  }
- return {graph,tasks:items};
+ return {graph,tasks:items,eligibleRoutes,eligibleChains:[...readyChains]};
 }
