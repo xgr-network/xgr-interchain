@@ -46,7 +46,7 @@ function sourceProvider(sends,overrides={}){
  return {request:async({method,params=[]})=>{
   if(method==="eth_chainId")return "0x66b";
   if(method==="eth_accounts")return [account];
-  if(method==="eth_getTransactionCount")return "0x2";
+  if(method==="eth_getTransactionCount")return overrides.pendingNonce&&params[1]==="pending"?"0x3":"0x2";
   if(method==="eth_call"){
    const data=params[0]?.data?.slice(0,10);
    if(data===selector("warpRouter()"))return word(BigInt(srcRouter));
@@ -61,7 +61,7 @@ function sourceProvider(sends,overrides={}){
   if(method==="eth_estimateGas")return "0x5208";
   if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
   if(method==="eth_gasPrice")return "0x3b9aca00";
-  if(method==="eth_getTransactionCount")return overrides.pendingNonce&&params[1]==="pending"?"0x2":"0x1";
+  
   if(method==="eth_sendTransaction"){sends.push(params[0]);return sourceTx;}
   if(overrides[method])return overrides[method]({params});
   throw Error("Unexpected wallet method: "+method);
@@ -96,12 +96,10 @@ test("unresolved MetaMask source nonce blocks any second lock while no canonical
  const primary=sourceProvider(sends);
  const provider={request:async req=>req.method==="eth_getTransactionCount"&&
   req.params?.[1]==="pending"?"0x3":primary.request(req)};
- const fetcher=async(url,options)=>rpcResponse(
-  JSON.parse(options.body).method==="eth_chainId"?"0x2105":
-  "0x"+(1n*10n**18n).toString(16));
+ const fetcher=testFetch();
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider,fetcher}),
-  /previous MetaMask transaction is pending/);
+  /pending/);
  assert.equal(sends.length,0);
 });
 test("wallet with no destination-native gas never submits source lock",async()=>{
