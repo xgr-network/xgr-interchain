@@ -12,6 +12,18 @@ export const OPERATION_TOPIC=keccak256("ILNOperation(bytes32,bytes32,uint32,uint
 export const DISPATCH_TOPIC=keccak256("Dispatch(address,uint32,bytes32,bytes)");
 const deliveredSelector=selector("delivered(bytes32)");
 const accountMatches=(a,b)=>isAddress(a)&&lower(a)===lower(b);
+// Some MetaMask wallets execute the approved Gateway call inside this
+// observed Base wallet executor. Identity still comes from tx.from and
+// canonical Gateway ILNOperation + Mailbox Dispatch within the SAME receipt.
+const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
+const BRIDGE_SELECTOR=selector("bridge(uint32,bytes32,uint256)");
+function executorRoutes(tx,routes){
+ if(!accountMatches(tx?.to,BASE_WALLET_EXECUTOR))return [];
+ const input=lower(tx?.input??tx?.data);
+ if(typeof input!=="string"||!/^0x[0-9a-f]+$/.test(input)||
+   !input.startsWith("0xcef6d209")||!input.includes(BRIDGE_SELECTOR.slice(2)))return [];
+ return routes.filter(r=>r.sourceChain==="base"&&input.includes(r.gateway.slice(2)));
+}
 export function configuredGatewayRoutes(catalog){
  const result=[];
  if(!catalog?.chains||!catalog?.infrastructure)return result;
@@ -31,7 +43,7 @@ export function configuredGatewayRoutes(catalog){
    if(!entry?.routes?.routes?.some(r=>r.name===route.routeName&&
       r.sourceChain===src&&r.destinationChain===dst))continue;
    result.push({asset,assetId:entry.deployment.assetId,routeId:lower(route.routeId),
-    sourceChain:src,destinationChain:dst,sourceConfig:sourceChain,
+    sourceChain:src,destinationChain:dst,routeName:route.routeName,sourceConfig:sourceChain,
     destinationConfig:destinationChain,gateway:lower(gateway),
     sourceMailbox:lower(sourceMailbox),
     destinationMailbox:isAddress(destinationMailbox)?lower(destinationMailbox):null,
@@ -107,15 +119,18 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  const tx=await reader.read("eth_getTransactionByHash",[txHash]);
  if(!tx)throw Error("Source transaction not found yet; check chain and hash");
  if(!accountMatches(tx.from,account))throw Error("Source transaction is not from the connected wallet");
- const route=routes.find(r=>accountMatches(tx.to,r.gateway));
- if(!route)throw Error("Source transaction does not target a documented XITA Gateway");
+ const candidates=[...routes.filter(r=>accountMatches(tx.to,r.gateway)),...executorRoutes(tx,routes)];
+ if(candidates.length!==1)throw Error("Source transaction does not uniquely target a documented Gateway");
+ const route=candidates[0];
  const base={account:lower(account),txHash:lower(txHash),sourceChain,
-  destinationChain:route.destinationChain,asset:route.asset,
+  destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
   messageId:null,status:"pending-source"};
  const receipt=await reader.read("eth_getTransactionReceipt",[txHash]);
  if(!receipt)return base; // Pending source: never offer a recovery/rebroadcast.
- if(!accountMatches(receipt.from,account)||!accountMatches(receipt.to,route.gateway)||
+ if(!accountMatches(receipt.from,account)||
+    !(accountMatches(receipt.to,route.gateway)||
+     (accountMatches(receipt.to,BASE_WALLET_EXECUTOR)&&executorRoutes(tx,[route]).length===1))||
     lower(receipt.transactionHash)!==lower(txHash)||!Array.isArray(receipt.logs))
   throw Error("Untrusted source receipt");
  if(receipt.status==="0x0")return {...base,status:"source-failed"};
@@ -149,7 +164,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   return {...found,status:"delivery-unknown"};
  }
 }
-export async function scanRecentWalletTransfers({catalog,account,fetcher,rpc,lookback=1024,max=12}){
+export async function scanRecentWalletTransfers({catalog,account,fetcher,rpc,lookback=4096,max=12}){
  if(!isAddress(account))throw Error("Connect wallet before reading transfers");
  if(!Number.isSafeInteger(lookback)||lookback<1||lookback>4096||
     !Number.isSafeInteger(max)||max<1||max>30)throw Error("Invalid scan bounds");

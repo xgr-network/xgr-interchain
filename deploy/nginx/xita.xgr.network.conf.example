@@ -27,7 +27,7 @@ server {
     add_header X-Frame-Options DENY always;
     add_header Permissions-Policy 'camera=(), microphone=(), geolocation=()' always;
     # No inline JS is used in the public app. External project logos may load over HTTPS.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network https://base-rpc.publicnode.com; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
 
     location ^~ /admin/ {
         auth_basic "XITA Operator";
@@ -71,6 +71,40 @@ server {
         proxy_set_header Host $host;
         add_header Cache-Control "no-store" always;
     }
+
+    # Read-only, unsigned Mailbox.process recovery for an existing canonical message.
+    # The node relayer does not hold any wallet key and cannot sign or transfer funds.
+    location = /api/xeta/v1/transfer/health {
+        proxy_pass http://127.0.0.1:4088;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 5s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+    }
+    location = /api/xeta/v1/transfer/recovery {
+        proxy_pass http://127.0.0.1:4088;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 95s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+    }
+
+# Read-only wallet and statistical views of the finalized chain event index.
+# No transaction broadcast, wallet private keys, or write methods.
+location = /api/xeta/v1/transfers/wallet {
+    proxy_pass http://127.0.0.1:4088;
+    proxy_set_header Host $host;
+    proxy_connect_timeout 2s;
+    proxy_read_timeout 15s;
+    add_header Cache-Control "no-store" always;
+}
+location = /api/xeta/v1/transfers/stats {
+    proxy_pass http://127.0.0.1:4088;
+    proxy_set_header Host $host;
+    proxy_connect_timeout 2s;
+    proxy_read_timeout 15s;
+    add_header Cache-Control "no-store" always;
+}
     # Alliance manifests preview is read-only; PR mutation endpoint remains
     # disabled pending verified project identity and GitHub App installation.
     location = /api/xita/join/preview {

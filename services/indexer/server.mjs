@@ -3,11 +3,13 @@ import {systemRanking} from "../../apps/web/system-rankings.js";
 // trusted, locally maintained evidence file produced by a finalized-chain verifier.
 // No write API, no GitHub credentials, no simulated numbers, no legacy collateral.
 import {createServer} from "node:http";
-import {readFileSync,statSync} from "node:fs";
+import {readFileSync,statSync,existsSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
+import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
+import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
 import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
@@ -55,19 +57,83 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
    source:evidence?"trusted-evidence-file":"no-finalized-chain-evidence"}};
 }
 let cache={until:0,snapshot:null};
+// This is only a process load guard, never a transfer state journal.
+// Recovery source of truth remains canonical on-chain events.
+const recoveryRequests=new Map();
+const MAX_RECOVERY_PROCESS=2;
+const MAX_RECOVERY_RECENT=60;
+const rateLimit=new Map();
+export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,now=Date.now(),runner=runRecoveryProcess}){
+ const request=resolveRecoveryRoute(catalog,route,messageId,asset);
+ const key=asset+":"+route+":"+request.messageId;
+ // Limit replay and quorum request spam without storing transfer state.
+ for(const [k,ts] of rateLimit)if(ts<=now-60000)rateLimit.delete(k);
+ if(rateLimit.size>=MAX_RECOVERY_RECENT&&!rateLimit.has(key))
+  return {code:429,body:{ok:false,error:"Proof preparation busy; retry later"}};
+ const inFlight=recoveryRequests.get(key);
+ if(inFlight)return {code:202,body:{ok:true,status:"PREPARING",messageId:request.messageId}};
+ if(recoveryRequests.size>=MAX_RECOVERY_PROCESS)
+  return {code:429,body:{ok:false,error:"Proof preparation busy; retry later"}};
+ if((rateLimit.get(key)||0)>now-15000)
+  return {code:429,body:{ok:false,error:"Retry shortly; original source remains unchanged"}};
+ rateLimit.set(key,now);
+ const pending=runner(request);
+ recoveryRequests.set(key,pending);
+ try{
+  const result=await pending;
+  return {code:200,body:{ok:true,...result}};
+ }finally{
+  if(recoveryRequests.get(key)===pending)recoveryRequests.delete(key);
+ }
+}
 export async function handler(req,res){
- const pathname=new URL(req.url,"http://127.0.0.1").pathname;
+ const parsed=new URL(req.url,"http://127.0.0.1");
+ const pathname=parsed.pathname;
  const send=(status,data)=>{
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8",
    "Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/stats")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+  if(pathname==="/api/xeta/v1/transfer/health"){
+   // Readiness is an execution prerequisite, not an additional manually
+   // managed route state. Never start locking if proof builder is absent.
+   const configured=existsSync(resolve(root,"runtime/native-relayer/recover-iln.mjs"))&&
+    existsSync(resolve(root,"runtime/native-relayer/node_modules/ethers/package.json"));
+   return send(configured?200:503,{ok:configured,proofBuilder:configured?"installed":"unavailable"});
+  }
+  if(pathname==="/api/xeta/v1/transfer/recovery"){
+   const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId"),asset=parsed.searchParams.get("asset");
+   try{
+    const result=await serveUnsignedTransferRecovery({catalog,route,messageId,asset});
+    return send(result.code,result.body);
+   }catch(error){
+    return send(503,{ok:false,error:"Recovery proof unavailable; never repeat a confirmed source transfer"});
+   }
+  }
+  if(pathname==="/api/xeta/v1/transfers/wallet"){
+   const account=parsed.searchParams.get("account");
+   if(!/^0x[0-9a-f]{40}$/i.test(account||""))
+    return send(400,{ok:false,error:"Valid EVM wallet address required"});
+   try{
+    const result=await readWalletTransferIndex(catalog,account,{
+     onlyPending:parsed.searchParams.get("pending")==="1"});
+    return send(result.status==="unavailable"?503:200,{ok:result.status!=="unavailable",...result});
+   }catch{
+    return send(503,{ok:false,error:"Finalized wallet transfer index unavailable"});
+   }
+  }
+  if(pathname==="/api/xeta/v1/transfers/stats"){
+   try{
+    const result=await readTransferIndexStats(catalog);
+    return send(result.status==="unavailable"?503:200,{ok:result.status!=="unavailable",...result});
+   }catch{return send(503,{ok:false,error:"Finalized transfer statistics unavailable"});}
+  }
   if(Date.now()>=cache.until){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}

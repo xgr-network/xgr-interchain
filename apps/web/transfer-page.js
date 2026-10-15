@@ -14,7 +14,7 @@ const statuses={
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
 export function transferMenuVisible(account){return validWalletAddress(account)}
-export function renderMyTransfers({account,catalog,items=[],scanning=false,notice="",error="",scanReport=null}={}){
+export function renderMyTransfers({account,catalog,items=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null}={}){
  if(!validWalletAddress(account))return "";
  const routeList=configuredGatewayRoutes(catalog);
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
@@ -33,10 +33,8 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(t.txHash)+'</code></div>'+
    (ref?'<div class="ux-transfer-meta"><span>Message ID</span><code>'+esc(ref)+'</code></div>':'')+
    (t.validatorFeeWei?'<div class="ux-transfer-meta"><span>Validator fee (Wei)</span><code>'+esc(t.validatorFeeWei)+'</code></div>':'')+
-   (canRecover?'<p class="ux-transfer-warning">Do not send the source transfer again. The read-only on-chain recovery proof endpoint is not yet live; destination signing stays disabled.</p>':'')+
-   '<button type="button" disabled class="ux-transfer-resume"'+
-   (ref?' data-message-id="'+esc(ref)+'"':'')+
-   '>Continue destination delivery'+(canRecover?" · proof service required":" · not available")+'</button>'+
+   (canRecover?'<p class="ux-transfer-warning">Original source confirmed. It is never submitted again. Only destination delivery can be continued.</p>':'')+
+   (canRecover?'<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(t.asset||"XGR")+'">Open in Transfer Tokens →</a>':'')+
    '</article>';
  }).join("");
  return '<section class="ux-app ux-my-transfers" aria-label="My Transfers">'+
@@ -46,10 +44,12 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   ' · These records are checked against canonical Gateway and Mailbox events, not browser cache.</p></header>'+
   '<div class="ux-transfer-actions"><button type="button" id="xita-scan-transfers"'+
   (scanning?" disabled":"")+'>Refresh recent wallet transfers</button>'+
-  '<span class="ux-small">'+esc(scanning?"Scanning confirmed source blocks…":
+  '<span class="ux-small">'+esc(scanning?"Checking wallet transfers…":
+   indexCoverage?.complete?"Finalized event index up to date for every deployed route.":
+   scanReport?.source==="indexer"?"Indexer catching up; historical coverage incomplete.":
    scanReport?("Recent scan: "+scanReport.lookback+" blocks per deployed route. "+
-    (scanReport.limited?"Additional transfers may exist.":"Older transfers require a source TX hash.")):
-    "Automatic full-history indexing is not live yet.")+'</span></div>'+
+    (scanReport.limited?"Additional activity may exist.":"Full history is not yet indexed.")):
+   "Transfer index unavailable. Older transfers may be found by source TX hash.")+'</span></div>'+
   (notice?'<p class="ux-transfer-notice" role="status">'+esc(notice)+'</p>':'')+
   (error?'<p class="ux-transfer-error" role="alert">'+esc(error)+'</p>':'')+
   '<section class="ux-transfer-lookup"><h2>Find a previous transfer</h2>'+
@@ -62,6 +62,6 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   '</section>'+
   '<section class="ux-transfer-cards"><h2>Verified wallet activity</h2>'+
   (cards||'<p class="ux-muted">No confirmed wallet transfers identified in the available coverage. This is not proof that your wallet has never bridged.</p>')+'</section>'+
-  '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Automatic proof construction and the wallet-signed recovery transaction remain closed until independently tested on deployed v3.1.5 routes.</p>'+
+  '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Unsigned proofs are built from canonical chain events and validator attestations; only the connected wallet can sign destination gas.</p>'+
   '</section>';
 }

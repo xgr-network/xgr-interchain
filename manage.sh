@@ -24,6 +24,7 @@ Usage: ./manage.sh <command>
   publish-web   Publish static apps/web and restart the admin
   update        Pull GitHub main, validate, publish web, restart admin
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
+  install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
 
@@ -60,7 +61,7 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/onboarding/manifests.test.mjs
+    node --test apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
@@ -222,12 +223,51 @@ install_sync() {
   echo "SUCCESS: receipt watcher and periodic recovery poll installed."
 }
 
+install_transfer_api() {
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
+  local user node_bin unit
+  user="$(id -un)"
+  node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$ROOT" == /* && "$node_bin" == /* ]] || {
+    echo "Unsafe indexer service username, node path or checkout path" >&2
+    return 1
+  }
+  echo "Installing read-only proof-builder dependencies (no private keys) ..."
+  npm install --prefix "$ROOT/runtime/native-relayer" --ignore-scripts --no-audit --no-fund --package-lock=false
+  npm install --prefix "$ROOT/services/indexer" --ignore-scripts --no-audit --no-fund --package-lock=false
+  echo "Installing XITA public read-only indexer service ..."
+  unit="$(mktemp)"
+  trap 'rm -f "$unit"' RETURN
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/indexer/server.mjs|" \
+      "$ROOT/services/indexer/xita-indexer.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-indexer.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-indexer.service
+  privileged systemctl restart xita-indexer.service
+  privileged systemctl is-active xita-indexer.service
+  echo "Installing exact-match nginx proxy for unsigned destination recovery ..."
+  if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
+    privileged "$node_bin" "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
+  else
+    privileged "$node_bin" "$ROOT/tools/install-transfer-recovery-nginx.mjs"
+  fi
+  curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:4088/health"
+  echo
+  echo "SUCCESS: unsigned transfer recovery API configured. No wallet/private key was installed."
+}
+
 update() {
   require_clean_main
   echo "Updating xgr-interchain from origin/main ..."
   git -C "$ROOT" pull --ff-only origin main
   publish_web
   install_sync
+  if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-indexer.service
+  fi
 }
 
 case "${1:-help}" in
@@ -256,6 +296,7 @@ case "${1:-help}" in
     ;;
   update) update ;;
   install-sync) install_sync ;;
+  install-transfer-api) install_transfer_api ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

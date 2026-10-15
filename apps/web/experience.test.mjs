@@ -54,17 +54,12 @@ test("catalog-sourced strings are escaped in markup",()=>{
   assert.match(html,/&lt;img/);
 });
 
-test("v3.1.5 token bridge has only documented source and destination choices",()=>{
- const model=buildExperienceModel(catalog,()=>true);
- const markup=renderTokenBridge(model,"XGR",{origin:"base",destination:"polygon",amount:"5"},{account:null});
- assert.match(markup,/Bridge XGR/);
- assert.match(markup,/Origin chain/);
- assert.match(markup,/Destination chain/);
- assert.match(markup,/disabled/);
- assert.match(markup,/destination chain/i);
- assert.doesNotMatch(markup,/quoteILN|ILNGateway/);
+test("token page links to the only transfer workflow without duplicate signing inputs",()=>{
+ const html=renderTokenBridge(buildExperienceModel(catalog),"XGR");
+ assert.match(html,/Transfer XGR/);
+ assert.match(html,/href="\/transfer\?token=XGR"/);
+ assert.doesNotMatch(html,/id="ux-token-amount"|id="ux-token-origin"|eth_sendTransaction/);
 });
-
 test("selected chain details distinguish native and wrapped asset symbols",()=>{
  const rich={...catalog,assets:{XGR:{...catalog.assets.XGR,metadata:{
  canonical:{chain:"xgrchain"},representations:[
@@ -108,25 +103,19 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.match(home,/Polygon/);
 });
 
-test("new Plan a Route and FAQ pages reuse safe planner and show verified-state guidance",()=>{
- const model=buildExperienceModel(catalog,()=>false);
- const planner=renderPlanRoute(model,{},"error");
- assert.match(planner,/Plan a Route/);
+test("Transfer Tokens and FAQ use a single canonical transaction UI",()=>{
+ const planner=renderPlanRoute(buildExperienceModel(catalog),{},"error");
+ assert.match(planner,/Transfer Tokens/);
  assert.match(planner,/id="ux-origin"/);
  assert.match(planner,/id="ux-destination"/);
- assert.match(planner,/Not verified/);
- assert.doesNotMatch(planner,/ux-3d-canvas/);
+ assert.match(planner,/id="xita-transfer-primary"/);
+ assert.doesNotMatch(planner,/ux-3d-canvas|eth_sendTransaction/);
  const faq=renderFAQ();
- assert.match(faq,/Understand XITA/);
  assert.match(faq,/XGR Interchain Token Alliance/);
  assert.match(faq,/Why should my project join XITA/);
- assert.match(faq,/positive XGR review/);
- assert.match(faq,/Does XITA provide DEX liquidity or exchange listings/);
- assert.match(faq,/XGR sponsors the complete deployment/);
  assert.match(faq,/Locked TVL and Moved via XGR/);
- assert.match(faq,/href="\/plan-route"/);
+ assert.match(faq,/href="\/transfer"/);
 });
-
 test("public ranking requires DB-qualified full deployments and sourced caps",()=>{
  const c={assets:{A:deployedFixture("A"),B:deployedFixture("B"),HIDDEN:deployedFixture("HIDDEN")}};
  const row=(id,cap)=>({assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
@@ -159,7 +148,7 @@ test("Northstar hero explains holders and projects with matching actions",()=>{
  assert.match(html,/Explore the <em>Universe\.<\/em>/);
  assert.match(html,/Move tokens between worlds/);
  assert.match(html,/Bring your token to new chains/);
- assert.match(html,/href="\/plan-route">Explore Routes/);
+ assert.match(html,/href="\/transfer">Transfer Tokens/);
  assert.match(html,/href="\/join">Bring Your Token/);
  assert.match(html,/FOR TOKEN HOLDERS/);
  assert.match(html,/FOR TOKEN PROJECTS/);
@@ -179,55 +168,32 @@ test("partner program describes review, sponsorship and threshold-based listing"
 });
 
 
-test("route preflight shows only deployed chains and two transfer steps without signing",()=>{
- const model=buildExperienceModel(catalog,()=>true);
+test("single action stays non-signing in read-only planner HTML",()=>{
+ const model=buildExperienceModel(catalog);
  const wallet={account:"0x1111111111111111111111111111111111111111",
-  balances:{base:{status:"ready",balanceWei:"1000000000000000000"},
-    xgrchain:{status:"ready",balanceWei:"0"},
-    polygon:{status:"unavailable"}},checkedAt:"2026-10-13T11:00:00Z"};
+  balances:{base:{status:"ready",balanceWei:"1000000000000000000"}}};
  const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",wallet);
- assert.match(html,/Plan a Route/);
- assert.match(html,/Origin system/);
- assert.match(html,/Destination system/);
- assert.doesNotMatch(html,/data-gas-chain="polygon"/);
- assert.match(html,/Plan a transfer/);
- assert.match(html,/Plan a transfer/);
- assert.match(html,/Plan a Route/);
- assert.match(html,/ROUTE PATH/);
- assert.match(html,/No transfer timings/);
+ assert.match(html,/Transfer Tokens/);
+ assert.match(html,/id="xita-transfer-primary"/);
+ assert.match(html,/id="ux-transfer-amount"/);
+ assert.match(html,/id="ux-destination"/);
  assert.doesNotMatch(html,/eth_sendTransaction|onclick=.*process/);
 });
-test("unconnected wallet and unverified route never receive execution ability",()=>{
- const model=buildExperienceModel(catalog,()=>false);
- const noWallet=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},"ready");
- assert.match(noWallet,/Plan a Route/);
- const rpcDown=renderTokenBridge(model,"XGR",{origin:"base",destination:"xgrchain"},
-  {account:"0x1111111111111111111111111111111111111111",
-   balances:{base:{status:"unavailable"}}});
- assert.match(rpcDown,/Bridge XGR/);
- assert.match(rpcDown,/disabled/);
- assert.match(rpcDown,/Transfer execution unavailable/);
+test("wallet-driven open transfer is one destination continuation, no browser WAL",()=>{
+ const model=buildExperienceModel(catalog);
+ const account="0x1111111111111111111111111111111111111111";
+ const record={account,asset:"XGR",status:"awaiting-proof",sourceChain:"xgrchain",
+  destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
+ const html=renderPlanRoute(model,{},"ready",{account},{items:[record]});
+ assert.match(html,/Continue delivery/);
+ assert.match(html,/1 \/ 2/);
+ assert.match(html,/xita-open-transfer/);
+ assert.doesNotMatch(html,/localStorage|sessionStorage|journal/);
 });
-
-test("native balance formatting respects chain decimals rather than assuming 18",()=>{
- const modified={...catalog,chains:{...catalog.chains,polygon:{
-  ...catalog.chains.polygon,nativeCurrency:{symbol:"POL",decimals:6}
- }}};
- const model=buildExperienceModel(modified);
- const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",{
-  account:"0x1111111111111111111111111111111111111111",
-  balances:{polygon:{status:"ready",balanceWei:"1250000"}}});
- assert.match(html,/Plan a Route/);
-});
-
-
-test("chain-only gas preflight renders before any token is publicly eligible",()=>{
- const model=buildExperienceModel({chains:catalog.chains,assets:{}},()=>false);
- const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base"},"not-deployed");
- assert.match(html,/Plan a Route/);
- assert.doesNotMatch(html,/Planned MetaMask steps \(2 transactions\)/);
- assert.match(html,/No fully deployed route/);
- assert.doesNotMatch(html,/eth_sendTransaction/);
- assert.match(html,/Browse tokens/);
+test("no catalog deployment does not invent actionable transfer routes",()=>{
+ const model=buildExperienceModel({chains:catalog.chains,assets:{}});
+ const html=renderPlanRoute(model,{},"not-deployed",{account:"0x1111111111111111111111111111111111111111"});
+ assert.match(html,/Route unavailable/);
  assert.doesNotMatch(html,/eth_sendTransaction/);
 });
+

@@ -170,14 +170,14 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
  }).join("");
  return '<section class="ux-gas-check" aria-label="Wallet gas balance preflight">'+
   '<div class="ux-gas-check-heading"><strong>Wallet gas across the full journey</strong>'+
-  (connected?'<button type="button" data-xita-gas-refresh class="ux-gas-refresh"'+(wallet.loading?' disabled':'')+'>Refresh balances</button>':'')+'</div>'+
+  (connected&&!wallet.hideGasRefresh?'<button type="button" data-xita-gas-refresh class="ux-gas-refresh"'+(wallet.loading?' disabled':'')+'>Refresh balances</button>':'')+'</div>'+
   (connected?'<p class="ux-small">Account '+esc(wallet.account.slice(0,6)+"…"+wallet.account.slice(-4))+
     ' · native balances checked via chain RPC; wallet stays on its current network.</p>':
     '<p class="ux-small">Connect Wallet to check source, transit and destination native balances.</p>')+
   '<div class="ux-gas-check-rows" aria-live="polite">'+rows+'</div>'+
   '<p class="ux-small">Positive balance does not mean enough gas. Exact transaction gas, validator fee, transferable amount and approvals must be simulated before sending. Checks are snapshots; never start without destination gas already available.</p>'+
-  '<div class="ux-gas-step-list"><strong>Planned MetaMask steps ('+(plan.hops.length*2)+' transactions)</strong>'+
-  '<ol>'+steps+'</ol></div>'+
+  (wallet.hideStepList?'':('<div class="ux-gas-step-list"><strong>Planned MetaMask steps ('+(plan.hops.length*2)+' transactions)</strong>'+
+  '<ol>'+steps+'</ol></div>'))+
   (!plan.active?'<p class="ux-small">'+
     (plan.networkOnly?"This is a chain-only gas balance preview; no eligible token route is currently selected. ":
       "Route delivery not verified. ")+
@@ -188,41 +188,17 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
 // Token-first v3.1.5 bridge presentation. There is intentionally no transaction
 // action until on-chain Registry/Router/Gateway pairs and the new ABI adapter
 // are independently verified. Never reuse a legacy v3.1.4 Gateway call.
-export function renderTokenBridge(model,assetId,selection={},wallet={}){
-  const token=model.assets.find(a=>a.id===assetId);
-  if(!token)return '<div class="ux-panel"><h2>Token unavailable</h2></div>';
-  const available=new Set(model.deployments.filter(r=>r.asset===assetId).flatMap(r=>[r.source,r.destination]));
-  const supported=model.chains.filter(c=>available.has(c.key));
-  const origin=supported.some(c=>c.key===selection.origin)?selection.origin:
-   supported.some(c=>c.key===token.canonical)?token.canonical:supported[0]?.key||token.canonical;
-  const destination=supported.some(c=>c.key===selection.destination&&c.key!==origin)?
-    selection.destination:supported.find(c=>c.key!==origin)?.key||origin;
-  const plan=previewRoute(model,origin,destination,assetId);
-  const deployedPlan=plan.hops.length>0&&plan.hops.every((r,i)=>model.deployments.some(d=>
-   d.asset===assetId&&d.source===plan.path[i]&&d.destination===plan.path[i+1]));
-  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
-  return '<div class="ux-token-bridge" id="token-bridge"><div class="ux-kicker">XITA v3.1.5 · Token-specific bridge</div>'+
-    '<h2>Bridge '+esc(token.name)+'</h2>'+
-    '<p class="ux-muted">The bridge for this asset belongs here. The Universe is a way to discover chains, select tokens and arrive at their transfer page.</p>'+
-    '<label class="ux-field" for="ux-token-origin">Origin chain</label>'+
-    '<select id="ux-token-origin">'+chainOptions({chains:supported},origin)+'</select>'+
-    '<label class="ux-field" for="ux-token-destination">Destination chain</label>'+
-    '<select id="ux-token-destination">'+chainOptions({chains:supported},destination)+'</select>'+
-    '<div class="ux-divider"></div><span class="ux-kicker">Interchain route</span>'+
-    routePath(model,plan)+
-    '<div class="ux-route-status">'+(deployedPlan?'<span class="ux-badge is-verified">Deployed</span>':pill(false))+'<p>'+esc(deployedPlan?"Contracts documented on both chains; source transfer adapter is not yet enabled.":plan.reason)+'</p></div>'+
-    (plan.path.length===3?'<p class="ux-small">Spoke-to-spoke is two independent source transactions with XGRChain as a real intermediate chain. A second hop is NOT automatically sponsored or executed.</p>':
-    '<p class="ux-small">A direct route is allowed only when one endpoint is XGRChain (chain ID/domain 1643).</p>')+
-    '<div class="ux-hop-detail"><span class="ux-kicker">Directed hops</span>'+
-    (plan.hops.length?plan.hops.map((r,i)=>'<div class="ux-hop"><strong>'+esc(model.chains.find(c=>c.key===plan.path[i])?.label||plan.path[i])+
-      ' → '+esc(model.chains.find(c=>c.key===plan.path[i+1])?.label||plan.path[i+1])+'</strong>'+
-      '<span>'+(r?"Configured · delivery unverified":"Route not configured")+'</span></div>').join(""):'<p class="ux-small">No valid path.</p>')+'</div>'+
-    '<label class="ux-field" for="ux-token-amount">Amount ('+esc(assetId)+')</label>'+
-    '<input id="ux-token-amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0" value="'+esc(amount)+'">'+
-    renderWalletGasChecklist(model,plan,wallet)+
-    '<div class="ux-route-status"><p><strong>Transfer execution unavailable.</strong> This release has no verified v3.1.5 Gateway adapter or active reciprocal route pair. No fees, quotes or destination deliveries are invented.</p></div>'+
-    '<button type="button" disabled class="ux-button ux-disabled">Bridge unavailable · awaiting verified deployment</button>'+
-    '<p class="ux-small">When the v3.1.5 flow is implemented, a quote must use the new source-chain Registry fee, checked Router/Gateway bindings and a verified reciprocal contract bindings and message-specific BLS. The old bridge is retired.</p></div>';
+// A token detail is a discovery entry, NEVER a second transfer workflow.
+export function renderTokenBridge(model,assetId){
+ const token=model.assets.find(a=>a.id===assetId);
+ if(!token)return "";
+ const available=model.deployments.filter(r=>r.asset===assetId);
+ return '<div class="ux-token-bridge"><div class="ux-kicker">XITA · TOKEN TRANSFER</div>'+
+  '<h2>Transfer '+esc(token.name)+'</h2>'+
+  '<p class="ux-muted">One transfer flow for every supported route. Your token is preselected on the transfer page.</p>'+
+  '<p class="ux-small">'+available.length+' documented transfer direction'+(available.length===1?"":"s")+'</p>'+
+  '<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Transfer '+esc(assetId)+' →</a>'+
+  '</div>';
 }
 
 
@@ -232,7 +208,7 @@ function northstarStage(model,{universe=false}={}){
  const introActions=universe?
   '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
   '<a data-nav class="ux-ns-secondary" href="/">Back to dashboard</a>':
-  '<a data-nav class="ux-ns-primary" href="/plan-route">Explore Routes <span aria-hidden="true">→</span></a>'+
+  '<a data-nav class="ux-ns-primary" href="/transfer">Transfer Tokens <span aria-hidden="true">→</span></a>'+
   '<a data-nav class="ux-ns-secondary" href="/join">Bring Your Token <span aria-hidden="true">↗</span></a>';
  return '<div id="xita-3d" class="ux-3d-stage ux-ns-stage" data-northstar="1">'+
   '<canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive 3D universe with configured blockchain systems. Select a star to explore its tokens."></canvas>'+
@@ -267,7 +243,7 @@ function northstarCards(model,metrics=null){
   '<article class="ux-ns-card ux-ns-network-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span><h2>Interchain network</h2><span class="ux-ns-pill">XGR HUB</span></div>'+
    '<div class="ux-ns-network-numbers"><div><strong>'+model.routes.length+'</strong><span>Configured directions</span></div><div><strong>'+active+'</strong><span>Verified active</span></div></div>'+
    '<p class="ux-small">Routes connect to XGRChain. A configured route is not automatically safe to use.</p>'+
-   '<a class="ux-ns-card-link" data-nav href="/plan-route">Check route availability →</a></article>'+
+   '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
    '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
    '<p class="ux-small">Verified net collateral held in route-specific escrows.</p>'+
@@ -291,7 +267,7 @@ function allianceIntro(){
   '<span><small>01</small>Discover your token</span>'+
   '<span><small>02</small>Check route availability</span>'+
   '<span><small>03</small>Transfer when verified</span></div>'+
-  '<a data-nav href="/plan-route">Explore Routes <span aria-hidden="true">↗</span></a></article>'+
+  '<a data-nav href="/transfer">Transfer Tokens <span aria-hidden="true">↗</span></a></article>'+
   '<article class="ux-alliance-audience ux-alliance-audience-projects">'+
   '<div class="ux-alliance-symbol is-gold">✧</div><span class="ux-kicker">FOR TOKEN PROJECTS</span>'+
   '<h3>Bring your token to new chains.</h3>'+
@@ -327,61 +303,131 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   dashboardTopTokens(catalog||{assets:{}},metrics)+
   '<section class="ux-dashboard-outro"><div><span class="ux-kicker">DISCOVER · CONNECT · EXPAND</span>'+
   '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+
-  '<div class="ux-dashboard-outro-links"><a data-nav href="/faq">Read the FAQ →</a><a data-nav href="/plan-route">Plan a Route →</a></div></section></div>';
+  '<div class="ux-dashboard-outro-links"><a data-nav href="/faq">Read the FAQ →</a><a data-nav href="/transfer">Transfer Tokens →</a></div></section></div>';
 }
 // A real standalone planner; no longer extracted from dashboard markup.
-export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={}){
- const available=new Set(model.deployments.flatMap(r=>[r.source,r.destination]));
+export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={},progress={}){
+ const routes=model.deployments||[];
+ const available=new Set(routes.flatMap(r=>[r.source,r.destination]));
  const deployedChains=model.chains.filter(c=>available.has(c.key));
- const deployedAssets=new Set(model.deployments.map(r=>r.asset));
+ const deployedAssets=new Set(routes.map(r=>r.asset));
  const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id));
- const source=available.has(selection.origin)?selection.origin:
-  deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
- const target=available.has(selection.destination)&&selection.destination!==source?selection.destination:
-  deployedChains.find(c=>c.key!==source)?.key||"";
- const assetId=usableAssets.some(a=>a.id===selection.asset)?selection.asset:usableAssets[0]?.id||"";
- const plan=previewRoute(model,source,target,assetId);
- const deployedPlan=plan.path.length>1&&plan.hops.every((r,i)=>
-  model.deployments.some(d=>d.asset===assetId&&d.source===plan.path[i]&&d.destination===plan.path[i+1]));
- const availabilityReason=deployedPlan?
-  "Route contracts deployed on both chains. Wallet execution and delivery proof adapter are still being implemented.":
-  "No fully deployed route for this selection.";
- // Network-only native balance preview is valid even before a token is
- // publicly listed. Never mark a hypothetical hop as an active route.
- const pathForBalances=plan.path.length?plan.path:
-  source===target?[]:
-  source===HUB||target===HUB?[source,target]:[source,HUB,target];
- const gasPlan=plan.path.length?plan:{
-  path:pathForBalances,
-  hops:pathForBalances.slice(1).map(()=>null),
-  active:false,networkOnly:true
+ const openChoice=(progress.items||[]).filter(r=>r.account?.toLowerCase()===
+   wallet.account?.toLowerCase()&&["awaiting-proof","delivery-unknown",
+   "confirming","pending-source","destination-not-deployed"].includes(r.status));
+ const currentWork=openChoice.find(r=>r.txHash===progress.selectedTxHash)||openChoice[0]||null;
+ const requestedOrigin=currentWork?.sourceChain||selection.origin;
+ const requestedDestination=currentWork?.destinationChain||selection.destination;
+ const requestedAsset=currentWork?.asset||selection.asset;
+ const origin=available.has(requestedOrigin)?requestedOrigin:
+   deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
+ const destination=available.has(requestedDestination)&&requestedDestination!==origin?
+   requestedDestination:deployedChains.find(c=>c.key!==origin)?.key||"";
+ const assetId=usableAssets.some(a=>a.id===requestedAsset)?
+   requestedAsset:usableAssets[0]?.id||"";
+ const path=previewRoute(model,origin,destination,assetId);
+ const deployed=path.path.length>1&&path.hops.every((h,i)=>
+   routes.some(r=>r.asset===assetId&&r.source===path.path[i]&&
+     r.destination===path.path[i+1]));
+ const actionable=["awaiting-proof","delivery-unknown","confirming","pending-source",
+   "destination-not-deployed"];
+ const pending=openChoice.filter(r=>actionable.includes(r.status));
+ const active=pending.find(r=>r.txHash===progress.selectedTxHash)||pending[0]||null;
+ const connected=typeof wallet.account==="string"&&/^0x[0-9a-f]{40}$/i.test(wallet.account);
+ const selected=active&&active.account?.toLowerCase()===wallet.account?.toLowerCase()?active:null;
+ const busy=progress.busy===true||progress.scanning===true;
+ const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
+ const isDirect=path.path.length===2;
+ const actionLabel=!connected?"Connect Wallet":
+  busy?"Checking on-chain transfers…":
+  selected?.status==="awaiting-proof"?"Continue delivery":
+  selected?"Check delivery status":
+  !deployed?"Route unavailable":
+  !isDirect?"Select the first hop via XGRChain":
+  "Transfer Tokens";
+ const buttonDisabled=busy||connected&&(!deployed&&!selected||!isDirect&&!selected);
+ const progressValue=selected?.confirmed?1:0;
+ const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
+  selected?.status==="delivery-unknown"?"Source confirmed · destination RPC unavailable":
+  selected?.status==="confirming"?"Source transaction is awaiting finality":
+  selected?.status==="pending-source"?"Source transaction pending":
+  selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
+  progress.scanning?"Looking for your transfers on the chains…":
+  connected&&progress.coverage?.complete?"No outstanding transfers in the indexed finalized range":
+  connected?"Checking recent transfers; full wallet history may still be indexing":
+  "Connect your wallet to check balances and open deliveries";
+ const formatTokenBalance=(balance)=>{
+  if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
+  const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
+  const full=(raw/scale).toString(),remainder=(raw%scale).toString()
+   .padStart(balance.decimals||0,"0").slice(0,8).replace(/0+$/,"");
+  return full+(remainder?"."+remainder:"")+" "+(balance.symbol||assetId);
  };
- const active=model.routes.filter(r=>r.active).length;
- const firstAsset=model.assets.find(a=>a.id===assetId);
+ const tokenBalanceRows=deployedChains.map(c=>{
+  const balance=wallet.tokenBalances?.[assetId+":"+c.key];
+  return '<div class="ux-gas-check-row"><div><strong>'+esc(c.label)+'</strong>'+
+   '<small>'+esc(assetId)+' balance</small></div><span>'+
+   esc(wallet.loading?"Checking…":connected?formatTokenBalance(balance):"Connect wallet")+
+   '</span></div>';
+ }).join("");
+ const activeLabel=selected?'<span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span>':'';
+ const options=pending.map(r=>'<option value="'+esc(r.txHash)+'"'+
+  (selected?.txHash===r.txHash?' selected':'')+'>'+
+   esc((r.asset||"Token")+' · '+r.sourceChain+' → '+r.destinationChain+' · '+r.txHash.slice(0,10)+'…')+
+  '</option>').join("");
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
-  '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro"><span class="ux-kicker">INTERCHAIN OPERATIONS · XITA</span>'+
-  '<h1>Plan a Route</h1><p class="ux-muted">Inspect configured directions and verify availability. A route preview is never an instruction to send funds.</p></div>'+
-  '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · JOURNEY PLANNER</span><span class="ux-label">XGR HUB</span></div>'+
-  '<h2>Plan a transfer</h2><p class="ux-muted">Only independently verified route contracts should be offered to users.</p>'+
-  '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions({chains:deployedChains},source)+'</select>'+
-  '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions({assets:usableAssets},assetId)+'</select>'+
-  '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions({chains:deployedChains},target)+'</select>'+
-  '<div class="ux-divider"></div><div class="ux-kicker">ROUTE PATH</div>'+routePath(model,plan)+
-  '<div class="ux-route-status">'+(deployedPlan?'<span class="ux-badge is-verified">Deployed</span>':pill(false))+'<p>'+esc(availabilityReason)+'</p></div>'+
-  renderWalletGasChecklist(model,gasPlan,wallet)+
-  '<p class="ux-small">No transfer timings, bridge TVL or transaction availability are inferred from the diagram.</p>'+
-  (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
-   '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
-  '<aside class="ux-panel ux-ns-operations-data"><div class="ux-kicker">02 · VERIFIED NETWORK FACTS</div>'+
-  '<h2>Current network state</h2><p class="ux-muted">A catalog listing is not proof of complete reciprocal deployment or finalized transfer security.</p>'+
-  '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+deployedChains.length+'</strong></div>'+
-  '<div><span>Deployed directed routes</span><strong>'+model.deployments.length+'</strong></div>'+
-  '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
-  '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
-  '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment and independent reciprocal verification before users should bridge.</p></div>'+
-  '<div class="ux-ns-explore-links"><a data-nav href="/#xita-3d">Open interactive Universe ↗</a>'+
-  '<a data-nav href="/markets">Explore listed tokens ↗</a></div></aside></div></section></div>';
+  '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro">'+
+  '<span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1>'+
+  '<p class="ux-muted">One transfer page. Select an available route; previously confirmed source transfers are found automatically after wallet connection.</p></div>'+
+  '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel">'+
+  '<div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div>'+
+  '<label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
+  assetOptions({assets:usableAssets},assetId)+'</select>'+
+  '<label class="ux-field" for="ux-origin">From</label><select id="ux-origin"'+(selected?' disabled':'')+'>'+
+  chainOptions({chains:deployedChains},origin)+'</select>'+
+  '<label class="ux-field" for="ux-destination">To</label><select id="ux-destination"'+(selected?' disabled':'')+'>'+
+  chainOptions({chains:deployedChains},destination)+'</select>'+
+  '<label class="ux-field" for="ux-transfer-amount">Amount ('+esc(assetId)+')</label>'+
+  '<input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="'+
+  (selected?'Original amount already locked/burned':'0.0')+'" value="'+(selected?'':esc(amount))+
+  '"'+(selected?' readonly':'')+'>'+
+  routePath(model,path)+
+  '<div class="ux-route-status">'+
+  (deployed?'<span class="ux-badge is-verified">Deployed</span>':
+   '<span class="ux-badge is-pending">Not deployed</span>')+
+  '<p>'+(deployed?"The source and destination contract pairs are documented.":"Choose two connected, deployed networks.")+'</p></div>'+
+  (tokenBalanceRows?'<section class="ux-gas-check"><div class="ux-gas-check-heading"><strong>Token balances</strong></div>'+
+   '<div class="ux-gas-check-rows">'+tokenBalanceRows+'</div></section>':"")+
+  renderWalletGasChecklist(model,path,{...wallet,hideGasRefresh:true,hideStepList:true})+
+  (pending.length?'<div class="ux-route-status">'+activeLabel+
+   '<label class="ux-field" for="xita-open-transfer">Open transfer'+(pending.length>1?"s":"")+'</label>'+
+   '<select id="xita-open-transfer">'+options+'</select>'+
+   '<p class="ux-small">Only the outstanding destination is continued; the original source is never sent again.</p></div>':'')+
+  '<button type="button" class="ux-button" id="xita-transfer-primary"'+
+   (buttonDisabled?' disabled':'')+'>'+esc(actionLabel)+'</button>'+
+  '<section class="ux-transfer-progress" role="status" aria-live="polite">'+
+  '<strong>'+esc(selected?"1 / 2 · "+statusLabel:
+   progress.scanning?"Searching…":deployed?"Ready · "+statusLabel:"No route selected")+'</strong>'+
+  '<progress max="2" value="'+progressValue+'"></progress>'+
+  (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
+   (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
+  (progress.notice?'<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
+  (progress.error?'<p class="ux-transfer-error">'+esc(progress.error)+'</p>':'')+
+  '</section>'+
+  '<p class="ux-small">A direct transfer uses source Gateway.bridge and destination Mailbox.process. An ERC-20 allowance can require a separate approval. Existing successful source transfers are never repeated.</p>'+
+  (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
+  (connected?'<p class="ux-small">'+(progress.coverage?.complete?
+    'Open transfers are indexed across all documented routes.':
+    'The indexer may still be catching up. Older transfers can be found by their source transaction hash.')+
+    ' <a data-nav href="/my-transfers">My Transfers</a></p>':"")+
+  '</section><aside class="ux-panel ux-ns-operations-data">'+
+  '<span class="ux-kicker">NETWORK STATUS</span><h2>Available networks</h2>'+
+  '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
+   deployedChains.length+'</strong></div><div><span>Deployed directed routes</span><strong>'+routes.length+'</strong></div></div>'+
+  '<p class="ux-muted">Transfer status is read from the canonical Gateway and Mailbox contracts. No browser transaction history or additional administrative approval is used.</p>'+
+  '</aside></div></section></div>';
 }
+
 const faqGroups=[
  {label:"01 · THE OPPORTUNITY",title:"Why XITA?",items:[
   ["What is XITA?","The XGR Interchain Token Alliance helps token projects expand to additional blockchain ecosystems and reach new communities. Projects apply for admission; after a positive XGR review, XGR sponsors and arranges the approved route deployment. A token is publicly discoverable only while independently verified net locked value meets the configured USD-equivalent threshold."],
@@ -420,7 +466,7 @@ export function renderFAQ(){
     '<section class="ux-faq-group"><div class="ux-faq-group-head"><span class="ux-kicker">'+esc(group.label)+'</span><h2>'+esc(group.title)+'</h2></div>'+
     '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
       '<details class="ux-faq-item"><summary>'+esc(q)+'</summary><p>'+esc(answer)+'</p></details>').join("")+'</div></section>').join("")+'</div>'+
-  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/plan-route">Plan a Route →</a>'+
+  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/transfer">Transfer Tokens →</a>'+
   '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a></div></div>';
 }
 export function renderUniverse(model,selected=HUB,metrics=null){

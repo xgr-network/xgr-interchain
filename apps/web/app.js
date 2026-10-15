@@ -8,14 +8,35 @@ import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,scanRecentWalletTransfers} from "./wallet-transfers.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
+import {startTransfer,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
+import {readWalletTokenBalances} from "./wallet-token-balances.js";
+import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
-const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
+const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 let transferRequest=0;
-const transferActivity={items:[],scanned:false,scanning:false,report:null,notice:"",error:""};
+const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 function refreshTransferLink(){
+ const connected=validWalletAddress(state.account);
  const link=document.querySelector("#my-transfers-link");
- if(link)link.hidden=!validWalletAddress(state.account);
+ if(link)link.hidden=!connected;
+ const alert=document.querySelector("#wallet-pending-alert");
+ if(!alert)return;
+ const pending=connected?pendingDeliveryCount({account:state.account,
+  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
+ alert.hidden=pending===0;
+ if(pending){
+  const open=transferActivity.items.filter(t=>t.account?.toLowerCase()===
+   state.account?.toLowerCase()&&t.status==="awaiting-proof"&&
+   t.confirmed===true&&t.delivered===false);
+  const specific=pending===1&&open.length===1?
+   (open[0].sourceChain==="xgrchain"?"1 mint pending →":
+    open[0].destinationChain==="xgrchain"?"1 unlock pending →":
+    "1 transfer awaiting delivery →"):null;
+  alert.textContent=specific||
+   (pending===1?"1 transfer awaiting delivery →":pending+" transfers awaiting delivery →");
+  alert.title="Original lock/burn confirmed; only the destination mint/unlock may be continued";
+ }
 }
 function setConnectedAccount(next){
  const account=validWalletAddress(next)?next:null;
@@ -24,39 +45,79 @@ function setConnectedAccount(next){
  connect.textContent=account?shorten(account):"Connect Wallet";
  if(changed){
   transferRequest++;
-  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,report:null,notice:"",error:""});
+  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
  if(state.catalog&&(changed||path()==="/my-transfers"))render();
+ if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
+ const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
+  t.txHash===record.txHash);
+ if(previous?.status==="delivered"&&record.status!=="delivered")return;
+ if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
+  transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
  transferActivity.items=[record,...transferActivity.items.filter(t=>
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
+ refreshTransferLink();
 }
 async function scanWalletHistory(){
  const account=state.account;
  if(!account||!state.catalog||transferActivity.scanning)return;
  const marker=++transferRequest;
  transferActivity.scanning=true;transferActivity.scanned=true;transferActivity.error="";
- if(path()==="/my-transfers")render();
+ transferActivity.indexCoverage=null;transferActivity.indexOpenCount=0;
+ if(path()==="/my-transfers"||path()==="/transfer")render();
+ let indexedComplete=false;
  try{
-  const results=await scanRecentWalletTransfers({catalog:state.catalog,account});
-  if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-  for(const record of results.items)upsertTransfer(record);
-  transferActivity.report=results;
-  transferActivity.notice=results.scannedRoutes===0?
-   "No deployed XITA Gateway routes are available. No transfers were inferred.":
-   "Recent confirmed source events checked. This is not a complete historical index.";
-  if(results.warnings.length)transferActivity.error=
-   "Some RPC scans were unavailable; paste the original source TX hash to retry.";
+  try{
+   const response=await fetch("/api/xeta/v1/transfers/wallet?"+
+    new URLSearchParams({account,pending:"1"}),{cache:"no-store",
+    credentials:"omit",headers:{accept:"application/json"}});
+   if(response.ok){
+    const data=await response.json();
+    if(data?.kind==="xita-wallet-transfer-index-v1"&&
+     data.wallet?.toLowerCase()===account.toLowerCase()&&
+     ["complete","partial"].includes(data.status)&&Array.isArray(data.items)){
+     if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+     for(const item of data.items.filter(t=>
+       t.account?.toLowerCase()===account.toLowerCase()&&
+       /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
+       ["awaiting-proof","delivery-unknown","delivered"].includes(t.status)))upsertTransfer(item);
+     transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
+      Math.max(0,data.openCount):0;
+     transferActivity.indexCoverage=data.coverage||null;
+     indexedComplete=data.status==="complete"&&data.coverage?.complete===true&&
+      data.truncated!==true;
+     transferActivity.report={source:"indexer",lookback:null,
+      scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
+     transferActivity.notice=indexedComplete?
+      "Wallet history indexed through all finalized deployed route heads.":
+      "Indexer catching up; checking recent chain events directly.";
+     refreshTransferLink();
+    }
+   }
+  }catch{/* Index service can be offline; never equate that with zero open transfers. */}
+  if(!indexedComplete){
+   const result=await scanRecentWalletTransfers({catalog:state.catalog,account});
+   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+   for(const item of result.items)upsertTransfer(item);
+   transferActivity.report=result;
+   transferActivity.notice=result.scannedRoutes===0?
+    "No deployed Gateway routes are recorded in this catalog.":
+    "Recent chain events checked; older history may still exist.";
+   if(result.warnings.length)transferActivity.error=
+    "Some chain RPC reads failed; older transfers can be located by source TX hash.";
+  }
  }catch(error){
-  if(marker!==transferRequest)return;
-  transferActivity.error="Could not scan recent source events: "+String(error.message||error);
+  if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+  transferActivity.error="Wallet transfer discovery unavailable: "+String(error.message||error);
  }finally{
-  if(marker===transferRequest){
+  if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.scanning=false;
-   if(path()==="/my-transfers")render();
+   refreshTransferLink();
+   if(path()==="/my-transfers"||path()==="/transfer")render();
   }
  }
 }
@@ -66,7 +127,7 @@ async function lookupWalletTransfer(sourceChain,txHash){
  const marker=++transferRequest;
  transferActivity.scanning=true;transferActivity.error="";
  transferActivity.notice="Checking the original source transaction and its destination Mailbox…";
- if(path()==="/my-transfers")render();
+ if(path()==="/my-transfers"||path()==="/transfer")render();
  try{
   const record=await findWalletSourceTx({catalog:state.catalog,account,sourceChain,txHash});
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
@@ -81,7 +142,62 @@ async function lookupWalletTransfer(sourceChain,txHash){
  }finally{
   if(marker===transferRequest){
    transferActivity.scanning=false;
-   if(path()==="/my-transfers")render();
+   if(path()==="/my-transfers"||path()==="/transfer")render();
+  }
+ }
+}
+async function performTransferAction(){
+ if(transferActivity.working||transferActivity.scanning||!state.catalog)return;
+ if(!state.account){document.querySelector("#connect")?.click();return;}
+ const account=state.account;
+ const candidates=transferActivity.items.filter(t=>
+  ["awaiting-proof","delivery-unknown","confirming","pending-source","destination-not-deployed"].includes(t.status));
+ const selected=candidates.find(t=>t.txHash===transferActivity.selectedTxHash)||candidates[0]||null;
+ transferActivity.working=true;transferActivity.error="";
+ transferActivity.notice=selected?"Rechecking original source and destination chains…":
+  "Checking the deployed source Gateway quote…";
+ render();
+ try{
+  if(selected){
+   if(selected.status!=="awaiting-proof"){
+    await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+    return;
+   }
+   const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
+    provider:globalThis.ethereum,onBroadcast:({txHash})=>{
+     transferActivity.notice="Destination TX "+txHash+
+      " submitted. Original source transfer is NEVER repeated.";
+    }});
+   transferActivity.notice=result.status==="delivered"?
+    "Delivery confirmed by the destination Mailbox.":
+    result.status==="waiting"?result.notice||"Validator proof pending; retry later.":
+    result.status==="failed"?"Destination TX failed; retry only the destination.":
+    "Destination TX pending; do not repeat it until chain status is checked.";
+   await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+   return;
+  }
+  const model=buildExperienceModel(state.catalog,()=>false);
+  const asset=state.experience.asset,origin=state.experience.origin,
+   destination=state.experience.destination,amount=state.experience.amount||"";
+  if(!model.deployments.some(r=>r.asset===asset&&r.source===origin&&r.destination===destination))
+   throw Error("Select a directly deployed route. Multi-hop transfers proceed one hop at a time.");
+  const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
+   destination,amount,provider:globalThis.ethereum,
+   onBroadcast:({txHash})=>{
+    transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
+    render();
+   }});
+  transferActivity.notice="Source TX submitted. Waiting for lock/burn confirmation…";
+  const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
+  if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
+  else if(receipt.status!=="0x1")transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+  else await lookupWalletTransfer(sent.sourceChain,sent.txHash);
+ }catch(error){
+  transferActivity.error=String(error.message||error);
+ }finally{
+  if(state.account?.toLowerCase()===account.toLowerCase()){
+   transferActivity.working=false;
+   if(path()==="/transfer")render();
   }
  }
 }
@@ -218,14 +334,18 @@ function token(){
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
- '<div class="pair"><span>Activated XITA v3.1.5 routes</span><b>0 / '+routes().length+'</b></div>'+
+ '<div class="pair"><span>Deployed XITA routes</span><b>'+
+  (a.deployment?.routeDeployments?.length||0)+' / '+routes().length+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
  '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
  '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
  '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
  '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
- '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">Prepared inventory only; not activated</div></div>').join("")+'</div></section>'+
+ '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">'+
+   (a.deployment?.routeDeployments?.some(r=>r.routeName===rt.name)?
+    'Deployed · Gateway '+x(a.deployment.routeDeployments.find(r=>r.routeName===rt.name).components.gateway.address):
+    'Prospect · configured only')+'</div></div>').join("")+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,step:0,status:""};
@@ -297,34 +417,37 @@ async function runJoin(action){
 }
 let walletGasRequest=0;
 const walletGasView=()=>({account:state.account,chainId:state.walletChainId,
- balances:state.walletBalances,checkedAt:state.walletGasCheckedAt,loading:state.walletGasLoading});
+  balances:state.walletBalances,tokenBalances:state.walletTokenBalances,
+  checkedAt:state.walletGasCheckedAt,loading:state.walletGasLoading});
 async function updateWalletGas(){
  const request=++walletGasRequest;
  const account=state.account;
  if(!account||!state.catalog||!globalThis.ethereum?.request){
-  state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGasLoading=false;
-  if(state.catalog&&(path()==="/plan-route"||path().startsWith("/token/")))render();
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;state.walletGasLoading=false;
+  if(state.catalog&&(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/")))render();
   return;
  }
- state.walletGasLoading=true;state.walletBalances=null;state.walletGasCheckedAt=null;
- if(path()==="/plan-route"||path().startsWith("/token/"))render();
+ state.walletGasLoading=true;state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;
+ if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
  try{
   // Read balances only. Never switch chains, sign, approve or submit.
-  const result=await readNativeGasBalances({
-   account,chains:state.catalog.chains,provider:globalThis.ethereum,
-   fetcher:globalThis.fetch.bind(globalThis)
-  });
+  const [result,tokenBalances]=await Promise.all([
+   readNativeGasBalances({account,chains:state.catalog.chains,provider:globalThis.ethereum,
+     fetcher:globalThis.fetch.bind(globalThis)}),
+   readWalletTokenBalances({account,catalog:state.catalog})
+  ]);
   if(request!==walletGasRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
   state.walletChainId=result.walletChainId;
   state.walletBalances=result.balances;
+   state.walletTokenBalances=tokenBalances;
   state.walletGasCheckedAt=result.checkedAt;
  }catch{
   if(request!==walletGasRequest)return;
-  state.walletBalances=null;state.walletGasCheckedAt=null;
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;
  }finally{
   if(request===walletGasRequest){
    state.walletGasLoading=false;
-   if(path()==="/plan-route"||path().startsWith("/token/"))render();
+   if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
   }
  }
 }
@@ -333,7 +456,12 @@ function render(){
  if(cosmos){cosmos.dispose();cosmos=null;}
  const rawPath=path();
  if(rawPath==="/universe"){history.replaceState(null,"","/");}
- const p=rawPath==="/universe"?"/":rawPath;
+ if(rawPath==="/plan-route")history.replaceState(null,"","/transfer"+location.search);
+ const p=rawPath==="/universe"?"/":rawPath==="/plan-route"?"/transfer":rawPath;
+ if(p==="/transfer"){
+  const preselect=new URLSearchParams(location.search).get("token");
+  if(preselect&&state.catalog?.assets?.[preselect])state.experience.asset=preselect;
+ }
  if(p==="/my-transfers"&&!state.account){
   history.replaceState(null,"","/");
   return render();
@@ -342,12 +470,21 @@ function render(){
  const id=match?allAssets().find(a=>profile(a).slug===match[1]):null;
  state.assetId=id||"XGR";
  const universe=buildExperienceModel(p==="/"||p==="/universe"?publicCatalog():state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/plan-route"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView()):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
+   items:transferActivity.items,scanning:transferActivity.scanning,
+   busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
+   notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage
+  }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
-   document.getElementById(id)?.addEventListener("change",e=>{state.experience[name]=e.target.value;render();});
+   document.getElementById(id)?.addEventListener("change",e=>{
+   state.experience[name]=e.target.value;
+   if(name==="asset"&&p==="/transfer")
+    history.replaceState(null,"","/transfer?token="+encodeURIComponent(e.target.value));
+   render();
+  });
  }
  if(p==="/"){
   const host=document.querySelector("#xita-3d");
@@ -366,6 +503,11 @@ function render(){
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelector("#ux-transfer-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelector("#xita-open-transfer")?.addEventListener("change",e=>{
+  transferActivity.selectedTxHash=e.target.value;render();
+ });
+ document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
  document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelector("#xita-scan-transfers")?.addEventListener("click",()=>void scanWalletHistory());
  document.querySelector("#xita-lookup-form")?.addEventListener("submit",event=>{
@@ -380,7 +522,8 @@ function render(){
   }
   void lookupWalletTransfer(sourceChain,txHash);
  });
- if(p==="/my-transfers"&&!transferActivity.scanned&&!transferActivity.scanning)
+ if((p==="/my-transfers"||p==="/transfer")&&state.account&&
+   !transferActivity.scanned&&!transferActivity.scanning)
   void scanWalletHistory();
  document.querySelectorAll("[data-leader-sort]").forEach(button=>button.addEventListener("click",()=>{
    const key=button.dataset.leaderSort;
@@ -408,10 +551,10 @@ connect.addEventListener("click",async()=>{
 if(globalThis.ethereum?.on){
  globalThis.ethereum.on("accountsChanged",accounts=>{
   setConnectedAccount(Array.isArray(accounts)?accounts[0]:null);
-  state.walletBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;
+  state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;
   void updateWalletGas();
  });
- globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
+ globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
 }
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("click",event=>{
@@ -457,7 +600,7 @@ el.addEventListener("change",event=>{
 document.addEventListener("click",e=>{
  const a=e.target.closest("a[data-nav]");
  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
- e.preventDefault();history.pushState(null,"",a.pathname);render();scrollTo(0,0);
+ e.preventDefault();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });
 window.addEventListener("popstate",render);
 refreshTransferLink();
@@ -542,7 +685,7 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/plan-route"||path().startsWith("/token/"))render();
+async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);

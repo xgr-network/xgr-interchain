@@ -1,0 +1,90 @@
+// Source-of-truth is the chain: this endpoint only prepares permissionless,
+ // UNSIGNED destination Mailbox.process calldata from canonical on-chain proof.
+ // Never persists wallet state, accepts RPC URLs from users, or holds a signer.
+import {execFile} from "node:child_process";
+import {resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {deployedRoutes} from "../../apps/web/route-availability.js";
+import {selector} from "../../apps/web/keccak.js";
+const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
+const ADDRESS=/^0x[0-9a-f]{40}$/i;
+const HASH=/^0x[0-9a-f]{64}$/i;
+const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
+const processSelector=selector("process(bytes,bytes)");
+export function resolveRecoveryRoute(catalog,routeName,messageId,asset){
+ if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||"")||
+    !/^[a-zA-Z0-9_-]{1,48}$/.test(asset||""))
+  throw Error("Invalid message ID or direction");
+ const routes=deployedRoutes(catalog).filter(r=>r.asset===asset&&r.name===routeName);
+ if(routes.length!==1)throw Error("No unique deployed route for this message");
+ const route=routes[0],src=catalog.chains[route.source],dst=catalog.chains[route.destination];
+ const srcCore=catalog.infrastructure[route.source].xitaV315.components,
+  dstCore=catalog.infrastructure[route.destination].xitaV315.components;
+ const values={
+  ORIGIN_RPC_URL:src.rpcUrls?.[0],
+  ORIGIN_CHAIN_ID:String(src.chainId),
+  ORIGIN_DOMAIN:String(src.domainId),
+  ORIGIN_MAILBOX:srcCore.mailbox?.address,
+  ORIGIN_MERKLE_TREE_HOOK:srcCore.merkleTreeHook?.address,
+  ORIGIN_ILN_REGISTRY:srcCore.sourceRegistry?.address,
+  ORIGIN_ILN_GATEWAY:route.gateway,
+  ORIGIN_WARP_ROUTER:route.sourceRouter,
+  ORIGIN_CONFIRMATIONS:String(Math.max(1,src.confirmations||1)),
+  ORIGIN_LOG_CHUNK:"750",
+  ATTESTATION_RPC_URL:catalog.chains.xgrchain.rpcUrls?.[0],
+  ROUTE_ID:route.routeId,
+  ATTESTATION_ROUTE:route.name,
+  DESTINATION_RPC_URL:dst.rpcUrls?.[0],
+  DESTINATION_CHAIN_ID:String(dst.chainId),
+  DESTINATION_DOMAIN:String(dst.domainId),
+  DESTINATION_MAILBOX:dstCore.mailbox?.address,
+  DESTINATION_WARP_ROUTER:route.destinationRouter,
+  DESTINATION_ILN_ISM:dstCore.ism?.address,
+  DESTINATION_AGGREGATION_MODULE_COUNT:"0",
+  DESTINATION_AGGREGATION_INNER_INDEX:"0",
+  DESTINATION_AGGREGATION_EMPTY_INDEXES:""
+ };
+ if(!Object.entries(values).every(([key,value])=>
+  key.endsWith("_RPC_URL")?typeof value==="string"&&value.startsWith("https://"):
+  /_MAILBOX$|_GATEWAY$|_REGISTRY$|_HOOK$|_ROUTER$|_ISM$/.test(key)?
+    ADDRESS.test(value||""):typeof value==="string"))
+  throw Error("Route missing safe canonical chain/RPC bindings");
+ if(!HASH.test(route.routeId))throw Error("Invalid deployed route ID");
+ return {route,messageId:messageId.toLowerCase(),destinationMailbox:dstCore.mailbox.address,
+  destinationChainId:dst.chainId,env:values};
+}
+export function validateUnsignedRecovery(result,configured){
+ if(!result||typeof result!=="object"||!["READY_UNSIGNED_CALL","PENDING","ALREADY_DELIVERED","FRESH_QUORUM_REQUIRED"].includes(result.status))
+  throw Error("Unexpected canonical recover-iln result");
+ if(!same(result.messageId,configured.messageId))throw Error("Recovery message mismatch");
+ if(result.status==="READY_UNSIGNED_CALL"){
+  if(!same(result.route,configured.route.name)||!same(result.to,configured.destinationMailbox)||
+     BigInt(result.destinationChainId??0)!==BigInt(configured.destinationChainId)||
+     result.value!=="0x0"||typeof result.data!=="string"||
+     !/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(result.data)||
+     !result.data.toLowerCase().startsWith(processSelector.toLowerCase())||result.data.length>262144)
+    throw Error("Unsigned destination calldata does not match approved Mailbox/process");
+  return {status:result.status,messageId:configured.messageId,destinationChainId:configured.destinationChainId,
+   destinationMailbox:configured.destinationMailbox,data:result.data,value:"0x0"};
+ }
+ return {status:result.status,messageId:configured.messageId,note:String(result.note||"").slice(0,500)};
+}
+export function parseRecoveryCliOutput(stdout,configured){
+ const value=JSON.parse(stdout);
+ return validateUnsignedRecovery(value,configured);
+}
+export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
+ const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
+ return new Promise((yes,no)=>{
+  execFile(process.execPath,[script,configured.messageId],{
+   cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",
+    NODE_ENV:"production",...configured.env},maxBuffer:750000,timeout:timeoutMs,windowsHide:true,
+  },(err,stdout)=>{
+   try{yes(parseRecoveryCliOutput(stdout,configured));}
+   catch(e){
+    no(Error(err?.killed?"Proof preparation timed out; the source transfer remains safe":
+      "Proof not yet available; retry later without repeating the source transfer"));
+   }
+  });
+ });
+}
