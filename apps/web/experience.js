@@ -349,8 +349,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
-  connected?"Ready to prepare a new transfer":
-  "Connect your wallet to check balances";
+  connected?"Wallet connected":
+  "Connect your wallet";
  const formatTokenBalance=(balance)=>{
   if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
   const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
@@ -367,6 +367,21 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (selected?.txHash===r.txHash?' selected':'')+'>'+
    esc((r.asset||"Token")+' · '+r.sourceChain+' → '+r.destinationChain+' · '+r.txHash.slice(0,10)+'…')+
   '</option>').join("");
+ const statusMarkup=
+  '<section class="ux-transfer-progress'+(progress.error?' has-error':'')+'" role="status" aria-live="polite">'+
+  '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
+  esc(progress.error?"Action needs attention":
+   busy?"Checking transaction safety…":
+   selected?"1 / 2 · "+statusLabel:
+   deployed?(connected?"Ready to transfer":"Wallet not connected"):
+   "Selected route unavailable")+'</strong></div>'+
+  (selected||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
+  (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
+   (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
+  (progress.notice&&(!progress.scanning||progress.busy)?
+   '<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
+  (progress.error?'<p class="ux-transfer-error" role="alert">'+esc(progress.error)+'</p>':'')+
+  '</section>';
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
   '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro">'+
   '<span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1>'+
@@ -399,15 +414,6 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    busy?"Checking the selected transaction against the blockchain.":
    deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
    "Only verified deployed routes can be transferred.")+'</p></div>'+
-  '<section class="ux-transfer-progress" role="status" aria-live="polite">'+
-  '<strong>'+esc(selected?"1 / 2 · "+statusLabel:
-   deployed?"Ready · "+statusLabel:"Route not available from this site's deployment catalog")+'</strong>'+
-  '<progress max="2" value="'+progressValue+'"></progress>'+
-  (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
-   (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
-  (progress.notice&&(!progress.scanning||progress.busy)?'<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
-  (progress.error?'<p class="ux-transfer-error">'+esc(progress.error)+'</p>':'')+
-  '</section>'+
   '<details class="ux-transfer-advanced"><summary>Route, network gas &amp; safety checks <span aria-hidden="true">⌄</span></summary>'+
   '<div class="ux-transfer-advanced-body">'+routePath(model,path)+
   '<div class="ux-route-status">'+
@@ -416,17 +422,24 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<p>'+(deployed?"The source and destination contract addresses are documented. Their live bindings, fees and gas requirements are checked again before signing.":
     "A documented, direct route is required before signing.")+'</p></div>'+
   renderWalletGasChecklist(model,path,{...wallet,hideStepList:true,hideInactiveNote:deployed})+
+  '<p class="ux-transfer-footer-note">The source Gateway and destination Mailbox are public contracts. A separate ERC-20 approval may be required; a confirmed source lock is never repeated.</p>'+
   '</div></details>'+
-  '<p class="ux-transfer-footer-note">A direct transfer uses source Gateway.bridge and destination Mailbox.process. A separate ERC-20 approval may be required. A confirmed source lock is never repeated.</p>'+
   (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")?
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
-  '</section><aside class="ux-panel ux-ns-operations-data">'+
-  '<span class="ux-kicker">NETWORK STATUS</span><h2>Available networks</h2>'+
-  '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
-   deployedChains.length+'</strong></div><div><span>Deployed directed routes</span><strong>'+routes.length+'</strong></div></div>'+
-  '<div class="ux-transfer-explainer"><strong>How your transfer works</strong><ol><li>Check balances, route contracts and fees before signing.</li><li>Lock or burn on the source chain, once.</li><li>After validator proof, confirm delivery on the destination chain.</li></ol><p>Each step is confirmed in your own wallet. No XITA custody or private keys.</p></div>'+
+  '</section><aside class="ux-panel ux-ns-operations-data ux-transfer-status-panel">'+
+  '<div class="ux-transfer-status-heading"><span class="ux-kicker">TRANSACTION STATUS</span><h2>Transfer progress</h2></div>'+
+  statusMarkup+
+  '<div class="ux-transfer-milestones" aria-label="Transfer steps">'+
+   '<div class="ux-transfer-milestone'+(selected?.confirmed?' is-complete':' is-current')+'">'+
+    '<span class="ux-transfer-milestone-number">01</span><div><strong>Source transaction</strong>'+
+    '<small>Lock or burn with your wallet</small></div></div>'+
+   '<div class="ux-transfer-milestone'+(selected?.confirmed?' is-current':'')+'">'+
+    '<span class="ux-transfer-milestone-number">02</span><div><strong>Destination delivery</strong>'+
+    '<small>Process the verified message</small></div></div>'+
+  '</div>'+
+  '<p class="ux-transfer-status-help">Your wallet authorizes each step. Private keys stay with you.</p>'+
   '</aside></div>'+ 
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
   '</section></div>';

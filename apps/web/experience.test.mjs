@@ -251,3 +251,22 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
  assert.match(selected,/Source confirmed/);
  assert.doesNotMatch(fresh,/One transfer page/);
 });
+
+test("transfer status replaces redundant right-side network inventory",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const m=buildExperienceModel(c),account="0x"+"1".repeat(40);
+ const markup=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},
+  "ready",{account},{notice:"Checking the deployed source Gateway quote…",error:"Wallet RPC nonce invalid"});
+ const aside=markup.slice(markup.indexOf('<aside class="ux-panel ux-ns-operations-data'),markup.indexOf("</aside>"));
+ const left=markup.slice(markup.indexOf('class="ux-panel ux-route-panel"'),markup.indexOf('<aside class="ux-panel'));
+ assert.match(aside,/TRANSACTION STATUS/);
+ assert.match(aside,/Transfer progress/);
+ assert.match(aside,/Wallet RPC nonce invalid/);
+ assert.match(aside,/Checking the deployed source Gateway quote/);
+ assert.match(aside,/Source transaction/);
+ assert.match(aside,/Destination delivery/);
+ assert.doesNotMatch(aside,/Available networks|Deployed systems|Deployed directed routes/);
+ assert.doesNotMatch(left,/ux-transfer-progress|Wallet RPC nonce invalid/);
+ assert.equal((markup.match(/class="ux-transfer-progress/g)||[]).length,1);
+ assert.ok(markup.indexOf('id="xita-transfer-primary"')<markup.indexOf('<aside class="ux-panel'));
+});
