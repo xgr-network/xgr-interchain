@@ -32,18 +32,18 @@ function fixture(){
 function recovered(messageId){return {status:"READY_UNSIGNED_CALL",messageId,route:"xgr_to_base",
  destinationChainId:"8453",to:addr("3"),value:"0x0",data:selector("process(bytes,bytes)")+"0".repeat(256)};}
 test("resolve proof script only from canonical deployed route and configured chain URLs",()=>{
- const c=fixture(),ref=resolveRecoveryRoute(c,"xgr_to_base",hash("1"));
+ const c=fixture(),ref=resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC");
  assert.equal(ref.env.ORIGIN_ILN_GATEWAY,addr("9"));
  assert.equal(ref.env.DESTINATION_MAILBOX,addr("3"));
  assert.equal(ref.env.ORIGIN_MAILBOX,addr("3"));
  assert.equal(ref.env.ATTESTATION_ROUTE,"xgr_to_base");
- assert.throws(()=>resolveRecoveryRoute(c,"not_real",hash("1")),/deployed route/);
- assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base","bad"),/Invalid/);
+ assert.throws(()=>resolveRecoveryRoute(c,"not_real",hash("1"),"ABC"),/deployed route/);
+ assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base","bad","ABC"),/Invalid/);
  c.infrastructure.base.present=false;
  assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base",hash("1")),/deployed route/);
 });
 test("accept exactly authorized unsigned Mailbox.process calldata",()=>{
- const c=fixture(),config=resolveRecoveryRoute(c,"xgr_to_base",hash("2")),ok=recovered(hash("2"));
+ const c=fixture(),config=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC"),ok=recovered(hash("2"));
  assert.equal(validateUnsignedRecovery(ok,config).status,"READY_UNSIGNED_CALL");
  assert.equal(parseRecoveryCliOutput(JSON.stringify(ok),config).value,"0x0");
  for(const bad of [
@@ -57,7 +57,7 @@ test("accept exactly authorized unsigned Mailbox.process calldata",()=>{
 });
 test("public recovery endpoint never signs or assumes success, only returns source-bound calldata",async()=>{
  const catalog=fixture();
- const result=await serveUnsignedTransferRecovery({catalog,route:"xgr_to_base",messageId:hash("4"),runner:async conf=>validateUnsignedRecovery(recovered(hash("4")),conf)});
+ const result=await serveUnsignedTransferRecovery({catalog,route:"xgr_to_base",asset:"ABC",messageId:hash("4"),runner:async conf=>validateUnsignedRecovery(recovered(hash("4")),conf)});
  assert.equal(result.code,200);
  assert.equal(result.body.status,"READY_UNSIGNED_CALL");
  assert.ok(result.body.data);
