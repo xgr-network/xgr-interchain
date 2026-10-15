@@ -47,6 +47,9 @@ const assert = (condition, message) => {
 };
 const isHash = (v) => /^0x[0-9a-fA-F]{64}$/.test(String(v));
 const id = process.argv[2]?.toLowerCase();
+let stage = "startup";
+const mark = value => { stage=value; };
+
 // Optional untrusted locator only: independently verify the successful source
 // receipt, Gateway operation and matching Dispatch BEFORE requesting a quorum.
 const sourceTxHash = process.env.SOURCE_TX_HASH?.toLowerCase() || "";
@@ -202,16 +205,19 @@ async function reconstructProof(operationBlock, checkpointIndex) {
 }
 
 async function main() {
+  mark("verify-chain-ids");
   await Promise.all([
     assertNetwork(origin, originChainId, "source"),
     assertNetwork(destination, destinationChainId, "destination"),
     assertNetwork(attestations, 1643n, "XGR attestation"),
   ]);
+  mark("destination-delivery");
   if (await destMailbox.delivered(id)) {
     console.log(JSON.stringify({ status: "ALREADY_DELIVERED", messageId: id }));
     return;
   }
 
+  mark("destination-ism-registry");
   const [destinationISMRegistry, ismDomain] = await Promise.all([
     destISM.registry(), destISM.destinationDomain(),
   ]);
@@ -221,12 +227,14 @@ async function main() {
     destinationSet.setId(),
     destinationSet.verifierKeyFormat(),
   ]);
+  mark("get-validator-attestation");
   let attestation;
   try {
     attestation = await attestations.send("xgr_getILNQuorumAttestation", [routeName, id, Number(currentSetId)]);
   } catch {
     // First-time delivery and post-rotation recovery use exactly the same
     // public request path. No relayer or operator-specific signing endpoint.
+    mark("source-receipt");
     let operationBlock = sourceTxHash ? await operationBlockFromReceipt(sourceTxHash) : 0;
     if (!Number.isSafeInteger(operationBlock) || operationBlock <= 0) {
       const startBlock = Number(await sourceGateway.activationBlock());
@@ -244,6 +252,7 @@ async function main() {
       }
     }
     assert(operationBlock > 0, "canonical source Gateway operation not found");
+    mark("request-validator-quorum");
     await attestations.send("xgr_requestILNQuorum", [routeName, id, operationBlock]);
     try {
       attestation = await attestations.send("xgr_getILNQuorumAttestation", [routeName, id, Number(currentSetId)]);
@@ -260,6 +269,7 @@ async function main() {
     }
   }
 
+  mark("validate-attestation");
   eq("attestation route name", attestation.chain, routeName);
   eq("attestation message ID", attestation.authorizedMessageId, id);
   eq("attestation route ID", attestation.routeId, routeId);
@@ -369,6 +379,7 @@ async function main() {
     "incorrect BLS signature length",
   );
 
+  mark("merkle-proof");
   const { messageIndex, proof } = await reconstructProof(operationBlock, checkpointIndex);
   eq("Merkle inclusion root", branchRoot(id, proof, messageIndex), attestation.root);
   const inner = encodeISMMetadataV314({
@@ -399,6 +410,7 @@ async function main() {
 
   // This eth_call checks actual destination ISM routing and current quorum.
   // No transaction or fee is submitted by this script.
+  mark("simulate-base-delivery");
   await destMailbox.process.staticCall(metadata, message);
   assert(BigInt(await destinationSet.setId()) === attestedSetId, "validator set changed during recovery preparation");
   assert(!(await destMailbox.delivered(id)), "message was delivered during recovery preparation");
@@ -416,6 +428,12 @@ async function main() {
   }, null, 2));
 }
 main().catch((error) => {
-  console.error(JSON.stringify({ status: "RECOVERY_NOT_READY", messageId: id, error: error.message }, null, 2));
-  process.exitCode = 1;
+  const inner=error?.info?.error||error?.error;
+  const rpcCode=Number.isInteger(inner?.code)?inner.code:
+    Number.isInteger(error?.code)?error.code:null;
+  console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
+    status:"RECOVERY_NOT_READY",messageId:id,stage,rpcCode,
+    error:String(error?.shortMessage||error?.message||"Unknown proof failure").slice(0,1500)
+  }));
+  process.exitCode=1;
 });
