@@ -56,6 +56,9 @@ jobs:
       - name: Validate unsigned on-chain destination recovery
         run: node --test services/indexer/transfer-recovery.test.mjs
 
+      - name: Validate indexed on-chain wallet worklist (generic route identities)
+        run: node --test services/indexer/transfer-index-store.test.mjs
+
       - name: Validate CoinGecko adapter
         run: node --test services/indexer/coingecko.test.mjs
 
