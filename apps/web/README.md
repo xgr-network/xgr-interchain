@@ -7,8 +7,8 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/`: dashboard, configured inventories and journey planner
 - `/universe`: interactive chain systems; choose a system, then open its token
 - `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
-- `/token/<slug>`: verified deployed token detail page with its dedicated bridge panel
-- `/routes`: configured directional routes and explicitly unverified activation status
+- `/token/<slug>`: token detail and prospects; link to the only transfer page
+- `/transfer?token=<ASSET>`: single transfer UI with on-chain worklist and destination-only recovery
 - `/join`: four-step Alliance onboarding with live token universe preview, local JSON export, and optional manifest preview backend. GitHub PR publication requires verified identity/session and is disabled until authentication is installed.
 
 There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
@@ -18,21 +18,18 @@ proof and verified reciprocal route deployment.
 
 ## Transfer UI security contract
 
-The v3.1.5 transfer panel is an interactive **route-planning preview only**,
-not an executable mock bridge. Wallet connection reads account, chain ID and
-native wallet gas balance; no contracts are called or approved. The send button
-is explicitly disabled. Do **not** revive v3.1.4 `quoteILN`, `bridge`,
-`ILNGateway` or legacy governance calls as a shortcut.
-
-When the v3.1.5 gateway adapter, deployment manifests, fee journals, and
-live route-safety proofs are finished, the token panel can execute the new
-ABI flow only after verifying on-chain source and destination contracts,
-the reciprocal route pairing and route activation. A Base -> Polygon route
-is **two independently executed hops** through XGRChain 1643, never a
-direct external-to-external transfer. A second hop sponsor is not implemented.
-
-Universe paths visualize topology and configured inventory only; never infer
-live activation from an illustration or an asset listing.
+The v3.1.5 Transfer Tokens screen now checks canonical deployed source
+Gateway quotes, native and ERC-20 balances, and gas before an explicit
+MetaMask source signature. At wallet connect it scans canonical Gateway
+operation and Mailbox events and reads destination `delivered(messageId)`.
+If a source lock/burn was confirmed without a completed mint/unlock, the
+one primary button switches to destination-only recovery. No browser
+transfer journal is used. A bounded recent scan cannot establish that
+no older open transfers exist; entering the original source tx hash
+under My Transfers remains supported. The unsigned Merkle/BLS recovery
+endpoint must be deployed with the separate indexer service and reverse
+proxy before the destination action can be used. Successful end-to-end
+delivery is not presumed by deployed contract receipts alone.
 
 ## Startup and publication
 
