@@ -85,3 +85,13 @@ test("proof CLI failures are categorized without putting raw internals in HTTP r
  assert.equal(classifyRecoveryFailure(new Error("RPC request failed"),"").code,"PROOF_RPC_UNAVAILABLE");
  assert.equal(classifyRecoveryFailure(null,JSON.stringify({status:"RECOVERY_NOT_READY",error:"Merkle proof unavailable"})).code,"PROOF_RECONSTRUCTION_UNAVAILABLE");
 });
+
+test("structured JSON-RPC error diagnostics retain nested quotes and exact RPC code",()=>{
+ const d={status:"RECOVERY_NOT_READY",stage:"request-validator-quorum",rpcCode:-32601,
+  error:'method "xgr_requestILNQuorum" not found'};
+ const value=classifyRecoveryFailure(new Error("script exit"),
+  "XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify(d)+"\n");
+ assert.equal(value.code,"PROOF_RPC_METHOD_UNAVAILABLE");
+ assert.equal(value.stage,"request-validator-quorum");
+ assert.match(value.detail,/xgr_requestILNQuorum/);
+});
