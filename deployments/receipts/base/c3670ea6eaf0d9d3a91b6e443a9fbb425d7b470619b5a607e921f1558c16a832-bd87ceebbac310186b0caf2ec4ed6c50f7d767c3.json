@@ -4,7 +4,7 @@
   "network": "mainnet",
   "approval": {
     "ref": "main",
-    "sourceCommit": "860508e29fec65cb2582a5bb2d3a48cac4c49319"
+    "sourceCommit": "75c698494ff8c80b8e83d24434a75480b70b3ffc"
   },
   "chain": "base",
   "chainId": 8453,
@@ -22,8 +22,7 @@
   "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
   "provenance": {
     "kind": "factory-registry",
-    "factory": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370",
-    "execution": "smart-wallet"
+    "factory": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370"
   },
   "status": "onchain-deployment-verified",
   "recordedAt": "2026-10-15T06:09:22.677Z"
