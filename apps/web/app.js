@@ -88,6 +88,61 @@ async function lookupWalletTransfer(sourceChain,txHash){
   }
  }
 }
+async function performTransferAction(){
+ if(transferActivity.working||transferActivity.scanning||!state.catalog)return;
+ if(!state.account){document.querySelector("#connect")?.click();return;}
+ const account=state.account;
+ const candidates=transferActivity.items.filter(t=>
+  ["awaiting-proof","delivery-unknown","confirming","pending-source","destination-not-deployed"].includes(t.status));
+ const selected=candidates.find(t=>t.txHash===transferActivity.selectedTxHash)||candidates[0]||null;
+ transferActivity.working=true;transferActivity.error="";
+ transferActivity.notice=selected?"Rechecking original source and destination chains…":
+  "Checking the deployed source Gateway quote…";
+ render();
+ try{
+  if(selected){
+   if(selected.status!=="awaiting-proof"){
+    await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+    return;
+   }
+   const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
+    provider:globalThis.ethereum,onBroadcast:({txHash})=>{
+     transferActivity.notice="Destination TX "+txHash+
+      " submitted. Original source transfer is NEVER repeated.";
+    }});
+   transferActivity.notice=result.status==="delivered"?
+    "Delivery confirmed by the destination Mailbox.":
+    result.status==="waiting"?result.notice||"Validator proof pending; retry later.":
+    result.status==="failed"?"Destination TX failed; retry only the destination.":
+    "Destination TX pending; do not repeat it until chain status is checked.";
+   await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+   return;
+  }
+  const model=buildExperienceModel(state.catalog,()=>false);
+  const asset=state.experience.asset,origin=state.experience.origin,
+   destination=state.experience.destination,amount=state.experience.amount||"";
+  if(!model.deployments.some(r=>r.asset===asset&&r.source===origin&&r.destination===destination))
+   throw Error("Select a directly deployed route. Multi-hop transfers proceed one hop at a time.");
+  const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
+   destination,amount,provider:globalThis.ethereum,
+   onBroadcast:({txHash})=>{
+    transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
+    render();
+   }});
+  transferActivity.notice="Source TX submitted. Waiting for lock/burn confirmation…";
+  const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
+  if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
+  else if(receipt.status!=="0x1")transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+  else await lookupWalletTransfer(sent.sourceChain,sent.txHash);
+ }catch(error){
+  transferActivity.error=String(error.message||error);
+ }finally{
+  if(state.account?.toLowerCase()===account.toLowerCase()){
+   transferActivity.working=false;
+   if(path()==="/transfer")render();
+  }
+ }
+}
 const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
