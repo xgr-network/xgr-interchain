@@ -11,20 +11,20 @@ const input={id:"polygon:validatorRegistry",chainId:137,sourceCommit:"c".repeat(
  parameters:{minimumWei:"300",maxExecutorReimbursementWei:"100",perValidatorWei:"300"},
  validatorSnapshot:{validators:[{address:"0x"+"1".repeat(40)},{address:"0x"+"2".repeat(40)},{address:"0x"+"3".repeat(40)}]},
  transaction:{from:wallet,to:null,data:"0x1234567890",value:"0x0",nonce:"0x0",gas:"0x100000"}};
-test("write-ahead wallet intent is persistent and cannot be broadcast twice",()=>{
+test("write-ahead wallet intent stores only latest wallet attempt",()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-intent-"));
  try{
   const open=()=>deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   open().prepare(input);
   assert.equal(open().read().entries[input.id].stage,"prepared");
-  assert.throws(()=>open().prepare(input),/Existing deployment intent/);
+  assert.equal(open().prepare(input).stage,"prepared");
   open().attachHash(input.id,hash);
   assert.equal(open().read().entries[input.id].txHash,hash);
   assert.throws(()=>open().attachHash(input.id,"0x"+"f".repeat(64)),/replace/);
   assert.throws(()=>open().document(input.id,"deployments/receipts/polygon/x.json"),/canonical/);
   open().confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
   assert.equal(open().read().entries[input.id].stage,"confirmed");
-  assert.throws(()=>open().prepare(input),/Existing deployment intent/);
+  assert.equal(open().prepare(input).stage,"prepared");
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("unapproved chain, malformed nonce and sender mismatch fail before journaling",()=>{
@@ -48,7 +48,7 @@ test("route Gateway and Router use the SAME persistent write-ahead journal",()=>
    transaction:{...input.transaction,to:"0x"+"3".repeat(40)}};
   open().prepare(route);
   assert.equal(open().read().entries[route.id].stage,"prepared");
-  assert.throws(()=>open().prepare(route),/Existing deployment intent/);
+  assert.equal(open().prepare(route).stage,"prepared");
   open().attachHash(route.id,hash);
   assert.equal(open().read().entries[route.id].stage,"submitted");
   assert.throws(()=>open().attachHash(route.id,"0x"+"f".repeat(64)),/replace/);
@@ -151,7 +151,7 @@ test("completed-record cleanup preserves all unresolved router and route transac
   const current=store.read();
   assert.equal(current.entries[input.id],undefined);
   assert.equal(current.entries[route.id].stage,"submitted");
-  assert.throws(()=>store.prepare(route),/Existing deployment intent/);
+  assert.equal(store.prepare(route).stage,"prepared");
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries),[route.id]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
@@ -196,7 +196,7 @@ test("fresh XITA transport bundle intent survives journal transitions and remain
    parameters:{},validatorSnapshot:null,transaction:{...input.transaction,to:null}};
   const prepared=open.prepare(entry);
   assert.equal(prepared.txHash,null);
-  assert.throws(()=>open.prepare(entry),/Existing deployment intent/);
+  assert.equal(open.prepare(entry).stage,"prepared");
   open.attachHash(entry.id,hash);
   assert.equal(open.read().entries[entry.id].stage,"submitted");
   open.confirm(entry.id,hash,{contractAddress:wallet,
@@ -233,8 +233,7 @@ test("old submitted Registry intent is read with original hash, nonce and callda
   assert.equal(read.parameters.perValidatorWei,"300");
   assert.deepEqual(read.transaction,legacy.transaction);
   assert.equal(read.txHash,hash);
-  assert.throws(()=>st.prepare({...input,id:legacy.id,chainId:8453}),
-   /Existing deployment intent/);
+  assert.equal(st.prepare({...input,id:legacy.id,chainId:8453}).stage,"prepared");
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("an old signed Registry intent with unprovable reserve value cannot be silently rewritten",()=>{
@@ -291,5 +290,18 @@ test("replacement hash can be adopted only for an unchanged, submitted original 
   assert.equal(latest.txHash,"0x"+"d".repeat(64));
   assert.equal(latest.replacedTxHash,hash);
   assert.equal(latest.transaction.data,input.transaction.data);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("operator can replace an unrecorded confirmed WAL with a NEW explicitly signed attempt",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-fresh-operator-deploy-"));
+ try{
+  const st=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  st.prepare(input);st.attachHash(input.id,hash);
+  st.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
+  const fresh=st.prepare({...input,transaction:{...input.transaction,nonce:"0x42"}});
+  assert.equal(fresh.stage,"prepared");assert.equal(fresh.txHash,null);
+  assert.equal(st.read().entries[input.id].transaction.nonce,"0x42");
+  assert.equal(Object.keys(st.read().entries).length,1);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });

@@ -204,36 +204,10 @@ async function previewAssetDeployment(){
  el("modal-deploy").disabled=false;
  presentModalStatus("On-Chain-Vorprüfung erfolgreich. Deployment durch Wallet bestätigen.");
 }
-async function automaticallyContinuePrevious(type,target){
- const call=()=>postJSON("/admin/api/deploy/advance",{type,target});
- let previous=(await call()).result;
- if(previous.stage==="pending"){
-  const settled=await awaitDeploymentReceipt(call,{
-   attempts:6,
-   onPending:()=>presentModalStatus("Vorherige Wallet-Transaktion wird automatisch geprüft …","warn")
-  });
-  previous=settled.result;
- }
- if(previous.stage==="pending")
-  presentModalStatus("Transaktion noch in Prüfung. Erneut auf Deploy klicken; keine manuelle Wiederherstellung erforderlich.","warn");
- else if(previous.warning){
-  el("modal-gas-result").textContent="Hinweis: Der vorige Deploy konnte nicht rekonstruiert werden. Ein erneuter Contract-Deploy kann zusätzliche Gas-/Reservekosten und einen undokumentierten Doppelcontract verursachen. MetaMask bestätigt jede neue Transaktion.";
-  presentModalStatus("Alter Versuch nicht rekonstruierbar. Neuer Deploy mit frischer MetaMask-Bestätigung.","warn");
- }
- return previous;
-}
 async function executeAssetDeployment(){
  const task=selectedAssetTask;
  if(!task)throw Error("Keine Asset-Aufgabe ausgewählt");
  const chain=workqueue.inventory.chains.find(c=>c.name===task.chain);
- const previous=await automaticallyContinuePrevious("asset",task.asset);
- if(previous.stage==="pending"){el("modal-deploy").disabled=false;return;}
- if(previous.stage==="documented"){
-  presentModalStatus("Vorherige Transaktion automatisch dokumentiert.","success");
-  el("contract-deploy-dialog").close();selectedAssetTask=null;
-  await waitForDeploymentSync(previous);return;
- }
- if(previous.stage!=="ready")throw Error("Unbekannter automatischer Fortsetzungsstatus");
  let wallet=await currentWalletState();
  if(!wallet)throw Error("Wallet verbinden");
  if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
@@ -262,7 +236,7 @@ async function executeAssetDeployment(){
   });
  if(report.result.stage==="pending"){
   el("modal-deploy").disabled=false;
-  presentModalStatus("Transaktion noch ausstehend. Ein erneuter Deploy-Klick prüft automatisch denselben Hash.","warn");
+  presentModalStatus("Transaktion noch ausstehend. Erneuter Klick startet eine neue MetaMask-Transaktion.","warn");
   return;
  }
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
@@ -290,7 +264,7 @@ async function openContractModal(chainName,component){
    get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chainName)),
    get("/admin/api/chain-deploy/status")]);
   if(selectedDeployment?.chainName!==chainName||selectedDeployment.component!==component)return;
-  const r=response.readiness,existing=status.intents.entries[chainName+":"+component];
+  const r=response.readiness;
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
   const requiresValues=component==="validatorRegistry"||component==="factory";
@@ -404,21 +378,13 @@ async function checkModalGas(){
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
 }
 async function executeModalDeployment(){
- if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){el("modal-deploy").disabled=false;presentModalStatus("Deployment noch nicht abgeschlossen: "+e.message+". Erneut auf Deploy klicken; vorheriger Versuch wird automatisch geprüft.","error");}return;}
+ if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){el("modal-deploy").disabled=false;presentModalStatus("Deployment noch nicht abgeschlossen: "+e.message+". Erneuter Klick startet eine neue Wallet-Transaktion.","error");}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const button=el("modal-deploy");button.disabled=true;
  try{
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
   const params=modalValues(component);
-  const previous=await automaticallyContinuePrevious("chain",chainName);
-  if(previous.stage==="pending"){button.disabled=false;return;}
-  if(previous.stage==="documented"){
-   presentModalStatus("Vorherige Transaktion automatisch dokumentiert. Deploy-Kette aktualisiert.","success");
-   el("contract-deploy-dialog").close();selectedDeployment=null;
-   await waitForDeploymentSync(previous);return;
-  }
-  if(previous.stage!=="ready")throw Error("Unbekannter automatischer Fortsetzungsstatus");
   let state=await currentWalletState();
   if(!state)throw Error("Wallet verbinden");
   if(state.chainId!==chain.chainId)await switchDeploymentChain(chain);
@@ -447,13 +413,13 @@ async function executeModalDeployment(){
       (r.reason==="confirmations"?"wartet auf Bestätigungen":"wartet auf On-Chain-Receipt")+
       " – keine weitere Wallet-Signatur.","warn")
    });
-  if(result.result.stage==="pending"){button.disabled=false;presentModalStatus("Wallet-Transaktion noch ausstehend. Erneut auf Deploy klicken; der Status wird automatisch geprüft.","warn");return;}
+  if(result.result.stage==="pending"){button.disabled=false;presentModalStatus("Wallet-Transaktion noch ausstehend. Erneuter Klick startet eine neue MetaMask-Transaktion.","warn");return;}
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
   await waitForDeploymentSync(result.result);
  }catch(e){button.disabled=false;presentModalStatus(
-  "Deployment noch nicht abgeschlossen: "+e.message+". Derselbe Deploy-Button prüft beim nächsten Klick zuerst die alte Transaktion.","error")}
+  "Deployment noch nicht abgeschlossen: "+e.message+". Erneuter Klick startet eine neue Wallet-Transaktion.","error")}
 }
 function formatBalance(b,c){return formatNative(b,c.nativeCurrency.decimals||18)+" "+c.nativeCurrency.symbol;}
 async function refreshWalletBalances(){
@@ -494,6 +460,7 @@ function setView(name){
 }
 let batchActive=false;
 let batchStopRequested=false;
+let batchRetry=null;
 const walletRejected=e=>e?.code===4001||e?.code==="ACTION_REJECTED"||
  /user (rejected|denied|cancelled)|userrejectedrequest/i.test(String(e?.message||""));
 async function runDeploymentBatch(type,target){
@@ -523,32 +490,6 @@ async function runDeploymentBatch(type,target){
    await loadMainWorkqueue();
    if(!workqueue||workqueue.readOnly)
     throw Error("GitHub-main-Sync noch nicht abgeschlossen. Nach der Synchronisierung denselben Deploy-Button erneut klicken.");
-   // Always resume previous same-chain/asset txs BEFORE preparing a new one.
-   // No manual hash dialog or recovery-only action is ever needed.
-   const previous=await postJSON("/admin/api/deploy/advance",{type,target});
-   let recovered=previous.result;
-   if(recovered.stage==="pending"){
-    const settle=await awaitDeploymentReceipt(
-     ()=>postJSON("/admin/api/deploy/advance",{type,target}),{
-      onPending:()=>presentModalStatus("Vorherige Wallet-Transaktion wird automatisch geprüft. Kein neuer MetaMask-Dialog nötig …","warn")
-     });
-    recovered=settle.result;
-   }
-   if(recovered.stage==="pending"){
-    presentModalStatus("Vorherige Transaktion noch nicht endgültig geklärt. Erneut auf Deploy klicken, um automatisch fortzusetzen. "+(recovered.detail||""),"warn");
-    break;
-   }
-   if(recovered.stage==="documented"){
-    presentModalStatus("Vorherige Transaktion automatisch rekonstruiert und dokumentiert. Setze Deploy-Kette fort …","success");
-    await waitForDeploymentSync(recovered);
-    continue;
-   }
-   if(recovered.stage!=="ready")
-    throw Error("Unerwarteter Status bei automatischer Deployment-Fortsetzung");
-   if(recovered.warning){
-    el("modal-gas-result").textContent="Hinweis zum erneuten Deploy: Die frühere Transaktion konnte nicht rekonstruiert werden. Zusätzliche Gas-/Reservekosten oder ein doppelter, noch nicht dokumentierter Contract sind möglich. MetaMask fragt erneut nach deiner Bestätigung.";
-    presentModalStatus("Alter Versuch nicht rekonstruierbar. Neuer Deploy nur mit frischer MetaMask-Bestätigung.","warn");
-   }
    const next=type==="chain"?
     nextChainDeployment(workqueue,target):
     nextAssetDeployment(workqueue,assetTasks,target);
@@ -607,7 +548,7 @@ async function runDeploymentBatch(type,target){
       throw Error("MetaMask abgebrochen; Entwurf wird beim nächsten Deploy nach Nonce-Prüfung freigegeben: "+cancelError.message);
      }
     }
-    if(txHash)throw Error("TX "+txHash+" wird beim nächsten normalen Deploy-Klick automatisch weiterverfolgt: "+e.message);
+    if(txHash)throw Error("TX "+txHash+" ist noch nicht in GitHub dokumentiert. Ein erneuter Deploy-Klick startet eine neue MetaMask-Transaktion: "+e.message);
     throw e;
    }
   }
@@ -617,6 +558,8 @@ async function runDeploymentBatch(type,target){
  }finally{
   batchActive=false;el("batch-stop").hidden=true;
   await loadMainWorkqueue();
+  el("modal-deploy").hidden=false;el("modal-deploy").disabled=false;
+  el("modal-deploy").textContent="Erneut mit Wallet deployen";batchRetry={type,target};
  }
 }
 async function waitForDeploymentSync(result){
@@ -679,11 +622,14 @@ async function loadJobs(){
 }
 el("modal-close").addEventListener("click",()=>{if(batchActive)batchStopRequested=true;el("contract-deploy-dialog").close();});
 el("contract-deploy-dialog").addEventListener("cancel",()=>{if(batchActive)batchStopRequested=true;});
-el("contract-deploy-dialog").addEventListener("close",()=>{if(batchActive)batchStopRequested=true;selectedDeployment=null;selectedAssetTask=null;assetPreview=null;});
+el("contract-deploy-dialog").addEventListener("close",()=>{if(batchActive)batchStopRequested=true;selectedDeployment=null;selectedAssetTask=null;assetPreview=null;batchRetry=null;});
 
 
 el("batch-stop").addEventListener("click",()=>{batchStopRequested=true;presentModalStatus("Pausiert nach der aktuellen Wallet-Transaktion …","warn");});
-el("modal-deploy").addEventListener("click",executeModalDeployment);
+el("modal-deploy").addEventListener("click",()=>{
+ if(batchRetry){const next=batchRetry;batchRetry=null;el("contract-deploy-dialog").close();void runDeploymentBatch(next.type,next.target);return;}
+ void executeModalDeployment();
+});
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
 
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
