@@ -158,12 +158,32 @@ test("missing unsigned recovery service must prevent any source token lock",asyn
  assert.equal(sends.length,0);
 });
 
-test("stale XGR RPC pending nonce fails closed with actionable explanation",async()=>{
+test("stale MetaMask pending nonce can be reconciled by an independent source-chain RPC",async()=>{
  const sent=[];
  const primary=sourceProvider(sent);
  const stale={request:async req=>req.method==="eth_getTransactionCount"&&req.params?.[1]==="pending"?"0x1":primary.request(req)};
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
-  destination:"base",amount:"0.1",provider:stale,fetcher:testFetch()}),
-  /pending nonce is behind the confirmed chain nonce/);
+ const original=testFetch();
+ const fetcher=async(url,options)=>{
+  const {method}=JSON.parse(options?.body||"{}");
+  if(url.includes("/xgr")&&["eth_chainId","eth_getTransactionCount"].includes(method)){
+   const result=method==="eth_chainId"?"0x66b":"0x2";
+   return rpcResponse(result);
+  }
+  return original(url,options);
+ };
+ const result=await startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:stale,fetcher});
+ assert.equal(result.txHash,sourceTx);
+ assert.equal(sent.length,1);
+});
+test("invalid wallet nonce is not bypassed if the canonical RPC is unavailable",async()=>{
+ const sent=[],primary=sourceProvider(sent);
+ const invalid={request:async req=>req.method==="eth_getTransactionCount"?null:primary.request(req)};
+ const fetcher=async(url,options)=>{
+  if(url.includes("/xgr"))throw Error("Chain RPC unavailable");
+  return testFetch()(url,options);
+ };
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",provider:invalid,fetcher}),/Nonce verification failed/);
  assert.equal(sent.length,0);
 });

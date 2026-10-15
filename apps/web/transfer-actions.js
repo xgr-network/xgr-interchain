@@ -4,6 +4,7 @@
 import {selector} from "./keccak.js";
 import {deployedRoutes} from "./route-availability.js";
 import {publicRead,findWalletSourceTx} from "./wallet-transfers.js";
+import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const hex=n=>"0x"+BigInt(n).toString(16);
@@ -88,18 +89,6 @@ async function sourceGasAffordable(provider,account,price){
  // The wallet remains final authority for gas and effective fee estimates.
  return {balance:BigInt(nativeBalance),gasPrice:BigInt(gasPrice)};
 }
-async function ensureNoPendingWalletTransaction(provider,account){
- const [confirmed,pending]=await Promise.all([
-  request(provider,"eth_getTransactionCount",[account,"latest"]),
-  request(provider,"eth_getTransactionCount",[account,"pending"])
- ]);
- if(!QTY.test(confirmed||"")||!QTY.test(pending||""))
-  throw Error("Wallet RPC returned invalid nonce data. No transaction was sent.");
- if(BigInt(pending)<BigInt(confirmed))
-  throw Error("Wallet RPC pending nonce is behind the confirmed chain nonce. Check that MetaMask uses a fully synced RPC, then retry. No transaction was sent.");
- if(BigInt(pending)>BigInt(confirmed))
-  throw Error("Your wallet has a pending transaction. Check MetaMask activity and wait for its receipt before signing another transfer.");
-}
 function preflightGas(estimated,gasPrice,value,balance){
  if(!QTY.test(estimated||""))throw Error("Cannot estimate transaction gas");
  const required=BigInt(estimated)*gasPrice*13n/10n+BigInt(value);
@@ -146,7 +135,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   throw Error("Destination wallet needs native gas BEFORE locking tokens");
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
- await ensureNoPendingWalletTransaction(provider,account);
+ await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
  await verifyGateway(provider,route,dst.domainId);
  const quoteData=await request(provider,"eth_call",[{to:route.gateway,
   from:account,data:quoteCalldata(dst.domainId,account,units)},"latest"]);
@@ -166,7 +155,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    preflightGas(gas,cash.gasPrice,0n,cash.balance);
    await validateWalletAccount(provider,account);
    await rpcChain(provider,src);
-   await ensureNoPendingWalletTransaction(provider,account);
+   await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
    const approvalHash=await request(provider,"eth_sendTransaction",[approve]);
    const approvalReceipt=await waitForWalletReceipt(provider,approvalHash);
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
@@ -183,7 +172,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  preflightGas(estimate,cash.gasPrice,quote.value,cash.balance);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src);
- await ensureNoPendingWalletTransaction(provider,account);
+ await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
@@ -232,7 +221,7 @@ export async function resumeDelivery({catalog,account,record,provider,
  preflightGas(gas,cash.gasPrice,0n,cash.balance);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,dst);
- await ensureNoPendingWalletTransaction(provider,account);
+ await ensureNoPendingWalletTransaction({provider,account,chain:dst,fetcher});
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("No destination transaction hash returned");
  onBroadcast?.({txHash,sourceChain:current.sourceChain});
