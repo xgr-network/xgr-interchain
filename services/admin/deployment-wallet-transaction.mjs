@@ -17,13 +17,34 @@ export function persistWalletBroadcastHash({journal,id,txHash}){
 // valid provided the actual signed sender, calldata, target, value and chain
 // all match. Nonce remains mandatory when recovering an UNKNOWN hash via a
 // historical block, because there the nonce itself identifies the candidate.
+// The operator's Base wallet uses a smart-wallet executor for eth_sendTransaction.
+ // This fixed, observed executor forwards a server-approved target/calldata via
+ // an envelope. Full Factory events and runtime proofs are still mandatory
+ // in chain/asset reconciliation; this check alone never publishes a receipt.
+const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
+export function matchesWalletExecutorEnvelope(entry,tx){
+ const t=entry?.transaction,raw=(tx?.input??tx?.data);
+ if(entry?.chainId!==8453||!same(tx?.to,BASE_WALLET_EXECUTOR)||
+    typeof raw!=="string"||!/^0x[0-9a-f]+$/i.test(raw)||
+    !raw.toLowerCase().startsWith("0xcef6d209")||
+    !/^0x[0-9a-f]{40}$/i.test(t?.to||"")||
+    typeof t?.data!=="string"||!/^0x[0-9a-f]+$/i.test(t.data)||
+    t.data.length<10)return false;
+ // A smart-wallet envelope must include the exact intended target and
+ // calldata as nested bytes, not merely its function selector.
+ const input=raw.toLowerCase(),calldata=t.data.slice(2).toLowerCase();
+ return input.includes(t.to.slice(2).toLowerCase())&&
+    input.includes(calldata)&&
+    BigInt(tx.value??"-1")===BigInt(t.value);
+}
 export function compareCommittedWalletTransaction(entry,tx,{strictNonce=false}={}){
  const mismatched=[];
  if(!entry?.transaction||!tx)return {matched:false,mismatched:["transaction"],nonceChanged:false};
  const expected=entry.transaction;
  if(!same(tx.from,entry.wallet)||!same(tx.from,expected.from))mismatched.push("sender");
- if(!same(tx.input??tx.data,expected.data))mismatched.push("calldata");
- if(expected.to===null?tx.to!==null:!same(tx.to,expected.to))mismatched.push("destination");
+ const enveloped=matchesWalletExecutorEnvelope(entry,tx);
+ if(!enveloped&&!same(tx.input??tx.data,expected.data))mismatched.push("calldata");
+ if(!enveloped&&(expected.to===null?tx.to!==null:!same(tx.to,expected.to)))mismatched.push("destination");
  if(tx.hash!=null&&entry.txHash!=null&&!same(tx.hash,entry.txHash))
   mismatched.push("hash");
  const numeric=(actual,value,label)=>{
