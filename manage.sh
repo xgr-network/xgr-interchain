@@ -254,9 +254,27 @@ install_transfer_api() {
   else
     privileged "$node_bin" "$ROOT/tools/install-transfer-recovery-nginx.mjs"
   fi
-  curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:4088/health"
-  echo
-  echo "SUCCESS: unsigned transfer recovery API configured. No wallet/private key was installed."
+  echo "Verifying local proof builder (not just generic indexer health) ..."
+  local local_health public_health
+  if ! local_health="$(curl --fail --silent --show-error --max-time 10 \
+      "http://127.0.0.1:4088/api/xeta/v1/transfer/health")"; then
+    echo "ERROR: local transfer proof builder is not ready (port 4088)." >&2
+    curl --silent --show-error --max-time 5 \
+      "http://127.0.0.1:4088/api/xeta/v1/transfer/health" || true
+    echo >&2
+    return 1
+  fi
+  echo "$local_health"
+  echo "Verifying the HTTPS Nginx transfer health route ..."
+  if ! public_health="$(curl --fail --silent --show-error --max-time 10 \
+      --resolve xita.xgr.network:443:127.0.0.1 \
+      "https://xita.xgr.network/api/xeta/v1/transfer/health")"; then
+    echo "ERROR: XITA HTTPS /transfer/health is not routed to the installed proof builder." >&2
+    echo "Check the active xita.xgr.network vhost and its exact-match location." >&2
+    return 1
+  fi
+  echo "$public_health"
+  echo "SUCCESS: local proof builder and public HTTPS transfer health are ready. No wallet/private key was installed."
 }
 
 update() {
