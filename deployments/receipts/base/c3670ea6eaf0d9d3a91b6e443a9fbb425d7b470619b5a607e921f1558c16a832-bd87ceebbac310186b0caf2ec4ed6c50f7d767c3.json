@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "860508e29fec65cb2582a5bb2d3a48cac4c49319"
+  },
+  "chain": "base",
+  "chainId": 8453,
+  "domainId": 8453,
+  "component": "sourceRegistry",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0xbd87ceebbac310186b0caf2ec4ed6c50f7d767c3",
+  "runtimeCodeKeccak256": "0x4d0b24018a02adc0f16478ed0954f291b286227c2e018028c889bef58cf05269",
+  "transactionHash": "0xc3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832",
+  "blockNumber": 52602651,
+  "blockHash": "0xab9bce153ff15d88c166603dd81b02332808f2c0aefe32399059e85216f96d14",
+  "confirmations": 12,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-registry",
+    "factory": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370",
+    "execution": "smart-wallet"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-15T06:09:22.677Z"
+}
