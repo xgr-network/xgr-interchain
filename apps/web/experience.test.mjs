@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows} from "./experience.js";
@@ -195,7 +196,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
  const account="0x1111111111111111111111111111111111111111";
  const record={account,asset:"XGR",status:"awaiting-proof",sourceChain:"xgrchain",
   destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
- const html=renderPlanRoute(model,{},"ready",{account},{items:[record]});
+ const html=renderPlanRoute(model,{},"ready",{account},{items:[record],selectedTxHash:record.txHash});
  assert.match(html,/Continue delivery/);
  assert.match(html,/1 \/ 2/);
  assert.match(html,/xita-open-transfer/);
@@ -229,4 +230,24 @@ test("Transfer CTA appears immediately after amount, before collapsed gas diagno
  const noWallet=renderPlanRoute(model,{},"ready");
  assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("Route, network gas"));
  assert.match(noWallet,/id="xita-transfer-primary"/);
+});
+
+test("old awaiting-proof operations never replace the new XGR/Base transfer",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const m=buildExperienceModel(c);
+ const account="0x"+"1".repeat(40),txHash="0x"+"a".repeat(64);
+ const item={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",txHash,
+  status:"awaiting-proof",confirmed:true,delivered:false};
+ const fresh=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
+  {account},{items:[item],selectedTxHash:null,scanning:true});
+ assert.match(fresh,/Transfer XGR/);
+ assert.doesNotMatch(fresh,/Checking on-chain transfers/);
+ assert.match(fresh,/Previous transfers awaiting delivery/);
+ assert.match(fresh,/<option value="" selected>New transfer/);
+ assert.match(fresh,/Ready to prepare a new transfer/);
+ const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
+  {account},{items:[item],selectedTxHash:txHash,scanning:true});
+ assert.match(selected,/Continue delivery/);
+ assert.match(selected,/Source confirmed/);
+ assert.doesNotMatch(fresh,/One transfer page/);
 });

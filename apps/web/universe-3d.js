@@ -264,11 +264,13 @@ function makeChainOrbit(key,index,total){
   (rnd()-.5)*Math.min(.18,.3/inBand);
  const node=rnd()*TWO_PI,inclination=.23+rnd()*.70;
  const o={
-  radius:19+band*11+(index%3-1)*1.4+rnd()*1.3,
-  eccentricity:.035+rnd()*.08,
+  radius:17.8+band*10.7+(index%4)*1.95+rnd()*2.5,
+  eccentricity:.045+rnd()*.15,
   phase:targetAngle-node,
   inclination,node,
-  speed:(.0075+(index%7)*.0016+rnd()*.0009)/(1+band*.32)
+  // Independent clockwise/counterclockwise phase motion and observable
+  // variation in angular velocity. Values remain deterministic per chain.
+  speed:(index%2===0?1:-1)*(.0055+rnd()*.0105)/(1+band*.28)
  };
  o.origin=orbitPoint(o,o.phase);
  o.axis=norm(rotate([0,0,1],inclination,0,node));

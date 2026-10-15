@@ -85,3 +85,19 @@ test("orbital planes, speeds and phases stay generic for arbitrary configured sy
  const a=createUniverseTopology(buildExperienceModel({chains,assets:{}}));
  assert.deepEqual(spokes.map(s=>s.orbital),a.systems.filter(s=>!s.portal).map(s=>s.orbital));
 });
+
+test("every spoke gets a different star distance and independent angular motion",()=>{
+ const t=createUniverseTopology(buildExperienceModel(catalog));
+ const spokes=t.systems.filter(s=>!s.portal);
+ const radii=spokes.map(s=>s.orbital.radius.toFixed(6));
+ const speeds=spokes.map(s=>s.orbital.speed);
+ assert.equal(new Set(radii).size,spokes.length);
+ assert.equal(new Set(speeds.map(v=>v.toFixed(8))).size,spokes.length);
+ assert.ok(speeds.some(v=>v>0)&&speeds.some(v=>v<0));
+ assert.ok(Math.max(...speeds.map(Math.abs))-Math.min(...speeds.map(Math.abs))>0.002);
+ for(const s of spokes){
+  const p=orbitPosition(s,0),q=orbitPosition(s,1000);
+  assert.ok(Math.hypot(...p)>12&&Math.hypot(...q)>12);
+  assert.notDeepEqual(p,q);
+ }
+});

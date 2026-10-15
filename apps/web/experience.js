@@ -1,5 +1,6 @@
 import {deployedRoutes,supportedRouteChains} from "./route-availability.js";
 import {representationFor} from "./token-representation.js";
+import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
@@ -312,10 +313,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const deployedChains=model.chains.filter(c=>available.has(c.key));
  const deployedAssets=new Set(routes.map(r=>r.asset));
  const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id));
- const openChoice=(progress.items||[]).filter(r=>r.account?.toLowerCase()===
-   wallet.account?.toLowerCase()&&["awaiting-proof","delivery-unknown",
-   "confirming","pending-source","destination-not-deployed"].includes(r.status));
- const currentWork=openChoice.find(r=>r.txHash===progress.selectedTxHash)||openChoice[0]||null;
+ const openChoice=openWalletTransfers(progress.items,wallet.account);
+ const currentWork=selectedRecovery(progress.items,wallet.account,progress.selectedTxHash);
  const requestedOrigin=currentWork?.sourceChain||selection.origin;
  const requestedDestination=currentWork?.destinationChain||selection.destination;
  const requestedAsset=currentWork?.asset||selection.asset;
@@ -329,17 +328,15 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const deployed=path.path.length>1&&path.hops.every((h,i)=>
    routes.some(r=>r.asset===assetId&&r.source===path.path[i]&&
      r.destination===path.path[i+1]));
- const actionable=["awaiting-proof","delivery-unknown","confirming","pending-source",
-   "destination-not-deployed"];
- const pending=openChoice.filter(r=>actionable.includes(r.status));
- const active=pending.find(r=>r.txHash===progress.selectedTxHash)||pending[0]||null;
+ const pending=openChoice;
+ const active=currentWork;
  const connected=typeof wallet.account==="string"&&/^0x[0-9a-f]{40}$/i.test(wallet.account);
  const selected=active&&active.account?.toLowerCase()===wallet.account?.toLowerCase()?active:null;
- const busy=progress.busy===true||progress.scanning===true;
+ const busy=progress.busy===true;
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const actionLabel=!connected?"Connect wallet to transfer":
-  busy?"Checking on-chain transfers…":
+  busy?"Preparing transaction…":
   selected?.status==="awaiting-proof"?"Continue delivery":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
@@ -352,10 +349,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
-  progress.scanning?"Looking for your transfers on the chains…":
-  connected&&progress.coverage?.complete?"No outstanding transfers in the indexed finalized range":
-  connected?"Checking recent transfers before enabling another lock":
-  "Connect your wallet to check balances and open deliveries";
+  connected?"Ready to prepare a new transfer":
+  "Connect your wallet to check balances";
  const formatTokenBalance=(balance)=>{
   if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
   const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
@@ -375,7 +370,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
   '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro">'+
   '<span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1>'+
-  '<p class="ux-muted">One transfer page. Select an available route; previously confirmed source transfers are found automatically after wallet connection.</p></div>'+
+  '<p class="ux-muted">Move your tokens between supported networks using your own wallet.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel">'+
   '<div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div>'+
   '<div class="ux-transfer-fields">'+
@@ -393,24 +388,24 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
-   '<label class="ux-field" for="xita-open-transfer">Open transfer'+(pending.length>1?'s':'')+'</label>'+
-   '<select id="xita-open-transfer">'+options+'</select>'+
-   '<p class="ux-small">The original source transaction will NOT be repeated. Continue only the outstanding delivery.</p></div>':'')+
+   '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
+   '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+
+   '<p class="ux-small">Older deliveries are optional to continue here. They do not disable a new transfer. The original source lock is never repeated.</p></div>':'')+
   '<div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary"'+
    (buttonDisabled?' disabled':'')+'>'+esc(actionLabel)+'</button>'+
   '<p class="ux-transfer-action-hint">'+
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
-   selected?"Existing source transfer detected. The original lock will not be repeated.":
-   busy?"Verifying previous on-chain transactions before another send.":
+   selected?"Existing source transfer selected; the original lock will not be repeated.":
+   busy?"Checking the selected transaction against the blockchain.":
    deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
    "Only verified deployed routes can be transferred.")+'</p></div>'+
   '<section class="ux-transfer-progress" role="status" aria-live="polite">'+
   '<strong>'+esc(selected?"1 / 2 · "+statusLabel:
-   progress.scanning?"Searching…":deployed?"Ready · "+statusLabel:"No route selected")+'</strong>'+
+   deployed?"Ready · "+statusLabel:"Route not available from this site's deployment catalog")+'</strong>'+
   '<progress max="2" value="'+progressValue+'"></progress>'+
   (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
    (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
-  (progress.notice?'<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
+  (progress.notice&&(!progress.scanning||progress.busy)?'<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
   (progress.error?'<p class="ux-transfer-error">'+esc(progress.error)+'</p>':'')+
   '</section>'+
   '<details class="ux-transfer-advanced"><summary>Route, network gas &amp; safety checks <span aria-hidden="true">⌄</span></summary>'+
@@ -423,11 +418,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   renderWalletGasChecklist(model,path,{...wallet,hideStepList:true,hideInactiveNote:deployed})+
   '</div></details>'+
   '<p class="ux-transfer-footer-note">A direct transfer uses source Gateway.bridge and destination Mailbox.process. A separate ERC-20 approval may be required. A confirmed source lock is never repeated.</p>'+
+  (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")?
+   '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
-  (connected?'<p class="ux-small">'+(progress.coverage?.complete?
-    'Open transfers are indexed across all documented routes.':
-    'The indexer may still be catching up. Older transfers can be found by their source transaction hash.')+
-    ' <a data-nav href="/my-transfers">My Transfers</a></p>':"")+
+  (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
   '</section><aside class="ux-panel ux-ns-operations-data">'+
   '<span class="ux-kicker">NETWORK STATUS</span><h2>Available networks</h2>'+
   '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
