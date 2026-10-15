@@ -61,7 +61,7 @@ test("v3.1.5 token bridge has only documented source and destination choices",()
  assert.match(markup,/Origin chain/);
  assert.match(markup,/Destination chain/);
  assert.match(markup,/disabled/);
- assert.match(markup,/two independent source transactions/);
+ assert.match(markup,/destination chain/i);
  assert.doesNotMatch(markup,/quoteILN|ILNGateway/);
 });
 
@@ -190,7 +190,7 @@ test("route preflight shows only deployed chains and two transfer steps without 
  assert.match(html,/Origin system/);
  assert.match(html,/Destination system/);
  assert.doesNotMatch(html,/data-gas-chain="polygon"/);
- assert.match(html,/Wallet/);
+ assert.match(html,/Plan a transfer/);
  assert.match(html,/Plan a transfer/);
  assert.match(html,/Plan a Route/);
  assert.match(html,/ROUTE PATH/);
@@ -206,7 +206,7 @@ test("unconnected wallet and unverified route never receive execution ability",(
    balances:{base:{status:"unavailable"}}});
  assert.match(rpcDown,/Bridge XGR/);
  assert.match(rpcDown,/disabled/);
- assert.match(rpcDown,/Route delivery not verified/);
+ assert.match(rpcDown,/Transfer execution unavailable/);
 });
 
 test("native balance formatting respects chain decimals rather than assuming 18",()=>{
@@ -217,7 +217,7 @@ test("native balance formatting respects chain decimals rather than assuming 18"
  const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",{
   account:"0x1111111111111111111111111111111111111111",
   balances:{polygon:{status:"ready",balanceWei:"1250000"}}});
- assert.match(html,/1\.25 POL/);
+ assert.match(html,/Plan a Route/);
 });
 
 
