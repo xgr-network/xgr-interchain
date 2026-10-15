@@ -46,6 +46,7 @@ function sourceProvider(sends,overrides={}){
  return {request:async({method,params=[]})=>{
   if(method==="eth_chainId")return "0x66b";
   if(method==="eth_accounts")return [account];
+  if(method==="eth_getTransactionCount")return "0x2";
   if(method==="eth_call"){
    const data=params[0]?.data?.slice(0,10);
    if(data===selector("warpRouter()"))return word(BigInt(srcRouter));
@@ -89,6 +90,19 @@ test("source bridge quotes, checks native gas and sends exactly one canonical Ga
  assert.equal(sends[0].to,gateway);
  assert.equal(sends[0].value,"0x"+(100100000000000000n).toString(16));
  assert.ok(sends[0].data.startsWith(selector("bridge(uint32,bytes32,uint256)")));
+});
+test("unresolved MetaMask source nonce blocks any second lock while no canonical receipt exists",async()=>{
+ const sends=[];
+ const primary=sourceProvider(sends);
+ const provider={request:async req=>req.method==="eth_getTransactionCount"&&
+  req.params?.[1]==="pending"?"0x3":primary.request(req)};
+ const fetcher=async(url,options)=>rpcResponse(
+  JSON.parse(options.body).method==="eth_chainId"?"0x2105":
+  "0x"+(1n*10n**18n).toString(16));
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",provider,fetcher}),
+  /previous MetaMask transaction is pending/);
+ assert.equal(sends.length,0);
 });
 test("wallet with no destination-native gas never submits source lock",async()=>{
  const sends=[];
