@@ -113,6 +113,10 @@ test("Northstar home and Universe share the immersive stage without changing rou
 test("Transfer Tokens and FAQ use a single canonical transaction UI",()=>{
  const planner=renderPlanRoute(buildExperienceModel(catalog),{},"error");
  assert.match(planner,/Transfer Tokens/);
+ assert.match(planner,/XGR.Network GmbH provides this web interface/);
+ assert.match(planner,/private keys/);
+ assert.match(planner,/public smart contracts/);
+ assert.match(planner,/Use at your own risk/);
  assert.match(planner,/id="ux-origin"/);
  assert.match(planner,/id="ux-destination"/);
  assert.match(planner,/id="xita-transfer-primary"/);

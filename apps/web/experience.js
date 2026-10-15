@@ -425,7 +425,9 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
    deployedChains.length+'</strong></div><div><span>Deployed directed routes</span><strong>'+routes.length+'</strong></div></div>'+
   '<p class="ux-muted">Transfer status is read from the canonical Gateway and Mailbox contracts. No browser transaction history or additional administrative approval is used.</p>'+
-  '</aside></div></section></div>';
+  '</aside></div>'+ 
+  '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
+  '</section></div>';
 }
 
 const faqGroups=[
