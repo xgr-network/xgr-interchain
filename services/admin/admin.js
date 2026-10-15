@@ -21,36 +21,80 @@ function renderAssets(){
  if(!workqueue)return;
  const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
  const eligibleByAsset=new Map();
- for(const r of eligibleAssetRoutes){const v=eligibleByAsset.get(r.asset)||new Set();v.add(r.name);eligibleByAsset.set(r.asset,v);}
- const assets=Object.values(workqueue.inventory.assets).filter(a=>eligibleByAsset.has(a.key)&&
- (filter==="all"||a.status===filter)&&[a.name,a.symbol,a.key,a.canonicalChain,...a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)).map(r=>r.destination)].join(" ").toLowerCase().includes(q));
+ for(const route of eligibleAssetRoutes){
+  const list=eligibleByAsset.get(route.asset)||new Set();list.add(route.name);eligibleByAsset.set(route.asset,list);
+ }
+ const selection=Object.values(workqueue.inventory.assets).filter(a=>{
+  const allowed=eligibleByAsset.get(a.key);
+  if(!allowed)return false;
+  const routes=a.routes.filter(r=>allowed.has(r.name));
+  const complete=routes.length>0&&routes.every(r=>r.status==="deployed");
+  const state=complete?"deployed":routes.some(r=>r.receiptCount>0)?"partial":"not-deployed";
+  return (filter==="all"||filter===state)&&
+   [a.name,a.symbol,a.key,a.canonicalChain,...routes.map(r=>r.destination)]
+    .join(" ").toLowerCase().includes(q);
+ });
  el("metrics").innerHTML=[
   ["Assets",eligibleByAsset.size],["Routen",eligibleAssetRoutes.length],
-  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>eligibleByAsset.has(a.key)&&a.routes.some(r=>eligibleByAsset.get(a.key).has(r.name)&&r.status!=="deployed")).length]
+  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>{
+   const names=eligibleByAsset.get(a.key);
+   return names&&a.routes.some(r=>names.has(r.name)&&r.status!=="deployed");
+  }).length]
  ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
- const pages=Math.max(1,Math.ceil(assets.length/ASSETS_PER_PAGE));
+ const pages=Math.max(1,Math.ceil(selection.length/ASSETS_PER_PAGE));
  assetPage=Math.max(0,Math.min(assetPage,pages-1));
- const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
- el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
- '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)&&r.status==='deployed').length+'/'+a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)).length+' Routen dokumentiert</p></div>'+pill(a.status)+(assetTasks.some(t=>t.asset===a.key)?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+'">Alle Schritte deployen</button>':"")+'</div>'+
- '<div class="routes">'+assetTasks.filter(t=>t.asset===a.key).map(t=>
-  '<div class="route"><div><strong>'+
-  esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
-  '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
-  '</small></div><button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'">Ausstehend →</button></div>').join("")+
-  (assetTasks.some(t=>t.asset===a.key)?"":'<p>Keine offenen Router- oder Gateway-Deployments.</p>')+
-  '</div></section>').join(""):'<p>Keine Assets für diesen Filter.</p>';
+ const pageAssets=selection.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
+ const addressButton=address=>'<button type="button" class="address-copy asset-address" data-copy="'+
+  esc(address)+'" title="Vollständige Contract-Adresse kopieren">'+esc(address)+' ⧉</button>';
+ el("main-workqueue").innerHTML=selection.length?pageAssets.map(a=>{
+  const names=eligibleByAsset.get(a.key),routes=a.routes.filter(r=>names.has(r.name));
+  const complete=routes.filter(r=>r.status==="deployed").length;
+  const status=routes.length&&complete===routes.length?"deployed":routes.some(r=>r.receiptCount>0)?"partial":"not-deployed";
+  const tasks=assetTasks.filter(t=>t.asset===a.key);
+  const routers=Object.values(a.representations||{}).flatMap(rep=>
+   (rep.deployedContracts||[]).filter(r=>["nativeRouter","syntheticRouter","collateralRouter"].includes(r.component))
+    .map(r=>({chain:rep.chain,component:r.component,address:r.address})));
+  const completedRouters=routers.map(r=>'<div class="route"><div><strong>Router · '+
+   esc(r.chain)+' · '+esc(r.component)+'</strong><small>'+addressButton(r.address)+
+   '</small></div>'+pill("deployed")+'</div>').join("");
+  const completeGateways=routes.flatMap(r=>(r.instances||[]).filter(instance=>
+   instance.status==="deployed"&&instance.gateway&&instance.feeVault).map(instance=>
+   '<div class="route"><div><strong>Route · '+esc(r.source)+' → '+esc(r.destination)+
+   '</strong><small>Gateway: '+addressButton(instance.gateway)+
+   '</small><small>FeeVault: '+addressButton(instance.feeVault)+
+   '</small></div>'+pill("deployed")+'</div>')).join("");
+  const pending=tasks.map(t=>'<div class="route"><div><strong>'+
+   esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
+   '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
+   '</small></div><button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'"'+
+   (t.blockers.length?' disabled title="Voraussetzungen fehlen"':'')+'>Ausstehend →</button></div>').join("");
+  return '<section class="asset-card"><div class="asset-head">'+
+   '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+
+   '</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+complete+'/'+routes.length+
+   ' verfügbare Routen dokumentiert</p></div>'+pill(status)+
+   (tasks.length?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+
+    '">Alle Schritte deployen</button>':"")+'</div>'+
+   '<div class="routes">'+
+   (completedRouters||completeGateways?'<div class="asset-group-title">Dokumentierte Contracts · GitHub-Receipts</div>':"")+
+   completedRouters+completeGateways+
+   (pending?'<div class="asset-group-title">Noch zu deployen</div>'+pending:"")+
+   (!completedRouters&&!completeGateways&&!pending?'<p>Keine offenen oder dokumentierten Routen.</p>':"")+
+   '</div></section>';
+ }).join(""):'<p>Keine Assets mit verfügbaren Chain-Paaren für diesen Filter.</p>';
  el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
   b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
  el("main-workqueue").querySelectorAll("[data-batch-asset]").forEach(b=>
   b.addEventListener("click",()=>runDeploymentBatch("asset",b.dataset.batchAsset)));
+ el("main-workqueue").querySelectorAll(".asset-address[data-copy]").forEach(button=>
+  button.addEventListener("click",async()=>{
+   try{await navigator.clipboard.writeText(button.dataset.copy);button.textContent="Kopiert ✓";}
+   catch{button.textContent=button.dataset.copy;}
+  }));
  const pageNode=el("asset-pagination");
- pageNode.innerHTML='<span>'+esc(assets.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
+ pageNode.innerHTML='<span>'+esc(selection.length)+' Assets · Seite '+(assetPage+1)+'/'+pages+'</span><button type="button" class="outline" data-page="prev" '+(assetPage===0?"disabled":"")+'>Zurück</button><button type="button" class="outline" data-page="next" '+(assetPage>=pages-1?"disabled":"")+'>Weiter</button>';
  pageNode.querySelectorAll("button[data-page]").forEach(b=>b.addEventListener("click",()=>{
-   assetPage+=b.dataset.page==="next"?1:-1;
-   renderAssets();
+  assetPage+=b.dataset.page==="next"?1:-1;renderAssets();
  }));
-
 }
 let currentWallet=null;
 let chainObservations=new Map();
