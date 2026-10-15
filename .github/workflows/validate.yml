@@ -48,7 +48,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs
+          node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
 
       - name: Validate read-only transfer Nginx install and repair
         run: node --test tools/transfer-recovery-nginx.test.mjs
@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test apps/web/keccak.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
+          node --test apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash

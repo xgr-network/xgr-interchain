@@ -8,6 +8,8 @@ import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 const HEX=/^0x[0-9a-f]{40}$/i;
 const ZERO=/^0x0{40}$/i;
 const LINKS=["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"];
+const ROLES=new Set(["founder","core-team","authorized-representative","holder","community","other"]);
+const EMAIL=/^[^\s@]{1,64}@[^\s@]{1,189}\.[^\s@]{2,}$/;
 const validText=(s,min,max)=>typeof s==="string"&&s.trim()===s&&s.length>=min&&s.length<=max&&
  !/[\u0000-\u001f\u007f<>]/.test(s);
 const safeUrl=(value)=>{
@@ -84,12 +86,15 @@ export function normalizeApplication(raw,inventory){
  const binary=logoBytes(raw.logoPngBase64);
  const logoUrl=binary?"https://xita.xgr.network/pictures/tokens/"+slug+".png":safeUrl(raw.logoUrl);
  if(!logoUrl)note("Provide a HTTPS logo URL or upload a PNG");
- if(raw.confirmed!==true)note("Project representative acknowledgement required");
+ if(raw.confirmed!==true)note("Applicant acknowledgement required");
+ if(!EMAIL.test(String(raw.contactEmail||""))||String(raw.contactEmail).length>254)note("Valid private contact email required");
+ if(!ROLES.has(raw.applicantRole))note("Applicant relationship required");
  const representations=[canonicalChain,"xgrchain",...chosen].filter((key,i,arr)=>arr.indexOf(key)===i);
  if(representations.length<2)note("An XGRChain spoke is required");
- const priceSource=raw.priceSource==="coingecko"?"coingecko":"none";
- const coingeckoId=priceSource==="coingecko"?String(raw.coingeckoId||"").toLowerCase():null;
- if(priceSource==="coingecko"&&!/^[a-z0-9][a-z0-9-]{0,99}$/.test(coingeckoId||""))note("Invalid CoinGecko ID");
+ if(raw.priceSource!=="coingecko")note("CoinGecko listing is required");
+ const priceSource="coingecko";
+ const coingeckoId=String(raw.coingeckoId||"").toLowerCase();
+ if(!/^[a-z0-9][a-z0-9-]{0,99}$/.test(coingeckoId||""))note("Invalid CoinGecko ID");
  const linkMap=normalizeLinks(raw.links);
  const normalized={name,symbol,slug,shortDescription,description,website,
   canonicalChain,canonicalAddress:address,decimals:raw.decimals,
@@ -139,6 +144,11 @@ export function buildManifestBundle(raw,catalog){
   chains:catalog.chains,infrastructure:catalog.infrastructure,publication:catalog.publication,
   assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,deployment}}
  };
+ // No personal contact information may ever be embedded, even in free-text descriptions.
+ const publicJson=JSON.stringify({metadata,profile,routeConfig});
+ if(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(publicJson)||
+    /contactEmail|privateEmail|applicantEmail/i.test(publicJson))
+   note("Personal email addresses must not appear in public token manifests");
  const errors=validateCatalog(proposedCatalog);
  if(errors.length)note("Generated manifest failed validation: "+errors.slice(0,4).join("; "));
  const json=x=>JSON.stringify(x,null,2)+"\n";
@@ -151,5 +161,5 @@ export function buildManifestBundle(raw,catalog){
  return {key,slug:a.slug,assetId,files,
   ...(binary?{logo:{path:"apps/web/pictures/tokens/"+a.slug+".png",base64:binary.toString("base64")}}:{}),
   summary:{name:a.name,symbol:a.symbol,canonicalChain:a.canonicalChain,
-   chains,routeCount:routes.length,verified:false}};
+   chains,routeCount:routes.length,applicantRole:raw.applicantRole,verified:false}};
 }

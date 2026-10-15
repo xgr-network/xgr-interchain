@@ -3,7 +3,11 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {randomUUID} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
+import {verifyCoinGecko} from "./coingecko-identity.mjs";
+import {sendMail,mailConfigured} from "./mail-gateway.mjs";
+import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const REPO="xgr-network/xgr-interchain";
@@ -53,22 +57,111 @@ export async function publishDraft(bundle,{expectedMain,githubCall=github}={}){
  const commit=await githubCall("/git/commits","POST",{message:"onboard: propose "+bundle.key,tree:tree.sha,parents:[expectedMain]});
  await githubCall("/git/refs","POST",{ref:"refs/heads/"+branch,sha:commit.sha});
  const pr=await githubCall("/pulls","POST",{title:"Join XITA: "+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
-  body:"Public directory proposal. No approval, deployment or live bridge implied. Verify canonical ERC-20 contract and review token representations before merging."});
+  body:"Public directory proposal — applicant role: "+bundle.summary.applicantRole+
+    ". CoinGecko original-chain contract verified before submission; required CI repeats the check. No approval, deployment or live transfer is implied. Review token representations before merging. No applicant email is present."});
  return {number:pr.number,url:pr.html_url,status:"draft"};
 }
-export async function handleJoin(req,res,{submit=publishDraft}={}){
- const path=new URL(req.url,"http://localhost").pathname;
+// Only operator-held credentials and a verified email enable public submissions.
+export function joinAvailable(env=process.env){
+  if(!env.XITA_JOIN_WRITER_TOKEN||!mailConfigured(env))return false;
+  try{return Boolean(privateLocation(env));}catch{return false;}
+}
+export function localMainSha(){
+  const sha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",timeout:3000}).trim();
+  if(!/^[0-9a-f]{40}$/.test(sha))throw Error("Local Git main revision unavailable");
+  return sha;
+}
+const rate=new Map();
+function allowed(client,now=Date.now()){
+  const key=String(client||"unknown").slice(0,128);
+  for(const [k,v] of rate)if(now-v.since>3600000)rate.delete(k);
+  const prior=rate.get(key);
+  if(!prior||now-prior.since>3600000){rate.set(key,{since:now,count:1});return true;}
+  if(prior.count>=5)return false;
+  prior.count++;return true;
+}
+function publicConfirmUrl(id,token,env){
+  const base=env.XITA_JOIN_PUBLIC_URL||"https://xita.xgr.network";
+  const url=new URL(base);
+  if(url.protocol!=="https:"||url.username||url.password||url.pathname!=="/"||url.search||url.hash)
+    throw Error("Invalid public confirmation origin");
+  return url.origin+"/join/confirm#"+id+"."+token;
+}
+function httpError(error){
+  const message=String(error?.message||error);
+  return {status:/(unavailable|HTTP 429|HTTP 50\d|gateway|GitHub rejected|service unavailable|Git revision)/i.test(message)?503:422,
+    error:message.replace(/[^\x20-\x7e]/g," ").slice(0,220)};
+}
+export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCoinGecko,deliver=sendMail,
+  getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
+ const url=new URL(req.url,"http://localhost"),path=url.pathname;
  if(req.method==="GET"&&path==="/api/xita/join/status")
-  return reply(res,200,{ok:true,available:false,note:"Public PR submissions need verified identity and operator configuration"});
- if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit"].includes(path))return reply(res,404,{ok:false});
+  return reply(res,200,{ok:true,available:joinAvailable(env),
+    note:joinAvailable(env)?"Email-confirmed applications supported":"Email-confirmed applications not configured; export locally"});
+ if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm"].includes(path))
+  return reply(res,404,{ok:false});
  try{
-  const input=await readBody(req),bundle=buildManifestBundle(input,loadCatalog(root));
-  if(path.endsWith("/preview"))return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),assetId:bundle.assetId});
-  // A public endpoint must NOT accept a shared secret pasted into the website.
-  // Until a signed GitHub/OAuth or wallet ownership session is installed,
-  // submissions are intentionally disabled, even with a GitHub writer token.
-  return reply(res,503,{ok:false,error:"Verified project identity required. Export the application draft for review."});
- }catch(error){return reply(res,422,{ok:false,error:String(error.message||error).slice(0,180)})}
+  // Never accept client-supplied credentials or a contact address from a URL.
+  if(path.endsWith("/confirm")){
+    if(!joinAvailable(env))return reply(res,503,{ok:false,error:"Application confirmation is unavailable"});
+    const {id,token}=await readBody(req);
+    if(!/^[0-9a-f-]{36}$/.test(id||"")||!/^[a-f0-9]{64}$/.test(token||""))
+      return reply(res,422,{ok:false,error:"Invalid confirmation token"});
+    const dir=preparePrivateDir(privateLocation(env));
+    const result=await lockedRecord(dir,id,async record=>{
+      if(record.phase!=="pending-email")throw Error("Application already confirmed or completed");
+      if(Date.parse(record.confirmBefore)<clock()||!matchesToken(record.tokenHash,token))
+        throw Error("Expired or invalid confirmation token");
+      // Rebuild against current checkout; block a stale or displaced main revision.
+      const bundle=buildManifestBundle(record.input,sourceCatalog());
+      const identity=await verify(record.input);
+      const expectedMain=await getMainSha();
+      const pr=await publisher(bundle,{expectedMain});
+      record.phase="under-review";record.pr=pr;record.tokenHash=null;
+      record.coinGeckoVerifiedAt=identity.checkedAt;
+      savePrivate(dir,record);
+      // A notification failure must not undo an already-created GitHub PR.
+      try{
+        await deliver({to:record.input.contactEmail,subject:"XITA application received for review",
+          text:"Your email is confirmed. XITA draft application #"+pr.number+
+            " is awaiting XGR review. The public proposal contains no email address. Review: "+pr.url,
+          idempotencyKey:record.id+":submitted"},{env});
+        record.sent.push("submitted");savePrivate(dir,record);
+      }catch{record.pendingNotification="submitted";savePrivate(dir,record);}
+      return {ok:true,status:"under-review",prNumber:pr.number,prUrl:pr.url};
+    });
+    return reply(res,200,result);
+  }
+  if(path.endsWith("/submit")&&!joinAvailable(env))
+    return reply(res,503,{ok:false,error:"Private email confirmation and GitHub writer are not configured; use Export draft"});
+  const input=await readBody(req);
+  const bundle=buildManifestBundle(input,sourceCatalog());
+  const identity=await verify(input); // fail-closed live CoinGecko identity check
+  if(path.endsWith("/preview"))
+    return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),
+      assetId:bundle.assetId,identity:{platform:identity.platform,address:identity.address}});
+  // Per-email throttle; proxies normally share loopback as socket address.
+  if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
+  const dir=preparePrivateDir(privateLocation(env));
+  if(listPrivate(dir,{now:clock()}).some(record=>record.assetId===bundle.assetId&&!["rejected","listed"].includes(record.phase)))
+    return reply(res,409,{ok:false,error:"A current application for this original token is already pending review"});
+  const {id,token}=createPending(dir,input,bundle.assetId,{now:clock()});
+  // No email, token, or role holder contact is ever written to GitHub here.
+  try{
+    await deliver({to:input.contactEmail,subject:"Confirm your XITA Network application",
+      text:"Please confirm that you submitted a token application to XITA by opening this link within 24 hours:\n\n"+
+         publicConfirmUrl(id,token,env)+"\n\nIf this was not you, ignore this email. No public proposal is created until confirmation.",
+      idempotencyKey:id+":confirm"},{env});
+  }catch{
+    // A failed delivery is not an application: delete its private record.
+    removePrivate(dir,id);
+    return reply(res,503,{ok:false,error:"Application email delivery unavailable; no GitHub proposal created"});
+  }
+  return reply(res,202,{ok:true,status:"pending-email",note:"A private email confirmation has been sent; no GitHub PR yet"});
+ }catch(error){
+  const {status,error:message}=httpError(error);
+  return reply(res,status,{ok:false,error:message});
+ }
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  createServer((req,res)=>{void handleJoin(req,res)}).listen(Number(process.env.XITA_JOIN_PORT||4090),"127.0.0.1");

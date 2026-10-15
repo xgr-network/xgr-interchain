@@ -1,0 +1,31 @@
+name: Verify XITA Join applications
+on:
+  pull_request:
+    paths:
+      - 'config/assets/**'
+      - 'apps/web/catalog.json'
+      - 'services/onboarding/**'
+      - 'tools/validate-join-pr.mjs'
+      - '.github/workflows/verify-join.yml'
+permissions:
+  contents: read
+jobs:
+  verify-new-token-identities:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate all XITA JSON schemas and generated catalog
+        run: |
+          node tools/validate-manifests.mjs
+          node tools/build-xeta-web-catalog.mjs --check
+      - name: Verify new public token proposals against CoinGecko platform and ERC-20 contract
+        env:
+          XITA_COINGECKO_API_KEY: ${{ secrets.XITA_COINGECKO_API_KEY }}
+        run: node tools/validate-join-pr.mjs --base "${{ github.event.pull_request.base.sha }}"
+      - name: Validate Join contact separation, role and CoinGecko identity invariants
+        run: node --test services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs tools/validate-join-pr.test.mjs
