@@ -98,11 +98,11 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.match(home,/Top Tokens/);
  assert.match(home,/href="\/transfer">Transfer Tokens/);
  assert.match(home,/href="\/join">Join XITA/);
- const heroActions=home.match(/<div class="ux-ns-actions">([\\s\\S]*?)<\\/div>/)?.[1];
+ const heroActions=home.split('<div class="ux-ns-actions">')[1]?.split('</div>')[0];
  assert.ok(heroActions,"Main hero actions must exist");
- assert.match(heroActions,/href="\\/transfer">Transfer Tokens/);
- assert.match(heroActions,/href="\\/join">Join XITA/);
- assert.doesNotMatch(heroActions,/Explore Routes|Bring Your Token/);
+ assert.ok(heroActions.includes('href="/transfer">Transfer Tokens'));
+ assert.ok(heroActions.includes('href="/join">Join XITA'));
+ assert.ok(!heroActions.includes("Explore Routes")&&!heroActions.includes("Bring Your Token"));
  assert.match(universe,/ux-selected-details/);
  assert.match(universe,/Explore configured worlds/);
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
