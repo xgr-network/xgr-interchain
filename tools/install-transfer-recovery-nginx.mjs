@@ -23,7 +23,15 @@ if(before.includes(signature)){console.log("XITA transfer recovery proxy is alre
 const marker="location ^~ /api/xeta/ {";
 const count=before.split(marker).length-1;
 if(count!==1)fatal("Expected exactly one existing XITA fail-closed API location");
-const stanza=`location = /api/xeta/v1/transfer/recovery {
+const stanza=`location = /api/xeta/v1/transfer/health {
+        proxy_pass http://127.0.0.1:4088;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 5s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+    }
+
+    location = /api/xeta/v1/transfer/recovery {
         proxy_pass http://127.0.0.1:4088;
         proxy_connect_timeout 2s;
         proxy_read_timeout 95s;
