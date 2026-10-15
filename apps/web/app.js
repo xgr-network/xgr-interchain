@@ -276,14 +276,18 @@ function token(){
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
- '<div class="pair"><span>Activated XITA v3.1.5 routes</span><b>0 / '+routes().length+'</b></div>'+
+ '<div class="pair"><span>Deployed XITA routes</span><b>'+
+  (a.deployment?.routeDeployments?.length||0)+' / '+routes().length+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
  '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
  '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
  '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
  '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
- '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">Prepared inventory only; not activated</div></div>').join("")+'</div></section>'+
+ '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">'+
+   (a.deployment?.routeDeployments?.some(r=>r.routeName===rt.name)?
+    'Deployed · Gateway '+x(a.deployment.routeDeployments.find(r=>r.routeName===rt.name).components.gateway.address):
+    'Prospect · configured only')+'</div></div>').join("")+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,step:0,status:""};
