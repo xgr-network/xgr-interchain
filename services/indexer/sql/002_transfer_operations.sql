@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS xita_transfer_index_cursors (
  scanned_hash CHAR(66),
  finalized_head BIGINT NOT NULL DEFAULT 0,
  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
- PRIMARY KEY (source_chain,route_name),
+ PRIMARY KEY (source_chain,route_id),
  CHECK (scanned_to >= deployment_block-1),
  CHECK (scanned_hash IS NULL OR scanned_hash ~ '^0x[0-9a-f]{64}$')
 );
