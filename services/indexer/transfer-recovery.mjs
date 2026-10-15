@@ -5,11 +5,12 @@ import {execFile} from "node:child_process";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
+import {selector} from "../../apps/web/keccak.js";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
-const selector="0x"+((await import("../../apps/web/keccak.js")).selector("process(bytes,bytes)")).slice(2);
+const processSelector=selector("process(bytes,bytes)");
 export function resolveRecoveryRoute(catalog,routeName,messageId){
  if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||""))
   throw Error("Invalid message ID or direction");
@@ -60,7 +61,7 @@ export function validateUnsignedRecovery(result,configured){
      BigInt(result.destinationChainId??0)!==BigInt(configured.destinationChainId)||
      result.value!=="0x0"||typeof result.data!=="string"||
      !/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(result.data)||
-     !result.data.toLowerCase().startsWith(selector.toLowerCase())||result.data.length>262144)
+     !result.data.toLowerCase().startsWith(processSelector.toLowerCase())||result.data.length>262144)
     throw Error("Unsigned destination calldata does not match approved Mailbox/process");
   return {status:result.status,messageId:configured.messageId,destinationChainId:configured.destinationChainId,
    destinationMailbox:configured.destinationMailbox,data:result.data,value:"0x0"};
@@ -78,8 +79,11 @@ export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
    cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",
     NODE_ENV:"production",...configured.env},maxBuffer:750000,timeout:timeoutMs,windowsHide:true,
   },(err,stdout)=>{
-   if(err){no(Error(err.killed?"Proof preparation timed out": "Proof unavailable; retry later without repeating the source transfer"));return;}
-   try{yes(parseRecoveryCliOutput(stdout,configured));}catch(e){no(e);}
+   try{yes(parseRecoveryCliOutput(stdout,configured));}
+   catch(e){
+    no(Error(err?.killed?"Proof preparation timed out; the source transfer remains safe":
+      "Proof not yet available; retry later without repeating the source transfer"));
+   }
   });
  });
 }
