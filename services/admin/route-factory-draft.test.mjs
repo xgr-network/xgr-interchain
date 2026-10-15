@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {factoryRouteDraft,routeSalt,nextAssetRouteTasks} from "./route-factory-draft.mjs";
+import {factoryRouteDraft,routeSalt,nextAssetRouteTasks,chainReadyForAssetRoutes} from "./route-factory-draft.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const assetId="0x"+"a".repeat(64);
 const hub={name:"xgrchain",chainId:1643,domainId:1643};
@@ -78,4 +78,32 @@ test("synthetic second hop resolves canonical origin outside source and destinat
   action:"deploy-router",chains:[chain,source,dest]});
  assert.ok(draft.transaction.data.startsWith("0x"));
  assert.equal(draft.chain,"base");
+});
+
+test("only complete GitHub-documented chain pairs offer routers and gateways",()=>{
+ const polygon={name:"polygon",chainId:137,domainId:137};
+ const build=(c,deployed)=>({name:c.name,chainId:c.chainId,status:deployed?"documented":"partial",
+  components:["validatorRegistry","ism","factory","sourceRegistry"].map(key=>({key,address:deployed?addr(5):null,status:deployed?"documented":"not-deployed"}))});
+ const full=[build(hub,true),build(base,true),build(polygon,false)];
+ const routes=[
+  ["xgr_to_base","xgrchain","base"],["base_to_xgr","base","xgrchain"],
+  ["xgr_to_polygon","xgrchain","polygon"],["polygon_to_xgr","polygon","xgrchain"]
+ ].map(([name,source,destination])=>({name,source,destination,receipts:[],
+  components:{gateways:[]},routeIds:[]}));
+ const reps=Object.fromEntries([["xgrchain","native"],["base","synthetic"],["polygon","synthetic"]].map(([chain,role])=>
+  [chain,{chain,role,deployedContracts:[]}]));
+ const inv={chains:[hub,base,polygon],assets:{XGR:{key:"XGR",assetId,
+   canonicalChain:"xgrchain",canonicalToken:null,representations:reps,routes}}};
+ assert.equal(chainReadyForAssetRoutes(full[0]),true);
+ assert.equal(chainReadyForAssetRoutes(full[2]),false);
+ let plan=nextAssetRouteTasks(inv,full);
+ assert.deepEqual(plan.eligibleRoutes.map(r=>r.name).sort(),["base_to_xgr","xgr_to_base"]);
+ assert.deepEqual(plan.tasks.filter(t=>t.kind==="router").map(t=>t.chain).sort(),["base","xgrchain"]);
+ assert.equal(plan.tasks.some(t=>t.chain==="polygon"||t.id.includes("polygon")),false);
+ plan=nextAssetRouteTasks(inv,[full[0],full[1],build(polygon,true)]);
+ assert.equal(plan.eligibleRoutes.length,4);
+ assert.equal(plan.tasks.some(t=>t.chain==="polygon"),true);
+ plan=nextAssetRouteTasks(inv,[build(hub,false),full[1],full[2]]);
+ assert.equal(plan.tasks.length,0);
+ assert.equal(plan.eligibleRoutes.length,0);
 });
