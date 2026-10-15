@@ -23,18 +23,18 @@ test("wallet-specific transfer cards never expose previous connected account",()
   status:"awaiting-proof"};
  const html=renderMyTransfers({account,catalog:cat,items:[item]});
  assert.match(html,/Message ID/);assert.match(html,/Source TX/);
- assert.match(html,/Do not send the source transfer again/);
- assert.match(html,/disabled/);
+ assert.match(html,/Original source confirmed/);
+ assert.match(html,/href="\/transfer\?token=XGR"/);
  assert.match(html,/xita-lookup-form/);
  const stranger=renderMyTransfers({account:other,catalog:cat,items:[item]});
  assert.doesNotMatch(stranger,new RegExp(h("6")));
 });
-test("unavailable proof backend does not masquerade as a working delivery flow",()=>{
+test("My Transfers never signs and links to the unique transfer recovery flow",()=>{
  const html=renderMyTransfers({account,catalog:cat,items:[{
   account,txHash:h("6"),status:"awaiting-proof",messageId:h("7"),
   sourceChain:"xgrchain",destinationChain:"base",asset:"XGR"}]});
- assert.match(html,/proof service required/);
- assert.match(html,/destination signing stays disabled/);
+ assert.match(html,/Open in Transfer Tokens/);
+ assert.match(html,/Only destination delivery can be continued/);
  assert.doesNotMatch(html,/eth_sendTransaction|wallet_switchEthereumChain/);
 });
 test("without deployed routes, import is disabled and does not invent wallet history",()=>{
