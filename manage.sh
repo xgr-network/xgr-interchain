@@ -195,7 +195,7 @@ health() {
   fi
 }
 
-install_sync() {
+install_sync() (
   local user group node_bin state_dir service_file path_file timer_service_file timer_file
   user="$(id -un)"
   group="$(id -gn)"
@@ -217,7 +217,8 @@ install_sync() {
   path_file="$(mktemp)"
   timer_file="$(mktemp)"
   timer_service_file="$(mktemp)"
-  trap 'rm -f "$service_file" "$path_file" "$timer_file" "$timer_service_file"' RETURN
+  # EXIT cleanup is scoped to this subshell, not the parent update() call.
+  trap 'rm -f "${service_file:-}" "${path_file:-}" "${timer_file:-}" "${timer_service_file:-}"' EXIT
   sed -e "s|@SYNC_USER@|$user|g" -e "s|@SYNC_GROUP@|$group|g" \
       -e "s|@ROOT@|$ROOT|g" -e "s|@STATE_DIR@|$state_dir|g" \
       -e "s|@NODE_BIN@|$node_bin|g" -e "s|@CATALOG_DIR@|$CATALOG_DIR|g" \
@@ -238,9 +239,9 @@ install_sync() {
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-deployment-sync.path xita-deployment-sync-poll.timer
   echo "SUCCESS: receipt watcher and periodic recovery poll installed."
-}
+)
 
-install_transfer_api() {
+install_transfer_api() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
   local user node_bin unit
@@ -255,7 +256,7 @@ install_transfer_api() {
   npm install --prefix "$ROOT/services/indexer" --ignore-scripts --no-audit --no-fund --package-lock=false
   echo "Installing XITA public read-only indexer service ..."
   unit="$(mktemp)"
-  trap 'rm -f "$unit"' RETURN
+  trap 'rm -f "${unit:-}"' EXIT
   sed -e "s|^User=.*|User=$user|" \
       -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
       -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/indexer/server.mjs|" \
@@ -292,7 +293,7 @@ install_transfer_api() {
   fi
   echo "$public_health"
   echo "SUCCESS: local proof builder and public HTTPS transfer health are ready. No wallet/private key was installed."
-}
+)
 
 update() {
   require_clean_main
