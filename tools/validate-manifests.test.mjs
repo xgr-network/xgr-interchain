@@ -41,7 +41,12 @@ test("recorded XITA deployments are valid; unauthorized metadata or malformed bi
  assert.ok(validateCatalog(altered).some(s=>s.includes("invalid component deployment binding")));
 });
 test("rejects duplicate domains",()=>{const x=copy();x.chains.base.domainId=1643;assert.ok(validateCatalog(x).some(s=>s.includes("duplicate chainId or domainId")))});
-test("recorded XGR has six deployment receipts for two live-capable directions",()=>{const x=copy();assert.equal(x.assets.XGR.deployment.receiptPaths.length,6);assert.deepEqual(x.assets.XGR.deployment.routeDeployments.map(r=>r.routeName).sort(),["base_to_xgr","xgr_to_base"]);});
+test("XGR deployment receipts stay tied to recorded contract bindings, without assumed deployment counts",()=>{
+ const x=copy(),dep=x.assets.XGR.deployment;
+ const referenced=[...dep.representations.map(r=>r.receiptPath),
+ ...dep.routeDeployments.flatMap(r=>[r.components.gateway.receiptPath,r.components.feeVault.receiptPath])];
+ assert.equal(referenced.every(p=>dep.receiptPaths.includes(p)),true);
+});
 test("rejects missing token profile logo",()=>{const c=copy();c.assets.XGR.profile.branding.logoUrl=null;assert.ok(validateCatalog(c).some(e=>e.includes("profile branding")))});
 test("rejects unsafe public profile URL",()=>{const c=copy();c.assets.XGR.profile.links.website="javascript:alert(1)";assert.ok(validateCatalog(c).some(e=>e.includes("profile links")))});
 test("rejects mismatched token profile",()=>{const c=copy();c.assets.XGR.profile.asset="OTHER";assert.ok(validateCatalog(c).some(e=>e.includes("public token profile")))});
