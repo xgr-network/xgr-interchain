@@ -347,6 +347,20 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
   progress.scanning?"Looking for your transfers on the chains…":
   connected?"No open transfers found in the scanned range":"Connect your wallet to check balances and open deliveries";
+ const formatTokenBalance=(balance)=>{
+  if(balance?.status!=="ready"||!/^\\d+$/.test(balance.balanceRaw||""))return "Unavailable";
+  const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
+  const full=(raw/scale).toString(),remainder=(raw%scale).toString()
+   .padStart(balance.decimals||0,"0").slice(0,8).replace(/0+$/,"");
+  return full+(remainder?"."+remainder:"")+" "+(balance.symbol||assetId);
+ };
+ const tokenBalanceRows=deployedChains.map(c=>{
+  const balance=wallet.tokenBalances?.[assetId+":"+c.key];
+  return '<div class="ux-gas-check-row"><div><strong>'+esc(c.label)+'</strong>'+
+   '<small>'+esc(assetId)+' balance</small></div><span>'+
+   esc(wallet.loading?"Checking…":connected?formatTokenBalance(balance):"Connect wallet")+
+   '</span></div>';
+ }).join("");
  const activeLabel=selected?'<span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span>':'';
  const options=pending.map(r=>'<option value="'+esc(r.txHash)+'"'+
   (selected?.txHash===r.txHash?' selected':'')+'>'+
@@ -371,6 +385,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (deployed?'<span class="ux-badge is-verified">Deployed</span>':
    '<span class="ux-badge is-pending">Not deployed</span>')+
   '<p>'+(deployed?"The source and destination contract pairs are documented.":"Choose two connected, deployed networks.")+'</p></div>'+
+  (tokenBalanceRows?'<section class="ux-gas-check"><div class="ux-gas-check-heading"><strong>Token balances</strong></div>'+
+   '<div class="ux-gas-check-rows">'+tokenBalanceRows+'</div></section>':"")+
   renderWalletGasChecklist(model,path,{...wallet,hideGasRefresh:true,hideStepList:true})+
   (pending.length?'<div class="ux-route-status">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Open transfer'+(pending.length>1?"s":"")+'</label>'+
