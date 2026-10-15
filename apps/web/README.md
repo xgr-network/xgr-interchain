@@ -83,3 +83,7 @@ assets become public only with complete verifiable deployments and DB-verified
 net locked collateral valued above the configured minimum. The minimum is
 explicitly null until decided. See
 [publication policy](../../docs/XITA_PUBLICATION_POLICY.md).
+
+## Production Join deployment
+
+See [secure Join operations](../../docs/XITA_JOIN_OPERATIONS.md). The live public submission endpoint is fail-closed until private storage, mail verification and GitHub writer credentials are installed; updating the static site alone is not sufficient. Review and extend the XGR privacy policy before enabling mail processing.
