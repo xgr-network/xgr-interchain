@@ -66,10 +66,8 @@ export function createChainOperator({
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName,{previewOnly:true});
   await requireVersionThree(chain,infrastructure,component);
   const values=deploymentParameters(component,parameters);
-  const journal=journals(all.chains);
-  const existing=journal.read().entries[chain.name+":"+component];
-  if(existing&&existing.stage!=="prepared")
-   throw Error("Existing broadcast transaction must be reconciled before another deployment");
+  if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
+   throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Chain or BLS preflight failed");
   let verified=bootstrap;
@@ -102,14 +100,8 @@ export function createChainOperator({
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
-  const old=journal.read().entries[chain.name+":"+component];
-  if(old?.stage==="prepared"){
-   // A never-broadcast draft must not permanently block a fresh Wallet click.
-   // Verify the original wallet nonce is still unsent before discarding it.
-   await verifyPrepared({entry:old,chain,rpc});
-   journal.cancelPrepared(old.id,old.createdAt);
-  }else if(old)
-   throw Error("Existing on-chain transaction needs final receipt before deploying again");
+  if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
+   throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
    bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Destination chain RPC, core or BLS preflight failed");
