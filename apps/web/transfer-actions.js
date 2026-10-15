@@ -107,7 +107,7 @@ export async function waitForWalletReceipt(provider,hash,{attempts=25,delayMs=30
  return null;
 }
 export async function startTransfer({catalog,account,asset,source,destination,amount,
- provider,onBroadcast}){
+ provider,onBroadcast,fetcher=globalThis.fetch}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
  const route=requirePair(catalog,asset,source,destination);
  const src=catalog.chains[source],dst=catalog.chains[destination];
@@ -116,7 +116,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  if(source!=="xgrchain"&&destination!=="xgrchain")
   throw Error("Two-hop transfers must be completed one hop at a time");
  // Source gas plus destination gas must exist before locking/burning.
- const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"]);
+ const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
  if(!QTY.test(destinationBalance||"")||BigInt(destinationBalance)===0n)
   throw Error("Destination wallet needs native gas BEFORE locking tokens");
  await validateWalletAccount(provider,account);
