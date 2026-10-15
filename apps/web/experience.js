@@ -209,7 +209,7 @@ function northstarStage(model,{universe=false}={}){
   '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
   '<a data-nav class="ux-ns-secondary" href="/">Back to dashboard</a>':
   '<a data-nav class="ux-ns-primary" href="/transfer">Transfer Tokens <span aria-hidden="true">→</span></a>'+
-  '<a data-nav class="ux-ns-secondary" href="/join">Bring Your Token <span aria-hidden="true">↗</span></a>';
+  '<a data-nav class="ux-ns-secondary" href="/join">Join XITA <span aria-hidden="true">↗</span></a>';
  return '<div id="xita-3d" class="ux-3d-stage ux-ns-stage" data-northstar="1">'+
   '<canvas class="ux-3d-canvas" tabindex="0" aria-label="Interactive 3D universe with configured blockchain systems. Select a star to explore its tokens."></canvas>'+
   '<div class="ux-3d-labels"></div>'+
