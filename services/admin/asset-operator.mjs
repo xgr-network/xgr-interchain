@@ -61,14 +61,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const routeName=task.kind==="gateway"?task.id.slice(asset.asset.length+1).replace(/:register$/,""):null;
   const id=chain.name+":"+asset.asset+":"+(task.kind==="router"?
    asset.representations.find(x=>x.chain===chain.name)?.component:"gateway")+":"+(routeName||"none");
-  const old=j.read().entries[id];
-  if(old?.stage==="prepared"&&reserve){
-   // A retry can replace a previously rejected draft only after its exact
-   // original wallet nonce is shown to be unsent on the target chain.
-   await verifyPrepared({entry:old,chain,rpc});
-   j.cancelPrepared(old.id,old.createdAt);
-  }else if(old&&old.stage!=="prepared")
-   throw Error("Existing broadcast asset transaction needs its receipt before retry");
+  // Only GitHub-recorded representations and routes govern new deployments.
   if(task.blockers.length)throw Error("Other deployments required: "+task.blockers.join(", "));
   if(task.status!=="ready-for-independent-validation")throw Error("Task dependencies incomplete");
   const source=chain;
