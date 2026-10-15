@@ -349,6 +349,28 @@ function token(){
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,step:0,status:""};
+let joinConfirmationProcessed=false;
+async function processJoinEmailConfirmation(){
+ if(joinConfirmationProcessed)return;
+ joinConfirmationProcessed=true;
+ const code=location.hash.slice(1);
+ history.replaceState(null,"","/join/confirm");
+ const status=document.querySelector("#ja-confirm-status");
+ const match=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(code);
+ if(!match){if(status)status.textContent="Confirmation link invalid or missing. Please use the link from your email.";return;}
+ try{
+  const response=await fetch("/api/xita/join/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id:match[1],token:match[2]})});
+  const result=await response.json();
+  if(!response.ok||!result.ok)throw Error(result.error||"Confirmation unavailable");
+  if(status)status.textContent="Email verified. Your token proposal has been submitted as GitHub Draft PR #"+result.prNumber+" for XGR review.";
+  const link=document.querySelector("#ja-confirm-pr");
+  if(link&&/^https:\/\/github\.com\/xgr-network\/xgr-interchain\/pull\/\d+$/.test(result.prUrl)){
+    link.href=result.prUrl;link.hidden=false;
+  }
+ }catch(e){if(status)status.textContent="Could not confirm the application: "+e.message;}
+}
+
 function join(){
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
  return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status);
@@ -482,7 +504,8 @@ function render(){
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
-   scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{
    state.experience[name]=e.target.value;

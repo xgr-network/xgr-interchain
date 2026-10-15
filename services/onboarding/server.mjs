@@ -7,7 +7,7 @@ import {execFileSync} from "node:child_process";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
-import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken} from "./private-store.mjs";
+import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash} from "./private-store.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const REPO="xgr-network/xgr-interchain";
@@ -140,8 +140,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   if(path.endsWith("/preview"))
     return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),
       assetId:bundle.assetId,identity:{platform:identity.platform,address:identity.address}});
-  const client=req.socket.remoteAddress||"unknown";
-  if(!allowed(client,clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
+  // Per-email throttle; proxies normally share loopback as socket address.
+  if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
   const dir=preparePrivateDir(privateLocation(env));
   const {id,token}=createPending(dir,input,bundle.assetId,{now:clock()});
   // No email, token, or role holder contact is ever written to GitHub here.
