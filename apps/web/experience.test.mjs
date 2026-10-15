@@ -219,11 +219,12 @@ test("Transfer CTA appears immediately after amount, before collapsed gas diagno
  assert.ok(html.indexOf('id="ux-transfer-amount"')<html.indexOf('id="xita-transfer-primary"'));
  assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('class="ux-transfer-advanced"'));
  assert.match(html,/<details class="ux-transfer-advanced">/);
- assert.match(html,/Available on XGRChain/);
- assert.match(html,/12 XGR/);
+ assert.match(html,/ux-transfer-available/);
+ assert.match(html,/Available on /);
+ // This fixture has no deployment receipts, so the UI must not invent an available amount.
+ assert.match(html,/Route unavailable/);
  assert.equal((html.match(/Token balances/g)||[]).length,0);
- assert.match(html,/Gas and contract checks run before MetaMask asks you to sign/);
- assert.match(html,/Transfer XGR/);
+ assert.match(html,/Only verified deployed routes can be transferred/);
  assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
  const noWallet=renderPlanRoute(model,{},"ready");
  assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("Route, network gas"));
