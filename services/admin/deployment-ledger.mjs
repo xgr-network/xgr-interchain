@@ -56,9 +56,15 @@ function proveCreation(receipt,componentAddress,provenance){
  }
  const event=EVENTS[provenance.kind];
  const transport=provenance.kind.startsWith("transport-");
+ // On Base the reviewed user wallet may execute a factory call via its
+ // observed smart-wallet executor. The receipt must still contain an exact
+ // Factory-originated deployment event for this target, and the caller must
+ // match the signed user wallet (verified separately below).
+ const baseExecutor=receipt._chainId===8453&&
+    equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
-      !equal(receipt.to,provenance.factory))||
+      !(equal(receipt.to,provenance.factory)||baseExecutor))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
@@ -124,7 +130,7 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  const observedHash=keccak256(Uint8Array.from(Buffer.from(bytecode.slice(2),"hex")));
  if(!equal(observedHash,expectedRuntimeKeccak256))
   throw Error("Runtime code hash differs from the main-approved build");
- const origin=proveCreation(receipt,contractAddress,provenance);
+ const origin=proveCreation({...receipt,_chainId:c.chainId},contractAddress,provenance);
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
   approval:{ref:"main",sourceCommit:sourceCommit.toLowerCase()},

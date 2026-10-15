@@ -93,3 +93,20 @@ test("wallet-assigned nonce does not override wrong destination or calldata",asy
   })
  }),/calldata, destination/);
 });
+
+test("Base smart wallet envelope accepts exact target and calldata, but rejects substituted payloads",async()=>{
+ const {compareCommittedWalletTransaction}=await import("./deployment-wallet-transaction.mjs");
+ const target="0xa3018e0560113fe3206aadeb1ee9553fd1e76370";
+ const data="0x0b33cbaa";
+ const e={...entry,id:"base:sourceRegistry",transaction:{...entry.transaction,to:target,data,value:"0x0"}};
+ const tx={
+  hash,from:wallet,to:"0xdb9b1e94b5b69df7e401ddbede43491141047db3",
+  chainId:"0x2105",nonce:"0x7",value:"0x0",
+  input:"0xcef6d209"+"00".repeat(100)+target.slice(2)+"00".repeat(32)+data.slice(2)+"00".repeat(20)
+ };
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},tx).matched,true);
+ assert.deepEqual(compareCommittedWalletTransaction({...e,txHash:hash},{...tx,input:tx.input.replace(data.slice(2),"deadbeef")}).mismatched,["calldata","destination"]);
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},{...tx,to:"0x"+"3".repeat(40)}).matched,false);
+ const router={...e,transaction:{...e.transaction,to:target,data:"0xabcd1234"+("aa".repeat(80))}};
+ assert.equal(compareCommittedWalletTransaction({...router,txHash:hash},tx).matched,false);
+});
