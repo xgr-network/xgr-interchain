@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS xita_transfer_operations (
  validator_fee_wei NUMERIC(78,0),
  delivered BOOLEAN,              -- NULL means UNKNOWN, never "failed".
  delivery_checked_at TIMESTAMPTZ,
+ delivery_attempted_at TIMESTAMPTZ,
  source_indexed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  PRIMARY KEY (source_chain,message_id),
  UNIQUE (source_chain,source_tx_hash,message_id),
