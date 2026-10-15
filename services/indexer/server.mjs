@@ -94,7 +94,7 @@ export async function handler(req,res){
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  try{
