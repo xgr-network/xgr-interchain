@@ -47,7 +47,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.end('{"ok":false,"error":"Not deployed"}');
    return;
   }
-  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/faq"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/my-transfers";
+  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/my-transfers";
   const target=isPage?"index.html":pathname.slice(1);
   const full=resolve(root,target);
   if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
@@ -87,7 +87,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/plan-route","Plan a Route"],["/faq","Understand XITA."],["/token/xgr","Token deployment pending"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"],["/my-transfers","XGR Interchain"]]){
+  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/transfer","Transfer Tokens"],["/faq","Understand XITA."],["/token/xgr","Token deployment pending"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"],["/my-transfers","XGR Interchain"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
@@ -95,7 +95,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    assert.match(html,/id="my-transfers-link"[^>]*hidden/,path+" must hide My Transfers without connected wallet");
    if(path==="/my-transfers")assert.doesNotMatch(html,/ux-my-transfers/, "Unconnected deep link must not reveal transfer view");
    if(path==="/universe"){assert.match(html,/ux-3d-canvas/,"Legacy universe should resolve to the dashboard");}
-   if(path==="/plan-route"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/Wallet gas across the full journey/);assert.match(html,/Planned MetaMask steps/);}
+   if(path==="/transfer"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/id="xita-transfer-primary"/);assert.doesNotMatch(html,/id="ux-token-origin"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
    if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
@@ -117,7 +117,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   assert.match(joinProbe,/data-join-advance="pass"/,"Continue must advance after valid fields");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
-  for(const name of ["/app.js","/experience.js","/wallet-core.js","/wallet-gas.js","/wallet-transfers.js","/transfer-page.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
+  for(const name of ["/app.js","/experience.js","/wallet-core.js","/wallet-gas.js","/wallet-transfers.js","/wallet-token-balances.js","/transfer-actions.js","/transfer-page.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
  }finally{
   await new Promise(ok=>server.close(ok));
  }
