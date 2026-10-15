@@ -32,7 +32,13 @@ const stanza=`location = /api/xeta/v1/transfer/recovery {
     }
 
     `;
-const next=before.replace(marker,stanza+marker);
+let next=before.replace(marker,stanza+marker);
+// One specifically configured Base RPC is needed by the public balance, source
+// and recovery preflight. Do not open connect-src to arbitrary external origins.
+const connectMarker="connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network";
+if(next.includes(connectMarker)&&!next.includes("https://base-rpc.publicnode.com"))
+ next=next.replace(connectMarker,connectMarker+" https://base-rpc.publicnode.com");
+
 const mode=statSync(file).mode;
 writeFileSync(file,next,{mode});
 try{
