@@ -244,7 +244,7 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
  assert.doesNotMatch(fresh,/Checking on-chain transfers/);
  assert.match(fresh,/Previous transfers awaiting delivery/);
  assert.match(fresh,/<option value="" selected>New transfer/);
- assert.match(fresh,/Ready to prepare a new transfer/);
+ assert.match(fresh,/Ready to transfer/);
  const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:txHash,scanning:true});
  assert.match(selected,/Continue delivery/);
