@@ -13,23 +13,26 @@ const pill=(s)=>'<span class="status '+esc(s)+'">'+esc(labels[s]||s)+'</span>';
 let workqueue=null;
 let assetPage=0;
 let assetTasks=[];
+let eligibleAssetRoutes=[];
 let selectedAssetTask=null;
 let assetPreview=null;
 const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
  const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
- const assets=Object.values(workqueue.inventory.assets).filter(a=>(filter==="all"||a.status===filter)&&[a.name,a.symbol,a.key,a.canonicalChain,...a.routes.map(r=>r.destination)].join(" ").toLowerCase().includes(q));
+ const eligibleByAsset=new Map();
+ for(const r of eligibleAssetRoutes){const v=eligibleByAsset.get(r.asset)||new Set();v.add(r.name);eligibleByAsset.set(r.asset,v);}
+ const assets=Object.values(workqueue.inventory.assets).filter(a=>eligibleByAsset.has(a.key)&&
+ (filter==="all"||a.status===filter)&&[a.name,a.symbol,a.key,a.canonicalChain,...a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)).map(r=>r.destination)].join(" ").toLowerCase().includes(q));
  el("metrics").innerHTML=[
-  ["Assets",Object.keys(workqueue.inventory.assets).length],
-  ["Routen",workqueue.inventory.routes.length],
-  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>a.status!=="deployed").length]
+  ["Assets",eligibleByAsset.size],["Routen",eligibleAssetRoutes.length],
+  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>eligibleByAsset.has(a.key)&&a.routes.some(r=>eligibleByAsset.get(a.key).has(r.name)&&r.status!=="deployed")).length]
  ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
  const pages=Math.max(1,Math.ceil(assets.length/ASSETS_PER_PAGE));
  assetPage=Math.max(0,Math.min(assetPage,pages-1));
  const pageAssets=assets.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  el("main-workqueue").innerHTML=assets.length?pageAssets.map(a=>'<section class="asset-card"><div class="asset-head">'+
- '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.deployedRoutes+'/'+a.routeCount+' Routen dokumentiert</p></div>'+pill(a.status)+(assetTasks.some(t=>t.asset===a.key)?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+'">Alle Schritte deployen</button>':"")+'</div>'+
+ '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+'</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)&&r.status==='deployed').length+'/'+a.routes.filter(r=>eligibleByAsset.get(a.key).has(r.name)).length+' Routen dokumentiert</p></div>'+pill(a.status)+(assetTasks.some(t=>t.asset===a.key)?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+'">Alle Schritte deployen</button>':"")+'</div>'+
  '<div class="routes">'+assetTasks.filter(t=>t.asset===a.key).map(t=>
   '<div class="route"><div><strong>'+
   esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
@@ -171,19 +174,6 @@ async function openAssetModal(taskId){
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("contract-deploy-dialog").showModal();
- try{
-  const journal=(await get("/admin/api/chain-deploy/status")).intents.entries;
-  const graph=workqueue.inventory.assets[task.asset];
-  const component=task.kind==="gateway"?"gateway":
-   graph.representations[task.chain].role==="native"?"nativeRouter":
-   graph.representations[task.chain].role==="synthetic"?"syntheticRouter":"collateralRouter";
-  const routeName=task.kind==="gateway"?task.id.slice(task.asset.length+1).replace(/:register$/,""):"none";
-  const id=task.chain+":"+task.asset+":"+component+":"+routeName;
-  if(journal[id]&&journal[id].stage!=="prepared"){
-   presentModalStatus("Vorherige Transaktion erkannt. Normaler Deploy-Klick setzt sie automatisch fort.","warn");
-   return;
-  }
- }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Journal nicht erreichbar: "+e.message,"error");return;}
  if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
  else presentModalStatus("Bereit: Mit Wallet deployen. Gebühren bestätigt MetaMask.");
 }
@@ -584,8 +574,8 @@ async function loadMainWorkqueue(){
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
   deploymentReadiness.clear();
-  try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];}
-  catch{assetTasks=[];}
+  try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];eligibleAssetRoutes=tasks.eligibleRoutes||[];}
+  catch{assetTasks=[];eligibleAssetRoutes=[];}
   renderAssets();renderInfrastructure();
   // Read-only evidence status lives independently from incomplete GitHub config.
   await Promise.all((data.infrastructure||[]).map(async chain=>{
