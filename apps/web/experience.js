@@ -346,7 +346,9 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="pending-source"?"Source transaction pending":
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
   progress.scanning?"Looking for your transfers on the chains…":
-  connected?"No open transfers found in the scanned range":"Connect your wallet to check balances and open deliveries";
+  connected&&progress.coverage?.complete?"No outstanding transfers in the indexed finalized range":
+  connected?"Checking recent transfers; full wallet history may still be indexing":
+  "Connect your wallet to check balances and open deliveries";
  const formatTokenBalance=(balance)=>{
   if(balance?.status!=="ready"||!/^\d+$/.test(balance.balanceRaw||""))return "Unavailable";
   const scale=10n**BigInt(balance.decimals||0),raw=BigInt(balance.balanceRaw);
@@ -405,7 +407,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '</section>'+
   '<p class="ux-small">A direct transfer uses source Gateway.bridge and destination Mailbox.process. An ERC-20 allowance can require a separate approval. Existing successful source transfers are never repeated.</p>'+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
-  (connected?'<p class="ux-small">Older transactions outside the recent scan can be found using their source transaction hash under <a data-nav href="/my-transfers">My Transfers</a>.</p>':"")+
+  (connected?'<p class="ux-small">'+(progress.coverage?.complete?
+    'Open transfers are indexed across all documented routes.':
+    'The indexer may still be catching up. Older transfers can be found by their source transaction hash.')+
+    ' <a data-nav href="/my-transfers">My Transfers</a></p>':"")+
   '</section><aside class="ux-panel ux-ns-operations-data">'+
   '<span class="ux-kicker">NETWORK STATUS</span><h2>Available networks</h2>'+
   '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+
