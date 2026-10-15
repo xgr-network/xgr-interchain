@@ -14,7 +14,7 @@ const statuses={
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
 export function transferMenuVisible(account){return validWalletAddress(account)}
-export function renderMyTransfers({account,catalog,items=[],scanning=false,notice="",error="",scanReport=null}={}){
+export function renderMyTransfers({account,catalog,items=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null}={}){
  if(!validWalletAddress(account))return "";
  const routeList=configuredGatewayRoutes(catalog);
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
@@ -44,10 +44,12 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   ' · These records are checked against canonical Gateway and Mailbox events, not browser cache.</p></header>'+
   '<div class="ux-transfer-actions"><button type="button" id="xita-scan-transfers"'+
   (scanning?" disabled":"")+'>Refresh recent wallet transfers</button>'+
-  '<span class="ux-small">'+esc(scanning?"Scanning confirmed source blocks…":
+  '<span class="ux-small">'+esc(scanning?"Checking wallet transfers…":
+   indexCoverage?.complete?"Finalized event index up to date for every deployed route.":
+   scanReport?.source==="indexer"?"Indexer catching up; historical coverage incomplete.":
    scanReport?("Recent scan: "+scanReport.lookback+" blocks per deployed route. "+
-    (scanReport.limited?"Additional transfers may exist.":"Older transfers require a source TX hash.")):
-    "Automatic full-history indexing is not live yet.")+'</span></div>'+
+    (scanReport.limited?"Additional activity may exist.":"Full history is not yet indexed.")):
+   "Transfer index unavailable. Older transfers may be found by source TX hash.")+'</span></div>'+
   (notice?'<p class="ux-transfer-notice" role="status">'+esc(notice)+'</p>':'')+
   (error?'<p class="ux-transfer-error" role="alert">'+esc(error)+'</p>':'')+
   '<section class="ux-transfer-lookup"><h2>Find a previous transfer</h2>'+
