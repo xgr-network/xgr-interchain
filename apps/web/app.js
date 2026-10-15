@@ -10,6 +10,7 @@ import {findWalletSourceTx,scanRecentWalletTransfers} from "./wallet-transfers.j
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
+import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -21,8 +22,8 @@ function refreshTransferLink(){
  if(link)link.hidden=!connected;
  const alert=document.querySelector("#wallet-pending-alert");
  if(!alert)return;
- const livePending=transferActivity.items.filter(t=>t.status==="awaiting-proof").length;
- const pending=connected?Math.max(livePending,transferActivity.indexOpenCount||0):0;
+ const pending=connected?pendingDeliveryCount({account:state.account,
+  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
  alert.hidden=pending===0;
  if(pending){
   alert.textContent=pending===1?"1 transfer awaiting delivery →":
