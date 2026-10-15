@@ -116,6 +116,9 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  if(source!=="xgrchain"&&destination!=="xgrchain")
   throw Error("Two-hop transfers must be completed one hop at a time");
  // Source gas plus destination gas must exist before locking/burning.
+ const destinationRpcId=await publicRead(dst.rpcUrls?.[0],"eth_chainId",[],fetcher);
+ if(!QTY.test(destinationRpcId||"")||BigInt(destinationRpcId)!==BigInt(dst.chainId))
+  throw Error("Destination RPC chain ID differs from configured chain");
  const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
  if(!QTY.test(destinationBalance||"")||BigInt(destinationBalance)===0n)
   throw Error("Destination wallet needs native gas BEFORE locking tokens");
