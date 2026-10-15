@@ -14,7 +14,7 @@ const route={sourceChain:SOURCE,routeName:"source_to_dest",name:"source_to_dest"
  destinationChain:DEST,gateway:address("a"),routeId:hash("1"),
  deploymentBlock:100,asset:"T",assetId:hash("9"),destinationMailbox:address("b"),
  sourceConfig:{chainId:123,confirmations:2,rpcUrls:["https://rpc.invalid/src"]},
- destinationConfig:{chainId:456,confirmations:12,rpcUrls:["https://rpc.invalid/dst"]}};
+ destinationConfig:{chainId:456,domainId:456,confirmations:12,rpcUrls:["https://rpc.invalid/dst"]}};
 function rpc(methodMap){
  return async (chain,method,args)=>{
   const fn=methodMap[method];
