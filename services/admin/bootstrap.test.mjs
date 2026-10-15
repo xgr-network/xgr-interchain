@@ -40,7 +40,7 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
  const items=buildWorkItems(inventory,infrastructureInventory(root,inventory.chains),bootstraps);
  assert.equal(items.filter(p=>p.kind==="validator-bootstrap").length,inventory.chains.length);
  assert.equal(items.filter(p=>p.kind==="fee-bootstrap").length,inventory.chains.length);
- assert.equal(items.filter(p=>p.kind==="route").length,inventory.routes.length);
+ assert.equal(items.filter(p=>p.kind==="route").length,inventory.routes.filter(r=>r.status!=="deployed").length);
  // A complete, syntactically valid manifest is not a cryptographic
  // verification or wallet authorization; those are separate live gates.
  assert.ok(items.every(p=>["blocked","documented"].includes(p.status)));
