@@ -15,6 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify executable website deployment entrypoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./manage.sh || { echo "manage.sh has lost its Git executable bit (expected 100755)" >&2; exit 1; }
+          test "$(git ls-files --stage -- manage.sh | cut -d ' ' -f1)" = "100755"
+          bash -n ./manage.sh
+
       - name: Assert no populated runtime secrets are tracked
         shell: bash
         run: |
