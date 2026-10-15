@@ -98,15 +98,18 @@ export async function handler(req,res){
  if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/stats")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
+ if(pathname==="/api/xeta/v1/transfer/health"){
+  // This checks installation prerequisites, not availability of BLS quorum.
+  // It must not depend on the mutable token catalog or market index.
+  const script=existsSync(resolve(root,"runtime/native-relayer/recover-iln.mjs"));
+  const ethers=existsSync(resolve(root,"runtime/native-relayer/node_modules/ethers/package.json"));
+  const configured=script&&ethers;
+  return send(configured?200:503,{ok:configured,
+   proofBuilder:configured?"installed":"unavailable",
+   ...(configured?{}:{reason:!script?"recovery-script-missing":"ethers-package-missing"})});
+ }
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
-  if(pathname==="/api/xeta/v1/transfer/health"){
-   // Readiness is an execution prerequisite, not an additional manually
-   // managed route state. Never start locking if proof builder is absent.
-   const configured=existsSync(resolve(root,"runtime/native-relayer/recover-iln.mjs"))&&
-    existsSync(resolve(root,"runtime/native-relayer/node_modules/ethers/package.json"));
-   return send(configured?200:503,{ok:configured,proofBuilder:configured?"installed":"unavailable"});
-  }
   if(pathname==="/api/xeta/v1/transfer/recovery"){
    const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId"),asset=parsed.searchParams.get("asset");
    try{
