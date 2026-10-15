@@ -62,7 +62,7 @@ check() {
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
     node --test apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
-    node --test tools/transfer-recovery-nginx.test.mjs
+    node --test tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
@@ -77,22 +77,12 @@ check() {
 wait_admin() {
   local i
   for i in 1 2 3 4 5 6; do
-    if curl -fsS --max-time 3 "$ADMIN_URL/admin/api/plan" >/dev/null 2>&1; then
+    if curl -fsS --max-time 3 "$ADMIN_URL/admin/api/deployment-sync/status" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
   done
   return 1
-}
-
-restore_web() {
-  local previous="$1" next="$2"
-  if [[ -n "$previous" && -d "$previous" ]]; then
-    privileged ln -s "$previous" "$next"
-    privileged mv -Tf "$next" "$SITE_DIR/current"
-  else
-    privileged rm -f "$SITE_DIR/current"
-  fi
 }
 
 prepare_solidity_runtime() {
@@ -126,7 +116,7 @@ prepare_catalog_store() {
 }
 
 publish_web() {
-  local sha release previous next
+  local sha release next
   require_clean_main
   check
   prepare_solidity_runtime
@@ -143,19 +133,26 @@ publish_web() {
   prepare_catalog_store
   privileged rm -f "$release/catalog.json"
   privileged ln -s "$CATALOG_DIR/catalog.json" "$release/catalog.json"
-  previous="$(readlink -f "$SITE_DIR/current" 2>/dev/null || true)"
   next="$SITE_DIR/.next-${sha:0:12}-$$"
   privileged ln -s "$release" "$next"
   privileged mv -Tf "$next" "$SITE_DIR/current"
 
-  if ! privileged systemctl restart "$ADMIN_SERVICE" || ! wait_admin; then
-    echo "ERROR: admin failed after website publication; restoring previous website." >&2
-    restore_web "$previous" "$next"
-    privileged systemctl restart "$ADMIN_SERVICE" || true
+  # The public website is static and independent from the operator Admin.
+  # Never revert a successfully published release because a separate service
+  # failed to restart or its optional health probe was temporarily unavailable.
+  if ! privileged systemctl restart "$ADMIN_SERVICE"; then
+    echo "WARNING: $ADMIN_SERVICE failed to restart; the new website remains published." >&2
+    echo "Check: sudo journalctl -u $ADMIN_SERVICE -n 80 --no-pager" >&2
     privileged systemctl status "$ADMIN_SERVICE" --no-pager --lines=20 || true
-    return 1
+  elif ! wait_admin; then
+    echo "WARNING: $ADMIN_SERVICE did not answer its lightweight local health probe." >&2
+    echo "The new website remains published; inspect the Admin service separately." >&2
+    echo "Check: sudo journalctl -u $ADMIN_SERVICE -n 80 --no-pager" >&2
+    privileged systemctl status "$ADMIN_SERVICE" --no-pager --lines=20 || true
+  else
+    echo "OK: $ADMIN_SERVICE restarted and answered its local health probe."
   fi
-  echo "SUCCESS: website ${sha:0:12} published and $ADMIN_SERVICE restarted."
+  echo "SUCCESS: website ${sha:0:12} published; release will not be rolled back for unrelated Admin failures."
 }
 
 status() {
