@@ -190,3 +190,19 @@ requires a valid proof before quorum-approved `applyMembership(ADD)`.
 Future new ISM/Factory deployments are fail-closed until an independently
 verified V3 is documented. This branch does not overwrite the V2 receipt or
 automatically migrate the existing 2.25 XGR reserve. No node changes.
+
+
+### Indexed recovery worklist and statistics
+
+The XITA indexer backfills finalized immutable source Gateway operations,
+their original wallets and message IDs, and independently rechecks delivery
+through the destination Mailbox. The wallet-indexed read-only endpoint
+`/api/xeta/v1/transfers/wallet` supplies the user's open worklist at
+Wallet Connect; a header notice appears for outstanding confirmed
+lock/burns. `/api/xeta/v1/transfers/stats` supplies separately labeled
+per-hop transfer counts and raw asset amounts for eventual statistics.
+The indexer's PostgreSQL projection is rebuildable chain-derived evidence,
+not custody, governance, approval, or a new chain-state authority.
+A fresh on-chain `delivered(messageId)` read and canonical BLS/Merkle
+proof validation remain mandatory before any destination MetaMask request.
+Incomplete backfill/RPC reads are UNKNOWN rather than an empty worklist.
