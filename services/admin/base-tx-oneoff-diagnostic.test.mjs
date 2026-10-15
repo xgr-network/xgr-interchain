@@ -20,6 +20,9 @@ test("read original SourceRegistry candidate transaction and receipt",async()=>{
     rpc("eth_getCode",[registry,"latest"]),
     rpc("eth_getCode",[factory,"latest"])
    ]);
+   const raw=await rpc("eth_getCode",[registry,receipt.blockNumber]); const actualHash=keccak256(Uint8Array.from(Buffer.from(raw.slice(2),"hex"))); const blk=await rpc("eth_getBlockByNumber",[receipt.blockNumber,false]);
+   const binds=await Promise.all(["sourceChainId()","sourceDomain()","factory()","governanceRegistry()","validatorFeeWei()","sourceFeeNonce()"].map(async sig=>[sig,await rpc("eth_call",[{to:registry,data:selector(sig)},receipt.blockNumber])]));
+   console.log("XITA_RECEIPT_PROOF",JSON.stringify({codeKeccak:actualHash,byteLength:(raw.length-2)/2,block:blk&&{hash:blk.hash,number:blk.number},bindings:binds}));
    console.log("XITA_ORIGINAL_CANDIDATE",JSON.stringify({url,id,tx:tx&&{
     hash:tx.hash,from:tx.from,to:tx.to,value:tx.value,nonce:tx.nonce,
     data:tx.input??tx.data,blockNumber:tx.blockNumber,blockHash:tx.blockHash
