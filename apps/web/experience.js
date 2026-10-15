@@ -1,3 +1,4 @@
+import {deployedRoutes,supportedRouteChains} from "./route-availability.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
@@ -40,7 +41,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
       routes.push({assetId,name:item.name,source,destination,active});
     }
   }
-  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null};
+  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog)};
 }
 
 export function previewRoute(model,source,destination,assetId){
@@ -190,11 +191,15 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
 export function renderTokenBridge(model,assetId,selection={},wallet={}){
   const token=model.assets.find(a=>a.id===assetId);
   if(!token)return '<div class="ux-panel"><h2>Token unavailable</h2></div>';
-  const supported=model.chains.filter(c=>c.tokens.some(t=>t.id===assetId));
-  const origin=supported.some(c=>c.key===selection.origin)?selection.origin:token.canonical;
+  const available=new Set(model.deployments.filter(r=>r.asset===assetId).flatMap(r=>[r.source,r.destination]));
+  const supported=model.chains.filter(c=>available.has(c.key));
+  const origin=supported.some(c=>c.key===selection.origin)?selection.origin:
+   supported.some(c=>c.key===token.canonical)?token.canonical:supported[0]?.key||token.canonical;
   const destination=supported.some(c=>c.key===selection.destination&&c.key!==origin)?
     selection.destination:supported.find(c=>c.key!==origin)?.key||origin;
   const plan=previewRoute(model,origin,destination,assetId);
+  const deployedPlan=plan.hops.length>0&&plan.hops.every((r,i)=>model.deployments.some(d=>
+   d.asset===assetId&&d.source===plan.path[i]&&d.destination===plan.path[i+1]));
   const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
   return '<div class="ux-token-bridge" id="token-bridge"><div class="ux-kicker">XITA v3.1.5 · Token-specific bridge</div>'+
     '<h2>Bridge '+esc(token.name)+'</h2>'+
@@ -205,7 +210,7 @@ export function renderTokenBridge(model,assetId,selection={},wallet={}){
     '<select id="ux-token-destination">'+chainOptions({chains:supported},destination)+'</select>'+
     '<div class="ux-divider"></div><span class="ux-kicker">Interchain route</span>'+
     routePath(model,plan)+
-    '<div class="ux-route-status">'+pill(false)+'<p>'+esc(plan.reason)+'</p></div>'+
+    '<div class="ux-route-status">'+(deployedPlan?'<span class="ux-badge is-verified">Deployed</span>':pill(false))+'<p>'+esc(deployedPlan?"Contracts documented on both chains; source transfer adapter is not yet enabled.":plan.reason)+'</p></div>'+
     (plan.path.length===3?'<p class="ux-small">Spoke-to-spoke is two independent source transactions with XGRChain as a real intermediate chain. A second hop is NOT automatically sponsored or executed.</p>':
     '<p class="ux-small">A direct route is allowed only when one endpoint is XGRChain (chain ID/domain 1643).</p>')+
     '<div class="ux-hop-detail"><span class="ux-kicker">Directed hops</span>'+
@@ -326,11 +331,21 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
 }
 // A real standalone planner; no longer extracted from dashboard markup.
 export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={}){
- const source=model.chains.some(c=>c.key===selection.origin)?selection.origin:HUB;
- const target=model.chains.some(c=>c.key===selection.destination)?selection.destination:
-  model.chains.find(c=>c.key!==source)?.key||source;
- const assetId=model.assets.some(a=>a.id===selection.asset)?selection.asset:model.assets[0]?.id||"";
+ const available=new Set(model.deployments.flatMap(r=>[r.source,r.destination]));
+ const deployedChains=model.chains.filter(c=>available.has(c.key));
+ const deployedAssets=new Set(model.deployments.map(r=>r.asset));
+ const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id));
+ const source=available.has(selection.origin)?selection.origin:
+  deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
+ const target=available.has(selection.destination)&&selection.destination!==source?selection.destination:
+  deployedChains.find(c=>c.key!==source)?.key||"";
+ const assetId=usableAssets.some(a=>a.id===selection.asset)?selection.asset:usableAssets[0]?.id||"";
  const plan=previewRoute(model,source,target,assetId);
+ const deployedPlan=plan.path.length>1&&plan.hops.every((r,i)=>
+  model.deployments.some(d=>d.asset===assetId&&d.source===plan.path[i]&&d.destination===plan.path[i+1]));
+ const availabilityReason=deployedPlan?
+  "Route contracts deployed on both chains. Wallet execution and delivery proof adapter are still being implemented.":
+  "No fully deployed route for this selection.";
  // Network-only native balance preview is valid even before a token is
  // publicly listed. Never mark a hypothetical hop as an active route.
  const pathForBalances=plan.path.length?plan.path:
@@ -348,19 +363,19 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<h1>Plan a Route</h1><p class="ux-muted">Inspect configured directions and verify availability. A route preview is never an instruction to send funds.</p></div>'+
   '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">01 · JOURNEY PLANNER</span><span class="ux-label">XGR HUB</span></div>'+
   '<h2>Plan a transfer</h2><p class="ux-muted">Only independently verified route contracts should be offered to users.</p>'+
-  '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions(model,source)+'</select>'+
-  '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions(model,assetId)+'</select>'+
-  '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions(model,target)+'</select>'+
+  '<label class="ux-field" for="ux-origin">Origin system</label><select id="ux-origin">'+chainOptions({chains:deployedChains},source)+'</select>'+
+  '<label class="ux-field" for="ux-asset">Asset</label><select id="ux-asset">'+assetOptions({assets:usableAssets},assetId)+'</select>'+
+  '<label class="ux-field" for="ux-destination">Destination system</label><select id="ux-destination">'+chainOptions({chains:deployedChains},target)+'</select>'+
   '<div class="ux-divider"></div><div class="ux-kicker">ROUTE PATH</div>'+routePath(model,plan)+
-  '<div class="ux-route-status">'+pill(plan.active)+'<p>'+esc(plan.reason)+'</p></div>'+
+  '<div class="ux-route-status">'+(deployedPlan?'<span class="ux-badge is-verified">Deployed</span>':pill(false))+'<p>'+esc(availabilityReason)+'</p></div>'+
   renderWalletGasChecklist(model,gasPlan,wallet)+
   '<p class="ux-small">No transfer timings, bridge TVL or transaction availability are inferred from the diagram.</p>'+
   (firstAsset?'<a class="ux-button" data-nav href="'+esc(tokenLink(firstAsset))+'">Open '+esc(firstAsset.id)+' token & transfer ↗</a>':
    '<a class="ux-button" data-nav href="/markets">Browse tokens ↗</a>')+'</section>'+
   '<aside class="ux-panel ux-ns-operations-data"><div class="ux-kicker">02 · VERIFIED NETWORK FACTS</div>'+
   '<h2>Current network state</h2><p class="ux-muted">A catalog listing is not proof of complete reciprocal deployment or finalized transfer security.</p>'+
-  '<div class="ux-ns-facts"><div><span>Configured systems</span><strong>'+model.chains.length+'</strong></div>'+
-  '<div><span>Configured directed routes</span><strong>'+model.routes.length+'</strong></div>'+
+  '<div class="ux-ns-facts"><div><span>Deployed systems</span><strong>'+deployedChains.length+'</strong></div>'+
+  '<div><span>Deployed directed routes</span><strong>'+model.deployments.length+'</strong></div>'+
   '<div><span>Verified active routes</span><strong>'+active+'</strong></div>'+
   '<div><span>Event indexer</span><strong>'+(apiState==="ready"?"Available":"Unavailable")+'</strong></div></div>'+
   '<div class="ux-route-status"><p><strong>Route visualization is not proof of availability.</strong> Each direction requires deployment and independent reciprocal verification before users should bridge.</p></div>'+
