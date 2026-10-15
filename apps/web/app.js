@@ -542,7 +542,7 @@ el.addEventListener("change",event=>{
 document.addEventListener("click",e=>{
  const a=e.target.closest("a[data-nav]");
  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
- e.preventDefault();history.pushState(null,"",a.pathname);render();scrollTo(0,0);
+ e.preventDefault();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });
 window.addEventListener("popstate",render);
 refreshTransferLink();
