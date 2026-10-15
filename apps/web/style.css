@@ -1018,3 +1018,32 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-transfer-explainer p{font-size:11px;color:#97acc4}
 @media(max-width:900px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:480px){.ux-plan-page{padding:10px 12px 40px}.ux-transfer-network-fields{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:6px}.ux-transfer-direction{font-size:17px}.ux-transfer-available{font-size:11px}}
+
+/* Transfer layout: left form, live status in the right panel; no redundant inventory lines. */
+.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1.42fr) minmax(310px,.78fr);gap:20px}
+.ux-plan-page .ux-route-panel,.ux-plan-page .ux-transfer-status-panel{min-width:0}
+.ux-plan-page .ux-transfer-status-panel{padding:24px 22px;background:linear-gradient(157deg,#0d2037,#091528 62%,#081322);border-color:#345577;align-self:start}
+.ux-transfer-status-heading{display:grid;gap:8px;margin-bottom:18px}
+.ux-transfer-status-heading h2{margin:0;font-family:var(--xita-editorial);font-weight:400;font-size:clamp(24px,2.35vw,31px);line-height:1.16}
+.ux-plan-page .ux-transfer-progress{margin:0;gap:12px;border:0;padding:0;background:transparent}
+.ux-transfer-progress .ux-status-primary{display:flex;align-items:flex-start;gap:11px}
+.ux-transfer-progress .ux-status-primary strong{font-weight:600;color:#e5f0ff;font-size:13px;line-height:1.5}
+.ux-status-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#79b0e2;box-shadow:0 0 0 4px #79b0e215;margin-top:5px}
+.ux-transfer-progress.has-error .ux-status-dot{background:#e3a48f;box-shadow:0 0 0 4px #e3a48f22}
+.ux-plan-page .ux-transfer-progress .ux-transfer-error{font-size:12px;line-height:1.7;margin:0;background:#34202a50;border:1px solid #b36b64a0;padding:13px;border-radius:10px;overflow-wrap:anywhere}
+.ux-plan-page .ux-transfer-progress .ux-transfer-notice{font-size:12px;line-height:1.6;margin:0;background:#132b42a8;border:1px solid #49678369;padding:12px;border-radius:9px;overflow-wrap:anywhere}
+.ux-plan-page .ux-transfer-progress progress{height:5px;appearance:none;border:none;border-radius:6px;background:#30455b}
+.ux-plan-page .ux-transfer-progress progress::-webkit-progress-bar{background:#30455b;border-radius:6px}
+.ux-plan-page .ux-transfer-progress progress::-webkit-progress-value{background:linear-gradient(90deg,#5c9ccf,#a5d5fd);border-radius:6px}
+.ux-transfer-milestones{position:relative;display:grid;gap:20px;margin:27px 0 17px;padding-left:3px}
+.ux-transfer-milestones:before{content:"";position:absolute;left:16px;top:22px;bottom:29px;border-left:1px solid #476688}
+.ux-transfer-milestone{display:flex;align-items:flex-start;gap:17px;position:relative}
+.ux-transfer-milestone-number{display:grid;place-items:center;width:27px;height:27px;flex:0 0 27px;border:1px solid #456484;border-radius:50%;background:#102139;color:#a5bdd6;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.ux-transfer-milestone.is-current .ux-transfer-milestone-number{background:#1c3d60;border-color:#7eaedb;color:#f0f7ff}
+.ux-transfer-milestone.is-complete .ux-transfer-milestone-number{background:#193a30;border-color:#5b9c7c;color:#c7eedc}
+.ux-transfer-milestone>div{display:grid;gap:3px;padding-top:2px}
+.ux-transfer-milestone strong{color:#e5effd;font-size:12px;font-weight:650}
+.ux-transfer-milestone small{color:#9fb6d0;font-size:11px;line-height:1.5}
+.ux-transfer-status-help{font-size:11px;line-height:1.7;color:#95afc9;margin:12px 0 0}
+@media(max-width:960px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1fr)}.ux-transfer-milestones{grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.ux-transfer-milestones:before{display:none}}
+@media(max-width:490px){.ux-plan-page .ux-transfer-status-panel{padding:20px 17px}.ux-transfer-milestones{grid-template-columns:1fr;gap:13px}}
