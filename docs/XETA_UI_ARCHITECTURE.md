@@ -87,30 +87,51 @@ minimum locked USD/USDC-equivalent threshold is currently unset; stale
 or missing evidence is unknown, not zero. See
 [XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md).
 
-## Connected-wallet My Transfers and recovery preflight
+## One Transfer Tokens page and chain-sourced recovery
 
-**My Transfers is only visible after explicitly authorizing an EIP-1193
-wallet account.** Disconnecting/switching the account removes the navigation,
-clears previous wallet activity and invalidates pending asynchronous reads.
-Unconnected deep links redirect to the public dashboard.
+`/transfer?token=<ASSET>` is the single transfer entry point. Token detail
+cards provide only this deep link with the token already selected. Legacy
+`/plan-route` navigates to `/transfer`. A single primary button either
+initiates the selected source transfer or CONTINUES an unfinished destination
+delivery; the progress field under the button shows source confirmed (1/2),
+destination pending, or delivery confirmed (2/2). It is NOT a four-step
+wizard. Future two-hop paths are two independent directed transfers through
+the XGRChain hub, each with its own source/target confirmation.
 
-The user may re-enter an original source transaction hash even after changing
-devices. Read-only HTTPS RPC verifies the originating wallet (transaction.from),
-documented source Gateway, successful confirmed receipt, unique canonical
-Gateway ILNOperation(routeId, messageId, domain) and matching Mailbox.Dispatch
-bytes hashed to that same messageId in the very same source transaction.
-Destination Mailbox.delivered(messageId) is independently read. Unavailable
-destination RPC means UNKNOWN, never failed. Replayed/failed/pending source
-transactions must not be mistakenly labelled recoverable.
+The sole administrative availability state is GitHub-documented `deployed`.
+Contract/fee and wallet transaction safety are evaluated live in the chain
+preflight; there is no manually managed `verified` activation flag. The
+transfer page only offers fully documented paired chains and routes. Any
+configured but undeployed token representation remains a prospect on the
+token detail page.
 
-The bounded recent-block scan helps find transfers of the currently connected
-wallet from canonical, deployed XITA Gateway routes; it is NOT a full history
-indexer and may have gaps (CORS, rate limits, confirmation depth). The source TX
-hash lookup remains the recovery path when older history is unindexed.
+Wallet connection reads native-chain gas balances and native/wrapped token
+balances from their canonical chain/router. It also reads canonical
+`Gateway.ILNOperation` plus `Mailbox.Dispatch` from confirmed source
+receipts initiated by the connected account and checks target-chain
+`Mailbox.delivered(messageId)`. A source confirmed on-chain with
+`delivered=false` becomes an open wallet work item: `Continue delivery`.
+Reconnecting the same wallet reconstructs the same item from chain evidence;
+no localStorage, IndexedDB, backend transfer journal or browser click history
+can mark a transfer complete or authorize a second source bridge.
 
-**Recovery submission remains deliberately disabled** until the complete v3.1.5
-Merkle/BLS proof distribution endpoint is independently verified, the UI can
-estimate and sign only the *destination* Mailbox.process transaction, and E2E
-tests demonstrate a retry after out-of-gas or user cancellation. There is no
-re-broadcast of original TX1, no private key storage, no proxy upgrade,
-no on-chain governance mutation and no automatic destination gas sponsorship.
+The public read-only `GET /api/xeta/v1/transfer/recovery` obtains the
+canonical original message, current validator-set quorum, the Merkle inclusion
+proof and unsigned `Mailbox.process(metadata,message)` calldata by running
+the same permissionless recovery client. It holds no wallet private key.
+Only an explicit user click may change MetaMask network and sign destination
+gas; destination simulation, gas estimate, and `delivered(messageId)`
+are checked immediately before submission. A failed/missing quorum, RPC
+outage, pending source, failed source, or unknown delivery state fails closed.
+An unsuccessful destination receipt may be retried by resubmitting ONLY
+the destination `Mailbox.process`, never `Gateway.bridge`, re-lock, burn,
+or an extra validator source fee.
+
+The browser's bounded 4,096-block scan is convenient but NOT a complete
+historical wallet indexer. Older transfers must still be reconstructible
+by entering their original source transaction hash on `My Transfers`.
+A future finalized event indexer may accelerate discovery but must not
+replace chain data as the source of truth. Currently, the unsigned recovery
+endpoint additionally requires the existing indexer service and proxy
+location to be deployed; E2E source+target execution and proof-retry on
+production routes must be exercised before calling it proven.
