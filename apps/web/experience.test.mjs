@@ -149,7 +149,7 @@ test("Northstar hero explains holders and projects with matching actions",()=>{
  assert.match(html,/Move tokens between worlds/);
  assert.match(html,/Bring your token to new chains/);
  assert.match(html,/href="\/transfer">Transfer Tokens/);
- assert.match(html,/href="\/join">Bring Your Token/);
+ assert.match(html,/href="\/join">Join XITA/);
  assert.match(html,/FOR TOKEN HOLDERS/);
  assert.match(html,/FOR TOKEN PROJECTS/);
  assert.match(html,/Check route availability/);

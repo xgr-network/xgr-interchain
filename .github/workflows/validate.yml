@@ -50,6 +50,9 @@ jobs:
           set -euo pipefail
           node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs
 
+      - name: Validate read-only transfer Nginx install and repair
+        run: node --test tools/transfer-recovery-nginx.test.mjs
+
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
 
