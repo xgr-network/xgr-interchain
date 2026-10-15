@@ -19,3 +19,10 @@ test("manage.sh retains its executable bit in Git",()=>{
  // Mode check is also performed directly in the GitHub CI workflow.
  assert.match(shell,/^#!\/usr\/bin\/env bash/);
 });
+
+test("temporary service cleanup cannot leak a RETURN trap into update()",()=>{
+ assert.match(shell,/install_sync\(\) \([\s\S]*?trap 'rm -f "\$\{service_file:-\}"[\s\S]*?' EXIT/);
+ assert.match(shell,/install_transfer_api\(\) \([\s\S]*?trap 'rm -f "\$\{unit:-\}"' EXIT/);
+ assert.doesNotMatch(shell,/trap [^\n]* RETURN/);
+ assert.match(shell,/update\(\) \{[\s\S]*?install_sync/);
+});

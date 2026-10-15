@@ -79,17 +79,30 @@ export function parseRecoveryCliOutput(stdout,configured){
 // Deliberately expose only stable, non-secret diagnostic classes to clients.
 // The real parser/runtime failure is kept in the private systemd journal.
 export function classifyRecoveryFailure(err,stderr=""){
- const cause=String(stderr||"").slice(-8000);
- const tagged=/\"status\"\s*:\s*\"RECOVERY_NOT_READY\"/.test(cause);
- const detail=tagged?(/\"error\"\s*:\s*\"([^\"]{1,700})\"/.exec(cause)?.[1]||""):"";
- const raw=(detail||err?.message||"").toLowerCase();
- const code=err?.killed||/timed out|timeout/.test(raw)?"PROOF_TIMEOUT":
-  /missing [A-Z_]+|invalid [A-Z_]+|unsupported bls signature|destination domain mismatch|registry mismatch|configuration/.test(detail)?"PROOF_CONFIG_MISMATCH":
-  /quorum|attestation|validator|not.*signed|signature/.test(raw)?"PROOF_QUORUM_UNAVAILABLE":
-  /rpc|connection|timeout|network|failed to fetch|request failed|not found|could not coalesce/.test(raw)?"PROOF_RPC_UNAVAILABLE":
-  /snapshot|merkle|checkpoint|proof/.test(raw)?"PROOF_RECONSTRUCTION_UNAVAILABLE":
-  "PROOF_NOT_READY";
- return {code,detail:(detail||err?.message||"").slice(0,450)};
+ const raw=String(stderr||"").slice(-16000);
+ let parsed=null;
+ for(const line of raw.split(/\r?\n/)){
+  if(!line.startsWith("XITA_RECOVERY_DIAGNOSTIC:"))continue;
+  try {const value=JSON.parse(line.slice("XITA_RECOVERY_DIAGNOSTIC:".length));
+   if(value?.status==="RECOVERY_NOT_READY")parsed=value;}catch{}
+ }
+ // Older CLI releases output pretty-printed JSON without the diagnostic tag.
+ // Parse that whole record only when available, never with quote-truncating regex.
+ if(!parsed&&raw.trimStart().startsWith("{")){
+  try{const old=JSON.parse(raw.trim());if(old?.status==="RECOVERY_NOT_READY")parsed=old;}catch{}
+ }
+ const detail=String(parsed?.error||err?.message||"").slice(0,650);
+ const stage=/^[a-z][a-z0-9-]{1,54}$/.test(parsed?.stage||"")?parsed.stage:"unknown";
+ const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
+ const t=detail.toLowerCase();
+ const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
+  rpcCode===-32601?"PROOF_RPC_METHOD_UNAVAILABLE":
+  rpcCode===-32602?"PROOF_RPC_ARGUMENT_INVALID":
+  /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
+  /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
+  /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
+  /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
+ return {code,stage,rpcCode,detail};
 }
 export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
@@ -106,8 +119,8 @@ export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
     const failure=classifyRecoveryFailure(err||e,stderr);
     console.warn("XITA unsigned recovery failed",JSON.stringify({
       route:configured.route.name,messageId:configured.messageId,
-      reason:failure.code,detail:failure.detail}));
-    no(Object.assign(new Error("Unsigned destination proof unavailable"),{code:failure.code}));
+      reason:failure.code,stage:failure.stage,rpcCode:failure.rpcCode,detail:failure.detail}));
+    no(Object.assign(new Error("Unsigned destination proof unavailable"),{code:failure.code,stage:failure.stage}));
    }
   });
  });

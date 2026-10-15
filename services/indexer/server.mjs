@@ -119,6 +119,7 @@ export async function handler(req,res){
    }catch(error){
     const reason=/^PROOF_[A-Z_]{3,40}$/.test(error?.code||"")?error.code:"PROOF_NOT_READY";
     return send(503,{ok:false,status:"UNAVAILABLE",reason,
+      ...(/^[a-z][a-z0-9-]{1,54}$/.test(error?.stage||"")?{stage:error.stage}:{}),
       error:"Unsigned destination proof unavailable. Original source transfer remains confirmed; do not lock again."});
    }
   }
