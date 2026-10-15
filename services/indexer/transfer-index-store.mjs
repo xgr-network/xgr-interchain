@@ -23,9 +23,9 @@ export async function transferWriterPool(url=process.env.XITA_TRANSFER_WORKER_DA
 const iso=v=>v?new Date(v).toISOString():null;
 export function routeIndexCoverage(catalog,cursors,{now=Date.now(),maxAgeMs=600000,routeList=null}={}){
  const routes=routeList||indexedRoutes(catalog);
- const rows=new Map(cursors.map(c=>[c.source_chain+":"+c.route_name,c]));
+ const rows=new Map(cursors.map(c=>[c.source_chain+":"+c.route_id,c]));
  const detail=routes.map(r=>{
-  const c=rows.get(r.sourceChain+":"+r.routeName);
+  const c=rows.get(r.sourceChain+":"+r.routeId);
   const match=Boolean(c&&lowercase(c.gateway)===lowercase(r.gateway)&&
    lowercase(c.route_id)===lowercase(r.routeId)&&
    Number(c.deployment_block)===r.deploymentBlock);
