@@ -63,8 +63,8 @@ const recoveryRequests=new Map();
 const MAX_RECOVERY_PROCESS=2;
 const MAX_RECOVERY_RECENT=60;
 const rateLimit=new Map();
-export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,now=Date.now(),runner=runRecoveryProcess}){
- const request=resolveRecoveryRoute(catalog,route,messageId,asset);
+export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,sourceTxHash=null,now=Date.now(),runner=runRecoveryProcess}){
+ const request=resolveRecoveryRoute(catalog,route,messageId,asset,sourceTxHash);
  const key=asset+":"+route+":"+request.messageId;
  // Limit replay and quorum request spam without storing transfer state.
  for(const [k,ts] of rateLimit)if(ts<=now-60000)rateLimit.delete(k);
@@ -112,11 +112,14 @@ export async function handler(req,res){
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
   if(pathname==="/api/xeta/v1/transfer/recovery"){
    const route=parsed.searchParams.get("route"),messageId=parsed.searchParams.get("messageId"),asset=parsed.searchParams.get("asset");
+   const sourceTxHash=parsed.searchParams.get("sourceTxHash");
    try{
-    const result=await serveUnsignedTransferRecovery({catalog,route,messageId,asset});
+    const result=await serveUnsignedTransferRecovery({catalog,route,messageId,asset,sourceTxHash});
     return send(result.code,result.body);
    }catch(error){
-    return send(503,{ok:false,error:"Recovery proof unavailable; never repeat a confirmed source transfer"});
+    const reason=/^PROOF_[A-Z_]{3,40}$/.test(error?.code||"")?error.code:"PROOF_NOT_READY";
+    return send(503,{ok:false,status:"UNAVAILABLE",reason,
+      error:"Unsigned destination proof unavailable. Original source transfer remains confirmed; do not lock again."});
    }
   }
   if(pathname==="/api/xeta/v1/transfers/wallet"){

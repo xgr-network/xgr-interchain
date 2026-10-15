@@ -178,8 +178,35 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
  return {txHash,sourceChain:source,routeName:route.name,feeWei:String(quote.validatorFee)};
 }
+// Poll only the immutable message ID from a confirmed source receipt.
+// Never sends a wallet transaction; caller handles destination signing separately.
+export async function awaitUnsignedDeliveryProof({query,fetcher=globalThis.fetch,
+ attempts=9,delayMs=16500,onStatus,signal,sleep=ms=>new Promise(done=>setTimeout(done,ms))}){
+ for(let i=0;i<attempts;i++){
+  if(signal?.aborted)return {status:"paused",notice:"Automatic proof checks paused."};
+  let response=null,proof=null;
+  try{
+   response=await fetcher("/api/xeta/v1/transfer/recovery?"+query,{credentials:"omit",
+    cache:"no-store",headers:{accept:"application/json"},signal});
+   proof=await response.json().catch(()=>null);
+  }catch(error){if(signal?.aborted)return {status:"paused",notice:"Proof checks paused."};}
+  if(response?.ok&&proof?.ok){
+   if(proof.status==="READY_UNSIGNED_CALL")return {status:"ready",proof};
+   if(proof.status==="ALREADY_DELIVERED")return {status:"delivered"};
+   if(!["PENDING","PREPARING","FRESH_QUORUM_REQUIRED"].includes(proof.status))
+    throw Error("Unexpected proof-builder result; destination signing blocked.");
+  }
+  const fatal=proof?.reason==="PROOF_CONFIG_MISMATCH";
+  if(fatal)throw Error("Proof service configuration mismatch; contact XITA support. Source lock remains confirmed.");
+  if(i===attempts-1)break;
+  onStatus?.(proof?.status==="PREPARING"?"Preparing validator proof…":
+    "Waiting for validator quorum and destination proof…");
+  await sleep(delayMs);
+ }
+ return {status:"waiting",notice:"Validator proof not yet available. Your source lock is confirmed; XITA will not repeat it. Continue this delivery later."};
+}
 export async function resumeDelivery({catalog,account,record,provider,
- fetcher=globalThis.fetch,onBroadcast}){
+ fetcher=globalThis.fetch,onBroadcast,waitForProof=false,onStatus,signal}){
  if(!ADDRESS.test(account||"")||!record||!eq(record.account,account)||
   !HASH.test(record.txHash||"")||!HASH.test(record.messageId||""))
   throw Error("No wallet-owned confirmed transfer to continue");
@@ -190,14 +217,13 @@ export async function resumeDelivery({catalog,account,record,provider,
   throw Error("Source confirmation or destination availability is unclear; do not sign");
  if(!eq(current.messageId,record.messageId)||!current.routeName)
   throw Error("Unverified original transfer");
- const query=new URLSearchParams({asset:current.asset,route:current.routeName,messageId:current.messageId});
- const response=await fetcher("/api/xeta/v1/transfer/recovery?"+query,{credentials:"omit",
-  cache:"no-store",headers:{accept:"application/json"}});
- const proof=await response.json().catch(()=>null);
- if(!response.ok||!proof?.ok)throw Error("Proof service unavailable; source transfer remains safe");
- if(proof.status==="ALREADY_DELIVERED")return {status:"delivered"};
- if(proof.status!=="READY_UNSIGNED_CALL")
-  return {status:"waiting",notice:"Validator proof is not ready yet. You can safely try again."};
+ const query=new URLSearchParams({asset:current.asset,route:current.routeName,
+  messageId:current.messageId,sourceTxHash:current.txHash});
+ const prepared=await awaitUnsignedDeliveryProof({query,fetcher,
+  attempts:waitForProof?9:1,onStatus,signal});
+ if(prepared.status==="delivered")return {status:"delivered"};
+ if(prepared.status!=="ready")return prepared;
+ const proof=prepared.proof;
  const route=requirePair(catalog,current.asset,current.sourceChain,current.destinationChain),
    dst=catalog.chains[current.destinationChain],
    mailbox=catalog.infrastructure[current.destinationChain]?.xitaV315?.components?.mailbox?.address;

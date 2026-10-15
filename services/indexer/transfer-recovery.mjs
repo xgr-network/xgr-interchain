@@ -11,10 +11,12 @@ const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const processSelector=selector("process(bytes,bytes)");
-export function resolveRecoveryRoute(catalog,routeName,messageId,asset){
+export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxHash=null){
  if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||"")||
     !/^[a-zA-Z0-9_-]{1,48}$/.test(asset||""))
   throw Error("Invalid message ID or direction");
+ if(sourceTxHash!==null&&!HASH.test(sourceTxHash))
+  throw Error("Invalid source transaction hash");
  const routes=deployedRoutes(catalog).filter(r=>r.asset===asset&&r.name===routeName);
  if(routes.length!==1)throw Error("No unique deployed route for this message");
  const route=routes[0],src=catalog.chains[route.source],dst=catalog.chains[route.destination];
@@ -31,6 +33,7 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset){
   ORIGIN_WARP_ROUTER:route.sourceRouter,
   ORIGIN_CONFIRMATIONS:String(Math.max(1,src.confirmations||1)),
   ORIGIN_LOG_CHUNK:"750",
+  ...(sourceTxHash?{SOURCE_TX_HASH:sourceTxHash.toLowerCase()}:{}),
   ATTESTATION_RPC_URL:catalog.chains.xgrchain.rpcUrls?.[0],
   ROUTE_ID:route.routeId,
   ATTESTATION_ROUTE:route.name,
@@ -73,17 +76,38 @@ export function parseRecoveryCliOutput(stdout,configured){
  const value=JSON.parse(stdout);
  return validateUnsignedRecovery(value,configured);
 }
+// Deliberately expose only stable, non-secret diagnostic classes to clients.
+// The real parser/runtime failure is kept in the private systemd journal.
+export function classifyRecoveryFailure(err,stderr=""){
+ const cause=String(stderr||"").slice(-8000);
+ const tagged=/\"status\"\s*:\s*\"RECOVERY_NOT_READY\"/.test(cause);
+ const detail=tagged?(/\"error\"\s*:\s*\"([^\"]{1,700})\"/.exec(cause)?.[1]||""):"";
+ const raw=(detail||err?.message||"").toLowerCase();
+ const code=err?.killed||/timed out|timeout/.test(raw)?"PROOF_TIMEOUT":
+  /missing [A-Z_]+|invalid [A-Z_]+|unsupported bls signature|destination domain mismatch|registry mismatch|configuration/.test(detail)?"PROOF_CONFIG_MISMATCH":
+  /quorum|attestation|validator|not.*signed|signature/.test(raw)?"PROOF_QUORUM_UNAVAILABLE":
+  /rpc|connection|timeout|network|failed to fetch|request failed|not found|could not coalesce/.test(raw)?"PROOF_RPC_UNAVAILABLE":
+  /snapshot|merkle|checkpoint|proof/.test(raw)?"PROOF_RECONSTRUCTION_UNAVAILABLE":
+  "PROOF_NOT_READY";
+ return {code,detail:(detail||err?.message||"").slice(0,450)};
+}
 export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
  return new Promise((yes,no)=>{
   execFile(process.execPath,[script,configured.messageId],{
    cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",
     NODE_ENV:"production",...configured.env},maxBuffer:750000,timeout:timeoutMs,windowsHide:true,
-  },(err,stdout)=>{
-   try{yes(parseRecoveryCliOutput(stdout,configured));}
-   catch(e){
-    no(Error(err?.killed?"Proof preparation timed out; the source transfer remains safe":
-      "Proof not yet available; retry later without repeating the source transfer"));
+  },(err,stdout,stderr)=>{
+   try{
+    // A nonzero exit (e.g. old quorum) may still carry a valid public
+    // result; accept only the strict canonical output schema.
+    yes(parseRecoveryCliOutput(stdout,configured));
+   }catch(e){
+    const failure=classifyRecoveryFailure(err||e,stderr);
+    console.warn("XITA unsigned recovery failed",JSON.stringify({
+      route:configured.route.name,messageId:configured.messageId,
+      reason:failure.code,detail:failure.detail}));
+    no(Object.assign(new Error("Unsigned destination proof unavailable"),{code:failure.code}));
    }
   });
  });

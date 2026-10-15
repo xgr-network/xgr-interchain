@@ -47,6 +47,10 @@ const assert = (condition, message) => {
 };
 const isHash = (v) => /^0x[0-9a-fA-F]{64}$/.test(String(v));
 const id = process.argv[2]?.toLowerCase();
+// Optional untrusted locator only: independently verify the successful source
+// receipt, Gateway operation and matching Dispatch BEFORE requesting a quorum.
+const sourceTxHash = process.env.SOURCE_TX_HASH?.toLowerCase() || "";
+if (sourceTxHash && !isHash(sourceTxHash)) throw new Error("invalid source transaction hash");
 if (!isHash(id)) {
   console.error("Usage: node recover-iln.mjs <0x-message-id>  (see docs/XETA_SPEC_V314.md)");
   process.exit(1);
@@ -115,6 +119,37 @@ const destISM = new Contract(destinationISMAddress, destISMAbi, destination);
 async function assertNetwork(provider, expected, name) {
   const actual = BigInt(await provider.send("eth_chainId", []));
   assert(actual === expected, `${name} chain ID mismatch`);
+}
+
+async function operationBlockFromReceipt(hash) {
+  const receipt = await origin.getTransactionReceipt(hash);
+  assert(receipt && receipt.status === 1 && Number.isSafeInteger(receipt.blockNumber) &&
+    receipt.blockNumber > 0, "canonical source transaction not successful or not indexed");
+  const gatewayOps = receipt.logs.flatMap((log) => {
+    if (lower(log.address) !== lower(originGatewayAddress)) return [];
+    try {
+      const parsed = sourceGateway.interface.parseLog(log);
+      return parsed?.name === "ILNOperation" && lower(parsed.args.routeId) === routeId &&
+        lower(parsed.args.messageId) === id &&
+        Number(parsed.args.destinationDomain) === destinationDomain ? [parsed] : [];
+    } catch { return []; }
+  });
+  const mailboxDispatches = receipt.logs.flatMap((log) => {
+    if (lower(log.address) !== lower(originMailboxAddress)) return [];
+    try {
+      const parsed = sourceMailbox.interface.parseLog(log);
+      return parsed?.name === "Dispatch" &&
+        lower(parsed.args.sender) === lower(originWarpRouterAddress) &&
+        Number(parsed.args.destination) === destinationDomain &&
+        lower(parsed.args.recipient) === lower(zeroPadValue(destinationRouterAddress,32)) &&
+        lower(keccak256(parsed.args.message)) === id ? [parsed] : [];
+    } catch { return []; }
+  });
+  assert(gatewayOps.length === 1 && mailboxDispatches.length === 1,
+    "source transaction lacks the unique canonical Gateway operation and Mailbox Dispatch");
+  const finalized = await origin.getBlockNumber() - confirmationDepth + 1;
+  assert(receipt.blockNumber <= finalized, "canonical source receipt not finalized");
+  return receipt.blockNumber;
 }
 
 async function reconstructProof(operationBlock, checkpointIndex) {
@@ -192,7 +227,7 @@ async function main() {
   } catch {
     // First-time delivery and post-rotation recovery use exactly the same
     // public request path. No relayer or operator-specific signing endpoint.
-    let operationBlock = 0;
+    let operationBlock = sourceTxHash ? await operationBlockFromReceipt(sourceTxHash) : 0;
     if (!Number.isSafeInteger(operationBlock) || operationBlock <= 0) {
       const startBlock = Number(await sourceGateway.activationBlock());
       const confirmed = await origin.getBlockNumber() - confirmationDepth;
