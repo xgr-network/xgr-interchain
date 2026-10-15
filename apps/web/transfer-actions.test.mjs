@@ -60,6 +60,7 @@ function sourceProvider(sends,overrides={}){
   if(method==="eth_estimateGas")return "0x5208";
   if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
   if(method==="eth_gasPrice")return "0x3b9aca00";
+  if(method==="eth_getTransactionCount")return overrides.pendingNonce&&params[1]==="pending"?"0x2":"0x1";
   if(method==="eth_sendTransaction"){sends.push(params[0]);return sourceTx;}
   if(overrides[method])return overrides[method]({params});
   throw Error("Unexpected wallet method: "+method);
@@ -126,4 +127,13 @@ test("if source is confirmed but proof is pending, retry never sends a source or
  const result=await resumeDelivery({catalog:c,account,record,provider,fetcher});
  assert.equal(result.status,"waiting");
  assert.deepEqual(sent,[]);
+});
+
+test("an unresolved wallet nonce blocks a second source lock after reload",async()=>{
+ const sent=[];
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sent,{pendingNonce:true}),
+  fetcher:async(url,options)=>rpcResponse(JSON.parse(options.body).method==="eth_chainId"?
+    "0x2105":"0x"+(1n*10n**18n).toString(16))}),/pending/);
+ assert.equal(sent.length,0);
 });
