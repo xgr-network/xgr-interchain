@@ -126,18 +126,37 @@ Spoke-to-spoke journeys require two hops and therefore four transactions.
 Other permissionless executors may deliver a message instead, but there is
 no obligation to subsidize another wallet's gas.
 
-The read-only planning UI previews native balances on all involved chains,
-verifies RPC chain IDs, and never assumes that a positive balance covers the
-actual live gas fee. The target-native token must be available *before*
-the source transaction. Exact sufficiency requires live source and target
-gas estimates and an explicit fee/amount/allowance quote once the validated
-execution adapter and Merkle/BLS proof API are implemented.
+The selected transfer UI is `/transfer`, reachable from token detail
+with `token` preselected. It displays actual source/destination native and
+token balances. It uses precisely one context-aware action button with
+source/destination progress below it, not one separate button per MetaMask
+confirmation. Gateway quotes and source/destination gas estimates must
+be checked immediately before wallet signing. A positive native wallet
+balance alone is never an assertion of sufficient gas. ERC-20 approvals
+are separate transactions where applicable.
+
+A deployed route needs no additional administrative approval or manually
+set `verified` state. The route becomes selectable as soon as the GitHub
+receipt manifests establish its components; the transaction itself must
+still pass live source Gateway binding, amount/fee, destination gas,
+quorum, and Mailbox.process safety checks.
+
+**Only-chain recovery rule:** After wallet connect, an unfinished source
+lock/burn is found from confirmed Gateway+Mailbox source events and the
+`delivered(messageId)` flag of the destination Mailbox. If source
+confirmation exists but delivery has not occurred, clicking `Continue
+delivery` reconstructs the ORIGINAL message/quorum/Merkle proof and may
+sign ONLY `Mailbox.process` on the destination chain. No second source
+lock/burn, Gateway.bridge, or source validator fee is authorized. Browser
+storage and transient progress counters can never decide transfer completion.
+Unavailable source/destination RPC or missing BLS proof is UNKNOWN, never
+proof of failure. The current lightweight wallet scan is bounded; an
+older source hash can be provided directly, using the original wallet.
 
 Future optional Starter Gas may help fund the first destination transaction
-without adding mutable protocol governance. No new transport, ISM, router
-deployer, validator contract or gas-paymaster is required by the selected
-self-funded wallet model. The present UI remains fail-closed and cannot
-send a transfer until the deployed reciprocal routes pass end-to-end testing.
+without changing the permissionless wallet-funded settlement model. This
+software implementation still requires a real E2E test on the deployed
+reciprocal routes before claiming successful transfer/delivery recovery.
 
 ## Message-specific BLS safety
 
