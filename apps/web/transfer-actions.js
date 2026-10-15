@@ -28,19 +28,6 @@ async function validateWalletAccount(provider,account){
  if(!Array.isArray(accounts)||!accounts.some(x=>eq(x,account)))
   throw Error("Connected wallet changed. Reconnect the original wallet");
 }
-// Pending wallet nonces are chain state, not browser click history. Do not
-// allow an ambiguous previously submitted source/destination to be broadcast
-// again while MetaMask still has an unmined transaction for this account.
-async function assertNoPendingWalletTransaction(provider,account){
- const [latest,pending]=await Promise.all([
-  request(provider,"eth_getTransactionCount",[account,"latest"]),
-  request(provider,"eth_getTransactionCount",[account,"pending"])
- ]);
- if(!QTY.test(latest||"")||!QTY.test(pending||""))
-  throw Error("Wallet pending transaction nonce unavailable");
- if(BigInt(pending)>BigInt(latest))
-  throw Error("A previous MetaMask transaction is pending. Check its receipt before starting another transfer.");
-}
 async function rpcChain(provider,chain,{allowSwitch=false}={}){
  let current=await request(provider,"eth_chainId");
  if(!QTY.test(current||""))throw Error("Wallet chain ID unavailable");
@@ -157,7 +144,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   throw Error("Destination wallet needs native gas BEFORE locking tokens");
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
- await assertNoPendingWalletTransaction(provider,account);
+ await ensureNoPendingWalletTransaction(provider,account);
  await verifyGateway(provider,route,dst.domainId);
  const quoteData=await request(provider,"eth_call",[{to:route.gateway,
   from:account,data:quoteCalldata(dst.domainId,account,units)},"latest"]);
