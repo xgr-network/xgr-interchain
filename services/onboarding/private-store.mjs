@@ -10,7 +10,8 @@ export function privateLocation(env=process.env){
   const configured=env.XITA_JOIN_PRIVATE_DIR;
   if(!configured||!isAbsolute(configured))throw Error("Private storage path must be configured as an absolute path");
   const dir=resolve(configured);
-  if(dir===REPO||dir.startsWith(REPO+sep))throw Error("Private storage must be outside the Git checkout");
+  if(dir===REPO||dir.startsWith(REPO+sep)||dir==="/var/www"||dir.startsWith("/var/www"+sep))
+    throw Error("Private storage must be outside both the Git checkout and the public webroot");
   return dir;
 }
 export function preparePrivateDir(dir){
@@ -39,6 +40,7 @@ export function readPrivate(dir,id){
   if(!stat.isFile()||(stat.mode&0o077)!==0)throw Error("Unsafe private record permissions");
   return JSON.parse(readFileSync(p,"utf8"));
 }
+export function removePrivate(dir,id){unlinkSync(pathFor(dir,id));}
 export function savePrivate(dir,record){
   const p=pathFor(dir,record.id),temp=join(dir,"."+record.id+"-"+randomUUID()+".tmp");
   writeFileSync(temp,JSON.stringify(record),{flag:"wx",mode:0o600});

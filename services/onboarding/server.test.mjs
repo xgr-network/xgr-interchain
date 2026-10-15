@@ -55,6 +55,9 @@ test("email confirmation is private, single-use and required before public GitHu
   assert.equal(result.body.status,"pending-email");
   assert.equal(proposals,0);
   assert.equal(mail.length,1);
+  const duplicate=await post("/api/xita/join/submit",input);
+  assert.equal(duplicate.status,409);
+  assert.equal(proposals,0);
   const code=/\/join\/confirm#([0-9a-f-]{36})\.([0-9a-f]{64})/.exec(mail[0].text);
   assert.ok(code);
   const token={id:code[1],token:code[2]};

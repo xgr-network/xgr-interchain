@@ -7,7 +7,7 @@ import {execFileSync} from "node:child_process";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
-import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash} from "./private-store.mjs";
+import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const REPO="xgr-network/xgr-interchain";
@@ -143,6 +143,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   // Per-email throttle; proxies normally share loopback as socket address.
   if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
   const dir=preparePrivateDir(privateLocation(env));
+  if(listPrivate(dir,{now:clock()}).some(record=>record.assetId===bundle.assetId&&!["rejected","listed"].includes(record.phase)))
+    return reply(res,409,{ok:false,error:"A current application for this original token is already pending review"});
   const {id,token}=createPending(dir,input,bundle.assetId,{now:clock()});
   // No email, token, or role holder contact is ever written to GitHub here.
   try{
@@ -151,7 +153,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
          publicConfirmUrl(id,token,env)+"\n\nIf this was not you, ignore this email. No public proposal is created until confirmation.",
       idempotencyKey:id+":confirm"},{env});
   }catch{
-    // Keep an expiring private record for audit/cleanup, but never claim delivery.
+    // A failed delivery is not an application: delete its private record.
+    removePrivate(dir,id);
     return reply(res,503,{ok:false,error:"Application email delivery unavailable; no GitHub proposal created"});
   }
   return reply(res,202,{ok:true,status:"pending-email",note:"A private email confirmation has been sent; no GitHub PR yet"});
