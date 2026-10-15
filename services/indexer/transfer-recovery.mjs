@@ -11,10 +11,11 @@ const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const processSelector=selector("process(bytes,bytes)");
-export function resolveRecoveryRoute(catalog,routeName,messageId){
- if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||""))
+export function resolveRecoveryRoute(catalog,routeName,messageId,asset){
+ if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||"")||
+    !/^[a-zA-Z0-9_-]{1,48}$/.test(asset||""))
   throw Error("Invalid message ID or direction");
- const routes=deployedRoutes(catalog).filter(r=>r.name===routeName);
+ const routes=deployedRoutes(catalog).filter(r=>r.asset===asset&&r.name===routeName);
  if(routes.length!==1)throw Error("No unique deployed route for this message");
  const route=routes[0],src=catalog.chains[route.source],dst=catalog.chains[route.destination];
  const srcCore=catalog.infrastructure[route.source].xitaV315.components,
