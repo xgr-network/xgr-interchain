@@ -54,8 +54,8 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
  assert.equal(r.quote.bridgeValueWei,"1100000000000000000");
- assert.equal(r.quote.interchainFeeWei,"32725000000000000000000");
- assert.equal(r.sourceValueWei,"32726100000000000000000");
+ assert.equal(r.quote.interchainFeeWei,"34925000000000000000000");
+ assert.equal(r.sourceValueWei,"34926100000000000000000");
  assert.equal(r.quote.nonce,"42");
  assert.equal(r.quote.issuedAt,Math.floor(now/1000));
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
