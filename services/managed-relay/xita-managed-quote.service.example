@@ -1,0 +1,21 @@
+[Unit]
+Description=XITA optional GmbH managed relay quote signer (loopback only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/managed-relay.env
+ExecStart=/usr/bin/node services/managed-relay/server.mjs
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

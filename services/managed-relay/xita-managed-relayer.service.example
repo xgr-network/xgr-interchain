@@ -1,0 +1,22 @@
+[Unit]
+Description=XITA optional GmbH managed relay delivery and operator worklist
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/managed-relay.env
+ExecStart=/usr/bin/node services/managed-relay/worker.mjs
+Restart=on-failure
+RestartSec=12
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+StateDirectory=xita-managed-relay
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
