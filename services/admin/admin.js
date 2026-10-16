@@ -107,7 +107,8 @@ const coreTitles={
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
  collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
  factory:"Permissionless Token Factory",
- sourceRegistry:"ILN Source Registry"
+ sourceRegistry:"ILN Source Registry",
+ executionGateway:"Managed Relay · Execution Gateway (optional)"
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
@@ -133,7 +134,8 @@ function renderInfrastructure(){
    '<button class="address-copy" data-copy="'+esc(verifier)+'" title="'+esc(verifier)+'">'+esc(displayAddress(verifier))+
    ' ⧉</button></span></div>':"";
   const tasks=c.components.map(part=>
-   '<div class="component-row"><span>'+esc(coreTitles[part.key]||part.key)+'</span>'+
+   '<div class="component-row"><span>'+esc(coreTitles[part.key]||part.key)+
+    (part.optional?' · freiwilliger GmbH-Service':'')+'</span>'+
    (part.status==="documented"&&part.address?
     '<button class="address-copy" data-copy="'+esc(part.address)+'" title="'+esc(part.address)+'">'+
      esc(displayAddress(part.address))+' ⧉</button>':
@@ -184,12 +186,19 @@ function presentModalStatus(message,type=""){const n=el("contract-modal-status")
 function modalValues(component){
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
-   component==="factory"?["sourceFeeWei"]:[];
+   component==="factory"?["sourceFeeWei"]:
+   component==="executionGateway"?["relayerOwner"]:[];
  const result={};
  for(const key of keys){
   const v=el("modal-"+key).value.trim();
-  if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
-  result[key]=v;
+  if(key==="relayerOwner"){
+   if(!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
+    throw Error("Gültige öffentliche Relayer-Owner-Adresse erforderlich (kein Private Key)");
+   result[key]=v.toLowerCase();
+  }else{
+   if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
+   result[key]=v;
+  }
  }
  if(component==="validatorRegistry"&&
   (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)||
@@ -301,11 +310,13 @@ async function openContractModal(chainName,component){
   const r=response.readiness;
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
-  const requiresValues=component==="validatorRegistry"||component==="factory";
+  const requiresValues=component==="validatorRegistry"||
+   component==="factory"||component==="executionGateway";
   lastModalPreview=null;
   const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
-   component==="factory"?["sourceFeeWei"]:[];
+   component==="factory"?["sourceFeeWei"]:
+   component==="executionGateway"?["relayerOwner"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
@@ -325,7 +336,7 @@ async function openContractModal(chainName,component){
     sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","relayerOwner"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // Main bootstrap economics are the reviewed defaults, not estimates.
@@ -333,17 +344,21 @@ async function openContractModal(chainName,component){
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=component==="factory"?String(factoryDefaults?.[key]??""):
+   input.value=key==="relayerOwner"?"":component==="factory"?String(factoryDefaults?.[key]??""):
      String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
-   input.placeholder=suggestion==null?"Manuell festlegen":String(suggestion);
-   input.title=component==="factory"?
+   input.placeholder=key==="relayerOwner"?"0x… öffentliche GmbH-Relayer-Adresse":
+    suggestion==null?"Manuell festlegen":String(suggestion);
+   input.title=key==="relayerOwner"?
+    "Öffentliche Adresse des GmbH-Relayers. Signiert Gebührenquotes, darf nur Servicegebühren abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
   el("modal-parameter-note").textContent=requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
+    component==="executionGateway"?
+    "Optionale GmbH-Komponente. Öffentliche Relayer-Owner-Adresse eingeben (kein Private Key). Genau ein Contract je Quellchain, niemals je Token. ": 
     component==="factory"?
     (chainName==="xgrchain"?
       "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":

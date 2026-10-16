@@ -7,6 +7,8 @@ import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const CODE=/^0x(?:[a-f0-9]{2})+$/i;
 const executableParts=["validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"];
+// Optional operator-owned paid UI service, never part of required ILN consensus.
+const optionalParts=["executionGateway"];
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"))}
 export function infrastructureInventory(root,chains) {
  return chains.map(c=>{
@@ -24,11 +26,12 @@ export function infrastructureInventory(root,chains) {
   if(!["compressed","eip2537"].includes(c.blsVerifierFormat))
    throw Error("Unsupported configured verifier format: "+c.name);
   const requiredParts=c.blsVerifierFormat==="compressed"?executableParts:["blsVerifier",...executableParts];
-  const components=requiredParts.map(key=>{
+  const components=[...requiredParts,...optionalParts].map(key=>{
    const ready=valid(key)&&(key!=="transportBundle"||freshTransport);
-   return {key,address:ready?verified[key].address:null,status:ready?"documented":"not-deployed"};
+   return {key,address:ready?verified[key].address:null,status:ready?"documented":"not-deployed",
+     optional:optionalParts.includes(key)};
   });
-  const count=components.filter(x=>x.status==="documented").length;
+  const count=components.filter(x=>!x.optional&&x.status==="documented").length;
   return {name:c.name,chainId:c.chainId,domainId:c.domainId,
    nativeCurrency:c.nativeCurrency,rpcUrls:c.rpcUrls,explorer:c.explorer||null,
    status:count===requiredParts.length?"documented":count?"partial":"not-deployed",
@@ -56,7 +59,7 @@ export async function verifyChainInfrastructure(chains,{rpc=rpcCall}={}){
     const values=await Promise.all([core.mailbox,core.merkleTreeHook,core.requiredHook].map(addr=>rpc(url,"eth_getCode",[addr,"latest"])));
     result.core=values.every(code=>CODE.test(code||""));
    }
-   const documented=result.components.filter(x=>x.status==="documented");
+   const documented=result.components.filter(x=>!x.optional&&x.status==="documented");
    result.status=documented.length===c.required&&documented.every(x=>x.live)&&result.core?"observed-complete":
      documented.some(x=>x.live)?"observed-partial":"not-deployed";
   }catch(e){result.error=String(e.message).slice(0,150)}

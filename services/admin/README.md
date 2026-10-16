@@ -106,3 +106,15 @@ To install after merge: `./manage.sh update`, then refresh the browser.
 The deployment button MUST remain disabled until cryptographic counterpart
 validation, receipt journaling and wallet main-pinned creation transactions
 are complete. Do not send real native currency based only on UI readiness.
+
+## Optional source-chain GmbH Managed Relay contract
+
+For each chain separately, **Chain Infrastructure** displays the optional
+`Managed Relay · Execution Gateway` after the canonical Source Registry.
+Enter ONLY the public GmbH relayer owner address. Contract creation, Ethereum
+gas preview, MetaMask approval, independent runtime/constructor checks,
+append-only GitHub receipt, chain deployment JSON, regenerated public
+catalog, and server sync use the existing secure chain deploy machinery.
+This component is not mandatory ILN infrastructure and is not part of the
+bulk "finish chain" deployment. No private relayer key belongs in Admin UI.
+The owner has NO ILN protocol, token, Mailbox or validator privilege.

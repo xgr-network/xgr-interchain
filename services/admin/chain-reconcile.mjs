@@ -15,7 +15,7 @@ const asAddr=value=>"0x"+asWord(value).toString(16).padStart(40,"0");
 async function getter(rpc,url,address,signature){
  return rpc(url,"eth_call",[{to:address,data:selector(signature)},"latest"]);
 }
-export async function verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra}){
+export async function verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra,parameters={}}){
  const check=async(signature,expected,kind="uint")=>{
   const result=await getter(rpc,url,address,signature);
   const observed=kind==="address"?asAddr(result):asWord(result);
@@ -61,6 +61,14 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
       BigInt("0x"+detail.slice(130,194))!==BigInt(bootstrap.reserve.perValidatorWei))
     throw Error("Validator initial reserve differs from signed transaction");
   }
+ }else if(component==="executionGateway"){
+  const registry=infra.components.find(c=>c.key==="sourceRegistry")?.address;
+  const owner=parameters?.relayerOwner;
+  if(!ADDR.test(registry||"")||!ADDR.test(owner||"")||
+     /^0x0{40}$/i.test(owner))throw Error("Approved managed relay owner or source Registry missing");
+  await check("sourceRegistry()",registry,"address");
+  await check("relayerOwner()",owner,"address");
+  await check("MAX_QUOTE_LIFETIME()",300);
  }else if(component==="ism"){
   const v=infra.components.find(c=>c.key==="validatorRegistry")?.address;
   if(!ADDR.test(v||""))throw Error("Registry missing during ISM verification");
@@ -177,7 +185,8 @@ export async function reconcileDeployedContract({
    return {pending:true,reason:"confirmations",txHash:entry.txHash};
  const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(receipt.blockNumber).toString(16)]);
  const hash=verifyRuntimeTemplate(artifact,code);
- await verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra:infrastructure});
+ await verifyChainBindings({rpc,url,component,address,chain,bootstrap,
+  infra:infrastructure,parameters:entry.parameters||{}});
  const input={sourceCommit:entry.sourceCommit,chain:chain.name,component,contractAddress:address,
   txHash:entry.txHash,expectedRuntimeKeccak256:hash,expectedDeployer:entry.wallet,
   provenance:component==="sourceRegistry"?{kind:"factory-registry",factory:entry.transaction.to}:{kind:"create"}};

@@ -16,7 +16,7 @@ const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
 const COMPONENTS=new Set([
  "blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
- "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault"
+ "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault","executionGateway"
 ]);
 const EVENTS={
  "factory-router":{sig:"RouterDeployed(bytes32,address,address)",topicIndex:2},
@@ -320,7 +320,8 @@ export async function publishDeploymentBatch(root,inputs,{
  }
  // Non-XGR chains get their first deployment file ONLY on the first receipt.
  const infraParts=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer",
-   "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+   "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
+   "executionGateway"]);
  const byChain=new Map(),updatedInfrastructure=new Map();
  for(const r of receipts)if(r.asset===null&&infraParts.has(r.component)){
   const arr=byChain.get(r.chain)||[];arr.push(r);byChain.set(r.chain,arr);

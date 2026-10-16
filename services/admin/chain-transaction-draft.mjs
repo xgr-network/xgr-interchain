@@ -13,19 +13,21 @@ const ZERO="0x"+"0".repeat(40);
 const deployed=(infra,key)=>infra.components.find(p=>p.key===key)?.address||null;
 const nonzero=x=>ADDR.test(x||"")&&x.toLowerCase()!==ZERO;
 const load=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
-export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
 const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  syntheticRouterDeployer:"XETASyntheticRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
- ism:"XGRILNInterchainISMV2",transportBundle:"XITAFreshTransportV315",factory:"XETATokenFactoryV315"};
+ ism:"XGRILNInterchainISMV2",transportBundle:"XITAFreshTransportV315",factory:"XETATokenFactoryV315",
+ executionGateway:"XITAExecutionGateway"};
 const typesFor={
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
- factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"]
+ factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"],
+ executionGateway:["address","address"]
 };
 export const chainDraftConstructorTypes=Object.freeze(typesFor);
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
@@ -92,6 +94,10 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   values=[requirePresent(infrastructure,"validatorRegistry")];
  }else if(component==="transportBundle"){
   values=[chain.domainId,requirePresent(infrastructure,"ism")];
+ }else if(component==="executionGateway"){
+  // One optional funded source-chain adapter, NEVER one per token/route.
+  const p=deploymentParameters(component,parameters);
+  values=[requirePresent(infrastructure,"sourceRegistry"),p.relayerOwner];
  }else if(component==="factory"){
   const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane||{};

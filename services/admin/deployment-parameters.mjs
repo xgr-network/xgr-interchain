@@ -3,7 +3,8 @@ const POS=/^[1-9][0-9]*$/;
 const MAX=(1n<<256n)-1n;
 const KEYS={
  validatorRegistry:["minimumWei","maxExecutorReimbursementWei","perValidatorWei"],
- factory:["sourceFeeWei"]
+ factory:["sourceFeeWei"],
+ executionGateway:["relayerOwner"]
 };
 export function requiredDeploymentFields(component){
  return KEYS[component]||[];
@@ -17,6 +18,12 @@ export function deploymentParameters(component,raw={}){
  const out={};
  for(const k of keys){
   const value=raw[k];
+  if(k==="relayerOwner"){
+   if(typeof value!=="string"||!/^0x[0-9a-f]{40}$/i.test(value)||
+      /^0x0{40}$/i.test(value))throw Error("Valid nonzero GmbH relayer owner address required");
+   out[k]=value.toLowerCase(); // Address is public, never a private key.
+   continue;
+  }
   if(typeof value!=="string"||!POS.test(value)||BigInt(value)>MAX)
    throw Error("Positive, exact Wei value required for "+k);
   out[k]=BigInt(value).toString();

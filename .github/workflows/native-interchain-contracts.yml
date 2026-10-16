@@ -26,7 +26,7 @@ jobs:
           node services/admin/verify-solidity-runtime.mjs .
           forge build --force --skip test script
           node services/admin/seal-build-cli.mjs . "$(forge --version)" "$(git rev-parse HEAD)"
-          node --input-type=module -e 'import {readSealedArtifacts} from "./services/admin/sealed-artifacts.mjs"; import {execFileSync} from "node:child_process"; const sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(); if(Object.keys(readSealedArtifacts(".",sha).raws).length!==17)process.exit(1);'
+          node --input-type=module -e 'import {readSealedArtifacts} from "./services/admin/sealed-artifacts.mjs"; import {execFileSync} from "node:child_process"; const sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(); if(Object.keys(readSealedArtifacts(".",sha).raws).length!==18)process.exit(1);'
           node services/admin/verify-sealed-constructors.mjs .
       - name: EVM runtime, initcode and creation gas eligibility
         run: |

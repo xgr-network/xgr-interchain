@@ -15,7 +15,7 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   const native=chain.blsVerifierFormat==="compressed";
   if(native&&!b.verifierAddress)throw Error("Missing configured native verifier address: "+chain.name);
   const steps=[];
-  const add=(component,title,kind,dependsOn=[],extra=[])=>{
+  const add=(component,title,kind,dependsOn=[],extra=[],optional=false)=>{
    const documented=kind!=="verify"&&isDeployed(infra,component);
    const blockers=documented?[]:distinct([
     ...extra,
@@ -23,7 +23,7 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
     ...(kind==="verify"?[]:["Commitgebundenes Contract-Artefakt und geprüfter Wallet-Executor fehlen"])
    ]);
    steps.push({id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,
-    component,title,kind,status:documented?"documented":kind==="verify"?"verification-required":"blocked",
+    component,title,kind,optional,status:documented?"documented":kind==="verify"?"verification-required":"blocked",
     dependsOn,blockers});
   };
   const verifierComponent=native?"nativeVerifier":"blsVerifier";
@@ -40,12 +40,14 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
    ["validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"],
    [b.proposedFeeWei===null?"Source-Chain-Initialgebühr in GitHub main fehlt":"Konstruktor-Gebühr "+b.proposedFeeWei+" Wei prüfen"]);
   add("sourceRegistry","Factory-eigene Source-Registry","factory-call",["factory"],["Fee Nonce 0 und Factory-Bindung nachweisen"]);
-  const verifiedComponents=steps.filter(s=>s.status==="documented").length;
+  add("executionGateway","GmbH Managed Relay Execution Gateway (optional)","deploy",
+   ["sourceRegistry"],["Relayer-Owner-Adresse für signierte Gebührenquotes angeben"],true);
+  const verifiedComponents=steps.filter(s=>!s.optional&&s.status==="documented").length;
   return {name:chain.name,chainId:chain.chainId,domainId:chain.domainId,
    verifierFormat:chain.blsVerifierFormat,verifierAddress:b.verifierAddress,
    nativeCurrency:chain.nativeCurrency,initialFeeWei:b.proposedFeeWei,
    initialValidators:b.initialValidators,bootstrapReady:b.ready,bootstrapMissing:b.missing,
-   verifiedComponents,totalSteps:steps.length,steps};
+   verifiedComponents,totalSteps:steps.filter(s=>!s.optional).length,steps};
  });
  const assets=Object.values(inventory.assets).map(a=>({
   key:a.key,assetId:a.assetId,routes:a.routes.map(r=>({

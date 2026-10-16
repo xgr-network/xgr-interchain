@@ -166,6 +166,20 @@ NEVER for token custody, protocol routing, validator signatures or minting.
 Permissionless self-delivery remains available; a fee refund is not
 cryptographically guaranteed by this owner-withdraw model.
 
+The optional adapter MUST be deployable independently for EACH configured
+source chain from XITA Admin > Chain Infrastructure. The admin takes ONLY the
+public GmbH relayer owner EOA (never a private key), compiles a main-pinned
+XITAExecutionGateway constructor (on-chain SourceRegistry, relayerOwner),
+simulates gas using the operator wallet, requires an explicit MetaMask
+confirmation, validates the final chain receipt, runtime bytecode and both
+constructor getter bindings, then atomically publishes an append-only
+deployments/receipts/<chain>/<tx>-<address>.json record, the
+deployments/chains/<chain>.json xitaV315.components.executionGateway entry
+and the regenerated apps/web/catalog.json to GitHub main. Receipt replay
+and git-sync failures cannot erase the pending wallet transaction. This
+paid optional deployment MUST NOT enter the automatic mandatory core
+chain-deployment batch/count. No per-route deployment or tokens.
+
 The GmbH's relayer indexer is an OPERATOR-OWNED read projection, not
 protocol infrastructure. It listens to one ManagedDispatch source event
 per managed hop, indexes source receipt + message ID + fee and follows
