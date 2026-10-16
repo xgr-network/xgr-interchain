@@ -27,7 +27,7 @@ const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,getDestinationGasQuote,getCoinGeckoSnapshot,
- clock=Date.now,nonce=NONCE,gasUnits=1200000n,bufferBps=11000n
+ clock=Date.now,nonce=NONCE,gasUnits=1200000n,vatPolicy=null
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout,
   firstHopDestination=null}=request||{};
@@ -50,6 +50,15 @@ export async function buildManagedQuote({
  const finalDomain=catalog.chains[destination]?.domainId;
  if(!Number.isSafeInteger(finalDomain)||finalDomain<1)invalid();
  const execution=getAddress(executionAddress);
+ // Tax classification must come from a trusted server-side policy, never
+ // from user-supplied quote parameters or an assumed worldwide German rate.
+ if(!vatPolicy||!/^[A-Z]{2}$/.test(vatPolicy.country||"")||
+    !Number.isInteger(vatPolicy.rateBps)||vatPolicy.rateBps<0||
+    vatPolicy.rateBps>3000||typeof vatPolicy.basis!=="string"||
+    !vatPolicy.basis.trim())throw Error("VAT policy unresolved; signing disabled");
+ // Full two-hop fee coverage is mandatory before we offer spoke-to-spoke quotes.
+ // Do not silently price only the final delivery and omit XGR hop-2 expenses.
+ if(second)throw Error("Two-hop journey cost and VAT quote not fully implemented");
  const owner=await readExecutionOwner({source,executionAddress:execution});
  if(!eq(owner,signer?.address))throw Error("Configured quote signing key does not match deployed contract");
  const [bridge,gas,priceData,onChainLifetime]=await Promise.all([
@@ -79,7 +88,7 @@ export async function buildManagedQuote({
  const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
  const fee=costInSourceWei({sourcePriceUsd:oracle.sourceUsd,
   destinationPriceUsd:oracle.destinationUsd,destinationGasPriceWei:gasPriceWei,
-  destinationGasUnits:units,bufferBps});
+  destinationGasUnits:units,vatBps:BigInt(vatPolicy.rateBps)});
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(interchainFeeWei===0n)throw Error("Native source service fee unavailable");
  const expiresAt=issuedAt+Number(ttl);
@@ -110,7 +119,14 @@ export async function buildManagedQuote({
    sourceNativeUsd:oracle.sourceUsd,destinationNativeUsd:oracle.destinationUsd,
    destinationGasUnits:units.toString(),destinationGasPriceWei:gasPriceWei.toString(),
    estimatedDestinationCostWei:fee.estimatedDestinationCostWei,
-   sourceNativeRelayerFeeWei:fee.quotedServiceFeeWei,
-   bufferBps:String(bufferBps),oracle:"CoinGecko",maximumAgeSeconds:240},
+   estimatedCostSourceWei:fee.estimatedCostSourceWei,
+   marginWei:fee.marginWei,
+   netInterchainFeeWei:fee.netInterchainFeeWei,
+   vatWei:fee.vatWei,
+   grossInterchainFeeWei:fee.grossInterchainFeeWei,
+   sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
+   markupBps:fee.markupBps,vatRateBps:fee.vatRateBps,
+   vatCountry:vatPolicy.country,vatPolicyBasis:vatPolicy.basis,
+   oracle:"CoinGecko",maximumAgeSeconds:240},
  };
 }
