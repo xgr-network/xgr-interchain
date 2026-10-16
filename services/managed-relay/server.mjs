@@ -13,9 +13,10 @@ const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf
 const EXECUTION_ABI=[
  "function relayerOwner() view returns (address)",
  "function sourceRegistry() view returns (address)",
+ "function interchainFeeRecipient() view returns (address)",
  "function quoteLifetimeSeconds() view returns (uint64)",
  "function MAX_QUOTE_LIFETIME() view returns (uint256)",
- "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 issuedAt),bytes signature) payable returns (bytes32)"
+ "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint32 finalDestinationDomain,bytes32 finalRecipient,bytes32 onwardRouteId,uint256 amount,uint256 bridgeValueWei,uint256 interchainFeeWei,uint256 nonce,uint64 issuedAt),bytes signature) payable returns (bytes32)"
 ];
 const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
@@ -38,7 +39,7 @@ async function chain(name){
 }
 const quoteIface=new Interface(EXECUTION_ABI);
 async function getSnapshot(){
- const ids="ethereum,xgr";
+ const ids=[...new Set(Object.values((await import("./fee-quote.mjs")).COINGECKO_GAS_COIN_IDS))].join(",");
  const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+
   "&vs_currencies=usd&include_last_updated_at=true";
  const headers={accept:"application/json"};
@@ -53,7 +54,7 @@ async function getSnapshot(){
 }
 async function createQuote(request){
  const source=request?.source,destination=request?.destination;
- if(!["xgrchain","base"].includes(source)||!["xgrchain","base"].includes(destination))
+ if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
  if(!/^0x[0-9a-f]{40}$/i.test(executionAddress||""))
