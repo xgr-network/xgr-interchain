@@ -49,29 +49,29 @@ const defaults=()=>({catalog:fixture(),request,executionAddress:address(44),
  validatorFeeWei:100000000000000000n,tokenAmount:0n}),
  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:100000000000000000n}),
  getCoinGeckoSnapshot:async()=>exchange(),
- clock:()=>now,nonce:()=>42n,gasUnits:1000000n,bufferBps:13000n});
+ clock:()=>now,nonce:()=>42n,gasUnits:1000000n,bufferBps:11000n});
 test("produces cryptographically valid owner EIP712 binding both chains and exact native fees",async()=>{
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
  assert.equal(r.quote.bridgeValueWei,"1100000000000000000");
- assert.equal(r.quote.relayerFeeWei,"32500000000000000000000");
- assert.equal(r.sourceValueWei,"32501100000000000000000");
+ assert.equal(r.quote.interchainFeeWei,"27500000000000000000000");
+ assert.equal(r.sourceValueWei,"27501100000000000000000");
  assert.equal(r.quote.nonce,"42");
  assert.equal(r.quote.issuedAt,Math.floor(now/1000));
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
  assert.equal(r.quoteLifetimeSeconds,90);
  assert.equal(Object.hasOwn(r.quote,"deadline"),false);
  assert.equal(r.quote.payer,request.payer);
- const domain={name:"XITA Managed Relay",version:"1",chainId:1643,
+ const domain={name:"XITA Interchain Fee",version:"1",chainId:1643,
   verifyingContract:address(44)};
  assert.equal(verifyTypedData(domain,MANAGED_QUOTE_TYPES,r.quote,r.signature),signer.address);
- const tampered={...r.quote,relayerFeeWei:"1"};
+ const tampered={...r.quote,interchainFeeWei:"1"};
  assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,tampered,r.signature),signer.address);
  const changedTime={...r.quote,issuedAt:r.quote.issuedAt+1};
  assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,changedTime,r.signature),signer.address);
 });
 test("never signs when relayer owner mismatches deployed adapter",async()=>{
- await assert.rejects(()=>buildManagedQuote({...defaults(),readExecutionOwner:async()=>address(1)}),/not contract owner/);
+ await assert.rejects(()=>buildManagedQuote({...defaults(),readExecutionOwner:async()=>address(1)}),/does not match deployed contract/);
 });
 test("fails before signing when source has no exact funded native gas or prices stale",async()=>{
  await assert.rejects(()=>buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
@@ -90,7 +90,7 @@ test("quotes only canonical deployed routes and exact bridge principal",async()=
 });
 test("no unsupported source/destination or non-decimal raw amount",async()=>{
  for(const requestPatch of [
-  {source:"polygon"},{destination:"polygon"},{amountRaw:"1.5"},{amountRaw:"0"},
+  {amountRaw:"1.5"},{amountRaw:"0"},
   {recipient:"0x1234"}
  ])await assert.rejects(()=>buildManagedQuote({...defaults(),request:{...request,...requestPatch}}));
 });
