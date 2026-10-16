@@ -68,7 +68,8 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
      /^0x0{40}$/i.test(owner))throw Error("Approved managed relay owner or source Registry missing");
   await check("sourceRegistry()",registry,"address");
   await check("relayerOwner()",owner,"address");
-  await check("MAX_QUOTE_LIFETIME()",300);
+  await check("MAX_QUOTE_LIFETIME()",90);
+  await check("quoteLifetimeSeconds()",90);
  }else if(component==="ism"){
   const v=infra.components.find(c=>c.key==="validatorRegistry")?.address;
   if(!ADDR.test(v||""))throw Error("Registry missing during ISM verification");
