@@ -2,6 +2,7 @@
 // Confirmed gateway receipt + destination Mailbox.delivered are the ONLY
 // transfer state. No browser WAL, localStorage, hidden relayer key or replay.
 import {selector} from "./keccak.js";
+import {sourceBoundMailboxProcess} from "./mailbox-process.js";
 import {deployedRoutes} from "./route-availability.js";
 import {publicRead,findWalletSourceTx} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
@@ -234,6 +235,7 @@ export async function resumeDelivery({catalog,account,record,provider,
   typeof proof.data!=="string"||!/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(proof.data)||
   !proof.data.toLowerCase().startsWith(selector("process(bytes,bytes)").toLowerCase())||
   proof.value!=="0x0")throw Error("Source-bound destination proof mismatch");
+ sourceBoundMailboxProcess(proof.data,current.messageId);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,dst,{allowSwitch:true});
  // Recheck replay state immediately before signing, never trust an HTTP status.
