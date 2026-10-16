@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {COINGECKO_GAS_COIN_IDS,usdPrice12,costInSourceWei,verifiedCoinGeckoPrices,ceilDiv}
+import {COINGECKO_GAS_COIN_IDS,usdPrice12,costInSourceWei,verifiedCoinGeckoPrices,ceilDiv,GERMAN_STANDARD_VAT_BPS}
  from "./fee-quote.mjs";
 test("native source fee price maps XGR to CoinGecko xgr and Base gas to ETH",()=>{
  assert.equal(COINGECKO_GAS_COIN_IDS.xgrchain,"xgr");
@@ -16,18 +16,29 @@ test("tiny native gas coin prices preserve precision and reject zero",()=>{
 });
 test("gas quote is round-up source-native, no tokens or fractions of wei",()=>{
  const r=costInSourceWei({sourcePriceUsd:0.0001,destinationPriceUsd:2500,
-   destinationGasPriceWei:1000000000n,destinationGasUnits:1000000n});
+   destinationGasPriceWei:1000000000n,destinationGasUnits:1000000n,vatBps:GERMAN_STANDARD_VAT_BPS});
  assert.equal(r.estimatedDestinationCostWei,"1000000000000000");
- assert.equal(r.quotedServiceFeeWei,"32500000000000000000000"); // $2.50 *1.3 / $0.0001
+ assert.equal(r.quotedServiceFeeWei,"32725000000000000000000"); // $2.50 * 1.10 * 1.19 / $0.0001
 });
 test("quote rejects suspicious zero gas, extremely large gas cap or arbitrary risk margin",()=>{
  for(const v of [
   {destinationGasPriceWei:0n},{destinationGasUnits:100n},
-  {destinationGasUnits:5000001n},{bufferBps:30001n}
+  {destinationGasUnits:5000001n},{markupBps:3000n},{vatBps:3001n}
  ])assert.throws(()=>costInSourceWei({
  sourcePriceUsd:0.0001,destinationPriceUsd:2500,
- destinationGasPriceWei:1000000000n,destinationGasUnits:600000n,...v
+ destinationGasPriceWei:1000000000n,destinationGasUnits:600000n,vatBps:1900n,...v
  }),/Unsafe/);
+});
+test("VAT is charged on full net fee and missing tax policy fails closed",()=>{
+ const input={sourcePriceUsd:100,destinationPriceUsd:100,
+  destinationGasPriceWei:1000000000n,destinationGasUnits:100000n};
+ assert.throws(()=>costInSourceWei(input),/VAT policy unresolved/);
+ const q=costInSourceWei({...input,vatBps:GERMAN_STANDARD_VAT_BPS});
+ assert.equal(q.estimatedCostSourceWei,"100000000000000");
+ assert.equal(q.marginWei,"10000000000000");
+ assert.equal(q.netInterchainFeeWei,"110000000000000");
+ assert.equal(q.vatWei,"20900000000000");
+ assert.equal(q.grossInterchainFeeWei,"130900000000000");
 });
 test("CoinGecko snapshot freshness is checked for BOTH chain gas coins",()=>{
  const now=1729000000000,sec=Math.floor(now/1000);
