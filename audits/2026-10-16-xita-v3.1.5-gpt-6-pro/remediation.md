@@ -7,11 +7,11 @@
 | ID | Area | Severity category at audit | Status (2026-10-16) | Resolution and evidence |
 | --- | --- | --- | --- | --- |
 | A-01 | Route discovery / recovery interoperability | Availability: high when affected configuration is used | `FIXED_IN_CODE` (requires verification) | [Interchain PR #130](https://github.com/xgr-network/xgr-interchain/pull/130), commit `c4b4b63ef7c6aef4f1b09c76a112797607d01759`. Validate against node `XGR3.0` with dynamically discovered routes and real recovery. |
-| A-02 | Validator lifecycle client integration | Operational: medium | `OPEN` | Cross-repository membership regression and operational acceptance pending. |
-| A-03 | ERC-20 route metadata / transfer UI | Functionality: medium | `OPEN` | Collateral and synthetic positive/negative browser/API tests pending. |
-| A-04 | Recovery response / wallet-intent validation | Defense in depth: low | `OPEN` | Source-message-bound calldata validation and regression test pending. |
+| A-02 | Validator lifecycle client integration | Operational: medium | `OPEN` | Offline Go patch prepared, **not** committed: GitHub App write calls to `xgr-node` returned 403. Node CI and real membership flow remain unverified. |
+| A-03 | ERC-20 route metadata / transfer UI | Functionality: medium | `OPEN` (draft PR, not merged) | [Interchain PR #133](https://github.com/xgr-network/xgr-interchain/pull/133), proposed commit `8adc5ac837ef3dd68fd36fc7cf375c14f5ed0f2b`. Three GitHub CI workflows passed; browser/production acceptance still pending. |
+| A-04 | Recovery response / wallet-intent validation | Defense in depth: low | `OPEN` (draft PR, not merged) | [Interchain PR #134](https://github.com/xgr-network/xgr-interchain/pull/134), proposed commit `935f5013e27dcb07874b1a607d634a167f69f1b8`. Three GitHub CI workflows passed; deployment and independent review pending. |
 
-**Important:** A-01 was fixed in the codebase *after* the audited commit. That does **not** close its end-to-end availability risk or establish deployment of the new version. PR links for A-02/A-03/A-04 must be added when the work is actually proposed; never invent completion evidence.
+**Important:** A-01 was fixed in the codebase *after* the audited commit. That does **not** close its end-to-end availability risk or establish deployment of the new version. Draft PRs are proposed code, not merged remediation; do not promote OPEN findings to VERIFIED/RELEASED without the required evidence.
 
 ## Accepted architectural choices (not fix requests)
 
