@@ -39,7 +39,7 @@ const TYPES={
  blsVerifier:[],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],
- executionGateway:["address","address"],
+ executionGateway:["address","address","address"],
  factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"],
  nativeRouter:["address","address","address","address","uint256"],
  syntheticRouter:["address","address","address","address","uint256","uint8","string","string"],
