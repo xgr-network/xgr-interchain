@@ -60,15 +60,16 @@ export async function buildManagedQuote({
   throw Error("Relayer lacks destination native gas reserve");
  const ttl=BigInt(onChainLifetime);
  if(ttl<1n||ttl>90n)throw Error("Invalid deployed managed quote lifetime");
- const now=clock(),oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
+ const now=clock();
+ const issuedAt=Math.floor(now/1000);
+ if(!Number.isSafeInteger(issuedAt)||issuedAt<1)
+  throw Error("Invalid managed quote issuance clock");
+ const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
  const fee=costInSourceWei({sourcePriceUsd:oracle.sourceUsd,
   destinationPriceUsd:oracle.destinationUsd,destinationGasPriceWei:gasPriceWei,
   destinationGasUnits:units,bufferBps});
  const relayerFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(relayerFeeWei===0n)throw Error("Native source service fee unavailable");
- const issuedAt=Math.floor(now/1000);
- if(!Number.isSafeInteger(issuedAt)||issuedAt<1)
-  throw Error("Invalid managed quote issuance clock");
  const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
