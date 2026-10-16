@@ -121,14 +121,17 @@ currency; later fee changes require BLS validator quorum.
 **Current development target, not yet released:** the first user-signed
 source-chain transaction pays the existing canonical validator fee and ONE
 separate GmbH Interchain Fee in source-native currency. No fixed UI surcharge.
-For a German 19% VATable UI service, the **gross** Interchain Fee uses:
+The **uniform gross customer quote** uses a 27% EU VAT price reserve:
 
-`estimated downstream cost (in source-native wei) x 1.10 x 1.19 = 1.309 x cost`.
+`estimated downstream cost (in source-native wei) x 1.10 x 1.27 = 1.397 x cost`.
 
-The 10% is a net operating margin, followed by 19% VAT on the **whole**
-net charge, not only on the margin. The off-chain pricing module uses integer
-ceil rounding and separately records estimated cost, margin, net fee, VAT
-and payable gross fee. Validator FeeVault distributions stay entirely outside
+The 10% is a minimum net operating margin at the 27% price-cap VAT rate.
+Customer gross remains fixed irrespective of the actual VAT rate. The
+relevant VAT amount is reverse-extracted from gross at the actual tax rate
+(e.g., 19% Germany, 27% Hungary); net service revenue and net margin
+then differ per tax jurisdiction. The off-chain pricing module uses integer
+ceil rounding for gross, floor rounding for net and balances net+VAT=gross.
+The 27% reserve is based on current EU standard rates, NOT global tax coverage. Validator FeeVault distributions stay entirely outside
 this additional UI-fee calculation.
 
 **Fail closed:** source chain does not establish customer VAT residence,
