@@ -153,12 +153,23 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  }
  return {checked,delivered,unknown};
 }
-export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),blockFor,limit=150}){
+// Durable bounded backfill: each small window commits its own cursor.
+export async function catchUpRoute({route,scan,batches=4}){
+ if(!Number.isSafeInteger(batches)||batches<1||batches>8)throw Error("Unsafe catch-up budget");
+ let indexed=0,scannedTo=null,finalizedHead=null;
+ for(let i=0;i<batches;i++){
+  const value=await scan();
+  indexed+=value.indexed;scannedTo=value.scannedTo;finalizedHead=value.finalizedHead;
+  if(scannedTo>=finalizedHead)break;
+ }
+ return {route:route.routeName,indexed,scannedTo,finalizedHead};
+}
+export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),blockFor,limit=150,batches=4}){
  const routes=indexedRoutes(catalog,{blockFor});
  const progress=[];
  for(const route of routes){
-  try{progress.push({route:route.routeName,...await scanIndexedRoute({
-   catalog,route,pool,rpc,limit})});}
+  try{progress.push(await catchUpRoute({route,batches,
+   scan:()=>scanIndexedRoute({catalog,route,pool,rpc,limit})}));}
   catch(error){progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
  const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
@@ -166,13 +177,14 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),blockFo
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
  const pool=await transferWriterPool();
+ const rpc=canonicalRpc();
  let running=true;
  process.once("SIGTERM",()=>{running=false;});
  process.once("SIGINT",()=>{running=false;});
  while(running){
   const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
   const start=Date.now();
-  const result=await tickTransferIndex({catalog,pool});
+  const result=await tickTransferIndex({catalog,pool,rpc});
   for(const route of result.routes)if(route.error)
    console.error("[xita-transfer-index]",route.route,route.error);
   else if(route.indexed)console.log("[xita-transfer-index]",route.route,"indexed",route.indexed);

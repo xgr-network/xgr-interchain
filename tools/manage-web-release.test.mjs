@@ -40,3 +40,10 @@ test("update always reloads the checkout after pull before publishing or restart
  assert.match(completion,/systemctl restart xita-indexer\.service/);
  assert.match(shell,/_complete-update\)[\s\S]*?XITA_UPDATE_MAIN_SHA[\s\S]*?complete_update/);
 });
+
+test("updating the published XITA release refreshes both proof and historical transfer indexer",()=>{
+ const done=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.match(done,/restart xita-indexer\.service/);
+ assert.match(done,/restart xita-transfer-indexer\.service/);
+ assert.match(done,/is-active --quiet xita-transfer-indexer\.service/);
+});

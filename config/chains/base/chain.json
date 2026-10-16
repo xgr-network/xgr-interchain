@@ -6,7 +6,8 @@
   "chainId": 8453,
   "domainId": 8453,
   "rpcUrls": [
-    "https://base-rpc.publicnode.com"
+    "https://gateway.tenderly.co/public/base",
+        "https://base.gateway.tenderly.co"
   ],
   "nativeCurrency": {
     "name": "Ether",

@@ -58,6 +58,16 @@ jobs:
           set -euo pipefail
           node --test tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
 
+      - name: Validate read-only mainnet roundtrip audit
+        run: node --test tools/verify-xita-roundtrip.test.mjs
+
+      - name: Validate Base archive RPC qualification logic
+        run: node --test tools/probe-base-rpc.test.mjs
+
+      - name: Public Chainlist Base archive diagnostics
+        continue-on-error: true
+        run: node tools/probe-base-rpc.mjs
+
       - name: Prevent accidental XITA website rollback
         run: node --test tools/manage-web-release.test.mjs
 

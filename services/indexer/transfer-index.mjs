@@ -7,6 +7,7 @@ import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {configuredGatewayRoutes,findWalletSourceTx,OPERATION_TOPIC,publicRead} from "../../apps/web/wallet-transfers.js";
 import {selector} from "../../apps/web/keccak.js";
+import {probe as probeBaseArchive} from "../../tools/probe-base-rpc.mjs";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HEX=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
@@ -103,8 +104,50 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
 }
 // Pure read-only RPC transport for the finalized indexer; caller controls endpoints,
 // never a visitor-provided URL. No wallet or signer is involved.
-export function canonicalRpc({fetcher=globalThis.fetch}={}){
- return async (chain,method,params)=>publicRead(chain.rpcUrls?.[0],method,params,fetcher);
+// A rejected eth_getLogs is never treated as an empty canonical block range.
+// Operator-only URLs can override the public catalog; never publish API keys.
+export function rpcCandidates(chain,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+ const raw=chain?.chainId===8453?
+  [...String(baseUrls).split(",").map(s=>s.trim()).filter(Boolean),
+   ...(chain?.rpcUrls||[])]:[...(chain?.rpcUrls||[])];
+ const result=[];
+ for(const url of raw){
+  let parsed;
+  try{parsed=new URL(url);}catch{throw Error("Invalid chain RPC URL");}
+  if(parsed.protocol!=="https:"||parsed.username||parsed.password||
+    parsed.hash||!parsed.hostname||url.length>500)
+   throw Error("Invalid chain RPC URL");
+  if(!result.includes(url))result.push(url);
+ }
+ if(!result.length||result.length>8)throw Error("Missing or excessive chain RPC URLs");
+ return result;
+}
+export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=probeBaseArchive,
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
+ const validated=new Map;
+ return async (chain,method,params)=>{
+  if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
+   throw Error("Invalid canonical chain config");
+  let last;
+  for(const url of rpcCandidates(chain,{baseUrls})){
+   try{
+    const ok=validated.get(url);
+    if(!ok||ok.id!==chain.chainId||ok.expire<=now()){
+     const id=await publicRead(url,"eth_chainId",[],fetcher);
+     if(typeof id!=="string"||!/^0x[0-9a-f]+$/i.test(id)||
+       BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain identity mismatch");
+     if(chain.chainId===8453){
+      const archive=await archiveProbe(url,{fetcher,ms:7000});
+      if(!archive?.ok)throw Error("Base historical RPC unsupported: "+String(archive?.error||"not qualified").slice(0,100));
+     }
+     validated.set(url,{id:chain.chainId,expire:now()+300000});
+    }
+    return await publicRead(url,method,params,fetcher);
+   }catch(error){validated.delete(url);last=error;}
+  }
+  throw Error("All "+String(chain.name||chain.chainId)+" RPC endpoints failed: "+
+    String(last?.message||"unknown").slice(0,125));
+ };
 }
 export function validateIndexedGatewayLog(log,route,from,to){
  if(!log||norm(log.address)!==norm(route.gateway)||
