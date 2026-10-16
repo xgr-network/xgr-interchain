@@ -128,7 +128,7 @@ test("thousands of on-chain token routes require zero additions to node ENV",()=
 });
 test("rejects externally named proof routes even with otherwise plausible destination calldata",()=>{
  const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",CANONICAL_MESSAGE_ID,"ABC");
- const spoofed={...recovered(hash("2")),route:"xgr_to_base"};
+ const spoofed={...recovered(CANONICAL_MESSAGE_ID),route:"xgr_to_base"};
  assert.throws(()=>validateUnsignedRecovery(spoofed,conf),/does not match/);
 });
 
