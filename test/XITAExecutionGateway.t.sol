@@ -32,7 +32,7 @@ contract XITAExecutionGatewayTest is Test {
         tokenRouter = new MockILNWarpRouter();
         gateway = new ILNGateway(address(registry), ROUTE, TARGET, address(tokenRouter), false);
         registry.setRoute(TARGET, ROUTE, _route(address(gateway), address(tokenRouter)));
-        managed = new XITAExecutionGateway(address(registry), relayer);
+        managed = new XITAExecutionGateway(address(registry), relayer, payable(relayer));
         tokenRouter.mint(USER, 10 ether);
         vm.prank(USER);
         tokenRouter.approve(address(managed), type(uint256).max);
@@ -62,9 +62,12 @@ contract XITAExecutionGatewayTest is Test {
             routeId: ROUTE,
             destinationDomain: TARGET,
             recipient: RECIPIENT,
+            finalDestinationDomain: TARGET,
+            finalRecipient: RECIPIENT,
+            onwardRouteId: bytes32(0),
             amount: AMOUNT,
             bridgeValueWei: bridgeValue,
-            relayerFeeWei: FEE,
+            interchainFeeWei: FEE,
             nonce: nonce,
             issuedAt: uint64(block.timestamp)
         });
@@ -80,7 +83,7 @@ contract XITAExecutionGatewayTest is Test {
     function _execute(XITAExecutionGateway.Quote memory q) internal returns (bytes32 messageId) {
         bytes memory signature = _signature(q, RELAYER_KEY);
         vm.prank(USER);
-        return managed.execute{value: q.bridgeValueWei + q.relayerFeeWei}(q, signature);
+        return managed.execute{value: q.bridgeValueWei + q.interchainFeeWei}(q, signature);
     }
 
     function _mustRevert(
@@ -112,7 +115,7 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(address(gateway.feeVault()).balance, 1);
         assertEq(address(gateway).balance, 0);
         assertEq(address(managed).balance, FEE);
-        assertEq(managed.pendingServiceFeesWei(), FEE);
+        assertEq(managed.pendingInterchainFeesWei(), FEE);
         assertTrue(managed.nonceUsed(USER, q.nonce));
         (address payer, address targetGateway, uint256 amount, bool exists, bool withdrawn) =
             managed.feeReceipt(message);
@@ -124,11 +127,11 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(tokenRouter.allowance(address(managed), address(gateway)), 0);
 
         uint256 beforeBalance = relayer.balance;
-        vm.prank(relayer);
+        vm.prank(USER); // Claim is permissionless; beneficiary is immutable.
         managed.withdrawFee(message);
         assertEq(relayer.balance - beforeBalance, FEE);
         assertEq(address(managed).balance, 0);
-        assertEq(managed.pendingServiceFeesWei(), 0);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
         vm.expectRevert(XITAExecutionGateway.NoClaimableFee.selector);
         vm.prank(relayer);
         managed.withdrawFee(message);
@@ -136,21 +139,21 @@ contract XITAExecutionGatewayTest is Test {
 
     function testUnauthorizedUserCannotTakeManagedServiceFees() public {
         bytes32 message = _execute(_quote(8));
-        vm.expectRevert(XITAExecutionGateway.UnauthorizedRelayer.selector);
         vm.prank(USER);
         managed.withdrawFee(message);
-        assertEq(address(managed).balance, FEE);
+        assertEq(relayer.balance, FEE);
+        assertEq(address(managed).balance, 0);
     }
 
     function testDifferentSignerOrTamperedFeeCannotStartBridge() public {
         XITAExecutionGateway.Quote memory q = _quote(21);
         bytes memory signature = _signature(q, RELAYER_KEY);
-        q.relayerFeeWei += 1;
-        _mustRevert(q,signature,q.bridgeValueWei + q.relayerFeeWei,
+        q.interchainFeeWei += 1;
+        _mustRevert(q,signature,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.InvalidSignature.selector);
         q = _quote(22);
         _mustRevert(q,_signature(q,UNAUTHORIZED_KEY),
-            q.bridgeValueWei + q.relayerFeeWei,
+            q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.InvalidSignature.selector);
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
     }
@@ -168,9 +171,9 @@ contract XITAExecutionGatewayTest is Test {
         tokenRouter.nativeFeeWei();
         tokenRouter.setSyntheticQuoteAmount(AMOUNT + 1); // makes current quote invalid
         _mustRevertAny(q,_signature(q,RELAYER_KEY),
-            q.bridgeValueWei + q.relayerFeeWei);
+            q.bridgeValueWei + q.interchainFeeWei);
         assertFalse(managed.nonceUsed(USER, q.nonce));
-        assertEq(managed.pendingServiceFeesWei(), 0);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
     }
 
@@ -178,21 +181,21 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory atBoundary = _quote(12);
         bytes memory signature = _signature(atBoundary, RELAYER_KEY);
         vm.warp(uint256(atBoundary.issuedAt) + 90);
-        _mustRevertAny(atBoundary,bytes(""),atBoundary.bridgeValueWei + atBoundary.relayerFeeWei);
+        _mustRevertAny(atBoundary,bytes(""),atBoundary.bridgeValueWei + atBoundary.interchainFeeWei);
         _execute(atBoundary); // Expiry is inclusive; 90 seconds is still within policy.
         XITAExecutionGateway.Quote memory expired = _quote(13);
         bytes memory expiredSignature = _signature(expired, RELAYER_KEY);
         vm.warp(uint256(expired.issuedAt) + 91);
-        _mustRevert(expired,expiredSignature,expired.bridgeValueWei + expired.relayerFeeWei,
+        _mustRevert(expired,expiredSignature,expired.bridgeValueWei + expired.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
         XITAExecutionGateway.Quote memory future = _quote(14);
         future.issuedAt = uint64(block.timestamp + 1);
         _mustRevert(future,_signature(future,RELAYER_KEY),
-            future.bridgeValueWei + future.relayerFeeWei,
+            future.bridgeValueWei + future.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
         future.issuedAt = 0;
         _mustRevert(future,_signature(future,RELAYER_KEY),
-            future.bridgeValueWei + future.relayerFeeWei,
+            future.bridgeValueWei + future.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
     }
 
@@ -213,7 +216,7 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(31);
         bytes memory signed = _signature(q,RELAYER_KEY);
         vm.warp(uint256(q.issuedAt) + 31);
-        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
+        _mustRevert(q,signed,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
         vm.prank(relayer);
         managed.setQuoteLifetimeSeconds(90);
@@ -225,10 +228,10 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(77);
         bytes memory signed = _signature(q, RELAYER_KEY);
         q.issuedAt += 1; // Future times are always invalid, before signature checks.
-        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
+        _mustRevert(q,signed,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
         vm.warp(uint256(q.issuedAt) + 1);
-        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
+        _mustRevert(q,signed,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.InvalidSignature.selector);
     }
 
@@ -236,22 +239,34 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(14);
         _execute(q);
         _mustRevert(q,_signature(q,RELAYER_KEY),
-            q.bridgeValueWei + q.relayerFeeWei,
+            q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteNonceUsed.selector);
-        XITAExecutionGateway other = new XITAExecutionGateway(address(registry), relayer);
+        XITAExecutionGateway other = new XITAExecutionGateway(address(registry), relayer, payable(relayer));
         bytes memory crossSignature = _signature(q, RELAYER_KEY);
         vm.expectRevert(XITAExecutionGateway.InvalidSignature.selector);
         vm.prank(USER);
-        other.execute{value:q.bridgeValueWei + q.relayerFeeWei}(q,crossSignature);
+        other.execute{value:q.bridgeValueWei + q.interchainFeeWei}(q,crossSignature);
     }
 
     function testFakeOrDisabledGatewayFailsWithoutAcceptingServiceFee() public {
         XITAExecutionGateway.Quote memory q = _quote(16);
         registry.setRoute(TARGET,ROUTE,_route(address(0x9999),address(tokenRouter)));
         _mustRevert(q,_signature(q,RELAYER_KEY),
-            q.bridgeValueWei + q.relayerFeeWei,
+            q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.InvalidRegisteredRoute.selector);
-        assertEq(managed.pendingServiceFeesWei(), 0);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
+    }
+
+    function testSignedTwoHopJourneyIdentityCannotBeRetargeted() public {
+        XITAExecutionGateway.Quote memory q = _quote(88);
+        q.destinationDomain = 1643;
+        q.finalDestinationDomain = TARGET;
+        q.onwardRouteId = bytes32(uint256(12));
+        q.finalRecipient = RECIPIENT;
+        bytes memory sig = _signature(q, RELAYER_KEY);
+        q.onwardRouteId = bytes32(uint256(13));
+        _mustRevert(q,sig,q.bridgeValueWei+q.interchainFeeWei,
+            XITAExecutionGateway.InvalidSignature.selector);
     }
 
     function testNativeSourcePrincipalAndServiceFeesRemainSeparated() public {
@@ -266,8 +281,9 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(tokenAmount, 0);
         XITAExecutionGateway.Quote memory q = XITAExecutionGateway.Quote({
             payer: USER, gateway: address(nativeGateway), routeId: nativeRoute,
-            destinationDomain: TARGET, recipient:RECIPIENT, amount:AMOUNT,
-            bridgeValueWei:bridgeValue, relayerFeeWei:FEE, nonce:99,
+            destinationDomain: TARGET, recipient:RECIPIENT,
+            finalDestinationDomain:TARGET, finalRecipient:RECIPIENT, onwardRouteId:bytes32(0), amount:AMOUNT,
+            bridgeValueWei:bridgeValue, interchainFeeWei:FEE, nonce:99,
             issuedAt:uint64(block.timestamp)
         });
         bytes memory nativeSignature = _signature(q,RELAYER_KEY);
@@ -281,7 +297,7 @@ contract XITAExecutionGatewayTest is Test {
 
     function testOnlySourceNativeCurrencyIsAcceptedForServiceFees() public {
         XITAExecutionGateway.Quote memory q = _quote(123);
-        assertEq(q.relayerFeeWei, FEE);
+        assertEq(q.interchainFeeWei, FEE);
         assertEq(address(managed).balance, 0);
         bytes32 message = _execute(q);
         (,, uint256 escrowed,,) = managed.feeReceipt(message);
@@ -294,12 +310,12 @@ contract XITAExecutionGatewayTest is Test {
         bytes32 first = _execute(_quote(700));
         bytes32 second = _execute(_quote(701));
         assertTrue(first != second);
-        assertEq(managed.pendingServiceFeesWei(), 2*FEE);
-        vm.prank(relayer);
+        assertEq(managed.pendingInterchainFeesWei(), 2*FEE);
+        vm.prank(USER);
         managed.withdrawFee(first);
-        assertEq(managed.pendingServiceFeesWei(), FEE);
-        vm.prank(relayer);
+        assertEq(managed.pendingInterchainFeesWei(), FEE);
+        vm.prank(USER);
         managed.withdrawFee(second);
-        assertEq(managed.pendingServiceFeesWei(), 0);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
     }
 }
