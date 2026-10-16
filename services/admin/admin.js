@@ -108,7 +108,7 @@ const coreTitles={
  collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
  factory:"Permissionless Token Factory",
  sourceRegistry:"ILN Source Registry",
- executionGateway:"Managed Relay · Execution Gateway (optional)"
+ executionGateway:"Interchain Fee · Execution Gateway (optional)"
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
@@ -187,11 +187,11 @@ function modalValues(component){
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner"]:[];
+   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
  const result={};
  for(const key of keys){
   const v=el("modal-"+key).value.trim();
-  if(key==="relayerOwner"){
+  if(key==="relayerOwner"||key==="interchainFeeRecipient"){
    if(!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
     throw Error("Gültige öffentliche Relayer-Owner-Adresse erforderlich (kein Private Key)");
    result[key]=v.toLowerCase();
@@ -316,7 +316,7 @@ async function openContractModal(chainName,component){
   const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner"]:[];
+   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
@@ -336,7 +336,7 @@ async function openContractModal(chainName,component){
     sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","relayerOwner"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","relayerOwner","interchainFeeRecipient"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // Main bootstrap economics are the reviewed defaults, not estimates.
@@ -344,10 +344,10 @@ async function openContractModal(chainName,component){
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=key==="relayerOwner"?"":component==="factory"?String(factoryDefaults?.[key]??""):
+   input.value=["relayerOwner","interchainFeeRecipient"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
      String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
-   input.placeholder=key==="relayerOwner"?"0x… öffentliche GmbH-Relayer-Adresse":
+   input.placeholder=["relayerOwner","interchainFeeRecipient"].includes(key)?"0x… öffentliche EVM-Adresse":
     suggestion==null?"Manuell festlegen":String(suggestion);
    input.title=key==="relayerOwner"?
     "Öffentliche Adresse des GmbH-Relayers. Signiert Gebührenquotes, darf nur Servicegebühren abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
