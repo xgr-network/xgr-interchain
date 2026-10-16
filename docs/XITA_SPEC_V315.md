@@ -116,9 +116,82 @@ source-registry validator fee per XGR-source hop, equal to
 `100000000000000000` Wei. Spoke registries use their own native
 currency; later fee changes require BLS validator quorum.
 
+## Optional XITA GmbH Managed Relay (one source transaction)
+
+This is an OPTIONAL commercial UX/execution layer, NOT the permissionless
+XITA protocol. Other parties may independently operate their own relayers,
+fee contracts, quote services, indexes and UX. There is NO exclusive relayer,
+route permission, transaction censorship power or privileged Mailbox role.
+All existing direct ILNGateway.bridge() and permissionless Mailbox.process()
+paths remain available, even if the GmbH services are completely offline.
+
+**One chain-wide XITAExecutionGateway per source chain**, NOT per token or
+route. The immutable source-chain ILN Registry authorizes actual gateways;
+the managed adapter must never introduce independent token-route governance.
+The underlying route's FeeVault continues to accrue validator fees. Only
+the additional GmbH delivery fee is kept in this optional adapter.
+
+The client requests a signed quote from the GmbH relayer service and sends
+ONE source transaction to XITAExecutionGateway.execute(), paying the transfer
+principal where the asset is native, the existing bridge/validator native
+value, and the service fee exclusively in the SOURCE chain's native coin.
+CoinGecko supplies USD prices for source and destination native gas coins:
+XGR's ID is exactly `xgr`, ETH's ID is `ethereum`. The GmbH is responsible
+for acquiring and replenishing destination gas reserves. Source fees are
+never collected in ERC20; bridging an ERC20 token may still require a
+separate token allowance or compatible permit before the source transfer.
+
+The EIP-712 `SponsoredQuote` is signed with the SAME EOA that is the
+adapter's immutable `relayerOwner`. Its domain binds source chain ID
+and adapter contract address. It binds payer, exact canonical ILN gateway
+and route ID, destination domain, recipient, amount, exact current bridge
+native value, source-native delivery fee, payer-specific nonce and expiry.
+The adapter independently checks the source ILN Registry route binding
+and the live bridge quote, rejects stale or manipulated quotes, checks the
+EXACT payable sum, forwards the exact original gateway value, and atomically
+records the resulting genuine message ID and native service fee.
+The source receipt must contain BOTH the original gateway operation/dispatch
+and the adapter's ManagedDispatch event; an API claim or bare destination
+transaction hash is never evidence of a funded managed transfer.
+
+The relayer signs no protocol or validator messages. It must independently
+verify source finality and the on-chain sponsored fee receipt BEFORE funding
+the destination transaction. It pays destination gas from its OWN reserves
+and submits the standard public Mailbox.process BLS/Merkle proof. Only
+relayerOwner may withdraw the separately accrued service fee; this
+centralized withdrawal right DOES NOT prove destination delivery, and
+a withdrawal may occur before delivery. Thus customers TRUST the GmbH
+for the optional paid execution service and any negotiated refunds, but
+NEVER for token custody, protocol routing, validator signatures or minting.
+Permissionless self-delivery remains available; a fee refund is not
+cryptographically guaranteed by this owner-withdraw model.
+
+The GmbH's relayer indexer is an OPERATOR-OWNED read projection, not
+protocol infrastructure. It listens to one ManagedDispatch source event
+per managed hop, indexes source receipt + message ID + fee and follows
+destination Mailbox.delivered(messageId), destination execution TX and
+retries. It is rebuildable from finalized chain evidence and may retain
+private delivery telemetry. Saving relayer TX hashes alone is insufficient
+because a third party or customer may deliver and fee receipts are on the
+SOURCE chain. Other independent relayers can run their own indexes.
+The existing optional protocol-wide history indexer may continue to
+serve public stats and permissionless transfers, but is NOT required
+for managed relay, consensus, proof validation or custody.
+
+Sponsored fees are not protocol fee governance. No change to PoS consensus,
+xgr-node, ILN Registry, FeeVault, Gateway, router, destination Mailbox or ISM
+is authorized by introducing this adapter. Deployment of the new optional
+adapter and live quote/relay signing infrastructure are SEPARATE audited
+release gates; previous source locks remain recoverable via their original
+two-transaction permissionless path. Before enabling sponsored delivery,
+verify funded destination-chain native gas balances, quotes, RPC health,
+relayer authorization, endpoint rate limits, replay resistance, refund
+terms and a real forward/reverse E2E mainnet test. The quote server must
+fail closed when it cannot guarantee its offered commercial service.
+
 ## Wallet-funded permissionless delivery UX
 
-The selected default for each directed hop is two MetaMask confirmations:
+The permissionless fallback for each directed hop remains two MetaMask confirmations:
 (1) source Gateway.bridge() paying source gas plus native validator fee, and
 (2) target Mailbox.process(metadata,message) paying target-native gas after
 the BLS proof is available. An ERC-20 approval may be an extra transaction.
@@ -153,10 +226,9 @@ Unavailable source/destination RPC or missing BLS proof is UNKNOWN, never
 proof of failure. The current lightweight wallet scan is bounded; an
 older source hash can be provided directly, using the original wallet.
 
-Future optional Starter Gas may help fund the first destination transaction
-without changing the permissionless wallet-funded settlement model. This
-software implementation still requires a real E2E test on the deployed
-reciprocal routes before claiming successful transfer/delivery recovery.
+The separate Managed Relay UX can sponsor destination gas using the optional
+Execution Gateway; it does not alter the permissionless wallet-funded fallback.
+The sponsored flow must pass independent real E2E testing before enabling it.
 
 ## Message-specific BLS safety
 

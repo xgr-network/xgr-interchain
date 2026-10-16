@@ -29,3 +29,15 @@ transfer uses two separate transfers through XGRChain.
 
 See `docs/XITA_SPEC_V315.md`. Not ready for mainnet without genuine
 remote-pair validation and two-chain end-to-end tests.
+
+## Optional operator service (no protocol authority)
+
+`XITAExecutionGateway.sol` is a chain-wide source adapter (one per chain),
+with owner-signed EIP-712 quotes and exact SOURCE-native relayer fee receipts.
+It calls unchanged ILNGateway.bridge and does not grant the GmbH owner any
+mint, validator, registration, source FeeVault or Mailbox authority.
+The GmbH owner can withdraw its own delivery service fees even before
+completion: this is an explicitly operator-trusted commercial service, not
+a refundable on-chain gas bond or an execution guarantee. Other relayers
+can provide their own frontend, relayer, quote service and indexer.
+No deployment is implied by adding the Solidity source.
