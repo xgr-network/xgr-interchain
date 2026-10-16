@@ -23,6 +23,7 @@ import {
   encodeISMMetadataV314,
   requireRouteId,
 } from "./iln-codec.mjs";
+import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -124,35 +125,16 @@ async function assertNetwork(provider, expected, name) {
   assert(actual === expected, `${name} chain ID mismatch`);
 }
 
-async function operationBlockFromReceipt(hash) {
-  const receipt = await origin.getTransactionReceipt(hash);
-  assert(receipt && receipt.status === 1 && Number.isSafeInteger(receipt.blockNumber) &&
-    receipt.blockNumber > 0, "canonical source transaction not successful or not indexed");
-  const gatewayOps = receipt.logs.flatMap((log) => {
-    if (lower(log.address) !== lower(originGatewayAddress)) return [];
-    try {
-      const parsed = sourceGateway.interface.parseLog(log);
-      return parsed?.name === "ILNOperation" && lower(parsed.args.routeId) === routeId &&
-        lower(parsed.args.messageId) === id &&
-        Number(parsed.args.destinationDomain) === destinationDomain ? [parsed] : [];
-    } catch { return []; }
-  });
-  const mailboxDispatches = receipt.logs.flatMap((log) => {
-    if (lower(log.address) !== lower(originMailboxAddress)) return [];
-    try {
-      const parsed = sourceMailbox.interface.parseLog(log);
-      return parsed?.name === "Dispatch" &&
-        lower(parsed.args.sender) === lower(originWarpRouterAddress) &&
-        Number(parsed.args.destination) === destinationDomain &&
-        lower(parsed.args.recipient) === lower(zeroPadValue(destinationRouterAddress,32)) &&
-        lower(keccak256(parsed.args.message)) === id ? [parsed] : [];
-    } catch { return []; }
-  });
-  assert(gatewayOps.length === 1 && mailboxDispatches.length === 1,
-    "source transaction lacks the unique canonical Gateway operation and Mailbox Dispatch");
-  const finalized = await origin.getBlockNumber() - confirmationDepth + 1;
-  assert(receipt.blockNumber <= finalized, "canonical source receipt not finalized");
-  return receipt.blockNumber;
+async function sourceEvidenceFromReceipt(hash) {
+ const receipt=await origin.getTransactionReceipt(hash);
+ const evidence=verifiedSourceReceiptEvidence({
+  receipt,sourceTxHash:hash,routeId,messageId:id,destinationDomain,
+  gateway:originGatewayAddress,sourceRouter:originWarpRouterAddress,
+  sourceMailbox:originMailboxAddress,destinationRouter:destinationRouterAddress
+ });
+ const finalized=await origin.getBlockNumber()-confirmationDepth+1;
+ assert(evidence.blockNumber<=finalized,"canonical source receipt not finalized");
+ return evidence;
 }
 
 async function reconstructProof(operationBlock, checkpointIndex) {
@@ -227,6 +209,11 @@ async function main() {
     destinationSet.setId(),
     destinationSet.verifierKeyFormat(),
   ]);
+  let sourceEvidence=null;
+  if(sourceTxHash){
+   mark("source-receipt");
+   sourceEvidence=await sourceEvidenceFromReceipt(sourceTxHash);
+  }
   mark("get-validator-attestation");
   let attestation;
   try {
@@ -235,7 +222,7 @@ async function main() {
     // First-time delivery and post-rotation recovery use exactly the same
     // public request path. No relayer or operator-specific signing endpoint.
     mark("source-receipt");
-    let operationBlock = sourceTxHash ? await operationBlockFromReceipt(sourceTxHash) : 0;
+    let operationBlock=sourceEvidence?.blockNumber||0;
     if (!Number.isSafeInteger(operationBlock) || operationBlock <= 0) {
       const startBlock = Number(await sourceGateway.activationBlock());
       const confirmed = await origin.getBlockNumber() - confirmationDepth;
@@ -304,6 +291,8 @@ async function main() {
   assert(Number.isSafeInteger(checkpointIndex) && checkpointIndex >= 0, "invalid checkpoint index");
   const latestSource = await origin.getBlockNumber();
   assert(operationBlock <= latestSource - confirmationDepth, "source block not sufficiently confirmed");
+  if(sourceEvidence)assert(sourceEvidence.blockNumber===operationBlock,
+    "signed checkpoint source block does not match source receipt");
 
   const historicRoute = await sourceRegistry.getRoute(destinationDomain, routeId, { blockTag: operationBlock });
   // A governance action later in the same source block may disable this route.
@@ -320,33 +309,34 @@ async function main() {
     ["destinationRouter", historicRoute.destinationRouter, destinationRouterAddress],
   ]) eq(`historic route ${field}`, actual, expected);
 
-  const operations = await sourceGateway.queryFilter(
-    sourceGateway.filters.ILNOperation(routeId, id, destinationDomain),
-    operationBlock, operationBlock,
-  );
-  assert(operations.length === 1, "expected exactly one canonical Gateway ILNOperation");
-  const operation = operations[0];
-  assert(
-    BigInt(operation.args.validatorFeeWei) === BigInt(attestation.validatorFeeWei),
-    "Gateway operation fee does not match signed fee",
-  );
-  // Gateway.bridge() enforces its native source fee atomically and emits
-  // ILNOperation from its canonical address. Matching it with Dispatch in
-  // the SAME successful receipt is the historical fee proof, not getRoute()
-  // at block end (which can reflect subsequent governance changes).
-
-  const dispatches = await sourceMailbox.queryFilter(
-    sourceMailbox.filters.Dispatch(
-      originWarpRouterAddress,
-      destinationDomain,
-      zeroPadValue(destinationRouterAddress, 32),
-    ),
-    operationBlock, operationBlock,
-  );
-  const matches = dispatches.filter((entry) => lower(keccak256(entry.args.message)) === id);
-  assert(matches.length === 1, "expected exactly one matching source Mailbox.Dispatch");
-  assert(matches[0].transactionHash === operation.transactionHash, "Gateway operation and Dispatch must share source transaction");
-  const message = matches[0].args.message;
+  let operationFeeWei,message;
+  if(sourceEvidence){
+    // Receipt verifies BOTH events in the very same successful source tx.
+    // Do not rescan this historical Gateway/Mailbox block via eth_getLogs.
+    operationFeeWei=sourceEvidence.validatorFeeWei;
+    message=sourceEvidence.message;
+  }else{
+    // Permissionless fallback when the source transaction hash is unknown.
+    const operations=await sourceGateway.queryFilter(
+      sourceGateway.filters.ILNOperation(routeId,id,destinationDomain),
+      operationBlock,operationBlock);
+    assert(operations.length===1,"expected exactly one canonical Gateway ILNOperation");
+    operationFeeWei=BigInt(operations[0].args.validatorFeeWei);
+    const dispatches=await sourceMailbox.queryFilter(
+      sourceMailbox.filters.Dispatch(
+        originWarpRouterAddress,destinationDomain,
+        zeroPadValue(destinationRouterAddress,32),
+      ),operationBlock,operationBlock);
+    const matches=dispatches.filter(entry=>lower(keccak256(entry.args.message))===id);
+    assert(matches.length===1,"expected exactly one matching source Mailbox.Dispatch");
+    assert(matches[0].transactionHash===operations[0].transactionHash,
+      "Gateway operation and Dispatch must share source transaction");
+    message=matches[0].args.message;
+  }
+  assert(operationFeeWei===BigInt(attestation.validatorFeeWei),
+    "Gateway operation fee does not match signed fee");
+  // Canonical fee-paid operation and Dispatch are verified independently
+  // of the selected BLS quorum before destination calldata is generated.
 
   const expectedPayload = encodeCheckpointPayloadV2({
     sourceChainId: originChainId,
