@@ -83,6 +83,27 @@ contract XITAExecutionGatewayTest is Test {
         return managed.execute{value: q.bridgeValueWei + q.relayerFeeWei}(q, signature);
     }
 
+    function _mustRevert(
+        XITAExecutionGateway.Quote memory q,
+        bytes memory signature,
+        uint256 value,
+        bytes4 selector
+    ) internal {
+        vm.expectRevert(selector);
+        vm.prank(USER);
+        managed.execute{value:value}(q,signature);
+    }
+
+    function _mustRevertAny(
+        XITAExecutionGateway.Quote memory q,
+        bytes memory signature,
+        uint256 value
+    ) internal {
+        vm.expectRevert();
+        vm.prank(USER);
+        managed.execute{value:value}(q,signature);
+    }
+
     function testAtomicERC20DispatchNativeFeeVaultAndOwnerPayout() public {
         XITAExecutionGateway.Quote memory q = _quote(5);
         bytes32 message = _execute(q);
@@ -108,15 +129,15 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(relayer.balance - beforeBalance, FEE);
         assertEq(address(managed).balance, 0);
         assertEq(managed.pendingServiceFeesWei(), 0);
-        vm.prank(relayer);
         vm.expectRevert(XITAExecutionGateway.NoClaimableFee.selector);
+        vm.prank(relayer);
         managed.withdrawFee(message);
     }
 
     function testUnauthorizedUserCannotTakeManagedServiceFees() public {
         bytes32 message = _execute(_quote(8));
-        vm.prank(USER);
         vm.expectRevert(XITAExecutionGateway.UnauthorizedRelayer.selector);
+        vm.prank(USER);
         managed.withdrawFee(message);
         assertEq(address(managed).balance, FEE);
     }
@@ -125,23 +146,19 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(21);
         bytes memory signature = _signature(q, RELAYER_KEY);
         q.relayerFeeWei += 1;
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.InvalidSignature.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(q, signature);
+        _mustRevert(q,signature,q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.InvalidSignature.selector);
         q = _quote(22);
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.InvalidSignature.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, UNAUTHORIZED_KEY)
-        );
+        _mustRevert(q,_signature(q,UNAUTHORIZED_KEY),
+            q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.InvalidSignature.selector);
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
     }
 
     function testWrongNativeValueCannotProduceMessageOrFeeReceipt() public {
         XITAExecutionGateway.Quote memory q = _quote(7);
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.InvalidBridgeValue.selector);
-        managed.execute{value:q.bridgeValueWei}(q, _signature(q, RELAYER_KEY));
+        _mustRevert(q,_signature(q, RELAYER_KEY),q.bridgeValueWei,
+            XITAExecutionGateway.InvalidBridgeValue.selector);
         assertFalse(managed.nonceUsed(USER, q.nonce));
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
     }
@@ -150,11 +167,8 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(9);
         tokenRouter.nativeFeeWei();
         tokenRouter.setSyntheticQuoteAmount(AMOUNT + 1); // makes current quote invalid
-        vm.prank(USER);
-        vm.expectRevert();
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        _mustRevertAny(q,_signature(q,RELAYER_KEY),
+            q.bridgeValueWei + q.relayerFeeWei);
         assertFalse(managed.nonceUsed(USER, q.nonce));
         assertEq(managed.pendingServiceFeesWei(), 0);
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
@@ -164,42 +178,34 @@ contract XITAExecutionGatewayTest is Test {
         XITAExecutionGateway.Quote memory q = _quote(12);
         bytes memory signed = _signature(q, RELAYER_KEY);
         vm.warp(uint256(q.deadline) + 1);
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.QuoteExpired.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(q, signed);
+        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.QuoteExpired.selector);
         q = _quote(13);
         q.deadline = uint64(block.timestamp + 301);
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.QuoteExpired.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        _mustRevert(q,_signature(q,RELAYER_KEY),
+            q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.QuoteExpired.selector);
     }
 
     function testNonceReplayAndCrossAdapterSignatureAreRejected() public {
         XITAExecutionGateway.Quote memory q = _quote(14);
         _execute(q);
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.QuoteNonceUsed.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        _mustRevert(q,_signature(q,RELAYER_KEY),
+            q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.QuoteNonceUsed.selector);
         XITAExecutionGateway other = new XITAExecutionGateway(address(registry), relayer);
-        vm.prank(USER);
+        bytes memory crossSignature = _signature(q, RELAYER_KEY);
         vm.expectRevert(XITAExecutionGateway.InvalidSignature.selector);
-        other.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        vm.prank(USER);
+        other.execute{value:q.bridgeValueWei + q.relayerFeeWei}(q,crossSignature);
     }
 
     function testFakeOrDisabledGatewayFailsWithoutAcceptingServiceFee() public {
         XITAExecutionGateway.Quote memory q = _quote(16);
         registry.setRoute(TARGET,ROUTE,_route(address(0x9999),address(tokenRouter)));
-        vm.prank(USER);
-        vm.expectRevert(XITAExecutionGateway.InvalidRegisteredRoute.selector);
-        managed.execute{value:q.bridgeValueWei + q.relayerFeeWei}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        _mustRevert(q,_signature(q,RELAYER_KEY),
+            q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.InvalidRegisteredRoute.selector);
         assertEq(managed.pendingServiceFeesWei(), 0);
     }
 
@@ -219,10 +225,9 @@ contract XITAExecutionGatewayTest is Test {
             bridgeValueWei:bridgeValue, relayerFeeWei:FEE, nonce:99,
             deadline:uint64(block.timestamp + 120)
         });
+        bytes memory nativeSignature = _signature(q,RELAYER_KEY);
         vm.prank(USER);
-        bytes32 message = managed.execute{value:bridgeValue + FEE}(
-            q, _signature(q, RELAYER_KEY)
-        );
+        bytes32 message = managed.execute{value:bridgeValue + FEE}(q,nativeSignature);
         assertTrue(message != bytes32(0));
         assertEq(nativeRouter.lockedWei(), AMOUNT);
         assertEq(address(nativeGateway.feeVault()).balance, 1);

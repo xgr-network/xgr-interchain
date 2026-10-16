@@ -18,7 +18,7 @@ test("gas quote is round-up source-native, no tokens or fractions of wei",()=>{
  const r=costInSourceWei({sourcePriceUsd:0.0001,destinationPriceUsd:2500,
    destinationGasPriceWei:1000000000n,destinationGasUnits:1000000n});
  assert.equal(r.estimatedDestinationCostWei,"1000000000000000");
- assert.equal(r.quotedServiceFeeWei,"32500000000000000000"); // $2.50 *1.3 / $0.0001
+ assert.equal(r.quotedServiceFeeWei,"32500000000000000000000"); // $2.50 *1.3 / $0.0001
 });
 test("quote rejects suspicious zero gas, extremely large gas cap or arbitrary risk margin",()=>{
  for(const v of [
