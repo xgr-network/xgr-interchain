@@ -51,6 +51,7 @@ function sourceProvider(sends,overrides={}){
    const data=params[0]?.data?.slice(0,10);
    if(data===selector("warpRouter()"))return word(BigInt(srcRouter));
    if(data===selector("warpToken()"))return word(0);
+   if(data===selector("token()"))return word(0);
    if(data===selector("routeId()"))return routeId;
    if(data===selector("destinationDomain()"))return word(8453);
    if(data===selector("quoteILN(uint32,bytes32,uint256)")){

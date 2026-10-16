@@ -44,3 +44,17 @@ test("incomplete or forged deployment documentation never unlocks transfers",()=
  ];
  for(const fn of mutate){const c=catalog();fn(c);assert.ok(deployedRoutes(c).length<2);}
 });
+
+test("representation records distinguish underlying collateral from the synthetic Router",()=>{
+ const c=catalog(),routes=deployedRoutes(c);
+ const collateral=routes.find(r=>r.source==="xgrchain");
+ assert.equal(collateral.sourceRouterType,"nativeRouter");
+ const wrapped=routes.find(r=>r.source==="base");
+ assert.equal(wrapped.sourceRouterType,"syntheticRouter");
+ assert.equal(wrapped.sourceToken,wrapped.sourceRouter);
+ const token=c.assets.ABC.deployment.representations.find(r=>r.chain==="xgrchain");
+ token.component="collateralRouter";
+ const corrected=deployedRoutes(c).find(r=>r.source==="xgrchain");
+ assert.equal(corrected.sourceRouterType,"collateralRouter");
+ assert.equal(corrected.sourceToken,null);
+});

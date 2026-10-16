@@ -3,6 +3,7 @@
 // transfer state. No browser WAL, localStorage, hidden relayer key or replay.
 import {selector} from "./keccak.js";
 import {deployedRoutes} from "./route-availability.js";
+import {verifiedSourceToken} from "./source-token.js";
 import {publicRead,findWalletSourceTx} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
@@ -72,13 +73,14 @@ const readAddress=(data)=>{
  return "0x"+data.slice(-40).toLowerCase();
 };
 async function verifyGateway(provider,route,domain){
- const methods=["warpRouter()","warpToken()","routeId()","destinationDomain()"];
- const [router,token,routeId,outDomain]=await Promise.all(methods.map(sig=>
+ const methods=["warpRouter()","routeId()","destinationDomain()"];
+ const [router,routeId,outDomain]=await Promise.all(methods.map(sig=>
   request(provider,"eth_call",[{to:route.gateway,data:selector(sig)},"latest"])));
  if(!eq(readAddress(router),route.sourceRouter)||
-    !eq(routeId,route.routeId)||BigInt(outDomain)!==BigInt(domain)||
-    !eq(readAddress(token),route.sourceToken||"0x"+"0".repeat(40)))
+    !eq(routeId,route.routeId)||BigInt(outDomain)!==BigInt(domain))
   throw Error("On-chain Gateway bindings differ from documented route; no wallet transaction sent");
+ return verifiedSourceToken(route,(to,data)=>
+  request(provider,"eth_call",[{to,data},"latest"]));
 }
 async function sourceGasAffordable(provider,account,price){
  const [nativeBalance,gasPrice]=await Promise.all([
@@ -136,19 +138,19 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
  await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
- await verifyGateway(provider,route,dst.domainId);
+ const sourceToken=await verifyGateway(provider,route,dst.domainId);
  const quoteData=await request(provider,"eth_call",[{to:route.gateway,
   from:account,data:quoteCalldata(dst.domainId,account,units)},"latest"]);
  const quote=unpackQuote(quoteData);
- if(route.sourceToken){
+ if(sourceToken){
   if(quote.tokenAmount!==units)throw Error("Unexpected ERC-20 token debit");
-  const balance=await request(provider,"eth_call",[{to:route.sourceToken,
+  const balance=await request(provider,"eth_call",[{to:sourceToken,
    data:selector("balanceOf(address)")+addrWord(account)},"latest"]);
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
-  const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
+  const allowance=await request(provider,"eth_call",[{to:sourceToken,
    data:selector("allowance(address,address)")+addrWord(account)+addrWord(route.gateway)},"latest"]);
   if(BigInt(allowance)<units){
-   const approve={from:account,to:route.sourceToken,value:"0x0",
+   const approve={from:account,to:sourceToken,value:"0x0",
     data:selector("approve(address,uint256)")+addrWord(route.gateway)+word(units)};
    const gas=await request(provider,"eth_estimateGas",[approve]);
    const cash=await sourceGasAffordable(provider,account);
@@ -160,7 +162,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    const approvalReceipt=await waitForWalletReceipt(provider,approvalHash);
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
    if(approvalReceipt.status!=="0x1")throw Error("Token approval failed. No tokens were bridged");
-   const confirmed=await request(provider,"eth_call",[{to:route.sourceToken,
+   const confirmed=await request(provider,"eth_call",[{to:sourceToken,
     data:selector("allowance(address,address)")+addrWord(account)+addrWord(route.gateway)},"latest"]);
    if(BigInt(confirmed)<units)throw Error("Confirmed approval is insufficient for transfer");
   }
