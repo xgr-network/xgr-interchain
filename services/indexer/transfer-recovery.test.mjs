@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -29,14 +29,15 @@ function fixture(){
      routeId:hash("d"),components:{gateway,feeVault}}],
     receiptPaths:[...representations.map(r=>r.receiptPath),gateway.receiptPath,feeVault.receiptPath]}}}};
 }
-function recovered(messageId){return {status:"READY_UNSIGNED_CALL",messageId,route:"xgr_to_base",
+function recovered(messageId){return {status:"READY_UNSIGNED_CALL",messageId,
+ route:ilnValidatorRouteName(1643,8453,hash("d")),
  destinationChainId:"8453",to:addr("3"),value:"0x0",data:selector("process(bytes,bytes)")+"0".repeat(256)};}
 test("resolve proof script only from canonical deployed route and configured chain URLs",()=>{
  const c=fixture(),ref=resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC");
  assert.equal(ref.env.ORIGIN_ILN_GATEWAY,addr("9"));
  assert.equal(ref.env.DESTINATION_MAILBOX,addr("3"));
  assert.equal(ref.env.ORIGIN_MAILBOX,addr("3"));
- assert.equal(ref.env.ATTESTATION_ROUTE,"xgr_to_base");
+ assert.equal(ref.env.ATTESTATION_ROUTE, "iln_1643_8453_"+("d".repeat(64)));
  assert.throws(()=>resolveRecoveryRoute(c,"not_real",hash("1"),"ABC"),/deployed route/);
  assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base","bad","ABC"),/Invalid/);
  c.infrastructure.base.present=false;
@@ -94,4 +95,31 @@ test("structured JSON-RPC error diagnostics retain nested quotes and exact RPC c
  assert.equal(value.code,"PROOF_RPC_METHOD_UNAVAILABLE");
  assert.equal(value.stage,"request-validator-quorum");
  assert.match(value.detail,/xgr_requestILNQuorum/);
+});
+
+test("ILN validator route identity is derived from immutable domains and route ID, not an ENV alias",()=>{
+ const forward=ilnValidatorRouteName(1643,8453,hash("d"));
+ const backward=ilnValidatorRouteName(8453,1643,hash("d"));
+ assert.equal(forward,"iln_1643_8453_"+("d".repeat(64)));
+ assert.equal(backward,"iln_8453_1643_"+("d".repeat(64)));
+ assert.notEqual(forward,backward);
+ assert.throws(()=>ilnValidatorRouteName(1643,8453,"xgr_to_base"),/Invalid canonical/);
+ assert.throws(()=>ilnValidatorRouteName(1643,8453,hash("0")) ,/Invalid canonical/);
+ assert.throws(()=>ilnValidatorRouteName(0,8453,hash("d")),/Invalid canonical/);
+ assert.throws(()=>ilnValidatorRouteName(1643,NaN,hash("d")),/Invalid canonical/);
+});
+test("thousands of on-chain token routes require zero additions to node ENV",()=>{
+ const names=new Set();
+ for(let i=1;i<=2000;i++){
+  const routeId="0x"+i.toString(16).padStart(64,"0");
+  const name=ilnValidatorRouteName(1643,8453,routeId);
+  assert.match(name,/^iln_1643_8453_[a-f0-9]{64}$/);
+  names.add(name);
+ }
+ assert.equal(names.size,2000);
+});
+test("rejects externally named proof routes even with otherwise plausible destination calldata",()=>{
+ const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC");
+ const spoofed={...recovered(hash("2")),route:"xgr_to_base"};
+ assert.throws(()=>validateUnsignedRecovery(spoofed,conf),/does not match/);
 });

@@ -11,6 +11,16 @@ const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const processSelector=selector("process(bytes,bytes)");
+// The XGR node discovers RouteAdded events from the source ILN Registry and
+// registers each route under iln_<sourceDomain>_<destinationDomain>_<routeId>.
+// Do not require any per-token route ENV or a manually deployed route alias.
+export function ilnValidatorRouteName(sourceDomain,destinationDomain,routeId){
+ if(!Number.isSafeInteger(sourceDomain)||sourceDomain<=0||sourceDomain>0xffffffff||
+    !Number.isSafeInteger(destinationDomain)||destinationDomain<=0||destinationDomain>0xffffffff||
+    !HASH.test(routeId||"")||/^0x0{64}$/i.test(routeId))
+  throw Error("Invalid canonical ILN route identity");
+ return "iln_"+sourceDomain+"_"+destinationDomain+"_"+routeId.slice(2).toLowerCase();
+}
 export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxHash=null){
  if(!HASH.test(messageId||"")||!/^[-a-z0-9_]{1,72}$/.test(routeName||"")||
     !/^[a-zA-Z0-9_-]{1,48}$/.test(asset||""))
@@ -36,7 +46,7 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
   ...(sourceTxHash?{SOURCE_TX_HASH:sourceTxHash.toLowerCase()}:{}),
   ATTESTATION_RPC_URL:catalog.chains.xgrchain.rpcUrls?.[0],
   ROUTE_ID:route.routeId,
-  ATTESTATION_ROUTE:route.name,
+  ATTESTATION_ROUTE:ilnValidatorRouteName(src.domainId,dst.domainId,route.routeId),
   DESTINATION_RPC_URL:dst.rpcUrls?.[0],
   DESTINATION_CHAIN_ID:String(dst.chainId),
   DESTINATION_DOMAIN:String(dst.domainId),
@@ -61,7 +71,7 @@ export function validateUnsignedRecovery(result,configured){
   throw Error("Unexpected canonical recover-iln result");
  if(!same(result.messageId,configured.messageId))throw Error("Recovery message mismatch");
  if(result.status==="READY_UNSIGNED_CALL"){
-  if(!same(result.route,configured.route.name)||!same(result.to,configured.destinationMailbox)||
+  if(!same(result.route,configured.env.ATTESTATION_ROUTE)||!same(result.to,configured.destinationMailbox)||
      BigInt(result.destinationChainId??0)!==BigInt(configured.destinationChainId)||
      result.value!=="0x0"||typeof result.data!=="string"||
      !/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(result.data)||
