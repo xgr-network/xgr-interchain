@@ -116,6 +116,36 @@ source-registry validator fee per XGR-source hop, equal to
 `100000000000000000` Wei. Spoke registries use their own native
 currency; later fee changes require BLS validator quorum.
 
+## October 2026 Interchain Fee tax-pricing correction (draft PR #136)
+
+**Current development target, not yet released:** the first user-signed
+source-chain transaction pays the existing canonical validator fee and ONE
+separate GmbH Interchain Fee in source-native currency. No fixed UI surcharge.
+For a German 19% VATable UI service, the **gross** Interchain Fee uses:
+
+`estimated downstream cost (in source-native wei) x 1.10 x 1.19 = 1.309 x cost`.
+
+The 10% is a net operating margin, followed by 19% VAT on the **whole**
+net charge, not only on the margin. The off-chain pricing module uses integer
+ceil rounding and separately records estimated cost, margin, net fee, VAT
+and payable gross fee. Validator FeeVault distributions stay entirely outside
+this additional UI-fee calculation.
+
+**Fail closed:** source chain does not establish customer VAT residence,
+legal status or applicable rate. No signed commercial quote may be produced
+without a verified, server-derived tax policy. The current quote server does
+not yet provide a trustworthy per-user tax determination, so it MUST NOT
+enable production charging. 19% is not globally applicable to every wallet.
+The GmbH must account for taxable revenue separately, with auditable
+conversion rates, country evidence and VAT accounting. Gas-token sponsorship,
+if available, is an independent optional action; this fee alone gives no
+entitlement to a fixed gas-token quantity.
+
+**Known incomplete gates:** calculating the entire two-hop journey's
+future XGR validator fee and destination gas, four user-signed transaction
+UI/recovery, sponsorship status, and VAT policy integration remain required.
+No merge or deployment before all security and fee-economics checks pass.
+
 ## Optional XITA GmbH Managed Relay (one source transaction)
 
 This is an OPTIONAL commercial UX/execution layer, NOT the permissionless
