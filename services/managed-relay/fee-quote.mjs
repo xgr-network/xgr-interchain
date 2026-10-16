@@ -1,6 +1,6 @@
 // Optional GmbH Interchain Fee pricing. NOT a consensus or mint price oracle.
-// The source-native quoted fee is GROSS: estimated costs + 10% net margin + VAT.
-// VAT is owed from the full NET service fee, not merely from the margin.
+// The source-native quoted fee is a UNIFORM GROSS price: cost x 1.10 x 1.27.
+// Actual VAT is extracted after collection; changes do not alter signed gross.
 // XGR's CoinGecko ID is exactly "xgr" (operator's market maker).
 export const COINGECKO_GAS_COIN_IDS = Object.freeze({
  xgrchain:"xgr",
@@ -28,39 +28,62 @@ export function usdPrice12(value){
  if(n<=0n||n>1000000000n*10n**12n)throw Error("CoinGecko USD price invalid");
  return n;
 }
-export const DEFAULT_INTERCHAIN_MARKUP_BPS=1000n; // 10% over estimated net costs.
-export const GERMAN_STANDARD_VAT_BPS=1900n; // 19%, NOT a universal customer rate.
+export const DEFAULT_INTERCHAIN_MARKUP_BPS=1000n; // 10% nominal net margin over estimated cost.
+export const GERMAN_STANDARD_VAT_BPS=1900n;
+export const EU_STANDARD_VAT_PRICE_CAP_BPS=2700n; // 2026 EU max: Hungary (not global maximum).
 const BPS=10000n;
-export function costInSourceWei({
- sourcePriceUsd,destinationPriceUsd,destinationGasPriceWei,
- destinationGasUnits,markupBps=DEFAULT_INTERCHAIN_MARKUP_BPS,vatBps
+/**
+ * Fixed source-native GROSS quote (independent of customer's accounting VAT).
+ * Price floor = estimated costs * 1.10 * 1.27 = 1.397, rounded up in wei.
+ * Reverse-extract actual VAT from this exact customer-paid gross amount.
+ * This keeps the consumer quote unchanged across EU VAT jurisdictions and
+ * leaves >=10% net margin if actual VAT <= 27%. No contract redeployment
+ * is necessary when the VAT accounting policy changes.
+ */
+export function priceInterchainCostWei({
+ estimatedCostSourceWei,markupBps=DEFAULT_INTERCHAIN_MARKUP_BPS,
+ priceVatCapBps=EU_STANDARD_VAT_PRICE_CAP_BPS,vatBps
 }){
- const src=usdPrice12(sourcePriceUsd),dst=usdPrice12(destinationPriceUsd);
- const gas=BigInt(destinationGasPriceWei),units=BigInt(destinationGasUnits);
- const markup=BigInt(markupBps);
- // Deliberately NO default VAT policy: customer place/status must be resolved
- // by the service, not chosen by a browser or guessed from the source chain.
  if(vatBps===undefined||vatBps===null)throw Error("VAT policy unresolved");
- const vatRate=BigInt(vatBps);
- if(gas<=0n||units<21000n||units>5000000n||
-   markup!==DEFAULT_INTERCHAIN_MARKUP_BPS||vatRate<0n||vatRate>3000n)
-  throw Error("Unsafe gas or VAT quote");
- const cost=gas*units;
- const estimatedCostSourceWei=ceilDiv(cost*dst,src);
- const marginWei=ceilDiv(estimatedCostSourceWei*markup,BPS);
- const netInterchainFeeWei=estimatedCostSourceWei+marginWei;
- const vatWei=ceilDiv(netInterchainFeeWei*vatRate,BPS);
- const grossInterchainFeeWei=netInterchainFeeWei+vatWei;
+ const cost=BigInt(estimatedCostSourceWei),markup=BigInt(markupBps),
+  ceiling=BigInt(priceVatCapBps),vatRate=BigInt(vatBps);
+ if(cost<=0n||markup!==DEFAULT_INTERCHAIN_MARKUP_BPS||
+   ceiling!==EU_STANDARD_VAT_PRICE_CAP_BPS||
+   vatRate<0n||vatRate>ceiling)throw Error("Unsafe pricing or VAT quote");
+ const minNetAtCapWei=ceilDiv(cost*(BPS+markup),BPS);
+ const grossInterchainFeeWei=ceilDiv(minNetAtCapWei*(BPS+ceiling),BPS);
+ // VAT-inclusive gross must be the ONLY signed/on-chain customer price.
+ // Round net DOWN so net + VAT remains exactly equal to customer gross.
+ const netInterchainFeeWei=(grossInterchainFeeWei*BPS)/(BPS+vatRate);
+ const vatWei=grossInterchainFeeWei-netInterchainFeeWei;
+ const marginWei=netInterchainFeeWei-cost;
+ if(marginWei<0n)throw Error("Quoted margin negative after VAT");
  return {
-  estimatedDestinationCostWei:cost.toString(),
-  estimatedCostSourceWei:estimatedCostSourceWei.toString(),
+  estimatedCostSourceWei:cost.toString(),
+  minimumNetAtVatCapWei:minNetAtCapWei.toString(),
   marginWei:marginWei.toString(),
   netInterchainFeeWei:netInterchainFeeWei.toString(),
   vatWei:vatWei.toString(),
   grossInterchainFeeWei:grossInterchainFeeWei.toString(),
-  quotedServiceFeeWei:grossInterchainFeeWei.toString(), // Signed, payable GROSS.
-  markupBps:markup.toString(),vatRateBps:vatRate.toString(),
-  sourcePrice12:src.toString(),destinationPrice12:dst.toString(),
+  quotedServiceFeeWei:grossInterchainFeeWei.toString(),
+  markupBps:markup.toString(),priceVatCapBps:ceiling.toString(),
+  vatRateBps:vatRate.toString()
+ };
+}
+export function costInSourceWei({
+ sourcePriceUsd,destinationPriceUsd,destinationGasPriceWei,
+ destinationGasUnits,vatBps
+}){
+ const src=usdPrice12(sourcePriceUsd),dst=usdPrice12(destinationPriceUsd);
+ const gas=BigInt(destinationGasPriceWei),units=BigInt(destinationGasUnits);
+ if(gas<=0n||units<21000n||units>5000000n)
+  throw Error("Unsafe destination gas quote");
+ const cost=gas*units;
+ const estimatedCostSourceWei=ceilDiv(cost*dst,src);
+ return {
+  estimatedDestinationCostWei:cost.toString(),
+  ...priceInterchainCostWei({estimatedCostSourceWei,vatBps}),
+  sourcePrice12:src.toString(),destinationPrice12:dst.toString()
  };
 }
 export function verifiedCoinGeckoPrices(data,source,destination,{now=Date.now(),maxAgeSec=240}={}){
