@@ -66,7 +66,7 @@ contract XITAExecutionGatewayTest is Test {
             bridgeValueWei: bridgeValue,
             relayerFeeWei: FEE,
             nonce: nonce,
-            deadline: uint64(block.timestamp + 120)
+            issuedAt: uint64(block.timestamp)
         });
     }
 
@@ -174,17 +174,62 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
     }
 
-    function testExpiredQuoteAndFarFutureQuoteFailClosed() public {
-        XITAExecutionGateway.Quote memory q = _quote(12);
-        bytes memory signed = _signature(q, RELAYER_KEY);
-        vm.warp(uint256(q.deadline) + 1);
+    function testSignedIssueTimeBoundariesAndFutureTimestampsFailClosed() public {
+        XITAExecutionGateway.Quote memory atBoundary = _quote(12);
+        bytes memory signature = _signature(atBoundary, RELAYER_KEY);
+        vm.warp(uint256(atBoundary.issuedAt) + 90);
+        _mustRevertAny(atBoundary,bytes(""),atBoundary.bridgeValueWei + atBoundary.relayerFeeWei);
+        _execute(atBoundary); // Expiry is inclusive; 90 seconds is still within policy.
+        XITAExecutionGateway.Quote memory expired = _quote(13);
+        bytes memory expiredSignature = _signature(expired, RELAYER_KEY);
+        vm.warp(uint256(expired.issuedAt) + 91);
+        _mustRevert(expired,expiredSignature,expired.bridgeValueWei + expired.relayerFeeWei,
+            XITAExecutionGateway.QuoteExpired.selector);
+        XITAExecutionGateway.Quote memory future = _quote(14);
+        future.issuedAt = uint64(block.timestamp + 1);
+        _mustRevert(future,_signature(future,RELAYER_KEY),
+            future.bridgeValueWei + future.relayerFeeWei,
+            XITAExecutionGateway.QuoteExpired.selector);
+        future.issuedAt = 0;
+        _mustRevert(future,_signature(future,RELAYER_KEY),
+            future.bridgeValueWei + future.relayerFeeWei,
+            XITAExecutionGateway.QuoteExpired.selector);
+    }
+
+    function testOwnerCanAdjustLifetimeButNeverExceedNinetySeconds() public {
+        assertEq(managed.quoteLifetimeSeconds(),90);
+        assertEq(managed.MAX_QUOTE_LIFETIME(),90);
+        vm.expectRevert(XITAExecutionGateway.UnauthorizedRelayer.selector);
+        vm.prank(USER);
+        managed.setQuoteLifetimeSeconds(30);
+        vm.startPrank(relayer);
+        vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
+        managed.setQuoteLifetimeSeconds(0);
+        vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
+        managed.setQuoteLifetimeSeconds(91);
+        managed.setQuoteLifetimeSeconds(30);
+        vm.stopPrank();
+        assertEq(managed.quoteLifetimeSeconds(),30);
+        XITAExecutionGateway.Quote memory q = _quote(31);
+        bytes memory signed = _signature(q,RELAYER_KEY);
+        vm.warp(uint256(q.issuedAt) + 31);
         _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
-        q = _quote(13);
-        q.deadline = uint64(block.timestamp + 301);
-        _mustRevert(q,_signature(q,RELAYER_KEY),
-            q.bridgeValueWei + q.relayerFeeWei,
+        vm.prank(relayer);
+        managed.setQuoteLifetimeSeconds(90);
+        assertEq(managed.quoteLifetimeSeconds(),90);
+        _execute(q); // Within the hard 90s bound under the restored policy.
+    }
+
+    function testTamperedIssuedAtDoesNotAuthorizeTransfer() public {
+        XITAExecutionGateway.Quote memory q = _quote(77);
+        bytes memory signed = _signature(q, RELAYER_KEY);
+        q.issuedAt += 1; // Future times are always invalid, before signature checks.
+        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
+        vm.warp(uint256(q.issuedAt) + 1);
+        _mustRevert(q,signed,q.bridgeValueWei + q.relayerFeeWei,
+            XITAExecutionGateway.InvalidSignature.selector);
     }
 
     function testNonceReplayAndCrossAdapterSignatureAreRejected() public {
@@ -223,7 +268,7 @@ contract XITAExecutionGatewayTest is Test {
             payer: USER, gateway: address(nativeGateway), routeId: nativeRoute,
             destinationDomain: TARGET, recipient:RECIPIENT, amount:AMOUNT,
             bridgeValueWei:bridgeValue, relayerFeeWei:FEE, nonce:99,
-            deadline:uint64(block.timestamp + 120)
+            issuedAt:uint64(block.timestamp)
         });
         bytes memory nativeSignature = _signature(q,RELAYER_KEY);
         vm.prank(USER);
