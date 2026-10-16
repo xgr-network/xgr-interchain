@@ -51,7 +51,7 @@ export async function buildManagedQuote({
  if(!Number.isSafeInteger(finalDomain)||finalDomain<1)invalid();
  const execution=getAddress(executionAddress);
  const owner=await readExecutionOwner({source,executionAddress:execution});
- if(!eq(owner,signer?.address))throw Error("Configured relayer key is not contract owner");
+ if(!eq(owner,signer?.address))throw Error("Configured quote signing key does not match deployed contract");
  const [bridge,gas,priceData,onChainLifetime]=await Promise.all([
   readGatewayQuote({source,route,destinationDomain:dst.domainId,
    recipient:zeroPadValue(recipientAddress,32),amount}),
@@ -87,6 +87,9 @@ export async function buildManagedQuote({
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
   destinationDomain:dst.domainId,
   recipient:zeroPadValue(recipientAddress,32),
+  finalDestinationDomain:finalDomain,
+  finalRecipient:zeroPadValue(recipientAddress,32),
+  onwardRouteId:second?second[0].routeId:"0x"+"00".repeat(32),
   amount:amount.toString(),bridgeValueWei:bridgeValue.toString(),
   interchainFeeWei:interchainFeeWei.toString(),nonce:nonce().toString(),
   issuedAt
