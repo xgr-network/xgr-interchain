@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -122,4 +122,15 @@ test("rejects externally named proof routes even with otherwise plausible destin
  const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC");
  const spoofed={...recovered(hash("2")),route:"xgr_to_base"};
  assert.throws(()=>validateUnsignedRecovery(spoofed,conf),/does not match/);
+});
+
+test("proof builder Base RPC candidates follow canonical approved catalog, never per-token ENV",()=>{
+ const c=fixture();
+ c.chains.base.rpcUrls=["https://gateway.tenderly.co/public/base",
+   "https://base.gateway.tenderly.co"];
+ const conf=resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC");
+ assert.equal(conf.baseRpcUrls.length,2);
+ assert.deepEqual(recoveryBaseUrls(conf,{baseUrls:""}),c.chains.base.rpcUrls);
+ assert.equal(conf.env.DESTINATION_CHAIN_ID,"8453");
+ assert.equal(conf.env.DESTINATION_RPC_URL,c.chains.base.rpcUrls[0]);
 });

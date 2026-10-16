@@ -6,6 +6,8 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {selector} from "../../apps/web/keccak.js";
+import {probe as probeBaseArchive} from "../../tools/probe-base-rpc.mjs";
+import {rpcCandidates} from "./transfer-index.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -64,7 +66,8 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
   throw Error("Route missing safe canonical chain/RPC bindings");
  if(!HASH.test(route.routeId))throw Error("Invalid deployed route ID");
  return {route,messageId:messageId.toLowerCase(),destinationMailbox:dstCore.mailbox.address,
-  destinationChainId:dst.chainId,env:values};
+  destinationChainId:dst.chainId,env:values,
+  baseRpcUrls:catalog.chains.base?.rpcUrls||[]};
 }
 export function validateUnsignedRecovery(result,configured){
  if(!result||typeof result!=="object"||!["READY_UNSIGNED_CALL","PENDING","ALREADY_DELIVERED","FRESH_QUORUM_REQUIRED"].includes(result.status))
@@ -114,24 +117,67 @@ export function classifyRecoveryFailure(err,stderr=""){
   /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
-export function runRecoveryProcess(configured,{timeoutMs=45000}={}){
+// Select from canonical, archive-qualified Base endpoints only. The candidate
+// list is chain-scoped, not user-supplied, and never authorizes a source lock.
+export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+ return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
+}
+const baseStages=new Set([
+ "verify-chain-ids","destination-delivery","destination-ism-registry",
+ "source-receipt","merkle-proof","simulate-base-delivery","base-archive"
+]);
+async function runRecoveryAttempt(configured,timeoutMs){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
  return new Promise((yes,no)=>{
   execFile(process.execPath,[script,configured.messageId],{
    cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",
-    NODE_ENV:"production",...configured.env},maxBuffer:750000,timeout:timeoutMs,windowsHide:true,
+    NODE_ENV:"production",...configured.env},maxBuffer:750000,
+    timeout:timeoutMs,windowsHide:true,
   },(err,stdout,stderr)=>{
-   try{
-    // A nonzero exit (e.g. old quorum) may still carry a valid public
-    // result; accept only the strict canonical output schema.
-    yes(parseRecoveryCliOutput(stdout,configured));
-   }catch(e){
+   try{yes(parseRecoveryCliOutput(stdout,configured))}
+   catch(e){
     const failure=classifyRecoveryFailure(err||e,stderr);
     console.warn("XITA unsigned recovery failed",JSON.stringify({
       route:configured.route.name,messageId:configured.messageId,
-      reason:failure.code,stage:failure.stage,rpcCode:failure.rpcCode,detail:failure.detail}));
-    no(Object.assign(new Error("Unsigned destination proof unavailable"),{code:failure.code,stage:failure.stage}));
+      reason:failure.code,stage:failure.stage,rpcCode:failure.rpcCode,
+      detail:failure.detail
+    }));
+    no(Object.assign(new Error("Unsigned destination proof unavailable"),{
+      code:failure.code,stage:failure.stage
+    }));
    }
   });
+ });
+}
+export async function runRecoveryProcess(configured,{timeoutMs=45000,
+ archiveProbe=probeBaseArchive,fetcher=globalThis.fetch,
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+ const candidates=recoveryBaseUrls(configured,{baseUrls});
+ const deadline=Date.now()+timeoutMs;
+ let last=null;
+ for(let i=0;i<candidates.length;i++){
+  const url=candidates[i];
+  try{
+   if(deadline-Date.now()<6000)break;
+   const qualified=await archiveProbe(url,{fetcher,ms:6000});
+   if(!qualified?.ok)continue;
+   const env={...configured.env};
+   if(Number(env.ORIGIN_CHAIN_ID)===8453)env.ORIGIN_RPC_URL=url;
+   if(Number(env.DESTINATION_CHAIN_ID)===8453)env.DESTINATION_RPC_URL=url;
+   const current={...configured,env};
+   const remaining=Math.max(3000,deadline-Date.now()-2000);
+   // Bounded overall budget: allow a second qualified endpoint after a
+   // transient first-source failure without crossing Nginx's 60s timeout.
+   const attemptTimeout=i<candidates.length-1?Math.min(30000,remaining):remaining;
+   return await runRecoveryAttempt(current,attemptTimeout);
+  }catch(error){
+   last=error;
+   if(error.code!=="PROOF_RPC_UNAVAILABLE"||
+      !baseStages.has(error.stage)||i===candidates.length-1)
+    throw error;
+  }
+ }
+ throw last||Object.assign(new Error("Base historical RPC unavailable"),{
+  code:"PROOF_RPC_UNAVAILABLE",stage:"base-archive"
  });
 }
