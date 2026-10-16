@@ -3,8 +3,8 @@
 import {readFileSync} from "node:fs";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {dirname,resolve} from "node:path";
-import {findWalletSourceTx} from "../apps/web/wallet-transfers.js";
-import {canonicalRpc} from "../services/indexer/transfer-index.mjs";
+import {findWalletSourceTx,configuredGatewayRoutes} from "../apps/web/wallet-transfers.js";
+import {canonicalRpc,checkedDelivery} from "../services/indexer/transfer-index.mjs";
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
 export function roundtripArguments(args){
  if(!Array.isArray(args)||![2,4].includes(args.length))
@@ -20,7 +20,9 @@ export function roundtripArguments(args){
    targets[1].sourceChain!=="base"))throw Error("Expected XGRChain -> Base -> XGRChain");
  return targets;
 }
-export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRpc(),evidenceLookup=findWalletSourceTx}){
+export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRpc(),
+ evidenceLookup=findWalletSourceTx,deliveryLookup=checkedDelivery,
+ routeLookup=configuredGatewayRoutes}){
  const chain=catalog?.chains?.[sourceChain];
  if(!chain||!HASH.test(txHash||""))throw Error("Invalid canonical source transfer");
  const tx=await rpc(chain,"eth_getTransactionByHash",[txHash]);
@@ -36,12 +38,23 @@ export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRp
   evidence.account?.toLowerCase()!==tx.from.toLowerCase()||
   !["xgrchain","base"].includes(evidence.destinationChain))
    throw Error("Receipt identity mismatch");
+ let finality={delivered:null};
+ if(evidence.confirmed===true){
+  if(!HASH.test(evidence.messageId||""))throw Error("Confirmed source missing canonical Message ID");
+  const routes=routeLookup(catalog).filter(r=>
+   r.sourceChain===sourceChain&&r.destinationChain===evidence.destinationChain&&
+   r.routeName===evidence.routeName&&r.routeId===evidence.routeId);
+  if(routes.length!==1)throw Error("Source route is no longer uniquely documented");
+  finality=await deliveryLookup({route:routes[0],messageId:evidence.messageId,rpc});
+ }
  return {sourceChain,sourceTxHash:txHash.toLowerCase(),account:evidence.account,
   route:evidence.routeName,routeId:evidence.routeId,asset:evidence.asset,
   destinationChain:evidence.destinationChain,messageId:evidence.messageId,
   status:evidence.status,sourceConfirmed:evidence.confirmed===true,
-  destinationDelivered:evidence.delivered===true,
-  destinationUnknown:evidence.delivered===null,validatorFeeWei:evidence.validatorFeeWei??null};
+  destinationDelivered:finality.delivered===true,
+  destinationUnknown:finality.delivered===null,
+  destinationFinalizedHead:finality.finalizedHead??null,
+  validatorFeeWei:evidence.validatorFeeWei??null};
 }
 export function classifyRoundtrip(legs){
  if(!legs.length||legs.some(x=>x.asset!=="XGR"))return "INVALID";
@@ -50,6 +63,8 @@ export function classifyRoundtrip(legs){
   legs[0].account.toLowerCase()!==legs[1].account.toLowerCase()))return "INVALID";
  if(legs.length===2&&legs.every(x=>x.sourceConfirmed&&x.destinationDelivered))
   return "ROUNDTRIP_DELIVERED";
+ if(legs.length===2&&legs[0].sourceConfirmed&&legs[0].destinationDelivered)
+  return legs[1].sourceConfirmed?"RETURN_DELIVERY_PENDING":"RETURN_SOURCE_PENDING";
  if(legs[0].sourceConfirmed&&legs[0].destinationDelivered)return "FORWARD_DELIVERED";
  if(legs[0].sourceConfirmed)return "SOURCE_LOCK_CONFIRMED_DELIVERY_PENDING";
  return "SOURCE_NOT_CONFIRMED";
