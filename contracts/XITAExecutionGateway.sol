@@ -19,14 +19,13 @@ interface IXITAExistingGateway {
         external payable returns (bytes32 messageId);
 }
 
-/// @notice Optional source-chain financing adapter for XITA GmbH managed delivery.
+/// @notice Optional source-chain UI/interchain fee adapter. User signs every transfer.
 /// @dev ONE instance per source chain, never per route or token. The underlying
 ///      permissionless ILN Gateway, Validator FeeVault, Mailbox and ISM are unchanged.
-///      Only the immutable RELAYER can sign fee quotes and withdraw service fees.
-///      This is a paid UI/operator service, NOT protocol permission or custody.
-///      Relayer fee is paid in native source coin, independent of bridged token.
-///      Owner may withdraw before destination delivery: do not present it as
-///      escrow guaranteeing delivery or a cryptographic refund obligation.
+///      The pricing signer cannot execute transfers for the user. Fees are owed
+///      to a separate immutable GmbH interchain-fee beneficiary. There is no
+///      promise of gas sponsorship and no privilege over ILN delivery.
+///      All downstream Mailbox.process / Gateway.bridge calls remain user-led.
 contract XITAExecutionGateway is EIP712 {
     using SafeERC20 for IERC20;
 
@@ -36,9 +35,12 @@ contract XITAExecutionGateway is EIP712 {
         bytes32 routeId;
         uint32 destinationDomain;
         bytes32 recipient;
+        uint32 finalDestinationDomain;
+        bytes32 finalRecipient;
+        bytes32 onwardRouteId;
         uint256 amount;
         uint256 bridgeValueWei;
-        uint256 relayerFeeWei;
+        uint256 interchainFeeWei;
         uint256 nonce;
         uint64 issuedAt;
     }
@@ -46,23 +48,24 @@ contract XITAExecutionGateway is EIP712 {
     struct FeeReceipt {
         address payer;
         address gateway;
-        uint256 relayerFeeWei;
+        uint256 interchainFeeWei;
         bool exists;
         bool withdrawn;
     }
 
     bytes32 public constant QUOTE_TYPEHASH = keccak256(
-        "SponsoredQuote(address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 issuedAt)"
+        "SponsoredQuote(address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint32 finalDestinationDomain,bytes32 finalRecipient,bytes32 onwardRouteId,uint256 amount,uint256 bridgeValueWei,uint256 interchainFeeWei,uint256 nonce,uint64 issuedAt)"
     );
     uint256 public constant MAX_QUOTE_LIFETIME = 90;
 
-    address public immutable relayerOwner;
+    address public immutable relayerOwner; // EIP-712 PRICING signer only.
+    address payable public immutable interchainFeeRecipient; // Fixed GmbH payout.
     IXGRILNRegistry public immutable sourceRegistry;
     // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
     uint64 public quoteLifetimeSeconds = 90;
     mapping(address => mapping(uint256 => bool)) public nonceUsed;
     mapping(bytes32 => FeeReceipt) public feeReceipt;
-    uint256 public pendingServiceFeesWei;
+    uint256 public pendingInterchainFeesWei;
     uint256 private entered = 1;
 
     error InvalidConfiguration();
@@ -80,20 +83,23 @@ contract XITAExecutionGateway is EIP712 {
     error NativePayoutFailed();
     error ReentrantCall();
 
-    event ManagedDispatch(
+    event InterchainFeeCharged(
         bytes32 indexed messageId,
         address indexed payer,
         address indexed gateway,
         bytes32 routeId,
         uint32 destinationDomain,
         bytes32 recipient,
+        uint32 finalDestinationDomain,
+        bytes32 finalRecipient,
+        bytes32 onwardRouteId,
         uint256 amount,
         uint256 validatorFeeWei,
         uint256 bridgeNativeWei,
-        uint256 relayerFeeWei,
+        uint256 interchainFeeWei,
         uint256 quoteNonce
     );
-    event ServiceFeeWithdrawn(bytes32 indexed messageId, address indexed owner, uint256 amountWei);
+    event InterchainFeeWithdrawn(bytes32 indexed messageId, address indexed beneficiary, uint256 amountWei);
     event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
 
     modifier nonReentrant() {
@@ -103,12 +109,13 @@ contract XITAExecutionGateway is EIP712 {
         entered = 1;
     }
 
-    constructor(address registry_, address relayerOwner_) EIP712("XITA Managed Relay", "1") {
-        if (registry_ == address(0) || registry_.code.length == 0 || relayerOwner_ == address(0)) {
+    constructor(address registry_, address relayerOwner_, address payable feeRecipient_) EIP712("XITA Interchain Fee", "1") {
+        if (registry_ == address(0) || registry_.code.length == 0 || relayerOwner_ == address(0) || feeRecipient_ == address(0)) {
             revert InvalidConfiguration();
         }
         sourceRegistry = IXGRILNRegistry(registry_);
         relayerOwner = relayerOwner_;
+        interchainFeeRecipient = feeRecipient_;
     }
 
     function quoteDigest(Quote calldata q) external view returns (bytes32) {
@@ -128,12 +135,13 @@ contract XITAExecutionGateway is EIP712 {
     function _hashQuote(Quote calldata q) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             QUOTE_TYPEHASH, q.payer, q.gateway, q.routeId,
-            q.destinationDomain, q.recipient, q.amount, q.bridgeValueWei,
-            q.relayerFeeWei, q.nonce, q.issuedAt
+            q.destinationDomain, q.recipient, q.finalDestinationDomain,
+            q.finalRecipient, q.onwardRouteId, q.amount, q.bridgeValueWei,
+            q.interchainFeeWei, q.nonce, q.issuedAt
         ));
     }
 
-    /// @notice ONE wallet transaction for source lock/burn and native fees.
+    /// @notice ONE USER-signed wallet transaction for source lock/burn and native fees.
     /// @dev An ERC20 token movement may require an earlier user allowance,
     ///      but all validator and relay SERVICE FEES are native currency only.
     function execute(Quote calldata q, bytes calldata signature)
@@ -142,7 +150,16 @@ contract XITAExecutionGateway is EIP712 {
         if (q.payer != msg.sender || q.payer == address(0) ||
             q.gateway == address(0) || q.routeId == bytes32(0) ||
             q.destinationDomain == 0 || q.recipient == bytes32(0) ||
-            q.amount == 0) revert InvalidQuote();
+            q.finalDestinationDomain == 0 || q.finalRecipient == bytes32(0) ||
+            q.interchainFeeWei == 0 || q.amount == 0) revert InvalidQuote();
+        // The first hop may go to XGRChain for a separately user-signed
+        // second hop; no forwarder, GmbH mandate, or custody is granted.
+        if (q.finalDestinationDomain == q.destinationDomain) {
+            if (q.onwardRouteId != bytes32(0) || q.finalRecipient != q.recipient)
+                revert InvalidQuote();
+        } else if (q.destinationDomain != 1643 || q.onwardRouteId == bytes32(0)) {
+            revert InvalidQuote();
+        }
         // The owner-signed issuance timestamp is the only quote time field.
         // Reject a future issuance or a quote older than the live on-chain policy.
         if (q.issuedAt == 0 || uint256(q.issuedAt) > block.timestamp ||
@@ -167,7 +184,7 @@ contract XITAExecutionGateway is EIP712 {
         address token = gateway.warpToken();
         if (validatorFeeWei == 0 || bridgeNativeWei != q.bridgeValueWei ||
             tokenAmount != (token == address(0) ? 0 : q.amount)) revert InvalidBridgeValue();
-        if (msg.value != q.bridgeValueWei + q.relayerFeeWei) revert InvalidBridgeValue();
+        if (msg.value != q.bridgeValueWei + q.interchainFeeWei) revert InvalidBridgeValue();
 
         nonceUsed[q.payer][q.nonce] = true; // Reverts atomically on any subsequent failure.
         if (token != address(0)) {
@@ -193,29 +210,29 @@ contract XITAExecutionGateway is EIP712 {
         feeReceipt[messageId] = FeeReceipt({
             payer: msg.sender,
             gateway: q.gateway,
-            relayerFeeWei: q.relayerFeeWei,
+            interchainFeeWei: q.interchainFeeWei,
             exists: true,
             withdrawn: false
         });
-        pendingServiceFeesWei += q.relayerFeeWei;
-        emit ManagedDispatch(messageId, msg.sender, q.gateway, q.routeId,
-            q.destinationDomain, q.recipient, q.amount, validatorFeeWei,
-            bridgeNativeWei, q.relayerFeeWei, q.nonce);
+        pendingInterchainFeesWei += q.interchainFeeWei;
+        emit InterchainFeeCharged(messageId, msg.sender, q.gateway, q.routeId,
+            q.destinationDomain, q.recipient, q.finalDestinationDomain,
+            q.finalRecipient, q.onwardRouteId, q.amount, validatorFeeWei,
+            bridgeNativeWei, q.interchainFeeWei, q.nonce);
     }
 
-    /// @dev Service-fee trust boundary: the GmbH owner may withdraw its fee
-    ///      even if it did not deliver. Never confers ILN mint/validator rights.
+    /// @notice Anyone may settle earned fees, exclusively to the fixed payee.
+    /// @dev Cannot redirect payouts or interfere with public token delivery.
     function withdrawFee(bytes32 messageId) external nonReentrant {
-        if (msg.sender != relayerOwner) revert UnauthorizedRelayer();
         FeeReceipt storage receipt = feeReceipt[messageId];
-        if (!receipt.exists || receipt.withdrawn || receipt.relayerFeeWei == 0) {
+        if (!receipt.exists || receipt.withdrawn || receipt.interchainFeeWei == 0) {
             revert NoClaimableFee();
         }
         receipt.withdrawn = true;
-        uint256 amount = receipt.relayerFeeWei;
-        pendingServiceFeesWei -= amount;
-        (bool paid,) = payable(relayerOwner).call{value:amount}("");
+        uint256 amount = receipt.interchainFeeWei;
+        pendingInterchainFeesWei -= amount;
+        (bool paid,) = interchainFeeRecipient.call{value:amount}("");
         if (!paid) revert NativePayoutFailed();
-        emit ServiceFeeWithdrawn(messageId, relayerOwner, amount);
+        emit InterchainFeeWithdrawn(messageId, interchainFeeRecipient, amount);
     }
 }
