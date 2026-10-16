@@ -306,6 +306,32 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(address(managed).balance, FEE);
     }
 
+    function testBatchFeeClaimAlwaysPaysImmutableGmbHRecipient() public {
+        bytes32 first = _execute(_quote(920));
+        bytes32 second = _execute(_quote(921));
+        bytes32[] memory ids = new bytes32[](3);
+        ids[0] = first;
+        ids[1] = second;
+        ids[2] = first; // Duplicate may not double-pay.
+        uint256 before = relayer.balance;
+        vm.prank(USER);
+        managed.withdrawFees(ids);
+        assertEq(relayer.balance - before, 2 * FEE);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
+        assertEq(address(managed).balance, 0);
+        vm.expectRevert(XITAExecutionGateway.NoClaimableFee.selector);
+        managed.withdrawFees(ids);
+    }
+
+    function testBatchClaimRejectsEmptyOrOversizedList() public {
+        bytes32[] memory empty = new bytes32[](0);
+        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
+        managed.withdrawFees(empty);
+        bytes32[] memory many = new bytes32[](33);
+        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
+        managed.withdrawFees(many);
+    }
+
     function testTwoDifferentMessagesAccrueSeparatelyWithNoDoubleWithdrawal() public {
         bytes32 first = _execute(_quote(700));
         bytes32 second = _execute(_quote(701));
