@@ -49,13 +49,13 @@ const defaults=()=>({catalog:fixture(),request,executionAddress:address(44),
  validatorFeeWei:100000000000000000n,tokenAmount:0n}),
  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:100000000000000000n}),
  getCoinGeckoSnapshot:async()=>exchange(),
- clock:()=>now,nonce:()=>42n,gasUnits:1000000n,bufferBps:11000n});
+ clock:()=>now,nonce:()=>42n,gasUnits:1000000n,vatPolicy:{country:"DE",rateBps:1900,basis:"verified domestic consumer"}});
 test("produces cryptographically valid owner EIP712 binding both chains and exact native fees",async()=>{
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
  assert.equal(r.quote.bridgeValueWei,"1100000000000000000");
- assert.equal(r.quote.interchainFeeWei,"27500000000000000000000");
- assert.equal(r.sourceValueWei,"27501100000000000000000");
+ assert.equal(r.quote.interchainFeeWei,"32725000000000000000000");
+ assert.equal(r.sourceValueWei,"32726100000000000000000");
  assert.equal(r.quote.nonce,"42");
  assert.equal(r.quote.issuedAt,Math.floor(now/1000));
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
@@ -95,6 +95,9 @@ test("no unsupported source/destination or non-decimal raw amount",async()=>{
  ])await assert.rejects(()=>buildManagedQuote({...defaults(),request:{...request,...requestPatch}}));
 });
 
+test("tax jurisdiction must be resolved before any EIP-712 signature",async()=>{
+ await assert.rejects(()=>buildManagedQuote({...defaults(),vatPolicy:null}),/VAT policy unresolved/);
+});
 test("honors owner-configured on-chain TTL, never exceeds 90 seconds",async()=>{
  const r=await buildManagedQuote({...defaults(),readQuoteLifetime:async()=>30n});
  assert.equal(r.quote.issuedAt,Math.floor(now/1000));
