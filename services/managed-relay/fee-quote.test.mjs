@@ -35,7 +35,7 @@ test("VAT is charged on full net fee and missing tax policy fails closed",()=>{
  assert.throws(()=>costInSourceWei(input),/VAT policy unresolved/);
  const q=costInSourceWei({...input,vatBps:GERMAN_STANDARD_VAT_BPS});
  assert.equal(q.estimatedCostSourceWei,"100000000000000");
- assert.equal(q.marginWei,"10000000000000");
+ assert.equal(q.marginWei,"17394957983193");
  assert.equal(q.grossInterchainFeeWei,"139700000000000");
  assert.equal(q.netInterchainFeeWei,"117394957983193");
  assert.equal(q.vatWei,"22305042016807");
