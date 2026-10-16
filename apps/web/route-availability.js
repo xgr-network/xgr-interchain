@@ -40,7 +40,10 @@ export function deployedRouteRecord(catalog,asset,route){
   feeVault:instances[0].components.feeVault.address,
   sourceRouter:sourceReps[0].address,
   destinationRouter:destinationReps[0].address,
-  sourceToken:sourceReps[0].component==="nativeRouter"?null:sourceReps[0].address};
+  // Synthetic router IS the ERC-20. Collateral's underlying must be read
+  // from the deployed router on the verified source chain, not guessed here.
+  sourceRouterType:sourceReps[0].component,
+  sourceToken:sourceReps[0].component==="syntheticRouter"?sourceReps[0].address:null};
 }
 export function deployedRoutes(catalog){
  const result=[];
