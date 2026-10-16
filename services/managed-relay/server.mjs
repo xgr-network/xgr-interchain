@@ -13,7 +13,9 @@ const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf
 const EXECUTION_ABI=[
  "function relayerOwner() view returns (address)",
  "function sourceRegistry() view returns (address)",
- "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 deadline),bytes signature) payable returns (bytes32)"
+ "function quoteLifetimeSeconds() view returns (uint64)",
+ "function MAX_QUOTE_LIFETIME() view returns (uint256)",
+ "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 issuedAt),bytes signature) payable returns (bytes32)"
 ];
 const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
@@ -66,6 +68,12 @@ async function createQuote(request){
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
     throw Error("Managed relay does not bind canonical source ILN Registry");
    return owner;
+  },
+  readQuoteLifetime:async()=>{
+   const c=new Contract(executionAddress,EXECUTION_ABI,s);
+   const [lifetime,maximum]=await Promise.all([c.quoteLifetimeSeconds(),c.MAX_QUOTE_LIFETIME()]);
+   if(BigInt(maximum)!==90n)throw Error("Unexpected managed quote validity ceiling");
+   return lifetime;
   },
   readGatewayQuote:async({route,destinationDomain,recipient,amount})=>{
    const gateway=new Contract(route.gateway,BRIDGE_ABI,s);
