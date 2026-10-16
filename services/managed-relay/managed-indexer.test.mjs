@@ -26,12 +26,15 @@ test("single operator address scans all token routes using ONE filtered chain wi
  assert.equal((await readManagedIndex("/nonexistent/xita-operator-index-"+Date.now())).schema,
   "xita-managed-relay-index-v1");
  const catalog={chains:{xgrchain:{chainId:1643}}};
- // This test exercises source scanning in a fake provider; ethers Contract
- // feeReceipt is read in integration tests, so do not forge a paid result.
- await assert.rejects(()=>scanManagedWindow({catalog,index:{schema:"xita-managed-relay-index-v1",
-  cursors:{},operations:{}},sourceChain:"xgrchain",provider:rpc,
-  executionAddress:a("b"),deploymentBlock:50,
-  parseReceipt:()=>record}),/./);
+ const output=await scanManagedWindow({catalog,index:{
+  schema:"xita-managed-relay-index-v1",cursors:{},operations:{}},
+  sourceChain:"xgrchain",provider:rpc,executionAddress:a("b"),
+  deploymentBlock:50,parseReceipt:()=>record,
+  readFeeReceipt:async()=>({exists:true,payer:record.payer,
+   gateway:record.gateway,relayerFeeWei:22n})});
+ assert.equal(output.indexed,1);
+ assert.equal(output.index.cursors.xgrchain.to,199);
+ assert.equal(Object.keys(output.index.operations).length,1);
  assert.equal(rpc.calls.length,1);
  assert.equal(rpc.calls[0].address,a("b"));
  assert.deepEqual(rpc.calls[0].topics,[managedDispatchTopic]);

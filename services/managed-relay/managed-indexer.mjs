@@ -29,7 +29,11 @@ export async function persistManagedIndex(path,index){
 }
 export async function scanManagedWindow({catalog,index,sourceChain,provider,
  executionAddress,deploymentBlock,confirmations=12,limit=150,
- parseReceipt=verifiedManagedReceipt}){
+ parseReceipt=verifiedManagedReceipt,
+ readFeeReceipt=async(provider,address,messageId,blockNumber)=>{
+  const contract=new Contract(address,managedAbi,provider);
+  return contract.feeReceipt(messageId,{blockTag:blockNumber});
+ }}){
  if(!ADDRESS.test(executionAddress||"")||!Number.isSafeInteger(deploymentBlock)||
    deploymentBlock<1||!Number.isSafeInteger(confirmations)||confirmations<1||
    !Number.isSafeInteger(limit)||limit<1||limit>1000)
@@ -72,8 +76,7 @@ export async function scanManagedWindow({catalog,index,sourceChain,provider,
    throw Error("Source transaction receipt does not match canonical event");
   const proof=parseReceipt({catalog,sourceChain,executionAddress,receipt,
    messageId:log.topics[1]});
-  const adapter=new Contract(executionAddress,managedAbi,provider);
-  const paid=await adapter.feeReceipt(proof.messageId,{blockTag:receipt.blockNumber});
+  const paid=await readFeeReceipt(provider,executionAddress,proof.messageId,receipt.blockNumber);
   if(!paid.exists||id(paid.payer)!==proof.payer||
      id(paid.gateway)!==proof.gateway||
      BigInt(paid.relayerFeeWei)!==BigInt(proof.serviceFeeWei))
