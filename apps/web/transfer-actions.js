@@ -222,7 +222,14 @@ export async function resumeDelivery({catalog,account,record,provider,
   messageId:current.messageId,sourceTxHash:current.txHash});
  const prepared=await awaitUnsignedDeliveryProof({query,fetcher,
   attempts:waitForProof?9:1,onStatus,signal});
- if(prepared.status==="delivered")return {status:"delivered"};
+ if(prepared.status==="delivered"){
+  // HTTP/relayer status is not chain authority. A destination Mailbox state
+  // read must independently confirm delivery before closing the work item.
+  const verified=await findWalletSourceTx({catalog,account,
+   sourceChain:record.sourceChain,txHash:record.txHash,fetcher});
+  if(verified.status==="delivered")return {status:"delivered"};
+  return {status:"waiting",notice:"Delivery has not been independently confirmed on-chain."};
+ }
  if(prepared.status!=="ready")return prepared;
  const proof=prepared.proof;
  const route=requirePair(catalog,current.asset,current.sourceChain,current.destinationChain),
