@@ -9,8 +9,12 @@ export const MANAGED_QUOTE_TYPES=Object.freeze({
  SponsoredQuote:[
   {name:"payer",type:"address"},{name:"gateway",type:"address"},
   {name:"routeId",type:"bytes32"},{name:"destinationDomain",type:"uint32"},
-  {name:"recipient",type:"bytes32"},{name:"amount",type:"uint256"},
-  {name:"bridgeValueWei",type:"uint256"},{name:"relayerFeeWei",type:"uint256"},
+  {name:"recipient",type:"bytes32"},
+  {name:"finalDestinationDomain",type:"uint32"},
+  {name:"finalRecipient",type:"bytes32"},
+  {name:"onwardRouteId",type:"bytes32"},
+  {name:"amount",type:"uint256"},
+  {name:"bridgeValueWei",type:"uint256"},{name:"interchainFeeWei",type:"uint256"},
   {name:"nonce",type:"uint256"},{name:"issuedAt",type:"uint64"}
  ]
 });
@@ -23,20 +27,28 @@ const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,getDestinationGasQuote,getCoinGeckoSnapshot,
- clock=Date.now,nonce=NONCE,gasUnits=1200000n,bufferBps=13000n
+ clock=Date.now,nonce=NONCE,gasUnits=1200000n,bufferBps=11000n
 }){
- const {asset,source,destination,amountRaw,payer,recipient:payout}=request||{};
+ const {asset,source,destination,amountRaw,payer,recipient:payout,
+  firstHopDestination=null}=request||{};
  const payerAddress=ADDRESS.test(payer||"")?getAddress(payer):null;
  const recipientAddress=ADDRESS.test(payout||"")?getAddress(payout):null;
  if(!payerAddress||!recipientAddress||!ADDRESS.test(executionAddress||"")||
-   !["xgrchain","base"].includes(source)||!["xgrchain","base"].includes(destination)||
+   !catalog?.chains?.[source]||!catalog?.chains?.[destination]||
    source===destination)throw Error("Unsupported source, destination or wallet");
  const amount=toUint(amountRaw);
  if(amount >= 2n**256n)throw Error("Token amount overflow");
+ const firstDestination=firstHopDestination||(
+  source!=="xgrchain"&&destination!=="xgrchain"?"xgrchain":destination);
  const matching=deployedRoutes(catalog).filter(r=>
-  r.asset===asset&&r.source===source&&r.destination===destination);
+  r.asset===asset&&r.source===source&&r.destination===firstDestination);
  if(matching.length!==1)invalid();
- const route=matching[0],src=catalog.chains[source],dst=catalog.chains[destination];
+ const route=matching[0],src=catalog.chains[source],dst=catalog.chains[firstDestination];
+ const second=firstDestination===destination?null:deployedRoutes(catalog).filter(r=>
+  r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
+ if(second&&second.length!==1)invalid();
+ const finalDomain=catalog.chains[destination]?.domainId;
+ if(!Number.isSafeInteger(finalDomain)||finalDomain<1)invalid();
  const execution=getAddress(executionAddress);
  const owner=await readExecutionOwner({source,executionAddress:execution});
  if(!eq(owner,signer?.address))throw Error("Configured relayer key is not contract owner");
@@ -68,28 +80,28 @@ export async function buildManagedQuote({
  const fee=costInSourceWei({sourcePriceUsd:oracle.sourceUsd,
   destinationPriceUsd:oracle.destinationUsd,destinationGasPriceWei:gasPriceWei,
   destinationGasUnits:units,bufferBps});
- const relayerFeeWei=BigInt(fee.quotedServiceFeeWei);
- if(relayerFeeWei===0n)throw Error("Native source service fee unavailable");
+ const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
+ if(interchainFeeWei===0n)throw Error("Native source service fee unavailable");
  const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
   destinationDomain:dst.domainId,
   recipient:zeroPadValue(recipientAddress,32),
   amount:amount.toString(),bridgeValueWei:bridgeValue.toString(),
-  relayerFeeWei:relayerFeeWei.toString(),nonce:nonce().toString(),
+  interchainFeeWei:interchainFeeWei.toString(),nonce:nonce().toString(),
   issuedAt
  };
- const domain={name:"XITA Managed Relay",version:"1",chainId:src.chainId,
+ const domain={name:"XITA Interchain Fee",version:"1",chainId:src.chainId,
   verifyingContract:execution};
  const signature=await signer.signTypedData(domain,MANAGED_QUOTE_TYPES,q);
  if(!/^0x[0-9a-f]{130}$/i.test(signature))
   throw Error("Invalid operator quote signature");
  return {
-  status:"SIGNED_MANAGED_QUOTE",source,sourceChainId:src.chainId,destination,
+  status:"SIGNED_INTERCHAIN_FEE_QUOTE",source,sourceChainId:src.chainId,destination,
   asset,relayerOwner:owner,executionAddress:execution,
   quote:q,signature,expiresAt,quoteLifetimeSeconds:Number(ttl),
   feeCurrency:COINGECKO_GAS_COIN_IDS[source], // CoinGecko ID, not an ERC20
-  sourceValueWei:(bridgeValue+relayerFeeWei).toString(),
+  sourceValueWei:(bridgeValue+interchainFeeWei).toString(),
   pricing:{sourceNativeCoinGeckoId:oracle.sourceId,
    destinationNativeCoinGeckoId:oracle.destinationId,
    sourceNativeUsd:oracle.sourceUsd,destinationNativeUsd:oracle.destinationUsd,
