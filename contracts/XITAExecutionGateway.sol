@@ -40,7 +40,7 @@ contract XITAExecutionGateway is EIP712 {
         uint256 bridgeValueWei;
         uint256 relayerFeeWei;
         uint256 nonce;
-        uint64 deadline;
+        uint64 issuedAt;
     }
 
     struct FeeReceipt {
@@ -52,12 +52,14 @@ contract XITAExecutionGateway is EIP712 {
     }
 
     bytes32 public constant QUOTE_TYPEHASH = keccak256(
-        "SponsoredQuote(address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 deadline)"
+        "SponsoredQuote(address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 issuedAt)"
     );
-    uint256 public constant MAX_QUOTE_LIFETIME = 300;
+    uint256 public constant MAX_QUOTE_LIFETIME = 90;
 
     address public immutable relayerOwner;
     IXGRILNRegistry public immutable sourceRegistry;
+    // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
+    uint64 public quoteLifetimeSeconds = 90;
     mapping(address => mapping(uint256 => bool)) public nonceUsed;
     mapping(bytes32 => FeeReceipt) public feeReceipt;
     uint256 public pendingServiceFeesWei;
@@ -68,6 +70,7 @@ contract XITAExecutionGateway is EIP712 {
     error InvalidQuote();
     error InvalidSignature();
     error QuoteExpired();
+    error InvalidQuoteLifetime();
     error QuoteNonceUsed();
     error InvalidBridgeValue();
     error InvalidRegisteredRoute();
@@ -91,6 +94,7 @@ contract XITAExecutionGateway is EIP712 {
         uint256 quoteNonce
     );
     event ServiceFeeWithdrawn(bytes32 indexed messageId, address indexed owner, uint256 amountWei);
+    event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
 
     modifier nonReentrant() {
         if (entered != 1) revert ReentrantCall();
@@ -111,11 +115,21 @@ contract XITAExecutionGateway is EIP712 {
         return _hashTypedDataV4(_hashQuote(q));
     }
 
+    /// @notice Owner can shorten or restore the lifetime up to the hard 90s cap.
+    /// @dev Changing the policy applies immediately to outstanding signed quotes.
+    function setQuoteLifetimeSeconds(uint64 newSeconds) external {
+        if (msg.sender != relayerOwner) revert UnauthorizedRelayer();
+        if (newSeconds == 0 || newSeconds > MAX_QUOTE_LIFETIME) revert InvalidQuoteLifetime();
+        uint64 previousSeconds = quoteLifetimeSeconds;
+        quoteLifetimeSeconds = newSeconds;
+        emit QuoteLifetimeUpdated(previousSeconds, newSeconds);
+    }
+
     function _hashQuote(Quote calldata q) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             QUOTE_TYPEHASH, q.payer, q.gateway, q.routeId,
             q.destinationDomain, q.recipient, q.amount, q.bridgeValueWei,
-            q.relayerFeeWei, q.nonce, q.deadline
+            q.relayerFeeWei, q.nonce, q.issuedAt
         ));
     }
 
@@ -129,8 +143,10 @@ contract XITAExecutionGateway is EIP712 {
             q.gateway == address(0) || q.routeId == bytes32(0) ||
             q.destinationDomain == 0 || q.recipient == bytes32(0) ||
             q.amount == 0) revert InvalidQuote();
-        if (q.deadline < block.timestamp ||
-            uint256(q.deadline) > block.timestamp + MAX_QUOTE_LIFETIME) revert QuoteExpired();
+        // The owner-signed issuance timestamp is the only quote time field.
+        // Reject a future issuance or a quote older than the live on-chain policy.
+        if (q.issuedAt == 0 || uint256(q.issuedAt) > block.timestamp ||
+            block.timestamp - uint256(q.issuedAt) > quoteLifetimeSeconds) revert QuoteExpired();
         if (nonceUsed[q.payer][q.nonce]) revert QuoteNonceUsed();
         if (ECDSA.recover(_hashTypedDataV4(_hashQuote(q)), signature) != relayerOwner) {
             revert InvalidSignature();
