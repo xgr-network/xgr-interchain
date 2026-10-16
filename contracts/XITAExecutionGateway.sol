@@ -223,6 +223,26 @@ contract XITAExecutionGateway is EIP712 {
 
     /// @notice Anyone may settle earned fees, exclusively to the fixed payee.
     /// @dev Cannot redirect payouts or interfere with public token delivery.
+    /// @notice Batch claim finalized source-native GmbH fees to the immutable payee.
+    /// @dev A claim may include at most 32 receipt IDs; already paid IDs are
+    ///      ignored (including duplicates). One payout reduces gas per receipt.
+    ///      Anyone may call, but NO caller can change the beneficiary.
+    function withdrawFees(bytes32[] calldata messageIds) external nonReentrant {
+        if (messageIds.length == 0 || messageIds.length > 32) revert InvalidQuote();
+        uint256 total;
+        for (uint256 i = 0; i < messageIds.length; ++i) {
+            FeeReceipt storage receipt = feeReceipt[messageIds[i]];
+            if (!receipt.exists || receipt.withdrawn) continue;
+            receipt.withdrawn = true;
+            total += receipt.interchainFeeWei;
+            emit InterchainFeeWithdrawn(messageIds[i], interchainFeeRecipient, receipt.interchainFeeWei);
+        }
+        if (total == 0) revert NoClaimableFee();
+        pendingInterchainFeesWei -= total;
+        (bool paid,) = interchainFeeRecipient.call{value:total}("");
+        if (!paid) revert NativePayoutFailed();
+    }
+
     function withdrawFee(bytes32 messageId) external nonReentrant {
         FeeReceipt storage receipt = feeReceipt[messageId];
         if (!receipt.exists || receipt.withdrawn || receipt.interchainFeeWei == 0) {
