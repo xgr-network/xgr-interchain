@@ -13,8 +13,8 @@
 
 - A-01: [#130](https://github.com/xgr-network/xgr-interchain/pull/130) aligned Recovery and node-discovery route names in the code. Live multi-node recovery **not** yet reproduced.
 - A-02: Go code patch prepared outside GitHub; write access to `xgr-node` rejected by the connected GitHub integration. Neither Go CI nor EVM membership admission can be claimed.
-- A-03: [Draft #133](https://github.com/xgr-network/xgr-interchain/pull/133), commit `8adc5ac837ef3dd68fd36fc7cf375c14f5ed0f2b`; **Validate**, **Native Interchain Contracts**, and **XITA Contract Review** completed successfully. This is code-CI evidence only.
-- A-04: [Draft #134](https://github.com/xgr-network/xgr-interchain/pull/134), commit `935f5013e27dcb07874b1a607d634a167f69f1b8`; the same three workflows completed successfully. This is code-CI evidence only.
+- A-03: [Draft #133](https://github.com/xgr-network/xgr-interchain/pull/133), commit `0961dd629cb8627b41037ae81346a7b7c4a0bc0f`; **Validate** ([run 38883867928](https://github.com/xgr-network/xgr-interchain/actions/runs/38883867928)), **Native Interchain Contracts** ([run 38883868037](https://github.com/xgr-network/xgr-interchain/actions/runs/38883868037)), and **XITA Contract Review** ([run 38883867927](https://github.com/xgr-network/xgr-interchain/actions/runs/38883867927)) completed successfully at the cited HEAD commit. This is code-CI evidence only.
+- A-04: [Draft #134](https://github.com/xgr-network/xgr-interchain/pull/134), commit `fb8ba10d16a182007b971d409c8cb95c1ebf1281`; the same three workflows completed successfully at the cited HEAD commit: [Validate](https://github.com/xgr-network/xgr-interchain/actions/runs/38884023906), [Native Interchain Contracts](https://github.com/xgr-network/xgr-interchain/actions/runs/38884023892), [XITA Contract Review](https://github.com/xgr-network/xgr-interchain/actions/runs/38884023899). This is code-CI evidence only.
 
 Passing standalone PR CI is insufficient for declaring an integration or production release gate complete.
 
