@@ -302,6 +302,11 @@ complete_update() {
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-indexer.service
   fi
+  # Archive-RPC selection and canonical catalog updates must reach the live
+  # history worker too; leaving its prior Node process running keeps stale RPCs.
+  if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-transfer-indexer.service
+  fi
 }
 
 update() {
