@@ -1,4 +1,6 @@
-// Optional GmbH-operated quote economics. NOT a consensus or mint price oracle.
+// Optional GmbH Interchain Fee pricing. NOT a consensus or mint price oracle.
+// The source-native quoted fee is GROSS: estimated costs + 10% net margin + VAT.
+// VAT is owed from the full NET service fee, not merely from the margin.
 // XGR's CoinGecko ID is exactly "xgr" (operator's market maker).
 export const COINGECKO_GAS_COIN_IDS = Object.freeze({
  xgrchain:"xgr",
@@ -26,20 +28,38 @@ export function usdPrice12(value){
  if(n<=0n||n>1000000000n*10n**12n)throw Error("CoinGecko USD price invalid");
  return n;
 }
+export const DEFAULT_INTERCHAIN_MARKUP_BPS=1000n; // 10% over estimated net costs.
+export const GERMAN_STANDARD_VAT_BPS=1900n; // 19%, NOT a universal customer rate.
+const BPS=10000n;
 export function costInSourceWei({
  sourcePriceUsd,destinationPriceUsd,destinationGasPriceWei,
- destinationGasUnits,bufferBps=13000n
+ destinationGasUnits,markupBps=DEFAULT_INTERCHAIN_MARKUP_BPS,vatBps
 }){
  const src=usdPrice12(sourcePriceUsd),dst=usdPrice12(destinationPriceUsd);
  const gas=BigInt(destinationGasPriceWei),units=BigInt(destinationGasUnits);
- const buffer=BigInt(bufferBps);
+ const markup=BigInt(markupBps);
+ // Deliberately NO default VAT policy: customer place/status must be resolved
+ // by the service, not chosen by a browser or guessed from the source chain.
+ if(vatBps===undefined||vatBps===null)throw Error("VAT policy unresolved");
+ const vatRate=BigInt(vatBps);
  if(gas<=0n||units<21000n||units>5000000n||
-   buffer<10000n||buffer>30000n)throw Error("Unsafe destination gas quote");
+   markup!==DEFAULT_INTERCHAIN_MARKUP_BPS||vatRate<0n||vatRate>3000n)
+  throw Error("Unsafe gas or VAT quote");
  const cost=gas*units;
- const nativeEquivalent=ceilDiv(cost*dst,src);
+ const estimatedCostSourceWei=ceilDiv(cost*dst,src);
+ const marginWei=ceilDiv(estimatedCostSourceWei*markup,BPS);
+ const netInterchainFeeWei=estimatedCostSourceWei+marginWei;
+ const vatWei=ceilDiv(netInterchainFeeWei*vatRate,BPS);
+ const grossInterchainFeeWei=netInterchainFeeWei+vatWei;
  return {
   estimatedDestinationCostWei:cost.toString(),
-  quotedServiceFeeWei:ceilDiv(nativeEquivalent*buffer,10000n).toString(),
+  estimatedCostSourceWei:estimatedCostSourceWei.toString(),
+  marginWei:marginWei.toString(),
+  netInterchainFeeWei:netInterchainFeeWei.toString(),
+  vatWei:vatWei.toString(),
+  grossInterchainFeeWei:grossInterchainFeeWei.toString(),
+  quotedServiceFeeWei:grossInterchainFeeWei.toString(), // Signed, payable GROSS.
+  markupBps:markup.toString(),vatRateBps:vatRate.toString(),
   sourcePrice12:src.toString(),destinationPrice12:dst.toString(),
  };
 }
