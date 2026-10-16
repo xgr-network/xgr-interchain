@@ -1,0 +1,79 @@
+name: XITA predeployment audit (test only)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - run: forge install foundry-rs/forge-std --no-commit
+      - run: npm install --prefix vendor --ignore-scripts --no-audit --no-fund
+      - name: Baseline production tests and artifact sizes
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          forge test -vv | tee artifacts/baseline.txt
+          python3 - <<'PY' | tee artifacts/sizes.json
+          import json
+          names=['XGRInterchainBLSVerifier','XGRInterchainValidatorRegistryV2','XGRInterchainValidatorRegistryV3','XGRILNInterchainISMV2','XETATokenFactoryV315','XGRILNRegistryV315','XETAGuardedNativeWarpRouter','XETAGuardedSyntheticWarpRouter','XETAGuardedCollateralWarpRouterV315','ILNGateway','XGRILNFeeVault']
+          out=[]
+          for n in names:
+              d=json.load(open('out/'+n+'.sol/'+n+'.json'))
+              c=d['bytecode']['object'].removeprefix('0x');r=d['deployedBytecode']['object'].removeprefix('0x')
+              out.append(dict(contract=n,creation_bytes=len(c)//2,runtime_bytes=len(r)//2,code_deposit_gas=200*(len(r)//2),runtime_under_EIP170=len(r)//2<=24576))
+          print(json.dumps(out,indent=2))
+          PY
+          cp vendor/node_modules/@hyperlane-xyz/core/contracts/token/libs/TokenRouter.sol artifacts/upstream-token-router.sol
+          cp vendor/node_modules/@hyperlane-xyz/core/contracts/token/libs/TokenCollateral.sol artifacts/upstream-collateral.sol
+      - name: Additional security and liveness invariants (failures are findings)
+        id: crypto
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          cp audit/*.t.sol test/
+          forge test --match-contract 'XITAPredeploy.*|XITAAssetIsolationAudit' -vv | tee artifacts/review-tests.txt
+      - name: Cross-chain deployment planner invariant
+        id: planner
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          node --test audit/two-hop-admin.test.mjs | tee artifacts/planner.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xita-predeploy-audit
+          path: artifacts/
+      - name: Preserve failing safety invariants as red audit status
+        if: steps.crypto.outcome != 'success' || steps.planner.outcome != 'success'
+        run: exit 1
+  node-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: xgr-network/xgr-node
+          ref: 99b7b915fb09adaf67c1c3527c8ad45522e0414a
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Review exact v3.1.5 interchain packages without source modifications
+        env:
+          GOMAXPROCS: '2'
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          go test -p 2 -timeout 12m ./consensus/ibft/interchain ./interchain/evm ./interchain/runtime ./interchain/verification ./crypto
+          echo '=== ROUTE-ID HELPER CALL SITES ==='
+          git grep -n XITADirectedRouteID -- '*.go' || true
+          echo '=== PoP PRE-REGISTRATION CALL SITES ==='
+          git grep -n 'provePossession' -- '*.go' || true
+          echo '=== CODE LIMITS ==='
+          git grep -nE 'maxCodeSize|MaxCodeSize|MaxInitCodeSize|24576' -- state chain || true
