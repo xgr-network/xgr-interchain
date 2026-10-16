@@ -27,7 +27,7 @@ const typesFor={
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
  factory:["uint64","uint32","address","address","address","address","uint256","address","address","address"],
- executionGateway:["address","address"]
+ executionGateway:["address","address","address"]
 };
 export const chainDraftConstructorTypes=Object.freeze(typesFor);
 const positive=v=>typeof v==="string"&&/^[1-9][0-9]*$/.test(v);
@@ -97,7 +97,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
  }else if(component==="executionGateway"){
   // One optional funded source-chain adapter, NEVER one per token/route.
   const p=deploymentParameters(component,parameters);
-  values=[requirePresent(infrastructure,"sourceRegistry"),p.relayerOwner];
+  values=[requirePresent(infrastructure,"sourceRegistry"),p.relayerOwner,p.interchainFeeRecipient];
  }else if(component==="factory"){
   const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane||{};
