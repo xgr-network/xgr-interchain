@@ -33,7 +33,9 @@ remote-pair validation and two-chain end-to-end tests.
 ## Optional operator service (no protocol authority)
 
 `XITAExecutionGateway.sol` is a chain-wide source adapter (one per chain),
-with owner-signed EIP-712 quotes and exact SOURCE-native relayer fee receipts.
+with owner-signed EIP-712 quotes (single signed `issuedAt`, configurable
+on-chain validity 1–90 seconds; never a separately signed deadline) and
+exact SOURCE-native relayer fee receipts.
 It calls unchanged ILNGateway.bridge and does not grant the GmbH owner any
 mint, validator, registration, source FeeVault or Mailbox authority.
 The GmbH owner can withdraw its own delivery service fees even before
