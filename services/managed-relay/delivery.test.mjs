@@ -1,20 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {Wallet,keccak256} from "ethers";
+import {Wallet,keccak256,Interface} from "ethers";
 import {deliverManagedMessage} from "./delivery.mjs";
 const h=x=>"0x"+x.repeat(64),address=x=>"0x"+x.repeat(40);
 const wallet=new Wallet("0x"+"11".repeat(32));
 const entry={sourceTxHash:h("a"),messageId:h("b"),destinationTxHash:null};
+const processData=new Interface(["function process(bytes metadata,bytes message)"])
+ .encodeFunctionData("process",["0x01","0x02"]);
 const signedRaw=await wallet.signTransaction({to:address("3"),value:0n,nonce:1,
  chainId:8453,type:2,gasLimit:400000n,maxFeePerGas:2000000000n,maxPriorityFeePerGas:100000000n,
- data:"0x12345678"});
+ data:processData});
 const signed={raw:signedRaw,hash:keccak256(signedRaw)};
 function options(patch={}){
  const calls=[];
  return {calls,params:{destinationChainId:8453,destinationMailbox:address("2"),
   getDelivered:async()=>false,
   getProof:async()=>({status:"READY_UNSIGNED_CALL",messageId:entry.messageId,
-   destinationMailbox:address("2"),destinationChainId:8453,value:"0x0",data:"0x12345678"}),
+   destinationMailbox:address("2"),destinationChainId:8453,value:"0x0",data:processData}),
   signTransaction:async()=>{calls.push("sign");return signed},
   persist:async()=>{calls.push("persist")},
   broadcastRaw:async()=>{calls.push("broadcast")},
@@ -56,7 +58,7 @@ test("if validator quorum pending, do not broadcast or second-source-lock",async
 test("unsigned destination calldata is strictly message/chain/mailbox bound",async()=>{
  const o=options({getProof:async()=>({status:"READY_UNSIGNED_CALL",
   messageId:h("c"),destinationMailbox:address("2"),
-  destinationChainId:8453,value:"0x0",data:"0x12345678"})});
+  destinationChainId:8453,value:"0x0",data:processData})});
  await assert.rejects(()=>deliverManagedMessage(entry,o.params),/does not match/);
  assert.deepEqual(o.calls,[]);
 });
