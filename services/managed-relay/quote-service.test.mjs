@@ -44,6 +44,7 @@ const exchange=()=>({xgr:{usd:0.0001,last_updated_at:Math.floor(now/1000)-10},
  ethereum:{usd:2500,last_updated_at:Math.floor(now/1000)-12}});
 const defaults=()=>({catalog:fixture(),request,executionAddress:address(44),
  signer,readExecutionOwner:async()=>signer.address,
+ readQuoteLifetime:async()=>90n,
  readGatewayQuote:async()=>({bridgeNativeWei:1100000000000000000n,
  validatorFeeWei:100000000000000000n,tokenAmount:0n}),
  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:100000000000000000n}),
@@ -56,12 +57,18 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
  assert.equal(r.quote.relayerFeeWei,"32500000000000000000000");
  assert.equal(r.sourceValueWei,"32501100000000000000000");
  assert.equal(r.quote.nonce,"42");
+ assert.equal(r.quote.issuedAt,Math.floor(now/1000));
+ assert.equal(r.expiresAt,r.quote.issuedAt+90);
+ assert.equal(r.quoteLifetimeSeconds,90);
+ assert.equal(Object.hasOwn(r.quote,"deadline"),false);
  assert.equal(r.quote.payer,request.payer);
  const domain={name:"XITA Managed Relay",version:"1",chainId:1643,
   verifyingContract:address(44)};
  assert.equal(verifyTypedData(domain,MANAGED_QUOTE_TYPES,r.quote,r.signature),signer.address);
  const tampered={...r.quote,relayerFeeWei:"1"};
  assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,tampered,r.signature),signer.address);
+ const changedTime={...r.quote,issuedAt:r.quote.issuedAt+1};
+ assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,changedTime,r.signature),signer.address);
 });
 test("never signs when relayer owner mismatches deployed adapter",async()=>{
  await assert.rejects(()=>buildManagedQuote({...defaults(),readExecutionOwner:async()=>address(1)}),/not contract owner/);
@@ -86,4 +93,16 @@ test("no unsupported source/destination or non-decimal raw amount",async()=>{
   {source:"polygon"},{destination:"polygon"},{amountRaw:"1.5"},{amountRaw:"0"},
   {recipient:"0x1234"}
  ])await assert.rejects(()=>buildManagedQuote({...defaults(),request:{...request,...requestPatch}}));
+});
+
+test("honors owner-configured on-chain TTL, never exceeds 90 seconds",async()=>{
+ const r=await buildManagedQuote({...defaults(),readQuoteLifetime:async()=>30n});
+ assert.equal(r.quote.issuedAt,Math.floor(now/1000));
+ assert.equal(r.expiresAt,r.quote.issuedAt+30);
+ assert.equal(r.quoteLifetimeSeconds,30);
+ for(const invalid of [0n,91n,-1n])
+  await assert.rejects(()=>buildManagedQuote({...defaults(),readQuoteLifetime:async()=>invalid}),/lifetime/);
+});
+test("refuses invalid source timestamp before signing",async()=>{
+ await assert.rejects(()=>buildManagedQuote({...defaults(),clock:()=>0}),/issuance clock/);
 });
