@@ -14,4 +14,4 @@
 - [evidence/README.md](./evidence/README.md) — evidence-handling and eventual disclosure.
 - `report.md` — original, immutable report, to be added **after** coordinated disclosure of unresolved findings and verification of corrections.
 
-The full original report and detailed reproductions are preserved in a separately controlled audit package until disclosure. Do not copy them into an open branch, issue, PR attachment, Actions artifact or commit before review. Do not alter the original report when a fix is made; document changes in `remediation.md` instead.
+The full original **English-language** report and detailed reproductions are preserved in a separately controlled audit package until disclosure. Do not copy them into an open branch, issue, PR attachment, Actions artifact or commit before review. Do not alter the original report when a fix is made; document changes in `remediation.md` instead.
