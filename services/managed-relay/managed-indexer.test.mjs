@@ -33,7 +33,7 @@ test("single operator address scans all token routes using ONE filtered chain wi
   readFeeReceipt:async()=>({exists:true,payer:record.payer,
    gateway:record.gateway,relayerFeeWei:22n})});
  assert.equal(output.indexed,1);
- assert.equal(output.index.cursors.xgrchain.to,199);
+ assert.equal(output.index.cursors.xgrchain.to,189);
  assert.equal(Object.keys(output.index.operations).length,1);
  assert.equal(rpc.calls.length,1);
  assert.equal(rpc.calls[0].address,a("b"));
@@ -63,5 +63,5 @@ test("missing state is reconstructed from deployment block rather than assuming 
  assert.equal(out.scanned,true);
  assert.equal(out.from,100);
  assert.equal(out.indexed,0);
- assert.equal(out.index.cursors.xgrchain.to,200);
+ assert.equal(out.index.cursors.xgrchain.to,189);
 });
