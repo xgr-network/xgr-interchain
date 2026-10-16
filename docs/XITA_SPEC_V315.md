@@ -145,7 +145,16 @@ The EIP-712 `SponsoredQuote` is signed with the SAME EOA that is the
 adapter's immutable `relayerOwner`. Its domain binds source chain ID
 and adapter contract address. It binds payer, exact canonical ILN gateway
 and route ID, destination domain, recipient, amount, exact current bridge
-native value, source-native delivery fee, payer-specific nonce and expiry.
+native value, source-native delivery fee, payer-specific nonce and signed
+`issuedAt` (Unix seconds). The quote does not contain a separate deadline.
+The contract computes expiry from `issuedAt + quoteLifetimeSeconds`. It
+rejects issuedAt=0, future issue times and expired quotes. The owner may
+update the on-chain lifetime from 1 to 90 seconds (default 90); a hard
+`MAX_QUOTE_LIFETIME=90` prevents any extension beyond 90 seconds from
+issuance. A policy change immediately affects outstanding quotes. The
+quote service reads the current on-chain lifetime before signing and
+returns its derived expiry for UI display; actual execution is always
+subject to the current on-chain lifetime.
 The adapter independently checks the source ILN Registry route binding
 and the live bridge quote, rejects stale or manipulated quotes, checks the
 EXACT payable sum, forwards the exact original gateway value, and atomically
