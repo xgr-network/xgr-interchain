@@ -9,6 +9,15 @@
 - **Full two-chain validator-rotation test:** NOT RUN / NOT VERIFIED.
 - **Current deployed server revision and deployed-contract runtime hashes:** NOT independently verified by this review.
 
+## Proposed post-audit changes (separate from the frozen audit)
+
+- A-01: [#130](https://github.com/xgr-network/xgr-interchain/pull/130) aligned Recovery and node-discovery route names in the code. Live multi-node recovery **not** yet reproduced.
+- A-02: Go code patch prepared outside GitHub; write access to `xgr-node` rejected by the connected GitHub integration. Neither Go CI nor EVM membership admission can be claimed.
+- A-03: [Draft #133](https://github.com/xgr-network/xgr-interchain/pull/133), commit `8adc5ac837ef3dd68fd36fc7cf375c14f5ed0f2b`; **Validate**, **Native Interchain Contracts**, and **XITA Contract Review** completed successfully. This is code-CI evidence only.
+- A-04: [Draft #134](https://github.com/xgr-network/xgr-interchain/pull/134), commit `935f5013e27dcb07874b1a607d634a167f69f1b8`; the same three workflows completed successfully. This is code-CI evidence only.
+
+Passing standalone PR CI is insufficient for declaring an integration or production release gate complete.
+
 ## Release acceptance matrix
 
 | Gate | Acceptance evidence required | Status |
