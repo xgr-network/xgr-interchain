@@ -21,7 +21,7 @@ const parse=(iface,log,name)=>{
  catch{return null}
 };
 export const managedDispatchTopic=adapter.getEvent("ManagedDispatch").topicHash;
-export function verifiedManagedReceipt({catalog,sourceChain,executionAddress,receipt}){
+export function verifiedManagedReceipt({catalog,sourceChain,executionAddress,receipt,messageId=null}){
  check(ADDRESS.test(executionAddress||"")&&receipt?.status===1&&
   Number.isSafeInteger(receipt?.blockNumber)&&receipt.blockNumber>0&&
   HASH.test(receipt?.hash||receipt?.transactionHash||"")&&
@@ -31,7 +31,7 @@ export function verifiedManagedReceipt({catalog,sourceChain,executionAddress,rec
  for(const log of receipt.logs){
   if(eq(log.address,executionAddress)){
    const decoded=parse(adapter,log,"ManagedDispatch");
-   if(decoded)managed.push(decoded);
+   if(decoded&&(!messageId||eq(decoded.args.messageId,messageId)))managed.push(decoded);
   }
  }
  check(managed.length===1,"Expected exactly one canonical ManagedDispatch in source tx");
