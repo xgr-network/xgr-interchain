@@ -185,6 +185,10 @@ export async function managedTick({sources=configuredSources(),state=await readM
  return state;
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ // The paid GmbH-operated transfer executor is not part of the user-led model.
+ // Prevent accidental activation of legacy managed delivery, even with old env.
+ throw Error("Managed delivery executor disabled: all four transfer transactions must be user-authorized.");
+
  configuredSources();
  (async()=>{
   for(;;){
