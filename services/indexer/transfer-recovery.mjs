@@ -6,6 +6,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {selector} from "../../apps/web/keccak.js";
+import {sourceBoundMailboxProcess} from "../../apps/web/mailbox-process.js";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -77,6 +78,7 @@ export function validateUnsignedRecovery(result,configured){
      !/^0x[0-9a-f]{8}(?:[0-9a-f]{2})+$/i.test(result.data)||
      !result.data.toLowerCase().startsWith(processSelector.toLowerCase())||result.data.length>262144)
     throw Error("Unsigned destination calldata does not match approved Mailbox/process");
+  sourceBoundMailboxProcess(result.data,configured.messageId);
   return {status:result.status,messageId:configured.messageId,destinationChainId:configured.destinationChainId,
    destinationMailbox:configured.destinationMailbox,data:result.data,value:"0x0"};
  }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {selector} from "../../apps/web/keccak.js";
+import {selector,keccak256} from "../../apps/web/keccak.js";
+import {sourceBoundMailboxProcess} from "../../apps/web/mailbox-process.js";
 import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
@@ -29,9 +30,16 @@ function fixture(){
      routeId:hash("d"),components:{gateway,feeVault}}],
     receiptPaths:[...representations.map(r=>r.receiptPath),gateway.receiptPath,feeVault.receiptPath]}}}};
 }
-function recovered(messageId){return {status:"READY_UNSIGNED_CALL",messageId,
+const RAW_MESSAGE=new Uint8Array([7,4,1,9,1,1]);
+const CANONICAL_MESSAGE_ID=keccak256(RAW_MESSAGE);
+const abiWord=x=>BigInt(x).toString(16).padStart(64,"0");
+const abiDynamic=raw=>abiWord(raw.length)+Buffer.from(raw).toString("hex").padEnd(Math.ceil(raw.length/32)*64,"0");
+function recovered(messageId){const metadata=abiDynamic(new Uint8Array([1,2,3]));
+ const message=abiDynamic(RAW_MESSAGE);
+ return {status:"READY_UNSIGNED_CALL",messageId,
  route:ilnValidatorRouteName(1643,8453,hash("d")),
- destinationChainId:"8453",to:addr("3"),value:"0x0",data:selector("process(bytes,bytes)")+"0".repeat(256)};}
+ destinationChainId:"8453",to:addr("3"),value:"0x0",data:selector("process(bytes,bytes)")+
+ abiWord(64)+abiWord(64+metadata.length/2)+metadata+message};}
 test("resolve proof script only from canonical deployed route and configured chain URLs",()=>{
  const c=fixture(),ref=resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC");
  assert.equal(ref.env.ORIGIN_ILN_GATEWAY,addr("9"));
@@ -44,7 +52,7 @@ test("resolve proof script only from canonical deployed route and configured cha
  assert.throws(()=>resolveRecoveryRoute(c,"xgr_to_base",hash("1"),"ABC"),/deployed route/);
 });
 test("accept exactly authorized unsigned Mailbox.process calldata",()=>{
- const c=fixture(),config=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC"),ok=recovered(hash("2"));
+ const c=fixture(),config=resolveRecoveryRoute(c,"xgr_to_base",CANONICAL_MESSAGE_ID,"ABC"),ok=recovered(CANONICAL_MESSAGE_ID);
  assert.equal(validateUnsignedRecovery(ok,config).status,"READY_UNSIGNED_CALL");
  assert.equal(parseRecoveryCliOutput(JSON.stringify(ok),config).value,"0x0");
  for(const bad of [
@@ -54,11 +62,11 @@ test("accept exactly authorized unsigned Mailbox.process calldata",()=>{
   {...ok,destinationChainId:"137"},
   {...ok,value:"0x1"}
  ])assert.throws(()=>validateUnsignedRecovery(bad,config));
- assert.equal(validateUnsignedRecovery({status:"PENDING",messageId:hash("2")},config).status,"PENDING");
+ assert.equal(validateUnsignedRecovery({status:"PENDING",messageId:CANONICAL_MESSAGE_ID},config).status,"PENDING");
 });
 test("public recovery endpoint never signs or assumes success, only returns source-bound calldata",async()=>{
  const catalog=fixture();
- const result=await serveUnsignedTransferRecovery({catalog,route:"xgr_to_base",asset:"ABC",messageId:hash("4"),runner:async conf=>validateUnsignedRecovery(recovered(hash("4")),conf)});
+ const result=await serveUnsignedTransferRecovery({catalog,route:"xgr_to_base",asset:"ABC",messageId:CANONICAL_MESSAGE_ID,runner:async conf=>validateUnsignedRecovery(recovered(CANONICAL_MESSAGE_ID),conf)});
  assert.equal(result.code,200);
  assert.equal(result.body.status,"READY_UNSIGNED_CALL");
  assert.ok(result.body.data);
@@ -119,7 +127,16 @@ test("thousands of on-chain token routes require zero additions to node ENV",()=
  assert.equal(names.size,2000);
 });
 test("rejects externally named proof routes even with otherwise plausible destination calldata",()=>{
- const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("2"),"ABC");
- const spoofed={...recovered(hash("2")),route:"xgr_to_base"};
+ const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",CANONICAL_MESSAGE_ID,"ABC");
+ const spoofed={...recovered(CANONICAL_MESSAGE_ID),route:"xgr_to_base"};
  assert.throws(()=>validateUnsignedRecovery(spoofed,conf),/does not match/);
+});
+
+test("A-04: response with valid ABI but different authenticated message is not an authorized recovery",()=>{
+ const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",CANONICAL_MESSAGE_ID,"ABC");
+ const valid=recovered(CANONICAL_MESSAGE_ID);
+ assert.equal(sourceBoundMailboxProcess(valid.data,CANONICAL_MESSAGE_ID).messageId,CANONICAL_MESSAGE_ID);
+ const other=recovered(CANONICAL_MESSAGE_ID);
+ other.data=other.data.replace(abiDynamic(RAW_MESSAGE),abiDynamic(new Uint8Array([7,4,1,9,1,2])));
+ assert.throws(()=>validateUnsignedRecovery(other,conf),/does not match confirmed source/);
 });

@@ -207,3 +207,26 @@ test("fatal backend configuration mismatch blocks automated signing",async()=>{
  await assert.rejects(awaitUnsignedDeliveryProof({query,attempts:5,delayMs:0,sleep:async()=>{},
   fetcher:async()=>({ok:false,json:async()=>({reason:"PROOF_CONFIG_MISMATCH"})})}),/configuration mismatch/);
 });
+
+test("A-04: HTTP ALREADY_DELIVERED alone never closes an on-chain pending transfer",async()=>{
+ const c=catalog(),{messageId,logs}=sourceLogs(),methods=[];
+ const record={account,sourceChain:"xgrchain",destinationChain:"base",asset:"XGR",
+  txHash:sourceTx,messageId,status:"awaiting-proof"};
+ const fetcher=async(url,options)=>{
+  if(url.startsWith("/api/xeta/"))return {ok:true,json:async()=>({ok:true,status:"ALREADY_DELIVERED",messageId})};
+  const {method}=JSON.parse(options.body);
+  let result;
+  if(method==="eth_chainId")result=url.includes("xgr")?"0x66b":"0x2105";
+  else if(method==="eth_getTransactionByHash")result={hash:sourceTx,from:account,to:gateway};
+  else if(method==="eth_getTransactionReceipt")result={
+   transactionHash:sourceTx,from:account,to:gateway,status:"0x1",blockNumber:"0x10",logs};
+  else if(method==="eth_blockNumber")result="0x64";
+  else if(method==="eth_call")result=word(0);
+  else throw Error(method);
+  return rpcResponse(result);
+ };
+ const provider={request:async({method})=>{methods.push(method);throw Error("wallet must not sign when destination is unconfirmed")}};
+ const result=await resumeDelivery({catalog:c,account,record,provider,fetcher});
+ assert.equal(result.status,"waiting");
+ assert.deepEqual(methods,[]);
+});
