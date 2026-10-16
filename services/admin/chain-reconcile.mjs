@@ -63,11 +63,12 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   }
  }else if(component==="executionGateway"){
   const registry=infra.components.find(c=>c.key==="sourceRegistry")?.address;
-  const owner=parameters?.relayerOwner;
-  if(!ADDR.test(registry||"")||!ADDR.test(owner||"")||
+  const owner=parameters?.relayerOwner,feeRecipient=parameters?.interchainFeeRecipient;
+  if(!ADDR.test(registry||"")||!ADDR.test(owner||"")||!ADDR.test(feeRecipient||"")||
      /^0x0{40}$/i.test(owner))throw Error("Approved managed relay owner or source Registry missing");
   await check("sourceRegistry()",registry,"address");
   await check("relayerOwner()",owner,"address");
+  await check("interchainFeeRecipient()",feeRecipient,"address");
   await check("MAX_QUOTE_LIFETIME()",90);
   await check("quoteLifetimeSeconds()",90);
  }else if(component==="ism"){
