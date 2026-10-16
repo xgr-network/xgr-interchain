@@ -83,8 +83,11 @@ jobs:
       - name: Validate indexed on-chain wallet worklist (generic route identities)
         run: node --test services/indexer/transfer-index-store.test.mjs
 
-      - name: Validate optional source-native managed relay pricing
-        run: node --test services/managed-relay/fee-quote.test.mjs
+      - name: Install isolated optional managed relay signer dependencies
+        run: npm install --prefix services/managed-relay --ignore-scripts --no-audit --no-fund --package-lock=false
+
+      - name: Validate optional managed relay quotes and source-native fees
+        run: node --test services/managed-relay/*.test.mjs
 
       - name: Validate CoinGecko adapter
         run: node --test services/indexer/coingecko.test.mjs

@@ -1,0 +1,127 @@
+#!/usr/bin/env node
+// Isolated loopback-only GmbH quote signer. Never expose the signing key,
+// use this process as a protocol oracle, or load it into the public indexer.
+import {createServer} from "node:http";
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue} from "ethers";
+import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
+
+const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
+const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+const EXECUTION_ABI=[
+ "function relayerOwner() view returns (address)",
+ "function sourceRegistry() view returns (address)",
+ "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint256 amount,uint256 bridgeValueWei,uint256 relayerFeeWei,uint256 nonce,uint64 deadline),bytes signature) payable returns (bytes32)"
+];
+const BRIDGE_ABI=[
+ "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
+];
+const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
+const signer=new Wallet(required("XITA_MANAGED_RELAYER_PRIVATE_KEY"));
+const sourceAddresses={
+ xgrchain:(process.env.XITA_MANAGED_XGRCHAIN_EXECUTION_ADDRESS||"").trim(),
+ base:(process.env.XITA_MANAGED_BASE_EXECUTION_ADDRESS||"").trim()
+};
+const providers=new Map();
+async function chain(name){
+ const cfg=CATALOG.chains[name];
+ if(!cfg?.rpcUrls?.[0])throw Error("Unsupported chain");
+ if(!providers.has(name))providers.set(name,new JsonRpcProvider(cfg.rpcUrls[0]));
+ const provider=providers.get(name);
+ const network=await provider.getNetwork();
+ if(network.chainId!==BigInt(cfg.chainId))throw Error("Chain RPC identity mismatch");
+ return provider;
+}
+const quoteIface=new Interface(EXECUTION_ABI);
+async function getSnapshot(){
+ const ids="ethereum,xgr";
+ const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+
+  "&vs_currencies=usd&include_last_updated_at=true";
+ const headers={accept:"application/json"};
+ if(process.env.XITA_COINGECKO_API_KEY)
+  headers["x-cg-demo-api-key"]=process.env.XITA_COINGECKO_API_KEY;
+ const response=await fetch(url,{headers,signal:AbortSignal.timeout(9000)});
+ if(!response.ok)throw Error("CoinGecko temporarily unavailable");
+ const value=await response.json();
+ if(!value||typeof value!=="object"||Array.isArray(value))
+  throw Error("CoinGecko invalid data");
+ return value;
+}
+async function createQuote(request){
+ const source=request?.source,destination=request?.destination;
+ if(!["xgrchain","base"].includes(source)||!["xgrchain","base"].includes(destination))
+  throw Error("Unsupported source/destination");
+ const executionAddress=sourceAddresses[source];
+ if(!/^0x[0-9a-f]{40}$/i.test(executionAddress||""))
+  throw Error("Managed relay execution contract not deployed");
+ const s=await chain(source),d=await chain(destination);
+ const result=await buildManagedQuote({
+  catalog:CATALOG,request,executionAddress,signer,
+  readExecutionOwner:async()=> {
+   const c=new Contract(executionAddress,EXECUTION_ABI,s);
+   const [owner,registry]=await Promise.all([c.relayerOwner(),c.sourceRegistry()]);
+   const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
+   if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
+    throw Error("Managed relay does not bind canonical source ILN Registry");
+   return owner;
+  },
+  readGatewayQuote:async({route,destinationDomain,recipient,amount})=>{
+   const gateway=new Contract(route.gateway,BRIDGE_ABI,s);
+   const result=await gateway.quoteILN(destinationDomain,recipient,amount);
+   return {validatorFeeWei:result[0],bridgeNativeWei:result[2],tokenAmount:result[3]};
+  },
+  getDestinationGasQuote:async()=>{
+   const [fee,balance]=await Promise.all([d.getFeeData(),d.getBalance(signer.address)]);
+   return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei:balance};
+  },
+  getCoinGeckoSnapshot:getSnapshot
+ });
+ const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
+ return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
+  chainId:result.sourceChainId,value:"0x"+BigInt(result.sourceValueWei).toString(16),
+  data}};
+}
+function publicError(err){
+ const text=String(err?.message||err||"unknown");
+ // Never log env/private key, raw external responses, or headers.
+ if(/Missing XITA_MANAGED_RELAYER|private key/i.test(text))return "Managed signer not configured";
+ return text.slice(0,170);
+}
+async function handler(req,res){
+ const send=(status,obj)=>{
+  res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
+   "x-content-type-options":"nosniff"});
+  res.end(JSON.stringify(obj));
+ };
+ if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health")
+  return send(200,{ok:true,service:"xita-optional-managed-relay-quote",signer:signer.address,
+   enabledChains:Object.entries(sourceAddresses).filter(x=>/^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0])});
+ if(req.method!=="POST"||req.url!=="/api/xita/v1/managed/quote")
+  return send(404,{ok:false,error:"Unknown endpoint"});
+ let body="";
+ try{
+  for await(const chunk of req){
+   body+=chunk.toString("utf8");
+   if(body.length>4096)throw Error("Quote request too large");
+  }
+  const parsed=JSON.parse(body);
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
+   Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
+   throw Error("Invalid request");
+  const reply=await createQuote(parsed);
+  return send(200,{ok:true,...reply});
+ }catch(e){
+  const message=publicError(e);
+  return send(503,{ok:false,error:message});
+ }
+}
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ const port=Number(process.env.XITA_MANAGED_QUOTE_PORT||4092);
+ if(!Number.isInteger(port)||port<1||port>65535)throw Error("Invalid listen port");
+ createServer((req,res)=>{void handler(req,res)}).listen(port,"127.0.0.1",()=>{
+  console.log("XITA managed relay quote signer listening on loopback "+port);
+ });
+}
+export {createQuote,handler};
