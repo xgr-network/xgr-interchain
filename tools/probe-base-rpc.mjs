@@ -39,6 +39,16 @@ export async function probe(url,options={}){
   const logs=await rpc(url,"eth_getLogs",[{address:GATEWAY,fromBlock:FROM,toBlock:BLOCK}],options);
   if(!Array.isArray(logs))throw Error("historical logs not an array");
   status.historicalLogs=true;
+  // XGR validator discovery scans up to 1,000 source-chain blocks per call.
+  // Test that real range separately, before advertising validator readiness.
+  const validatorTo="0x"+(Number.parseInt(FROM,16)+999).toString(16);
+  try{
+   const big=await rpc(url,"eth_getLogs",[{address:GATEWAY,fromBlock:FROM,toBlock:validatorTo}],options);
+   status.validatorWindow1000=Array.isArray(big);
+  }catch(error){
+   status.validatorWindow1000=false;
+   status.validatorError=String(error?.message||error).slice(0,140);
+  }
   const c=await rpc(url,"eth_call",[{to:"0x4200000000000000000000000000000000000006",data:"0x18160ddd"},BLOCK],options);
   if(!/^0x[0-9a-f]{64}$/i.test(c||""))throw Error("historical state unavailable");
   status.historicalState=true;status.ok=true;
