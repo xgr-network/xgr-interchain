@@ -11,7 +11,7 @@ export const MANAGED_QUOTE_TYPES=Object.freeze({
   {name:"routeId",type:"bytes32"},{name:"destinationDomain",type:"uint32"},
   {name:"recipient",type:"bytes32"},{name:"amount",type:"uint256"},
   {name:"bridgeValueWei",type:"uint256"},{name:"relayerFeeWei",type:"uint256"},
-  {name:"nonce",type:"uint256"},{name:"deadline",type:"uint64"}
+  {name:"nonce",type:"uint256"},{name:"issuedAt",type:"uint64"}
  ]
 });
 const NONCE=()=>BigInt("0x"+randomBytes(32).toString("hex"));
@@ -22,7 +22,7 @@ const toUint=v=>{if(typeof v!=="string"||!DECIMAL.test(v))throw Error("Invalid p
 const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
- readExecutionOwner,getDestinationGasQuote,getCoinGeckoSnapshot,
+ readExecutionOwner,readQuoteLifetime,getDestinationGasQuote,getCoinGeckoSnapshot,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,bufferBps=13000n
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout}=request||{};
@@ -40,11 +40,12 @@ export async function buildManagedQuote({
  const execution=getAddress(executionAddress);
  const owner=await readExecutionOwner({source,executionAddress:execution});
  if(!eq(owner,signer?.address))throw Error("Configured relayer key is not contract owner");
- const [bridge,gas,priceData]=await Promise.all([
+ const [bridge,gas,priceData,onChainLifetime]=await Promise.all([
   readGatewayQuote({source,route,destinationDomain:dst.domainId,
    recipient:zeroPadValue(recipientAddress,32),amount}),
   getDestinationGasQuote({destination,relayerAddress:signer.address}),
-  getCoinGeckoSnapshot({source,destination})
+  getCoinGeckoSnapshot({source,destination}),
+  readQuoteLifetime({source,executionAddress:execution})
  ]);
  if(!Number.isSafeInteger(Number(dst?.domainId))||dst.domainId<1)
   throw Error("Invalid destination chain domain");
@@ -57,20 +58,25 @@ export async function buildManagedQuote({
  const destinationCost=units*gasPriceWei;
  if(BigInt(gas.availableWei)<destinationCost*2n)
   throw Error("Relayer lacks destination native gas reserve");
+ const ttl=BigInt(onChainLifetime);
+ if(ttl<1n||ttl>90n)throw Error("Invalid deployed managed quote lifetime");
  const now=clock(),oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
  const fee=costInSourceWei({sourcePriceUsd:oracle.sourceUsd,
   destinationPriceUsd:oracle.destinationUsd,destinationGasPriceWei:gasPriceWei,
   destinationGasUnits:units,bufferBps});
  const relayerFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(relayerFeeWei===0n)throw Error("Native source service fee unavailable");
- const ttl=90,deadline=Math.floor(now/1000)+ttl;
+ const issuedAt=Math.floor(now/1000);
+ if(!Number.isSafeInteger(issuedAt)||issuedAt<1)
+  throw Error("Invalid managed quote issuance clock");
+ const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
   destinationDomain:dst.domainId,
   recipient:zeroPadValue(recipientAddress,32),
   amount:amount.toString(),bridgeValueWei:bridgeValue.toString(),
   relayerFeeWei:relayerFeeWei.toString(),nonce:nonce().toString(),
-  deadline
+  issuedAt
  };
  const domain={name:"XITA Managed Relay",version:"1",chainId:src.chainId,
   verifyingContract:execution};
@@ -80,7 +86,7 @@ export async function buildManagedQuote({
  return {
   status:"SIGNED_MANAGED_QUOTE",source,sourceChainId:src.chainId,destination,
   asset,relayerOwner:owner,executionAddress:execution,
-  quote:q,signature,expiresAt:deadline,
+  quote:q,signature,expiresAt,quoteLifetimeSeconds:Number(ttl),
   feeCurrency:COINGECKO_GAS_COIN_IDS[source], // CoinGecko ID, not an ERC20
   sourceValueWei:(bridgeValue+relayerFeeWei).toString(),
   pricing:{sourceNativeCoinGeckoId:oracle.sourceId,
