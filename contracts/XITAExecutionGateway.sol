@@ -168,7 +168,7 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     /// @notice Owner can shorten or restore the lifetime up to the hard 90s cap.
     /// @dev Changing the policy applies immediately to outstanding signed quotes.
     function setQuoteLifetimeSeconds(uint64 newSeconds) external {
-        if (msg.sender != owner()) revert UnauthorizedRelayer();
+        if (msg.sender != serviceWallet) revert UnauthorizedRelayer();
         if (newSeconds == 0 || newSeconds > MAX_QUOTE_LIFETIME) revert InvalidQuoteLifetime();
         uint64 previousSeconds = quoteLifetimeSeconds;
         quoteLifetimeSeconds = newSeconds;
