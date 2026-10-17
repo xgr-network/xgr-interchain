@@ -49,7 +49,7 @@ const defaults=()=>({catalog:fixture(),request,executionAddress:address(44),
  validatorFeeWei:100000000000000000n,tokenAmount:0n}),
  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:100000000000000000n}),
  getCoinGeckoSnapshot:async()=>exchange(),
- clock:()=>now,nonce:()=>42n,gasUnits:1000000n,vatPolicy:{country:"DE",rateBps:1900,basis:"verified domestic consumer"}});
+ clock:()=>now,nonce:()=>42n,gasUnits:1000000n});
 test("produces cryptographically valid owner EIP712 binding both chains and exact native fees",async()=>{
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
@@ -95,8 +95,12 @@ test("no unsupported source/destination or non-decimal raw amount",async()=>{
  ])await assert.rejects(()=>buildManagedQuote({...defaults(),request:{...request,...requestPatch}}));
 });
 
-test("tax jurisdiction must be resolved before any EIP-712 signature",async()=>{
- await assert.rejects(()=>buildManagedQuote({...defaults(),vatPolicy:null}),/VAT policy unresolved/);
+test("worldwide source-native quote is not gated on VAT customer location",async()=>{
+ const r=await buildManagedQuote(defaults());
+ assert.equal(r.pricing.priceVatCapBps,"2700");
+ assert.equal(r.pricing.grossInterchainFeeWei,r.quote.interchainFeeWei);
+ for(const key of ["vatCountry","vatPolicyBasis","vatRateBps","vatWei",
+    "netInterchainFeeWei"])assert.equal(Object.hasOwn(r.pricing,key),false);
 });
 test("honors owner-configured on-chain TTL, never exceeds 90 seconds",async()=>{
  const r=await buildManagedQuote({...defaults(),readQuoteLifetime:async()=>30n});
