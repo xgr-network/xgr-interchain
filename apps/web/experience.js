@@ -338,6 +338,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const actionLabel=!connected?"Connect wallet to transfer":
   busy?"Preparing transaction…":
   selected?.status==="awaiting-proof"?"Continue delivery":
+  selected?.status==="awaiting-onward"?"Verify onward hop":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
   !isDirect?"Select the first hop via XGRChain":
@@ -345,6 +346,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const buttonDisabled=busy||connected&&(!deployed&&!selected||!isDirect&&!selected);
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
+  selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
   selected?.status==="delivery-unknown"?"Source confirmed · destination RPC unavailable":
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
@@ -372,7 +374,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
   esc(progress.error?"Action needs attention":
    busy?"Checking transaction safety…":
-   selected?"1 / 2 · "+statusLabel:
+   selected?(selected.onwardRouteId?"2 / 4 · ":"1 / 2 · ")+statusLabel:
    deployed?(connected?"Ready to transfer":"Wallet not connected"):
    "Selected route unavailable")+'</strong></div>'+
   (selected||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
