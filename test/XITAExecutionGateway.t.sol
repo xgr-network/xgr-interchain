@@ -205,7 +205,7 @@ contract XITAExecutionGatewayTest is Test {
         vm.expectRevert(XITAExecutionGateway.UnauthorizedRelayer.selector);
         vm.prank(USER);
         managed.setQuoteLifetimeSeconds(30);
-        vm.startPrank(RECOVERY_ADMIN);
+        vm.startPrank(relayer);
         vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
         managed.setQuoteLifetimeSeconds(0);
         vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
@@ -218,7 +218,7 @@ contract XITAExecutionGatewayTest is Test {
         vm.warp(uint256(q.issuedAt) + 31);
         _mustRevert(q,signed,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
-        vm.prank(RECOVERY_ADMIN);
+        vm.prank(relayer);
         managed.setQuoteLifetimeSeconds(90);
         assertEq(managed.quoteLifetimeSeconds(),90);
         _execute(q); // Within the hard 90s bound under the restored policy.
