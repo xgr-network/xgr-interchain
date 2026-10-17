@@ -180,3 +180,30 @@ test("fee contract deployment must bind all three service roles to ONE address",
   component:"executionGateway",address:addr(22),chain,bootstrap,
   infra:manifest,parameters:params}),/binding mismatch/);
 });
+
+test("per-chain fee gateway verifies one service wallet for signer, beneficiary and gas sponsorship",async()=>{
+ const service=addr(60),recovery=addr(61),sourceRegistry=addr(62);
+ const infraWithSource={...infra,components:[
+  ...infra.components,{key:"sourceRegistry",address:sourceRegistry}]};
+ const map=new Map(Object.entries({
+  "sourceRegistry()":word(62),"owner()":word(61),
+  "serviceWallet()":word(60),"relayerOwner()":word(60),
+  "interchainFeeRecipient()":word(60),
+  "quoteLifetimeSeconds()":word(90),"MAX_QUOTE_LIFETIME()":word(90)
+ }).map(([sig,result])=>[selector(sig),result]));
+ const rpc=async(_url,method,args)=>{
+  assert.equal(method,"eth_call");
+  return map.get(args[0].data);
+ };
+ const opts={rpc,url:"https://rpc.invalid",component:"executionGateway",
+  address:addr(63),chain,bootstrap,infra:infraWithSource,
+  parameters:{serviceWallet:service,recoveryAdmin:recovery}};
+ assert.equal(await verifyChainBindings(opts),true);
+ map.set(selector("interchainFeeRecipient()"),word(99));
+ await assert.rejects(()=>verifyChainBindings(opts),/binding mismatch/);
+ map.set(selector("interchainFeeRecipient()"),word(60));
+ map.set(selector("owner()"),word(60));
+ await assert.rejects(()=>verifyChainBindings(opts),/binding mismatch/);
+ await assert.rejects(()=>verifyChainBindings({...opts,
+  parameters:{serviceWallet:service,recoveryAdmin:service}}),/Different public/);
+});
