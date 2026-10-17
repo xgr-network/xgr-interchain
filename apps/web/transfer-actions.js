@@ -182,6 +182,9 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   const onward=deployedRoutes(catalog).filter(r=>r.asset===asset&&
    r.source==="xgrchain"&&r.destination===destination);
   if(onward.length!==1)throw Error("Final onward route not uniquely deployed");
+  const hubAdapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
+  if(!paidAdapter||!hubAdapter?.address)
+   throw Error("Two-hop transfer requires both deployed and verified fee/continuation adapters");
  }
  // Require public permissionless recovery proof infrastructure before
  // locking/burning source assets. This is an execution preflight, never a
@@ -193,13 +196,29 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const proofHealth=await proofService.json().catch(()=>null);
  if(!proofHealth?.ok||proofHealth.proofBuilder!=="installed")
   throw Error("Unsigned BLS/Merkle recovery is not ready; no tokens locked");
- // Source gas plus destination gas must exist before locking/burning.
- const destinationRpcId=await publicRead(dst.rpcUrls?.[0],"eth_chainId",[],fetcher);
- if(!QTY.test(destinationRpcId||"")||BigInt(destinationRpcId)!==BigInt(dst.chainId))
-  throw Error("Destination RPC chain ID differs from configured chain");
- const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
- if(!QTY.test(destinationBalance||"")||BigInt(destinationBalance)===0n)
-  throw Error("Destination wallet needs native gas BEFORE locking tokens");
+ // Do not lock a new source if a destination has neither the wallet's
+ // own native gas nor a fresh, independently verified sponsor reserve.
+ const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];
+ let sponsor=null;
+ for(const key of destinations){
+  const target=catalog.chains[key];
+  const identity=await publicRead(target.rpcUrls?.[0],"eth_chainId",[],fetcher);
+  if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(target.chainId))
+   throw Error("Destination RPC chain ID differs from configured chain: "+key);
+  const bal=await publicRead(target.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
+  if(!QTY.test(bal||""))throw Error("Invalid destination wallet native balance: "+key);
+  if(BigInt(bal)===0n){
+   if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
+   if(!sponsor){
+    const response=await fetcher("/api/xita/v1/managed/health",{
+     cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+    }).catch(()=>null);
+    sponsor=response?.ok?await response.json().catch(()=>null):null;
+   }
+   if(sponsor?.ok!==true||sponsor.sponsorship?.chains?.[key]!==true)
+    throw Error("Destination native gas absent and sponsorship not available on "+key);
+  }
+ }
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
  await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
