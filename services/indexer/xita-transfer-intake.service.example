@@ -1,0 +1,21 @@
+[Unit]
+Description=XITA untrusted wallet TX announcement staging (no signing or execution)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/transfer-intake.env
+ExecStart=/usr/bin/node services/indexer/transfer-intake.mjs
+Restart=on-failure
+RestartSec=6
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
