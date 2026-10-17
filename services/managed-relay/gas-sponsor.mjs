@@ -250,6 +250,60 @@ export function sponsorDatabase(pool){
   }
  };
 }
+// Confirm native gifts by their exact previously journaled transaction
+// without ever rebroadcasting a grant after restart or uncertain RPC results.
+export async function reconcileSponsorGrants({pool,catalog,wallet,providers}){
+ const records=await pool.query("SELECT grant_key,chain_name,sponsor_address,recipient,"+
+  " amount_wei::text AS amount_wei, wallet_nonce,tx_hash FROM xita_sponsor_grants"+
+  " WHERE status='submitted' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 40");
+ let checked=0,confirmed=0;
+ for(const row of records.rows){
+  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
+  if(!same(row.sponsor_address,wallet.address))continue;
+  const receipt=await p.getTransactionReceipt(row.tx_hash);
+  if(!receipt)continue;
+  const tx=await p.getTransaction(row.tx_hash);
+  if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
+     tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
+   throw Error("Sponsorship receipt does not match durable signed intent");
+  checked++;
+  const status=receipt.status===1?"confirmed":"needs-review";
+  if(receipt.status===1)confirmed++;
+  await pool.query({text:"UPDATE xita_sponsor_grants SET status=$2,updated_at=NOW()"+
+   " WHERE grant_key=$1 AND status='submitted'",
+   values:[row.grant_key,status]});
+ }
+ return {checked,confirmed};
+}
+export async function reportSponsorReserves({pool,catalog,wallet,policy,providers}){
+ const states=[];
+ for(const [chain,cfg] of Object.entries(policy)){
+  try{
+   const p=await getProvider(catalog,chain,providers);
+   const gasPrice=(await p.getFeeData()).maxFeePerGas||
+    (await p.getFeeData()).gasPrice||0n;
+   const balance=await p.getBalance(wallet.address);
+   const ready=gasPrice>0n&&balance>=BigInt(cfg.minReserveWei)+
+    BigInt(cfg.maxGrantWei)+gasPrice*42000n;
+   await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
+     "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
+     " VALUES($1,$2,$3,$4,NOW())"+
+     " ON CONFLICT(chain_name) DO UPDATE SET "+
+     " sponsor_address=EXCLUDED.sponsor_address,gas_ready=EXCLUDED.gas_ready,"+
+     " balance_wei=EXCLUDED.balance_wei,checked_at=NOW()",
+    values:[chain,wallet.address.toLowerCase(),ready,balance.toString()]});
+   states.push({chain,ready});
+  }catch{
+   await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
+    "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
+    " VALUES($1,$2,FALSE,0,NOW())"+
+    " ON CONFLICT(chain_name) DO UPDATE SET gas_ready=FALSE,checked_at=NOW()",
+    values:[chain,wallet.address.toLowerCase()]});
+   states.push({chain,ready:false});
+  }
+ }
+ return states;
+}
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
  const required=k=>{
@@ -291,13 +345,17 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " AND p.parent_message_id IS NULL"+
    " ORDER BY p.source_indexed_at ASC LIMIT 60");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
+  const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
+   providers:providerCache});
+  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
+   providers:providerCache});
   for(const row of rows.rows){
    if(!policy[sponsorStage(row)?.chain])continue;
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
     providers:providerCache,fetcher,nativePolicy:policy}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
-  return {status:"checked",reviewed:rows.rows.length,
+  return {status:"checked",reviewed:rows.rows.length,reserves,reconciled,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};
  }finally{await pool.end()}
