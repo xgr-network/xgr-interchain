@@ -109,12 +109,16 @@ are complete. Do not send real native currency based only on UI readiness.
 
 ## Optional source-chain GmbH Managed Relay contract
 
-For each chain separately, **Chain Infrastructure** displays the optional
-`Managed Relay · Execution Gateway` after the canonical Source Registry.
-Enter ONLY the public GmbH relayer owner address. Contract creation, Ethereum
+For each chain separately (XGRChain, Base, Polygon, Arbitrum once approved), **Chain Infrastructure** displays the optional
+`Interchain Fee · Execution Gateway` after the canonical Source Registry.
+Enter TWO public, immutable constructor addresses: EIP-712 quote signer
+(`relayerOwner`) and GmbH payout/sponsor EVM address
+(`interchainFeeRecipient`). Never provide a private key. Each chain's
+Source Registry is drawn independently from its own verified manifest.
+Contract creation, Ethereum
 gas preview, MetaMask approval, independent runtime/constructor checks,
 append-only GitHub receipt, chain deployment JSON, regenerated public
 catalog, and server sync use the existing secure chain deploy machinery.
 This component is not mandatory ILN infrastructure and is not part of the
-bulk "finish chain" deployment. No private relayer key belongs in Admin UI.
+bulk "finish chain" deployment. The same public GmbH payee may be chosen on every EVM chain, but each deployment and source-native balance is independent. No private signing or sponsorship key belongs in Admin UI.
 The owner has NO ILN protocol, token, Mailbox or validator privilege.
