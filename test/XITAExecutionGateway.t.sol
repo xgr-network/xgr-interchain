@@ -351,6 +351,22 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(managed.pendingInterchainFeesWei(),0);
     }
 
+    function testRecoveryAdminCannotBeHotKeyOrBeRenounced() public {
+        vm.prank(RECOVERY_ADMIN);
+        vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
+        managed.transferOwnership(relayer);
+        vm.prank(RECOVERY_ADMIN);
+        vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
+        managed.renounceOwnership();
+        vm.prank(RECOVERY_ADMIN);
+        managed.transferOwnership(address(0xC0FFEE));
+        vm.prank(RECOVERY_ADMIN);
+        vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
+        managed.setServiceWallet(payable(address(0xC0FFEE)));
+        assertEq(managed.owner(), RECOVERY_ADMIN);
+        assertEq(managed.pendingOwner(),address(0xC0FFEE));
+    }
+
     function testOnlyRecoveryAdminCanChangeServiceWallet() public {
         address nextWallet = vm.addr(0xD00D);
         vm.prank(USER);
