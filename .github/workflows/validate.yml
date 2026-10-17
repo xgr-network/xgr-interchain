@@ -76,6 +76,8 @@ jobs:
       - name: Validate global XITA Interchain Fee ingress
         run: node --test tools/interchain-fee-nginx.test.mjs
 
+      - name: Validate persisted wallet TX announcement intake
+        run: node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs tools/transfer-intake-nginx.test.mjs
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
 
