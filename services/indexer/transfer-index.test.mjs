@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,
- checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates} from "./transfer-index.mjs";
+ checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
 import {commitWindow,catchUpRoute} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
@@ -186,4 +186,19 @@ test("bounded backfill advances every committed window and stops at finality",as
   once++;return {indexed:1,scannedTo:500,finalizedHead:500};
  }});
  assert.equal(once,1);assert.equal(current.indexed,1);
+});
+
+test("known Base tx hash checks skip archive-only gate but still fail over and verify identity",async()=>{
+ const a="https://gateway.tenderly.co/public/base",b="https://base.gateway.tenderly.co";
+ const calls=[],chain={name:"base",chainId:8453,rpcUrls:[a,b]};
+ const reader=candidateRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);calls.push([url,method]);
+  if(method==="eth_chainId")return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:"0x2105"})};
+  if(url===a)return {ok:false,json:async()=>({error:{code:-32000}})};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:{transactionHash:"0x"+"a".repeat(64)}})};
+ }});
+ const response=await reader(chain,"eth_getTransactionReceipt",["0x"+"a".repeat(64)]);
+ assert.equal(response.transactionHash,"0x"+"a".repeat(64));
+ assert.ok(calls.some(c=>c[0]===b&&c[1]==="eth_getTransactionReceipt"));
+ assert.ok(!calls.some(c=>c[1]==="eth_getLogs"),"No archive probe on a known hash");
 });
