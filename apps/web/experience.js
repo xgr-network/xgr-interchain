@@ -404,6 +404,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
+  '<div class="ux-sponsor-status" role="status" aria-live="polite">'+
+  '<strong>Optional gas sponsorship</strong><span class="ux-small">'+
+  esc(progress.sponsorship?.available===true?
+   "Currently available for eligible steps. Each grant is checked separately; it is never guaranteed by the fee.":
+   progress.sponsorship?.status==="unavailable"?
+   "Not active. Keep enough native gas on every required chain before transferring.":
+   "Availability not verified. Treat sponsorship as unavailable until confirmed.")+
+  '</span></div>'+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+
