@@ -86,6 +86,39 @@ export function costInSourceWei({
   sourcePrice12:src.toString(),destinationPrice12:dst.toString()
  };
 }
+// Aggregates the ACTUAL two-hop route stages in the ORIGINAL source coin.
+// Stages are XGR/target Mailbox processing, XGR onward Gateway gas and the
+// source-native second-hop validator/router payment, where applicable.
+// Keep the per-stage rounded-up wei conversions auditable; do not float-scale.
+export function quotedJourneyCostWei({
+ source,stages,coinGeckoSnapshot,now=Date.now()
+}){
+ if(!COINGECKO_GAS_COIN_IDS[source]||!Array.isArray(stages)||
+   stages.length<1||stages.length>6)throw Error("Invalid Interchain Fee route stages");
+ const breakdown=[];let sum=0n;
+ for(const item of stages){
+  if(!item||!COINGECKO_GAS_COIN_IDS[item.chain]||
+    !/^[a-z-]{3,30}$/.test(item.kind||""))throw Error("Unsupported journey stage");
+  const gasUnits=BigInt(item.gasUnits??0n),gasPriceWei=BigInt(item.gasPriceWei??0n),
+   nativeFeeWei=BigInt(item.nativeFeeWei??0n);
+  if(gasUnits<0n||gasUnits>5000000n||gasPriceWei<0n||
+    nativeFeeWei<0n||(gasUnits>0n&&gasPriceWei===0n)||
+    (gasUnits===0n&&nativeFeeWei===0n))throw Error("Unsafe journey gas/fee estimate");
+  const prices=verifiedCoinGeckoPrices(coinGeckoSnapshot,source,item.chain,{now});
+  const nativeCost=gasUnits*gasPriceWei+nativeFeeWei;
+  const translated=ceilDiv(nativeCost*usdPrice12(prices.destinationUsd),
+   usdPrice12(prices.sourceUsd));
+  if(translated===0n)throw Error("Underflow in source-native journey quote");
+  sum+=translated;
+  breakdown.push({chain:item.chain,kind:item.kind,
+   nativeGasCoin:COINGECKO_GAS_COIN_IDS[item.chain],
+   nativeCostWei:nativeCost.toString(),sourceCostWei:translated.toString(),
+   gasUnits:gasUnits.toString(),gasPriceWei:gasPriceWei.toString(),
+   protocolNativeFeeWei:nativeFeeWei.toString()});
+ }
+ return {estimatedCostSourceWei:sum.toString(),stages:breakdown,
+  ...priceInterchainCostWei({estimatedCostSourceWei:sum,vatBps:0n})};
+}
 export function verifiedCoinGeckoPrices(data,source,destination,{now=Date.now(),maxAgeSec=240}={}){
  const sourceId=COINGECKO_GAS_COIN_IDS[source],
   destinationId=COINGECKO_GAS_COIN_IDS[destination];
