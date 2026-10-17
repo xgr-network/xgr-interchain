@@ -340,9 +340,10 @@ contract XITAExecutionGatewayTest is Test {
         _mustRevert(fresh, _signature(fresh, RELAYER_KEY),
             fresh.bridgeValueWei + fresh.interchainFeeWei,
             XITAExecutionGateway.InvalidSignature.selector);
+        bytes memory freshSignature = _signature(fresh, 0xD00D);
         vm.prank(USER);
         managed.execute{value:fresh.bridgeValueWei + fresh.interchainFeeWei}(
-            fresh, _signature(fresh, 0xD00D));
+            fresh, freshSignature);
         uint256 beforeWallet = nextWallet.balance;
         vm.prank(USER);
         managed.claimFees();
