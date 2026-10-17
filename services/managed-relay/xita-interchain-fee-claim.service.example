@@ -1,0 +1,18 @@
+[Unit]
+Description=XITA Claim Full Source-Native Interchain Fee Balance When Economical
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/interchain-fee.env
+ExecStart=/usr/bin/flock -n /run/lock/xita-fee-wallet.lock /usr/bin/node services/managed-relay/fee-claim.mjs
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/lock
+UMask=0077
+TimeoutStartSec=90
