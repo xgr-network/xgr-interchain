@@ -37,7 +37,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    (t.interchainFeeWei?'<div class="ux-transfer-meta"><span>GmbH Interchain Fee (source wei)</span><code>'+esc(t.interchainFeeWei)+'</code></div>':'')+
    (canRecover?'<p class="ux-transfer-warning">'+esc(t.status==="awaiting-onward"?
      "First hop delivered on XGRChain; final journey not proven. Never repeat source lock or blindly retry hop 2.":
-     "Original source confirmed. Never repeat it; only destination delivery may continue.")+'</p>':'')+
+     "Original source confirmed. It is never submitted again. Only destination delivery can be continued.")+'</p>':'')+
    (canRecover?'<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(t.asset||"XGR")+'">Open in Transfer Tokens →</a>':'')+
    '</article>';
  }).join("");
