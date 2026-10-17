@@ -239,7 +239,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   valid.push({route,messageId:id,validatorFeeWei:BigInt(operations[0].data).toString(),
    evidence});
  }
- if(valid.length!==1)throw Error("Source receipt does not identify exactly one canonical route and message");
+ if(valid.length!==1)throw Error("Missing or ambiguous verified Gateway operation or Mailbox Dispatch / Interchain Fee evidence");
  const {route,messageId,validatorFeeWei,evidence}=valid[0];
  const base={account:lower(account),txHash:lower(txHash),sourceChain,
   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
