@@ -51,3 +51,16 @@ test("GmbH fee recipient, gas sponsor and quote signer share exactly ONE wallet"
   serviceWallet:service
  }),/required/);
 });
+
+test("one global GmbH operational wallet binds all service roles; recovery admin is separate",()=>{
+ const serviceWallet="0x"+"a".repeat(40);
+ const recoveryAdmin="0x"+"b".repeat(40);
+ assert.deepEqual(deploymentParameters("executionGateway",{serviceWallet,recoveryAdmin}),
+  {serviceWallet,recoveryAdmin});
+ assert.throws(()=>deploymentParameters("executionGateway",
+  {serviceWallet,recoveryAdmin:serviceWallet}),/must be different/);
+ assert.throws(()=>deploymentParameters("executionGateway",
+  {serviceWallet,recoveryAdmin:"0x"+"0".repeat(40)}),/Valid nonzero/);
+ assert.throws(()=>deploymentParameters("executionGateway",
+  {serviceWallet,recoveryAdmin,relayerOwner:serviceWallet}),/wrong component/);
+});
