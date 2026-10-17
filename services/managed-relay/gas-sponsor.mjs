@@ -342,8 +342,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " AND c.account=p.account AND c.asset=p.asset AND c.amount_raw=p.amount_raw"+
    " AND c.route_id=p.onward_route_id LIMIT 1) c ON TRUE"+
    " WHERE p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
-   " AND p.parent_message_id IS NULL"+
-   " ORDER BY p.source_indexed_at ASC LIMIT 60");
+   " AND p.parent_message_id IS NULL AND ("+
+   " p.delivered IS FALSE OR (p.delivered IS TRUE AND"+
+   " p.onward_route_id IS NOT NULL AND (c.message_id IS NULL OR c.delivered IS FALSE)))"+
+   " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
+   " g.grant_key=p.source_chain||':'||p.message_id||':'||"+
+   " CASE WHEN p.delivered IS FALSE THEN 'first-delivery'"+
+   " WHEN c.message_id IS NULL THEN 'hub-onward' ELSE 'final-delivery' END)"+
+   " ORDER BY p.source_indexed_at ASC LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
