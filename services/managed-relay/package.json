@@ -1,8 +1,13 @@
 {
-  "name":"@xgr-network/xita-managed-relay",
-  "private":true,
-  "version":"1.0.0",
-  "type":"module",
-  "dependencies":{"ethers":"6.13.4"},
-  "scripts":{"test":"node --test *.test.mjs"}
+  "name": "@xgr-network/xita-managed-relay",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "ethers": "6.13.4",
+    "pg": "8.16.3"
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  }
 }
