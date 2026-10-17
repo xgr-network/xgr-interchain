@@ -101,7 +101,10 @@ async function scanWalletHistory(){
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
  try{
   const response=await fetch("/api/xeta/v1/transfers/wallet?"+
-   new URLSearchParams({account,pending:"1"}),{cache:"no-store",credentials:"omit",
+   // Include delivered history too: the wallet API separately reports
+   // openCount for the header badge. A completed test transfer must not
+   // vanish from My Transfers just because its proof finally succeeded.
+   new URLSearchParams({account}),{cache:"no-store",credentials:"omit",
    headers:{accept:"application/json"},signal:controller.signal});
   if(!response.ok)throw Error("Indexer temporarily unavailable");
   const data=await response.json();
