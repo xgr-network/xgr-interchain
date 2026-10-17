@@ -187,13 +187,13 @@ function modalValues(component){
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
+   component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
  const result={};
  for(const key of keys){
   const v=el("modal-"+key).value.trim();
-  if(key==="relayerOwner"||key==="interchainFeeRecipient"){
+  if(key==="serviceWallet"||key==="recoveryAdmin"){
    if(!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
-    throw Error("Gültige öffentliche Quote-Signierer-/Fee-Empfänger-Adresse erforderlich (kein Private Key)");
+    throw Error("Gültige öffentliche Service-Wallet- und Recovery-Admin-Adresse erforderlich");
    result[key]=v.toLowerCase();
   }else{
    if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
@@ -204,6 +204,8 @@ function modalValues(component){
   (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)||
     BigInt(result.perValidatorWei)<BigInt(result.minimumWei)))
   throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
+ if(component==="executionGateway"&&result.serviceWallet===result.recoveryAdmin)
+  throw Error("Recovery-Admin darf NICHT die Service-Wallet sein");
  return result;
 }
 let lastModalPreview=null;
@@ -316,7 +318,7 @@ async function openContractModal(chainName,component){
   const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
+   component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
@@ -336,7 +338,7 @@ async function openContractModal(chainName,component){
     sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","relayerOwner","interchainFeeRecipient"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","serviceWallet","recoveryAdmin"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // Main bootstrap economics are the reviewed defaults, not estimates.
@@ -344,14 +346,14 @@ async function openContractModal(chainName,component){
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=["relayerOwner","interchainFeeRecipient"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
+   input.value=["serviceWallet","recoveryAdmin"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
      String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
-   input.placeholder=["relayerOwner","interchainFeeRecipient"].includes(key)?"0x… öffentliche EVM-Adresse":
+   input.placeholder=["serviceWallet","recoveryAdmin"].includes(key)?"0x… öffentliche EVM-Adresse":
     suggestion==null?"Manuell festlegen":String(suggestion);
-   input.title=key==="interchainFeeRecipient"?
-    "Unveränderliche öffentliche GmbH-Interchain-Fee-Adresse. Erhält Sammel-Claims und darf optional native Gas-Gutschriften finanzieren. Niemals Private Keys eingeben.":key==="relayerOwner"?
-    "Öffentliche Quote-Signierer-Adresse. Signiert nur EIP-712-Gebührenquotes, kann keine Einnahmen abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
+   input.title=key==="recoveryAdmin"?
+    "Unabhängige Recovery-Admin-Wallet (idealerweise Hardware-Wallet), die die Service-Wallet bei Verlust rotieren darf. Nicht auf Servern speichern.":key==="serviceWallet"?
+    "Eine öffentliche GmbH-Adresse für EIP-712-Signaturen, Interchain-Fee-Sammelclaims und Gas-Sponsoring.":component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
@@ -359,7 +361,7 @@ async function openContractModal(chainName,component){
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
     component==="executionGateway"?
-    "Optionaler GmbH-Gebührencontract: öffentliche Quote-Signierer-Adresse und SEPARATE öffentliche Interchain-Fee-Auszahlungsadresse eingeben. Je Chain genau ein Deployment. Private Keys gehören ausschließlich in die geschützte Serverkonfiguration. ": 
+    "Eine öffentliche GmbH-Service-Wallet für Quote, Interchain Fee und Sponsoring; dazu eine separate Offline-Recovery-Admin-Adresse für Notfallrotation. Je Chain nur ein Contract. Kein Private Key in die Admin-UI. ": 
     component==="factory"?
     (chainName==="xgrchain"?
       "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":
