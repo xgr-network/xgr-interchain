@@ -104,6 +104,37 @@ function publicError(err){
  if(/Missing XITA_INTERCHAIN_QUOTE|private key/i.test(text))return "Interchain Fee signer not configured";
  return text.slice(0,170);
 }
+let sponsorPool=null;
+async function readSponsorAvailability(){
+ const feeAddress=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").toLowerCase();
+ const url=String(process.env.XITA_SPONSOR_STATUS_DATABASE_URL||"").trim();
+ if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true"||
+   !/^0x[0-9a-f]{40}$/.test(feeAddress)||!url)
+  return {available:false,chains:{},reason:"sponsor-not-enabled"};
+ try{
+  if(!sponsorPool){
+   const {Pool}=await import("pg");
+   sponsorPool=new Pool({connectionString:url,max:2,
+    connectionTimeoutMillis:1800,statement_timeout:2000});
+  }
+  const data=await sponsorPool.query(
+   "SELECT chain_name,sponsor_address,gas_ready,checked_at "+
+   "FROM xita_sponsor_monitor_state");
+  const chains={};
+  for(const row of data.rows){
+   if(!CATALOG.chains?.[row.chain_name])continue;
+   const last=new Date(row.checked_at).getTime();
+   chains[row.chain_name]=String(row.sponsor_address).toLowerCase()===feeAddress&&
+     row.gas_ready===true&&Number.isFinite(last)&&
+     last<=Date.now()&&Date.now()-last<600000;
+  }
+  const available=Object.values(chains).some(Boolean);
+  return {available,chains,reason:available?"native-grants-operator-ready":
+    "sponsor-reserves-or-worker-not-ready"};
+ }catch{
+  return {available:false,chains:{},reason:"sponsor-readiness-unavailable"};
+ }
+}
 async function handler(req,res){
  const send=(status,obj)=>{
   res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
@@ -111,10 +142,10 @@ async function handler(req,res){
   res.end(JSON.stringify(obj));
  };
  if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health")
-  return send(200,{ok:true,service:"xita-optional-managed-relay-quote",signer:signer.address,
-   enabledChains:Object.entries(sourceAddresses).filter(x=>/^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
-    sponsorship:{available:false,reason:"gas-grant-service-not-deployed"}
-   });
+  return send(200,{ok:true,service:"xita-source-native-fee-quote",
+   enabledChains:Object.entries(sourceAddresses).filter(x=>
+    /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
+   sponsorship:await readSponsorAvailability()});
  if(req.method!=="POST"||req.url!=="/api/xita/v1/managed/quote")
   return send(404,{ok:false,error:"Unknown endpoint"});
  let body="";
