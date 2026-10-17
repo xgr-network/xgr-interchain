@@ -148,11 +148,25 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     ///      accrued (even pre-rotation) funds to this new wallet.
     function setServiceWallet(address payable nextWallet) external onlyOwner {
         if (nextWallet == address(0) || nextWallet == address(this) ||
-            nextWallet == serviceWallet || nextWallet == owner())
+            nextWallet == serviceWallet || nextWallet == owner() ||
+            nextWallet == pendingOwner())
             revert InvalidConfiguration();
         address previous = serviceWallet;
         serviceWallet = nextWallet;
         emit ServiceWalletUpdated(previous, nextWallet);
+    }
+
+    /// @notice Change recovery administrator via the standard two-step handoff.
+    /// @dev The active or pending recovery owner must never be the hot service key.
+    function transferOwnership(address nextAdmin) public override onlyOwner {
+        if (nextAdmin == address(0) || nextAdmin == serviceWallet)
+            revert InvalidConfiguration();
+        super.transferOwnership(nextAdmin);
+    }
+
+    function acceptOwnership() public override {
+        if (msg.sender == serviceWallet) revert InvalidConfiguration();
+        super.acceptOwnership();
     }
 
     /// @notice A separate recovery admin can be transferred via Ownable2Step.
