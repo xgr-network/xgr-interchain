@@ -229,9 +229,17 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   const identity=await publicRead(target.rpcUrls?.[0],"eth_chainId",[],fetcher);
   if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(target.chainId))
    throw Error("Destination RPC chain ID differs from configured chain: "+key);
-  const bal=await publicRead(target.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
-  if(!QTY.test(bal||""))throw Error("Invalid destination wallet native balance: "+key);
-  if(BigInt(bal)===0n){
+  const [bal,price]=await Promise.all([
+   publicRead(target.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher),
+   publicRead(target.rpcUrls?.[0],"eth_gasPrice",[],fetcher)
+  ]);
+  if(!QTY.test(bal||"")||!QTY.test(price||"")||BigInt(price)<=0n)
+   throw Error("Invalid destination gas quote or wallet native balance: "+key);
+  // A positive one-wei balance is NOT evidence that a Mailbox delivery
+  // can be paid. Require the same conservative 1.2m-gas envelope as the
+  // commercial estimator, or a current stage-specific sponsor reserve.
+  const nativeGasFloor=BigInt(price)*1200000n*13n/10n;
+  if(BigInt(bal)<nativeGasFloor){
    if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
    if(!sponsor){
     const response=await fetcher("/api/xita/v1/managed/health",{
