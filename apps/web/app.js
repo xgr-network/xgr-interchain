@@ -174,6 +174,33 @@ async function performTransferAction(){
  render();
  try{
   if(selected){
+   if(selected.status==="awaiting-final-proof"){
+    if(!selected.secondHopTxHash||!selected.secondHopMessageId)
+     throw Error("Onward TX is not independently indexed; final delivery is blocked");
+    const next=await findWalletSourceTx({catalog:state.catalog,account,
+     sourceChain:"xgrchain",txHash:selected.secondHopTxHash});
+    if(next.parentMessageId!==selected.messageId||
+       next.messageId!==selected.secondHopMessageId||
+       next.destinationChain!==selected.finalDestinationChain||
+       next.asset!==selected.asset||
+       next.amountRaw!==selected.amountRaw||
+       next.status!=="awaiting-proof")
+     throw Error("Parent-linked onward receipt changed; do not submit a delivery");
+    const outcome=await resumeDelivery({catalog:state.catalog,account,
+     record:next,provider:globalThis.ethereum,waitForProof:true,
+     onStatus:msg=>{transferActivity.notice=msg;if(path()==="/transfer")render();},
+     onBroadcast:({txHash})=>{
+      broadcastKnown=true;
+      transferActivity.notice="Final destination TX "+txHash+" submitted.";
+      if(path()==="/transfer")render();
+     }
+    });
+    transferActivity.notice=outcome.status==="delivered"?
+     "Both hops delivered; refreshing independent chain index.":
+     outcome.notice||"Final destination delivery remains pending.";
+    await scanWalletHistory();
+    return;
+   }
    if(selected.status==="awaiting-onward"){
     // The first on-chain message is already delivered to XGRChain. NEVER
     // replay its source Gateway, even if an RPC or UI later fails.
