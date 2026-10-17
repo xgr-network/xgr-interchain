@@ -141,7 +141,7 @@ assert that one downstream hop completed a specific first hop. Before user
 signing hop 2, the UI re-verifies hop 1 and requires complete indexed history
 with no same-wallet/asset/amount/onward-route collision. Ambiguity FAILS CLOSED.
 
-Pricing occurs outside this indexer: the separate quote signer combines
+Pricing occurs outside this indexer: the same GmbH service-wallet signer combines
 per-chain gas estimates and each hop's validator/router fee and uses a fixed
 source-native GROSS quote. No client geography or VAT `vatPolicy` is needed
 for a blockchain quote. Customer tax classification belongs to subsequent
