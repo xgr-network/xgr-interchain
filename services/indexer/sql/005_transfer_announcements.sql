@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS xita_transfer_announcements (
  last_attempt_at TIMESTAMPTZ,
  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 1000),
- PRIMARY KEY (source_chain,source_tx_hash)
+ PRIMARY KEY (source_chain,source_tx_hash,account)
 );
 CREATE INDEX IF NOT EXISTS xita_transfer_announcements_pending_idx
  ON xita_transfer_announcements(next_attempt_at,first_reported_at)
