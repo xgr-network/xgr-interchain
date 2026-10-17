@@ -218,9 +218,37 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  }
  if(status!=="0x1"||!QTY.test(receipt.blockNumber||""))
   throw Error("Source receipt status or finality missing");
+ const head=await reader.read("eth_blockNumber",[]);
+ if(!QTY.test(head||""))throw Error("Current source block unavailable");
  const valid=[];
  for(const route of named){
-  const found={...base,messageId,confirmed:true,validatorFeeWei,
+  const operations=receipt.logs.filter(log=>validateOperation(log,route));
+  if(operations.length!==1)continue;
+  const id=lower(operations[0].topics[2]);
+  const dispatches=receipt.logs.filter(log=>{
+   try{return validDispatch(log,route,id)}catch{return false}
+  });
+  if(dispatches.length!==1)continue;
+  let evidence=null;
+  if(adapter.length){
+   const events=receipt.logs.map(log=>adapterFeeEvidence(log,route,account,id)).filter(Boolean);
+   if(events.length!==1)continue;
+   evidence=events[0];
+   if(BigInt(evidence.validatorFeeWei)!==BigInt(operations[0].data))continue;
+  }
+  valid.push({route,messageId:id,validatorFeeWei:BigInt(operations[0].data).toString(),
+   evidence});
+ }
+ if(valid.length!==1)throw Error("Source receipt does not identify exactly one canonical route and message");
+ const {route,messageId,validatorFeeWei,evidence}=valid[0];
+ const base={account:lower(account),txHash:lower(txHash),sourceChain,
+  destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
+  routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
+  messageId:null,status:"pending-source"};
+ const confirmations=Math.max(1,Number(route.sourceConfig.confirmations||1));
+ if(BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(confirmations))
+  return {...base,status:"confirming"};
+ const found={...base,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
@@ -231,7 +259,8 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   if(!/^0x[0-9a-f]{64}$/i.test(response||"")||
       ![0n,1n].includes(BigInt(response)))throw Error("Invalid destination delivery state");
   const delivered=BigInt(response)===1n;
-  return {...found,delivered,status:delivered?(evidence?.onwardRouteId?"awaiting-onward":"delivered"):"awaiting-proof"};
+  return {...found,delivered,status:delivered?
+   (evidence?.onwardRouteId?"awaiting-onward":"delivered"):"awaiting-proof"};
  }catch{
   return {...found,status:"delivery-unknown"};
  }
