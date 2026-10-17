@@ -4,7 +4,7 @@
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {readFileSync} from "node:fs";
-import {indexedRoutes,readRouteWindow,verifiedTransfer,checkedDelivery,canonicalRpc} from "./transfer-index.mjs";
+import {indexedRoutes,readRouteWindow,verifiedTransfer,checkedDelivery,canonicalRpc,candidateRpc} from "./transfer-index.mjs";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -311,7 +311,7 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
  });
  return {status:"indexed",messageId:event.messageId,sourceTxHash:hint.source_tx_hash};
 }
-export async function processTransferAnnouncements({catalog,routes,pool,rpc,limit=12,now=Date.now()}){
+export async function processTransferAnnouncements({catalog,routes,pool,rpc,limit=4,now=Date.now()}){
  if(!Number.isInteger(limit)||limit<1||limit>25)throw Error("Unsafe hint batch size");
  const selected=await pool.query({text:`SELECT source_chain,source_tx_hash,account,
    attempts,first_reported_at FROM xita_transfer_announcements
@@ -402,13 +402,13 @@ export async function catchUpRoute({route,scan,batches=4}){
  }
  return {route:route.routeName,indexed,scannedTo,finalizedHead};
 }
-export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),blockFor,limit=150,batches=4}){
+export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc=candidateRpc(),blockFor,limit=150,batches=4}){
  const routes=indexedRoutes(catalog,{blockFor});
  let accelerated={status:"not-installed"};
- try{accelerated=await processTransferAnnouncements({catalog,routes,pool,rpc});}
+ try{accelerated=await processTransferAnnouncements({catalog,routes,pool,rpc:hintRpc});}
  catch(error){accelerated={error:String(error.message||error).slice(0,200)};}
  let hintsRechecked={status:"not-installed"};
- try{hintsRechecked=await reconcileAnnouncedBlocks({pool,routes,rpc});}
+ try{hintsRechecked=await reconcileAnnouncedBlocks({pool,routes,rpc:hintRpc});}
  catch(error){hintsRechecked={error:String(error.message||error).slice(0,200)};}
  const progress=[];
  for(const route of routes){
@@ -421,14 +421,14 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),blockFo
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
  const pool=await transferWriterPool();
- const rpc=canonicalRpc();
+ const rpc=canonicalRpc(),hintRpc=candidateRpc();
  let running=true;
  process.once("SIGTERM",()=>{running=false;});
  process.once("SIGINT",()=>{running=false;});
  while(running){
   const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
   const start=Date.now();
-  const result=await tickTransferIndex({catalog,pool,rpc});
+  const result=await tickTransferIndex({catalog,pool,rpc,hintRpc});
   if(result.accelerated?.error)console.error("[xita-transfer-hints]",result.accelerated.error);
   if(result.accelerated?.indexed)console.log("[xita-transfer-hints] verified",result.accelerated.indexed);
   if(result.hintsRechecked?.retracted)console.warn("[xita-transfer-hints] reorg retracted",result.hintsRechecked.retracted);
