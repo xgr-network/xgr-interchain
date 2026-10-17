@@ -57,6 +57,8 @@ function sourceProvider(sends,overrides={}){
     const amount=100000000000000000n,fee=100000000000000n;
     return word(fee)+word(amount).slice(2)+word(amount+fee).slice(2)+word(0).slice(2);
    }
+   if(data===selector("bridge(uint32,bytes32,uint256)"))
+    return word(123); // Simulated read-only Gateway.bridge before wallet signing.
   }
   if(method==="eth_estimateGas")return "0x5208";
   if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
