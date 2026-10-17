@@ -116,7 +116,7 @@ source-registry validator fee per XGR-source hop, equal to
 `100000000000000000` Wei. Spoke registries use their own native
 currency; later fee changes require BLS validator quorum.
 
-## Optional XITA GmbH Interchain Fee and global UX (draft PR #136)
+## Optional XITA GmbH Interchain Fee and global UX (PR #136, key-rotation follow-up PR #139)
 
 **Protocol separation:** The core ILNGateway, source Registry, FeeVault,
 Mailbox, ISM and validator governance remain permissionless and unchanged.
@@ -126,8 +126,8 @@ The user signs each of the four EVM transactions for spoke->XGRChain->spoke.
 The first user's wallet transaction calls `ExecutionGateway.execute()`,
 which invokes the original `ILNGateway.bridge()` internally and atomically.
 ERC-20 approvals, where required, grant allowance to the ADAPTER for this
-first transaction. The second hop calls the public XGRChain Gateway directly,
-not the paid adapter. A fresh proof unlocks each destination Mailbox.process.
+first transaction. The second hop calls fee-free `continueJourney()` on the XGRChain adapter,
+which internally calls the canonical Gateway without a second GmbH fee. A fresh proof unlocks each destination Mailbox.process.
 
 **Price:** Two distinct charges to the user: canonical source validator fee
 (to its unchanged FeeVault) and ONE variable source-native GmbH Interchain Fee.
@@ -202,10 +202,10 @@ Wallet recovery cannot resend TX1 or TX3 after receipt confirmation.
 **Admin UI:** ONE optional `XITAExecutionGateway` deployment on EACH
 supported EVM chain, no separate token deployments. It requires the
 chain-specific verified Source Registry, one public `serviceWallet` and
-independent public `recoveryAdmin`. The recovery admin may rotate the single
-operational address in one wallet-signed transaction, simultaneously revoking
-old quote signatures and changing the recipient for the whole accrued
-unclaimed fee balance. The existing admin pipeline compiles
+independent public `recoveryAdmin`. The recovery admin rotates the single operational address with
+`setServiceWallet(address)` in one wallet-signed transaction per chain,
+revoking old signatures and redirecting unclaimed fees. `Ownable2Step`
+changes the separate admin role; the fee wallet cannot become admin. The existing admin pipeline compiles
 pinned constructor artifacts, simulates the MetaMask create transaction,
 checks constructor getters and live runtime code hash, and persists
 the immutable GitHub transaction receipt and refreshed public catalog.
@@ -216,8 +216,8 @@ can be one shared public EVM address across all chains.
 **Operator installation AFTER PR merge:** Deploy each desired chain's
 optional adapter via /admin, wait for verified GitHub receipt sync,
 then run the additive PostgreSQL migrations `sql/003_interchain_journey.sql`
-and `sql/004_sponsor_grants.sql` on the indexer DB. Provision restricted
-only `/etc/xita/interchain-fee.env` from the service wallet template. The
+and `sql/004_sponsor_grants.sql` on the indexer DB. Provision one restricted `/etc/xita/interchain-fee.env` from the
+service-wallet template. The
 separate Recovery Admin private key is NEVER on the XITA server. Then run `./manage.sh install-interchain-fee`
 on a CLEAN checked-out GitHub main with the real operator secrets in
 those files. This installs the loopback quote signer, two separately
@@ -324,3 +324,15 @@ not custody, governance, approval, or a new chain-state authority.
 A fresh on-chain `delivered(messageId)` read and canonical BLS/Merkle
 proof validation remain mandatory before any destination MetaMask request.
 Incomplete backfill/RPC reads are UNKNOWN rather than an empty worklist.
+
+### Service key recovery
+
+ONE EVM service wallet signs fees, receives claims, and sponsors optional native gas.
+The on-chain Recovery Admin must be a separate wallet, preferably cold hardware.
+On key loss: stop quote, claim and sponsor services before any service-key changes.
+Connect the Recovery Admin through /admin and use “Service-Wallet ändern”
+on every chain-specific documented adapter. Update the ONE server key and
+public fee address only after the on-chain roles have changed everywhere.
+Unclaimed contract fees are paid to the replacement address. Coins already
+claimed into a compromised EOA cannot be recovered by contract rotation.
+Reconcile in-flight gas-grant nonces before restarting the automated service.
