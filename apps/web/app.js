@@ -88,7 +88,7 @@ async function scanWalletHistory(){
   for(const item of data.items.filter(t=>
     t.account?.toLowerCase()===account.toLowerCase()&&
     /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
-    ["awaiting-proof","delivery-unknown","delivered"].includes(t.status)))
+    ["awaiting-proof","awaiting-onward","delivery-unknown","delivered"].includes(t.status)))
     upsertTransfer(item);
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
