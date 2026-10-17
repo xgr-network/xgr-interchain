@@ -36,7 +36,7 @@ test("fresh install provides both exact read-only proxy paths",()=>{
 test("existing recovery route alone does not skip missing health endpoint",()=>{
  const prior=base.replace("location ^~ /api/xeta/ {",recovery+"\n    location ^~ /api/xeta/ {");
  const result=patchXitaTransferNginx(prior);
- assert.deepEqual(result.added,["/api/xeta/v1/transfer/health"]);
+ assert.deepEqual(result.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/recovery").length-1,1);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/health").length-1,1);
  assert.equal(patchXitaTransferNginx(result.config).changed,false);
@@ -44,7 +44,7 @@ test("existing recovery route alone does not skip missing health endpoint",()=>{
 test("existing health route alone does not skip destination recovery",()=>{
  const prior=base.replace("location ^~ /api/xeta/ {",health+"\n    location ^~ /api/xeta/ {");
  const result=patchXitaTransferNginx(prior);
- assert.deepEqual(result.added,["/api/xeta/v1/transfer/recovery"]);
+ assert.deepEqual(result.added,["/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/health").length-1,1);
 });
 test("wrong virtual host, duplicate route or untrusted upstream fail closed",()=>{
