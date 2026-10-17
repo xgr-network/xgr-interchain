@@ -22,11 +22,13 @@ const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
 const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const signer=new Wallet(required("XITA_MANAGED_RELAYER_PRIVATE_KEY"));
-const sourceAddresses={
- xgrchain:(process.env.XITA_MANAGED_XGRCHAIN_EXECUTION_ADDRESS||"").trim(),
- base:(process.env.XITA_MANAGED_BASE_EXECUTION_ADDRESS||"").trim()
-};
+const signer=new Wallet(required("XITA_INTERCHAIN_QUOTE_PRIVATE_KEY"));
+const sourceAddresses=Object.fromEntries(
+ ["xgrchain","base","polygon","arbitrum"].map(name=>[
+  name,String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
+   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim()
+ ])
+);
 const providers=new Map();
 async function chain(name){
  const cfg=CATALOG.chains[name];
@@ -59,11 +61,11 @@ async function createQuote(request){
  const executionAddress=sourceAddresses[source];
  if(!/^0x[0-9a-f]{40}$/i.test(executionAddress||""))
   throw Error("Managed relay execution contract not deployed");
- const s=await chain(source),d=await chain(destination);
+ await chain(source);await chain(destination);
  const result=await buildManagedQuote({
   catalog:CATALOG,request,executionAddress,signer,
   readExecutionOwner:async()=> {
-   const c=new Contract(executionAddress,EXECUTION_ABI,s);
+   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [owner,registry]=await Promise.all([c.relayerOwner(),c.sourceRegistry()]);
    const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
@@ -71,20 +73,24 @@ async function createQuote(request){
    return owner;
   },
   readQuoteLifetime:async()=>{
-   const c=new Contract(executionAddress,EXECUTION_ABI,s);
+   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [lifetime,maximum]=await Promise.all([c.quoteLifetimeSeconds(),c.MAX_QUOTE_LIFETIME()]);
    if(BigInt(maximum)!==90n)throw Error("Unexpected managed quote validity ceiling");
    return lifetime;
   },
-  readGatewayQuote:async({route,destinationDomain,recipient,amount})=>{
-   const gateway=new Contract(route.gateway,BRIDGE_ABI,s);
+  readGatewayQuote:async({source:gatewaySource,route,destinationDomain,recipient,amount})=>{
+    const gateway=new Contract(route.gateway,BRIDGE_ABI,await chain(gatewaySource));
    const result=await gateway.quoteILN(destinationDomain,recipient,amount);
    return {validatorFeeWei:result[0],bridgeNativeWei:result[2],tokenAmount:result[3]};
   },
-  getDestinationGasQuote:async()=>{
-   const [fee,balance]=await Promise.all([d.getFeeData(),d.getBalance(signer.address)]);
-   return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei:balance};
-  },
+  getDestinationGasQuote:async({destination:gasChain})=>{
+    const client=await chain(gasChain),fee=await client.getFeeData();
+    // Fee quote must not be gated on optional sponsor-wallet reserves.
+    const address=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"");
+    const availableWei=/^0x[0-9a-f]{40}$/i.test(address)?
+     await client.getBalance(address):0n;
+    return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
+   },
   getCoinGeckoSnapshot:getSnapshot
  });
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
@@ -95,7 +101,7 @@ async function createQuote(request){
 function publicError(err){
  const text=String(err?.message||err||"unknown");
  // Never log env/private key, raw external responses, or headers.
- if(/Missing XITA_MANAGED_RELAYER|private key/i.test(text))return "Managed signer not configured";
+ if(/Missing XITA_INTERCHAIN_QUOTE|private key/i.test(text))return "Interchain Fee signer not configured";
  return text.slice(0,170);
 }
 async function handler(req,res){
