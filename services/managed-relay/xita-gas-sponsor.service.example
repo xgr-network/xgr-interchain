@@ -1,0 +1,18 @@
+[Unit]
+Description=XITA Verified Native Gas Sponsor One-Shot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/interchain-fee.env
+ExecStart=/usr/bin/flock -n /run/lock/xita-fee-wallet.lock /usr/bin/node services/managed-relay/gas-sponsor.mjs
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/lock
+UMask=0077
+TimeoutStartSec=120
