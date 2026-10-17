@@ -155,14 +155,15 @@ export async function readWalletTransferIndex(catalog,account,{
  let observed=[];
  try{
   const staged=await connected.query({text:`SELECT a.source_chain,a.source_tx_hash,
-    a.account FROM xita_transfer_announcements a
+    a.account,a.state FROM xita_transfer_announcements a
     WHERE a.account=$1 AND a.state='observed'
       AND a.first_reported_at > NOW()-INTERVAL '48 hours'
       AND NOT EXISTS (SELECT 1 FROM xita_transfer_operations o
        WHERE o.source_chain=a.source_chain AND o.source_tx_hash=a.source_tx_hash)
     ORDER BY a.first_reported_at DESC LIMIT $2`,
    values:[lowercase(account),limit]});
-  observed=staged.rows.filter(r=>ADDRESS.test(r.account||"")&&HASH.test(r.source_tx_hash||"")&&
+  observed=staged.rows.filter(r=>r.state==="observed"&&
+    ADDRESS.test(r.account||"")&&HASH.test(r.source_tx_hash||"")&&
    lowercase(r.account)===lowercase(account)).map(row=>({
     account:lowercase(account),sourceChain:row.source_chain,
     txHash:lowercase(row.source_tx_hash),status:"pending-source",
