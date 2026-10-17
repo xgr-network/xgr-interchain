@@ -29,3 +29,20 @@ test("reject unsafe existing quote route or duplicate and wrong host",()=>{
  a=a.replace("location ^~ /api/xeta/ {",quote+"\nlocation ^~ /api/xeta/ {");
  assert.throws(()=>patchInterchainFeeNginx(a),/Duplicate/);
 });
+
+test("exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whitelisted once in CSP",()=>{
+ const csp=vhost.replace("server_name xita.xgr.network;",
+  "server_name xita.xgr.network;\n"+
+  "add_header Content-Security-Policy \"default-src 'self'; connect-src 'self' https://rpc.xgr.network; object-src 'none'\" always;");
+ const a=patchInterchainFeeNginx(csp);
+ for(const uri of [
+  "https://gateway.tenderly.co",
+  "https://base.gateway.tenderly.co",
+  "https://polygon-bor-rpc.publicnode.com",
+  "https://arbitrum-one-rpc.publicnode.com"
+ ]){
+  assert.ok(a.config.includes(uri));
+  assert.equal(a.config.split(uri).length-1,1);
+ }
+ assert.equal(patchInterchainFeeNginx(a.config).changed,false);
+});
