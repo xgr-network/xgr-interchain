@@ -344,18 +344,37 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
     AND o.message_id=a.verified_message_id
   LEFT JOIN xita_transfer_index_cursors c ON c.source_chain=o.source_chain
     AND c.route_id=o.route_id
-  WHERE a.state='indexed' AND (o.message_id IS NULL OR c.scanned_to IS NULL
+  WHERE a.state='indexed' AND
+    (a.last_attempt_at IS NULL OR a.last_attempt_at<NOW()-INTERVAL '2 minutes')
+    AND (o.message_id IS NULL OR c.scanned_to IS NULL
     OR c.scanned_to<a.verified_block_number)
   ORDER BY a.last_attempt_at NULLS FIRST LIMIT $1`,values:[limit]});
  let checked=0,retracted=0;
  for(const row of indexed.rows){
   const route=routes.find(r=>r.sourceChain===row.source_chain&&
     normalize(r.routeId)===normalize(row.route_id));
-  if(!route||!Number.isSafeInteger(Number(row.verified_block_number)))continue;
+  if(!route||!Number.isSafeInteger(Number(row.verified_block_number))){
+   // A missing canonical row or changed manifest must be reconciled by the
+   // normal scanner. Do not leave an uncheckable 'indexed' hint forever.
+   await pool.query({text:`UPDATE xita_transfer_announcements SET
+     state='reported',next_attempt_at=NOW(),
+     verified_block_number=NULL,verified_block_hash=NULL,
+     verified_message_id=NULL WHERE source_chain=$1 AND source_tx_hash=$2
+     AND account=$3 AND state='indexed'`,
+    values:[row.source_chain,row.source_tx_hash,row.account]});
+   continue;
+  }
   try{
    const block=await rpc(route.sourceConfig,"eth_getBlockByNumber",[
     "0x"+BigInt(row.verified_block_number).toString(16),false]);
-   if(normalize(block?.hash)===normalize(row.verified_block_hash)){checked++;continue;}
+   if(normalize(block?.hash)===normalize(row.verified_block_hash)){
+    checked++;
+    await pool.query({text:`UPDATE xita_transfer_announcements SET
+      last_attempt_at=NOW() WHERE source_chain=$1 AND source_tx_hash=$2
+      AND account=$3 AND state='indexed'`,
+     values:[row.source_chain,row.source_tx_hash,row.account]});
+    continue;
+   }
    await withTransaction(pool,async db=>{
     await db.query({text:`DELETE FROM xita_transfer_operations
       WHERE source_chain=$1 AND source_tx_hash=$2 AND message_id=$3
@@ -365,7 +384,7 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
       state='reported',next_attempt_at=NOW(),
       verified_block_number=NULL,verified_block_hash=NULL,
       verified_message_id=NULL WHERE source_chain=$1 AND source_tx_hash=$2
-      AND state='indexed'`,values:[row.source_chain,row.source_tx_hash]});
+      AND account=$3 AND state='indexed'`,values:[row.source_chain,row.source_tx_hash,row.account]});
    });retracted++;
   }catch{ /* RPC uncertainty never retracts a confirmed source event. */ }
  }
