@@ -93,10 +93,7 @@ export async function runClaimMonitor({
  }
 }
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
- let stopping=false;
- process.once("SIGTERM",()=>{stopping=true;});
- process.once("SIGINT",()=>{stopping=true;});
- runClaimMonitor({shouldStop:()=>stopping}).catch(
+ runConfiguredFeeClaims().then(value=>console.log("XITA fee claim:",JSON.stringify(value)),
   err=>{console.error("XITA fee claim:",String(err?.message||err));process.exitCode=1}
  );
 }
