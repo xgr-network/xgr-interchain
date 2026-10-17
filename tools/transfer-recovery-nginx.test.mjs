@@ -23,7 +23,7 @@ const health=[
 ].join("\n");
 test("fresh install provides both exact read-only proxy paths",()=>{
  const first=patchXitaTransferNginx(base);
- assert.deepEqual(first.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfer/recovery"]);
+ assert.deepEqual(first.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
  assert.match(first.config,/location = \/api\/xeta\/v1\/transfer\/health/);
  assert.match(first.config,/location = \/api\/xeta\/v1\/transfer\/recovery/);
  assert.match(first.config,/location \^~ \/api\/xeta\/ \{ return 503; \}/);
@@ -57,4 +57,33 @@ test("wrong virtual host, duplicate route or untrusted upstream fail closed",()=
 });
 test("missing fail-closed API location is an error, not an invented route",()=>{
  assert.throws(()=>patchXitaTransferNginx(base.replace("location ^~ /api/xeta/ {","location /api/xeta/ {")),/fail-closed/);
+});
+
+test("wallet and stats routes enforce GET-only and are idempotent",()=>{
+ const first=patchXitaTransferNginx(base);
+ for(const path of ["/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]){
+  const start=first.config.indexOf("location = "+path+" {");
+  assert.ok(start>=0);
+  const end=first.config.indexOf("proxy_read_timeout 15s;",start);
+  assert.ok(end>start);
+  const block=first.config.slice(start,end+50);
+  assert.match(block,/limit_except GET/);
+  assert.match(block,/proxy_pass http:\/\/127\.0\.0\.1:4088/);
+ }
+ assert.equal(patchXitaTransferNginx(first.config).changed,false);
+});
+test("existing nested manual wallet location is respected, missing stats is installed",()=>{
+ const manual=[
+ "location = /api/xeta/v1/transfers/wallet {",
+ "    limit_except GET { deny all; }",
+ "    proxy_pass http://127.0.0.1:4088;",
+ "}"
+ ].join("\n");
+ const original=base.replace("location ^~ /api/xeta/ {",manual+"\nlocation ^~ /api/xeta/ {");
+ const fixed=patchXitaTransferNginx(original);
+ assert.ok(!fixed.added.includes("/api/xeta/v1/transfers/wallet"));
+ assert.ok(fixed.added.includes("/api/xeta/v1/transfers/stats"));
+ assert.equal(patchXitaTransferNginx(fixed.config).changed,false);
+ assert.throws(()=>patchXitaTransferNginx(original.replace(manual,manual+"\n"+manual)),/Duplicate XITA/);
+ assert.throws(()=>patchXitaTransferNginx(original.replace("127.0.0.1:4088","127.0.0.1:9999")),/approved read-only upstream/);
 });
