@@ -60,6 +60,37 @@ export function indexedTransferRow(row){
   onwardRouteId:row.onward_route_id?lowercase(row.onward_route_id):null,
   parentMessageId:row.parent_message_id?lowercase(row.parent_message_id):null};
 }
+// A source's destination delivery is NOT proof that a two-hop journey
+// reached the final chain. Link only the uniquely confirmed second-hop
+// adapter event (parentMessageId) and independently checked Mailbox result.
+export function linkIndexedJourneys(items,children){
+ const byParent=new Map;
+ for(const child of children||[]){
+  if(!HASH.test(child.parentMessageId||"")||child.sourceChain!=="xgrchain"||
+     !HASH.test(child.messageId||""))continue;
+  const key=child.parentMessageId;
+  byParent.set(key,[...(byParent.get(key)||[]),child]);
+ }
+ return (items||[]).map(item=>{
+  if(!item.onwardRouteId||item.delivered!==true)return item;
+  const matches=(byParent.get(item.messageId)||[]).filter(child=>
+    lowercase(child.account)===lowercase(item.account)&&
+    child.asset===item.asset&&
+    lowercase(child.routeId)===lowercase(item.onwardRouteId)&&
+    child.destinationChain===item.finalDestinationChain&&
+    lowercase(child.finalRecipient)===lowercase(item.finalRecipient)&&
+    child.amountRaw===item.amountRaw&&
+    child.executionAdapter!=null);
+  if(matches.length>1)return {...item,status:"journey-ambiguous"};
+  if(!matches.length)return {...item,status:"awaiting-onward"};
+  const next=matches[0];
+  return {...item,
+   secondHopTxHash:next.txHash,secondHopMessageId:next.messageId,
+   status:next.delivered===true?"journey-delivered":
+    next.delivered===false?"awaiting-final-proof":"final-delivery-unknown",
+   finalDelivered:next.delivered};
+ });
+}
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
@@ -89,12 +120,33 @@ export async function readWalletTransferIndex(catalog,account,{
      (delivered IS TRUE AND onward_route_id IS NOT NULL))::text AS open,
    COUNT(*) FILTER (WHERE delivered IS NULL)::text AS unknown
    FROM xita_transfer_operations WHERE account=$1`,values:[lowercase(account)]});
- const items=rows.rows.map(indexedTransferRow);
+ const rawItems=rows.rows.map(indexedTransferRow);
+ const parents=rawItems.filter(item=>item.onwardRouteId&&item.delivered===true)
+  .map(item=>item.messageId);
+ let children=[];
+ if(parents.length){
+  const linked=await connected.query({text:`SELECT account,asset,
+   source_chain,destination_chain,route_name,route_id,gateway,
+   source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
+   validator_fee_wei::text AS validator_fee_wei,delivered,execution_adapter,
+   interchain_fee_wei::text AS interchain_fee_wei,
+   final_destination_chain,final_recipient,onward_route_id,parent_message_id
+   FROM xita_transfer_operations
+   WHERE account=$1 AND source_chain='xgrchain'
+     AND parent_message_id::text = ANY($2::text[]) LIMIT 200`,
+   values:[lowercase(account),parents]});
+  children=linked.rows.map(indexedTransferRow);
+ }
+ const linkedItems=linkIndexedJourneys(rawItems,children);
+ const items=onlyPending?linkedItems.filter(i=>
+  !["delivered","journey-delivered"].includes(i.status)):linkedItems;
  const summary=totals.rows[0]||{open:"0",unknown:"0"};
  return {kind:"xita-wallet-transfer-index-v1",
   status:coverage.complete?"complete":"partial",wallet:lowercase(account),
-  coverage,items,openCount:Number(summary.open),unknownCount:Number(summary.unknown),
-  truncated:items.length===limit};
+  coverage,items,openCount:Math.max(0,Number(summary.open)-
+   linkedItems.filter(i=>i.onwardRouteId&&i.status==="journey-delivered").length),
+  unknownCount:Number(summary.unknown),
+  truncated:rawItems.length===limit};
 }
 export async function readTransferIndexStats(catalog,{pool=null,now=Date.now(),routeList=null}={}){
  const connected=pool||await transferReaderPool();
