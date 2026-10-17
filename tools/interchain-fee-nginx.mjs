@@ -48,5 +48,21 @@ export function patchInterchainFeeNginx(config){
   next=next.replace(MARKER,text+"\n"+MARKER);
   added.push(path);
  }
+ // Current public catalog uses dedicated RPC hosts for each chain.
+ // Restrict the CSP to these exact HTTPS origins; never allow *.
+ const required=[
+  "https://gateway.tenderly.co",
+  "https://base.gateway.tenderly.co",
+  "https://polygon-bor-rpc.publicnode.com",
+  "https://arbitrum-one-rpc.publicnode.com"
+ ];
+ const policy=next.match(/connect-src\\s+([^;"]*)/);
+ if(policy){
+  let updated=policy[0];
+  for(const host of required){
+   if(!updated.split(/\\s+/).includes(host))updated+=" "+host;
+  }
+  if(updated!==policy[0])next=next.replace(policy[0],updated);
+ }
  return {config:next,changed:next!==config,added};
 }
