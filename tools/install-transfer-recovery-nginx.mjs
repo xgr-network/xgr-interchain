@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// One-time, idempotent installation of one strictly READ-ONLY XITA route.
-// Never adds a write endpoint or changes another virtual host.
+// Idempotent XITA route installer. Commercial fee mode installs ONLY the
+// exact-matched fee quote POST and public sponsor status GET routes.
+// The upstream signer remains bound to loopback; no broad write proxy.
 import {readFileSync,writeFileSync,existsSync,realpathSync,statSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {patchXitaTransferNginx} from "./transfer-recovery-nginx.mjs";
+import {patchInterchainFeeNginx} from "./interchain-fee-nginx.mjs";
 const sites=[
  "/etc/nginx/sites-enabled/xita.xgr.network.conf",
  "/etc/nginx/sites-enabled/xita.xgr.network",
@@ -19,9 +21,11 @@ const file=realpathSync(selected);
 if(!file.startsWith("/etc/nginx/")||!statSync(file).isFile())fatal("Unsafe nginx config location");
 const before=readFileSync(file,"utf8");
 if(!before.includes("server_name xita.xgr.network"))fatal("Wrong virtual host");
-const {config:next,changed,added}=patchXitaTransferNginx(before);
+const commercial=process.env.XITA_INTERCHAIN_FEE_NGINX==="1";
+const {config:next,changed,added}=commercial?
+ patchInterchainFeeNginx(before):patchXitaTransferNginx(before);
 if(!changed){
- console.log("XITA transfer recovery AND health routes already configured: "+file);
+ console.log("XITA "+(commercial?"Interchain Fee":"transfer recovery")+" nginx routes already configured: "+file);
  process.exit(0);
 }
 const mode=statSync(file).mode;
