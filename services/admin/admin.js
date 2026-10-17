@@ -170,6 +170,8 @@ function renderInfrastructure(){
    setTimeout(()=>{b.textContent=displayAddress(b.dataset.copy)+" ⧉";},1200);
   }catch{b.textContent=b.dataset.copy;}
  }));
+ el("infrastructure-list").querySelectorAll("[data-rotate-chain]").forEach(b=>
+  b.addEventListener("click",()=>void rotateServiceWallet(b.dataset.rotateChain,b.dataset.rotateContract)));
  el("infrastructure-list").querySelectorAll("[data-open-chain]").forEach(b=>b.addEventListener("click",()=>{
   openContractModal(b.dataset.openChain,b.dataset.openComponent);
  }));
