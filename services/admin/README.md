@@ -111,14 +111,14 @@ are complete. Do not send real native currency based only on UI readiness.
 
 For each chain separately (XGRChain, Base, Polygon, Arbitrum once approved), **Chain Infrastructure** displays the optional
 `Interchain Fee · Execution Gateway` after the canonical Source Registry.
-Enter TWO public, immutable constructor addresses: EIP-712 quote signer
-(`relayerOwner`) and GmbH payout/sponsor EVM address
-(`interchainFeeRecipient`). Never provide a private key. Each chain's
+Enter TWO public constructor addresses: ONE GmbH `serviceWallet` for
+EIP-712 quote signing, native fee payout and gas sponsorship, plus a distinct
+`recoveryAdmin` (preferably a hardware/multisig wallet). No private key in Admin UI. Each chain's
 Source Registry is drawn independently from its own verified manifest.
 Contract creation, Ethereum
 gas preview, MetaMask approval, independent runtime/constructor checks,
 append-only GitHub receipt, chain deployment JSON, regenerated public
 catalog, and server sync use the existing secure chain deploy machinery.
 This component is not mandatory ILN infrastructure and is not part of the
-bulk "finish chain" deployment. The same public GmbH payee may be chosen on every EVM chain, but each deployment and source-native balance is independent. No private signing or sponsorship key belongs in Admin UI.
+bulk "finish chain" deployment. Use the same public GmbH service wallet on every chain; fee balances and chain deployments remain independent. After deployment each chain card exposes a wallet-signed "Service-Wallet ändern" action that requires the live Recovery Admin. Contract fee claim, quote signer and gas sponsor rotate together; previously accrued unclaimed fees flow to the new wallet. The Recovery Admin private key must not be on the XITA server.
 The owner has NO ILN protocol, token, Mailbox or validator privilege.
