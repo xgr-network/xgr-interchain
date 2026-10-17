@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,unitsToAmount,quoteCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 const account=address("e"),srcRouter=address("6"),dstRouter=address("7");
@@ -244,9 +244,9 @@ test("deployed Interchain Fee adapter owns first TX and no direct Gateway fee by
   interchainFeeWei:"500000000000000",nonce:"8",issuedAt:now
  };
  const fullValue=native+BigInt(quote.interchainFeeWei);
- const data=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)")+
-  "0".repeat(13*64);
- const signed={ok:true,status:"SIGNED_INTERCHAIN_FEE_QUOTE",quote,signature:"0x"+"22".repeat(65),
+ const signature="0x"+"22".repeat(65);
+ const data=executeQuoteCalldata(quote,signature);
+ const signed={ok:true,status:"SIGNED_INTERCHAIN_FEE_QUOTE",quote,signature,
   executionAddress:contract,expiresAt:now+90,transaction:{
    from:account,to:contract,chainId:1643,value:"0x"+fullValue.toString(16),data
   }};
@@ -268,4 +268,21 @@ test("deployed Interchain Fee adapter owns first TX and no direct Gateway fee by
    original(url,opts)
  }),/Commercial fee quote does not bind/);
  assert.equal(sends.length,0);
+});
+
+test("adapter fee quote refuses altered transaction bytes, even with valid EIP-712 quoted fields",async()=>{
+ const quote={payer:account,gateway,routeId,destinationDomain:8453,
+  recipient:word(BigInt(account)),finalDestinationDomain:8453,
+  finalRecipient:word(BigInt(account)),onwardRouteId:word(0),
+  amount:"100000000000000000",bridgeValueWei:"100100000000000000",
+  interchainFeeWei:"500000000000000",nonce:"8",issuedAt:Math.floor(Date.now()/1000)};
+ const signature="0x"+"11".repeat(65);
+ const data=executeQuoteCalldata(quote,signature);
+ assert.ok(data.startsWith(selector(
+  "execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,uint32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)"))===false);
+ assert.ok(data.startsWith(selector(
+  "execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)")));
+ assert.equal(data.length,10+14*64+64+192);
+ assert.equal(data.slice(-192,-62),"11".repeat(65));
+ assert.equal(continueJourneyCalldata(hash("1"),gateway,routeId,8453,account,1n).length,10+6*64);
 });
