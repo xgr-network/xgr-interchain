@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,quoteCalldata,bridgeCalldata,startTransfer,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 const account=address("e"),srcRouter=address("6"),dstRouter=address("7");
@@ -206,4 +206,24 @@ test("fatal backend configuration mismatch blocks automated signing",async()=>{
  const query=new URLSearchParams({asset:"XGR",route:"xgr_to_base",messageId:hash("4")});
  await assert.rejects(awaitUnsignedDeliveryProof({query,attempts:5,delayMs:0,sleep:async()=>{},
   fetcher:async()=>({ok:false,json:async()=>({reason:"PROOF_CONFIG_MISMATCH"})})}),/configuration mismatch/);
+});
+
+test("raw second-hop token amount roundtrips exactly without float loss",()=>{
+ for(const raw of ["1","100000000000000000","123456789012345678901234567890123","1000000000000000000"]){
+  assert.equal(amountToUnits(unitsToAmount(raw,18),18).toString(),raw);
+ }
+ assert.throws(()=>unitsToAmount("0",18),/Invalid verified/);
+ assert.throws(()=>unitsToAmount("1e18",18),/Invalid verified/);
+ assert.throws(()=>unitsToAmount("42",37),/Invalid verified/);
+});
+test("only a confirmed, adapter-proven first hop can initiate a second user call",async()=>{
+ let walletSends=0,requests=0;
+ const provider={request:async()=>{walletSends++;throw Error("wallet must not be contacted")}};
+ const fetcher=async()=>{requests++;throw Error("network must not be contacted")};
+ await assert.rejects(()=>startVerifiedOnwardHop({
+  catalog:catalog(),account,record:{status:"awaiting-proof",txHash:sourceTx},
+  provider,fetcher
+ }),/confirmed first-hop/);
+ assert.equal(walletSends,0);
+ assert.equal(requests,0);
 });
