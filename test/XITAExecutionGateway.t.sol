@@ -117,30 +117,29 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(address(managed).balance, FEE);
         assertEq(managed.pendingInterchainFeesWei(), FEE);
         assertTrue(managed.nonceUsed(USER, q.nonce));
-        (address payer, address targetGateway, uint256 amount, bool exists, bool withdrawn) =
+        (address payer, address targetGateway, uint256 amount, bool exists) =
             managed.feeReceipt(message);
         assertEq(payer, USER);
         assertEq(targetGateway, address(gateway));
         assertEq(amount, FEE);
         assertTrue(exists);
-        assertFalse(withdrawn);
         assertEq(tokenRouter.allowance(address(managed), address(gateway)), 0);
 
         uint256 beforeBalance = relayer.balance;
         vm.prank(USER); // Claim is permissionless; beneficiary is immutable.
-        managed.withdrawFee(message);
+        managed.claimFees();
         assertEq(relayer.balance - beforeBalance, FEE);
         assertEq(address(managed).balance, 0);
         assertEq(managed.pendingInterchainFeesWei(), 0);
         vm.expectRevert(XITAExecutionGateway.NoClaimableFee.selector);
         vm.prank(relayer);
-        managed.withdrawFee(message);
+        managed.claimFees();
     }
 
     function testUnauthorizedUserCannotTakeManagedServiceFees() public {
         bytes32 message = _execute(_quote(8));
         vm.prank(USER);
-        managed.withdrawFee(message);
+        managed.claimFees();
         assertEq(relayer.balance, FEE);
         assertEq(address(managed).balance, 0);
     }
@@ -300,48 +299,35 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(q.interchainFeeWei, FEE);
         assertEq(address(managed).balance, 0);
         bytes32 message = _execute(q);
-        (,, uint256 escrowed,,) = managed.feeReceipt(message);
+        (,, uint256 escrowed,) = managed.feeReceipt(message);
         assertEq(escrowed, FEE);
         assertEq(tokenRouter.balanceOf(USER), 9 ether);
         assertEq(address(managed).balance, FEE);
     }
 
-    function testBatchFeeClaimAlwaysPaysImmutableGmbHRecipient() public {
+    function testOneClaimWithdrawsEveryAccruedTransferFee() public {
         bytes32 first = _execute(_quote(920));
         bytes32 second = _execute(_quote(921));
-        bytes32[] memory ids = new bytes32[](3);
-        ids[0] = first;
-        ids[1] = second;
-        ids[2] = first; // Duplicate may not double-pay.
+        assertTrue(first != second);
+        assertEq(managed.pendingInterchainFeesWei(), 2 * FEE);
         uint256 before = relayer.balance;
-        vm.prank(USER);
-        managed.withdrawFees(ids);
+        vm.prank(USER); // Permissionless trigger; payout address cannot vary.
+        managed.claimFees();
         assertEq(relayer.balance - before, 2 * FEE);
         assertEq(managed.pendingInterchainFeesWei(), 0);
         assertEq(address(managed).balance, 0);
         vm.expectRevert(XITAExecutionGateway.NoClaimableFee.selector);
-        managed.withdrawFees(ids);
+        managed.claimFees();
     }
 
-    function testBatchClaimRejectsEmptyOrOversizedList() public {
-        bytes32[] memory empty = new bytes32[](0);
-        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
-        managed.withdrawFees(empty);
-        bytes32[] memory many = new bytes32[](33);
-        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
-        managed.withdrawFees(many);
-    }
-
-    function testTwoDifferentMessagesAccrueSeparatelyWithNoDoubleWithdrawal() public {
-        bytes32 first = _execute(_quote(700));
-        bytes32 second = _execute(_quote(701));
-        assertTrue(first != second);
-        assertEq(managed.pendingInterchainFeesWei(), 2*FEE);
-        vm.prank(USER);
-        managed.withdrawFee(first);
-        assertEq(managed.pendingInterchainFeesWei(), FEE);
-        vm.prank(USER);
-        managed.withdrawFee(second);
+    function testNewFeesCanBeClaimedAsTheNextAggregateBalance() public {
+        _execute(_quote(700));
+        managed.claimFees();
         assertEq(managed.pendingInterchainFeesWei(), 0);
+        _execute(_quote(701));
+        assertEq(managed.pendingInterchainFeesWei(), FEE);
+        managed.claimFees();
+        assertEq(managed.pendingInterchainFeesWei(), 0);
+        assertEq(relayer.balance, 2 * FEE);
     }
 }
