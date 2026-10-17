@@ -32,6 +32,29 @@ export function unitsToAmount(raw,decimals){
 }
 // Exact ABI for the optional user-signed source-native commercial adapter.
 const EXECUTE_SELECTOR=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
+export function executeQuoteCalldata(q,signature){
+ if(!q||!/^0x[0-9a-f]{130}$/i.test(signature||""))
+  throw Error("Malformed EIP712 execution quote");
+ const address=x=>{
+  if(!ADDRESS.test(x||""))throw Error("Invalid execution quote address");
+  return addrWord(x);
+ };
+ const bytes=x=>{
+  if(!HASH.test(x||""))throw Error("Invalid execution bytes32");
+  return x.slice(2).toLowerCase();
+ };
+ const terms=[address(q.payer),address(q.gateway),bytes(q.routeId),
+  word(q.destinationDomain),bytes(q.recipient),
+  word(q.finalDestinationDomain),bytes(q.finalRecipient),bytes(q.onwardRouteId),
+  word(q.amount),word(q.bridgeValueWei),word(q.interchainFeeWei),
+  word(q.nonce),word(q.issuedAt)];
+ if(terms.some(t=>t.length!==64))throw Error("Malformed execution tuple");
+ const bytesHex=signature.slice(2).toLowerCase();
+ // The 13-word static Quote tuple and one offset word occupy 14*32=448
+ // bytes before the dynamic signature length (65) and 96-byte padded data.
+ return EXECUTE_SELECTOR+terms.join("")+word(448)+word(65)+
+  bytesHex.padEnd(192,"0");
+}
 function checkInterchainQuote(result,{catalog,account,asset,source,destination,
  route,firstDestination,amountRaw,validatorNativeWei,adapter}){
  const q=result?.quote,t=result?.transaction;
@@ -48,6 +71,7 @@ function checkInterchainQuote(result,{catalog,account,asset,source,destination,
   !/^0x[0-9a-f]+$/i.test(t.value||"")||
   !/^0x[0-9a-f]+$/i.test(t.data||"")||
   !t.data.startsWith(EXECUTE_SELECTOR)||
+  !eq(t.data,executeQuoteCalldata(q,result.signature))||
   !eq(q.payer,account)||!eq(q.gateway,route.gateway)||
   !eq(q.routeId,route.routeId)||!eq(q.onwardRouteId,intendedOnward)||
   !eq(q.recipient,"0x"+addrWord(account))||
