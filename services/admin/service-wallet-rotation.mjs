@@ -7,7 +7,7 @@ export function rotationCalldata(next){
 export function verifyOnChainWallets({admin,service,recovery,recipient,signer,next}){
  const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
  if(!same(admin,recovery)||!same(service,recipient)||!same(service,signer)||
-    !ADDRESS.test(next||"")||same(next,admin)||same(next,service))
+    !ADDRESS.test(next||"")||/^0x0{40}$/i.test(next)||same(next,admin)||same(next,service))
   throw Error("Independent recovery administrator required for one service wallet");
  return true;
 }
