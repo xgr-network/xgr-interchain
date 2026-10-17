@@ -148,8 +148,33 @@ export async function readWalletTransferIndex(catalog,account,{
   children=linked.rows.map(indexedTransferRow);
  }
  const linkedItems=linkIndexedJourneys(rawItems,children);
- const items=onlyPending?linkedItems.filter(i=>
+ // The staging table is untrusted. Display ONLY observed source TXs for which
+ // the separate RPC worker verified tx.from and the canonical Gateway target.
+ // Reported-only wallet claims are NEVER exposed in another wallet's history.
+ // Missing migration must not break the existing canonical wallet API.
+ let observed=[];
+ try{
+  const staged=await connected.query({text:`SELECT a.source_chain,a.source_tx_hash,
+    a.account FROM xita_transfer_announcements a
+    WHERE a.account=$1 AND a.state='observed'
+      AND a.first_reported_at > NOW()-INTERVAL '48 hours'
+      AND NOT EXISTS (SELECT 1 FROM xita_transfer_operations o
+       WHERE o.source_chain=a.source_chain AND o.source_tx_hash=a.source_tx_hash)
+    ORDER BY a.first_reported_at DESC LIMIT $2`,
+   values:[lowercase(account),limit]});
+  observed=staged.rows.filter(r=>ADDRESS.test(r.account||"")&&HASH.test(r.source_tx_hash||"")&&
+   lowercase(r.account)===lowercase(account)).map(row=>({
+    account:lowercase(account),sourceChain:row.source_chain,
+    txHash:lowercase(row.source_tx_hash),status:"pending-source",
+    confirmed:false,delivered:null,messageId:null,unverified:true
+   }));
+ }catch(error){
+  if(!["42P01","42501"].includes(error?.code))throw error;
+ }
+ const main=onlyPending?linkedItems.filter(i=>
   !["delivered","journey-delivered"].includes(i.status)):linkedItems;
+ const seen=new Set(main.map(r=>r.sourceChain+":"+r.txHash));
+ const items=[...main,...observed.filter(r=>!seen.has(r.sourceChain+":"+r.txHash))].slice(0,limit);
  const summary=totals.rows[0]||{open:"0",unknown:"0"};
  return {kind:"xita-wallet-transfer-index-v1",
   status:coverage.complete?"complete":"partial",wallet:lowercase(account),
