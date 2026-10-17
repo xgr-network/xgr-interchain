@@ -224,7 +224,7 @@ export async function setAnnouncementState(pool,hint,state,{now=Date.now(),retry
 }
 // This accelerated path reads ONE transaction hash, never scans a user
 // selected block range or lets the browser supply a Gateway address.
-export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.now()}){
+export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.now(),verify=verifiedTransfer}){
  const related=routes.filter(rt=>rt.sourceChain===hint.source_chain);
  if(!related.length||!ADDRESS.test(hint.account||"")||!TX.test(hint.source_tx_hash||"")){
   await setAnnouncementState(pool,hint,"rejected",{now,retry:false});return {status:"rejected"};
@@ -292,7 +292,7 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
   await setAnnouncementState(pool,hint,"rejected",{now,retry:false});return {status:"rejected"};
  }
  const {route,event}=matches[0];
- const record=await verifiedTransfer({catalog,route,transactionHash:hint.source_tx_hash,rpc});
+ const record=await verify({catalog,route,transactionHash:hint.source_tx_hash,rpc});
  if(normalize(record.account)!==normalize(hint.account)||
     normalize(record.messageId)!==event.messageId||
     normalize(record.routeId)!==normalize(route.routeId))
