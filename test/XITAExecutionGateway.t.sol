@@ -328,6 +328,28 @@ contract XITAExecutionGatewayTest is Test {
         assertEq(managed.owner(), RECOVERY_ADMIN);
     }
 
+    function testOldQuotesRevokedAndOldFeesPaidToNewWallet() public {
+        XITAExecutionGateway.Quote memory previous = _quote(700);
+        _execute(previous);
+        assertEq(managed.pendingInterchainFeesWei(), FEE);
+        address nextWallet = vm.addr(0xD00D);
+        vm.prank(RECOVERY_ADMIN);
+        managed.setServiceWallet(payable(nextWallet));
+        assertEq(managed.pendingInterchainFeesWei(), FEE);
+        XITAExecutionGateway.Quote memory fresh = _quote(701);
+        _mustRevert(fresh, _signature(fresh, RELAYER_KEY),
+            fresh.bridgeValueWei + fresh.interchainFeeWei,
+            XITAExecutionGateway.InvalidSignature.selector);
+        vm.prank(USER);
+        managed.execute{value:fresh.bridgeValueWei + fresh.interchainFeeWei}(
+            fresh, _signature(fresh, 0xD00D));
+        uint256 beforeWallet = nextWallet.balance;
+        vm.prank(USER);
+        managed.claimFees();
+        assertEq(nextWallet.balance-beforeWallet,2*FEE);
+        assertEq(managed.pendingInterchainFeesWei(),0);
+    }
+
     function testOnlyRecoveryAdminCanChangeServiceWallet() public {
         address nextWallet = vm.addr(0xD00D);
         vm.prank(USER);
