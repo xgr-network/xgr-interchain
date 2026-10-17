@@ -349,7 +349,8 @@ async function openContractModal(chainName,component){
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=["relayerOwner","interchainFeeRecipient"].includes(key)?"0x… öffentliche EVM-Adresse":
     suggestion==null?"Manuell festlegen":String(suggestion);
-   input.title=key==="relayerOwner"?
+   input.title=key==="interchainFeeRecipient"?
+    "Unveränderliche öffentliche GmbH-Interchain-Fee-Adresse. Erhält Sammel-Claims und darf optional native Gas-Gutschriften finanzieren. Niemals Private Keys eingeben.":key==="relayerOwner"?
     "Öffentliche Quote-Signierer-Adresse. Signiert nur EIP-712-Gebührenquotes, kann keine Einnahmen abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
@@ -358,7 +359,7 @@ async function openContractModal(chainName,component){
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
     component==="executionGateway"?
-    "Optionale GmbH-Komponente. Öffentliche Relayer-Owner-Adresse eingeben (kein Private Key). Genau ein Contract je Quellchain, niemals je Token. ": 
+    "Optionaler GmbH-Gebührencontract: öffentliche Quote-Signierer-Adresse und SEPARATE öffentliche Interchain-Fee-Auszahlungsadresse eingeben. Je Chain genau ein Deployment. Private Keys gehören ausschließlich in die geschützte Serverkonfiguration. ": 
     component==="factory"?
     (chainName==="xgrchain"?
       "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":
