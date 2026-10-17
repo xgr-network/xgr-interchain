@@ -14,10 +14,17 @@ export function patchInterchainFeeNginx(config){
  const added=[];
  for(const {path,method,timeout} of PATHS){
   const matches=[...next.matchAll(new RegExp(
-   "(?:^|\\n)\\s*location\\s*=\\s*"+path+"\\s*\\{([^{}]*)\\}","g"))];
+   "(?:^|\\\\n)\\\\s*location\\\\s*=\\\\s*"+path+"\\\\s*\\\\{","g"))];
   if(matches.length>1)throw Error("Duplicate Interchain Fee API route: "+path);
   if(matches.length===1){
-   const block=matches[0][1];
+   const from=next.indexOf("{",matches[0].index);
+   let depth=0,end=-1;
+   for(let i=from;i<next.length;i++){
+    if(next[i]==="{")depth++;
+    if(next[i]==="}"&&--depth===0){end=i;break;}
+   }
+   if(end<0)throw Error("Malformed Interchain Fee API location");
+   const block=next.slice(from,end+1);
    if(!block.includes(upstream)||
      !block.includes("limit_except "+method+" { deny all; }"))
     throw Error("Unapproved Interchain Fee API proxy or HTTP methods: "+path);
