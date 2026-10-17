@@ -88,7 +88,7 @@ test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
 test("source bridge quotes, checks native gas and sends exactly one canonical Gateway call",async()=>{
  const sends=[];
  const fetcher=testFetch();
- const result=await startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+ const result=await startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
  assert.equal(result.txHash,sourceTx);
  assert.equal(sends.length,1);
@@ -102,14 +102,14 @@ test("unresolved MetaMask source nonce blocks any second lock while no canonical
  const provider={request:async req=>req.method==="eth_getTransactionCount"&&
   req.params?.[1]==="pending"?"0x3":primary.request(req)};
  const fetcher=testFetch();
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider,fetcher}),
   /pending/);
  assert.equal(sends.length,0);
 });
 test("one wei of destination gas is NOT enough to safely lock source assets",async()=>{
  const sends=[];
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",
   provider:sourceProvider(sends),fetcher:testFetch("0x1")}),
   /Destination wallet needs native gas/);
@@ -117,7 +117,7 @@ test("one wei of destination gas is NOT enough to safely lock source assets",asy
 });
 test("wallet with no destination-native gas never submits source lock",async()=>{
  const sends=[];
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider:sourceProvider(sends),
   fetcher:testFetch("0x0")}),/Destination wallet needs native gas/);
  assert.equal(sends.length,0);
@@ -157,7 +157,7 @@ test("if source is confirmed but proof is pending, retry never sends a source or
 
 test("an unresolved wallet nonce blocks a second source lock after reload",async()=>{
  const sent=[];
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sent,{pendingNonce:true}),
   fetcher:testFetch()}),/pending/);
  assert.equal(sent.length,0);
@@ -165,7 +165,7 @@ test("an unresolved wallet nonce blocks a second source lock after reload",async
 
 test("missing unsigned recovery service must prevent any source token lock",async()=>{
  const sends=[];
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:sourceProvider(sends),
   fetcher:async()=>({ok:false,status:503})}),/recovery infrastructure unavailable/);
  assert.equal(sends.length,0);
@@ -184,7 +184,7 @@ test("stale MetaMask pending nonce can be reconciled by an independent source-ch
   }
   return original(url,options);
  };
- const result=await startTransfer({catalog:catalog(),account,asset:"XGR",source:"xgrchain",
+ const result=await startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",source:"xgrchain",
   destination:"base",amount:"0.1",provider:stale,fetcher});
  assert.equal(result.txHash,sourceTx);
  assert.equal(sent.length,1);
@@ -196,7 +196,7 @@ test("invalid wallet nonce is not bypassed if the canonical RPC is unavailable",
   if(url.includes("/xgr"))throw Error("Chain RPC unavailable");
   return testFetch()(url,options);
  };
- await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider:invalid,fetcher}),/Nonce verification failed/);
  assert.equal(sent.length,0);
 });
@@ -245,6 +245,9 @@ test("deployed Interchain Fee adapter owns first TX and no direct Gateway fee by
  const c=catalog(),contract=address("d");
  const comp=item("xgrchain",contract),core=c.infrastructure.xgrchain.xitaV315;
  core.components.executionGateway=comp;core.receiptPaths.push(comp.receiptPath);
+ const baseCore=c.infrastructure.base.xitaV315,baseComp=item("base",address("f"));
+ baseCore.components.executionGateway=baseComp; // Both chains documented.
+ baseCore.receiptPaths.push(baseComp.receiptPath);
  const sends=[],now=Math.floor(Date.now()/1000),native=100100000000000000n;
  const quote={
   payer:account,gateway,routeId,destinationDomain:8453,
@@ -295,4 +298,19 @@ test("adapter fee quote refuses altered transaction bytes, even with valid EIP-7
  assert.equal(data.length,10+14*64+64+192);
  assert.equal(data.slice(-192,-62),"11".repeat(65));
  assert.equal(continueJourneyCalldata(hash("1"),gateway,routeId,8453,account,1n).length,10+6*64);
+});
+
+test("commercial transfer refuses fee-free fallback when either execution gateway is missing",async()=>{
+ const c=catalog(),sent=[],fetcher=testFetch();
+ await assert.rejects(()=>startTransfer({catalog:c,account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",
+  provider:sourceProvider(sent),fetcher}),/Execution Gateway must be deployed on both chains/);
+ assert.equal(sent.length,0);
+ const adapter=item("xgrchain",address("d"));
+ const core=c.infrastructure.xgrchain.xitaV315;
+ core.components.executionGateway=adapter;core.receiptPaths.push(adapter.receiptPath);
+ await assert.rejects(()=>startTransfer({catalog:c,account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",
+  provider:sourceProvider(sent),fetcher}),/Execution Gateway must be deployed on both chains/);
+ assert.equal(sent.length,0);
 });
