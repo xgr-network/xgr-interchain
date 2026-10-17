@@ -367,7 +367,9 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
   try{
    const block=await rpc(route.sourceConfig,"eth_getBlockByNumber",[
     "0x"+BigInt(row.verified_block_number).toString(16),false]);
-   if(normalize(block?.hash)===normalize(row.verified_block_hash)){
+   // A missing/pruned RPC response is UNKNOWN, not evidence of a reorg.
+   if(!block||!TX.test(block.hash||""))continue;
+   if(normalize(block.hash)===normalize(row.verified_block_hash)){
     checked++;
     await pool.query({text:`UPDATE xita_transfer_announcements SET
       last_attempt_at=NOW() WHERE source_chain=$1 AND source_tx_hash=$2
@@ -391,6 +393,31 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
  return {checked,retracted};
 }
 
+// Bounded retention: stale untrusted claims are not a permanent event log.
+ // Keep fast-path canonical entries indefinitely in xita_transfer_operations;
+ // discard their staging hints ONLY after the historical scan covered the block.
+export async function pruneTransferAnnouncements({pool,limit=100}){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>500)
+  throw Error("Unsafe hint retention limit");
+ const result=await pool.query({text:`WITH expired AS (
+   SELECT a.source_chain,a.source_tx_hash,a.account
+   FROM xita_transfer_announcements a
+   WHERE (a.state IN ('reported','observed','rejected')
+     AND a.first_reported_at<NOW()-INTERVAL '3 days')
+   OR (a.state='indexed' AND a.first_reported_at<NOW()-INTERVAL '7 days'
+     AND EXISTS (SELECT 1 FROM xita_transfer_operations o
+       JOIN xita_transfer_index_cursors c ON c.source_chain=o.source_chain
+        AND c.route_id=o.route_id
+       WHERE o.source_chain=a.source_chain
+        AND o.source_tx_hash=a.source_tx_hash
+        AND o.message_id=a.verified_message_id
+        AND c.scanned_to>=a.verified_block_number))
+   ORDER BY a.first_reported_at LIMIT $1)
+ DELETE FROM xita_transfer_announcements a USING expired e
+ WHERE a.source_chain=e.source_chain AND a.source_tx_hash=e.source_tx_hash
+  AND a.account=e.account`,values:[limit]});
+ return {pruned:result.rowCount??0};
+}
 // Durable bounded backfill: each small window commits its own cursor.
 export async function catchUpRoute({route,scan,batches=4}){
  if(!Number.isSafeInteger(batches)||batches<1||batches>8)throw Error("Unsafe catch-up budget");
@@ -417,6 +444,7 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
   catch(error){progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
  const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
+ await pruneTransferAnnouncements({pool}).catch(()=>{});
  return {routes:progress,destinations,accelerated,hintsRechecked};
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
