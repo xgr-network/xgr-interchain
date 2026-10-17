@@ -48,10 +48,16 @@ export function indexedTransferRow(row){
   routeName:row.route_name,routeId:lowercase(row.route_id),
   gateway:lowercase(row.gateway),txHash:lowercase(row.source_tx_hash),
   messageId:lowercase(row.message_id),confirmed:true,delivered,
-  status:delivered===true?"delivered":delivered===false?"awaiting-proof":"delivery-unknown",
+  status:delivered===true?(row.onward_route_id?"awaiting-onward":"delivered"):
+   delivered===false?"awaiting-proof":"delivery-unknown",
   sourceBlockNumber:Number(row.source_block_number),
   amountRaw:row.amount_raw===null?null:String(row.amount_raw),
-  validatorFeeWei:row.validator_fee_wei===null?null:String(row.validator_fee_wei)};
+  validatorFeeWei:row.validator_fee_wei===null?null:String(row.validator_fee_wei),
+  executionAdapter:row.execution_adapter?lowercase(row.execution_adapter):null,
+  interchainFeeWei:row.interchain_fee_wei==null?null:String(row.interchain_fee_wei),
+  finalDestinationChain:row.final_destination_chain??null,
+  finalRecipient:row.final_recipient?lowercase(row.final_recipient):null,
+  onwardRouteId:row.onward_route_id?lowercase(row.onward_route_id):null};
 }
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
@@ -67,14 +73,19 @@ export async function readWalletTransferIndex(catalog,account,{
  const rows=await connected.query({
   text:`SELECT account,asset,source_chain,destination_chain,route_name,route_id,gateway,
     source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
-    validator_fee_wei::text AS validator_fee_wei,delivered
+    validator_fee_wei::text AS validator_fee_wei,delivered,
+    execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
+    final_destination_chain,final_recipient,onward_route_id
     FROM xita_transfer_operations
-    WHERE account=$1 AND ($2::boolean IS FALSE OR delivered IS DISTINCT FROM TRUE)
-    ORDER BY (delivered IS DISTINCT FROM TRUE) DESC,source_indexed_at DESC,source_tx_hash DESC LIMIT $3`,
+    WHERE account=$1 AND ($2::boolean IS FALSE OR delivered IS DISTINCT FROM TRUE
+      OR onward_route_id IS NOT NULL)
+    ORDER BY (delivered IS DISTINCT FROM TRUE OR onward_route_id IS NOT NULL) DESC,
+     source_indexed_at DESC,source_tx_hash DESC LIMIT $3`,
   values:[lowercase(account),onlyPending,limit]
  });
  const totals=await connected.query({text:`SELECT
-   COUNT(*) FILTER (WHERE delivered IS FALSE)::text AS open,
+   COUNT(*) FILTER (WHERE delivered IS FALSE OR
+     (delivered IS TRUE AND onward_route_id IS NOT NULL))::text AS open,
    COUNT(*) FILTER (WHERE delivered IS NULL)::text AS unknown
    FROM xita_transfer_operations WHERE account=$1`,values:[lowercase(account)]});
  const items=rows.rows.map(indexedTransferRow);
