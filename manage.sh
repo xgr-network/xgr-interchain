@@ -373,6 +373,9 @@ complete_update() {
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
   fi
+  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    privileged systemctl restart xita-interchain-fee-quote.service
+  fi
 }
 
 update() {
