@@ -193,11 +193,11 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
 export function renderTokenBridge(model,assetId){
  const token=model.assets.find(a=>a.id===assetId);
  if(!token)return "";
- const available=model.deployments.filter(r=>r.asset===assetId);
+ const available=(model.transferRoutes||[]).filter(r=>r.asset===assetId);
  return '<div class="ux-token-bridge"><div class="ux-kicker">XITA · TOKEN TRANSFER</div>'+
   '<h2>Transfer '+esc(token.name)+'</h2>'+
   '<p class="ux-muted">One transfer flow for every supported route. Your token is preselected on the transfer page.</p>'+
-  '<p class="ux-small">'+available.length+' documented transfer direction'+(available.length===1?"":"s")+'</p>'+
+  '<p class="ux-small">'+available.length+' fee-enabled transfer direction'+(available.length===1?"":"s")+(available.length?"":" · Execution Gateway pending")+'</p>'+
   '<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Transfer '+esc(assetId)+' →</a>'+
   '</div>';
 }
