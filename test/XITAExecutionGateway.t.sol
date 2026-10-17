@@ -359,6 +359,9 @@ contract XITAExecutionGatewayTest is Test {
         vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
         managed.renounceOwnership();
         vm.prank(RECOVERY_ADMIN);
+        vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
+        managed.setServiceWallet(payable(address(gateway)));
+        vm.prank(RECOVERY_ADMIN);
         managed.transferOwnership(address(0xC0FFEE));
         vm.prank(RECOVERY_ADMIN);
         vm.expectRevert(XITAExecutionGateway.InvalidConfiguration.selector);
