@@ -9,7 +9,7 @@ import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
-import {startTransfer,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
+import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -152,6 +152,54 @@ async function performTransferAction(){
  render();
  try{
   if(selected){
+   if(selected.status==="awaiting-onward"){
+    // The first on-chain message is already delivered to XGRChain. NEVER
+    // replay its source Gateway, even if an RPC or UI later fails.
+    const sent=await startVerifiedOnwardHop({
+     catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
+     onBroadcast:({txHash})=>{
+      broadcastKnown=true;
+      transferActivity.notice="Onward XGRChain TX "+txHash+
+       " submitted. Original first-hop source remains untouched.";
+      render();
+     }
+    });
+    broadcastKnown=true;
+    const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{
+     attempts:20,delayMs:2500
+    });
+    if(!receipt){
+     transferActivity.notice="Onward source TX pending; refresh My Transfers before any retry.";
+     return;
+    }
+    if(receipt.status!=="0x1"){
+     transferActivity.notice="Onward source TX failed; original delivery to XGRChain remains confirmed.";
+     return;
+    }
+    const onward=await findWalletSourceTx({catalog:state.catalog,account,
+     sourceChain:"xgrchain",txHash:sent.txHash});
+    upsertTransfer(onward);
+    if(onward.status==="awaiting-proof"){
+     transferActivity.selectedTxHash=onward.txHash;
+     transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
+     if(path()==="/transfer")render();
+     const processed=await resumeDelivery({catalog:state.catalog,account,
+      record:onward,provider:globalThis.ethereum,waitForProof:true,
+      onStatus:notice=>{transferActivity.notice=notice;if(path()==="/transfer")render();},
+      onBroadcast:({txHash})=>{
+       transferActivity.notice="Final destination TX "+txHash+" submitted.";
+       if(path()==="/transfer")render();
+      }
+     });
+     transferActivity.notice=processed.status==="delivered"?
+      "Final destination Mailbox delivery confirmed.":
+      processed.notice||"Final destination proof or transaction pending; resume from My Transfers.";
+     await lookupWalletTransfer("xgrchain",sent.txHash);
+    }else{
+     transferActivity.notice="Onward Gateway confirmed; its destination delivery can be resumed later.";
+    }
+    return;
+   }
    if(selected.status!=="awaiting-proof"){
     await lookupWalletTransfer(selected.sourceChain,selected.txHash);
     return;
