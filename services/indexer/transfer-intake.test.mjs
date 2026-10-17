@@ -14,12 +14,12 @@ test("intake accepts ONLY source wallet chain and 32-byte hash",()=>{
   {account:wallet,sourceChain:"xgrchain",txHash:hash,confirmed:true}])
   assert.throws(()=>validateAnnouncement(value,catalog),/Invalid/);
 });
-test("duplicate hint cannot override the original claimed wallet",async()=>{
+test("duplicate hint cannot override a claim, nor reserve a hash for another wallet",async()=>{
  const seen=[],pool={query:async arg=>{seen.push(arg);return {rows:[]}}};
  const candidate=validateAnnouncement({account:wallet,sourceChain:"xgrchain",txHash:hash},catalog);
  const value=await storeAnnouncement(pool,candidate);
  assert.equal(value.verified,false);assert.equal(value.status,"REPORTED_UNVERIFIED");
- assert.match(seen[0].text,/ON CONFLICT\(source_chain,source_tx_hash\) DO NOTHING/);
+ assert.match(seen[0].text,/ON CONFLICT\(source_chain,source_tx_hash,account\) DO NOTHING/);
  assert.ok(!/xita_transfer_operations/.test(seen[0].text));
 });
 test("no false claim can be promoted via public HTTP handler",async()=>{
