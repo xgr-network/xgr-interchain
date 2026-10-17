@@ -97,7 +97,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
  }else if(component==="executionGateway"){
   // One optional funded source-chain adapter, NEVER one per token/route.
   const p=deploymentParameters(component,parameters);
-  values=[requirePresent(infrastructure,"sourceRegistry"),p.relayerOwner,p.interchainFeeRecipient];
+  values=[requirePresent(infrastructure,"sourceRegistry"),p.serviceWallet,p.recoveryAdmin];
  }else if(component==="factory"){
   const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane||{};
