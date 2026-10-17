@@ -1,6 +1,6 @@
 import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent,getWalletProvider} from "./wallet.js";
 import {rotationCalldata,verifyOnChainWallets} from "./service-wallet-rotation.mjs";
-import {selector} from "./keccak.mjs";
+import {selector} from "../../apps/web/keccak.mjs";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
