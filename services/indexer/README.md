@@ -110,3 +110,52 @@ its older bounded direct RPC scan as an additional best-effort check.
 Unknown/gapped coverage is **never** shown as a definitive zero. The process
 is a convenience and statistics engine, not an execution key, bridge relayer,
 or source-of-truth replacement.
+
+## October 2026 source-native Interchain Fee adapter / two-hop migration (draft)
+
+The optional `XITAExecutionGateway` is a **source wallet-signed** first-hop
+adapter. Its external `execute(quote,signature)` call invokes the canonical
+ILN Gateway *inside the same EVM transaction*. The indexer observes the
+underlying Gateway `ILNOperation` and Mailbox `Dispatch` as before and also
+verifies the adapter's `InterchainFeeCharged` event. A source tx sent to
+the adapter MUST NOT be classified as an unknown Gateway tx.
+
+For EXISTING databases, apply `sql/003_interchain_journey.sql` **before**
+updating the transfer worker and HTTP service. It adds only derived metadata
+to the current `xita_transfer_operations` table: the immutable source fee
+adapter, received native fee, final requested chain, signed recipient, and
+the onward route ID. Neither a submitted second hop nor final destination
+delivery is *inferred* from a signed intention.
+
+Statuses:
+- `awaiting-proof`: source confirmed, destination not delivered;
+- `awaiting-onward`: first hop delivered to XGRChain, but the signed onward
+  hop has not yet been uniquely linked to a canonical XGRChain Gateway tx;
+- `delivered`: destination Mailbox delivered for that indexed hop only.
+
+The existing `GET /api/xeta/v1/transfers/wallet` still returns individual
+verified hop events. The wallet view conservatively keeps an `awaiting-onward`
+hop open, even if a separate downstream hop is already visible; without an
+explicit second-hop-to-first-hop cryptographic correlation marker, do NOT
+assert that one downstream hop completed a specific first hop. Before user
+signing hop 2, the UI re-verifies hop 1 and requires complete indexed history
+with no same-wallet/asset/amount/onward-route collision. Ambiguity FAILS CLOSED.
+
+Pricing occurs outside this indexer: the separate quote signer combines
+per-chain gas estimates and each hop's validator/router fee and uses a fixed
+source-native GROSS quote. No client geography or VAT `vatPolicy` is needed
+for a blockchain quote. Customer tax classification belongs to subsequent
+GmbH accounting, not to this trustless event indexer.
+
+The fee-recipient wallet may periodically call `claimFees()` on EACH
+chain-specific commercial adapter. It withdraws that contract's whole
+`pendingInterchainFeesWei()` balance in one payout, rather than
+per-message claims. Native revenues are distinct balances on Base, Polygon,
+XGRChain, etc.; source-chain fee collection does not automatically rebalance
+the sponsor's gas reserves across chains.
+
+**Release gates remain:** currently the volunteer gas-grant service is NOT
+implemented and the public status deliberately reads unavailable; claims
+require explicit operator opt-in, correct chain-specific adapter deployments,
+and configured fee wallet. The four-step journey's user transactions, route
+costs and replay rules require live E2E validation before merge/deploy.
