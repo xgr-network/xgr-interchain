@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {routeIndexCoverage,indexedTransferRow} from "./transfer-index-store.mjs";
+import {routeIndexCoverage,indexedTransferRow,linkIndexedJourneys} from "./transfer-index-store.mjs";
 const addr=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 test("same directional route name across different token projects NEVER shares a cursor",()=>{
  const routes=[
@@ -49,4 +49,35 @@ test("confirmed first hop with signed onward route stays open, never claims comp
  assert.equal(item.interchainFeeWei,"5");
  assert.equal(indexedTransferRow({...r,delivered:false}).status,"awaiting-proof");
  assert.equal(indexedTransferRow({...r,delivered:null}).status,"delivery-unknown");
+});
+
+test("only the exact canonical onward parent message and route completes a two-hop journey",()=>{
+ const payer=addr("a"),firstId=hash("a"),nextId=hash("b");
+ const parent={account:payer,asset:"XGR",routeId:hash("1"),messageId:firstId,
+  assetId:hash("f"),sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"polygon",finalRecipient:payer,
+  onwardRouteId:hash("2"),amountRaw:"100",delivered:true,status:"awaiting-onward"};
+ const child={...parent,messageId:nextId,txHash:hash("c"),sourceChain:"xgrchain",
+  destinationChain:"polygon",parentMessageId:firstId,routeId:parent.onwardRouteId,
+  onwardRouteId:null,executionAdapter:addr("d"),delivered:true};
+ let linked=linkIndexedJourneys([parent],[child])[0];
+ assert.equal(linked.status,"journey-delivered");
+ assert.equal(linked.secondHopTxHash,hash("c"));
+ assert.equal(linked.finalDelivered,true);
+ for(const corrupt of [
+  {routeId:hash("5")},{amountRaw:"99"},{account:addr("f")},
+  {parentMessageId:hash("d")},{finalRecipient:addr("e")},
+  {destinationChain:"base"},{executionAdapter:null}
+ ]){
+  linked=linkIndexedJourneys([parent],[{...child,...corrupt}])[0];
+  assert.equal(linked.status,"awaiting-onward",
+   "mismatched child must NEVER mark parent delivered");
+ }
+ for(const [flag,status] of [[false,"awaiting-final-proof"],
+    [null,"final-delivery-unknown"],[true,"journey-delivered"]]){
+  linked=linkIndexedJourneys([parent],[{...child,delivered:flag}])[0];
+  assert.equal(linked.status,status);
+ }
+ linked=linkIndexedJourneys([parent],[child,{...child,messageId:hash("e")}])[0];
+ assert.equal(linked.status,"journey-ambiguous");
 });
