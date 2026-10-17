@@ -1,90 +1,77 @@
-// Source-native fee-claim scheduler. No user-transfer execution or sponsorship grants.
-// Run once per timer tick. Derived exclusively from confirmed on-chain adapter logs.
-import {Wallet,JsonRpcProvider,Contract,Interface} from "ethers";
+// Claim the whole accrued GmbH Interchain Fee balance from each verified
+// chain-specific adapter. No customer transfer, no token swap or gas donation.
+// The immutable interchainFeeRecipient alone receives a claim; the invoking
+// signer pays the chain gas. Use the same wallet for claims and sponsorship.
+import {Wallet,JsonRpcProvider,Contract} from "ethers";
+import {readFileSync} from "node:fs";
 const ABI=[
- "event InterchainFeeCharged(bytes32 indexed messageId,address indexed payer,address indexed gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint32 finalDestinationDomain,bytes32 finalRecipient,bytes32 onwardRouteId,uint256 amount,uint256 validatorFeeWei,uint256 bridgeNativeWei,uint256 interchainFeeWei,uint256 quoteNonce)",
- "function feeReceipt(bytes32) view returns (address payer,address gateway,uint256 interchainFeeWei,bool exists,bool withdrawn)",
  "function interchainFeeRecipient() view returns (address)",
  "function pendingInterchainFeesWei() view returns (uint256)",
- "function withdrawFees(bytes32[])"
+ "function claimFees()"
 ];
-const A=/^0x[0-9a-f]{40}$/i;
-const I=new Interface(ABI),topic=I.getEvent("InterchainFeeCharged").topicHash;
-const eq=(a,b)=>String(a).toLowerCase()===String(b).toLowerCase();
-export async function claimFeeBatch({provider,signer,adapterAddress,deploymentBlock,
- minClaimWei=0n,confirmations=12n,gasCostMultiplier=3n}){
- if(!A.test(adapterAddress||"")||!Number.isSafeInteger(deploymentBlock)||
-  deploymentBlock<=0||BigInt(confirmations)<1n||BigInt(gasCostMultiplier)<2n)
-  throw Error("Unsafe fee claim configuration");
- const chain=await provider.getNetwork();
- if(!chain?.chainId||BigInt(chain.chainId)<1n)throw Error("Chain mismatch");
+const ADDRESS=/^0x[0-9a-f]{40}$/i;
+const POSITIVE=/^[1-9][0-9]*$/;
+const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
+export async function claimAccruedFees({provider,signer,adapterAddress,expectedChainId,
+ minClaimWei,gasCostMultiplier=3n}){
+ if(!ADDRESS.test(adapterAddress||"")||!POSITIVE.test(String(minClaimWei))||
+  !Number.isSafeInteger(expectedChainId)||expectedChainId<=0||
+  BigInt(gasCostMultiplier)<2n)throw Error("Invalid fee claim configuration");
+ const network=await provider.getNetwork();
+ if(network.chainId!==BigInt(expectedChainId))throw Error("Fee claim RPC chain mismatch");
  const adapter=new Contract(adapterAddress,ABI,signer.connect(provider));
  if(!eq(await adapter.interchainFeeRecipient(),signer.address))
-  throw Error("Sponsor wallet does not match immutable GmbH beneficiary");
- const head=BigInt(await provider.getBlockNumber());
- const to=head-BigInt(confirmations)+1n;
- if(to<BigInt(deploymentBlock))return {status:"not-finalized"};
- // Enumerate ONLY canonical adapter fee events; bounded windows for provider.
- // Read-only scan from deployment ensures restarts never skip unclaimed fees.
- const ids=[];
- for(let start=BigInt(deploymentBlock);start<=to;start+=1000n){
-  const end=start+999n>to?to:start+999n;
-  const logs=await provider.getLogs({address:adapterAddress,topics:[topic],
-   fromBlock:Number(start),toBlock:Number(end)});
-  if(logs.length>2000)throw Error("Claim event window too large");
-  for(const log of logs){
-   const event=I.parseLog(log);
-   if(event?.name!=="InterchainFeeCharged")continue;
-   const fee=await adapter.feeReceipt(event.args.messageId,{blockTag:Number(to)});
-   if(fee.exists&&!fee.withdrawn&&fee.interchainFeeWei>0n){
-    ids.push(event.args.messageId);
-    if(ids.length>=32)break;
-   }
-  }
-  if(ids.length>=32)break;
- }
- if(!ids.length)return {status:"nothing-to-claim"};
- const unique=[...new Set(ids)];
- let total=0n;
- for(const id of unique)total+=(await adapter.feeReceipt(id)).interchainFeeWei;
- if(total<BigInt(minClaimWei))return {status:"below-minimum",amountWei:total.toString()};
- const gas=await adapter.withdrawFees.estimateGas(unique);
- const price=await provider.getFeeData();
- const unit=price.maxFeePerGas||price.gasPrice;
- if(!unit||unit<=0n)throw Error("Chain gas quote missing");
- // Do not spend more than 1 / multiplier of collected source-native value.
- if(gas*unit*BigInt(gasCostMultiplier)>=total)return {status:"uneconomical",amountWei:total.toString()};
- // Wallet owns all claims. Never send a user-transfer transaction.
- const tx=await adapter.withdrawFees(unique);
- return {status:"submitted",txHash:tx.hash,amountWei:total.toString(),receipts:unique.length};
+  throw Error("Fee claim signer must be the immutable GmbH beneficiary");
+ const amount=BigInt(await adapter.pendingInterchainFeesWei());
+ if(amount===0n)return {status:"nothing-to-claim",accruedWei:"0"};
+ if(amount<BigInt(minClaimWei))
+  return {status:"below-threshold",accruedWei:amount.toString()};
+ // An actual pending claim can never claim another party's funds or alter
+ // fees; estimate gas before every send. Re-read immediately before signing.
+ const estimatedGas=await adapter.claimFees.estimateGas();
+ const quote=await provider.getFeeData();
+ const gasPrice=quote.maxFeePerGas||quote.gasPrice;
+ if(!gasPrice||gasPrice<=0n)throw Error("Claim chain gas price unavailable");
+ const maxCost=estimatedGas*gasPrice;
+ if(amount<=maxCost*BigInt(gasCostMultiplier))
+  return {status:"uneconomical",accruedWei:amount.toString(),
+   estimatedClaimGasWei:maxCost.toString()};
+ if(BigInt(await provider.getBalance(signer.address))<maxCost*2n)
+  return {status:"insufficient-claim-gas",accruedWei:amount.toString()};
+ const current=BigInt(await adapter.pendingInterchainFeesWei());
+ if(current<BigInt(minClaimWei)||current===0n)
+  return {status:"below-threshold",accruedWei:current.toString()};
+ const tx=await adapter.claimFees();
+ return {status:"submitted",txHash:tx.hash,accruedWei:current.toString()};
 }
-export async function runConfiguredFeeClaim(){
- const required=k=>{const v=String(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v;};
- if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")
-  return {status:"disabled"};
- const signer=new Wallet(required("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
- if(!eq(signer.address,required("XITA_INTERCHAIN_FEE_ADDRESS")))
-  throw Error("Configured fee beneficiary differs from private key");
- const catalog=JSON.parse((await import("node:fs")).readFileSync(
-  new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
- const outcomes=[];
- for(const name of ["base","xgrchain"]){
+export async function runConfiguredFeeClaims({
+ env=process.env,catalog=JSON.parse(readFileSync(
+  new URL("../../apps/web/catalog.json",import.meta.url),"utf8"))
+}={}){
+ // Separate claims from transfers and sponsorship; opt-in after deployment.
+ if(env.XITA_INTERCHAIN_CLAIM_ENABLED!=="true")return {status:"disabled"};
+ const value=k=>{const v=String(env[k]||"").trim();if(!v)throw Error("Missing "+k);return v;};
+ const wallet=new Wallet(value("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
+ if(!eq(wallet.address,value("XITA_INTERCHAIN_FEE_ADDRESS")))
+  throw Error("Fee wallet private key and configured public address differ");
+ const results=[];
+ for(const name of ["base","polygon","xgrchain"]){
   const suffix=name.toUpperCase();
-  const address=process.env["XITA_INTERCHAIN_"+suffix+"_ADAPTER"];
-  const block=process.env["XITA_INTERCHAIN_"+suffix+"_DEPLOY_BLOCK"];
-  if(!address&&!block)continue;
-  const chain=catalog.chains[name];
-  if(!chain||!address||!block)throw Error("Incomplete "+name+" adapter configuration");
-  const provider=new JsonRpcProvider(chain.rpcUrls[0],chain.chainId,{staticNetwork:true});
-  const actual=await provider.getNetwork();
-  if(actual.chainId!==BigInt(chain.chainId))throw Error("RPC network mismatch");
-  outcomes.push({chain:name,...await claimFeeBatch({provider,signer,adapterAddress:address,
-   deploymentBlock:Number(block),confirmations:BigInt(chain.confirmations||1),
-   minClaimWei:BigInt(required("XITA_INTERCHAIN_MIN_CLAIM_WEI"))})});
+  const address=env["XITA_INTERCHAIN_"+suffix+"_ADAPTER"];
+  if(!address)continue;
+  const config=catalog.chains?.[name];
+  if(!config?.rpcUrls?.length)throw Error("Fee claim chain unavailable: "+name);
+  const min=value("XITA_INTERCHAIN_"+suffix+"_MIN_CLAIM_WEI");
+  const provider=new JsonRpcProvider(config.rpcUrls[0],config.chainId);
+  results.push({chain:name,...await claimAccruedFees({
+   provider,signer:wallet,adapterAddress:address,
+   expectedChainId:config.chainId,minClaimWei:min
+  })});
  }
- return {status:"ok",outcomes};
+ if(!results.length)throw Error("No deployed fee adapters configured");
+ return {status:"ok",results};
 }
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
- runConfiguredFeeClaim().then(x=>console.log(JSON.stringify(x)),
- e=>{console.error(String(e?.message||e));process.exitCode=1;});
+ runConfiguredFeeClaims().then(result=>console.log(JSON.stringify(result)),
+  err=>{console.error("Interchain Fee Claim:",String(err?.message||err));process.exitCode=1});
 }
