@@ -146,8 +146,9 @@ NOT every foreign jurisdiction. Actual applicable VAT/GST and net revenue
 are determined after collection in the GmbH's accounting. No tax-policy
 or country change requires a fee-contract redeployment.
 
-**Signature/bindings:** The pricing signer is separate from the immutable
-`interchainFeeRecipient`. It signs EIP-712 `SponsoredQuote` binding wallet,
+**Signature/bindings:** One on-chain `serviceWallet` is both the EIP-712 quote
+signer, full native Interchain Fee recipient and optional gas sponsor. The same
+address is used across deployed chains. It signs EIP-712 `SponsoredQuote` binding wallet,
 route, recipient, amount, optional final destination/onward route,
 `bridgeValueWei`, `interchainFeeWei`, nonce and `issuedAt`. Maximum
 lifetime 90 seconds. The browser checks the signed intent against the
@@ -158,7 +159,7 @@ or fee receipt is committed.
 
 **Single aggregate payout:** EACH source-chain adapter holds ONE
 `pendingInterchainFeesWei()` accumulator. Its `claimFees()` transfers
-the entire accrued native balance to the immutable beneficiary in one
+the entire accrued native balance to the current service wallet in one
 reentrancy-protected operation; there are no per-message claims. The
 optional off-chain fee monitor checks source-specific native-wei thresholds
 and requires claim proceeds to exceed expected gas cost by at least 3x;
@@ -200,9 +201,11 @@ Wallet recovery cannot resend TX1 or TX3 after receipt confirmation.
 
 **Admin UI:** ONE optional `XITAExecutionGateway` deployment on EACH
 supported EVM chain, no separate token deployments. It requires the
-chain-specific verified Source Registry, public immutable pricing
-`relayerOwner` and separately entered immutable public
-`interchainFeeRecipient`. The existing admin pipeline compiles
+chain-specific verified Source Registry, one public `serviceWallet` and
+independent public `recoveryAdmin`. The recovery admin may rotate the single
+operational address in one wallet-signed transaction, simultaneously revoking
+old quote signatures and changing the recipient for the whole accrued
+unclaimed fee balance. The existing admin pipeline compiles
 pinned constructor artifacts, simulates the MetaMask create transaction,
 checks constructor getters and live runtime code hash, and persists
 the immutable GitHub transaction receipt and refreshed public catalog.
@@ -214,9 +217,8 @@ can be one shared public EVM address across all chains.
 optional adapter via /admin, wait for verified GitHub receipt sync,
 then run the additive PostgreSQL migrations `sql/003_interchain_journey.sql`
 and `sql/004_sponsor_grants.sql` on the indexer DB. Provision restricted
-`/etc/xita/quote.env` and `/etc/xita/interchain-fee.env` from the
-separate templates; the public quote signer must NEVER hold the GMP
-fee/sponsor private key. Then run `./manage.sh install-interchain-fee`
+only `/etc/xita/interchain-fee.env` from the service wallet template. The
+separate Recovery Admin private key is NEVER on the XITA server. Then run `./manage.sh install-interchain-fee`
 on a CLEAN checked-out GitHub main with the real operator secrets in
 those files. This installs the loopback quote signer, two separately
 disabled-by-default operator timers (periodically checking accumulated
