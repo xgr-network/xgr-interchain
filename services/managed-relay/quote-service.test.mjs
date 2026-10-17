@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {Wallet,verifyTypedData} from "ethers";
+import {Wallet,verifyTypedData,Interface} from "ethers";
+import {executeQuoteCalldata} from "../../apps/web/transfer-actions.js";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 const address=n=>"0x"+n.toString(16).padStart(40,"0");
 const hash=x=>"0x"+x.repeat(64);
@@ -182,4 +183,15 @@ test("two-hop quote includes both deliveries, XGR bridge gas and its native vali
     tokenAmount:1000000000000000000n}:
    {bridgeNativeWei:1000000000000000000n,validatorFeeWei:0n,tokenAmount:0n}
  }),/Second hop validator quote unavailable/);
+});
+
+test("browser reconstructs exactly the signed EIP-712 execute ABI calldata",async()=>{
+ const r=await buildManagedQuote(defaults());
+ const iface=new Interface([
+  "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint32 finalDestinationDomain,bytes32 finalRecipient,bytes32 onwardRouteId,uint256 amount,uint256 bridgeValueWei,uint256 interchainFeeWei,uint256 nonce,uint64 issuedAt),bytes signature)"
+ ]);
+ const reference=iface.encodeFunctionData("execute",[r.quote,r.signature]).toLowerCase();
+ assert.equal(executeQuoteCalldata(r.quote,r.signature),reference);
+ const altered={...r.quote,amount:(BigInt(r.quote.amount)+1n).toString()};
+ assert.notEqual(executeQuoteCalldata(altered,r.signature),reference);
 });
