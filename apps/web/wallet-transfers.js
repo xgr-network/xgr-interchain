@@ -11,6 +11,8 @@ const isAddress=x=>ADDRESS.test(x||"")&&!/^0x0{40}$/i.test(x);
 export const OPERATION_TOPIC=keccak256("ILNOperation(bytes32,bytes32,uint32,uint256)");
 export const DISPATCH_TOPIC=keccak256("Dispatch(address,uint32,bytes32,bytes)");
 export const INTERCHAIN_FEE_TOPIC=keccak256("InterchainFeeCharged(bytes32,address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256)");
+export const ONWARD_JOURNEY_TOPIC=keccak256("OnwardJourneyDispatched(bytes32,bytes32,address,bytes32,uint32,bytes32,uint256,uint256,uint256)");
+export const ONWARD_SELECTOR=selector("continueJourney(bytes32,address,bytes32,uint32,bytes32,uint256)");
 // A verified adapter only augments the public Gateway event; its data never
 // authorizes mint, unlock, receipt finality or customer-asset movement.
 const EXECUTE_SELECTOR=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
@@ -58,6 +60,31 @@ export function adapterFeeEvidence(log,route,payer,messageId){
   amountRaw:BigInt(words[6]).toString(),validatorFeeWei:BigInt(words[7]).toString(),
   bridgeNativeWei:BigInt(words[8]).toString(),interchainFeeWei:BigInt(words[9]).toString(),
   quoteNonce:BigInt(words[10]).toString()};
+}
+// Onward TX 3 is linked to TX 1's parent message by the hub adapter event.
+// This event is evidence of the payer's intent, never a mint authorization.
+export function onwardJourneyEvidence(log,route,payer,messageId){
+ if(route.sourceChain!=="xgrchain"||
+  !accountMatches(log?.address,route.executionAdapter)||
+  !Array.isArray(log?.topics)||log.topics.length!==4||
+  lower(log.topics[0])!==lower(ONWARD_JOURNEY_TOPIC)||
+  !HASH.test(log.topics[1]||"")||
+  lower(log.topics[2])!==lower(messageId)||
+  hexAddress(log.topics[3])!==lower(payer)||
+  !/^0x[0-9a-f]{384}$/i.test(log.data||""))return null;
+ const words=Array.from({length:6},(_,i)=>"0x"+log.data.slice(2+i*64,66+i*64));
+ if(lower(words[0])!==route.routeId||
+   BigInt(words[1])!==BigInt(route.destinationConfig.domainId)||
+   BigInt(words[3])<=0n||BigInt(words[4])<=0n||
+   BigInt(words[5])<BigInt(words[4]))return null;
+ const recipient=hexAddress(words[2]);
+ if(!recipient||!accountMatches(recipient,payer))return null;
+ return {executionAdapter:route.executionAdapter,
+   parentMessageId:lower(log.topics[1]),
+   recipient,amountRaw:BigInt(words[3]).toString(),
+   validatorFeeWei:BigInt(words[4]).toString(),
+   bridgeNativeWei:BigInt(words[5]).toString(),
+   onwardExecution:true};
 }
 const deliveredSelector=selector("delivered(bytes32)");
 const accountMatches=(a,b)=>isAddress(a)&&lower(a)===lower(b);
@@ -180,10 +207,14 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  const direct=routes.filter(r=>accountMatches(tx.to,r.gateway));
  const executor=executorRoutes(tx,routes);
  const adapter=routes.filter(r=>r.executionAdapter&&accountMatches(tx.to,r.executionAdapter));
- // The ABI for execute() is bound by the first user signature. It is ONE
- // on-chain transaction even though it internally calls Gateway.bridge().
+ // Both adapter paths invoke the canonical Gateway within the single wallet TX.
+ // "continueJourney" on XGRChain does NOT charge another GmbH Interchain Fee.
  const input=lower(tx.input??tx.data??"");
- if(adapter.length&&!(input.startsWith(EXECUTE_SELECTOR)&&/^0x[0-9a-f]+$/.test(input)))
+ const paidAdapter=adapter.length>0&&input.startsWith(EXECUTE_SELECTOR);
+ const onwardAdapter=adapter.length>0&&sourceChain==="xgrchain"&&
+  input.startsWith(ONWARD_SELECTOR);
+ if(adapter.length&&(!/^0x[0-9a-f]+$/.test(input)||
+    (!paidAdapter&&!onwardAdapter)))
   throw Error("Adapter source call has unexpected ABI selector");
  const named=[...direct,...executor,...adapter],matches=new Set(named.map(r=>r.routeId));
  if(!matches.size)throw Error("Source transaction does not target a documented Gateway or fee adapter");
@@ -231,7 +262,9 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   if(dispatches.length!==1)continue;
   let evidence=null;
   if(adapter.length){
-   const events=receipt.logs.map(log=>adapterFeeEvidence(log,route,account,id)).filter(Boolean);
+   const events=receipt.logs.map(log=>paidAdapter?
+     adapterFeeEvidence(log,route,account,id):
+     onwardJourneyEvidence(log,route,account,id)).filter(Boolean);
    if(events.length!==1)continue;
    evidence=events[0];
    if(BigInt(evidence.validatorFeeWei)!==BigInt(operations[0].data))continue;
