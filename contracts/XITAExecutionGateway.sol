@@ -5,7 +5,6 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IXGRILNRegistry} from "./IXGRILNRegistry.sol";
 
@@ -129,13 +128,17 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     }
 
     constructor(address registry_, address payable serviceWallet_, address recoveryAdmin_)
-        EIP712("XITA Interchain Fee", "1") Ownable(recoveryAdmin_)
+        EIP712("XITA Interchain Fee", "1")
     {
         if (registry_ == address(0) || registry_.code.length == 0 ||
             serviceWallet_ == address(0) || recoveryAdmin_ == address(0) ||
             serviceWallet_ == recoveryAdmin_) revert InvalidConfiguration();
         sourceRegistry = IXGRILNRegistry(registry_);
         serviceWallet = serviceWallet_;
+        // The pinned OpenZeppelin Ownable v4 base initially gives authority to
+        // the contract deployer; assign the requested independent Recovery Admin
+        // atomically inside the constructor, before any external call.
+        _transferOwnership(recoveryAdmin_);
     }
 
     /// @notice Atomic rotation of quote signer, accumulated-fee payee AND
