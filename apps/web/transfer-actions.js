@@ -3,7 +3,7 @@
 // transfer state. No browser WAL, localStorage, hidden relayer key or replay.
 import {selector} from "./keccak.js";
 import {deployedRoutes} from "./route-availability.js";
-import {publicRead,findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
+import {publicRead,findWalletSourceTx,configuredGatewayRoutes,ONWARD_SELECTOR} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -99,6 +99,12 @@ export function quoteCalldata(domain,recipient,amount){
  return selector("quoteILN(uint32,bytes32,uint256)")+
   word(domain)+addrWord(recipient)+word(amount);
 }
+export function continueJourneyCalldata(parentId,gateway,routeId,domain,recipient,amount){
+ if(!HASH.test(parentId||"")||!HASH.test(routeId||"")||
+    !ADDRESS.test(gateway||""))throw Error("Invalid linked parent journey");
+ return ONWARD_SELECTOR+parentId.slice(2)+addrWord(gateway)+routeId.slice(2)+
+  word(domain)+addrWord(recipient)+word(amount);
+}
 export function bridgeCalldata(domain,recipient,amount){
  return selector("bridge(uint32,bytes32,uint256)")+
   word(domain)+addrWord(recipient)+word(amount);
@@ -153,7 +159,8 @@ export async function waitForWalletReceipt(provider,hash,{attempts=25,delayMs=30
  return null;
 }
 export async function startTransfer({catalog,account,asset,source,destination,amount,
- provider,onBroadcast,fetcher=globalThis.fetch,commercial=null}){
+ provider,onBroadcast,fetcher=globalThis.fetch,commercial=null,
+ onwardParentMessageId=null}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
  const firstDestination=source!=="xgrchain"&&destination!=="xgrchain"?
   "xgrchain":destination;
@@ -164,7 +171,11 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const adapter=configuredGatewayRoutes(catalog).find(r=>r.asset===asset&&
   r.sourceChain===source&&r.destinationChain===firstDestination&&
   eq(r.routeId,route.routeId))?.executionAdapter||null;
- const paidAdapter=commercial===false?null:adapter;
+ const paidAdapter=commercial===false||onwardParentMessageId?null:adapter;
+ const onwardAdapter=onwardParentMessageId?adapter:null;
+ if(onwardParentMessageId&&(!HASH.test(onwardParentMessageId)||
+     source!=="xgrchain"||!onwardAdapter||commercial!==false))
+  throw Error("Verified hub continuation adapter required for linked second hop");
  if(commercial===true&&!paidAdapter)
   throw Error("GmbH Interchain Fee adapter is not deployed; use public protocol calls separately");
  if(firstDestination!==destination){
@@ -202,10 +213,10 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    data:selector("balanceOf(address)")+addrWord(account)},"latest"]);
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
   const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
-   data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||route.gateway)},"latest"]);
+   data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
   if(BigInt(allowance)<units){
    const approve={from:account,to:route.sourceToken,value:"0x0",
-    data:selector("approve(address,uint256)")+addrWord(paidAdapter||route.gateway)+word(units)};
+    data:selector("approve(address,uint256)")+addrWord(paidAdapter||onwardAdapter||route.gateway)+word(units)};
    const gas=await request(provider,"eth_estimateGas",[approve]);
    const cash=await sourceGasAffordable(provider,account);
    preflightGas(gas,cash.gasPrice,0n,cash.balance);
@@ -217,12 +228,18 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
    if(approvalReceipt.status!=="0x1")throw Error("Token approval failed. No tokens were bridged");
    const confirmed=await request(provider,"eth_call",[{to:route.sourceToken,
-    data:selector("allowance(address,address)")+addrWord(account)+addrWord(route.gateway)},"latest"]);
+    data:selector("allowance(address,address)")+addrWord(account)+
+     addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
    if(BigInt(confirmed)<units)throw Error("Confirmed approval is insufficient for transfer");
   }
  }else if(quote.tokenAmount!==0n)throw Error("Native transfer unexpectedly requires ERC-20 approval");
  let tx={from:account,to:route.gateway,data:bridgeCalldata(dst.domainId,account,units),
   value:hex(quote.value)};
+ if(onwardAdapter){
+  tx={from:account,to:onwardAdapter,value:hex(quote.value),
+   data:continueJourneyCalldata(onwardParentMessageId,route.gateway,route.routeId,
+    dst.domainId,account,units)};
+ }
  let interchainFeeWei=null;
  if(paidAdapter){
   // Request a fresh EIP-712 fee quote AFTER any slow ERC-20 approval.
@@ -302,7 +319,7 @@ export async function startVerifiedOnwardHop({
  // wallet nonce, proof readiness and the destination native balance.
  return startTransfer({catalog,account,asset:first.asset,source:"xgrchain",
   destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast,
-  commercial:false});
+  commercial:false,onwardParentMessageId:first.messageId});
 }
 // Poll only the immutable message ID from a confirmed source receipt.
 // Never sends a wallet transaction; caller handles destination signing separately.
