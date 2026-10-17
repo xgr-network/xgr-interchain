@@ -14,7 +14,7 @@ export function patchInterchainFeeNginx(config){
  const added=[];
  for(const {path,method,timeout} of PATHS){
   const matches=[...next.matchAll(new RegExp(
-   "(?:^|\\\\n)\\\\s*location\\\\s*=\\\\s*"+path+"\\\\s*\\\\{","g"))];
+   String.raw`(?:^|\n)\s*location\s*=\s*`+path+String.raw`\s*\{`,"g"))];
   if(matches.length>1)throw Error("Duplicate Interchain Fee API route: "+path);
   if(matches.length===1){
    const from=next.indexOf("{",matches[0].index);
