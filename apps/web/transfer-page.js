@@ -10,7 +10,11 @@ const statuses={
  "destination-not-deployed":["Destination not deployed","The paired destination Mailbox is not documented. Delivery is not enabled."],
  "delivery-unknown":["Delivery unverified","The target-chain RPC cannot verify the delivery flag. Never assume delivered or lost."],
  "awaiting-proof":["Destination outstanding","The source message is verified and has not been delivered. Do not repeat the source transaction."],
- "awaiting-onward":["Next hop outstanding","XGRChain delivery is confirmed, but the final destination transfer has not been independently linked. Never repeat the first hop."],
+ "awaiting-onward":["Next hop outstanding","XGRChain delivered. The signed second hop has not yet been identified. Original source must not be repeated."],
+ "awaiting-final-proof":["Final delivery outstanding","TX 3 is confirmed on XGRChain. Only the destination Mailbox process may be continued."],
+ "final-delivery-unknown":["Final delivery unverified","A linked second hop exists but the destination RPC cannot confirm final delivery. Never repeat TX 3."],
+ "journey-ambiguous":["Ambiguous onward journey","Multiple candidates refer to one first hop. Do not sign another transaction; review chain evidence."],
+ "journey-delivered":["Journey delivered","Both hops' Mailbox deliveries are confirmed on the destination chains."],
  delivered:["Delivered","The target Mailbox confirms that the message was delivered."]
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
@@ -24,7 +28,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
  const cards=items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
-  const canRecover=t.status==="awaiting-proof"||t.status==="awaiting-onward";
+  const canRecover=["awaiting-proof","awaiting-onward","awaiting-final-proof"].includes(t.status);
   return '<article class="ux-transfer-card" data-source-tx="'+esc(t.txHash)+'">'+
    '<div class="ux-transfer-head"><strong>'+esc(t.asset||"Token")+' · '+
    esc(chains[t.sourceChain]?.name||t.sourceChain)+' → '+
@@ -35,6 +39,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    (ref?'<div class="ux-transfer-meta"><span>Message ID</span><code>'+esc(ref)+'</code></div>':'')+
    (t.validatorFeeWei?'<div class="ux-transfer-meta"><span>Validator fee (Wei)</span><code>'+esc(t.validatorFeeWei)+'</code></div>':'')+
    (t.interchainFeeWei?'<div class="ux-transfer-meta"><span>GmbH Interchain Fee (source wei)</span><code>'+esc(t.interchainFeeWei)+'</code></div>':'')+
+   (t.secondHopTxHash?'<div class="ux-transfer-meta"><span>Second hop TX</span><code>'+esc(t.secondHopTxHash)+'</code></div>':'')+
    (canRecover?'<p class="ux-transfer-warning">'+esc(t.status==="awaiting-onward"?
      "First hop delivered on XGRChain; final journey not proven. Never repeat source lock or blindly retry hop 2.":
      "Original source confirmed. It is never submitted again. Only destination delivery can be continued.")+'</p>':'')+
