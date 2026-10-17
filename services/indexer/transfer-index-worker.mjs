@@ -433,10 +433,12 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
  const routes=indexedRoutes(catalog,{blockFor});
  let accelerated={status:"not-installed"};
  try{accelerated=await processTransferAnnouncements({catalog,routes,pool,rpc:hintRpc});}
- catch(error){accelerated={error:String(error.message||error).slice(0,200)};}
+ catch(error){accelerated=["42P01","42501"].includes(error?.code)?
+  {status:"not-provisioned"}:{error:String(error.message||error).slice(0,200)};}
  let hintsRechecked={status:"not-installed"};
  try{hintsRechecked=await reconcileAnnouncedBlocks({pool,routes,rpc:hintRpc});}
- catch(error){hintsRechecked={error:String(error.message||error).slice(0,200)};}
+ catch(error){hintsRechecked=["42P01","42501"].includes(error?.code)?
+  {status:"not-provisioned"}:{error:String(error.message||error).slice(0,200)};}
  const progress=[];
  for(const route of routes){
   try{progress.push(await catchUpRoute({route,batches,
