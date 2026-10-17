@@ -87,3 +87,19 @@ test("existing nested manual wallet location is respected, missing stats is inst
  assert.throws(()=>patchXitaTransferNginx(original.replace(manual,manual+"\n"+manual)),/Duplicate XITA/);
  assert.throws(()=>patchXitaTransferNginx(original.replace("127.0.0.1:4088","127.0.0.1:9999")),/approved read-only upstream/);
 });
+
+test("CSP allows all reviewed browser RPC origins, not just old Base endpoint",()=>{
+ const old=base.replace("https://explorer.xgr.network","https://explorer.xgr.network https://base-rpc.publicnode.com");
+ const patched=patchXitaTransferNginx(old);
+ for(const host of ["https://gateway.tenderly.co","https://base.gateway.tenderly.co",
+ "https://polygon-bor-rpc.publicnode.com","https://arbitrum-one-rpc.publicnode.com"]){
+  assert.ok(patched.config.includes(host),"missing CSP origin "+host);
+  assert.equal(patched.config.split(host).length-1,1,"duplicate CSP origin "+host);
+ }
+ assert.equal(patchXitaTransferNginx(patched.config).changed,false);
+});
+test("CSP modification refuses missing or multiple policies rather than loosening defaults",()=>{
+ assert.throws(()=>patchXitaTransferNginx(base.replace(/    add_header Content-Security-Policy.*\\n/,"")),/Content-Security-Policy/);
+ const header=base.split("\\n").find(x=>x.includes("add_header Content-Security-Policy"));
+ assert.throws(()=>patchXitaTransferNginx(base.replace(header,header+"\\n"+header)),/Content-Security-Policy/);
+});
