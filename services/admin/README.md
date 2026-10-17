@@ -107,7 +107,7 @@ The deployment button MUST remain disabled until cryptographic counterpart
 validation, receipt journaling and wallet main-pinned creation transactions
 are complete. Do not send real native currency based only on UI readiness.
 
-## Optional source-chain GmbH Managed Relay contract
+## Optional XITA GmbH Interchain Fee contract and key recovery
 
 For each chain separately (XGRChain, Base, Polygon, Arbitrum once approved), **Chain Infrastructure** displays the optional
 `Interchain Fee · Execution Gateway` after the canonical Source Registry.
@@ -122,3 +122,15 @@ catalog, and server sync use the existing secure chain deploy machinery.
 This component is not mandatory ILN infrastructure and is not part of the
 bulk "finish chain" deployment. Use the same public GmbH service wallet on every chain; fee balances and chain deployments remain independent. After deployment each chain card exposes a wallet-signed "Service-Wallet ändern" action that requires the live Recovery Admin. Contract fee claim, quote signer and gas sponsor rotate together; previously accrued unclaimed fees flow to the new wallet. The Recovery Admin private key must not be on the XITA server.
 The owner has NO ILN protocol, token, Mailbox or validator privilege.
+
+**One operational key, not three:** `serviceWallet()` is the identical address
+returned by `relayerOwner()` and `interchainFeeRecipient()`. This one EVM
+account signs quotes, receives fee payouts and sponsors optional gas. The
+independent `owner()` Recovery Admin is an offline wallet with no role in
+quotes or day-to-day gas; its private key is never placed on the server.
+Rotations are direct wallet-signed `setServiceWallet(address)` transactions,
+not contract redeployments. They must be repeated on each deployed chain,
+and the single `/etc/xita/interchain-fee.env` must be updated only after
+all expected chains report the new operational address. Fees accrued inside
+the contracts before rotation flow to the new address; previously claimed
+coins in the compromised EOA are not recovered.
