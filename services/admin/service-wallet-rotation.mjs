@@ -1,4 +1,4 @@
-import {selector} from "./keccak.mjs";
+import {selector} from "../../apps/web/keccak.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 export function rotationCalldata(next){
  if(!ADDRESS.test(next||"")||/^0x0{40}$/i.test(next))throw Error("Invalid wallet address");
