@@ -1,0 +1,12 @@
+[Unit]
+Description=Check XITA Single-Saldo Interchain Fee Claim Threshold
+
+[Timer]
+OnBootSec=3min
+OnUnitInactiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=xita-interchain-fee-claim.service
+
+[Install]
+WantedBy=timers.target
