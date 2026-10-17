@@ -48,17 +48,17 @@ export const browserRpcOrigins=Object.freeze([
  "https://arbitrum-one-rpc.publicnode.com"
 ]);
 export function patchXitaBrowserRpcCsp(config){
- const header=/^([ \\t]*add_header[ \\t]+Content-Security-Policy[ \\t]+")([^"\\r\\n]+)("[ \\t]+always;[ \\t]*)$/gm;
+ const header=/^([ \t]*add_header[ \t]+Content-Security-Policy[ \t]+")([^"\r\n]+)("[ \t]+always;[ \t]*)$/gm;
  const matches=[...config.matchAll(header)];
  if(matches.length!==1)throw Error("Expected exactly one XITA Content-Security-Policy header");
  const [whole,begin,policy,end]=matches[0];
- const clauses=[...policy.matchAll(/(?:^|;)\\s*connect-src\\s+([^;]*)/g)];
+ const clauses=[...policy.matchAll(/(?:^|;)\s*connect-src\s+([^;]*)/g)];
  if(clauses.length!==1)throw Error("Expected exactly one XITA CSP connect-src directive");
- const values=clauses[0][1].trim().split(/\\s+/);
+ const values=clauses[0][1].trim().split(/\s+/);
  if(!values.includes("'self'"))throw Error("XITA CSP connect-src missing self");
  const additions=browserRpcOrigins.filter(origin=>!values.includes(origin));
  if(!additions.length)return config;
- const updated=policy.replace(/(\\bconnect-src\\s+)([^;]+)/,(_all,start,value)=>
+ const updated=policy.replace(/(\bconnect-src\s+)([^;]+)/,(_all,start,value)=>
   start+value.trimEnd()+" "+additions.join(" "));
  return config.replace(whole,begin+updated+end);
 }
