@@ -410,7 +410,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-sponsor-status" role="status" aria-live="polite">'+
   '<strong>Optional gas sponsorship</strong><span class="ux-small">'+
   esc(progress.sponsorship?.available===true?
-   "Currently available for eligible steps. Each grant is checked separately; it is never guaranteed by the fee.":
+   "Operator reports native gas capacity on: "+Object.entries(progress.sponsorship?.chains||{}).filter(([,v])=>v===true).map(([chain])=>chain).join(", ")+". Each grant is verified separately; no contractual gas entitlement.":
    progress.sponsorship?.status==="unavailable"?
    "Not active. Keep enough native gas on every required chain before transferring.":
    "Availability not verified. Treat sponsorship as unavailable until confirmed.")+
