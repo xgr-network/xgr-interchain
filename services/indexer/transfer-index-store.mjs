@@ -57,7 +57,8 @@ export function indexedTransferRow(row){
   interchainFeeWei:row.interchain_fee_wei==null?null:String(row.interchain_fee_wei),
   finalDestinationChain:row.final_destination_chain??null,
   finalRecipient:row.final_recipient?lowercase(row.final_recipient):null,
-  onwardRouteId:row.onward_route_id?lowercase(row.onward_route_id):null};
+  onwardRouteId:row.onward_route_id?lowercase(row.onward_route_id):null,
+  parentMessageId:row.parent_message_id?lowercase(row.parent_message_id):null};
 }
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
@@ -75,7 +76,7 @@ export async function readWalletTransferIndex(catalog,account,{
     source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
     validator_fee_wei::text AS validator_fee_wei,delivered,
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
-    final_destination_chain,final_recipient,onward_route_id
+    final_destination_chain,final_recipient,onward_route_id,parent_message_id
     FROM xita_transfer_operations
     WHERE account=$1 AND ($2::boolean IS FALSE OR delivered IS DISTINCT FROM TRUE
       OR onward_route_id IS NOT NULL)
