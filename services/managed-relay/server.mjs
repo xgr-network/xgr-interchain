@@ -60,13 +60,22 @@ async function createQuote(request){
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
  if(!/^0x[0-9a-f]{40}$/i.test(executionAddress||""))
-  throw Error("Managed relay execution contract not deployed");
+  throw Error("Interchain Fee execution contract not deployed");
+ const documented=CATALOG.infrastructure?.[source]?.xitaV315?.components?.executionGateway;
+ if(!documented?.address||String(documented.address).toLowerCase()!==
+    String(executionAddress).toLowerCase()||
+    !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
+  throw Error("Fee gateway is not backed by the deployed GitHub receipt");
  await chain(source);await chain(destination);
  const result=await buildManagedQuote({
   catalog:CATALOG,request,executionAddress,signer,
   readExecutionOwner:async()=> {
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
-   const [owner,registry]=await Promise.all([c.relayerOwner(),c.sourceRegistry()]);
+   const [owner,registry,beneficiary]=await Promise.all([
+    c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient()]);
+   if(String(beneficiary).toLowerCase()!==String(
+     process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").toLowerCase())
+    throw Error("Immutable fee recipient differs from configured GmbH address");
    const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
     throw Error("Managed relay does not bind canonical source ILN Registry");
