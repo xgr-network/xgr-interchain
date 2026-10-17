@@ -297,7 +297,7 @@ install_transfer_api() (
 )
 
 
-# Enabled only after operator configures /etc/xita/{quote,interchain-fee}.env
+# Enabled only after operator configures /etc/xita/interchain-fee.env
 # and deploys the distinct per-chain ExecutionGateway contracts via Admin UI.
 install_interchain_fee() (
   require_clean_main
@@ -309,7 +309,7 @@ install_interchain_fee() (
     echo "Unsafe Interchain Fee service checkout path or operator account" >&2
     return 1
   }
-  for service in /etc/xita/quote.env /etc/xita/interchain-fee.env; do
+  for service in /etc/xita/interchain-fee.env; do
     if ! privileged test -f "$service"; then
       echo "ERROR: Missing $service. Copy restricted example and enter keys ONLY on the server." >&2
       return 1
