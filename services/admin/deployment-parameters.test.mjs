@@ -35,3 +35,19 @@ test("validator initial reserve must be explicit and at least minimum",()=>{
  assert.throws(()=>deploymentParameters("validatorRegistry",{
   minimumWei:"1000",maxExecutorReimbursementWei:"500",perValidatorWei:"999"}),/Reserve/);
 });
+
+test("GmbH fee recipient, gas sponsor and quote signer share exactly ONE wallet",()=>{
+ const service="0x"+"a".repeat(40),admin="0x"+"b".repeat(40);
+ assert.deepEqual(deploymentParameters("executionGateway",{
+  serviceWallet:service,recoveryAdmin:admin
+ }),{serviceWallet:service,recoveryAdmin:admin});
+ assert.throws(()=>deploymentParameters("executionGateway",{
+  serviceWallet:service,recoveryAdmin:service
+ }),/must be different/);
+ assert.throws(()=>deploymentParameters("executionGateway",{
+  relayerOwner:service,interchainFeeRecipient:admin
+ }),/wrong component/);
+ assert.throws(()=>deploymentParameters("executionGateway",{
+  serviceWallet:service
+ }),/required/);
+});
