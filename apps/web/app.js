@@ -15,7 +15,7 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
-const sponsorship={available:false,status:"unknown",checkedAt:0,loading:false};
+const sponsorship={available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
  sponsorship.loading=true;sponsorship.checkedAt=Date.now();
@@ -28,9 +28,11 @@ async function refreshSponsorship(){
   if(data?.ok!==true||!data.sponsorship)
    throw Error("No verified sponsor status");
   sponsorship.available=data.sponsorship.available===true;
+  sponsorship.chains=data.sponsorship.chains&&typeof data.sponsorship.chains==="object"?
+   data.sponsorship.chains:{};
   sponsorship.status=sponsorship.available?"available":"unavailable";
  }catch{
-  sponsorship.available=false;sponsorship.status="unknown";
+  sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
  }finally{
   sponsorship.loading=false;
   if(path()==="/transfer"&&state.catalog)render();
@@ -633,7 +635,8 @@ function render(){
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
    notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
-    sponsorship:{available:sponsorship.available,status:sponsorship.status}
+    sponsorship:{available:sponsorship.available,status:sponsorship.status,
+      chains:sponsorship.chains}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
