@@ -1,4 +1,4 @@
-import {deployedRoutes,supportedRouteChains} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes,supportedRouteChains} from "./route-availability.js";
 import {representationFor} from "./token-representation.js";
 import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
@@ -42,7 +42,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
       routes.push({assetId,name:item.name,source,destination,active});
     }
   }
-  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog)};
+  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog),transferRoutes:executableTransferRoutes(catalog)};
 }
 
 export function previewRoute(model,source,destination,assetId){
@@ -193,11 +193,11 @@ export function renderWalletGasChecklist(model,plan,wallet={}){
 export function renderTokenBridge(model,assetId){
  const token=model.assets.find(a=>a.id===assetId);
  if(!token)return "";
- const available=model.deployments.filter(r=>r.asset===assetId);
+ const available=(model.transferRoutes||[]).filter(r=>r.asset===assetId);
  return '<div class="ux-token-bridge"><div class="ux-kicker">XITA · TOKEN TRANSFER</div>'+
   '<h2>Transfer '+esc(token.name)+'</h2>'+
   '<p class="ux-muted">One transfer flow for every supported route. Your token is preselected on the transfer page.</p>'+
-  '<p class="ux-small">'+available.length+' documented transfer direction'+(available.length===1?"":"s")+'</p>'+
+  '<p class="ux-small">'+available.length+' fee-enabled transfer direction'+(available.length===1?"":"s")+(available.length?"":" · Execution Gateway pending")+'</p>'+
   '<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Transfer '+esc(assetId)+' →</a>'+
   '</div>';
 }
@@ -308,19 +308,25 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
 }
 // A real standalone planner; no longer extracted from dashboard markup.
 export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={},progress={}){
- const routes=model.deployments||[];
+ // New commercial transfers are available only with fee adapters on BOTH
+ // involved chains; the permissionless Gateway history remains independent.
+ const routes=model.transferRoutes||[];
  const available=new Set(routes.flatMap(r=>[r.source,r.destination]));
- const deployedChains=model.chains.filter(c=>available.has(c.key));
- const deployedAssets=new Set(routes.map(r=>r.asset));
- const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id));
  const openChoice=openWalletTransfers(progress.items,wallet.account);
  const currentWork=selectedRecovery(progress.items,wallet.account,progress.selectedTxHash);
+ // Recovery must remain usable even if the old Gateway route predates the
+ // deployment of the commercial Execution Gateway contracts.
+ const recoveryChains=new Set(currentWork?[
+  currentWork.sourceChain,currentWork.destinationChain,currentWork.finalDestinationChain]:[]);
+ const deployedChains=model.chains.filter(c=>available.has(c.key)||recoveryChains.has(c.key));
+ const deployedAssets=new Set(routes.map(r=>r.asset));
+ const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id)||a.id===currentWork?.asset);
  const requestedOrigin=currentWork?.sourceChain||selection.origin;
  const requestedDestination=currentWork?.destinationChain||selection.destination;
  const requestedAsset=currentWork?.asset||selection.asset;
- const origin=available.has(requestedOrigin)?requestedOrigin:
+ const origin=deployedChains.some(c=>c.key===requestedOrigin)?requestedOrigin:
    deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
- const destination=available.has(requestedDestination)&&requestedDestination!==origin?
+ const destination=deployedChains.some(c=>c.key===requestedDestination)&&requestedDestination!==origin?
    requestedDestination:deployedChains.find(c=>c.key!==origin)?.key||"";
  const assetId=usableAssets.some(a=>a.id===requestedAsset)?
    requestedAsset:usableAssets[0]?.id||"";
@@ -341,6 +347,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
   selected?.status==="awaiting-final-proof"?"Continue final delivery":
   selected?"Check delivery status":
+  !routes.length?"Interchain Fee gateway not deployed":
   !deployed?"Route unavailable":
   !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
@@ -425,6 +432,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
    selected?"Existing source transfer selected; the original lock will not be repeated.":
    busy?"Checking the selected transaction against the blockchain.":
+   !routes.length?"New transfers need a verified Interchain Fee · Execution Gateway on each chain. Existing Gateway transfers can still be recovered.":
    deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
    "Only verified deployed routes can be transferred.")+'</p></div>'+
   '<details class="ux-transfer-advanced"><summary>Route, network gas &amp; safety checks <span aria-hidden="true">⌄</span></summary>'+
@@ -432,12 +440,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-route-status">'+
   (deployed?'<span class="ux-badge is-verified">Contracts deployed</span>':
    '<span class="ux-badge is-pending">Route unavailable</span>')+
-  '<p>'+(deployed?"The source and destination contract addresses are documented. Their live bindings, fees and gas requirements are checked again before signing.":
+  '<p>'+(deployed?"The source and destination contracts, including Interchain Fee execution, are documented. Their live bindings, fees and gas requirements are checked again before signing.":
     "A documented, direct route is required before signing.")+'</p></div>'+
   renderWalletGasChecklist(model,path,{...wallet,hideStepList:true,hideInactiveNote:deployed})+
   '<p class="ux-transfer-footer-note">The source Gateway and destination Mailbox are public contracts. A separate ERC-20 approval may be required; a confirmed source lock is never repeated.</p>'+
   '</div></details>'+
-  (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")?
+  (!routes.length&&model.deployments?.length?
+   '<p class="ux-transfer-error">The Interchain Fee · Execution Gateway is not verified on both chains. New XITA transfers are disabled. Previously locked transfers remain accessible through My Transfers.</p>':'')+
+  (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")&&!model.deployments?.length?
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+

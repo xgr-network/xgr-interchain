@@ -97,10 +97,14 @@ async function scanWalletHistory(){
  transferActivity.scanned=true;
  transferActivity.indexCoverage=null;transferActivity.indexOpenCount=0;
  if(path()==="/my-transfers")render();
- const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4000);
+ // PostgreSQL history queries may need the configured 8-second statement budget.
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
  try{
   const response=await fetch("/api/xeta/v1/transfers/wallet?"+
-   new URLSearchParams({account,pending:"1"}),{cache:"no-store",credentials:"omit",
+   // Include delivered history too: the wallet API separately reports
+   // openCount for the header badge. A completed test transfer must not
+   // vanish from My Transfers just because its proof finally succeeded.
+   new URLSearchParams({account}),{cache:"no-store",credentials:"omit",
    headers:{accept:"application/json"},signal:controller.signal});
   if(!response.ok)throw Error("Indexer temporarily unavailable");
   const data=await response.json();
@@ -122,14 +126,20 @@ async function scanWalletHistory(){
    scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
   transferActivity.notice=complete?
    "Indexer synchronized across all finalized deployed routes.":
-   "Indexer catching up. You can still initiate a new transfer; source nonce and route checks run before signing.";
+   "Finalized wallet index incomplete ("+(data.coverage?.indexedRoutes||0)+"/"+
+     (data.coverage?.requiredRoutes||0)+" routes). Prior source locks remain on-chain. "+
+     "Use the original source TX hash in My Transfers until backfill completes.";
   refreshTransferLink();
  }catch(error){
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-  // Missing historical evidence is not a negative balance or a confirmed empty history.
-  // Show it only on My Transfers; the source transaction guard stays independent.
+  // Never interpret an unavailable indexer or schema migration as empty history.
+  // Manual source-TX verification still works without PostgreSQL.
   transferActivity.report=null;
-  transferActivity.notice="";
+  transferActivity.indexCoverage=null;
+  transferActivity.notice="Wallet history index unavailable or timed out. "+
+   "Previously locked source transfers remain on-chain. Open My Transfers "+
+   "and paste the original source transaction hash in Find a previous transfer. "+
+   "Check the transfer indexer and PostgreSQL migrations.";
   transferActivity.error="";
  }finally{
   clearTimeout(timeout);
@@ -276,9 +286,9 @@ async function performTransferAction(){
    destination=state.experience.destination,amount=state.experience.amount||"";
   const firstDestination=origin!=="xgrchain"&&destination!=="xgrchain"?
    "xgrchain":destination;
-  const firstRoute=model.deployments.some(r=>
+  const firstRoute=model.transferRoutes.some(r=>
    r.asset===asset&&r.source===origin&&r.destination===firstDestination);
-  const onwardRoute=firstDestination===destination||model.deployments.some(r=>
+  const onwardRoute=firstDestination===destination||model.transferRoutes.some(r=>
    r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
   if(!firstRoute||!onwardRoute)
    throw Error("Both independently deployed XITA routes are required");
@@ -466,7 +476,7 @@ function token(){
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
- '<div class="pair"><span>Deployed XITA routes</span><b>'+
+ '<div class="pair"><span>Documented ILN routes</span><b>'+
   (a.deployment?.routeDeployments?.length||0)+' / '+routes().length+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
@@ -640,7 +650,8 @@ function render(){
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
-   scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
+   notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer")void refreshSponsorship();
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){

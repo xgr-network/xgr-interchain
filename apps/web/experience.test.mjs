@@ -225,7 +225,7 @@ test("Transfer CTA appears immediately after amount, before collapsed gas diagno
  // This fixture has no deployment receipts, so the UI must not invent an available amount.
  assert.match(html,/Route unavailable/);
  assert.equal((html.match(/Token balances/g)||[]).length,0);
- assert.match(html,/Only verified deployed routes can be transferred/);
+ assert.match(html,/New transfers need a verified Interchain Fee/);
  assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
  const noWallet=renderPlanRoute(model,{},"ready");
  assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("Route, network gas"));
@@ -240,11 +240,11 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
   status:"awaiting-proof",confirmed:true,delivered:false};
  const fresh=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:null,scanning:true});
- assert.match(fresh,/Transfer XGR/);
+ assert.match(fresh,/Interchain Fee gateway not deployed/);
  assert.doesNotMatch(fresh,/Checking on-chain transfers/);
  assert.match(fresh,/Previous transfers awaiting delivery/);
  assert.match(fresh,/<option value="" selected>New transfer/);
- assert.match(fresh,/Ready to transfer/);
+ assert.doesNotMatch(fresh,/Ready to transfer/);
  const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:txHash,scanning:true});
  assert.match(selected,/Continue delivery/);

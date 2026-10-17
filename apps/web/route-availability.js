@@ -52,6 +52,22 @@ export function deployedRoutes(catalog){
  }
  return result;
 }
+// The optional GmbH Execution Gateway is separate from a historical
+// permissionless ILN Gateway. Only verified, GitHub-receipted adapters
+// activate a chain in the new commercial Transfer Tokens workflow.
+export function documentedExecutionGateway(catalog,chain){
+ const core=catalog?.infrastructure?.[chain]?.xitaV315;
+ const gateway=core?.components?.executionGateway;
+ return valid(gateway)&&Array.isArray(core?.receiptPaths)&&
+  core.receiptPaths.includes(gateway.receiptPath)?gateway.address.toLowerCase():null;
+}
+export function executableTransferRoutes(catalog){
+ // Both participating chains must have the chain-specific Execution Gateway:
+ // partial deployment never advertises an available network or token route.
+ return deployedRoutes(catalog).filter(route=>
+  documentedExecutionGateway(catalog,route.source)!==null&&
+  documentedExecutionGateway(catalog,route.destination)!==null);
+}
 export function supportedRouteChains(catalog,asset=null){
  const names=new Set(deployedRoutes(catalog).filter(r=>!asset||r.asset===asset)
    .flatMap(r=>[r.source,r.destination]));
