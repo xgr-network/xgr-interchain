@@ -40,8 +40,8 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
    ["validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer"],
    [b.proposedFeeWei===null?"Source-Chain-Initialgebühr in GitHub main fehlt":"Konstruktor-Gebühr "+b.proposedFeeWei+" Wei prüfen"]);
   add("sourceRegistry","Factory-eigene Source-Registry","factory-call",["factory"],["Fee Nonce 0 und Factory-Bindung nachweisen"]);
-  add("executionGateway","GmbH Managed Relay Execution Gateway (optional)","deploy",
-   ["sourceRegistry"],["Relayer-Owner-Adresse für signierte Gebührenquotes angeben"],true);
+  add("executionGateway","GmbH Interchain Fee Gateway (optional, je Quellchain)","deploy",
+   ["sourceRegistry"],["Öffentliche Quote-Signierer- UND GmbH-Fee-Empfänger-Adresse angeben"],true);
   const verifiedComponents=steps.filter(s=>!s.optional&&s.status==="documented").length;
   return {name:chain.name,chainId:chain.chainId,domainId:chain.domainId,
    verifierFormat:chain.blsVerifierFormat,verifierAddress:b.verifierAddress,
