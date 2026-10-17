@@ -87,6 +87,18 @@ function upsertTransfer(record){
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
  refreshTransferLink();
 }
+// Non-blocking, untrusted staging hint after MetaMask broadcasts. No UI
+// action, funds, recovery, or transfer history depends on this POST succeeding.
+// The index worker verifies every submitted hash against canonical RPC.
+function announceWalletSourceTx(sourceChain,txHash,account=state.account){
+ if(!validWalletAddress(account)||!state.catalog?.chains?.[sourceChain]||
+   !/^0x[0-9a-f]{64}$/i.test(txHash||""))return;
+ void fetch("/api/xeta/v1/transfers/announce",{
+  method:"POST",credentials:"omit",cache:"no-store",
+  headers:{"content-type":"application/json"},
+  body:JSON.stringify({sourceChain,txHash,account})
+ }).catch(()=>null);
+}
 // The operator indexer owns historical discovery. A 4,096-block RPC walk
 // never runs implicitly on wallet connection and never blocks a new transfer.
 async function scanWalletHistory(){
@@ -116,7 +128,9 @@ async function scanWalletHistory(){
   for(const item of data.items.filter(t=>
     t.account?.toLowerCase()===account.toLowerCase()&&
     /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
-    ["awaiting-proof","awaiting-onward","delivery-unknown","delivered"].includes(t.status)))
+    ["pending-source","awaiting-proof","awaiting-onward","awaiting-final-proof",
+      "final-delivery-unknown","journey-delivered","journey-ambiguous",
+      "delivery-unknown","delivered"].includes(t.status)))
     upsertTransfer(item);
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
@@ -160,6 +174,7 @@ async function lookupWalletTransfer(sourceChain,txHash){
   const record=await findWalletSourceTx({catalog:state.catalog,account,sourceChain,txHash});
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
   upsertTransfer(record);
+  announceWalletSourceTx(sourceChain,txHash,account);
   transferActivity.notice=record.status==="delivered"?
    "Destination delivery independently confirmed.":
    "Original source transaction checked. Do not repeat the source bridge call.";
@@ -220,6 +235,7 @@ async function performTransferAction(){
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      announceWalletSourceTx("xgrchain",txHash,account);
       transferActivity.notice="Onward XGRChain TX "+txHash+
        " submitted. Original first-hop source remains untouched.";
       render();
@@ -296,6 +312,7 @@ async function performTransferAction(){
    destination,amount,provider:globalThis.ethereum,
    onBroadcast:({txHash})=>{
     broadcastKnown=true;
+    announceWalletSourceTx(origin,txHash,account);
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
     render();
    }});
