@@ -56,11 +56,11 @@ export function patchInterchainFeeNginx(config){
   "https://polygon-bor-rpc.publicnode.com",
   "https://arbitrum-one-rpc.publicnode.com"
  ];
- const policy=next.match(/connect-src\\s+([^;"]*)/);
+ const policy=next.match(/connect-src\s+([^;"]*)/);
  if(policy){
   let updated=policy[0];
   for(const host of required){
-   if(!updated.split(/\\s+/).includes(host))updated+=" "+host;
+   if(!updated.split(/\s+/).includes(host))updated+=" "+host;
   }
   if(updated!==policy[0])next=next.replace(policy[0],updated);
  }
