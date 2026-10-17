@@ -320,6 +320,54 @@ contract XITAExecutionGatewayTest is Test {
         managed.claimFees();
     }
 
+    function testHubOnwardHopEmitsParentAndPreservesSingleFeeReceipt() public {
+        vm.chainId(1643);
+        registry.setRoute(TARGET,ROUTE,_route(address(gateway),address(tokenRouter)));
+        bytes32 parent = bytes32(uint256(0x777));
+        uint256 beforeFees = managed.pendingInterchainFeesWei();
+        (,,uint256 bridgeWei,) = gateway.quoteILN(TARGET,RECIPIENT,AMOUNT);
+        vm.prank(USER);
+        bytes32 next = managed.continueJourney{value:bridgeWei}(
+            parent,address(gateway),ROUTE,TARGET,RECIPIENT,AMOUNT);
+        assertTrue(next != bytes32(0));
+        assertTrue(managed.onwardParentUsed(USER,parent));
+        assertEq(managed.pendingInterchainFeesWei(),beforeFees);
+        assertEq(address(gateway.feeVault()).balance,1);
+        assertEq(tokenRouter.balanceOf(USER),9 ether);
+        (,,,bool exists) = managed.feeReceipt(next);
+        assertFalse(exists); // No second GmbH Interchain Fee.
+        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
+        vm.prank(USER);
+        managed.continueJourney{value:bridgeWei}(
+            parent,address(gateway),ROUTE,TARGET,RECIPIENT,AMOUNT);
+    }
+
+    function testHubOnwardRejectsWrongRouteAndNeverConsumesParent() public {
+        vm.chainId(1643);
+        registry.setRoute(TARGET,ROUTE,_route(address(gateway),address(tokenRouter)));
+        bytes32 parent = bytes32(uint256(0x778));
+        (,,uint256 bridgeWei,) = gateway.quoteILN(TARGET,RECIPIENT,AMOUNT);
+        vm.expectRevert(XITAExecutionGateway.InvalidRegisteredRoute.selector);
+        vm.prank(USER);
+        managed.continueJourney{value:bridgeWei}(
+            parent,address(gateway),bytes32(uint256(999)),TARGET,RECIPIENT,AMOUNT);
+        assertFalse(managed.onwardParentUsed(USER,parent));
+        vm.expectRevert(XITAExecutionGateway.InvalidBridgeValue.selector);
+        vm.prank(USER);
+        managed.continueJourney{value:bridgeWei-1}(
+            parent,address(gateway),ROUTE,TARGET,RECIPIENT,AMOUNT);
+        assertFalse(managed.onwardParentUsed(USER,parent));
+    }
+
+    function testHubOnwardUnavailableOnAnyOtherSourceChain() public {
+        bytes32 parent = bytes32(uint256(0x779));
+        vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
+        vm.prank(USER);
+        managed.continueJourney(
+            parent,address(gateway),ROUTE,TARGET,RECIPIENT,AMOUNT);
+        assertFalse(managed.onwardParentUsed(USER,parent));
+    }
+
     function testNewFeesCanBeClaimedAsTheNextAggregateBalance() public {
         _execute(_quote(700));
         managed.claimFees();
