@@ -32,7 +32,8 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   return '<article class="ux-transfer-card" data-source-tx="'+esc(t.txHash)+'">'+
    '<div class="ux-transfer-head"><strong>'+esc(t.asset||"Token")+' · '+
    esc(chains[t.sourceChain]?.name||t.sourceChain)+' → '+
-   esc(chains[t.finalDestinationChain||t.destinationChain]?.name||t.finalDestinationChain||t.destinationChain)+'</strong>'+
+   esc(chains[t.finalDestinationChain||t.destinationChain]?.name||
+   t.finalDestinationChain||t.destinationChain||"Route not yet verified")+'</strong>'+
    '<span class="ux-transfer-status is-'+esc(t.status)+'">'+esc(title)+'</span></div>'+
    '<p class="ux-small">'+esc(detail)+'</p>'+
    '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(t.txHash)+'</code></div>'+
@@ -50,9 +51,9 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   '<header><div class="ux-kicker">XITA · WALLET ACTIVITY</div><h1>My Transfers</h1>'+
   '<p class="ux-muted">Only transfers initiated by your connected wallet are shown. Reconnect on another device to search on-chain; never repeat an already confirmed source transaction.</p>'+
   '<p class="ux-small">Connected '+esc(account.slice(0,6)+"…"+account.slice(-4))+
-  ' · These records are checked against canonical Gateway and Mailbox events, not browser cache.</p></header>'+
+  ' · Confirmed transfers use canonical Gateway/Mailbox evidence. A pending source TX is not a lock or proof of delivery.</p></header>'+
   '<div class="ux-transfer-actions"><button type="button" id="xita-scan-transfers"'+
-  (scanning?" disabled":"")+'>Refresh recent wallet transfers</button>'+
+  (scanning?" disabled":"")+'>Refresh wallet history</button>'+
   '<span class="ux-small">'+esc(scanning?"Checking wallet transfers…":
    indexCoverage?.complete?"Finalized event index up to date for every deployed route.":
    scanReport?.source==="indexer"?"Indexer catching up; historical coverage incomplete.":
@@ -69,8 +70,8 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    ' placeholder="0x…" minlength="66" maxlength="66" required></label>'+
    '<button type="submit"'+(available.length===0?" disabled":"")+'>Find transfer</button></form>'+
   '</section>'+
-  '<section class="ux-transfer-cards"><h2>Verified wallet activity</h2>'+
-  (cards||'<p class="ux-muted">No confirmed wallet transfers identified in the available coverage. This is not proof that your wallet has never bridged.</p>')+'</section>'+
+  '<section class="ux-transfer-cards"><h2>Wallet transfers and unconfirmed source transactions</h2>'+
+  (cards||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
   '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Unsigned proofs are built from canonical chain events and validator attestations; only the connected wallet can sign destination gas.</p>'+
   '</section>';
 }
