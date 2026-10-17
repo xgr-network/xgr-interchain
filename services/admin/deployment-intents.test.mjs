@@ -176,7 +176,7 @@ test("every deployable chain component can be journaled before its FIRST wallet 
    const parameters=component==="validatorRegistry"
     ?input.parameters:component==="factory"
     ?{sourceFeeWei:"1"}:component==="executionGateway"
-    ?{relayerOwner:wallet.toLowerCase(),interchainFeeRecipient:wallet.toLowerCase()}:{};
+    ?{serviceWallet:wallet.toLowerCase(),recoveryAdmin:"0x"+"b".repeat(40)}:{};
    const entry={...input,id:"xgrchain:"+component,chainId:1643,parameters,
     validatorSnapshot:component==="validatorRegistry"?input.validatorSnapshot:null,
     transaction:{...input.transaction,to:component==="sourceRegistry"?wallet:null}};

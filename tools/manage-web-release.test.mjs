@@ -52,7 +52,7 @@ test("optional global Interchain Fee install is separate from blockchain deploym
  const section=shell.split("install_interchain_fee() (")[1]?.split("\n)\n")[0];
  assert.ok(section,"missing installer");
  assert.match(section,/require_clean_main/);
- assert.match(section,/\/etc\/xita\/quote\.env/);
+ assert.doesNotMatch(section,/\/etc\/xita\/quote\.env/);
  assert.match(section,/\/etc\/xita\/interchain-fee\.env/);
  assert.match(section,/xita-interchain-fee-quote\.service/);
  assert.match(section,/xita-interchain-fee-claim\.timer/);

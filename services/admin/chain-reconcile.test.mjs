@@ -157,3 +157,26 @@ test("Base Registry V3 checks initial reserve per validator against signed value
  liveReserve=1000n;
  await assert.rejects(()=>verifyChainBindings(args),/initial reserve differs/);
 });
+
+test("fee contract deployment must bind all three service roles to ONE address",async()=>{
+ const service=addr(12),recovery=addr(13),registry=addr(14);
+ const manifest={...infra,components:[...infra.components,{key:"sourceRegistry",address:registry}]};
+ const methods={"sourceRegistry()":registry,"serviceWallet()":service,
+  "relayerOwner()":service,"interchainFeeRecipient()":service,
+  "owner()":recovery,"MAX_QUOTE_LIFETIME()":90,"quoteLifetimeSeconds()":90};
+ const reads=new Map(Object.entries(methods).map(([signature,value])=>[
+  selector(signature),typeof value==="number"?word(value):word(BigInt(value))
+ ]));
+ const rpc=async(_url,method,params)=>{
+  assert.equal(method,"eth_call");
+  return reads.get(params[0].data);
+ };
+ const params={serviceWallet:service,recoveryAdmin:recovery};
+ assert.equal(await verifyChainBindings({rpc,url:"https://test.invalid",
+  component:"executionGateway",address:addr(22),chain,bootstrap,
+  infra:manifest,parameters:params}),true);
+ reads.set(selector("relayerOwner()"),word(BigInt(addr(16))));
+ await assert.rejects(()=>verifyChainBindings({rpc,url:"https://test.invalid",
+  component:"executionGateway",address:addr(22),chain,bootstrap,
+  infra:manifest,parameters:params}),/binding mismatch/);
+});

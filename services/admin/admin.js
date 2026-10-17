@@ -1,4 +1,6 @@
-import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
+import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent,getWalletProvider} from "./wallet.js";
+import {rotationCalldata,verifyOnChainWallets} from "./service-wallet-rotation.mjs";
+import {selector} from "./keccak.mjs";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
@@ -138,7 +140,10 @@ function renderInfrastructure(){
     (part.optional?' · freiwilliger GmbH-Service':'')+'</span>'+
    (part.status==="documented"&&part.address?
     '<button class="address-copy" data-copy="'+esc(part.address)+'" title="'+esc(part.address)+'">'+
-     esc(displayAddress(part.address))+' ⧉</button>':
+     esc(displayAddress(part.address))+' ⧉</button>'+
+    (part.key==="executionGateway"?
+     '<button type="button" class="outline" data-rotate-chain="'+esc(c.name)+
+     '" data-rotate-contract="'+esc(part.address)+'">Service-Wallet ändern</button>':"") :
     '<button class="component-pending" data-open-chain="'+esc(c.name)+
      '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>')+'</div>').join("");
   const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
@@ -166,6 +171,8 @@ function renderInfrastructure(){
    setTimeout(()=>{b.textContent=displayAddress(b.dataset.copy)+" ⧉";},1200);
   }catch{b.textContent=b.dataset.copy;}
  }));
+ el("infrastructure-list").querySelectorAll("[data-rotate-chain]").forEach(b=>
+  b.addEventListener("click",()=>void rotateServiceWallet(b.dataset.rotateChain,b.dataset.rotateContract)));
  el("infrastructure-list").querySelectorAll("[data-open-chain]").forEach(b=>b.addEventListener("click",()=>{
   openContractModal(b.dataset.openChain,b.dataset.openComponent);
  }));
@@ -178,6 +185,66 @@ function renderInfrastructure(){
  }));
  if(currentWallet)refreshWalletBalances();
 }
+async function rotateServiceWallet(chainName,contract){
+ const status=el("wallet-status");
+ try{
+  const latest=await get("/admin/api/workqueue");
+  if(latest.readOnly)throw Error("GitHub-main deployment verification unavailable");
+  const verified=latest.infrastructure?.find(c=>c.name===chainName)?.components?.
+   find(c=>c.key==="executionGateway"&&c.status==="documented");
+  if(!verified||verified.address?.toLowerCase()!==contract.toLowerCase())
+   throw Error("Execution Gateway not verified in GitHub main");
+  const chain=latest.inventory?.chains?.find(c=>c.name===chainName);
+  if(!chain)throw Error("Chain missing from approved catalog");
+  let wallet=await currentWalletState();
+  if(!wallet)throw Error("Connect independent recovery Admin wallet");
+  if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+  wallet=await currentWalletState();
+  const provider=getWalletProvider();
+  const code=await provider.request({method:"eth_getCode",params:[contract,"latest"]});
+  if(!/^0x[0-9a-f]{2,}$/i.test(code||""))
+   throw Error("Gateway not deployed at documented contract address");
+  const read=async signature=>{
+   const result=await provider.request({method:"eth_call",params:[{
+    to:contract,data:selector(signature)},"latest"]});
+   if(!/^0x[0-9a-f]{64}$/i.test(result||""))
+    throw Error("Invalid on-chain role response");
+   return "0x"+result.slice(-40);
+  };
+  const [owner,current,recipient,signer]=await Promise.all([
+   read("owner()"),read("serviceWallet()"),
+   read("interchainFeeRecipient()"),read("relayerOwner()")]);
+  const next=window.prompt("Neue GmbH-Service-Wallet (öffentliche EVM-Adresse):", "");
+  if(next===null)return;
+  verifyOnChainWallets({admin:wallet.address,recovery:owner,service:current,
+   recipient,signer,next:next.trim()});
+  if(!window.confirm("Service-Wallet auf "+chainName+" ersetzen?\\n"+
+   "Alt: "+current+"\\nNeu: "+next.trim()+"\\n"+
+   "Die alte Quote-Signatur wird sofort ungültig."))
+   return;
+  const tx={from:wallet.address,to:contract,value:"0x0",
+   data:rotationCalldata(next.trim())};
+  await provider.request({method:"eth_call",params:[tx,"latest"]});
+  const gas=await provider.request({method:"eth_estimateGas",params:[tx]});
+  const hash=await provider.request({method:"eth_sendTransaction",params:[{...tx,gas}]});
+  if(!/^0x[0-9a-f]{64}$/i.test(hash||""))
+   throw Error("Wallet returned no valid hash; check chain before repeating");
+  status.textContent="Service-Rotation TX "+hash+" gesendet. Bestätigung prüfen.";
+  let receipt=null;
+  for(let i=0;i<24;i++){
+   receipt=await provider.request({method:"eth_getTransactionReceipt",params:[hash]});
+   if(receipt)break;
+   await new Promise(resolve=>setTimeout(resolve,2500));
+  }
+  if(!receipt)throw Error("TX "+hash+" noch offen. NICHT erneut senden");
+  if(BigInt(receipt.status)!==1n)throw Error("Service-Wallet-Rotation fehlgeschlagen: "+hash);
+  const roles=await Promise.all(["serviceWallet()","interchainFeeRecipient()","relayerOwner()"].map(read));
+  if(roles.some(value=>value.toLowerCase()!==next.trim().toLowerCase()))
+   throw Error("Rotation TX confirmed but on-chain roles differ; verify manually: "+hash);
+  status.textContent="Service-Wallet rotiert auf "+chainName+" · "+next.trim()+
+   " · Jetzt die Service-Key-Konfiguration aktualisieren.";
+ }catch(e){status.textContent="Service-Wallet-Rotation: "+String(e.message||e);}
+}
 function moneyInWei(wei,chain){
  try{return formatNative(String(wei),chain.nativeCurrency.decimals||18,8)+" "+chain.nativeCurrency.symbol}
  catch{return "—"}
@@ -187,13 +254,13 @@ function modalValues(component){
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
+   component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
  const result={};
  for(const key of keys){
   const v=el("modal-"+key).value.trim();
-  if(key==="relayerOwner"||key==="interchainFeeRecipient"){
+  if(key==="serviceWallet"||key==="recoveryAdmin"){
    if(!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
-    throw Error("Gültige öffentliche Quote-Signierer-/Fee-Empfänger-Adresse erforderlich (kein Private Key)");
+    throw Error("Gültige öffentliche Service-Wallet- und Recovery-Admin-Adresse erforderlich");
    result[key]=v.toLowerCase();
   }else{
    if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
@@ -204,6 +271,8 @@ function modalValues(component){
   (BigInt(result.minimumWei)<BigInt(result.maxExecutorReimbursementWei)||
     BigInt(result.perValidatorWei)<BigInt(result.minimumWei)))
   throw Error("Mindestreserve muss mindestens der maximalen Executor-Erstattung entsprechen");
+ if(component==="executionGateway"&&result.serviceWallet===result.recoveryAdmin)
+  throw Error("Recovery-Admin darf NICHT die Service-Wallet sein");
  return result;
 }
 let lastModalPreview=null;
@@ -316,7 +385,7 @@ async function openContractModal(chainName,component){
   const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
-   component==="executionGateway"?["relayerOwner","interchainFeeRecipient"]:[];
+   component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
@@ -336,7 +405,7 @@ async function openContractModal(chainName,component){
     sourceFeeWei:r.values.sourceFeeWei
   };
   const factoryDefaults=component==="factory"?factoryDeploymentDefaults({chainName,chain,readiness:r,proposal}):null;
-  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","relayerOwner","interchainFeeRecipient"]){
+  for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","serviceWallet","recoveryAdmin"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
    // Main bootstrap economics are the reviewed defaults, not estimates.
@@ -344,14 +413,14 @@ async function openContractModal(chainName,component){
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=["relayerOwner","interchainFeeRecipient"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
+   input.value=["serviceWallet","recoveryAdmin"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
      String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
-   input.placeholder=["relayerOwner","interchainFeeRecipient"].includes(key)?"0x… öffentliche EVM-Adresse":
+   input.placeholder=["serviceWallet","recoveryAdmin"].includes(key)?"0x… öffentliche EVM-Adresse":
     suggestion==null?"Manuell festlegen":String(suggestion);
-   input.title=key==="interchainFeeRecipient"?
-    "Unveränderliche öffentliche GmbH-Interchain-Fee-Adresse. Erhält Sammel-Claims und darf optional native Gas-Gutschriften finanzieren. Niemals Private Keys eingeben.":key==="relayerOwner"?
-    "Öffentliche Quote-Signierer-Adresse. Signiert nur EIP-712-Gebührenquotes, kann keine Einnahmen abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
+   input.title=key==="recoveryAdmin"?
+    "Unabhängige Recovery-Admin-Wallet (idealerweise Hardware-Wallet), die die Service-Wallet bei Verlust rotieren darf. Nicht auf Servern speichern.":key==="serviceWallet"?
+    "Eine öffentliche GmbH-Adresse für EIP-712-Signaturen, Interchain-Fee-Sammelclaims und Gas-Sponsoring.":component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
@@ -359,7 +428,7 @@ async function openContractModal(chainName,component){
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
     component==="executionGateway"?
-    "Optionaler GmbH-Gebührencontract: öffentliche Quote-Signierer-Adresse und SEPARATE öffentliche Interchain-Fee-Auszahlungsadresse eingeben. Je Chain genau ein Deployment. Private Keys gehören ausschließlich in die geschützte Serverkonfiguration. ": 
+    "Eine öffentliche GmbH-Service-Wallet für Quote, Interchain Fee und Sponsoring; dazu eine separate Offline-Recovery-Admin-Adresse für Notfallrotation. Je Chain nur ein Contract. Kein Private Key in die Admin-UI. ": 
     component==="factory"?
     (chainName==="xgrchain"?
       "Initiale Source-Fee 0,1 XGR (100000000000000000 Wei) pro ausgehendem Hop; vor Wallet-Signatur änderbar. ":

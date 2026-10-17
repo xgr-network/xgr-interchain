@@ -5,6 +5,7 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IXGRILNRegistry} from "./IXGRILNRegistry.sol";
 
 interface IXITAExistingGateway {
@@ -23,10 +24,11 @@ interface IXITAExistingGateway {
 /// @dev ONE instance per source chain, never per route or token. The underlying
 ///      permissionless ILN Gateway, Validator FeeVault, Mailbox and ISM are unchanged.
 ///      The pricing signer cannot execute transfers for the user. Fees are owed
-///      to a separate immutable GmbH interchain-fee beneficiary. There is no
+///      to a single GmbH fee/sponsorship beneficiary, controlled by an
+///      independent offline recovery administrator. There is no
 ///      promise of gas sponsorship and no privilege over ILN delivery.
 ///      All downstream Mailbox.process / Gateway.bridge calls remain user-led.
-contract XITAExecutionGateway is EIP712 {
+contract XITAExecutionGateway is EIP712, Ownable2Step {
     using SafeERC20 for IERC20;
 
     struct Quote {
@@ -57,8 +59,11 @@ contract XITAExecutionGateway is EIP712 {
     );
     uint256 public constant MAX_QUOTE_LIFETIME = 90;
 
-    address public immutable relayerOwner; // EIP-712 PRICING signer only.
-    address payable public immutable interchainFeeRecipient; // Fixed GmbH payout.
+    address payable public serviceWallet; // Quote signer, fee recipient, gas sponsor: ONE address.
+    function relayerOwner() public view returns (address) { return serviceWallet; }
+    function interchainFeeRecipient() public view returns (address) { return serviceWallet; }
+    // owner(): independent recovery Admin (preferably hardware multisig).
+    // Never use the service wallet private key for owner().
     IXGRILNRegistry public immutable sourceRegistry;
     // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
     uint64 public quoteLifetimeSeconds = 90;
@@ -113,6 +118,7 @@ contract XITAExecutionGateway is EIP712 {
         uint256 bridgeNativeWei
     );
     event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
+    event ServiceWalletUpdated(address indexed previousWallet, address indexed newWallet);
 
     modifier nonReentrant() {
         if (entered != 1) revert ReentrantCall();
@@ -121,13 +127,38 @@ contract XITAExecutionGateway is EIP712 {
         entered = 1;
     }
 
-    constructor(address registry_, address relayerOwner_, address payable feeRecipient_) EIP712("XITA Interchain Fee", "1") {
-        if (registry_ == address(0) || registry_.code.length == 0 || relayerOwner_ == address(0) || feeRecipient_ == address(0)) {
-            revert InvalidConfiguration();
-        }
+    constructor(address registry_, address payable serviceWallet_, address recoveryAdmin_)
+        EIP712("XITA Interchain Fee", "1")
+    {
+        if (registry_ == address(0) || registry_.code.length == 0 ||
+            serviceWallet_ == address(0) || recoveryAdmin_ == address(0) ||
+            serviceWallet_ == recoveryAdmin_) revert InvalidConfiguration();
         sourceRegistry = IXGRILNRegistry(registry_);
-        relayerOwner = relayerOwner_;
-        interchainFeeRecipient = feeRecipient_;
+        serviceWallet = serviceWallet_;
+        // The pinned OpenZeppelin Ownable v4 base initially gives authority to
+        // the contract deployer; assign the requested independent Recovery Admin
+        // atomically inside the constructor, before any external call.
+        _transferOwnership(recoveryAdmin_);
+    }
+
+    /// @notice Atomic rotation of quote signer, accumulated-fee payee AND
+    ///         native-gas sponsor address. ONE admin transaction per chain.
+    /// @dev Only the independent recovery admin can rotate. Outstanding
+    ///      old signatures are invalid immediately; claimFees() forwards
+    ///      accrued (even pre-rotation) funds to this new wallet.
+    function setServiceWallet(address payable nextWallet) external onlyOwner {
+        if (nextWallet == address(0) || nextWallet == address(this) ||
+            nextWallet == serviceWallet || nextWallet == owner())
+            revert InvalidConfiguration();
+        address previous = serviceWallet;
+        serviceWallet = nextWallet;
+        emit ServiceWalletUpdated(previous, nextWallet);
+    }
+
+    /// @notice A separate recovery admin can be transferred via Ownable2Step.
+    /// @dev Disable irreversible renunciation and preserved funds orphaning.
+    function renounceOwnership() public override onlyOwner {
+        revert InvalidConfiguration();
     }
 
     function quoteDigest(Quote calldata q) external view returns (bytes32) {
@@ -137,7 +168,7 @@ contract XITAExecutionGateway is EIP712 {
     /// @notice Owner can shorten or restore the lifetime up to the hard 90s cap.
     /// @dev Changing the policy applies immediately to outstanding signed quotes.
     function setQuoteLifetimeSeconds(uint64 newSeconds) external {
-        if (msg.sender != relayerOwner) revert UnauthorizedRelayer();
+        if (msg.sender != owner()) revert UnauthorizedRelayer();
         if (newSeconds == 0 || newSeconds > MAX_QUOTE_LIFETIME) revert InvalidQuoteLifetime();
         uint64 previousSeconds = quoteLifetimeSeconds;
         quoteLifetimeSeconds = newSeconds;
@@ -177,7 +208,7 @@ contract XITAExecutionGateway is EIP712 {
         if (q.issuedAt == 0 || uint256(q.issuedAt) > block.timestamp ||
             block.timestamp - uint256(q.issuedAt) > quoteLifetimeSeconds) revert QuoteExpired();
         if (nonceUsed[q.payer][q.nonce]) revert QuoteNonceUsed();
-        if (ECDSA.recover(_hashTypedDataV4(_hashQuote(q)), signature) != relayerOwner) {
+        if (ECDSA.recover(_hashTypedDataV4(_hashQuote(q)), signature) != serviceWallet) {
             revert InvalidSignature();
         }
 
@@ -283,15 +314,15 @@ contract XITAExecutionGateway is EIP712 {
     }
 
     /// @notice Claim the ENTIRE accrued Interchain Fee balance in one operation.
-    /// @dev No message IDs, no per-transfer claims, no operator-selectable payee.
-    ///      A permissionless caller can trigger the payout only to the immutable
-    ///      GmbH recipient; the claim may be automated when economical.
+    /// @dev No message IDs, no per-transfer claims, no caller-selectable payee.
+    ///      The entire accrued balance goes only to the CURRENT GmbH
+    ///      recipient, even when it was accrued before a key rotation.
     function claimFees() external nonReentrant {
         uint256 amount = pendingInterchainFeesWei;
         if (amount == 0) revert NoClaimableFee();
         pendingInterchainFeesWei = 0; // Checked-effects-interactions.
-        (bool paid,) = interchainFeeRecipient.call{value:amount}("");
+        (bool paid,) = serviceWallet.call{value:amount}("");
         if (!paid) revert NativePayoutFailed();
-        emit InterchainFeeClaimed(interchainFeeRecipient, amount);
+        emit InterchainFeeClaimed(serviceWallet, amount);
     }
 }
