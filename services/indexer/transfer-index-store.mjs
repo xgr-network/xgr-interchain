@@ -174,7 +174,10 @@ export async function readWalletTransferIndex(catalog,account,{
  const main=onlyPending?linkedItems.filter(i=>
   !["delivered","journey-delivered"].includes(i.status)):linkedItems;
  const seen=new Set(main.map(r=>r.sourceChain+":"+r.txHash));
- const items=[...main,...observed.filter(r=>!seen.has(r.sourceChain+":"+r.txHash))].slice(0,limit);
+ // Newly observed wallet transactions must not be hidden behind the first
+ // 100 older canonical rows while the historical backfill is still running.
+ const items=[...observed.filter(r=>!seen.has(r.sourceChain+":"+r.txHash)),
+  ...main].slice(0,limit);
  const summary=totals.rows[0]||{open:"0",unknown:"0"};
  return {kind:"xita-wallet-transfer-index-v1",
   status:coverage.complete?"complete":"partial",wallet:lowercase(account),
