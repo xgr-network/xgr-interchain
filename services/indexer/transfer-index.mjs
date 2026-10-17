@@ -102,7 +102,7 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   executionAdapter:evidence.executionAdapter||null,
   interchainFeeWei:evidence.interchainFeeWei||null,
   finalDestinationChain:evidence.finalDestinationChain||null,
-  finalRecipient:evidence.finalRecipient||null,
+  finalRecipient:evidence.finalRecipient||evidence.recipient||null,
   onwardRouteId:evidence.onwardRouteId||null,
   parentMessageId:evidence.parentMessageId||null,
   delivered:delivered.delivered,
