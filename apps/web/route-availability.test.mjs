@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
-import {deployedRoutes,deployedRouteRecord,isDeployedChain,supportedRouteChains} from "./route-availability.js";
+import {deployedRoutes,deployedRouteRecord,isDeployedChain,supportedRouteChains,documentedExecutionGateway,executableTransferRoutes} from "./route-availability.js";
+import {buildExperienceModel,renderPlanRoute} from "./experience.js";
 const hash=d=>"0x"+d.repeat(64),addr=d=>"0x"+d.repeat(40);
 function catalog(){
  const asset=deployedFixture("ABC","xgrchain"),xgr=asset.deployment.routeDeployments;
@@ -43,4 +44,45 @@ test("incomplete or forged deployment documentation never unlocks transfers",()=
   c=>{c.assets.ABC.deployment.routeDeployments.push(structuredClone(c.assets.ABC.deployment.routeDeployments[0]));}
  ];
  for(const fn of mutate){const c=catalog();fn(c);assert.ok(deployedRoutes(c).length<2);}
+});
+
+function deployFeeGateway(c,chain,seed){
+ const contract={address:addr(seed),runtimeCodeKeccak256:hash("e"),
+  receiptPath:"deployments/receipts/"+chain+"/"+("a".repeat(64))+"-"+seed.repeat(40)+".json"};
+ const core=c.infrastructure[chain].xitaV315;
+ core.components.executionGateway=contract;
+ core.receiptPaths.push(contract.receiptPath);
+}
+test("the public commercial transfer UI remains closed until BOTH execution gateways are documented",()=>{
+ const c=catalog(),history=deployedRoutes(c);
+ assert.equal(history.length,2,"Canonical existing ILN operations remain discoverable");
+ assert.equal(executableTransferRoutes(c).length,0);
+ const before=renderPlanRoute(buildExperienceModel(c));
+ assert.match(before,/Interchain Fee · Execution Gateway/);
+ assert.doesNotMatch(before,/<option value="xgrchain"/);
+ assert.doesNotMatch(before,/<option value="base"/);
+ deployFeeGateway(c,"xgrchain","d");
+ assert.equal(documentedExecutionGateway(c,"xgrchain"),addr("d"));
+ assert.equal(executableTransferRoutes(c).length,0,"A partial chain rollout is NOT a live route");
+ assert.doesNotMatch(renderPlanRoute(buildExperienceModel(c)),/<option value="xgrchain"/);
+ deployFeeGateway(c,"base","e");
+ assert.equal(executableTransferRoutes(c).length,2);
+ const ready=renderPlanRoute(buildExperienceModel(c));
+ assert.match(ready,/<option value="xgrchain"/);
+ assert.match(ready,/<option value="base"/);
+ c.infrastructure.base.xitaV315.receiptPaths.pop();
+ assert.equal(executableTransferRoutes(c).length,0,"Missing GitHub receipt deactivates commercial transfer");
+ assert.equal(deployedRoutes(c).length,2,"Historical Gateway discovery never depends on GmbH fee contract");
+});
+test("old source locks stay recoverable when the new commercial gateway is absent",()=>{
+ const c=catalog(),account=addr("a"),txHash=hash("b");
+ const html=renderPlanRoute(buildExperienceModel(c),{origin:"xgrchain",destination:"base",asset:"ABC"},"ready",
+  {account},{items:[{account,txHash,sourceChain:"xgrchain",destinationChain:"base",
+   asset:"ABC",status:"awaiting-proof",confirmed:true,delivered:false}],
+   selectedTxHash:txHash});
+ assert.match(html,/Previous transfers awaiting delivery/);
+ assert.match(html,/<option value="xgrchain"/);
+ assert.match(html,/Continue delivery/);
+ assert.match(html,/Source confirmed/);
+ assert.doesNotMatch(html,/<button type="button" class="ux-button" id="xita-transfer-primary" disabled/);
 });
