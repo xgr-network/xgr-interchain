@@ -1,4 +1,5 @@
-import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent} from "./wallet.js";
+import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent,getWalletProvider} from "./wallet.js";
+import {rotationCalldata,verifyOnChainWallets} from "./service-wallet-rotation.mjs";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
