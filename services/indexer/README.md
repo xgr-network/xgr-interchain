@@ -159,3 +159,60 @@ implemented and the public status deliberately reads unavailable; claims
 require explicit operator opt-in, correct chain-specific adapter deployments,
 and configured fee wallet. The four-step journey's user transactions, route
 costs and replay rules require live E2E validation before merge/deploy.
+
+## Accelerated known-TX indexing (additive migration 005)
+
+The finalized route scanner and its independent archive-qualified RPC remain
+authoritative for **complete** historical coverage. Base historical `eth_getLogs`
+may still be unavailable or slow despite fallback. A newly broadcast *source*
+TX hash needs only `eth_getTransactionByHash`, a canonical receipt, confirmation
+depth, and the Gateway/Mailbox event identity. The candidate RPC is chain-ID
+checked but does **not** require the slow Base archival log probe.
+
+The public website sends a best-effort, size-bounded POST with `account`,
+`sourceChain` and `txHash` after the wallet has returned a source TX hash.
+A manual lookup of a previously confirmed TX also announces the hash. The
+isolated service on port 4089 persists the **untrusted** claim to PostgreSQL.
+Its DB account MUST have INSERT permission ONLY on
+`xita_transfer_announcements`. Origin check and per-minute limits reduce
+spam, but do not authenticate wallet ownership. **No staging hint authorizes
+a mint, unlock, source replay, delivery, claim, TVL or fee.**
+
+The independently running finalized indexer worker reads a small bounded
+queue, verifies the source wallet (`tx.from`), approved Gateway/adapter target,
+successful receipt, confirmation depth, canonical block hash, single
+Gateway operation, matching Mailbox Dispatch, and relevant signed adapter
+evidence before atomically writing the same canonical transfer projection as
+a historical scan. Hints never advance historical route cursors. Stale/forked
+fast-path blocks are rechecked until the route backfill catches up. A wallet
+read includes an `observed` source TX as `pending-source` with
+`confirmed:false` and **no message ID**; mere `reported` claims are hidden.
+
+**Operator activation is explicit** (no migration or service activation in
+`./manage.sh update`):
+
+1. Apply `services/indexer/sql/005_transfer_announcements.sql` to the
+   EXISTING indexer PostgreSQL database after 002/003 have been applied.
+2. Create a NEW, no-login-privilege-escalation PostgreSQL role with only
+   `INSERT` on `xita_transfer_announcements`, and add SELECT on this table
+   to the existing HTTP reader role and SELECT/UPDATE/DELETE on this table to
+   the existing finalized worker role. Do not grant the public intake role
+   privileges on `xita_transfer_operations`, cursors, custody records, or
+   any unrelated schema.
+3. Copy `transfer-intake.env.example` to `/etc/xita/transfer-intake.env`
+   with mode 0600, configure only that new limited DB connection, and run
+   `./manage.sh install-transfer-intake` from a clean current `main`.
+   It installs an isolated systemd service and an **exact** Nginx proxy
+   `POST /api/xeta/v1/transfers/announce` to loopback 4089, retaining the
+   existing `/api/xeta/` fail-closed location.
+4. Verify `systemctl is-active xita-transfer-intake.service`,
+   `systemctl is-active xita-transfer-indexer.service`,
+   `curl -fsS http://127.0.0.1:4089/health`, and inspect both services'
+   logs. Test a real source TX via the wallet, or import the old source TX
+   using My Transfers; check the wallet API after the worker's next scan.
+5. `./manage.sh update` subsequently restarts an *installed* intake service,
+   but it neither provisions DB roles nor silently enables this endpoint.
+
+Previously locked XGR must **never** be locked or burned again merely because
+a scan is behind. Existing wallet lookups and the original finalized-chain
+backfill work independently of the optional staging service.
