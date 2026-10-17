@@ -207,3 +207,34 @@ test("per-chain fee gateway verifies one service wallet for signer, beneficiary 
  await assert.rejects(()=>verifyChainBindings({...opts,
   parameters:{serviceWallet:service,recoveryAdmin:service}}),/Different public/);
 });
+
+test("fee adapter on each chain binds one quote/fee/sponsor wallet and independent recovery Admin",async()=>{
+ const serviceWallet=addr(20),recoveryAdmin=addr(21),sourceRegistry=addr(22);
+ const infrastructure={...infra,components:[{key:"sourceRegistry",address:sourceRegistry}]};
+ const parameters={serviceWallet,recoveryAdmin};
+ const replies=Object.fromEntries(Object.entries({
+  "serviceWallet()":word(20),"relayerOwner()":word(20),
+  "interchainFeeRecipient()":word(20),"owner()":word(21),
+  "sourceRegistry()":word(22),"MAX_QUOTE_LIFETIME()":word(90),
+  "quoteLifetimeSeconds()":word(90)
+ }).map(([signature,result])=>[selector(signature),result]));
+ const rpc=async(_,method,args)=>{
+  assert.equal(method,"eth_call");
+  return replies[args[0].data];
+ };
+ assert.equal(await verifyChainBindings({rpc,url:"https://test.invalid",
+  component:"executionGateway",address:addr(23),chain,bootstrap,
+  infra:infrastructure,parameters}),true);
+ const wrong={...replies,[selector("owner()")]:word(20)};
+ await assert.rejects(()=>verifyChainBindings({
+  rpc:async(_,method,args)=>wrong[args[0].data],
+  url:"https://test.invalid",component:"executionGateway",address:addr(23),
+  chain,bootstrap,infra:infrastructure,parameters
+ }),/binding mismatch/);
+ const split={...replies,[selector("relayerOwner()")]:word(24)};
+ await assert.rejects(()=>verifyChainBindings({
+  rpc:async(_,method,args)=>split[args[0].data],
+  url:"https://test.invalid",component:"executionGateway",address:addr(23),
+  chain,bootstrap,infra:infrastructure,parameters
+ }),/binding mismatch/);
+});
