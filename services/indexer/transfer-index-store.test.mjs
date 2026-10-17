@@ -32,3 +32,21 @@ test("unknown target delivered state remains UNKNOWN and never invents successfu
  assert.equal(indexedTransferRow({...base,delivered:false}).status,"awaiting-proof");
  assert.equal(indexedTransferRow({...base,delivered:true}).status,"delivered");
 });
+
+test("confirmed first hop with signed onward route stays open, never claims completion",()=>{
+ const r={account:addr("a"),asset:"XGR",source_chain:"base",
+  destination_chain:"xgrchain",route_name:"base_to_xgr",route_id:hash("e"),
+  gateway:addr("1"),source_tx_hash:hash("c"),message_id:hash("d"),
+  source_block_number:88,amount_raw:"100",validator_fee_wei:"2",
+  execution_adapter:addr("2"),interchain_fee_wei:"5",
+  final_destination_chain:"polygon",final_recipient:addr("a"),
+  onward_route_id:hash("f"),delivered:true};
+ const item=indexedTransferRow(r);
+ assert.equal(item.status,"awaiting-onward");
+ assert.equal(item.delivered,true); // Means XGR delivery, not final Polygon.
+ assert.equal(item.finalDestinationChain,"polygon");
+ assert.equal(item.onwardRouteId,hash("f"));
+ assert.equal(item.interchainFeeWei,"5");
+ assert.equal(indexedTransferRow({...r,delivered:false}).status,"awaiting-proof");
+ assert.equal(indexedTransferRow({...r,delivered:null}).status,"delivery-unknown");
+});
