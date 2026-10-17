@@ -57,8 +57,8 @@ function refreshTransferLink(){
     open[0].destinationChain==="xgrchain"?"1 unlock pending →":
     "1 transfer awaiting delivery →"):null;
   alert.textContent=specific||
-   (pending===1?"1 transfer awaiting delivery →":pending+" transfers awaiting delivery →");
-  alert.title="Original lock/burn confirmed; only the destination mint/unlock may be continued";
+   (pending===1?"1 transfer awaiting completion →":pending+" transfers awaiting completion →");
+  alert.title="Open verified XITA steps. Never repeat an already confirmed source lock/burn";
  }
 }
 function setConnectedAccount(next){
