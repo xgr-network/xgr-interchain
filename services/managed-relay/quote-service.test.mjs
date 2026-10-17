@@ -73,10 +73,14 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
 test("never signs when relayer owner mismatches deployed adapter",async()=>{
  await assert.rejects(()=>buildManagedQuote({...defaults(),readExecutionOwner:async()=>address(1)}),/does not match deployed contract/);
 });
-test("fails before signing when source has no exact funded native gas or prices stale",async()=>{
- await assert.rejects(()=>buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
+test("fee quotes remain available without sponsorship but fail on missing gas price or stale prices",async()=>{
+ const unsponsored=await buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
   gasPriceWei:1000000000n,availableWei:0n
- })}),/gas reserve/);
+ })});
+ assert.equal(unsponsored.quote.interchainFeeWei,"34925000000000000000000");
+ await assert.rejects(()=>buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
+  gasPriceWei:0n,availableWei:0n
+ })}),/Unpriced destination gas/);
  await assert.rejects(()=>buildManagedQuote({...defaults(),getCoinGeckoSnapshot:async()=>({
   ...exchange(),xgr:{usd:0.0001,last_updated_at:Math.floor(now/1000)-500}
  })}),/stale/);
@@ -112,4 +116,70 @@ test("honors owner-configured on-chain TTL, never exceeds 90 seconds",async()=>{
 });
 test("refuses invalid source timestamp before signing",async()=>{
  await assert.rejects(()=>buildManagedQuote({...defaults(),clock:()=>0}),/issuance clock/);
+});
+
+function multiHopFixture(){
+ const cat=fixture();
+ cat.chains.polygon={chainId:137,domainId:137,rpcUrls:["https://rpc.example/polygon"]};
+ const comps={},receiptPaths=[];
+ for(const name of ["factory","sourceRegistry","mailbox","ism","validatorRegistry"]){
+  comps[name]=record("polygon",Object.keys(comps).length+100);
+  receiptPaths.push(comps[name].receiptPath);
+ }
+ cat.infrastructure.polygon={present:true,chainId:137,xitaV315:{receiptPaths,components:comps}};
+ const asset=cat.assets.XGR;
+ const baseGateway=record("base",30),baseVault=record("base",31);
+ const polygonGateway=record("xgrchain",32),polygonVault=record("xgrchain",33);
+ const polyRouter=record("polygon",34);
+ asset.routes.routes.push(
+  {name:"base_to_xgr",sourceChain:"base",destinationChain:"xgrchain"},
+  {name:"xgr_to_polygon",sourceChain:"xgrchain",destinationChain:"polygon"}
+ );
+ asset.deployment.representations.push({chain:"polygon",component:"syntheticRouter",...polyRouter});
+ asset.deployment.routeDeployments.push(
+  {routeName:"base_to_xgr",routeId:hash("e"),sourceChain:"base",destinationChain:"xgrchain",
+   components:{gateway:baseGateway,feeVault:baseVault}},
+  {routeName:"xgr_to_polygon",routeId:hash("a"),sourceChain:"xgrchain",destinationChain:"polygon",
+   components:{gateway:polygonGateway,feeVault:polygonVault}}
+ );
+ asset.deployment.receiptPaths.push(
+  baseGateway.receiptPath,baseVault.receiptPath,
+  polygonGateway.receiptPath,polygonVault.receiptPath,polyRouter.receiptPath);
+ return cat;
+}
+test("two-hop quote includes both deliveries, XGR bridge gas and its native validator fee",async()=>{
+ const sources=[];
+ const opts={...defaults(),catalog:multiHopFixture(),request:{
+  ...request,source:"base",destination:"polygon"
+ },readGatewayQuote:async({source,route})=>{
+  sources.push(source+":"+route.destination);
+  return source==="base"?
+   {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
+    tokenAmount:1000000000000000000n}:
+   {bridgeNativeWei:1100000000000000000n,
+    validatorFeeWei:100000000000000000n,tokenAmount:0n};
+ },getDestinationGasQuote:async({destination})=>({
+  gasPriceWei:destination==="xgrchain"?1000000000000n:30000000000n,
+  availableWei:0n // Optional sponsorship absent must not block a quote.
+ }),getCoinGeckoSnapshot:async()=>({
+  ...exchange(),"polygon-ecosystem-token":{
+   usd:0.35,last_updated_at:Math.floor(now/1000)-11
+  }
+ })};
+ const result=await buildManagedQuote(opts);
+ assert.equal(result.quote.destinationDomain,1643);
+ assert.equal(result.quote.finalDestinationDomain,137);
+ assert.equal(result.quote.onwardRouteId,hash("a"));
+ assert.equal(result.pricing.onwardProtocolFeeWei,"100000000000000000");
+ assert.deepEqual(result.pricing.journeyCostStages.map(s=>s.kind),
+  ["first-delivery","onward-bridge-gas","onward-protocol-fee","final-delivery"]);
+ assert.deepEqual(sources,["base:xgrchain","xgrchain:polygon"]);
+ assert.equal(result.pricing.grossInterchainFeeWei,result.quote.interchainFeeWei);
+ assert.ok(BigInt(result.quote.interchainFeeWei)>0n);
+ await assert.rejects(()=>buildManagedQuote({...opts,readGatewayQuote:async({source})=>
+  source==="base"?
+   {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
+    tokenAmount:1000000000000000000n}:
+   {bridgeNativeWei:1000000000000000000n,validatorFeeWei:0n,tokenAmount:0n}
+ }),/Second hop validator quote unavailable/);
 });
