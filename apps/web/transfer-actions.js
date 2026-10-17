@@ -341,21 +341,27 @@ export async function startVerifiedOnwardHop({
   r.source==="xgrchain"&&r.destination===first.finalDestinationChain&&
   r.asset===first.asset&&eq(r.routeId,first.onwardRouteId));
  if(onward.length!==1)throw Error("Signed onward Gateway is not uniquely deployed");
- const response=await fetcher("/api/xeta/v1/transfers/wallet?"+
-  new URLSearchParams({account,pending:"0"}),{credentials:"omit",
-  cache:"no-store",headers:{accept:"application/json"}});
- if(!response?.ok)throw Error("Transfer index unavailable; onward duplicate check cannot complete");
- const history=await response.json();
- if(history.kind!=="xita-wallet-transfer-index-v1"||history.status!=="complete"||
-  history.coverage?.complete!==true||history.truncated||!Array.isArray(history.items))
-  throw Error("Transfer history coverage incomplete; do not risk repeating an onward transfer");
- const matching=history.items.filter(x=>x.sourceChain==="xgrchain"&&
-  x.asset===first.asset&&eq(x.routeId,first.onwardRouteId)&&
-  x.amountRaw===first.amountRaw);
- if(matching.length)
-  throw Error("Possible onward transfer already sent: "+
-   matching.map(x=>x.txHash).slice(0,3).join(", ")+
-   ". Verify it before any second Gateway call");
+ // The XGR on-chain adapter is the authoritative once-per-parent ledger.
+ // A bounded/offline indexer can never prove non-existence of a historical
+ // transfer; this durable mapping and wallet pending nonce are the gates.
+ const adapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
+ if(!ADDRESS.test(adapter?.address||"")||
+   !onward[0].gateway||!eq(onward[0].routeId,first.onwardRouteId))
+  throw Error("Verified hub adapter for onward route not documented");
+ const hub=catalog.chains.xgrchain;
+ const hubId=await publicRead(hub.rpcUrls?.[0],"eth_chainId",[],fetcher);
+ if(!QTY.test(hubId||"")||BigInt(hubId)!==BigInt(hub.chainId))
+  throw Error("XGRChain hub RPC mismatch");
+ const already=await publicRead(hub.rpcUrls?.[0],"eth_call",[{
+  to:adapter.address,data:selector("onwardParentUsed(address,bytes32)")+
+    addrWord(account)+first.messageId.slice(2)
+ },"latest"],fetcher);
+ if(!/^0x[0-9a-f]{64}$/i.test(already||"")||
+   ![0n,1n].includes(BigInt(already)))
+  throw Error("Unverifiable durable onward nonce; do not send TX3");
+ if(BigInt(already)===1n)
+  throw Error("This parent message already has a user-signed XGR onward TX. "+
+   "Refresh the chain index; never bridge the same parent twice");
  const decimals=catalog.assets[first.asset]?.metadata?.decimals;
  const amount=unitsToAmount(first.amountRaw,decimals);
  // startTransfer() independently rechecks router bindings, gas, allowances,
