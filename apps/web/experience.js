@@ -338,12 +338,12 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const actionLabel=!connected?"Connect wallet to transfer":
   busy?"Preparing transaction…":
   selected?.status==="awaiting-proof"?"Continue delivery":
-  selected?.status==="awaiting-onward"?"Verify onward hop":
+  selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
-  !isDirect?"Select the first hop via XGRChain":
+  !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
- const buttonDisabled=busy||connected&&(!deployed&&!selected||!isDirect&&!selected);
+ const buttonDisabled=busy||connected&&(!deployed&&!selected);
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
