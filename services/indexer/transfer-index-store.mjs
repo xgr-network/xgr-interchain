@@ -91,6 +91,15 @@ export function linkIndexedJourneys(items,children){
    finalDelivered:next.delivered};
  });
 }
+// Correlate only a FINALIZED completed second hop to a paid parent.
+// The same predicate is used by the pending worklist and complete counts.
+const completedChildPredicate=`EXISTS (SELECT 1 FROM xita_transfer_operations c
+ WHERE c.source_chain='xgrchain'
+ AND c.parent_message_id=p.message_id AND c.account=p.account
+ AND c.asset=p.asset AND c.route_id=p.onward_route_id
+ AND c.destination_chain=p.final_destination_chain
+ AND c.final_recipient=p.final_recipient AND c.amount_raw=p.amount_raw
+ AND c.execution_adapter IS NOT NULL AND c.delivered IS TRUE)`;
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
@@ -108,18 +117,19 @@ export async function readWalletTransferIndex(catalog,account,{
     validator_fee_wei::text AS validator_fee_wei,delivered,
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
     final_destination_chain,final_recipient,onward_route_id,parent_message_id
-    FROM xita_transfer_operations
-    WHERE account=$1 AND ($2::boolean IS FALSE OR delivered IS DISTINCT FROM TRUE
-      OR onward_route_id IS NOT NULL)
-    ORDER BY (delivered IS DISTINCT FROM TRUE OR onward_route_id IS NOT NULL) DESC,
-     source_indexed_at DESC,source_tx_hash DESC LIMIT $3`,
+    FROM xita_transfer_operations p
+    WHERE p.account=$1 AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
+      OR (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
+    ORDER BY p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT $3`,
   values:[lowercase(account),onlyPending,limit]
  });
  const totals=await connected.query({text:`SELECT
-   COUNT(*) FILTER (WHERE delivered IS FALSE OR
-     (delivered IS TRUE AND onward_route_id IS NOT NULL))::text AS open,
-   COUNT(*) FILTER (WHERE delivered IS NULL)::text AS unknown
-   FROM xita_transfer_operations WHERE account=$1`,values:[lowercase(account)]});
+   COUNT(*) FILTER (WHERE p.delivered IS FALSE OR
+     (p.delivered IS TRUE AND p.onward_route_id IS NOT NULL
+      AND NOT ${completedChildPredicate}))::text AS open,
+   COUNT(*) FILTER (WHERE p.delivered IS NULL)::text AS unknown
+   FROM xita_transfer_operations p WHERE p.account=$1`,
+  values:[lowercase(account)]});
  const rawItems=rows.rows.map(indexedTransferRow);
  const parents=rawItems.filter(item=>item.onwardRouteId&&item.delivered===true)
   .map(item=>item.messageId);
@@ -143,8 +153,7 @@ export async function readWalletTransferIndex(catalog,account,{
  const summary=totals.rows[0]||{open:"0",unknown:"0"};
  return {kind:"xita-wallet-transfer-index-v1",
   status:coverage.complete?"complete":"partial",wallet:lowercase(account),
-  coverage,items,openCount:Math.max(0,Number(summary.open)-
-   linkedItems.filter(i=>i.onwardRouteId&&i.status==="journey-delivered").length),
+  coverage,items,openCount:Number(summary.open),
   unknownCount:Number(summary.unknown),
   truncated:rawItems.length===limit};
 }
