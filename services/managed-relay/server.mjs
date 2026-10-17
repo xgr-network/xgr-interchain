@@ -14,6 +14,7 @@ const EXECUTION_ABI=[
  "function relayerOwner() view returns (address)",
  "function sourceRegistry() view returns (address)",
  "function interchainFeeRecipient() view returns (address)",
+ "function serviceWallet() view returns (address)",
  "function quoteLifetimeSeconds() view returns (uint64)",
  "function MAX_QUOTE_LIFETIME() view returns (uint256)",
  "function execute((address payer,address gateway,bytes32 routeId,uint32 destinationDomain,bytes32 recipient,uint32 finalDestinationDomain,bytes32 finalRecipient,bytes32 onwardRouteId,uint256 amount,uint256 bridgeValueWei,uint256 interchainFeeWei,uint256 nonce,uint64 issuedAt),bytes signature) payable returns (bytes32)"
@@ -22,7 +23,9 @@ const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
 const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const signer=new Wallet(required("XITA_INTERCHAIN_QUOTE_PRIVATE_KEY"));
+const signer=new Wallet(required("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
+if(signer.address.toLowerCase()!==required("XITA_INTERCHAIN_FEE_ADDRESS").toLowerCase())
+ throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
 const sourceAddresses=Object.fromEntries(
  ["xgrchain","base","polygon","arbitrum"].map(name=>[
   name,String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
@@ -86,11 +89,10 @@ async function createQuote(request){
   catalog:CATALOG,request,executionAddress,signer,
   readExecutionOwner:async()=> {
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
-   const [owner,registry,beneficiary]=await Promise.all([
-    c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient()]);
-   if(String(beneficiary).toLowerCase()!==String(
-     process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").toLowerCase())
-    throw Error("Immutable fee recipient differs from configured GmbH address");
+   const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
+    c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient(),c.serviceWallet()]);
+   if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==signer.address.toLowerCase()))
+    throw Error("Single on-chain GmbH service wallet differs from configured signer/beneficiary");
    const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
     throw Error("Managed relay does not bind canonical source ILN Registry");
@@ -125,7 +127,7 @@ async function createQuote(request){
 function publicError(err){
  const text=String(err?.message||err||"unknown");
  // Never log env/private key, raw external responses, or headers.
- if(/Missing XITA_INTERCHAIN_QUOTE|private key/i.test(text))return "Interchain Fee signer not configured";
+ if(/Missing XITA_INTERCHAIN_FEE|private key/i.test(text))return "GmbH service wallet not configured";
  return text.slice(0,170);
 }
 let sponsorPool=null;
