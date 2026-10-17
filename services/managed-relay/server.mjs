@@ -40,7 +40,16 @@ async function chain(name){
  return provider;
 }
 const quoteIface=new Interface(EXECUTION_ABI);
+let lastPriceSnapshot=null,lastPriceAt=0,inflightPriceFetch=null;
 async function getSnapshot(){
+ if(lastPriceSnapshot&&Date.now()-lastPriceAt<20000)
+  return lastPriceSnapshot;
+ if(inflightPriceFetch)return inflightPriceFetch;
+ inflightPriceFetch=fetchUncachedPrices();
+ try{return await inflightPriceFetch;}
+ finally{inflightPriceFetch=null;}
+}
+async function fetchUncachedPrices(){
  const ids=[...new Set(Object.values((await import("./fee-quote.mjs")).COINGECKO_GAS_COIN_IDS))].join(",");
  const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+
   "&vs_currencies=usd&include_last_updated_at=true";
@@ -52,6 +61,7 @@ async function getSnapshot(){
  const value=await response.json();
  if(!value||typeof value!=="object"||Array.isArray(value))
   throw Error("CoinGecko invalid data");
+ lastPriceSnapshot=value;lastPriceAt=Date.now();
  return value;
 }
 async function createQuote(request){
