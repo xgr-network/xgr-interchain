@@ -116,134 +116,87 @@ source-registry validator fee per XGR-source hop, equal to
 `100000000000000000` Wei. Spoke registries use their own native
 currency; later fee changes require BLS validator quorum.
 
-## October 2026 Interchain Fee tax-pricing correction (draft PR #136)
+## Optional XITA GmbH Interchain Fee and global UX (draft PR #136)
 
-**Current development target, not yet released:** the first user-signed
-source-chain transaction pays the existing canonical validator fee and ONE
-separate GmbH Interchain Fee in source-native currency. No fixed UI surcharge.
-The **uniform gross customer quote** uses a 27% EU VAT price reserve:
+**Protocol separation:** The core ILNGateway, source Registry, FeeVault,
+Mailbox, ISM and validator governance remain permissionless and unchanged.
+The optional **one-per-source-chain** `XITAExecutionGateway` is a paid
+UI convenience adapter, not a custodian or a service-mandated relayer.
+The user signs each of the four EVM transactions for spoke->XGRChain->spoke.
+The first user's wallet transaction calls `ExecutionGateway.execute()`,
+which invokes the original `ILNGateway.bridge()` internally and atomically.
+ERC-20 approvals, where required, grant allowance to the ADAPTER for this
+first transaction. The second hop calls the public XGRChain Gateway directly,
+not the paid adapter. A fresh proof unlocks each destination Mailbox.process.
 
-`estimated downstream cost (in source-native wei) x 1.10 x 1.27 = 1.397 x cost`.
+**Price:** Two distinct charges to the user: canonical source validator fee
+(to its unchanged FeeVault) and ONE variable source-native GmbH Interchain Fee.
+The *global* quote price is
+`ceil(estimated gas and onward validator/router costs in source wei * 1.10 * 1.27)`.
+The estimate includes (1) first Mailbox delivery gas, (2) XGRChain onward
+Gateway gas and its separate native validator/router fee, and (3) the final
+Mailbox delivery gas; direct one-hop transfers need only their first delivery.
+Each native expense is converted to source coin using CoinGecko USD rates
+with a four-minute staleness cap. Integer wei operations round costs UP.
+Missing routes, fee quotes, chain gas quotes or prices FAIL CLOSED.
+The product is GLOBAL, and a current tax policy or customer country is NOT
+part of the EIP-712 signature, price selection or source execution contract.
+The 27% price reserve covers the EU's present maximum standard VAT rate,
+NOT every foreign jurisdiction. Actual applicable VAT/GST and net revenue
+are determined after collection in the GmbH's accounting. No tax-policy
+or country change requires a fee-contract redeployment.
 
-The 10% is a minimum net operating margin at the 27% price-cap VAT rate.
-Customer gross remains fixed irrespective of the actual VAT rate. The
-relevant VAT amount is reverse-extracted from gross at the actual tax rate
-(e.g., 19% Germany, 27% Hungary); net service revenue and net margin
-then differ per tax jurisdiction. The off-chain pricing module uses integer
-ceil rounding for gross, floor rounding for net and balances net+VAT=gross.
-The 27% reserve is based on current EU standard rates, NOT global tax coverage. Validator FeeVault distributions stay entirely outside
-this additional UI-fee calculation.
+**Signature/bindings:** The pricing signer is separate from the immutable
+`interchainFeeRecipient`. It signs EIP-712 `SponsoredQuote` binding wallet,
+route, recipient, amount, optional final destination/onward route,
+`bridgeValueWei`, `interchainFeeWei`, nonce and `issuedAt`. Maximum
+lifetime 90 seconds. The browser checks the signed intent against the
+deployment manifest, both route domains and quoted source native amount.
+The on-chain adapter verifies the signature, nonce, Registry/Gateway binding
+and live source bridge quote. Any mismatch reverts before a token transfer
+or fee receipt is committed.
 
-**Fail closed:** source chain does not establish customer VAT residence,
-legal status or applicable rate. No signed commercial quote may be produced
-without a verified, server-derived tax policy. The current quote server does
-not yet provide a trustworthy per-user tax determination, so it MUST NOT
-enable production charging. 19% is not globally applicable to every wallet.
-The GmbH must account for taxable revenue separately, with auditable
-conversion rates, country evidence and VAT accounting. Gas-token sponsorship,
-if available, is an independent optional action; this fee alone gives no
-entitlement to a fixed gas-token quantity.
+**Single aggregate payout:** EACH source-chain adapter holds ONE
+`pendingInterchainFeesWei()` accumulator. Its `claimFees()` transfers
+the entire accrued native balance to the immutable beneficiary in one
+reentrancy-protected operation; there are no per-message claims. The
+optional off-chain fee monitor checks source-specific native-wei thresholds
+and requires claim proceeds to exceed expected gas cost by at least 3x;
+pending sponsor-wallet nonces suppress concurrent duplicate claims.
+The identical EVM beneficiary address can collect ETH from Base, POL from
+Polygon and XGR from XGRChain. Those chain-local assets remain separate;
+opposite-direction user traffic can replenish reserves organically, but
+there is no automatic currency conversion.
 
-**Known incomplete gates:** calculating the entire two-hop journey's
-future XGR validator fee and destination gas, four user-signed transaction
-UI/recovery, sponsorship status, and VAT policy integration remain required.
-No merge or deployment before all security and fee-economics checks pass.
+**Sponsorship:** Voluntary destination-wallet native-gas grants are
+independent of the commercial quote, not a contractual entitlement.
+Sponsorship availability is shown below Transfer and MUST be independently
+verified per step; never assert it on the basis of a server setting alone.
+As of draft #136 a production-safe grant sender, reserve limits and
+crash-safe grant idempotency are **not yet implemented**; the operator
+public status therefore correctly reports unavailable and the feature
+remains off. Missing gas grants require ordinary native gas from the wallet.
 
-## Optional XITA GmbH Managed Relay (one source transaction)
+**Indexer / safe interruption:** The existing finalized-chain Gateway
+index is extended, not replaced. Its canonical source proof binds the
+Gateway's `ILNOperation`, Mailbox `Dispatch` and, if applicable,
+adapter `InterchainFeeCharged` in one original wallet receipt.
+SQL migration `003_interchain_journey.sql` extends the derived read model
+with original fee, signed final chain/recipient and onward route.
+Delivery on XGRChain of an intended two-hop journey yields
+`awaiting-onward`, NOT `delivered` to the final chain.
+Before the user-signed hop 2, the browser re-reads on-chain evidence and
+requires complete wallet index coverage; possible duplicate onward
+amounts/routes block signing. The direct second-hop Gateway does not
+cryptographically embed the original first-hop message ID, so automatic
+final-hop grouping remains an **unresolved correctness/release gate**.
+No indexer status authorizes mint/unlock or a repeat of source TX 1.
 
-This is an OPTIONAL commercial UX/execution layer, NOT the permissionless
-XITA protocol. Other parties may independently operate their own relayers,
-fee contracts, quote services, indexes and UX. There is NO exclusive relayer,
-route permission, transaction censorship power or privileged Mailbox role.
-All existing direct ILNGateway.bridge() and permissionless Mailbox.process()
-paths remain available, even if the GmbH services are completely offline.
-
-**One chain-wide XITAExecutionGateway per source chain**, NOT per token or
-route. The immutable source-chain ILN Registry authorizes actual gateways;
-the managed adapter must never introduce independent token-route governance.
-The underlying route's FeeVault continues to accrue validator fees. Only
-the additional GmbH delivery fee is kept in this optional adapter.
-
-The client requests a signed quote from the GmbH relayer service and sends
-ONE source transaction to XITAExecutionGateway.execute(), paying the transfer
-principal where the asset is native, the existing bridge/validator native
-value, and the service fee exclusively in the SOURCE chain's native coin.
-CoinGecko supplies USD prices for source and destination native gas coins:
-XGR's ID is exactly `xgr`, ETH's ID is `ethereum`. The GmbH is responsible
-for acquiring and replenishing destination gas reserves. Source fees are
-never collected in ERC20; bridging an ERC20 token may still require a
-separate token allowance or compatible permit before the source transfer.
-
-The EIP-712 `SponsoredQuote` is signed with the SAME EOA that is the
-adapter's immutable `relayerOwner`. Its domain binds source chain ID
-and adapter contract address. It binds payer, exact canonical ILN gateway
-and route ID, destination domain, recipient, amount, exact current bridge
-native value, source-native delivery fee, payer-specific nonce and signed
-`issuedAt` (Unix seconds). The quote does not contain a separate deadline.
-The contract computes expiry from `issuedAt + quoteLifetimeSeconds`. It
-rejects issuedAt=0, future issue times and expired quotes. The owner may
-update the on-chain lifetime from 1 to 90 seconds (default 90); a hard
-`MAX_QUOTE_LIFETIME=90` prevents any extension beyond 90 seconds from
-issuance. A policy change immediately affects outstanding quotes. The
-quote service reads the current on-chain lifetime before signing and
-returns its derived expiry for UI display; actual execution is always
-subject to the current on-chain lifetime.
-The adapter independently checks the source ILN Registry route binding
-and the live bridge quote, rejects stale or manipulated quotes, checks the
-EXACT payable sum, forwards the exact original gateway value, and atomically
-records the resulting genuine message ID and native service fee.
-The source receipt must contain BOTH the original gateway operation/dispatch
-and the adapter's ManagedDispatch event; an API claim or bare destination
-transaction hash is never evidence of a funded managed transfer.
-
-The relayer signs no protocol or validator messages. It must independently
-verify source finality and the on-chain sponsored fee receipt BEFORE funding
-the destination transaction. It pays destination gas from its OWN reserves
-and submits the standard public Mailbox.process BLS/Merkle proof. Only
-relayerOwner may withdraw the separately accrued service fee; this
-centralized withdrawal right DOES NOT prove destination delivery, and
-a withdrawal may occur before delivery. Thus customers TRUST the GmbH
-for the optional paid execution service and any negotiated refunds, but
-NEVER for token custody, protocol routing, validator signatures or minting.
-Permissionless self-delivery remains available; a fee refund is not
-cryptographically guaranteed by this owner-withdraw model.
-
-The optional adapter MUST be deployable independently for EACH configured
-source chain from XITA Admin > Chain Infrastructure. The admin takes ONLY the
-public GmbH relayer owner EOA (never a private key), compiles a main-pinned
-XITAExecutionGateway constructor (on-chain SourceRegistry, relayerOwner),
-simulates gas using the operator wallet, requires an explicit MetaMask
-confirmation, validates the final chain receipt, runtime bytecode and both
-constructor getter bindings, then atomically publishes an append-only
-deployments/receipts/<chain>/<tx>-<address>.json record, the
-deployments/chains/<chain>.json xitaV315.components.executionGateway entry
-and the regenerated apps/web/catalog.json to GitHub main. Receipt replay
-and git-sync failures cannot erase the pending wallet transaction. This
-paid optional deployment MUST NOT enter the automatic mandatory core
-chain-deployment batch/count. No per-route deployment or tokens.
-
-The GmbH's relayer indexer is an OPERATOR-OWNED read projection, not
-protocol infrastructure. It listens to one ManagedDispatch source event
-per managed hop, indexes source receipt + message ID + fee and follows
-destination Mailbox.delivered(messageId), destination execution TX and
-retries. It is rebuildable from finalized chain evidence and may retain
-private delivery telemetry. Saving relayer TX hashes alone is insufficient
-because a third party or customer may deliver and fee receipts are on the
-SOURCE chain. Other independent relayers can run their own indexes.
-The existing optional protocol-wide history indexer may continue to
-serve public stats and permissionless transfers, but is NOT required
-for managed relay, consensus, proof validation or custody.
-
-Sponsored fees are not protocol fee governance. No change to PoS consensus,
-xgr-node, ILN Registry, FeeVault, Gateway, router, destination Mailbox or ISM
-is authorized by introducing this adapter. Deployment of the new optional
-adapter and live quote/relay signing infrastructure are SEPARATE audited
-release gates; previous source locks remain recoverable via their original
-two-transaction permissionless path. Before enabling sponsored delivery,
-verify funded destination-chain native gas balances, quotes, RPC health,
-relayer authorization, endpoint rate limits, replay resistance, refund
-terms and a real forward/reverse E2E mainnet test. The quote server must
-fail closed when it cannot guarantee its offered commercial service.
+**Merge gate:** Keep draft until all focused JS/Solidity tests and two-chain
+live E2E paths pass, the route deployment manifests include fee adapters,
+database migration and deployed workers are checked, sponsorship is safe
+or explicitly disabled, and old locked XGR recovery has been independently
+verified. Do not conflate successful source lock with final delivery.
 
 ## Wallet-funded permissionless delivery UX
 
@@ -282,9 +235,8 @@ Unavailable source/destination RPC or missing BLS proof is UNKNOWN, never
 proof of failure. The current lightweight wallet scan is bounded; an
 older source hash can be provided directly, using the original wallet.
 
-The separate Managed Relay UX can sponsor destination gas using the optional
-Execution Gateway; it does not alter the permissionless wallet-funded fallback.
-The sponsored flow must pass independent real E2E testing before enabling it.
+Optional gas grants are independent of the fee adapter and still disabled
+until a separate bounded, independently verified sponsor operator is ready.
 
 ## Message-specific BLS safety
 
