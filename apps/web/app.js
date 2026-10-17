@@ -15,6 +15,28 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
+const sponsorship={available:false,status:"unknown",checkedAt:0,loading:false};
+async function refreshSponsorship(){
+ if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
+ sponsorship.loading=true;sponsorship.checkedAt=Date.now();
+ try{
+  const response=await fetch("/api/xita/v1/managed/health",{
+   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+  });
+  if(!response.ok)throw Error("Sponsor status endpoint unavailable");
+  const data=await response.json();
+  if(data?.ok!==true||!data.sponsorship)
+   throw Error("No verified sponsor status");
+  sponsorship.available=data.sponsorship.available===true;
+  sponsorship.status=sponsorship.available?"available":"unavailable";
+ }catch{
+  sponsorship.available=false;sponsorship.status="unknown";
+ }finally{
+  sponsorship.loading=false;
+  if(path()==="/transfer"&&state.catalog)render();
+ }
+}
+
 let transferRequest=0;
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 function refreshTransferLink(){
@@ -583,11 +605,13 @@ function render(){
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
-   notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage
+   notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
+    sponsorship:{available:sponsorship.available,status:sponsorship.status}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ if(p==="/transfer")void refreshSponsorship();
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{
