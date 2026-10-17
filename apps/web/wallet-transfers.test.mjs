@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {keccak256} from "./keccak.js";
-import {configuredGatewayRoutes,dispatchMessage,findWalletSourceTx,scanRecentWalletTransfers,OPERATION_TOPIC,DISPATCH_TOPIC} from "./wallet-transfers.js";
+import {keccak256,selector} from "./keccak.js";
+import {configuredGatewayRoutes,dispatchMessage,findWalletSourceTx,scanRecentWalletTransfers,OPERATION_TOPIC,DISPATCH_TOPIC,INTERCHAIN_FEE_TOPIC} from "./wallet-transfers.js";
 const addr=d=>"0x"+d.repeat(40), hash=d=>"0x"+d.repeat(64);
 const user=addr("a"),other=addr("b"),gateway=addr("1"),srcMailbox=addr("2"),dstMailbox=addr("3"),srcRouter=addr("4");
 const routeId=hash("5"), txHash=hash("6"),toTopic=(v)=>"0x"+BigInt(v).toString(16).padStart(64,"0");
@@ -95,4 +95,39 @@ test("bounded recent scan includes only wallet-owned canonical gateway txs",asyn
  assert.equal(result.limited,false);
  const blocked=await scanRecentWalletTransfers({catalog:cat,account:other,rpc,lookback:32,max:5});
  assert.equal(blocked.items.length,0);
+});
+
+test("source fee adapter is verified using canonical Gateway, Mailbox and fee event",async()=>{
+ const adapter=addr("c"),component={address:adapter,
+  runtimeCodeKeccak256:hash("f"),
+  receiptPath:"deployments/receipts/xgrchain/"+("b".repeat(64))+"-"+adapter.slice(2)+".json"};
+ const catalog=structuredClone(cat);
+ catalog.infrastructure.xgrchain.xitaV315.components.executionGateway=component;
+ catalog.infrastructure.xgrchain.xitaV315.receiptPaths=[component.receiptPath];
+ const fields=[routeId,toTopic(8453),toTopic(BigInt(user)),toTopic(8453),
+  toTopic(BigInt(user)),hash("0"),toTopic(1000),toTopic(100000000000000000n),
+  toTopic(100000000000000000n),toTopic(2000),toTopic(42)];
+ const feeLog={address:adapter,topics:[INTERCHAIN_FEE_TOPIC,messageId,
+  toTopic(BigInt(user)),toTopic(BigInt(gateway))],
+  data:"0x"+fields.map(w=>w.slice(2)).join("")};
+ const adapted={...receipt,to:adapter,logs:[...receipt.logs,feeLog]};
+ const execute=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
+ const rpc=async(url,method,args)=>{
+  if(method==="eth_getTransactionByHash")return {from:user,to:adapter,
+    input:execute+"0".repeat(13*64),hash:txHash};
+  return mockRPC({receiptObject:adapted,delivered:true}).rpc(url,method,args);
+ };
+ const result=await findWalletSourceTx({catalog,account:user,sourceChain:"xgrchain",txHash,rpc});
+ assert.equal(result.status,"delivered");
+ assert.equal(result.interchainFeeWei,"2000");
+ assert.equal(result.executionAdapter,adapter);
+ assert.equal(result.finalDestinationChain,"base");
+ assert.equal(result.onwardRouteId,null);
+ const tampered={...adapted,logs:[...receipt.logs,{...feeLog,data:"0x"+fields.map((w,i)=>
+   (i===9?toTopic(0):w).slice(2)).join("")}]};
+ await assert.rejects(()=>findWalletSourceTx({catalog,account:user,
+  sourceChain:"xgrchain",txHash,rpc:async(url,method,args)=>
+   method==="eth_getTransactionByHash"?{from:user,to:adapter,input:execute+"0".repeat(13*64)}:
+    mockRPC({receiptObject:tampered}).rpc(url,method,args)}),
+   /Interchain Fee evidence/);
 });

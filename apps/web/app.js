@@ -9,12 +9,36 @@ import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
-import {startTransfer,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
+import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
+const sponsorship={available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
+async function refreshSponsorship(){
+ if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
+ sponsorship.loading=true;sponsorship.checkedAt=Date.now();
+ try{
+  const response=await fetch("/api/xita/v1/managed/health",{
+   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+  });
+  if(!response.ok)throw Error("Sponsor status endpoint unavailable");
+  const data=await response.json();
+  if(data?.ok!==true||!data.sponsorship)
+   throw Error("No verified sponsor status");
+  sponsorship.available=data.sponsorship.available===true;
+  sponsorship.chains=data.sponsorship.chains&&typeof data.sponsorship.chains==="object"?
+   data.sponsorship.chains:{};
+  sponsorship.status=sponsorship.available?"available":"unavailable";
+ }catch{
+  sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
+ }finally{
+  sponsorship.loading=false;
+  if(path()==="/transfer"&&state.catalog)render();
+ }
+}
+
 let transferRequest=0;
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 function refreshTransferLink(){
@@ -35,8 +59,8 @@ function refreshTransferLink(){
     open[0].destinationChain==="xgrchain"?"1 unlock pending →":
     "1 transfer awaiting delivery →"):null;
   alert.textContent=specific||
-   (pending===1?"1 transfer awaiting delivery →":pending+" transfers awaiting delivery →");
-  alert.title="Original lock/burn confirmed; only the destination mint/unlock may be continued";
+   (pending===1?"1 transfer awaiting completion →":pending+" transfers awaiting completion →");
+  alert.title="Open verified XITA steps. Never repeat an already confirmed source lock/burn";
  }
 }
 function setConnectedAccount(next){
@@ -88,7 +112,7 @@ async function scanWalletHistory(){
   for(const item of data.items.filter(t=>
     t.account?.toLowerCase()===account.toLowerCase()&&
     /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
-    ["awaiting-proof","delivery-unknown","delivered"].includes(t.status)))
+    ["awaiting-proof","awaiting-onward","delivery-unknown","delivered"].includes(t.status)))
     upsertTransfer(item);
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
@@ -152,6 +176,81 @@ async function performTransferAction(){
  render();
  try{
   if(selected){
+   if(selected.status==="awaiting-final-proof"){
+    if(!selected.secondHopTxHash||!selected.secondHopMessageId)
+     throw Error("Onward TX is not independently indexed; final delivery is blocked");
+    const next=await findWalletSourceTx({catalog:state.catalog,account,
+     sourceChain:"xgrchain",txHash:selected.secondHopTxHash});
+    if(next.parentMessageId!==selected.messageId||
+       next.messageId!==selected.secondHopMessageId||
+       next.destinationChain!==selected.finalDestinationChain||
+       next.asset!==selected.asset||
+       next.amountRaw!==selected.amountRaw||
+       next.status!=="awaiting-proof")
+     throw Error("Parent-linked onward receipt changed; do not submit a delivery");
+    const outcome=await resumeDelivery({catalog:state.catalog,account,
+     record:next,provider:globalThis.ethereum,waitForProof:true,
+     onStatus:msg=>{transferActivity.notice=msg;if(path()==="/transfer")render();},
+     onBroadcast:({txHash})=>{
+      broadcastKnown=true;
+      transferActivity.notice="Final destination TX "+txHash+" submitted.";
+      if(path()==="/transfer")render();
+     }
+    });
+    transferActivity.notice=outcome.status==="delivered"?
+     "Both hops delivered; refreshing independent chain index.":
+     outcome.notice||"Final destination delivery remains pending.";
+    await scanWalletHistory();
+    return;
+   }
+   if(selected.status==="awaiting-onward"){
+    // The first on-chain message is already delivered to XGRChain. NEVER
+    // replay its source Gateway, even if an RPC or UI later fails.
+    const sent=await startVerifiedOnwardHop({
+     catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
+     onBroadcast:({txHash})=>{
+      broadcastKnown=true;
+      transferActivity.notice="Onward XGRChain TX "+txHash+
+       " submitted. Original first-hop source remains untouched.";
+      render();
+     }
+    });
+    broadcastKnown=true;
+    const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{
+     attempts:20,delayMs:2500
+    });
+    if(!receipt){
+     transferActivity.notice="Onward source TX pending; refresh My Transfers before any retry.";
+     return;
+    }
+    if(receipt.status!=="0x1"){
+     transferActivity.notice="Onward source TX failed; original delivery to XGRChain remains confirmed.";
+     return;
+    }
+    const onward=await findWalletSourceTx({catalog:state.catalog,account,
+     sourceChain:"xgrchain",txHash:sent.txHash});
+    upsertTransfer(onward);
+    if(onward.status==="awaiting-proof"){
+     transferActivity.selectedTxHash=onward.txHash;
+     transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
+     if(path()==="/transfer")render();
+     const processed=await resumeDelivery({catalog:state.catalog,account,
+      record:onward,provider:globalThis.ethereum,waitForProof:true,
+      onStatus:notice=>{transferActivity.notice=notice;if(path()==="/transfer")render();},
+      onBroadcast:({txHash})=>{
+       transferActivity.notice="Final destination TX "+txHash+" submitted.";
+       if(path()==="/transfer")render();
+      }
+     });
+     transferActivity.notice=processed.status==="delivered"?
+      "Final destination Mailbox delivery confirmed.":
+      processed.notice||"Final destination proof or transaction pending; resume from My Transfers.";
+     await lookupWalletTransfer("xgrchain",sent.txHash);
+    }else{
+     transferActivity.notice="Onward Gateway confirmed; its destination delivery can be resumed later.";
+    }
+    return;
+   }
    if(selected.status!=="awaiting-proof"){
     await lookupWalletTransfer(selected.sourceChain,selected.txHash);
     return;
@@ -175,8 +274,14 @@ async function performTransferAction(){
   const model=buildExperienceModel(state.catalog,()=>false);
   const asset=state.experience.asset,origin=state.experience.origin,
    destination=state.experience.destination,amount=state.experience.amount||"";
-  if(!model.deployments.some(r=>r.asset===asset&&r.source===origin&&r.destination===destination))
-   throw Error("Select a directly deployed route. Multi-hop transfers proceed one hop at a time.");
+  const firstDestination=origin!=="xgrchain"&&destination!=="xgrchain"?
+   "xgrchain":destination;
+  const firstRoute=model.deployments.some(r=>
+   r.asset===asset&&r.source===origin&&r.destination===firstDestination);
+  const onwardRoute=firstDestination===destination||model.deployments.some(r=>
+   r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
+  if(!firstRoute||!onwardRoute)
+   throw Error("Both independently deployed XITA routes are required");
   const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
    destination,amount,provider:globalThis.ethereum,
    onBroadcast:({txHash})=>{
@@ -529,11 +634,14 @@ function render(){
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
-   notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage
+   notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
+    sponsorship:{available:sponsorship.available,status:sponsorship.status,
+      chains:sponsorship.chains}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+ if(p==="/transfer")void refreshSponsorship();
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{

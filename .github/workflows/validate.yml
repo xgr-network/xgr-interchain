@@ -73,6 +73,8 @@ jobs:
 
       - name: Validate read-only transfer Nginx install and repair
         run: node --test tools/transfer-recovery-nginx.test.mjs
+      - name: Validate global XITA Interchain Fee ingress
+        run: node --test tools/interchain-fee-nginx.test.mjs
 
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
@@ -82,6 +84,12 @@ jobs:
 
       - name: Validate indexed on-chain wallet worklist (generic route identities)
         run: node --test services/indexer/transfer-index-store.test.mjs
+
+      - name: Install isolated optional managed relay signer dependencies
+        run: npm install --prefix services/managed-relay --ignore-scripts --no-audit --no-fund --package-lock=false
+
+      - name: Validate optional managed relay quotes and source-native fees
+        run: node --test services/managed-relay/*.test.mjs
 
       - name: Validate CoinGecko adapter
         run: node --test services/indexer/coingecko.test.mjs

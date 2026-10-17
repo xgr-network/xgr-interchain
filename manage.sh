@@ -25,6 +25,7 @@ Usage: ./manage.sh <command>
   update        Pull GitHub main, validate, publish web, restart admin
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
+  install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
 
@@ -295,6 +296,71 @@ install_transfer_api() (
   echo "SUCCESS: local proof builder and public HTTPS transfer health are ready. No wallet/private key was installed."
 )
 
+
+# Enabled only after operator configures /etc/xita/{quote,interchain-fee}.env
+# and deploys the distinct per-chain ExecutionGateway contracts via Admin UI.
+install_interchain_fee() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
+  local user node_bin unit service target
+  user="$(id -un)"
+  node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$ROOT" == /* && "$node_bin" == /* ]] || {
+    echo "Unsafe Interchain Fee service checkout path or operator account" >&2
+    return 1
+  }
+  for service in /etc/xita/quote.env /etc/xita/interchain-fee.env; do
+    if ! privileged test -f "$service"; then
+      echo "ERROR: Missing $service. Copy restricted example and enter keys ONLY on the server." >&2
+      return 1
+    fi
+  done
+  echo "Installing pinned Interchain Fee signer and sponsor dependencies ..."
+  npm install --prefix "$ROOT/services/managed-relay" --ignore-scripts --no-audit --no-fund --package-lock=false
+
+  unit="$(mktemp)"
+  trap 'rm -f "${unit:-}"' EXIT
+  for service in xita-interchain-fee-quote xita-interchain-fee-claim xita-gas-sponsor; do
+    case "$service" in
+      xita-interchain-fee-quote) target="xita-managed-quote" ;;
+      *) target="$service" ;;
+    esac
+    sed -e "s|^User=.*|User=$user|" \
+        -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+        -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/server.mjs|" \
+        "$ROOT/services/managed-relay/$target.service.example" > "$unit"
+    if [[ "$service" != "xita-interchain-fee-quote" ]]; then
+      # Same cross-service wallet flock guards native NONCE reservation.
+      sed -e "s|^ExecStart=.*|ExecStart=/usr/bin/flock -n /run/lock/xita-fee-wallet.lock $node_bin $ROOT/services/managed-relay/$([[ "$service" == "xita-gas-sponsor" ]] && echo gas-sponsor || echo fee-claim).mjs|" \
+          "$ROOT/services/managed-relay/$target.service.example" > "$unit"
+      sed -i -e "s|^User=.*|User=$user|" \
+        -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" "$unit"
+    fi
+    privileged install -m 0644 "$unit" "/etc/systemd/system/$service.service"
+  done
+  for service in xita-interchain-fee-claim xita-gas-sponsor; do
+    privileged install -m 0644 "$ROOT/services/managed-relay/$service.timer.example" \
+      "/etc/systemd/system/$service.timer"
+  done
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-interchain-fee-quote.service
+  privileged systemctl restart xita-interchain-fee-quote.service
+  privileged systemctl is-active xita-interchain-fee-quote.service
+  privileged systemctl enable --now xita-interchain-fee-claim.timer xita-gas-sponsor.timer
+  if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
+    privileged env XITA_INTERCHAIN_FEE_NGINX=1 "$node_bin" \
+      "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
+  else
+    privileged env XITA_INTERCHAIN_FEE_NGINX=1 "$node_bin" \
+      "$ROOT/tools/install-transfer-recovery-nginx.mjs"
+  fi
+  echo "Verifying read-only private Interchain Fee quote service health ..."
+  curl --fail --silent --show-error --max-time 6 \
+    "http://127.0.0.1:4092/api/xita/v1/managed/health"
+  echo
+  echo "SUCCESS: fee quote HTTP service, aggregate claim and verified sponsor timers installed. No blockchain TX sent."
+)
+
 complete_update() {
   require_clean_main
   publish_web
@@ -306,6 +372,9 @@ complete_update() {
   # history worker too; leaving its prior Node process running keeps stale RPCs.
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
+  fi
+  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    privileged systemctl restart xita-interchain-fee-quote.service
   fi
 }
 
@@ -363,6 +432,7 @@ case "${1:-help}" in
   update) update ;;
   install-sync) install_sync ;;
   install-transfer-api) install_transfer_api ;;
+  install-interchain-fee) install_interchain_fee ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

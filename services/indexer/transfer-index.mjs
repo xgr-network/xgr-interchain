@@ -97,8 +97,14 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   routeName:route.routeName,routeId:norm(route.routeId),
   gateway:norm(route.gateway),destinationChain:route.destinationChain,
   destinationMailbox:norm(route.destinationMailbox),
-  amountRaw:bridgeAmountFromTransaction(tx,route),
+  amountRaw:evidence.amountRaw||bridgeAmountFromTransaction(tx,route),
   validatorFeeWei:evidence.validatorFeeWei,
+  executionAdapter:evidence.executionAdapter||null,
+  interchainFeeWei:evidence.interchainFeeWei||null,
+  finalDestinationChain:evidence.finalDestinationChain||null,
+  finalRecipient:evidence.finalRecipient||evidence.recipient||null,
+  onwardRouteId:evidence.onwardRouteId||null,
+  parentMessageId:evidence.parentMessageId||null,
   delivered:delivered.delivered,
  };
 }

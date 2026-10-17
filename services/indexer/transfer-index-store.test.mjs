@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {routeIndexCoverage,indexedTransferRow} from "./transfer-index-store.mjs";
+import {routeIndexCoverage,indexedTransferRow,linkIndexedJourneys} from "./transfer-index-store.mjs";
 const addr=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 test("same directional route name across different token projects NEVER shares a cursor",()=>{
  const routes=[
@@ -31,4 +31,53 @@ test("unknown target delivered state remains UNKNOWN and never invents successfu
  assert.equal(indexedTransferRow({...base,delivered:null}).status,"delivery-unknown");
  assert.equal(indexedTransferRow({...base,delivered:false}).status,"awaiting-proof");
  assert.equal(indexedTransferRow({...base,delivered:true}).status,"delivered");
+});
+
+test("confirmed first hop with signed onward route stays open, never claims completion",()=>{
+ const r={account:addr("a"),asset:"XGR",source_chain:"base",
+  destination_chain:"xgrchain",route_name:"base_to_xgr",route_id:hash("e"),
+  gateway:addr("1"),source_tx_hash:hash("c"),message_id:hash("d"),
+  source_block_number:88,amount_raw:"100",validator_fee_wei:"2",
+  execution_adapter:addr("2"),interchain_fee_wei:"5",
+  final_destination_chain:"polygon",final_recipient:addr("a"),
+  onward_route_id:hash("f"),delivered:true};
+ const item=indexedTransferRow(r);
+ assert.equal(item.status,"awaiting-onward");
+ assert.equal(item.delivered,true); // Means XGR delivery, not final Polygon.
+ assert.equal(item.finalDestinationChain,"polygon");
+ assert.equal(item.onwardRouteId,hash("f"));
+ assert.equal(item.interchainFeeWei,"5");
+ assert.equal(indexedTransferRow({...r,delivered:false}).status,"awaiting-proof");
+ assert.equal(indexedTransferRow({...r,delivered:null}).status,"delivery-unknown");
+});
+
+test("only the exact canonical onward parent message and route completes a two-hop journey",()=>{
+ const payer=addr("a"),firstId=hash("a"),nextId=hash("b");
+ const parent={account:payer,asset:"XGR",routeId:hash("1"),messageId:firstId,
+  assetId:hash("f"),sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"polygon",finalRecipient:payer,
+  onwardRouteId:hash("2"),amountRaw:"100",delivered:true,status:"awaiting-onward"};
+ const child={...parent,messageId:nextId,txHash:hash("c"),sourceChain:"xgrchain",
+  destinationChain:"polygon",parentMessageId:firstId,routeId:parent.onwardRouteId,
+  onwardRouteId:null,executionAdapter:addr("d"),delivered:true};
+ let linked=linkIndexedJourneys([parent],[child])[0];
+ assert.equal(linked.status,"journey-delivered");
+ assert.equal(linked.secondHopTxHash,hash("c"));
+ assert.equal(linked.finalDelivered,true);
+ for(const corrupt of [
+  {routeId:hash("5")},{amountRaw:"99"},{account:addr("f")},
+  {parentMessageId:hash("d")},{finalRecipient:addr("e")},
+  {destinationChain:"base"},{executionAdapter:null}
+ ]){
+  linked=linkIndexedJourneys([parent],[{...child,...corrupt}])[0];
+  assert.equal(linked.status,"awaiting-onward",
+   "mismatched child must NEVER mark parent delivered");
+ }
+ for(const [flag,status] of [[false,"awaiting-final-proof"],
+    [null,"final-delivery-unknown"],[true,"journey-delivered"]]){
+  linked=linkIndexedJourneys([parent],[{...child,delivered:flag}])[0];
+  assert.equal(linked.status,status);
+ }
+ linked=linkIndexedJourneys([parent],[child,{...child,messageId:hash("e")}])[0];
+ assert.equal(linked.status,"journey-ambiguous");
 });

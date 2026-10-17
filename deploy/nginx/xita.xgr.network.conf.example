@@ -27,7 +27,7 @@ server {
     add_header X-Frame-Options DENY always;
     add_header Permissions-Policy 'camera=(), microphone=(), geolocation=()' always;
     # No inline JS is used in the public app. External project logos may load over HTTPS.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network https://base-rpc.publicnode.com; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network https://base-rpc.publicnode.com https://gateway.tenderly.co https://base.gateway.tenderly.co https://polygon-bor-rpc.publicnode.com https://arbitrum-one-rpc.publicnode.com; style-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'" always;
 
     location ^~ /admin/ {
         auth_basic "XITA Operator";
@@ -105,6 +105,29 @@ location = /api/xeta/v1/transfers/stats {
     proxy_read_timeout 15s;
     add_header Cache-Control "no-store" always;
 }
+    # Read-only optional sponsorship status. No wallet/private keys in SPA.
+    location = /api/xita/v1/managed/health {
+        limit_except GET { deny all; }
+        proxy_pass http://127.0.0.1:4092;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 4s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+    # Quote signer authorizes fees only; actual token movement is always
+    # wallet-signed and simulated independently in the public browser.
+    location = /api/xita/v1/managed/quote {
+        limit_except POST { deny all; }
+        client_max_body_size 4k;
+        proxy_pass http://127.0.0.1:4092;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 15s;
+        proxy_set_header Host $host;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+
     # Alliance manifests preview is read-only; PR mutation endpoint remains
     # disabled pending verified project identity and GitHub App installation.
     location = /api/xita/join/preview {

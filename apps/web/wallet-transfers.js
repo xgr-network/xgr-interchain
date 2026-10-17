@@ -10,6 +10,82 @@ const lower=x=>String(x||"").toLowerCase();
 const isAddress=x=>ADDRESS.test(x||"")&&!/^0x0{40}$/i.test(x);
 export const OPERATION_TOPIC=keccak256("ILNOperation(bytes32,bytes32,uint32,uint256)");
 export const DISPATCH_TOPIC=keccak256("Dispatch(address,uint32,bytes32,bytes)");
+export const INTERCHAIN_FEE_TOPIC=keccak256("InterchainFeeCharged(bytes32,address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256)");
+export const ONWARD_JOURNEY_TOPIC=keccak256("OnwardJourneyDispatched(bytes32,bytes32,address,bytes32,uint32,bytes32,uint256,uint256,uint256)");
+export const ONWARD_SELECTOR=selector("continueJourney(bytes32,address,bytes32,uint32,bytes32,uint256)");
+// A verified adapter only augments the public Gateway event; its data never
+// authorizes mint, unlock, receipt finality or customer-asset movement.
+const EXECUTE_SELECTOR=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
+const ZERO_ROUTE="0x"+"0".repeat(64);
+const GATEWAY_RECEIPT=/^deployments\/receipts\/[a-z0-9-]+\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/;
+const hexAddress=x=>/^0x[0-9a-f]{64}$/i.test(x||"")&&BigInt(x)>>160n===0n?
+ "0x"+x.slice(-40).toLowerCase():null;
+function documentedExecutionAdapter(catalog,sourceChain){
+ const core=catalog.infrastructure?.[sourceChain]?.xitaV315;
+ const adapter=core?.components?.executionGateway;
+ if(!isAddress(adapter?.address)||!HASH.test(adapter?.runtimeCodeKeccak256||"")||
+    !GATEWAY_RECEIPT.test(adapter?.receiptPath||"")||
+    !core?.receiptPaths?.includes(adapter.receiptPath))return null;
+ return lower(adapter.address);
+}
+export function adapterFeeEvidence(log,route,payer,messageId){
+ if(!accountMatches(log?.address,route.executionAdapter)||
+   !Array.isArray(log?.topics)||log.topics.length!==4||
+   lower(log.topics[0])!==lower(INTERCHAIN_FEE_TOPIC)||
+   lower(log.topics[1])!==lower(messageId)||
+   hexAddress(log.topics[2])!==lower(payer)||
+   hexAddress(log.topics[3])!==lower(route.gateway)||
+   !/^0x[0-9a-f]{704}$/i.test(log.data||""))return null;
+ const words=Array.from({length:11},(_,i)=>"0x"+log.data.slice(2+i*64,66+i*64));
+ if(lower(words[0])!==route.routeId||
+  BigInt(words[1])!==BigInt(route.destinationConfig.domainId)||
+  BigInt(words[3])===0n||BigInt(words[3])>4294967295n||
+  BigInt(words[6])<=0n||BigInt(words[7])<=0n||
+  BigInt(words[8])<BigInt(words[7])||BigInt(words[9])<=0n)return null;
+ const recipient=hexAddress(words[2]),finalRecipient=hexAddress(words[4]);
+ if(!recipient||!finalRecipient)return null;
+ const lastDomain=Number(BigInt(words[3]));
+ const final=Object.entries(route.catalogChains||{}).filter(([,v])=>v.domainId===lastDomain);
+ if(final.length!==1)return null;
+ const finalChain=final[0][0],onwardRouteId=lower(words[5]);
+ if(finalChain!==route.destinationChain){
+  if(route.destinationChain!=="xgrchain"||onwardRouteId===ZERO_ROUTE)return null;
+  const leg=(route.catalogRoutes||[]).filter(x=>x.asset===route.asset&&
+    x.sourceChain==="xgrchain"&&x.destinationChain===finalChain&&
+    x.routeId===onwardRouteId);
+  if(leg.length!==1)return null;
+ }else if(onwardRouteId!==ZERO_ROUTE||finalRecipient!==recipient)return null;
+ return {executionAdapter:route.executionAdapter,recipient,finalRecipient,
+  finalDestinationChain:finalChain,onwardRouteId:finalChain===route.destinationChain?null:onwardRouteId,
+  amountRaw:BigInt(words[6]).toString(),validatorFeeWei:BigInt(words[7]).toString(),
+  bridgeNativeWei:BigInt(words[8]).toString(),interchainFeeWei:BigInt(words[9]).toString(),
+  quoteNonce:BigInt(words[10]).toString()};
+}
+// Onward TX 3 is linked to TX 1's parent message by the hub adapter event.
+// This event is evidence of the payer's intent, never a mint authorization.
+export function onwardJourneyEvidence(log,route,payer,messageId){
+ if(route.sourceChain!=="xgrchain"||
+  !accountMatches(log?.address,route.executionAdapter)||
+  !Array.isArray(log?.topics)||log.topics.length!==4||
+  lower(log.topics[0])!==lower(ONWARD_JOURNEY_TOPIC)||
+  !HASH.test(log.topics[1]||"")||
+  lower(log.topics[2])!==lower(messageId)||
+  hexAddress(log.topics[3])!==lower(payer)||
+  !/^0x[0-9a-f]{384}$/i.test(log.data||""))return null;
+ const words=Array.from({length:6},(_,i)=>"0x"+log.data.slice(2+i*64,66+i*64));
+ if(lower(words[0])!==route.routeId||
+   BigInt(words[1])!==BigInt(route.destinationConfig.domainId)||
+   BigInt(words[3])<=0n||BigInt(words[4])<=0n||
+   BigInt(words[5])<BigInt(words[4]))return null;
+ const recipient=hexAddress(words[2]);
+ if(!recipient||!accountMatches(recipient,payer))return null;
+ return {executionAdapter:route.executionAdapter,
+   parentMessageId:lower(log.topics[1]),
+   recipient,amountRaw:BigInt(words[3]).toString(),
+   validatorFeeWei:BigInt(words[4]).toString(),
+   bridgeNativeWei:BigInt(words[5]).toString(),
+   onwardExecution:true};
+}
 const deliveredSelector=selector("delivered(bytes32)");
 const accountMatches=(a,b)=>isAddress(a)&&lower(a)===lower(b);
 // Some MetaMask wallets execute the approved Gateway call inside this
@@ -27,6 +103,13 @@ function executorRoutes(tx,routes){
 export function configuredGatewayRoutes(catalog){
  const result=[];
  if(!catalog?.chains||!catalog?.infrastructure)return result;
+ const adapterRoutes=[];
+ for(const [asset,entry] of Object.entries(catalog.assets||{})){
+  for(const instance of entry?.deployment?.routeDeployments||[]){
+   adapterRoutes.push({asset,sourceChain:instance.sourceChain,
+    destinationChain:instance.destinationChain,routeId:lower(instance.routeId)});
+  }
+ }
  for(const [asset,entry] of Object.entries(catalog.assets||{})){
   if(entry?.deployment?.present!==true)continue;
   for(const route of entry.deployment.routeDeployments||[]){
@@ -47,7 +130,9 @@ export function configuredGatewayRoutes(catalog){
     destinationConfig:destinationChain,gateway:lower(gateway),
     sourceMailbox:lower(sourceMailbox),
     destinationMailbox:isAddress(destinationMailbox)?lower(destinationMailbox):null,
-    sourceRouter:isAddress(sourceRouter)?lower(sourceRouter):null});
+    sourceRouter:isAddress(sourceRouter)?lower(sourceRouter):null,
+    executionAdapter:documentedExecutionAdapter(catalog,src),
+    catalogChains:catalog.chains,catalogRoutes:adapterRoutes});
   }
  }
  return result.slice(0,48);
@@ -119,37 +204,85 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  const tx=await reader.read("eth_getTransactionByHash",[txHash]);
  if(!tx)throw Error("Source transaction not found yet; check chain and hash");
  if(!accountMatches(tx.from,account))throw Error("Source transaction is not from the connected wallet");
- const candidates=[...routes.filter(r=>accountMatches(tx.to,r.gateway)),...executorRoutes(tx,routes)];
- if(candidates.length!==1)throw Error("Source transaction does not uniquely target a documented Gateway");
- const route=candidates[0];
+ const direct=routes.filter(r=>accountMatches(tx.to,r.gateway));
+ const executor=executorRoutes(tx,routes);
+ const adapter=routes.filter(r=>r.executionAdapter&&accountMatches(tx.to,r.executionAdapter));
+ // Both adapter paths invoke the canonical Gateway within the single wallet TX.
+ // "continueJourney" on XGRChain does NOT charge another GmbH Interchain Fee.
+ const input=lower(tx.input??tx.data??"");
+ const paidAdapter=adapter.length>0&&input.startsWith(EXECUTE_SELECTOR);
+ const onwardAdapter=adapter.length>0&&sourceChain==="xgrchain"&&
+  input.startsWith(ONWARD_SELECTOR);
+ if(adapter.length&&(!/^0x[0-9a-f]+$/.test(input)||
+    (!paidAdapter&&!onwardAdapter)))
+  throw Error("Adapter source call has unexpected ABI selector");
+ const named=[...direct,...executor,...adapter],matches=new Set(named.map(r=>r.routeId));
+ if(!matches.size)throw Error("Source transaction does not target a documented Gateway or fee adapter");
+ const receipt=await reader.read("eth_getTransactionReceipt",[txHash]);
+ const status=receipt?.status;
+ if(receipt&&(!accountMatches(receipt.from,account)||
+    !(accountMatches(receipt.to,tx.to))||
+    lower(receipt.transactionHash)!==lower(txHash)||!Array.isArray(receipt.logs)))
+  throw Error("Untrusted source receipt");
+ // Without a mined receipt an adapter serves many routes. Decode the source
+ // calldata route binding to identify one candidate, never invent finality.
+ let candidates=named;
+ if(adapter.length&&matches.size>1&&input.length>=10+4*64){
+  const target="0x"+input.slice(10+2*64,10+3*64);
+  candidates=named.filter(r=>r.routeId===lower(target));
+ }
+ if(!receipt){
+  if(candidates.length!==1)throw Error("Pending adapter route ambiguous; retry after receipt");
+  const route=candidates[0];
+  return {account:lower(account),txHash:lower(txHash),sourceChain,
+   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
+   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
+   messageId:null,status:"pending-source"};
+ }
+ if(status==="0x0"){
+  if(candidates.length!==1)throw Error("Failed adapter route ambiguous");
+  const route=candidates[0];
+  return {account:lower(account),txHash:lower(txHash),sourceChain,
+   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
+   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
+   messageId:null,status:"source-failed"};
+ }
+ if(status!=="0x1"||!QTY.test(receipt.blockNumber||""))
+  throw Error("Source receipt status or finality missing");
+ const head=await reader.read("eth_blockNumber",[]);
+ if(!QTY.test(head||""))throw Error("Current source block unavailable");
+ const valid=[];
+ for(const route of named){
+  const operations=receipt.logs.filter(log=>validateOperation(log,route));
+  if(operations.length!==1)continue;
+  const id=lower(operations[0].topics[2]);
+  const dispatches=receipt.logs.filter(log=>{
+   try{return validDispatch(log,route,id)}catch{return false}
+  });
+  if(dispatches.length!==1)continue;
+  let evidence=null;
+  if(adapter.length){
+   const events=receipt.logs.map(log=>paidAdapter?
+     adapterFeeEvidence(log,route,account,id):
+     onwardJourneyEvidence(log,route,account,id)).filter(Boolean);
+   if(events.length!==1)continue;
+   evidence=events[0];
+   if(BigInt(evidence.validatorFeeWei)!==BigInt(operations[0].data))continue;
+  }
+  valid.push({route,messageId:id,validatorFeeWei:BigInt(operations[0].data).toString(),
+   evidence});
+ }
+ if(valid.length!==1)throw Error("Missing or ambiguous verified Gateway operation or Mailbox Dispatch / Interchain Fee evidence");
+ const {route,messageId,validatorFeeWei,evidence}=valid[0];
  const base={account:lower(account),txHash:lower(txHash),sourceChain,
   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
   messageId:null,status:"pending-source"};
- const receipt=await reader.read("eth_getTransactionReceipt",[txHash]);
- if(!receipt)return base; // Pending source: never offer a recovery/rebroadcast.
- if(!accountMatches(receipt.from,account)||
-    !(accountMatches(receipt.to,route.gateway)||
-     (accountMatches(receipt.to,BASE_WALLET_EXECUTOR)&&executorRoutes(tx,[route]).length===1))||
-    lower(receipt.transactionHash)!==lower(txHash)||!Array.isArray(receipt.logs))
-  throw Error("Untrusted source receipt");
- if(receipt.status==="0x0")return {...base,status:"source-failed"};
- if(receipt.status!=="0x1"||!QTY.test(receipt.blockNumber||""))
-  throw Error("Source receipt status or finality missing");
- const head=await reader.read("eth_blockNumber",[]);
- if(!QTY.test(head||""))throw Error("Current source block unavailable");
  const confirmations=Math.max(1,Number(route.sourceConfig.confirmations||1));
  if(BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(confirmations))
   return {...base,status:"confirming"};
- const operations=receipt.logs.filter(log=>validateOperation(log,route));
- if(operations.length!==1)throw Error("Missing or ambiguous verified Gateway operation");
- const messageId=lower(operations[0].topics[2]);
- const dispatches=receipt.logs.filter(log=>{
-  try{return validDispatch(log,route,messageId)}catch{return false}
- });
- if(dispatches.length!==1)throw Error("Missing matching canonical Mailbox Dispatch in source receipt");
- const found={...base,messageId,confirmed:true,validatorFeeWei:BigInt(operations[0].data).toString(),
-  status:"delivery-unknown"};
+ const found={...base,messageId,confirmed:true,validatorFeeWei,
+  ...(evidence||{}),status:"delivery-unknown"};
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
   const dest=createReader(route.destinationConfig,fetcher,rpc);
@@ -159,7 +292,8 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   if(!/^0x[0-9a-f]{64}$/i.test(response||"")||
       ![0n,1n].includes(BigInt(response)))throw Error("Invalid destination delivery state");
   const delivered=BigInt(response)===1n;
-  return {...found,delivered,status:delivered?"delivered":"awaiting-proof"};
+  return {...found,delivered,status:delivered?
+   (evidence?.onwardRouteId?"awaiting-onward":"delivered"):"awaiting-proof"};
  }catch{
   return {...found,status:"delivery-unknown"};
  }

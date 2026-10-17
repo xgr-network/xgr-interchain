@@ -12,11 +12,11 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.length,4);
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
- assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required));
+ assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required+1 && c.components.filter(x=>x.optional).length===1));
  // A verified deployment receipt may now exist. Progress must be derived
  // from the currently documented, immutable per-chain component evidence.
  for(const chain of chains){
-  const documented=chain.components.filter(p=>p.status==="documented").length;
+  const documented=chain.components.filter(p=>!p.optional&&p.status==="documented").length;
   assert.equal(chain.documented,documented,chain.name+" documented count");
   assert.equal(chain.status,
    documented===chain.required?"documented":documented>0?"partial":"not-deployed",
@@ -47,8 +47,9 @@ test("Base observes only documented XITA contracts, not undeployed legacy core",
  // Never assume the verified BLS verifier or future deployments do not exist.
  const trustedCore=Boolean(base.hyperlane.mailbox&&base.hyperlane.merkleTreeHook&&base.hyperlane.requiredHook);
  assert.equal(observed.core,trustedCore);
- const documented=base.components.filter(c=>c.status==="documented");
- assert.equal(observed.components.filter(c=>c.live).length,documented.length);
+ const documented=base.components.filter(c=>!c.optional&&c.status==="documented");
+ assert.equal(observed.components.filter(c=>c.live).length,
+  base.components.filter(c=>c.status==="documented").length);
  assert.equal(observed.status,
   documented.length===base.required&&trustedCore?"observed-complete":
    documented.length?"observed-partial":"not-deployed");

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,quoteCalldata,bridgeCalldata,startTransfer,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 const account=address("e"),srcRouter=address("6"),dstRouter=address("7");
@@ -57,6 +57,9 @@ function sourceProvider(sends,overrides={}){
     const amount=100000000000000000n,fee=100000000000000n;
     return word(fee)+word(amount).slice(2)+word(amount+fee).slice(2)+word(0).slice(2);
    }
+   if(data===selector("bridge(uint32,bytes32,uint256)")||
+      data===selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)"))
+    return word(123); // Source execution simulation before wallet signing.
   }
   if(method==="eth_estimateGas")return "0x5208";
   if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
@@ -70,7 +73,9 @@ function sourceProvider(sends,overrides={}){
 const rpcResponse=(result)=>({ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})});
 const testFetch=(result="0x"+(1n*10n**18n).toString(16))=>async(url,options)=>{
  if(url==="/api/xeta/v1/transfer/health")return {ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
- return rpcResponse(JSON.parse(options.body).method==="eth_chainId"?"0x2105":result);
+ const method=JSON.parse(options.body).method;
+ return rpcResponse(method==="eth_chainId"?"0x2105":
+  method==="eth_gasPrice"?"0x3b9aca00":result);
 };
 test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
  assert.equal(amountToUnits("1.125",18),1125000000000000000n);
@@ -100,6 +105,14 @@ test("unresolved MetaMask source nonce blocks any second lock while no canonical
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
   source:"xgrchain",destination:"base",amount:"0.1",provider,fetcher}),
   /pending/);
+ assert.equal(sends.length,0);
+});
+test("one wei of destination gas is NOT enough to safely lock source assets",async()=>{
+ const sends=[];
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",
+  provider:sourceProvider(sends),fetcher:testFetch("0x1")}),
+  /Destination wallet needs native gas/);
  assert.equal(sends.length,0);
 });
 test("wallet with no destination-native gas never submits source lock",async()=>{
@@ -206,4 +219,80 @@ test("fatal backend configuration mismatch blocks automated signing",async()=>{
  const query=new URLSearchParams({asset:"XGR",route:"xgr_to_base",messageId:hash("4")});
  await assert.rejects(awaitUnsignedDeliveryProof({query,attempts:5,delayMs:0,sleep:async()=>{},
   fetcher:async()=>({ok:false,json:async()=>({reason:"PROOF_CONFIG_MISMATCH"})})}),/configuration mismatch/);
+});
+
+test("raw second-hop token amount roundtrips exactly without float loss",()=>{
+ for(const raw of ["1","100000000000000000","123456789012345678901234567890123","1000000000000000000"]){
+  assert.equal(amountToUnits(unitsToAmount(raw,18),18).toString(),raw);
+ }
+ assert.throws(()=>unitsToAmount("0",18),/Invalid verified/);
+ assert.throws(()=>unitsToAmount("1e18",18),/Invalid verified/);
+ assert.throws(()=>unitsToAmount("42",37),/Invalid verified/);
+});
+test("only a confirmed, adapter-proven first hop can initiate a second user call",async()=>{
+ let walletSends=0,requests=0;
+ const provider={request:async()=>{walletSends++;throw Error("wallet must not be contacted")}};
+ const fetcher=async()=>{requests++;throw Error("network must not be contacted")};
+ await assert.rejects(()=>startVerifiedOnwardHop({
+  catalog:catalog(),account,record:{status:"awaiting-proof",txHash:sourceTx},
+  provider,fetcher
+ }),/confirmed first-hop/);
+ assert.equal(walletSends,0);
+ assert.equal(requests,0);
+});
+
+test("deployed Interchain Fee adapter owns first TX and no direct Gateway fee bypass occurs",async()=>{
+ const c=catalog(),contract=address("d");
+ const comp=item("xgrchain",contract),core=c.infrastructure.xgrchain.xitaV315;
+ core.components.executionGateway=comp;core.receiptPaths.push(comp.receiptPath);
+ const sends=[],now=Math.floor(Date.now()/1000),native=100100000000000000n;
+ const quote={
+  payer:account,gateway,routeId,destinationDomain:8453,
+  recipient:word(BigInt(account)),finalDestinationDomain:8453,
+  finalRecipient:word(BigInt(account)),onwardRouteId:word(0),
+  amount:"100000000000000000",bridgeValueWei:native.toString(),
+  interchainFeeWei:"500000000000000",nonce:"8",issuedAt:now
+ };
+ const fullValue=native+BigInt(quote.interchainFeeWei);
+ const signature="0x"+"22".repeat(65);
+ const data=executeQuoteCalldata(quote,signature);
+ const signed={ok:true,status:"SIGNED_INTERCHAIN_FEE_QUOTE",quote,signature,
+  executionAddress:contract,expiresAt:now+90,transaction:{
+   from:account,to:contract,chainId:1643,value:"0x"+fullValue.toString(16),data
+  }};
+ const original=testFetch();
+ const fetcher=async(url,options)=>url==="/api/xita/v1/managed/quote"?
+  {ok:true,json:async()=>signed}:original(url,options);
+ const result=await startTransfer({catalog:c,account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].to,contract);
+ assert.equal(sends[0].data,data);
+ assert.equal(sends[0].value,signed.transaction.value);
+ assert.equal(result.interchainFeeWei,quote.interchainFeeWei);
+ sends.length=0;
+ await assert.rejects(()=>startTransfer({catalog:c,account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),
+  fetcher:async(url,opts)=>url==="/api/xita/v1/managed/quote"?
+   {ok:true,json:async()=>({...signed,quote:{...quote,recipient:word(BigInt(address("1")))}})}:
+   original(url,opts)
+ }),/Commercial fee quote does not bind/);
+ assert.equal(sends.length,0);
+});
+
+test("adapter fee quote refuses altered transaction bytes, even with valid EIP-712 quoted fields",async()=>{
+ const quote={payer:account,gateway,routeId,destinationDomain:8453,
+  recipient:word(BigInt(account)),finalDestinationDomain:8453,
+  finalRecipient:word(BigInt(account)),onwardRouteId:word(0),
+  amount:"100000000000000000",bridgeValueWei:"100100000000000000",
+  interchainFeeWei:"500000000000000",nonce:"8",issuedAt:Math.floor(Date.now()/1000)};
+ const signature="0x"+"11".repeat(65);
+ const data=executeQuoteCalldata(quote,signature);
+ assert.ok(data.startsWith(selector(
+  "execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,uint32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)"))===false);
+ assert.ok(data.startsWith(selector(
+  "execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)")));
+ assert.equal(data.length,10+14*64+64+192);
+ assert.equal(data.slice(-192,-62),"11".repeat(65));
+ assert.equal(continueJourneyCalldata(hash("1"),gateway,routeId,8453,account,1n).length,10+6*64);
 });

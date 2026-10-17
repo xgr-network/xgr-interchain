@@ -63,25 +63,58 @@ export async function commitWindow({pool,route,window,records}){
      normalize(record.account)===""||
      record.sourceChain!==route.sourceChain||record.destinationChain!==route.destinationChain)
     throw Error("Canonical source event and validated operation do not match");
+   if(record.onwardRouteId!==null&&record.onwardRouteId!==undefined){
+    if(!/^0x[0-9a-f]{64}$/i.test(record.onwardRouteId)||
+      record.sourceChain===record.finalDestinationChain||
+      record.destinationChain!=="xgrchain"||
+      !/^0x[0-9a-f]{40}$/i.test(record.executionAdapter||"")||
+      !/^0x[0-9a-f]{40}$/i.test(record.finalRecipient||"")||
+      !/^[1-9][0-9]*$/.test(String(record.interchainFeeWei||"")))
+      throw Error("Inconsistent adapter-backed onward journey");
+   }
+   if(record.parentMessageId){
+    if(record.sourceChain!=="xgrchain"||record.onwardRouteId||
+      !/^0x[0-9a-f]{64}$/i.test(record.parentMessageId)||
+      !/^0x[0-9a-f]{40}$/i.test(record.executionAdapter||"")||
+      record.interchainFeeWei!=null||
+      !/^[1-9][0-9]*$/.test(String(record.amountRaw||"")))
+     throw Error("Invalid cryptographically linked onward event");
+   }
    const params=[
     record.sourceChain,record.messageId,record.sourceTxHash,event.blockNumber,
     event.blockHash,event.logIndex,record.account,record.asset,record.assetId,
     record.routeName,record.routeId,record.gateway,record.destinationChain,
     record.destinationMailbox,record.amountRaw,record.validatorFeeWei,
-    record.delivered
+    record.delivered,record.executionAdapter??null,record.interchainFeeWei??null,
+    record.finalDestinationChain??null,record.finalRecipient??null,
+    record.onwardRouteId??null,record.parentMessageId??null
    ];
    const row=await db.query({text:`INSERT INTO xita_transfer_operations(
     source_chain,message_id,source_tx_hash,source_block_number,source_block_hash,source_log_index,
     account,asset,asset_id,route_name,route_id,gateway,destination_chain,
-    destination_mailbox,amount_raw,validator_fee_wei,delivered,delivery_checked_at)
+    destination_mailbox,amount_raw,validator_fee_wei,delivered,delivery_checked_at,
+    execution_adapter,interchain_fee_wei,final_destination_chain,final_recipient,onward_route_id,parent_message_id)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
-      CASE WHEN $17::boolean IS NULL THEN NULL ELSE NOW() END)
+      CASE WHEN $17::boolean IS NULL THEN NULL ELSE NOW() END,
+      $18,$19,$20,$21,$22,$23)
     ON CONFLICT(source_chain,message_id) DO UPDATE SET
       delivered=CASE WHEN xita_transfer_operations.delivered IS TRUE THEN TRUE
        ELSE EXCLUDED.delivered END,
       delivery_checked_at=CASE WHEN EXCLUDED.delivered IS NULL
-       THEN xita_transfer_operations.delivery_checked_at ELSE NOW() END
-    WHERE xita_transfer_operations.source_tx_hash=EXCLUDED.source_tx_hash AND
+       THEN xita_transfer_operations.delivery_checked_at ELSE NOW() END,
+      execution_adapter=EXCLUDED.execution_adapter,
+      interchain_fee_wei=EXCLUDED.interchain_fee_wei,
+      final_destination_chain=EXCLUDED.final_destination_chain,
+      final_recipient=EXCLUDED.final_recipient,
+      onward_route_id=EXCLUDED.onward_route_id,
+      parent_message_id=EXCLUDED.parent_message_id
+    WHERE xita_transfer_operations.parent_message_id IS NOT DISTINCT FROM EXCLUDED.parent_message_id
+      AND xita_transfer_operations.execution_adapter IS NOT DISTINCT FROM EXCLUDED.execution_adapter
+      AND xita_transfer_operations.interchain_fee_wei IS NOT DISTINCT FROM EXCLUDED.interchain_fee_wei
+      AND xita_transfer_operations.final_destination_chain IS NOT DISTINCT FROM EXCLUDED.final_destination_chain
+      AND xita_transfer_operations.final_recipient IS NOT DISTINCT FROM EXCLUDED.final_recipient
+      AND xita_transfer_operations.onward_route_id IS NOT DISTINCT FROM EXCLUDED.onward_route_id
+      AND xita_transfer_operations.source_tx_hash=EXCLUDED.source_tx_hash AND
       xita_transfer_operations.source_block_hash=EXCLUDED.source_block_hash AND
       xita_transfer_operations.account=EXCLUDED.account AND
       xita_transfer_operations.route_id=EXCLUDED.route_id AND

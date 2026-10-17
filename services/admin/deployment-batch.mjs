@@ -4,7 +4,8 @@ export function nextChainDeployment(queue,chainName){
  const chain=queue?.inventory?.chains?.find(c=>c.name===chainName);
  const infra=queue?.infrastructure?.find(c=>c.name===chainName);
  if(!chain||!infra)throw Error("Unknown GitHub-approved chain");
- const part=infra.components.find(c=>c.status!=="documented");
+ // The normal "finish chain" operation NEVER deploys paid GmbH services.
+ const part=infra.components.find(c=>!c.optional&&c.status!=="documented");
  return part?{kind:"chain",chain:chainName,component:part.key,id:chainName+":"+part.key}:null;
 }
 export function nextAssetDeployment(queue,tasks,assetKey){

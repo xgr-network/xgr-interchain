@@ -3,7 +3,7 @@
 // transfer state. No browser WAL, localStorage, hidden relayer key or replay.
 import {selector} from "./keccak.js";
 import {deployedRoutes} from "./route-availability.js";
-import {publicRead,findWalletSourceTx} from "./wallet-transfers.js";
+import {publicRead,findWalletSourceTx,configuredGatewayRoutes,ONWARD_SELECTOR} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -19,6 +19,75 @@ export function amountToUnits(text,decimals){
  const sum=BigInt(whole)*10n**BigInt(decimals)+BigInt(fraction.padEnd(decimals,"0")||"0");
  if(sum<=0n||sum>=2n**256n)throw Error("Enter a positive token amount");
  return sum;
+}
+export function unitsToAmount(raw,decimals){
+ if(typeof raw!=="string"||!/^[1-9][0-9]*$/.test(raw)||
+    !Number.isInteger(decimals)||decimals<0||decimals>36)
+  throw Error("Invalid verified raw token amount");
+ const n=BigInt(raw),scale=10n**BigInt(decimals);
+ if(n>=2n**256n)throw Error("Onward token amount overflow");
+ const whole=(n/scale).toString();
+ const fraction=(n%scale).toString().padStart(decimals,"0").replace(/0+$/,"");
+ return fraction?whole+"."+fraction:whole;
+}
+// Exact ABI for the optional user-signed source-native commercial adapter.
+const EXECUTE_SELECTOR=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
+export function executeQuoteCalldata(q,signature){
+ if(!q||!/^0x[0-9a-f]{130}$/i.test(signature||""))
+  throw Error("Malformed EIP712 execution quote");
+ const address=x=>{
+  if(!ADDRESS.test(x||""))throw Error("Invalid execution quote address");
+  return addrWord(x);
+ };
+ const bytes=x=>{
+  if(!HASH.test(x||""))throw Error("Invalid execution bytes32");
+  return x.slice(2).toLowerCase();
+ };
+ const terms=[address(q.payer),address(q.gateway),bytes(q.routeId),
+  word(q.destinationDomain),bytes(q.recipient),
+  word(q.finalDestinationDomain),bytes(q.finalRecipient),bytes(q.onwardRouteId),
+  word(q.amount),word(q.bridgeValueWei),word(q.interchainFeeWei),
+  word(q.nonce),word(q.issuedAt)];
+ if(terms.some(t=>t.length!==64))throw Error("Malformed execution tuple");
+ const bytesHex=signature.slice(2).toLowerCase();
+ // The 13-word static Quote tuple and one offset word occupy 14*32=448
+ // bytes before the dynamic signature length (65) and 96-byte padded data.
+ return EXECUTE_SELECTOR+terms.join("")+word(448)+word(65)+
+  bytesHex.padEnd(192,"0");
+}
+function checkInterchainQuote(result,{catalog,account,asset,source,destination,
+ route,firstDestination,amountRaw,validatorNativeWei,adapter}){
+ const q=result?.quote,t=result?.transaction;
+ const finalDomain=catalog?.chains?.[destination]?.domainId;
+ const now=Math.floor(Date.now()/1000);
+ const intendedOnward=firstDestination===destination?"0x"+"0".repeat(64):
+  deployedRoutes(catalog).find(r=>r.asset===asset&&r.source==="xgrchain"&&
+   r.destination===destination)?.routeId;
+ if(!q||!t||result.status!=="SIGNED_INTERCHAIN_FEE_QUOTE"||
+  !/^0x[0-9a-f]{130}$/i.test(result.signature||"")||
+  !ADDRESS.test(t.from||"")||!eq(t.from,account)||
+  !eq(t.to,adapter)||!eq(result.executionAddress,adapter)||
+  BigInt(t.chainId??0)!==BigInt(catalog.chains[source].chainId)||
+  !/^0x[0-9a-f]+$/i.test(t.value||"")||
+  !/^0x[0-9a-f]+$/i.test(t.data||"")||
+  !t.data.startsWith(EXECUTE_SELECTOR)||
+  !eq(t.data,executeQuoteCalldata(q,result.signature))||
+  !eq(q.payer,account)||!eq(q.gateway,route.gateway)||
+  !eq(q.routeId,route.routeId)||!eq(q.onwardRouteId,intendedOnward)||
+  !eq(q.recipient,"0x"+addrWord(account))||
+  !eq(q.finalRecipient,"0x"+addrWord(account))||
+  BigInt(q.destinationDomain??0)!==BigInt(catalog.chains[firstDestination].domainId)||
+  BigInt(q.finalDestinationDomain??0)!==BigInt(finalDomain??0)||
+  BigInt(q.amount??-1)!==amountRaw||
+  BigInt(q.bridgeValueWei??-1)!==validatorNativeWei||
+  BigInt(q.interchainFeeWei??0)<=0n||
+  BigInt(t.value)!==validatorNativeWei+BigInt(q.interchainFeeWei)||
+  !Number.isSafeInteger(q.issuedAt)||q.issuedAt<=0||
+  q.issuedAt>now+5||now-q.issuedAt>75||
+  Number(result.expiresAt??0)<=now+5)
+  throw Error("Commercial fee quote does not bind verified transfer, destination, or native amount");
+ return {tx:{from:account,to:adapter,value:t.value,data:t.data},
+  interchainFeeWei:String(q.interchainFeeWei)};
 }
 async function request(provider,method,params=[]){
  if(typeof provider?.request!=="function")throw Error("Connect MetaMask");
@@ -52,6 +121,12 @@ export function quoteCalldata(domain,recipient,amount){
  if(!Number.isSafeInteger(domain)||domain<=0||domain>4294967295||
   !ADDRESS.test(recipient||""))throw Error("Invalid destination domain or recipient");
  return selector("quoteILN(uint32,bytes32,uint256)")+
+  word(domain)+addrWord(recipient)+word(amount);
+}
+export function continueJourneyCalldata(parentId,gateway,routeId,domain,recipient,amount){
+ if(!HASH.test(parentId||"")||!HASH.test(routeId||"")||
+    !ADDRESS.test(gateway||""))throw Error("Invalid linked parent journey");
+ return ONWARD_SELECTOR+parentId.slice(2)+addrWord(gateway)+routeId.slice(2)+
   word(domain)+addrWord(recipient)+word(amount);
 }
 export function bridgeCalldata(domain,recipient,amount){
@@ -108,14 +183,33 @@ export async function waitForWalletReceipt(provider,hash,{attempts=25,delayMs=30
  return null;
 }
 export async function startTransfer({catalog,account,asset,source,destination,amount,
- provider,onBroadcast,fetcher=globalThis.fetch}){
+ provider,onBroadcast,fetcher=globalThis.fetch,commercial=null,
+ onwardParentMessageId=null}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
- const route=requirePair(catalog,asset,source,destination);
- const src=catalog.chains[source],dst=catalog.chains[destination];
+ const firstDestination=source!=="xgrchain"&&destination!=="xgrchain"?
+  "xgrchain":destination;
+ const route=requirePair(catalog,asset,source,firstDestination);
+ const src=catalog.chains[source],dst=catalog.chains[firstDestination];
  const decimals=catalog.assets[asset].metadata?.decimals;
  const units=amountToUnits(amount,decimals);
- if(source!=="xgrchain"&&destination!=="xgrchain")
-  throw Error("Two-hop transfers must be completed one hop at a time");
+ const adapter=configuredGatewayRoutes(catalog).find(r=>r.asset===asset&&
+  r.sourceChain===source&&r.destinationChain===firstDestination&&
+  eq(r.routeId,route.routeId))?.executionAdapter||null;
+ const paidAdapter=commercial===false||onwardParentMessageId?null:adapter;
+ const onwardAdapter=onwardParentMessageId?adapter:null;
+ if(onwardParentMessageId&&(!HASH.test(onwardParentMessageId)||
+     source!=="xgrchain"||!onwardAdapter||commercial!==false))
+  throw Error("Verified hub continuation adapter required for linked second hop");
+ if(commercial===true&&!paidAdapter)
+  throw Error("GmbH Interchain Fee adapter is not deployed; use public protocol calls separately");
+ if(firstDestination!==destination){
+  const onward=deployedRoutes(catalog).filter(r=>r.asset===asset&&
+   r.source==="xgrchain"&&r.destination===destination);
+  if(onward.length!==1)throw Error("Final onward route not uniquely deployed");
+  const hubAdapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
+  if(!paidAdapter||!hubAdapter?.address)
+   throw Error("Two-hop transfer requires both deployed and verified fee/continuation adapters");
+ }
  // Require public permissionless recovery proof infrastructure before
  // locking/burning source assets. This is an execution preflight, never a
  // separate administrator activation flag.
@@ -126,13 +220,37 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const proofHealth=await proofService.json().catch(()=>null);
  if(!proofHealth?.ok||proofHealth.proofBuilder!=="installed")
   throw Error("Unsigned BLS/Merkle recovery is not ready; no tokens locked");
- // Source gas plus destination gas must exist before locking/burning.
- const destinationRpcId=await publicRead(dst.rpcUrls?.[0],"eth_chainId",[],fetcher);
- if(!QTY.test(destinationRpcId||"")||BigInt(destinationRpcId)!==BigInt(dst.chainId))
-  throw Error("Destination RPC chain ID differs from configured chain");
- const destinationBalance=await publicRead(dst.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher);
- if(!QTY.test(destinationBalance||"")||BigInt(destinationBalance)===0n)
-  throw Error("Destination wallet needs native gas BEFORE locking tokens");
+ // Do not lock a new source if a destination has neither the wallet's
+ // own native gas nor a fresh, independently verified sponsor reserve.
+ const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];
+ let sponsor=null;
+ for(const key of destinations){
+  const target=catalog.chains[key];
+  const identity=await publicRead(target.rpcUrls?.[0],"eth_chainId",[],fetcher);
+  if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(target.chainId))
+   throw Error("Destination RPC chain ID differs from configured chain: "+key);
+  const [bal,price]=await Promise.all([
+   publicRead(target.rpcUrls?.[0],"eth_getBalance",[account,"latest"],fetcher),
+   publicRead(target.rpcUrls?.[0],"eth_gasPrice",[],fetcher)
+  ]);
+  if(!QTY.test(bal||"")||!QTY.test(price||"")||BigInt(price)<=0n)
+   throw Error("Invalid destination gas quote or wallet native balance: "+key);
+  // A positive one-wei balance is NOT evidence that a Mailbox delivery
+  // can be paid. Require the same conservative 1.2m-gas envelope as the
+  // commercial estimator, or a current stage-specific sponsor reserve.
+  const nativeGasFloor=BigInt(price)*1200000n*13n/10n;
+  if(BigInt(bal)<nativeGasFloor){
+   if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
+   if(!sponsor){
+    const response=await fetcher("/api/xita/v1/managed/health",{
+     cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+    }).catch(()=>null);
+    sponsor=response?.ok?await response.json().catch(()=>null):null;
+   }
+   if(sponsor?.ok!==true||sponsor.sponsorship?.chains?.[key]!==true)
+    throw Error("Destination native gas absent and sponsorship not available on "+key);
+  }
+ }
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src,{allowSwitch:true});
  await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
@@ -146,10 +264,10 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    data:selector("balanceOf(address)")+addrWord(account)},"latest"]);
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
   const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
-   data:selector("allowance(address,address)")+addrWord(account)+addrWord(route.gateway)},"latest"]);
+   data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
   if(BigInt(allowance)<units){
    const approve={from:account,to:route.sourceToken,value:"0x0",
-    data:selector("approve(address,uint256)")+addrWord(route.gateway)+word(units)};
+    data:selector("approve(address,uint256)")+addrWord(paidAdapter||onwardAdapter||route.gateway)+word(units)};
    const gas=await request(provider,"eth_estimateGas",[approve]);
    const cash=await sourceGasAffordable(provider,account);
    preflightGas(gas,cash.gasPrice,0n,cash.balance);
@@ -161,22 +279,104 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
    if(approvalReceipt.status!=="0x1")throw Error("Token approval failed. No tokens were bridged");
    const confirmed=await request(provider,"eth_call",[{to:route.sourceToken,
-    data:selector("allowance(address,address)")+addrWord(account)+addrWord(route.gateway)},"latest"]);
+    data:selector("allowance(address,address)")+addrWord(account)+
+     addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
    if(BigInt(confirmed)<units)throw Error("Confirmed approval is insufficient for transfer");
   }
  }else if(quote.tokenAmount!==0n)throw Error("Native transfer unexpectedly requires ERC-20 approval");
- const tx={from:account,to:route.gateway,data:bridgeCalldata(dst.domainId,account,units),
+ let tx={from:account,to:route.gateway,data:bridgeCalldata(dst.domainId,account,units),
   value:hex(quote.value)};
+ if(onwardAdapter){
+  tx={from:account,to:onwardAdapter,value:hex(quote.value),
+   data:continueJourneyCalldata(onwardParentMessageId,route.gateway,route.routeId,
+    dst.domainId,account,units)};
+ }
+ let interchainFeeWei=null;
+ if(paidAdapter){
+  // Request a fresh EIP-712 fee quote AFTER any slow ERC-20 approval.
+  // The source lock and Interchain Fee are atomic in this ONE wallet TX.
+  const quoteRequest={asset,source,destination,amountRaw:units.toString(),
+   payer:account,recipient:account};
+  const response=await fetcher("/api/xita/v1/managed/quote",{
+   method:"POST",credentials:"omit",cache:"no-store",
+   headers:{"content-type":"application/json",accept:"application/json"},
+   body:JSON.stringify(quoteRequest)
+  });
+  if(!response?.ok)throw Error("Interchain Fee quote unavailable; no bridge was submitted");
+  const result=await response.json();
+  const validated=checkInterchainQuote(result,{catalog,account,asset,source,
+   destination,route,firstDestination,amountRaw:units,
+   validatorNativeWei:quote.value,adapter:paidAdapter});
+  tx=validated.tx;interchainFeeWei=validated.interchainFeeWei;
+ }
+ // Simulate source-native payment and all adapter/internal Gateway calls
+ // after required allowance changes but before requesting wallet signature.
+ await request(provider,"eth_call",[tx,"latest"]);
  const estimate=await request(provider,"eth_estimateGas",[tx]);
  const cash=await sourceGasAffordable(provider,account);
- preflightGas(estimate,cash.gasPrice,quote.value,cash.balance);
+ preflightGas(estimate,cash.gasPrice,BigInt(tx.value),cash.balance);
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src);
  await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
- return {txHash,sourceChain:source,routeName:route.name,feeWei:String(quote.validatorFee)};
+ return {txHash,sourceChain:source,routeName:route.name,
+  feeWei:String(quote.validatorFee),interchainFeeWei,finalDestinationChain:destination};
+}
+// Continue a fully verified spoke->XGR first hop by using the existing public
+// Gateway bridge() as the SECOND user-signed transfer. No GmbH executor, no
+// replayed source lock, no second commercial adapter fee, no browser WAL.
+//
+// Without a cryptographic journey-link emitted by the direct second Gateway,
+// a previously observed same-asset/same-amount hop is ambiguous. Fail closed
+// until the full finality-aware index is complete and duplicates are excluded.
+export async function startVerifiedOnwardHop({
+ catalog,account,record,provider,fetcher=globalThis.fetch,onBroadcast
+}){
+ if(!ADDRESS.test(account||"")||!record?.txHash||record.status!=="awaiting-onward")
+  throw Error("Select a confirmed first-hop transfer before continuing");
+ const first=await findWalletSourceTx({catalog,account,
+  sourceChain:record.sourceChain,txHash:record.txHash,fetcher});
+ if(first.status!=="awaiting-onward"||!first.delivered||
+  !first.executionAdapter||first.destinationChain!=="xgrchain"||
+  !first.onwardRouteId||!first.finalDestinationChain||
+  !eq(first.recipient,account)||!eq(first.finalRecipient,account)||
+  !/^[1-9][0-9]*$/.test(first.amountRaw||"")||
+  !eq(first.messageId,record.messageId))
+  throw Error("First-hop delivery or onward intent is not independently verified");
+ const onward=deployedRoutes(catalog).filter(r=>
+  r.source==="xgrchain"&&r.destination===first.finalDestinationChain&&
+  r.asset===first.asset&&eq(r.routeId,first.onwardRouteId));
+ if(onward.length!==1)throw Error("Signed onward Gateway is not uniquely deployed");
+ // The XGR on-chain adapter is the authoritative once-per-parent ledger.
+ // A bounded/offline indexer can never prove non-existence of a historical
+ // transfer; this durable mapping and wallet pending nonce are the gates.
+ const adapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
+ if(!ADDRESS.test(adapter?.address||"")||
+   !onward[0].gateway||!eq(onward[0].routeId,first.onwardRouteId))
+  throw Error("Verified hub adapter for onward route not documented");
+ const hub=catalog.chains.xgrchain;
+ const hubId=await publicRead(hub.rpcUrls?.[0],"eth_chainId",[],fetcher);
+ if(!QTY.test(hubId||"")||BigInt(hubId)!==BigInt(hub.chainId))
+  throw Error("XGRChain hub RPC mismatch");
+ const already=await publicRead(hub.rpcUrls?.[0],"eth_call",[{
+  to:adapter.address,data:selector("onwardParentUsed(address,bytes32)")+
+    addrWord(account)+first.messageId.slice(2)
+ },"latest"],fetcher);
+ if(!/^0x[0-9a-f]{64}$/i.test(already||"")||
+   ![0n,1n].includes(BigInt(already)))
+  throw Error("Unverifiable durable onward nonce; do not send TX3");
+ if(BigInt(already)===1n)
+  throw Error("This parent message already has a user-signed XGR onward TX. "+
+   "Refresh the chain index; never bridge the same parent twice");
+ const decimals=catalog.assets[first.asset]?.metadata?.decimals;
+ const amount=unitsToAmount(first.amountRaw,decimals);
+ // startTransfer() independently rechecks router bindings, gas, allowances,
+ // wallet nonce, proof readiness and the destination native balance.
+ return startTransfer({catalog,account,asset:first.asset,source:"xgrchain",
+  destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast,
+  commercial:false,onwardParentMessageId:first.messageId});
 }
 // Poll only the immutable message ID from a confirmed source receipt.
 // Never sends a wallet transaction; caller handles destination signing separately.

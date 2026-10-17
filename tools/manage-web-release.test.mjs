@@ -47,3 +47,19 @@ test("updating the published XITA release refreshes both proof and historical tr
  assert.match(done,/restart xita-transfer-indexer\.service/);
  assert.match(done,/is-active --quiet xita-transfer-indexer\.service/);
 });
+
+test("optional global Interchain Fee install is separate from blockchain deployment and protects private keys",()=>{
+ const section=shell.split("install_interchain_fee() (")[1]?.split("\n)\n")[0];
+ assert.ok(section,"missing installer");
+ assert.match(section,/require_clean_main/);
+ assert.match(section,/\/etc\/xita\/quote\.env/);
+ assert.match(section,/\/etc\/xita\/interchain-fee\.env/);
+ assert.match(section,/xita-interchain-fee-quote\.service/);
+ assert.match(section,/xita-interchain-fee-claim\.timer/);
+ assert.match(section,/xita-gas-sponsor\.timer/);
+ assert.match(section,/XITA_INTERCHAIN_FEE_NGINX=1/);
+ assert.match(section,/\/run\/lock\/xita-fee-wallet\.lock/);
+ assert.doesNotMatch(section,/cast send|forge script|ethereum\.request|sendTransaction/);
+ const completion=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.match(completion,/systemctl restart xita-interchain-fee-quote\.service/);
+});

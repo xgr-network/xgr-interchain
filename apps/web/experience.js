@@ -338,13 +338,18 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const actionLabel=!connected?"Connect wallet to transfer":
   busy?"Preparing transaction…":
   selected?.status==="awaiting-proof"?"Continue delivery":
+  selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
+  selected?.status==="awaiting-final-proof"?"Continue final delivery":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
-  !isDirect?"Select the first hop via XGRChain":
+  !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
- const buttonDisabled=busy||connected&&(!deployed&&!selected||!isDirect&&!selected);
+ const buttonDisabled=busy||connected&&(!deployed&&!selected);
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
+  selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
+  selected?.status==="awaiting-final-proof"?"Second hop confirmed · final delivery outstanding":
+  selected?.status==="final-delivery-unknown"?"Second hop confirmed · target RPC status unknown":
   selected?.status==="delivery-unknown"?"Source confirmed · destination RPC unavailable":
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
@@ -372,7 +377,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
   esc(progress.error?"Action needs attention":
    busy?"Checking transaction safety…":
-   selected?"1 / 2 · "+statusLabel:
+   selected?(selected.onwardRouteId?"2 / 4 · ":"1 / 2 · ")+statusLabel:
    deployed?(connected?"Ready to transfer":"Wallet not connected"):
    "Selected route unavailable")+'</strong></div>'+
   (selected||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
@@ -402,6 +407,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
+  '<div class="ux-sponsor-status" role="status" aria-live="polite">'+
+  '<strong>Optional gas sponsorship</strong><span class="ux-small">'+
+  esc(progress.sponsorship?.available===true?
+   "Operator reports native gas capacity on: "+Object.entries(progress.sponsorship?.chains||{}).filter(([,v])=>v===true).map(([chain])=>chain).join(", ")+". Each grant is verified separately; no contractual gas entitlement.":
+   progress.sponsorship?.status==="unavailable"?
+   "Not active. Keep enough native gas on every required chain before transferring.":
+   "Availability not verified. Treat sponsorship as unavailable until confirmed.")+
+  '</span></div>'+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+

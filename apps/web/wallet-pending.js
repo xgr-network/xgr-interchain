@@ -7,8 +7,10 @@ export function pendingDeliveryCount({account,items=[],indexedOpenCount=0}={}){
  if(!ACCOUNT.test(account||"")||!Array.isArray(items))return 0;
  const seen=new Set;
  for(const item of items){
-  if(item?.status==="awaiting-proof"&&item.confirmed===true&&
-   item.delivered===false&&item.account?.toLowerCase()===account.toLowerCase()&&
+  if((item?.status==="awaiting-proof"&&item.delivered===false||
+     item?.status==="awaiting-onward"&&item.delivered===true&&item.onwardRouteId||
+     item?.status==="awaiting-final-proof"&&item.onwardRouteId)&&
+   item.confirmed===true&&item.account?.toLowerCase()===account.toLowerCase()&&
    HASH.test(item.messageId||"")&&HASH.test(item.txHash||""))
     seen.add(item.sourceChain+":"+item.messageId.toLowerCase());
  }

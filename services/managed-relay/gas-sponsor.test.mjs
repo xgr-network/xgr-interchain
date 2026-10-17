@@ -1,0 +1,72 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase} from "./gas-sponsor.mjs";
+const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
+const first={account:addr("a"),asset:"XGR",source_chain:"base",
+ destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
+ amount_raw:"1000000000000000000",execution_adapter:addr("3"),
+ interchain_fee_wei:"10000",delivered:false,final_destination_chain:"polygon",
+ onward_route_id:hash("4"),child_message_id:null,child_source_tx_hash:null};
+test("native gas sponsor selects only verified immutable journey stages",()=>{
+ assert.deepEqual(sponsorStage(first),{stage:"first-delivery",chain:"xgrchain",
+  keyChain:"base",parentMessageId:first.message_id,sourceTxHash:first.source_tx_hash});
+ assert.equal(sponsorStage({...first,execution_adapter:null}),null);
+ assert.equal(sponsorStage({...first,interchain_fee_wei:"0"}),null);
+ assert.equal(sponsorStage({...first,delivered:null}),null);
+ const hub=sponsorStage({...first,delivered:true});
+ assert.equal(hub.stage,"hub-onward");
+ assert.equal(hub.chain,"xgrchain");
+ const final=sponsorStage({...first,delivered:true,child_message_id:hash("5"),
+  child_delivered:false,child_destination_chain:"polygon",
+  child_source_tx_hash:hash("6")});
+ assert.equal(final.stage,"final-delivery");
+ assert.equal(final.chain,"polygon");
+ assert.equal(sponsorStage({...first,delivered:true,child_message_id:hash("5"),
+  child_delivered:true}),null);
+ assert.equal(sponsorGrantKey(first,"first-delivery"),
+  "base:"+hash("1")+":first-delivery");
+ assert.throws(()=>sponsorGrantKey(first,"bad"),/Invalid/);
+});
+test("gas grants may cover gas and validator fee, NEVER a native token principal",()=>{
+ const gas=sponsorGrantNeed({stage:"first-delivery",balanceWei:0n,
+  gasUnits:100000n,gasPriceWei:10n});
+ assert.equal(gas.amountWei,"1300000");
+ assert.equal(sponsorGrantNeed({stage:"first-delivery",
+  balanceWei:2000000n,gasUnits:100000n,gasPriceWei:10n}).status,"not-required");
+ const native=sponsorGrantNeed({stage:"hub-onward",balanceWei:1000000000000000000n,
+  gasUnits:100000n,gasPriceWei:10n,
+  nativePrincipalWei:1000000000000000000n,
+  nativeBridgeValueWei:1000000000000010000n});
+ assert.equal(native.amountWei,"1310000");
+ const missing=sponsorGrantNeed({stage:"hub-onward",balanceWei:1n,
+  gasUnits:100000n,gasPriceWei:10n,
+  nativePrincipalWei:1000000000000000000n,
+  nativeBridgeValueWei:1000000000000010000n});
+ assert.equal(missing.status,"principal-unfunded");
+ assert.equal(missing.amountWei,"0");
+ assert.throws(()=>sponsorGrantNeed({stage:"first-delivery",balanceWei:0n,
+  gasUnits:100000n,gasPriceWei:10n,nativeBridgeValueWei:5n}),/Only XGR/);
+});
+test("durable reserve is committed before any possible payout; duplicate key denied",async()=>{
+ const calls=[],inserts=new Set,client={
+  query:async(q)=>{
+   const sql=typeof q==="string"?q:q.text,values=q?.values||[];
+   calls.push(sql);
+   if(sql.startsWith("SELECT COALESCE"))return {rows:[{amount:"0"}]};
+   if(sql.startsWith("INSERT INTO xita_sponsor_grants")){
+    if(inserts.has(values[0]))return {rows:[]};
+    inserts.add(values[0]);return {rows:[{grant_key:values[0]}]};
+   }
+   return {rows:[]};
+  },
+  release:()=>{}
+ };
+ const pool={connect:async()=>client,query:async()=>({rows:[]})},db=sponsorDatabase(pool);
+ const args={key:sponsorGrantKey(first,"first-delivery"),chain:"xgrchain",
+  recipient:first.account,beneficiary:addr("8"),amountWei:"5000",
+  nonce:17,dailyMaxWei:"10000"};
+ assert.equal(await db.reserveGrant(args),true);
+ assert.equal(await db.reserveGrant(args),false);
+ assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_grants")));
+ await assert.rejects(()=>db.recordSubmitted(args.key,"not-a-hash"),/Invalid/);
+});

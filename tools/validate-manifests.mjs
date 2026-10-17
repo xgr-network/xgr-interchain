@@ -54,7 +54,7 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
     typeof v315?.components==="object"&&v315.components!==null&&!Array.isArray(v315.components)&&
     Object.keys(v315).every(k=>["schemaVersion","components","receiptPaths"].includes(k)),p+": invalid XITA v3.1.5 deployment index");
   if(v315?.components&&typeof v315.components==="object"){
-   const allowed=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"]);
+   const allowed=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","merkleTreeHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
    for(const [component,item] of Object.entries(v315.components)){
     check(allowed.has(component)&&address(item?.address)&&
       hash(item?.runtimeCodeKeccak256)&&
