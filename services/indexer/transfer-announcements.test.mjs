@@ -100,6 +100,20 @@ test("source reorg retracts ONLY matching derived hash and restages it",async()=
  assert.ok(pool.calls.some(c=>c.str.includes("DELETE FROM xita_transfer_operations")));
  assert.ok(pool.calls.some(c=>c.str.includes("state='reported'")));
 });
+test("missing RPC block response is unknown, NEVER a reorg deletion",async()=>{
+ const row={source_chain:"xgrchain",source_tx_hash:txHash,account,
+  route_id:routeId,verified_block_number:128,
+  verified_block_hash:blockHash,verified_message_id:id};
+ const pool=db();const orig=pool.query;
+ pool.query=async arg=>{
+  if(arg.text?.includes("SELECT a.source_chain"))return {rows:[row]};
+  return orig(arg);
+ };
+ const result=await reconcileAnnouncedBlocks({pool,routes:[route],
+  rpc:mock({canonical:null})});
+ assert.equal(result.retracted,0);
+ assert.equal(pool.calls.some(c=>c.str.includes("DELETE FROM xita_transfer_operations")),false);
+});
 test("untrusted hash queue is strictly bounded",async()=>{
  const pool={query:async()=>({rows:[]})};
  const x=await processTransferAnnouncements({catalog:{},routes:[route],
