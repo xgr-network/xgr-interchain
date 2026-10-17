@@ -18,6 +18,7 @@ contract XITAExecutionGatewayTest is Test {
     bytes32 internal constant ROUTE = bytes32(uint256(0xAFFE));
     bytes32 internal constant RECIPIENT = bytes32(uint256(uint160(address(0xCAFE))));
     address internal constant USER = address(0xBEEF);
+    address internal constant RECOVERY_ADMIN = address(0xA11CE);
     address internal relayer;
     XITAExecutionGateway internal managed;
     MockXGRILNRegistry internal registry;
@@ -32,7 +33,7 @@ contract XITAExecutionGatewayTest is Test {
         tokenRouter = new MockILNWarpRouter();
         gateway = new ILNGateway(address(registry), ROUTE, TARGET, address(tokenRouter), false);
         registry.setRoute(TARGET, ROUTE, _route(address(gateway), address(tokenRouter)));
-        managed = new XITAExecutionGateway(address(registry), relayer, payable(relayer));
+        managed = new XITAExecutionGateway(address(registry), payable(relayer), RECOVERY_ADMIN);
         tokenRouter.mint(USER, 10 ether);
         vm.prank(USER);
         tokenRouter.approve(address(managed), type(uint256).max);
@@ -204,7 +205,7 @@ contract XITAExecutionGatewayTest is Test {
         vm.expectRevert(XITAExecutionGateway.UnauthorizedRelayer.selector);
         vm.prank(USER);
         managed.setQuoteLifetimeSeconds(30);
-        vm.startPrank(relayer);
+        vm.startPrank(RECOVERY_ADMIN);
         vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
         managed.setQuoteLifetimeSeconds(0);
         vm.expectRevert(XITAExecutionGateway.InvalidQuoteLifetime.selector);
@@ -217,7 +218,7 @@ contract XITAExecutionGatewayTest is Test {
         vm.warp(uint256(q.issuedAt) + 31);
         _mustRevert(q,signed,q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteExpired.selector);
-        vm.prank(relayer);
+        vm.prank(RECOVERY_ADMIN);
         managed.setQuoteLifetimeSeconds(90);
         assertEq(managed.quoteLifetimeSeconds(),90);
         _execute(q); // Within the hard 90s bound under the restored policy.
@@ -240,7 +241,7 @@ contract XITAExecutionGatewayTest is Test {
         _mustRevert(q,_signature(q,RELAYER_KEY),
             q.bridgeValueWei + q.interchainFeeWei,
             XITAExecutionGateway.QuoteNonceUsed.selector);
-        XITAExecutionGateway other = new XITAExecutionGateway(address(registry), relayer, payable(relayer));
+        XITAExecutionGateway other = new XITAExecutionGateway(address(registry), payable(relayer), RECOVERY_ADMIN);
         bytes memory crossSignature = _signature(q, RELAYER_KEY);
         vm.expectRevert(XITAExecutionGateway.InvalidSignature.selector);
         vm.prank(USER);
