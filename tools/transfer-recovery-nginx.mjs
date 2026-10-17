@@ -37,6 +37,31 @@ function exactLocation(config,path){
   throw Error("Existing "+path+" does not use approved read-only upstream");
  return true;
 }
+// Approved public RPC origins from the deployed, reviewed chain catalog.
+// Nginx emits this CSP at the HTTPS vhost, so catalog changes do not silently
+// expand browser network permissions without a corresponding review.
+export const browserRpcOrigins=Object.freeze([
+ "https://base-rpc.publicnode.com",
+ "https://gateway.tenderly.co",
+ "https://base.gateway.tenderly.co",
+ "https://polygon-bor-rpc.publicnode.com",
+ "https://arbitrum-one-rpc.publicnode.com"
+]);
+export function patchXitaBrowserRpcCsp(config){
+ const header=/^([ \\t]*add_header[ \\t]+Content-Security-Policy[ \\t]+")([^"\\r\\n]+)("[ \\t]+always;[ \\t]*)$/gm;
+ const matches=[...config.matchAll(header)];
+ if(matches.length!==1)throw Error("Expected exactly one XITA Content-Security-Policy header");
+ const [whole,begin,policy,end]=matches[0];
+ const clauses=[...policy.matchAll(/(?:^|;)\\s*connect-src\\s+([^;]*)/g)];
+ if(clauses.length!==1)throw Error("Expected exactly one XITA CSP connect-src directive");
+ const values=clauses[0][1].trim().split(/\\s+/);
+ if(!values.includes("'self'"))throw Error("XITA CSP connect-src missing self");
+ const additions=browserRpcOrigins.filter(origin=>!values.includes(origin));
+ if(!additions.length)return config;
+ const updated=policy.replace(/(\\bconnect-src\\s+)([^;]+)/,(_all,start,value)=>
+  start+value.trimEnd()+" "+additions.join(" "));
+ return config.replace(whole,begin+updated+end);
+}
 export function patchXitaTransferNginx(config){
  if(typeof config!=="string"||!config.includes("server_name xita.xgr.network"))
   throw Error("Wrong XITA virtual host");
@@ -56,8 +81,6 @@ export function patchXitaTransferNginx(config){
    "    }\n\n    ").join("");
   next=next.replace(marker,blocks+marker);
  }
- const connectMarker="connect-src 'self' https://rpc.xgr.network https://explorer.xgr.network";
- if(next.includes(connectMarker)&&!next.includes("https://base-rpc.publicnode.com"))
-  next=next.replace(connectMarker,connectMarker+" https://base-rpc.publicnode.com");
+ next=patchXitaBrowserRpcCsp(next);
  return {config:next,changed:next!==config,added:missing.map(item=>item.path)};
 }
