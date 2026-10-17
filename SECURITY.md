@@ -58,3 +58,7 @@ Destination security uses the route-aware XGRILNInterchainISMV2 with canonical r
 ## Supported code
 
 Security reports should target the current `main` branch and current deployed contracts. Identify the affected XETA deployment, chain, code version and transaction evidence when reporting.
+
+## Independent security reviews
+
+Published and pending review metadata is indexed in [`audits/`](./audits/). Detailed, unremediated findings and reproduction materials follow the confidential disclosure policy above; audit reports are published only after responsible remediation and verification. AI-assisted reviews are not formal third-party security certifications.
