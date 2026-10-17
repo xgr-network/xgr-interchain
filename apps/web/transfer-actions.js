@@ -214,6 +214,9 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   const onward=deployedRoutes(catalog).filter(r=>r.asset===asset&&
    r.source==="xgrchain"&&r.destination===destination);
   if(onward.length!==1)throw Error("Final onward route not uniquely deployed");
+  if(commercial!==false&&!executableTransferRoutes(catalog).some(r=>
+    r.asset===asset&&r.source==="xgrchain"&&r.destination===destination))
+   throw Error("Interchain Fee · Execution Gateway must be verified on final destination");
   const hubAdapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
   if(!paidAdapter||!hubAdapter?.address)
    throw Error("Two-hop transfer requires both deployed and verified fee/continuation adapters");
