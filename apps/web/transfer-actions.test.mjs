@@ -73,7 +73,9 @@ function sourceProvider(sends,overrides={}){
 const rpcResponse=(result)=>({ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})});
 const testFetch=(result="0x"+(1n*10n**18n).toString(16))=>async(url,options)=>{
  if(url==="/api/xeta/v1/transfer/health")return {ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
- return rpcResponse(JSON.parse(options.body).method==="eth_chainId"?"0x2105":result);
+ const method=JSON.parse(options.body).method;
+ return rpcResponse(method==="eth_chainId"?"0x2105":
+  method==="eth_gasPrice"?"0x3b9aca00":result);
 };
 test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
  assert.equal(amountToUnits("1.125",18),1125000000000000000n);
