@@ -63,6 +63,8 @@ contract XITAExecutionGateway is EIP712 {
     // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
     uint64 public quoteLifetimeSeconds = 90;
     mapping(address => mapping(uint256 => bool)) public nonceUsed;
+    // Hub: exact wallet-initiated continuation of a confirmed first-hop message.
+    mapping(address => mapping(bytes32 => bool)) public onwardParentUsed;
     mapping(bytes32 => FeeReceipt) public feeReceipt;
     uint256 public pendingInterchainFeesWei;
     uint256 private entered = 1;
@@ -99,6 +101,17 @@ contract XITAExecutionGateway is EIP712 {
         uint256 quoteNonce
     );
     event InterchainFeeClaimed(address indexed beneficiary, uint256 amountWei);
+    event OnwardJourneyDispatched(
+        bytes32 indexed parentMessageId,
+        bytes32 indexed messageId,
+        address indexed payer,
+        bytes32 routeId,
+        uint32 destinationDomain,
+        bytes32 recipient,
+        uint256 amount,
+        uint256 validatorFeeWei,
+        uint256 bridgeNativeWei
+    );
     event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
 
     modifier nonReentrant() {
@@ -185,25 +198,9 @@ contract XITAExecutionGateway is EIP712 {
             tokenAmount != (token == address(0) ? 0 : q.amount)) revert InvalidBridgeValue();
         if (msg.value != q.bridgeValueWei + q.interchainFeeWei) revert InvalidBridgeValue();
 
-        nonceUsed[q.payer][q.nonce] = true; // Reverts atomically on any subsequent failure.
-        if (token != address(0)) {
-            IERC20 asset = IERC20(token);
-            uint256 beforeBalance = asset.balanceOf(address(this));
-            asset.safeTransferFrom(msg.sender, address(this), q.amount);
-            if (asset.balanceOf(address(this)) - beforeBalance != q.amount) {
-                revert InvalidTokenDebit(); // Disallow fee-on-transfer token underpayment.
-            }
-            asset.forceApprove(q.gateway, q.amount);
-            messageId = gateway.bridge{value:q.bridgeValueWei}(
-                q.destinationDomain, q.recipient, q.amount
-            );
-            asset.forceApprove(q.gateway, 0);
-            if (asset.balanceOf(address(this)) != beforeBalance) revert InvalidTokenDebit();
-        } else {
-            messageId = gateway.bridge{value:q.bridgeValueWei}(
-                q.destinationDomain, q.recipient, q.amount
-            );
-        }
+        nonceUsed[q.payer][q.nonce] = true; // Reverts with any subsequent failure.
+        messageId = _bridgeExistingGateway(gateway, q.gateway, q.destinationDomain,
+            q.recipient, q.amount, q.bridgeValueWei);
         if (messageId == bytes32(0) || feeReceipt[messageId].exists) revert DuplicateMessageId();
 
         feeReceipt[messageId] = FeeReceipt({
@@ -217,6 +214,72 @@ contract XITAExecutionGateway is EIP712 {
             q.destinationDomain, q.recipient, q.finalDestinationDomain,
             q.finalRecipient, q.onwardRouteId, q.amount, validatorFeeWei,
             bridgeNativeWei, q.interchainFeeWei, q.nonce);
+    }
+
+    /// @notice Wallet-signed HUB second hop, linked to one original message.
+    /// @dev Exactly one user transaction. No extra GmbH fee and no signer
+    ///      permission. Validators still collect the canonical XGR native fee.
+    ///      The read-only indexer independently checks parent source receipt,
+    ///      wallet, route, amount and confirmed Mailbox delivery. Fungible
+    ///      balances do not imply on-chain provenance of individual coins.
+    function continueJourney(
+        bytes32 parentMessageId,
+        address gatewayAddress,
+        bytes32 expectedRouteId,
+        uint32 destination,
+        bytes32 recipient,
+        uint256 amount
+    ) external payable nonReentrant returns (bytes32 messageId) {
+        if (block.chainid != 1643 || parentMessageId == bytes32(0) ||
+            gatewayAddress == address(0) || expectedRouteId == bytes32(0) ||
+            destination == 0 || destination == 1643 || recipient == bytes32(0) ||
+            amount == 0 || onwardParentUsed[msg.sender][parentMessageId]) {
+            revert InvalidQuote();
+        }
+        IXITAExistingGateway gateway = IXITAExistingGateway(gatewayAddress);
+        if (address(gateway.ilnRegistry()) != address(sourceRegistry) ||
+            gateway.routeId() != expectedRouteId ||
+            gateway.destinationDomain() != destination) revert InvalidRegisteredRoute();
+        (uint64 chainId,,address registeredGateway,,,,,,bool enabled) =
+            sourceRegistry.getRoute(destination,expectedRouteId);
+        if (!enabled || chainId != uint64(block.chainid) ||
+            registeredGateway != gatewayAddress) revert InvalidRegisteredRoute();
+        (uint256 validatorFeeWei,,uint256 bridgeNativeWei,uint256 tokenAmount) =
+            gateway.quoteILN(destination,recipient,amount);
+        if (validatorFeeWei == 0 ||
+            tokenAmount != (gateway.warpToken() == address(0) ? 0 : amount) ||
+            msg.value != bridgeNativeWei) revert InvalidBridgeValue();
+        onwardParentUsed[msg.sender][parentMessageId] = true;
+        messageId = _bridgeExistingGateway(gateway,gatewayAddress,destination,
+            recipient,amount,bridgeNativeWei);
+        if (messageId == bytes32(0)) revert DuplicateMessageId();
+        emit OnwardJourneyDispatched(parentMessageId,messageId,msg.sender,
+            expectedRouteId,destination,recipient,amount,validatorFeeWei,bridgeNativeWei);
+    }
+
+    /// @dev Reuse the SAME verified Gateway/token-handling path for both
+    ///      paid first-hop and fee-free onward transactions.
+    function _bridgeExistingGateway(
+        IXITAExistingGateway gateway,address gatewayAddress,uint32 destination,
+        bytes32 recipient,uint256 amount,uint256 bridgeNativeWei
+    ) internal returns (bytes32 messageId) {
+        address token = gateway.warpToken();
+        if (token != address(0)) {
+            IERC20 asset = IERC20(token);
+            uint256 beforeBalance = asset.balanceOf(address(this));
+            asset.safeTransferFrom(msg.sender,address(this),amount);
+            if (asset.balanceOf(address(this)) - beforeBalance != amount)
+                revert InvalidTokenDebit();
+            asset.forceApprove(gatewayAddress,amount);
+            messageId = gateway.bridge{value:bridgeNativeWei}(
+                destination,recipient,amount);
+            asset.forceApprove(gatewayAddress,0);
+            if (asset.balanceOf(address(this)) != beforeBalance)
+                revert InvalidTokenDebit();
+        } else {
+            messageId = gateway.bridge{value:bridgeNativeWei}(
+                destination,recipient,amount);
+        }
     }
 
     /// @notice Claim the ENTIRE accrued Interchain Fee balance in one operation.
