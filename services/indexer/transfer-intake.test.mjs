@@ -1,21 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {validateAnnouncement,storeAnnouncement,intakeHandler} from "./transfer-intake.mjs";
+import {readFileSync} from "node:fs";
 const wallet="0x"+"a".repeat(40),hash="0x"+"b".repeat(64);
-const catalog={chains:{xgrchain:{chainId:1643},base:{chainId:8453}},
- infrastructure:{xgrchain:{xitaV315:{components:{mailbox:{address:"0x"+"c".repeat(40)}}}},
-  base:{xitaV315:{components:{mailbox:{address:"0x"+"d".repeat(40)}}}}},
- assets:{XGR:{deployment:{present:true,assetId:"0x"+"e".repeat(64),
-    routeDeployments:[{routeName:"xgr_to_base",sourceChain:"xgrchain",
-      destinationChain:"base",routeId:"0x"+"f".repeat(64),
-      components:{gateway:{address:"0x"+"1".repeat(40)}}}]},
-   routes:{routes:[{name:"xgr_to_base",sourceChain:"xgrchain",destinationChain:"base"}]}}}};
+const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
 test("intake accepts ONLY source wallet chain and 32-byte hash",()=>{
  const msg=validateAnnouncement({account:wallet.toUpperCase().replace("0X","0x"),
   sourceChain:"xgrchain",txHash:hash},catalog);
  assert.equal(msg.account,wallet);assert.equal(msg.txHash,hash);
  for(const value of [{account:"x",sourceChain:"xgrchain",txHash:hash},
-  {account:wallet,sourceChain:"base",txHash:hash},
+  {account:wallet,sourceChain:"polygon",txHash:hash},
   {account:wallet,sourceChain:"xgrchain",txHash:"0x1"},
   {account:wallet,sourceChain:"xgrchain",txHash:hash,confirmed:true}])
   assert.throws(()=>validateAnnouncement(value,catalog),/Invalid/);
