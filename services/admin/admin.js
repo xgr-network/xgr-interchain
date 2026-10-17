@@ -193,7 +193,7 @@ function modalValues(component){
   const v=el("modal-"+key).value.trim();
   if(key==="relayerOwner"||key==="interchainFeeRecipient"){
    if(!/^0x[0-9a-f]{40}$/i.test(v)||/^0x0{40}$/i.test(v))
-    throw Error("Gültige öffentliche Relayer-Owner-Adresse erforderlich (kein Private Key)");
+    throw Error("Gültige öffentliche Quote-Signierer-/Fee-Empfänger-Adresse erforderlich (kein Private Key)");
    result[key]=v.toLowerCase();
   }else{
    if(!/^[1-9][0-9]*$/.test(v))throw Error("Bitte positiven ganzzahligen Wert eingeben: "+key);
@@ -350,7 +350,7 @@ async function openContractModal(chainName,component){
    input.placeholder=["relayerOwner","interchainFeeRecipient"].includes(key)?"0x… öffentliche EVM-Adresse":
     suggestion==null?"Manuell festlegen":String(suggestion);
    input.title=key==="relayerOwner"?
-    "Öffentliche Adresse des GmbH-Relayers. Signiert Gebührenquotes, darf nur Servicegebühren abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
+    "Öffentliche Quote-Signierer-Adresse. Signiert nur EIP-712-Gebührenquotes, kann keine Einnahmen abheben. NIEMALS einen Private Key eingeben.":component==="factory"?
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
