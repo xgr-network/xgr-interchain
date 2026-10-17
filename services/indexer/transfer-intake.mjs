@@ -27,9 +27,9 @@ const rate=new Map();let globalWindow=0,globalCount=0;
 export function admitRate({ip,account,now=Date.now(),state=rate}){
  const minute=Math.floor(now/60000);
  if(minute!==globalWindow){globalWindow=minute;globalCount=0;state.clear();}
- if(++globalCount>60)return false;
+ if(++globalCount>15)return false;
  const a="wallet:"+account,client="ip:"+ip;
- for(const [key,max] of [[a,6],[client,12]]){
+ for(const [key,max] of [[a,3],[client,6]]){
   const next=(state.get(key)||0)+1;
   if(next>max)return false;
   state.set(key,next);
