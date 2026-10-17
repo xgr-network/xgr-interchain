@@ -1,5 +1,5 @@
 [Unit]
-Description=XITA optional GmbH managed relay quote signer (loopback only)
+Description=XITA Global Interchain Fee Quote Signer (loopback only)
 After=network-online.target
 Wants=network-online.target
 
@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=xgradmin
 WorkingDirectory=/home/xgradmin/repos/xgr-interchain
-EnvironmentFile=/etc/xita/managed-relay.env
+EnvironmentFile=/etc/xita/quote.env
 ExecStart=/usr/bin/node services/managed-relay/server.mjs
 Restart=on-failure
 RestartSec=10
