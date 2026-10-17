@@ -3,7 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
-import {COINGECKO_GAS_COIN_IDS,costInSourceWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
+import {COINGECKO_GAS_COIN_IDS,quotedJourneyCostWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
 
 export const MANAGED_QUOTE_TYPES=Object.freeze({
  SponsoredQuote:[
@@ -52,39 +52,70 @@ export async function buildManagedQuote({
  const execution=getAddress(executionAddress);
  // Globally uniform gross quote. Tax status and customer jurisdiction are
  // separate back-office records, never price-signing or protocol conditions.
- // Full two-hop fee coverage is mandatory before we offer spoke-to-spoke quotes.
- // Do not silently price only the final delivery and omit XGR hop-2 expenses.
- if(second)throw Error("Two-hop journey cost and VAT quote not fully implemented");
+ // Two-hop fees include both mailbox deliveries, the XGR onward bridge gas
+ // and the ON-CHAIN XGR validator/router fee for the second hop.
  const owner=await readExecutionOwner({source,executionAddress:execution});
  if(!eq(owner,signer?.address))throw Error("Configured quote signing key does not match deployed contract");
- const [bridge,gas,priceData,onChainLifetime]=await Promise.all([
+ const finalChain=catalog.chains[destination];
+ const secondRoute=second?.[0]??null;
+ const stageChains=[firstDestination,...(secondRoute?[destination]:[])];
+ const gasByChain=new Map;
+ const [bridge,priceData,onChainLifetime,secondBridge]=await Promise.all([
   readGatewayQuote({source,route,destinationDomain:dst.domainId,
    recipient:zeroPadValue(recipientAddress,32),amount}),
-  getDestinationGasQuote({destination,relayerAddress:signer.address}),
   getCoinGeckoSnapshot({source,destination}),
-  readQuoteLifetime({source,executionAddress:execution})
+  readQuoteLifetime({source,executionAddress:execution}),
+  secondRoute?readGatewayQuote({source:"xgrchain",route:secondRoute,
+   destinationDomain:finalChain.domainId,
+   recipient:zeroPadValue(recipientAddress,32),amount}):Promise.resolve(null)
  ]);
  if(!Number.isSafeInteger(Number(dst?.domainId))||dst.domainId<1)
-  throw Error("Invalid destination chain domain");
+  throw Error("Invalid first destination domain");
  const bridgeValue=BigInt(bridge?.bridgeNativeWei??-1);
  if(bridgeValue<1n||BigInt(bridge?.validatorFeeWei??0)<1n||
     (route.sourceToken===null?BigInt(bridge.tokenAmount??-1)!==0n:
      BigInt(bridge.tokenAmount??-1)!==amount))
   throw Error("Source Gateway bridge quote unavailable or token mismatch");
- const units=BigInt(gasUnits),gasPriceWei=BigInt(gas.gasPriceWei);
- const destinationCost=units*gasPriceWei;
- if(BigInt(gas.availableWei)<destinationCost*2n)
-  throw Error("Relayer lacks destination native gas reserve");
+ const gasSnapshots=await Promise.all([...new Set(stageChains)].map(async name=>{
+  const fee=await getDestinationGasQuote({destination:name,
+   relayerAddress:signer.address});
+  const unit=BigInt(fee?.gasPriceWei??0);
+  if(unit<1n)throw Error("Unpriced destination gas: "+name);
+  return [name,{gasPriceWei:unit,
+   availableWei:BigInt(fee.availableWei??0n)}];
+ }));
+ for(const [name,data] of gasSnapshots)gasByChain.set(name,data);
+ const units=BigInt(gasUnits);
+ if(units<21000n||units>5000000n)throw Error("Gas units exceed quote safety cap");
+ const stages=[{chain:firstDestination,kind:"first-delivery",
+  gasUnits:units,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei}];
+ let onwardFeeWei=null;
+ if(secondRoute){
+  if(!secondBridge||BigInt(secondBridge.validatorFeeWei??0)<1n)
+   throw Error("Second hop validator quote unavailable");
+  const secondValue=BigInt(secondBridge.bridgeNativeWei??-1);
+  const secondPrincipal=secondRoute.sourceToken===null?amount:0n;
+  if(secondValue<=secondPrincipal||
+     secondValue-secondPrincipal<BigInt(secondBridge.validatorFeeWei)||
+     BigInt(secondBridge.tokenAmount??-1)!==(secondRoute.sourceToken===null?0n:amount))
+   throw Error("Second hop protocol quote or principal invalid");
+  onwardFeeWei=secondValue-secondPrincipal;
+  stages.push({chain:"xgrchain",kind:"onward-bridge-gas",
+   gasUnits:units,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei});
+  stages.push({chain:"xgrchain",kind:"onward-protocol-fee",
+   nativeFeeWei:onwardFeeWei});
+  stages.push({chain:destination,kind:"final-delivery",
+   gasUnits:units,gasPriceWei:gasByChain.get(destination).gasPriceWei});
+ }
  const ttl=BigInt(onChainLifetime);
- if(ttl<1n||ttl>90n)throw Error("Invalid deployed managed quote lifetime");
+ if(ttl<1n||ttl>90n)throw Error("Invalid deployed fee quote lifetime");
  const now=clock();
  const issuedAt=Math.floor(now/1000);
  if(!Number.isSafeInteger(issuedAt)||issuedAt<1)
-  throw Error("Invalid managed quote issuance clock");
+  throw Error("Invalid quote issuance clock");
  const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
- const fee=costInSourceWei({sourcePriceUsd:oracle.sourceUsd,
-  destinationPriceUsd:oracle.destinationUsd,destinationGasPriceWei:gasPriceWei,
-  destinationGasUnits:units,vatBps:0n});
+ const fee=quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
+ const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(interchainFeeWei===0n)throw Error("Native source service fee unavailable");
  const expiresAt=issuedAt+Number(ttl);
@@ -114,8 +145,10 @@ export async function buildManagedQuote({
    destinationNativeCoinGeckoId:oracle.destinationId,
    sourceNativeUsd:oracle.sourceUsd,destinationNativeUsd:oracle.destinationUsd,
    destinationGasUnits:units.toString(),destinationGasPriceWei:gasPriceWei.toString(),
-   estimatedDestinationCostWei:fee.estimatedDestinationCostWei,
+   estimatedDestinationCostWei:(units*gasPriceWei).toString(),
    estimatedCostSourceWei:fee.estimatedCostSourceWei,
+   onwardProtocolFeeWei:onwardFeeWei===null?null:onwardFeeWei.toString(),
+   journeyCostStages:fee.stages,
    grossInterchainFeeWei:fee.grossInterchainFeeWei,
    sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
    markupBps:fee.markupBps,
