@@ -155,6 +155,33 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=probeBaseArc
     String(last?.message||"unknown").slice(0,125));
  };
 }
+// A known TX hash needs receipt and block confirmation, not archive-length
+// eth_getLogs. Separate this reader from the strict historical route scanner:
+// Base public RPCs can serve individual receipts even when archive log probes
+// are rate-limited. Both readers independently verify chain IDs and fail over.
+export function candidateRpc({fetcher=globalThis.fetch,
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
+ const identities=new Map;
+ return async (chain,method,params)=>{
+  if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
+   throw Error("Invalid candidate source chain");
+  let last=null;
+  for(const url of rpcCandidates(chain,{baseUrls})){
+   try{
+    const prev=identities.get(url);
+    if(!prev||prev.chainId!==chain.chainId||prev.expire<=now()){
+     const id=await publicRead(url,"eth_chainId",[],fetcher);
+     if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
+      throw Error("Candidate RPC chain ID mismatch");
+     identities.set(url,{chainId:chain.chainId,expire:now()+300000});
+    }
+    return await publicRead(url,method,params,fetcher);
+   }catch(error){identities.delete(url);last=error;}
+  }
+  throw Error("All candidate RPCs failed for "+String(chain.name||chain.chainId)+": "+
+   String(last?.message||"unknown").slice(0,125));
+ };
+}
 export function validateIndexedGatewayLog(log,route,from,to){
  if(!log||norm(log.address)!==norm(route.gateway)||
   norm(log.topics?.[0])!==norm(OPERATION_TOPIC)||

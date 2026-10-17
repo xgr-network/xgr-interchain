@@ -25,6 +25,7 @@ Usage: ./manage.sh <command>
   update        Pull GitHub main, validate, publish web, restart admin
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
+  install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
   install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
@@ -62,8 +63,8 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
-    node --test tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs
+    node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
+    node --test tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
@@ -297,6 +298,42 @@ install_transfer_api() (
 )
 
 
+# Optional untrusted, unprivileged TX-hash intake service. This does NOT
+# modify derived operation tables, source block cursors, or protocol execution.
+# SQL 005 and three distinct DB-role grants are an operator prerequisite.
+install_transfer_intake() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
+  local user node_bin unit
+  user="$(id -un)"
+  node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$ROOT" == /* && "$node_bin" == /* ]] || {
+    echo "Unsafe XITA intake deployment context" >&2
+    return 1
+  }
+  if ! privileged test -f /etc/xita/transfer-intake.env; then
+    echo "ERROR: Provision restricted /etc/xita/transfer-intake.env AFTER SQL 005." >&2
+    return 1
+  fi
+  npm install --prefix "$ROOT/services/indexer" --ignore-scripts --no-audit --no-fund --package-lock=false
+  unit="$(mktemp)"
+  trap 'rm -f "${unit:-}"' EXIT
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/indexer/transfer-intake.mjs|" \
+      "$ROOT/services/indexer/xita-transfer-intake.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-transfer-intake.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-transfer-intake.service
+  privileged systemctl restart xita-transfer-intake.service
+  privileged systemctl is-active xita-transfer-intake.service
+  privileged env XITA_TRANSFER_INTAKE_NGINX=1 "$node_bin" \
+    "$ROOT/tools/install-transfer-recovery-nginx.mjs" "${XITA_NGINX_SITE_CONF:-}"
+  curl --fail --silent --show-error --max-time 5 http://127.0.0.1:4089/health
+  echo
+  echo "SUCCESS: isolated, rate-limited untrusted TX intake installed. No wallet key or on-chain action."
+)
+
 # Enabled only after operator configures /etc/xita/interchain-fee.env
 # and deploys the distinct per-chain ExecutionGateway contracts via Admin UI.
 install_interchain_fee() (
@@ -373,6 +410,9 @@ complete_update() {
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
   fi
+  if systemctl is-active --quiet xita-transfer-intake.service 2>/dev/null; then
+    privileged systemctl restart xita-transfer-intake.service
+  fi
   if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
     privileged systemctl restart xita-interchain-fee-quote.service
   fi
@@ -431,6 +471,9 @@ case "${1:-help}" in
     ;;
   update) update ;;
   install-sync) install_sync ;;
+  install-transfer-intake)
+    install_transfer_intake
+    ;;
   install-transfer-api) install_transfer_api ;;
   install-interchain-fee) install_interchain_fee ;;
   help|-h|--help) usage ;;

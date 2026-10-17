@@ -6,6 +6,7 @@ import {readFileSync,writeFileSync,existsSync,realpathSync,statSync} from "node:
 import {execFileSync} from "node:child_process";
 import {patchXitaTransferNginx} from "./transfer-recovery-nginx.mjs";
 import {patchInterchainFeeNginx} from "./interchain-fee-nginx.mjs";
+import {patchTransferIntakeNginx} from "./transfer-intake-nginx.mjs";
 const sites=[
  "/etc/nginx/sites-enabled/xita.xgr.network.conf",
  "/etc/nginx/sites-enabled/xita.xgr.network",
@@ -22,7 +23,10 @@ if(!file.startsWith("/etc/nginx/")||!statSync(file).isFile())fatal("Unsafe nginx
 const before=readFileSync(file,"utf8");
 if(!before.includes("server_name xita.xgr.network"))fatal("Wrong virtual host");
 const commercial=process.env.XITA_INTERCHAIN_FEE_NGINX==="1";
-const {config:next,changed,added}=commercial?
+const intake=process.env.XITA_TRANSFER_INTAKE_NGINX==="1";
+if(commercial&&intake)fatal("Conflicting route-install modes");
+const {config:next,changed,added}=intake?
+ patchTransferIntakeNginx(before):commercial?
  patchInterchainFeeNginx(before):patchXitaTransferNginx(before);
 if(!changed){
  console.log("XITA "+(commercial?"Interchain Fee":"transfer recovery")+" nginx routes already configured: "+file);

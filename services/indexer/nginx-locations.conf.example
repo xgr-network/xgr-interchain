@@ -45,3 +45,15 @@ location = /api/xeta/v1/transfers/stats {
     proxy_read_timeout 15s;
     add_header Cache-Control "no-store" always;
 }
+
+# OPTIONAL: enable only after SQL 005 and a separately restricted 4089 service.
+# The browser supplies UNTRUSTED TX candidates, not canonical transfer evidence.
+location = /api/xeta/v1/transfers/announce {
+    client_max_body_size 512;
+    proxy_pass http://127.0.0.1:4089;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_connect_timeout 2s;
+    proxy_read_timeout 5s;
+    add_header Cache-Control "no-store" always;
+}

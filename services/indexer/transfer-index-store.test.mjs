@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {routeIndexCoverage,indexedTransferRow,linkIndexedJourneys} from "./transfer-index-store.mjs";
+import {routeIndexCoverage,indexedTransferRow,linkIndexedJourneys,readWalletTransferIndex} from "./transfer-index-store.mjs";
 const addr=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 test("same directional route name across different token projects NEVER shares a cursor",()=>{
  const routes=[
@@ -80,4 +80,28 @@ test("only the exact canonical onward parent message and route completes a two-h
  }
  linked=linkIndexedJourneys([parent],[child,{...child,messageId:hash("e")}])[0];
  assert.equal(linked.status,"journey-ambiguous");
+});
+
+test("only RPC-observed unconfirmed source hints appear and cannot count as deliveries",async()=>{
+ const wallet=addr("a"),txHash=hash("5");
+ let stagedState="reported";
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"0",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_announcements a"))
+   return {rows:[{source_chain:"xgrchain",source_tx_hash:txHash,
+    account:wallet,state:stagedState}]};
+  return {rows:[]};
+ }};
+ const params={pool,routeList:[],limit:5};
+ let result=await readWalletTransferIndex({},wallet,params);
+ assert.deepEqual(result.items,[],"Never publish an unverified browser claim");
+ stagedState="observed";
+ result=await readWalletTransferIndex({},wallet,params);
+ assert.equal(result.items.length,1);
+ assert.equal(result.items[0].status,"pending-source");
+ assert.equal(result.items[0].confirmed,false);
+ assert.equal(result.items[0].messageId,null);
+ assert.equal(result.openCount,0,"Unconfirmed source is not a mint/unlock");
 });
