@@ -119,3 +119,35 @@ test("Base Registry create draft deposits three exact, independently specified v
  assert.equal(BigInt(draft.transaction.value),6000n);
  assert.notEqual(BigInt(draft.transaction.value),3000n);
 });
+
+test("one optional Interchain Fee Gateway per approved chain uses exact own sourceRegistry and public sign/payee addresses",()=>{
+ const signer=addr(77),payee=addr(88),registry=addr(91);
+ for(const chain of [
+  hub,base,
+  {name:"polygon",chainId:137,domainId:137,blsVerifierFormat:"eip2537"},
+  {name:"arbitrum",chainId:42161,domainId:42161,blsVerifierFormat:"eip2537"}
+ ]){
+  const cfg={...infra(chain),components:[{key:"sourceRegistry",address:registry}]};
+  const artifact={component:"executionGateway",creation:"0x"+ "6000".repeat(70)};
+  const proposal=chainDraft({root:process.cwd(),chain,infrastructure:cfg,
+   bootstrap:{chain:chain.name},component:"executionGateway",
+   parameters:{relayerOwner:signer,interchainFeeRecipient:payee},artifact});
+  assert.equal(proposal.chain,chain.name);
+  assert.equal(proposal.chainId,chain.chainId);
+  assert.equal(proposal.contract,"XITAExecutionGateway");
+  assert.equal(proposal.transaction.to,null);
+  assert.equal(proposal.transaction.value,"0x0");
+  assert.ok(proposal.transaction.data.endsWith(
+   encodeAbi(["address","address","address"],[registry,signer,payee]).slice(2)),
+    chain.name+" has incorrect immutable recipient constructor data");
+  assert.throws(()=>chainDraft({root:process.cwd(),chain,
+   infrastructure:{...cfg,components:[...cfg.components,{key:"executionGateway",address:addr(22)}]},
+   bootstrap:{chain:chain.name},component:"executionGateway",
+   parameters:{relayerOwner:signer,interchainFeeRecipient:payee},artifact}),
+    /already documented/);
+  assert.throws(()=>chainDraft({root:process.cwd(),chain,
+   infrastructure:{...cfg,components:[]},bootstrap:{chain:chain.name},
+   component:"executionGateway",parameters:{relayerOwner:signer,interchainFeeRecipient:payee},
+   artifact}),/dependency/);
+ }
+});
