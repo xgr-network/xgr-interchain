@@ -5,7 +5,7 @@ import {createServer} from "node:http";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue} from "ethers";
+import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -66,7 +66,12 @@ async function createQuote(request){
     String(executionAddress).toLowerCase()||
     !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
- await chain(source);await chain(destination);
+ const sourceProvider=await chain(source);
+ await chain(destination);
+ const runtime=await sourceProvider.getCode(executionAddress);
+ if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
+    keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
+  throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
  const result=await buildManagedQuote({
   catalog:CATALOG,request,executionAddress,signer,
   readExecutionOwner:async()=> {
