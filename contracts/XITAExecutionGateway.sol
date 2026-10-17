@@ -132,7 +132,8 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     {
         if (registry_ == address(0) || registry_.code.length == 0 ||
             serviceWallet_ == address(0) || recoveryAdmin_ == address(0) ||
-            serviceWallet_ == recoveryAdmin_) revert InvalidConfiguration();
+            serviceWallet_ == recoveryAdmin_ || serviceWallet_.code.length != 0
+        ) revert InvalidConfiguration();
         sourceRegistry = IXGRILNRegistry(registry_);
         serviceWallet = serviceWallet_;
         // The pinned OpenZeppelin Ownable v4 base initially gives authority to
@@ -149,7 +150,7 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     function setServiceWallet(address payable nextWallet) external onlyOwner {
         if (nextWallet == address(0) || nextWallet == address(this) ||
             nextWallet == serviceWallet || nextWallet == owner() ||
-            nextWallet == pendingOwner())
+            nextWallet == pendingOwner() || nextWallet.code.length != 0)
             revert InvalidConfiguration();
         address previous = serviceWallet;
         serviceWallet = nextWallet;
