@@ -20,6 +20,16 @@ export function amountToUnits(text,decimals){
  if(sum<=0n||sum>=2n**256n)throw Error("Enter a positive token amount");
  return sum;
 }
+export function unitsToAmount(raw,decimals){
+ if(typeof raw!=="string"||!/^[1-9][0-9]*$/.test(raw)||
+    !Number.isInteger(decimals)||decimals<0||decimals>36)
+  throw Error("Invalid verified raw token amount");
+ const n=BigInt(raw),scale=10n**BigInt(decimals);
+ if(n>=2n**256n)throw Error("Onward token amount overflow");
+ const whole=(n/scale).toString();
+ const fraction=(n%scale).toString().padStart(decimals,"0").replace(/0+$/,"");
+ return fraction?whole+"."+fraction:whole;
+}
 async function request(provider,method,params=[]){
  if(typeof provider?.request!=="function")throw Error("Connect MetaMask");
  return provider.request({method,params});
@@ -177,6 +187,53 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
  return {txHash,sourceChain:source,routeName:route.name,feeWei:String(quote.validatorFee)};
+}
+// Continue a fully verified spoke->XGR first hop by using the existing public
+// Gateway bridge() as the SECOND user-signed transfer. No GmbH executor, no
+// replayed source lock, no second commercial adapter fee, no browser WAL.
+//
+// Without a cryptographic journey-link emitted by the direct second Gateway,
+// a previously observed same-asset/same-amount hop is ambiguous. Fail closed
+// until the full finality-aware index is complete and duplicates are excluded.
+export async function startVerifiedOnwardHop({
+ catalog,account,record,provider,fetcher=globalThis.fetch,onBroadcast
+}){
+ if(!ADDRESS.test(account||"")||!record?.txHash||record.status!=="awaiting-onward")
+  throw Error("Select a confirmed first-hop transfer before continuing");
+ const first=await findWalletSourceTx({catalog,account,
+  sourceChain:record.sourceChain,txHash:record.txHash,fetcher});
+ if(first.status!=="awaiting-onward"||!first.delivered||
+  !first.executionAdapter||first.destinationChain!=="xgrchain"||
+  !first.onwardRouteId||!first.finalDestinationChain||
+  !eq(first.recipient,account)||!eq(first.finalRecipient,account)||
+  !/^[1-9][0-9]*$/.test(first.amountRaw||"")||
+  !eq(first.messageId,record.messageId))
+  throw Error("First-hop delivery or onward intent is not independently verified");
+ const onward=deployedRoutes(catalog).filter(r=>
+  r.source==="xgrchain"&&r.destination===first.finalDestinationChain&&
+  r.asset===first.asset&&eq(r.routeId,first.onwardRouteId));
+ if(onward.length!==1)throw Error("Signed onward Gateway is not uniquely deployed");
+ const response=await fetcher("/api/xeta/v1/transfers/wallet?"+
+  new URLSearchParams({account,pending:"0"}),{credentials:"omit",
+  cache:"no-store",headers:{accept:"application/json"}});
+ if(!response?.ok)throw Error("Transfer index unavailable; onward duplicate check cannot complete");
+ const history=await response.json();
+ if(history.kind!=="xita-wallet-transfer-index-v1"||history.status!=="complete"||
+  history.coverage?.complete!==true||history.truncated||!Array.isArray(history.items))
+  throw Error("Transfer history coverage incomplete; do not risk repeating an onward transfer");
+ const matching=history.items.filter(x=>x.sourceChain==="xgrchain"&&
+  x.asset===first.asset&&eq(x.routeId,first.onwardRouteId)&&
+  x.amountRaw===first.amountRaw);
+ if(matching.length)
+  throw Error("Possible onward transfer already sent: "+
+   matching.map(x=>x.txHash).slice(0,3).join(", ")+
+   ". Verify it before any second Gateway call");
+ const decimals=catalog.assets[first.asset]?.metadata?.decimals;
+ const amount=unitsToAmount(first.amountRaw,decimals);
+ // startTransfer() independently rechecks router bindings, gas, allowances,
+ // wallet nonce, proof readiness and the destination native balance.
+ return startTransfer({catalog,account,asset:first.asset,source:"xgrchain",
+  destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast});
 }
 // Poll only the immutable message ID from a confirmed source receipt.
 // Never sends a wallet transaction; caller handles destination signing separately.
