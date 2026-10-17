@@ -10,6 +10,7 @@ const statuses={
  "destination-not-deployed":["Destination not deployed","The paired destination Mailbox is not documented. Delivery is not enabled."],
  "delivery-unknown":["Delivery unverified","The target-chain RPC cannot verify the delivery flag. Never assume delivered or lost."],
  "awaiting-proof":["Destination outstanding","The source message is verified and has not been delivered. Do not repeat the source transaction."],
+ "awaiting-onward":["Next hop outstanding","XGRChain delivery is confirmed, but the final destination transfer has not been independently linked. Never repeat the first hop."],
  delivered:["Delivered","The target Mailbox confirms that the message was delivered."]
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
@@ -23,17 +24,20 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
  const cards=items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
-  const canRecover=t.status==="awaiting-proof";
+  const canRecover=t.status==="awaiting-proof"||t.status==="awaiting-onward";
   return '<article class="ux-transfer-card" data-source-tx="'+esc(t.txHash)+'">'+
    '<div class="ux-transfer-head"><strong>'+esc(t.asset||"Token")+' · '+
    esc(chains[t.sourceChain]?.name||t.sourceChain)+' → '+
-   esc(chains[t.destinationChain]?.name||t.destinationChain)+'</strong>'+
+   esc(chains[t.finalDestinationChain||t.destinationChain]?.name||t.finalDestinationChain||t.destinationChain)+'</strong>'+
    '<span class="ux-transfer-status is-'+esc(t.status)+'">'+esc(title)+'</span></div>'+
    '<p class="ux-small">'+esc(detail)+'</p>'+
    '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(t.txHash)+'</code></div>'+
    (ref?'<div class="ux-transfer-meta"><span>Message ID</span><code>'+esc(ref)+'</code></div>':'')+
    (t.validatorFeeWei?'<div class="ux-transfer-meta"><span>Validator fee (Wei)</span><code>'+esc(t.validatorFeeWei)+'</code></div>':'')+
-   (canRecover?'<p class="ux-transfer-warning">Original source confirmed. It is never submitted again. Only destination delivery can be continued.</p>':'')+
+   (t.interchainFeeWei?'<div class="ux-transfer-meta"><span>GmbH Interchain Fee (source wei)</span><code>'+esc(t.interchainFeeWei)+'</code></div>':'')+
+   (canRecover?'<p class="ux-transfer-warning">'+esc(t.status==="awaiting-onward"?
+     "First hop delivered on XGRChain; final journey not proven. Never repeat source lock or blindly retry hop 2.":
+     "Original source confirmed. Never repeat it; only destination delivery may continue.")+'</p>':'')+
    (canRecover?'<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(t.asset||"XGR")+'">Open in Transfer Tokens →</a>':'')+
    '</article>';
  }).join("");
