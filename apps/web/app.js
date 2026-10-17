@@ -223,8 +223,14 @@ async function performTransferAction(){
   const model=buildExperienceModel(state.catalog,()=>false);
   const asset=state.experience.asset,origin=state.experience.origin,
    destination=state.experience.destination,amount=state.experience.amount||"";
-  if(!model.deployments.some(r=>r.asset===asset&&r.source===origin&&r.destination===destination))
-   throw Error("Select a directly deployed route. Multi-hop transfers proceed one hop at a time.");
+  const firstDestination=origin!=="xgrchain"&&destination!=="xgrchain"?
+   "xgrchain":destination;
+  const firstRoute=model.deployments.some(r=>
+   r.asset===asset&&r.source===origin&&r.destination===firstDestination);
+  const onwardRoute=firstDestination===destination||model.deployments.some(r=>
+   r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
+  if(!firstRoute||!onwardRoute)
+   throw Error("Both independently deployed XITA routes are required");
   const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
    destination,amount,provider:globalThis.ethereum,
    onBroadcast:({txHash})=>{
