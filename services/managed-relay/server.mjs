@@ -112,7 +112,9 @@ async function handler(req,res){
  };
  if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health")
   return send(200,{ok:true,service:"xita-optional-managed-relay-quote",signer:signer.address,
-   enabledChains:Object.entries(sourceAddresses).filter(x=>/^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0])});
+   enabledChains:Object.entries(sourceAddresses).filter(x=>/^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
+    sponsorship:{available:false,reason:"gas-grant-service-not-deployed"}
+   });
  if(req.method!=="POST"||req.url!=="/api/xita/v1/managed/quote")
   return send(404,{ok:false,error:"Unknown endpoint"});
  let body="";
