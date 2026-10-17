@@ -168,35 +168,71 @@ Polygon and XGR from XGRChain. Those chain-local assets remain separate;
 opposite-direction user traffic can replenish reserves organically, but
 there is no automatic currency conversion.
 
-**Sponsorship:** Voluntary destination-wallet native-gas grants are
-independent of the commercial quote, not a contractual entitlement.
-Sponsorship availability is shown below Transfer and MUST be independently
-verified per step; never assert it on the basis of a server setting alone.
-As of draft #136 a production-safe grant sender, reserve limits and
-crash-safe grant idempotency are **not yet implemented**; the operator
-public status therefore correctly reports unavailable and the feature
-remains off. Missing gas grants require ordinary native gas from the wallet.
+**Sponsorship:** The GMP fee recipient EVM address can send native gas
+support on any configured destination chain. An independent private worker
+`services/managed-relay/gas-sponsor.mjs` reads finalized index rows
+and *rechecks* the source Gateway, adapter fee and Mailbox statuses against
+the source/destination RPC. The worker grants ONLY native gas and the XGR
+hop's validator/router fee, never the user's native token principal.
+Per-chain native-wei maximum-grant, rolling 24-hour total and minimum
+reserves are mandatory; if absent, no grants are offered. The worker
+persists a unique `parentMessageId + stage` record and wallet nonce in
+`sql/004_sponsor_grants.sql` BEFORE signing. Unknown or reverted
+transactions are not blindly rebroadcast. A separate readonly heartbeat
+powers the Transfer page's chain-by-chain availability display. An advertised
+grant never confers contractual custody or delivery privileges.
+`XITA_INTERCHAIN_SPONSOR_ENABLED=false` by default.
 
-**Indexer / safe interruption:** The existing finalized-chain Gateway
-index is extended, not replaced. Its canonical source proof binds the
-Gateway's `ILNOperation`, Mailbox `Dispatch` and, if applicable,
-adapter `InterchainFeeCharged` in one original wallet receipt.
-SQL migration `003_interchain_journey.sql` extends the derived read model
-with original fee, signed final chain/recipient and onward route.
-Delivery on XGRChain of an intended two-hop journey yields
-`awaiting-onward`, NOT `delivered` to the final chain.
-Before the user-signed hop 2, the browser re-reads on-chain evidence and
-requires complete wallet index coverage; possible duplicate onward
-amounts/routes block signing. The direct second-hop Gateway does not
-cryptographically embed the original first-hop message ID, so automatic
-final-hop grouping remains an **unresolved correctness/release gate**.
-No indexer status authorizes mint/unlock or a repeat of source TX 1.
+**One-to-one multi-hop proof:** TX 3 is a USER-signed call to
+`XITAExecutionGateway.continueJourney(parentMessageId, gateway,...)` on
+XGRChain, which internally calls the canonical ILNGateway.bridge. The
+GmbH collects NO additional Interchain Fee for this hop. The original
+parent message ID and emitted child ID appear together in
+`OnwardJourneyDispatched`. `onwardParentUsed(wallet,parentId)` is a
+permanent on-chain duplicate-prevention mapping; ordinary wallet
+nonces independently protect pending transactions. The derived event
+indexer validates the original paid source hop, identical user/account,
+original amount, signed second-route ID, real child Gateway and Mailbox
+events and both independent delivery states, before it reports
+`journey-delivered`. A fake/self-chosen parent reference is NEVER
+sufficient; it must resolve to a genuine verified source receipt.
+Wallet recovery cannot resend TX1 or TX3 after receipt confirmation.
 
-**Merge gate:** Keep draft until all focused JS/Solidity tests and two-chain
-live E2E paths pass, the route deployment manifests include fee adapters,
-database migration and deployed workers are checked, sponsorship is safe
-or explicitly disabled, and old locked XGR recovery has been independently
-verified. Do not conflate successful source lock with final delivery.
+**Admin UI:** ONE optional `XITAExecutionGateway` deployment on EACH
+supported EVM chain, no separate token deployments. It requires the
+chain-specific verified Source Registry, public immutable pricing
+`relayerOwner` and separately entered immutable public
+`interchainFeeRecipient`. The existing admin pipeline compiles
+pinned constructor artifacts, simulates the MetaMask create transaction,
+checks constructor getters and live runtime code hash, and persists
+the immutable GitHub transaction receipt and refreshed public catalog.
+XGRChain's adapter additionally supports fee-free parent-linked TX3;
+on other chains the continuation method reverts. The fee recipient
+can be one shared public EVM address across all chains.
+
+**Operator installation AFTER PR merge:** Deploy each desired chain's
+optional adapter via /admin, wait for verified GitHub receipt sync,
+then run the additive PostgreSQL migrations `sql/003_interchain_journey.sql`
+and `sql/004_sponsor_grants.sql` on the indexer DB. Provision restricted
+`/etc/xita/quote.env` and `/etc/xita/interchain-fee.env` from the
+separate templates; the public quote signer must NEVER hold the GMP
+fee/sponsor private key. Then run `./manage.sh install-interchain-fee`
+on a CLEAN checked-out GitHub main with the real operator secrets in
+those files. This installs the loopback quote signer, two separately
+disabled-by-default operator timers (periodically checking accumulated
+fees and sponsored gas), and the exact-method Nginx routes.
+Existing `./manage.sh update` restarts an installed quote service.
+Do NOT enable sponsorship before on-chain four-TX and reverse-direction
+E2E proof, sufficient native reserves, successful index migration,
+and explicit per-chain limits and secrets verification.
+
+**Merge gate versus activation gate:** This PR may merge after the
+entire CI matrix is green with mocked chain integration and Solidity
+regression tests, and after an independent source review. Since the
+new adapters do not yet exist on mainnet, live E2E must follow deployment
+and MUST precede any production sponsored gas grant. A merge alone
+must NOT enable grants or send a blockchain transaction. Older locked
+XGR is never automatically resent.
 
 ## Wallet-funded permissionless delivery UX
 
