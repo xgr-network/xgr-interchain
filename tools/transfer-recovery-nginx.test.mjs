@@ -99,7 +99,7 @@ test("CSP allows all reviewed browser RPC origins, not just old Base endpoint",(
  assert.equal(patchXitaTransferNginx(patched.config).changed,false);
 });
 test("CSP modification refuses missing or multiple policies rather than loosening defaults",()=>{
- assert.throws(()=>patchXitaTransferNginx(base.replace(/    add_header Content-Security-Policy.*\\n/,"")),/Content-Security-Policy/);
- const header=base.split("\\n").find(x=>x.includes("add_header Content-Security-Policy"));
- assert.throws(()=>patchXitaTransferNginx(base.replace(header,header+"\\n"+header)),/Content-Security-Policy/);
+ assert.throws(()=>patchXitaTransferNginx(base.replace(/    add_header Content-Security-Policy[^\n]*\n/,"")),/Content-Security-Policy/);
+ const header=base.split("\n").find(x=>x.includes("add_header Content-Security-Policy"));
+ assert.throws(()=>patchXitaTransferNginx(base.replace(header,header+"\n"+header)),/Content-Security-Policy/);
 });
