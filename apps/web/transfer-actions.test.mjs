@@ -57,8 +57,9 @@ function sourceProvider(sends,overrides={}){
     const amount=100000000000000000n,fee=100000000000000n;
     return word(fee)+word(amount).slice(2)+word(amount+fee).slice(2)+word(0).slice(2);
    }
-   if(data===selector("bridge(uint32,bytes32,uint256)"))
-    return word(123); // Simulated read-only Gateway.bridge before wallet signing.
+   if(data===selector("bridge(uint32,bytes32,uint256)")||
+      data===selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)"))
+    return word(123); // Source execution simulation before wallet signing.
   }
   if(method==="eth_estimateGas")return "0x5208";
   if(method==="eth_getBalance")return "0x"+(1n*10n**18n).toString(16);
@@ -228,4 +229,43 @@ test("only a confirmed, adapter-proven first hop can initiate a second user call
  }),/confirmed first-hop/);
  assert.equal(walletSends,0);
  assert.equal(requests,0);
+});
+
+test("deployed Interchain Fee adapter owns first TX and no direct Gateway fee bypass occurs",async()=>{
+ const c=catalog(),contract=address("d");
+ const comp=item("xgrchain",contract),core=c.infrastructure.xgrchain.xitaV315;
+ core.components.executionGateway=comp;core.receiptPaths.push(comp.receiptPath);
+ const sends=[],now=Math.floor(Date.now()/1000),native=100100000000000000n;
+ const quote={
+  payer:account,gateway,routeId,destinationDomain:8453,
+  recipient:word(BigInt(account)),finalDestinationDomain:8453,
+  finalRecipient:word(BigInt(account)),onwardRouteId:word(0),
+  amount:"100000000000000000",bridgeValueWei:native.toString(),
+  interchainFeeWei:"500000000000000",nonce:"8",issuedAt:now
+ };
+ const fullValue=native+BigInt(quote.interchainFeeWei);
+ const data=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)")+
+  "0".repeat(13*64);
+ const signed={ok:true,status:"SIGNED_INTERCHAIN_FEE_QUOTE",quote,signature:"0x"+"22".repeat(65),
+  executionAddress:contract,expiresAt:now+90,transaction:{
+   from:account,to:contract,chainId:1643,value:"0x"+fullValue.toString(16),data
+  }};
+ const original=testFetch();
+ const fetcher=async(url,options)=>url==="/api/xita/v1/managed/quote"?
+  {ok:true,json:async()=>signed}:original(url,options);
+ const result=await startTransfer({catalog:c,account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].to,contract);
+ assert.equal(sends[0].data,data);
+ assert.equal(sends[0].value,signed.transaction.value);
+ assert.equal(result.interchainFeeWei,quote.interchainFeeWei);
+ sends.length=0;
+ await assert.rejects(()=>startTransfer({catalog:c,account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),
+  fetcher:async(url,opts)=>url==="/api/xita/v1/managed/quote"?
+   {ok:true,json:async()=>({...signed,quote:{...quote,recipient:word(BigInt(address("1")))}})}:
+   original(url,opts)
+ }),/Commercial fee quote does not bind/);
+ assert.equal(sends.length,0);
 });
