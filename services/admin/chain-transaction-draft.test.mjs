@@ -139,7 +139,7 @@ test("one optional Interchain Fee Gateway per chain uses one service wallet and 
   assert.equal(proposal.transaction.value,"0x0");
   assert.ok(proposal.transaction.data.endsWith(
    encodeAbi(["address","address","address"],[registry,service,recovery]).slice(2)),
-    chain.name+" has incorrect immutable recipient constructor data");
+    chain.name+" has incorrect service wallet and recovery constructor data");
   assert.throws(()=>chainDraft({root:process.cwd(),chain,
    infrastructure:{...cfg,components:[...cfg.components,{key:"executionGateway",address:addr(22)}]},
    bootstrap:{chain:chain.name},component:"executionGateway",
@@ -150,4 +150,14 @@ test("one optional Interchain Fee Gateway per chain uses one service wallet and 
    component:"executionGateway",parameters:{serviceWallet:service,recoveryAdmin:recovery},
    artifact}),/dependency/);
  }
+});
+
+test("service wallet and recovery admin cannot share a deployment address",()=>{
+ const chain=hub,registry=addr(22),serviceWallet=addr(23);
+ const cfg={...infra(chain),components:[{key:"sourceRegistry",address:registry}]};
+ assert.throws(()=>chainDraft({root:process.cwd(),chain,infrastructure:cfg,
+  bootstrap:{chain:chain.name},component:"executionGateway",
+  parameters:{serviceWallet,recoveryAdmin:serviceWallet},
+  artifact:{component:"executionGateway",creation:"0x"+"6000".repeat(70)}}),
+  /must be different/);
 });
