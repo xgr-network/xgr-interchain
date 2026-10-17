@@ -60,10 +60,11 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     );
     uint256 public constant MAX_QUOTE_LIFETIME = 90;
 
-    address public relayerOwner; // EIP-712 pricing signer only, no payout authority.
-    address payable public interchainFeeRecipient; // SAME EVM wallet that sponsors gas.
+    address payable public serviceWallet; // Quote signer, fee recipient, gas sponsor: ONE address.
+    function relayerOwner() public view returns (address) { return serviceWallet; }
+    function interchainFeeRecipient() public view returns (address) { return serviceWallet; }
     // owner(): independent recovery Admin (preferably hardware multisig).
-    // Never use the fee wallet's private key for owner() or the quote signer.
+    // Never use the service wallet private key for owner().
     IXGRILNRegistry public immutable sourceRegistry;
     // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
     uint64 public quoteLifetimeSeconds = 90;
@@ -118,8 +119,7 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
         uint256 bridgeNativeWei
     );
     event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
-    event InterchainFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
-    event QuoteSignerUpdated(address indexed oldSigner, address indexed newSigner);
+    event ServiceWalletUpdated(address indexed previousWallet, address indexed newWallet);
 
     modifier nonReentrant() {
         if (entered != 1) revert ReentrantCall();
@@ -128,52 +128,32 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
         entered = 1;
     }
 
-    constructor(
-        address registry_,
-        address relayerOwner_,
-        address payable feeRecipient_,
-        address recoveryAdmin_
-    ) EIP712("XITA Interchain Fee", "1") Ownable(recoveryAdmin_) {
-        if (
-            registry_ == address(0) || registry_.code.length == 0 ||
-            relayerOwner_ == address(0) || feeRecipient_ == address(0) ||
-            recoveryAdmin_ == address(0) ||
-            recoveryAdmin_ == relayerOwner_ || recoveryAdmin_ == feeRecipient_
-        ) revert InvalidConfiguration();
+    constructor(address registry_, address payable serviceWallet_, address recoveryAdmin_)
+        EIP712("XITA Interchain Fee", "1") Ownable(recoveryAdmin_)
+    {
+        if (registry_ == address(0) || registry_.code.length == 0 ||
+            serviceWallet_ == address(0) || recoveryAdmin_ == address(0) ||
+            serviceWallet_ == recoveryAdmin_) revert InvalidConfiguration();
         sourceRegistry = IXGRILNRegistry(registry_);
-        relayerOwner = relayerOwner_;
-        interchainFeeRecipient = feeRecipient_;
+        serviceWallet = serviceWallet_;
     }
 
-    /// @notice Rotate the fee recipient AND native-gas sponsor address together.
-    /// @dev This does not withdraw funds, reset the aggregate balance, affect
-    ///      user nonces or change canonical validator fees. Already accrued
-    ///      unclaimed fees are transferred to the CURRENT recipient by claimFees().
-    ///      The compromised fee wallet has NO permission to call this function.
-    function setInterchainFeeRecipient(address payable nextRecipient) external onlyOwner {
-        if (
-            nextRecipient == address(0) || nextRecipient == address(this) ||
-            nextRecipient == interchainFeeRecipient || nextRecipient == owner()
-        ) revert InvalidConfiguration();
-        address previous = interchainFeeRecipient;
-        interchainFeeRecipient = nextRecipient;
-        emit InterchainFeeRecipientUpdated(previous, nextRecipient);
+    /// @notice Atomic rotation of quote signer, accumulated-fee payee AND
+    ///         native-gas sponsor address. ONE admin transaction per chain.
+    /// @dev Only the independent recovery admin can rotate. Outstanding
+    ///      old signatures are invalid immediately; claimFees() forwards
+    ///      accrued (even pre-rotation) funds to this new wallet.
+    function setServiceWallet(address payable nextWallet) external onlyOwner {
+        if (nextWallet == address(0) || nextWallet == address(this) ||
+            nextWallet == serviceWallet || nextWallet == owner())
+            revert InvalidConfiguration();
+        address previous = serviceWallet;
+        serviceWallet = nextWallet;
+        emit ServiceWalletUpdated(previous, nextWallet);
     }
 
-    /// @notice Independently replace a compromised EIP-712 quote signer.
-    /// @dev The old signer becomes invalid immediately; the new signer must
-    ///      use fresh typed quotes. No change to the fee/sponsor wallet.
-    function setQuoteSigner(address nextSigner) external onlyOwner {
-        if (
-            nextSigner == address(0) || nextSigner == relayerOwner ||
-            nextSigner == owner()
-        ) revert InvalidConfiguration();
-        address previous = relayerOwner;
-        relayerOwner = nextSigner;
-        emit QuoteSignerUpdated(previous, nextSigner);
-    }
-
-    /// @notice Avoid permanently orphaning the fee recipient recovery role.
+    /// @notice A separate recovery admin can be transferred via Ownable2Step.
+    /// @dev Disable irreversible renunciation and preserved funds orphaning.
     function renounceOwnership() public override onlyOwner {
         revert InvalidConfiguration();
     }
@@ -185,7 +165,7 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
     /// @notice Owner can shorten or restore the lifetime up to the hard 90s cap.
     /// @dev Changing the policy applies immediately to outstanding signed quotes.
     function setQuoteLifetimeSeconds(uint64 newSeconds) external {
-        if (msg.sender != relayerOwner) revert UnauthorizedRelayer();
+        if (msg.sender != owner()) revert UnauthorizedRelayer();
         if (newSeconds == 0 || newSeconds > MAX_QUOTE_LIFETIME) revert InvalidQuoteLifetime();
         uint64 previousSeconds = quoteLifetimeSeconds;
         quoteLifetimeSeconds = newSeconds;
@@ -225,7 +205,7 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
         if (q.issuedAt == 0 || uint256(q.issuedAt) > block.timestamp ||
             block.timestamp - uint256(q.issuedAt) > quoteLifetimeSeconds) revert QuoteExpired();
         if (nonceUsed[q.payer][q.nonce]) revert QuoteNonceUsed();
-        if (ECDSA.recover(_hashTypedDataV4(_hashQuote(q)), signature) != relayerOwner) {
+        if (ECDSA.recover(_hashTypedDataV4(_hashQuote(q)), signature) != serviceWallet) {
             revert InvalidSignature();
         }
 
@@ -338,8 +318,8 @@ contract XITAExecutionGateway is EIP712, Ownable2Step {
         uint256 amount = pendingInterchainFeesWei;
         if (amount == 0) revert NoClaimableFee();
         pendingInterchainFeesWei = 0; // Checked-effects-interactions.
-        (bool paid,) = interchainFeeRecipient.call{value:amount}("");
+        (bool paid,) = serviceWallet.call{value:amount}("");
         if (!paid) revert NativePayoutFailed();
-        emit InterchainFeeClaimed(interchainFeeRecipient, amount);
+        emit InterchainFeeClaimed(serviceWallet, amount);
     }
 }
