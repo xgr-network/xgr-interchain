@@ -5,6 +5,8 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IXGRILNRegistry} from "./IXGRILNRegistry.sol";
 
 interface IXITAExistingGateway {
@@ -23,10 +25,11 @@ interface IXITAExistingGateway {
 /// @dev ONE instance per source chain, never per route or token. The underlying
 ///      permissionless ILN Gateway, Validator FeeVault, Mailbox and ISM are unchanged.
 ///      The pricing signer cannot execute transfers for the user. Fees are owed
-///      to a separate immutable GmbH interchain-fee beneficiary. There is no
+///      to a single GmbH fee/sponsorship beneficiary, controlled by an
+///      independent offline recovery administrator. There is no
 ///      promise of gas sponsorship and no privilege over ILN delivery.
 ///      All downstream Mailbox.process / Gateway.bridge calls remain user-led.
-contract XITAExecutionGateway is EIP712 {
+contract XITAExecutionGateway is EIP712, Ownable2Step {
     using SafeERC20 for IERC20;
 
     struct Quote {
@@ -57,8 +60,10 @@ contract XITAExecutionGateway is EIP712 {
     );
     uint256 public constant MAX_QUOTE_LIFETIME = 90;
 
-    address public immutable relayerOwner; // EIP-712 PRICING signer only.
-    address payable public immutable interchainFeeRecipient; // Fixed GmbH payout.
+    address public relayerOwner; // EIP-712 pricing signer only, no payout authority.
+    address payable public interchainFeeRecipient; // SAME EVM wallet that sponsors gas.
+    // owner(): independent recovery Admin (preferably hardware multisig).
+    // Never use the fee wallet's private key for owner() or the quote signer.
     IXGRILNRegistry public immutable sourceRegistry;
     // Owner-adjustable policy; absolute expiry never exceeds 90 seconds.
     uint64 public quoteLifetimeSeconds = 90;
@@ -113,6 +118,8 @@ contract XITAExecutionGateway is EIP712 {
         uint256 bridgeNativeWei
     );
     event QuoteLifetimeUpdated(uint64 previousSeconds, uint64 newSeconds);
+    event InterchainFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+    event QuoteSignerUpdated(address indexed oldSigner, address indexed newSigner);
 
     modifier nonReentrant() {
         if (entered != 1) revert ReentrantCall();
@@ -121,13 +128,54 @@ contract XITAExecutionGateway is EIP712 {
         entered = 1;
     }
 
-    constructor(address registry_, address relayerOwner_, address payable feeRecipient_) EIP712("XITA Interchain Fee", "1") {
-        if (registry_ == address(0) || registry_.code.length == 0 || relayerOwner_ == address(0) || feeRecipient_ == address(0)) {
-            revert InvalidConfiguration();
-        }
+    constructor(
+        address registry_,
+        address relayerOwner_,
+        address payable feeRecipient_,
+        address recoveryAdmin_
+    ) EIP712("XITA Interchain Fee", "1") Ownable(recoveryAdmin_) {
+        if (
+            registry_ == address(0) || registry_.code.length == 0 ||
+            relayerOwner_ == address(0) || feeRecipient_ == address(0) ||
+            recoveryAdmin_ == address(0) ||
+            recoveryAdmin_ == relayerOwner_ || recoveryAdmin_ == feeRecipient_
+        ) revert InvalidConfiguration();
         sourceRegistry = IXGRILNRegistry(registry_);
         relayerOwner = relayerOwner_;
         interchainFeeRecipient = feeRecipient_;
+    }
+
+    /// @notice Rotate the fee recipient AND native-gas sponsor address together.
+    /// @dev This does not withdraw funds, reset the aggregate balance, affect
+    ///      user nonces or change canonical validator fees. Already accrued
+    ///      unclaimed fees are transferred to the CURRENT recipient by claimFees().
+    ///      The compromised fee wallet has NO permission to call this function.
+    function setInterchainFeeRecipient(address payable nextRecipient) external onlyOwner {
+        if (
+            nextRecipient == address(0) || nextRecipient == address(this) ||
+            nextRecipient == interchainFeeRecipient || nextRecipient == owner()
+        ) revert InvalidConfiguration();
+        address previous = interchainFeeRecipient;
+        interchainFeeRecipient = nextRecipient;
+        emit InterchainFeeRecipientUpdated(previous, nextRecipient);
+    }
+
+    /// @notice Independently replace a compromised EIP-712 quote signer.
+    /// @dev The old signer becomes invalid immediately; the new signer must
+    ///      use fresh typed quotes. No change to the fee/sponsor wallet.
+    function setQuoteSigner(address nextSigner) external onlyOwner {
+        if (
+            nextSigner == address(0) || nextSigner == relayerOwner ||
+            nextSigner == owner()
+        ) revert InvalidConfiguration();
+        address previous = relayerOwner;
+        relayerOwner = nextSigner;
+        emit QuoteSignerUpdated(previous, nextSigner);
+    }
+
+    /// @notice Avoid permanently orphaning the fee recipient recovery role.
+    function renounceOwnership() public override onlyOwner {
+        revert InvalidConfiguration();
     }
 
     function quoteDigest(Quote calldata q) external view returns (bytes32) {
@@ -283,9 +331,9 @@ contract XITAExecutionGateway is EIP712 {
     }
 
     /// @notice Claim the ENTIRE accrued Interchain Fee balance in one operation.
-    /// @dev No message IDs, no per-transfer claims, no operator-selectable payee.
-    ///      A permissionless caller can trigger the payout only to the immutable
-    ///      GmbH recipient; the claim may be automated when economical.
+    /// @dev No message IDs, no per-transfer claims, no caller-selectable payee.
+    ///      The entire accrued balance goes only to the CURRENT GmbH
+    ///      recipient, even when it was accrued before a key rotation.
     function claimFees() external nonReentrant {
         uint256 amount = pendingInterchainFeesWei;
         if (amount == 0) revert NoClaimableFee();
