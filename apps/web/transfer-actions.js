@@ -2,7 +2,7 @@
 // Confirmed gateway receipt + destination Mailbox.delivered are the ONLY
 // transfer state. No browser WAL, localStorage, hidden relayer key or replay.
 import {selector} from "./keccak.js";
-import {deployedRoutes} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {publicRead,findWalletSourceTx,configuredGatewayRoutes,ONWARD_SELECTOR} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
@@ -200,8 +200,16 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  if(onwardParentMessageId&&(!HASH.test(onwardParentMessageId)||
      source!=="xgrchain"||!onwardAdapter||commercial!==false))
   throw Error("Verified hub continuation adapter required for linked second hop");
- if(commercial===true&&!paidAdapter)
-  throw Error("GmbH Interchain Fee adapter is not deployed; use public protocol calls separately");
+ // Explicit commercial:false is the permissionless protocol escape hatch,
+ // not the default XITA commercial Transfer Tokens workflow.
+ // A partial rollout of the fee contract cannot advertise a route.
+ if(commercial!==false&&!onwardParentMessageId&&
+   !executableTransferRoutes(catalog).some(r=>r.asset===asset&&
+    r.source===source&&r.destination===firstDestination&&
+    eq(r.routeId,route.routeId)))
+  throw Error("Interchain Fee · Execution Gateway must be deployed on both chains; no new XITA transfer signed");
+ if(commercial!==false&&!onwardParentMessageId&&!paidAdapter)
+  throw Error("Source Interchain Fee adapter missing; no new transfer signed");
  if(firstDestination!==destination){
   const onward=deployedRoutes(catalog).filter(r=>r.asset===asset&&
    r.source==="xgrchain"&&r.destination===destination);
