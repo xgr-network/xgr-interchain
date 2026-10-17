@@ -45,7 +45,7 @@ export async function createIntakePool(url=process.env.XITA_TRANSFER_INTAKE_DATA
 export async function storeAnnouncement(pool,announcement){
  await pool.query({text:`INSERT INTO xita_transfer_announcements(
     source_chain,source_tx_hash,account) VALUES ($1,$2,$3)
-    ON CONFLICT(source_chain,source_tx_hash) DO NOTHING`,
+    ON CONFLICT(source_chain,source_tx_hash,account) DO NOTHING`,
   values:[announcement.sourceChain,announcement.txHash,announcement.account]});
  return {ok:true,status:"REPORTED_UNVERIFIED",verified:false};
 }
