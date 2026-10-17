@@ -15,3 +15,12 @@ test("header alert only counts genuine confirmed locks without delivery",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[open],indexedOpenCount:3}),3);
  assert.equal(pendingDeliveryCount({account:wallet,items:[],indexedOpenCount:-1}),0);
 });
+
+test("confirmed XGR transit delivery remains visibly unfinished until final journey proof",()=>{
+ const onward={...open,sourceChain:"base",status:"awaiting-onward",
+  delivered:true,onwardRouteId:"0x"+"e".repeat(64)};
+ assert.equal(pendingDeliveryCount({account:wallet,items:[onward]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[{
+  ...onward,onwardRouteId:null
+ }]}),0);
+});
