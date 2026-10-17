@@ -321,6 +321,29 @@ contract XITAExecutionGatewayTest is Test {
         managed.claimFees();
     }
 
+    function testServiceWalletSharesQuoteFeeAndSponsorshipAddress() public view {
+        assertEq(managed.serviceWallet(), relayer);
+        assertEq(managed.relayerOwner(), relayer);
+        assertEq(managed.interchainFeeRecipient(), relayer);
+        assertEq(managed.owner(), RECOVERY_ADMIN);
+    }
+
+    function testOnlyRecoveryAdminCanChangeServiceWallet() public {
+        address nextWallet = vm.addr(0xD00D);
+        vm.prank(USER);
+        vm.expectRevert();
+        managed.setServiceWallet(payable(nextWallet));
+        vm.prank(relayer);
+        vm.expectRevert();
+        managed.setServiceWallet(payable(nextWallet));
+        vm.prank(RECOVERY_ADMIN);
+        managed.setServiceWallet(payable(nextWallet));
+        assertEq(managed.serviceWallet(), nextWallet);
+        assertEq(managed.relayerOwner(), nextWallet);
+        assertEq(managed.interchainFeeRecipient(), nextWallet);
+        assertEq(managed.owner(), RECOVERY_ADMIN);
+    }
+
     function testHubOnwardHopEmitsParentAndPreservesSingleFeeReceipt() public {
         vm.chainId(1643);
         registry.setRoute(TARGET,ROUTE,_route(address(gateway),address(tokenRouter)));
