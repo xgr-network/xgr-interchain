@@ -1,5 +1,6 @@
 import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balanceOnWalletChain,formatNative,walletsAvailable,broadcastDeploymentIntent,getWalletProvider} from "./wallet.js";
 import {rotationCalldata,verifyOnChainWallets} from "./service-wallet-rotation.mjs";
+import {selector} from "./keccak.mjs";
 import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
@@ -183,6 +184,66 @@ function renderInfrastructure(){
   catch(e){el("wallet-status").textContent=e.message;}
  }));
  if(currentWallet)refreshWalletBalances();
+}
+async function rotateServiceWallet(chainName,contract){
+ const status=el("wallet-status");
+ try{
+  const latest=await get("/admin/api/workqueue");
+  if(latest.readOnly)throw Error("GitHub-main deployment verification unavailable");
+  const verified=latest.infrastructure?.find(c=>c.name===chainName)?.components?.
+   find(c=>c.key==="executionGateway"&&c.status==="documented");
+  if(!verified||verified.address?.toLowerCase()!==contract.toLowerCase())
+   throw Error("Execution Gateway not verified in GitHub main");
+  const chain=latest.inventory?.chains?.find(c=>c.name===chainName);
+  if(!chain)throw Error("Chain missing from approved catalog");
+  let wallet=await currentWalletState();
+  if(!wallet)throw Error("Connect independent recovery Admin wallet");
+  if(wallet.chainId!==chain.chainId)await switchDeploymentChain(chain);
+  wallet=await currentWalletState();
+  const provider=getWalletProvider();
+  const code=await provider.request({method:"eth_getCode",params:[contract,"latest"]});
+  if(!/^0x[0-9a-f]{2,}$/i.test(code||""))
+   throw Error("Gateway not deployed at documented contract address");
+  const read=async signature=>{
+   const result=await provider.request({method:"eth_call",params:[{
+    to:contract,data:selector(signature)},"latest"]});
+   if(!/^0x[0-9a-f]{64}$/i.test(result||""))
+    throw Error("Invalid on-chain role response");
+   return "0x"+result.slice(-40);
+  };
+  const [owner,current,recipient,signer]=await Promise.all([
+   read("owner()"),read("serviceWallet()"),
+   read("interchainFeeRecipient()"),read("relayerOwner()")]);
+  const next=window.prompt("Neue GmbH-Service-Wallet (öffentliche EVM-Adresse):", "");
+  if(next===null)return;
+  verifyOnChainWallets({admin:wallet.address,recovery:owner,service:current,
+   recipient,signer,next:next.trim()});
+  if(!window.confirm("Service-Wallet auf "+chainName+" ersetzen?\\n"+
+   "Alt: "+current+"\\nNeu: "+next.trim()+"\\n"+
+   "Die alte Quote-Signatur wird sofort ungültig."))
+   return;
+  const tx={from:wallet.address,to:contract,value:"0x0",
+   data:rotationCalldata(next.trim())};
+  await provider.request({method:"eth_call",params:[tx,"latest"]});
+  const gas=await provider.request({method:"eth_estimateGas",params:[tx]});
+  const hash=await provider.request({method:"eth_sendTransaction",params:[{...tx,gas}]});
+  if(!/^0x[0-9a-f]{64}$/i.test(hash||""))
+   throw Error("Wallet returned no valid hash; check chain before repeating");
+  status.textContent="Service-Rotation TX "+hash+" gesendet. Bestätigung prüfen.";
+  let receipt=null;
+  for(let i=0;i<24;i++){
+   receipt=await provider.request({method:"eth_getTransactionReceipt",params:[hash]});
+   if(receipt)break;
+   await new Promise(resolve=>setTimeout(resolve,2500));
+  }
+  if(!receipt)throw Error("TX "+hash+" noch offen. NICHT erneut senden");
+  if(BigInt(receipt.status)!==1n)throw Error("Service-Wallet-Rotation fehlgeschlagen: "+hash);
+  const roles=await Promise.all(["serviceWallet()","interchainFeeRecipient()","relayerOwner()"].map(read));
+  if(roles.some(value=>value.toLowerCase()!==next.trim().toLowerCase()))
+   throw Error("Rotation TX confirmed but on-chain roles differ; verify manually: "+hash);
+  status.textContent="Service-Wallet rotiert auf "+chainName+" · "+next.trim()+
+   " · Jetzt die Service-Key-Konfiguration aktualisieren.";
+ }catch(e){status.textContent="Service-Wallet-Rotation: "+String(e.message||e);}
 }
 function moneyInWei(wei,chain){
  try{return formatNative(String(wei),chain.nativeCurrency.decimals||18,8)+" "+chain.nativeCurrency.symbol}
