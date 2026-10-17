@@ -107,6 +107,14 @@ test("unresolved MetaMask source nonce blocks any second lock while no canonical
   /pending/);
  assert.equal(sends.length,0);
 });
+test("one wei of destination gas is NOT enough to safely lock source assets",async()=>{
+ const sends=[];
+ await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
+  source:"xgrchain",destination:"base",amount:"0.1",
+  provider:sourceProvider(sends),fetcher:testFetch("0x1")}),
+  /Destination wallet needs native gas/);
+ assert.equal(sends.length,0);
+});
 test("wallet with no destination-native gas never submits source lock",async()=>{
  const sends=[];
  await assert.rejects(()=>startTransfer({catalog:catalog(),account,asset:"XGR",
