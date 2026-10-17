@@ -38,6 +38,12 @@ export async function claimAccruedFees({provider,signer,adapterAddress,expectedC
    estimatedClaimGasWei:maxCost.toString()};
  if(BigInt(await provider.getBalance(signer.address))<maxCost*2n)
   return {status:"insufficient-claim-gas",accruedWei:amount.toString()};
+ const [latestNonce,pendingNonce]=await Promise.all([
+  provider.getTransactionCount(signer.address,"latest"),
+  provider.getTransactionCount(signer.address,"pending")
+ ]);
+ if(pendingNonce!==latestNonce)return {status:"wallet-nonce-pending",
+  accruedWei:amount.toString()};
  const current=BigInt(await adapter.pendingInterchainFeesWei());
  if(current<BigInt(minClaimWei)||current===0n)
   return {status:"below-threshold",accruedWei:current.toString()};
@@ -55,7 +61,7 @@ export async function runConfiguredFeeClaims({
  if(!eq(wallet.address,value("XITA_INTERCHAIN_FEE_ADDRESS")))
   throw Error("Fee wallet private key and configured public address differ");
  const results=[];
- for(const name of ["base","polygon","xgrchain"]){
+ for(const name of ["base","polygon","arbitrum","xgrchain"]){
   const suffix=name.toUpperCase();
   const address=env["XITA_INTERCHAIN_"+suffix+"_ADAPTER"];
   if(!address)continue;
@@ -71,7 +77,26 @@ export async function runConfiguredFeeClaims({
  if(!results.length)throw Error("No deployed fee adapters configured");
  return {status:"ok",results};
 }
+// One loop is enough: each tick reads the aggregate contract balance and
+// makes at most one economic claim per configured source chain.
+export async function runClaimMonitor({
+ intervalMs=300000,run=runConfiguredFeeClaims,
+ shouldStop=()=>false,sleep=ms=>new Promise(done=>setTimeout(done,ms))
+}={}){
+ if(!Number.isSafeInteger(intervalMs)||intervalMs<60000||intervalMs>3600000)
+  throw Error("Unsafe aggregate claim monitor interval");
+ while(!shouldStop()){
+  try{const report=await run();if(report.status!=="disabled")
+   console.log("XITA Interchain Fee claim:",JSON.stringify(report));}
+  catch(error){console.error("XITA fee claim monitor:",String(error?.message||error));}
+  if(!shouldStop())await sleep(intervalMs);
+ }
+}
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
- runConfiguredFeeClaims().then(result=>console.log(JSON.stringify(result)),
-  err=>{console.error("Interchain Fee Claim:",String(err?.message||err));process.exitCode=1});
+ let stopping=false;
+ process.once("SIGTERM",()=>{stopping=true;});
+ process.once("SIGINT",()=>{stopping=true;});
+ runClaimMonitor({shouldStop:()=>stopping}).catch(
+  err=>{console.error("XITA fee claim:",String(err?.message||err));process.exitCode=1}
+ );
 }
