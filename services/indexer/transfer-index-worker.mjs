@@ -6,6 +6,7 @@ import {fileURLToPath} from "node:url";
 import {readFileSync} from "node:fs";
 import {indexedRoutes,readRouteWindow,verifiedTransfer,checkedDelivery,canonicalRpc} from "./transfer-index.mjs";
 import {transferWriterPool} from "./transfer-index-store.mjs";
+import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const normalize=x=>String(x||"").toLowerCase();
 export async function loadCursor(pool,route){
@@ -237,7 +238,7 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
   normalize(tx.to)===normalize(rt.gateway)||
   rt.executionAdapter&&normalize(tx.to)===normalize(rt.executionAdapter));
  if(normalize(tx.from)!==normalize(hint.account)||!matchingTarget||
-   normalize(tx.hash||hint.source_tx_hash)!==normalize(hint.source_tx_hash)){
+   normalize(tx.hash)!==normalize(hint.source_tx_hash)){
   await setAnnouncementState(pool,hint,"rejected",{now,retry:false});return {status:"rejected"};
  }
  const receipt=await rpc(chain,"eth_getTransactionReceipt",[hint.source_tx_hash]);
@@ -274,8 +275,9 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
  for(const route of related){
   if(blockNumber<route.deploymentBlock)continue;
   for(const log of receipt.logs){
-   if(normalize(log.address)!==normalize(route.gateway)||
-     normalize(log.topics?.[0])!==normalize(route.operationTopic)||
+   if(log.removed===true||normalize(log.transactionHash)!==normalize(hint.source_tx_hash)||
+     normalize(log.address)!==normalize(route.gateway)||
+     normalize(log.topics?.[0])!==normalize(OPERATION_TOPIC)||
      normalize(log.topics?.[1])!==normalize(route.routeId)||
      !TX.test(log.topics?.[2]||"")||
      normalize(log.blockHash)!==normalize(receipt.blockHash)||
