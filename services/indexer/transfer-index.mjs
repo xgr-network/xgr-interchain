@@ -104,6 +104,7 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   finalDestinationChain:evidence.finalDestinationChain||null,
   finalRecipient:evidence.finalRecipient||null,
   onwardRouteId:evidence.onwardRouteId||null,
+  parentMessageId:evidence.parentMessageId||null,
   delivered:delivered.delivered,
  };
 }
