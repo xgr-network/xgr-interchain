@@ -141,6 +141,8 @@ const staticFiles=new Map([
  ["/admin/deployment-sync-wait.mjs",["deployment-sync-wait.mjs","text/javascript; charset=utf-8"]],
  ["/admin/factory-defaults.mjs",["factory-defaults.mjs","text/javascript; charset=utf-8"]],
  ["/admin/style.css",["style.css","text/css; charset=utf-8"]],
+ ["/admin/keccak.mjs",["../../apps/web/keccak.mjs","text/javascript; charset=utf-8"]],
+ ["/admin/service-wallet-rotation.mjs",["service-wallet-rotation.mjs","text/javascript; charset=utf-8"]],
  ["/admin/wallet.js",["wallet.js","text/javascript; charset=utf-8"]]
 ]);
 http.createServer(async(req,res)=>{
