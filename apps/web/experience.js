@@ -339,6 +339,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   busy?"Preparing transaction…":
   selected?.status==="awaiting-proof"?"Continue delivery":
   selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
+  selected?.status==="awaiting-final-proof"?"Continue final delivery":
   selected?"Check delivery status":
   !deployed?"Route unavailable":
   !isDirect?"Transfer "+assetId+" via XGRChain":
@@ -347,6 +348,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
+  selected?.status==="awaiting-final-proof"?"Second hop confirmed · final delivery outstanding":
+  selected?.status==="final-delivery-unknown"?"Second hop confirmed · target RPC status unknown":
   selected?.status==="delivery-unknown"?"Source confirmed · destination RPC unavailable":
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
