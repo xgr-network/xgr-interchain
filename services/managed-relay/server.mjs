@@ -22,16 +22,15 @@ const EXECUTION_ABI=[
 const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
-const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const configuredServiceAddress=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").trim();
+const PREVIEW_ONLY=process.env.XITA_INTERCHAIN_PREVIEW_ONLY==="1";
+const configuredServiceAddress=PREVIEW_ONLY?"":String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").trim();
 if(configuredServiceAddress&&!/^0x[0-9a-f]{40}$/i.test(configuredServiceAddress))
  throw Error("Invalid public service wallet");
 // Read-only estimates must run before the operator installs a signing key.
-const signingKey=String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
+const signingKey=PREVIEW_ONLY?"":String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
 const signer=signingKey?new Wallet(signingKey):null;
 if(signer&&configuredServiceAddress&&signer.address.toLowerCase()!==configuredServiceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
-const PREVIEW_ONLY=process.env.XITA_INTERCHAIN_PREVIEW_ONLY==="1";
 const sourceAddresses=Object.fromEntries(
  ["xgrchain","base","polygon","arbitrum"].map(name=>{
   const configured=String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
@@ -39,7 +38,7 @@ const sourceAddresses=Object.fromEntries(
   // The receipt-verified public catalog is sufficient for UNSIGNED estimates.
   // Do not require a copied address or any private-key environment to boot.
   const documented=String(CATALOG.infrastructure?.[name]?.xitaV315?.components?.executionGateway?.address||"");
-  return [name,configured||documented];
+  return [name,PREVIEW_ONLY?documented:configured||documented];
  })
 );
 const providers=new Map();
@@ -228,7 +227,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const port=Number(process.env.XITA_MANAGED_QUOTE_PORT||4092);
  if(!Number.isInteger(port)||port<1||port>65535)throw Error("Invalid listen port");
  createServer((req,res)=>{void handler(req,res)}).listen(port,"127.0.0.1",()=>{
-  console.log("XITA managed relay quote signer listening on loopback "+port);
+  console.log("XITA "+(PREVIEW_ONLY?"read-only unsigned fee preview":"managed quote signer")+" listening on loopback "+port);
  });
 }
 export {createQuote,handler};
