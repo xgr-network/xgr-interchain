@@ -28,7 +28,7 @@ if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Invalid public service
 // Read-only estimates must run before the operator installs a signing key.
 const signingKey=String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
 const signer=signingKey?new Wallet(signingKey):null;
-if(signer&&serviceAddress.toLowerCase()!==serviceAddress.toLowerCase())
+if(signer&&signer.address.toLowerCase()!==serviceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
 const sourceAddresses=Object.fromEntries(
  ["xgrchain","base","polygon","arbitrum"].map(name=>[
@@ -96,7 +96,7 @@ async function createQuote(request,{preview=false}={}){
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
     c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient(),c.serviceWallet()]);
-   if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==signer.address.toLowerCase()))
+   if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==serviceAddress.toLowerCase()))
     throw Error("Single on-chain GmbH service wallet differs from configured signer/beneficiary");
    const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
