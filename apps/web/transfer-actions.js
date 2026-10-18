@@ -276,7 +276,20 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
   const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
    data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
-  if(BigInt(allowance)<units){
+  let approved=BigInt(allowance)>=units;
+  if(!approved){
+   // Before issuing ANY additional approval, independently inspect the
+   // canonical source chain. A wallet RPC may lag behind a prior approval.
+   const identity=await publicRead(src.rpcUrls?.[0],"eth_chainId",[],fetcher);
+   if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(src.chainId))
+    throw Error("Cannot verify source token allowance; no approval sent");
+   const readback=await publicRead(src.rpcUrls?.[0],"eth_call",[
+    {to:route.sourceToken,data:selector("allowance(address,address)")+
+     addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"],fetcher);
+   if(!QTY.test(readback||""))throw Error("Source allowance unverified; no approval sent");
+   approved=BigInt(readback)>=units;
+  }
+  if(!approved){
    const approve={from:account,to:route.sourceToken,value:"0x0",
     data:selector("approve(address,uint256)")+addrWord(paidAdapter||onwardAdapter||route.gateway)+word(units)};
    const gas=await request(provider,"eth_estimateGas",[approve]);
@@ -289,10 +302,25 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    const approvalReceipt=await waitForWalletReceipt(provider,approvalHash);
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
    if(approvalReceipt.status!=="0x1")throw Error("Token approval failed. No tokens were bridged");
-   const confirmed=await request(provider,"eth_call",[{to:route.sourceToken,
-    data:selector("allowance(address,address)")+addrWord(account)+
-     addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
-   if(BigInt(confirmed)<units)throw Error("Confirmed approval is insufficient for transfer");
+   const spender=paidAdapter||onwardAdapter||route.gateway;
+   const allowanceCall={to:route.sourceToken,
+    data:selector("allowance(address,address)")+addrWord(account)+addrWord(spender)};
+   // Wallet RPC nodes can briefly report stale state immediately after a
+   // confirmed receipt. Check the canonical public source RPC independently
+   // before interpreting a readback as a failed approval. Never send another
+   // approval, and never bridge while the allowance is unverified.
+   let sufficient=false;
+   for(let attempt=0;attempt<4;attempt++){
+    const identity=await publicRead(src.rpcUrls?.[0],"eth_chainId",[],fetcher);
+    if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(src.chainId))
+     throw Error("Approval verification RPC chain mismatch; do not approve again");
+    const current=await publicRead(src.rpcUrls?.[0],"eth_call",
+     [allowanceCall,"latest"],fetcher);
+    if(!QTY.test(current||""))throw Error("Approval readback unavailable; do not approve again");
+    if(BigInt(current)>=units){sufficient=true;break;}
+    if(attempt<3)await new Promise(done=>setTimeout(done,1500));
+   }
+   if(!sufficient)throw Error("Confirmed approval not yet visible on source chain. Check the approval receipt and allowance before retrying; do not approve again");
   }
  }else if(quote.tokenAmount!==0n)throw Error("Native transfer unexpectedly requires ERC-20 approval");
  let tx={from:account,to:route.gateway,data:bridgeCalldata(dst.domainId,account,units),
