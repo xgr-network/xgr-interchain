@@ -436,20 +436,21 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
-  '<section class="ux-fee-preview" aria-label="Estimated transfer costs">'+
-  '<div class="ux-kicker">ESTIMATED TRANSFER COST</div>'+
-  '<div id="ux-fee-preview-status" role="status" aria-live="polite">Choose route and enter an amount to estimate fees. No wallet transaction.</div>'+
-  '<div id="ux-fee-preview-details" hidden></div>'+
-  '<p class="ux-small">Unbinding estimate. Final signed quote is issued just before your wallet authorizes the source transfer. Source-chain wallet gas and any ERC-20 approval gas are extra.</p>'+
-  '</section>'+
-  '<div class="ux-sponsor-status" role="status" aria-live="polite">'+
-  '<strong>Optional gas sponsorship</strong><span class="ux-small">'+
+  '<section class="ux-fee-preview" aria-label="Additional route fees">'+
+  '<div class="ux-fee-header"><div><span class="ux-kicker">ADDITIONAL ROUTE FEES</span>'+
+  '<h3>XITA transfer fees</h3></div><span class="ux-fee-estimate-tag">Estimate</span></div>'+
+  '<p class="ux-fee-intro">These fees are additional to regular blockchain transaction gas for each hop. Network gas is paid separately unless eligible gas sponsorship covers it.</p>'+
+  '<div id="ux-fee-preview-status" class="ux-fee-status" role="status" aria-live="polite">Enter an amount to calculate route fees.</div>'+
+  '<div id="ux-fee-preview-details" class="ux-fee-breakdown" hidden></div>'+
+  '<div class="ux-fee-gas-note"><strong>Network transaction gas</strong>'+
+  '<p>Separate wallet gas applies to the source transaction and destination delivery, for every hop. An ERC-20 approval may add another transaction. Optional sponsorship is only available when explicitly confirmed.</p></div>'+
+  '<div class="ux-fee-sponsor"><strong>Gas sponsorship</strong><span>'+
   esc(progress.sponsorship?.available===true?
-   "Operator reports native gas capacity on: "+Object.entries(progress.sponsorship?.chains||{}).filter(([,v])=>v===true).map(([chain])=>chain).join(", ")+". Each grant is verified separately; no contractual gas entitlement.":
-   progress.sponsorship?.status==="unavailable"?
-   "Not active. Keep enough native gas on every required chain before transferring.":
-   "Availability not verified. Treat sponsorship as unavailable until confirmed.")+
+   "Potentially available on: "+Object.entries(progress.sponsorship?.chains||{}).filter(([,v])=>v===true).map(([chain])=>chain).join(", ")+". Eligibility is checked before each grant.":
+   "Not confirmed — plan to pay all network gas yourself.")+
   '</span></div>'+
+  '<p class="ux-fee-fineprint">Non-binding estimate. A fresh signed quote is checked before wallet confirmation; actual network gas can change.</p>'+
+  '</section>'+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+
@@ -463,16 +464,6 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    !routes.length?"New transfers need a verified Interchain Fee · Execution Gateway on each chain. Existing Gateway transfers can still be recovered.":
    deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
    "Only verified deployed routes can be transferred.")+'</p></div>'+
-  '<details class="ux-transfer-advanced"><summary>Route, network gas &amp; safety checks <span aria-hidden="true">⌄</span></summary>'+
-  '<div class="ux-transfer-advanced-body">'+routePath(model,path)+
-  '<div class="ux-route-status">'+
-  (deployed?'<span class="ux-badge is-verified">Contracts deployed</span>':
-   '<span class="ux-badge is-pending">Route unavailable</span>')+
-  '<p>'+(deployed?"The source and destination contracts, including Interchain Fee execution, are documented. Their live bindings, fees and gas requirements are checked again before signing.":
-    "A documented, direct route is required before signing.")+'</p></div>'+
-  renderWalletGasChecklist(model,path,{...wallet,hideStepList:true,hideInactiveNote:deployed})+
-  '<p class="ux-transfer-footer-note">The source Gateway and destination Mailbox are public contracts. A separate ERC-20 approval may be required; a confirmed source lock is never repeated.</p>'+
-  '</div></details>'+
   (!routes.length&&model.deployments?.length?
    '<p class="ux-transfer-error">The Interchain Fee · Execution Gateway is not verified on both chains. New XITA transfers are disabled. Previously locked transfers remain accessible through My Transfers.</p>':'')+
   (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")&&!model.deployments?.length?
@@ -517,7 +508,7 @@ const faqGroups=[
   ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. The second step is not automatically executed."],
   ["What is a wrapped token?","A wrapped or synthetic representation makes an asset usable on a second chain. It is not the original token on its home network; always check its canonical origin and verified contracts."],
   ["What happens if a relayer is unavailable?","A relayer can be replaced. An interrupted transfer may remain pending until delivery is resumed or recovered. Use the verified transaction and message status rather than assuming an automatic refund."],
-  ["What does a transfer cost?","XGR sponsors approved route deployment, not user transaction gas. Each directed hop requires source-chain gas, the applicable source-native validator fee, and destination-chain gas for a separate wallet-confirmed Mailbox.process delivery. A two-hop trip requires four payments (plus possible ERC-20 approvals). Check both native gas balances before bridging; Starter Gas is not available yet."]
+  ["What does a transfer cost?","XITA route fees comprise the source-chain protocol fee and XITA Service Fee. Both are additional to the blockchain network gas paid separately for wallet transactions, source lock/burn and destination delivery on each hop. ERC-20 approval can require additional gas. Two-hop journeys include additional processing and gas transactions. Optional gas sponsorship covers only eligible gas steps when expressly confirmed; otherwise fund gas on every required chain. A fresh signed service quote is obtained before the source transaction."]
  ]},
  {label:"04 · TRUST & TRANSPARENCY",title:"Security and Network Facts",items:[
   ["Who secures interchain transfers?","XGRChain's Proof-of-Stake validators secure cross-chain message verification. The XGRChain v3.x network and its interchain smart contracts provide the underlying infrastructure."],

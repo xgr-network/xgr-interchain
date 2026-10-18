@@ -95,12 +95,29 @@ async function refreshFeePreview(){
   if(String(value.estimatedRouteFeeWei)!==total.toString()||
    !/^(0|[1-9][0-9]*)[.][0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
    throw Error("Inconsistent USD fee preview");
-  updatePreviewState("Estimated route fee: "+formatWeiFee(total)+" "+coin+
-   " (≈ $"+value.estimatedRouteFeeUsd+" USD)",
-   "Source protocol fee: "+formatWeiFee(native)+" "+coin+
-   " · GmbH Interchain Fee: "+formatWeiFee(fee)+" "+coin+
-   (onward>0n?" · XGR onward fee included in GmbH quote":"")+
-   " · Source wallet gas and ERC-20 approval gas excluded. Quote valid only when signed at transfer.");
+  const detail=document.getElementById("ux-fee-preview-details");
+  updatePreviewState("Estimated additional route fees", "");
+  if(detail){
+   detail.hidden=false;
+   const main=document.createElement("div");
+   main.className="ux-fee-total";
+   const title=document.createElement("span");title.textContent="Estimated route fees";
+   const cost=document.createElement("strong");cost.textContent=formatWeiFee(total)+" "+coin;
+   const usd=document.createElement("small");usd.textContent="~ $"+value.estimatedRouteFeeUsd+" USD";
+   main.append(title,cost,usd);
+   const feeRow=(label,wei)=>{
+    const row=document.createElement("div");row.className="ux-fee-row";
+    const name=document.createElement("span");name.textContent=label;
+    const amount=document.createElement("strong");amount.textContent=formatWeiFee(wei)+" "+coin;
+    row.append(name,amount);return row;
+   };
+   detail.replaceChildren(main,feeRow("Protocol fee",native),feeRow("XITA Service Fee",fee));
+   if(onward>0n){
+    const note=document.createElement("p");note.className="ux-fee-fineprint";
+    note.textContent="XGR onward protocol processing is included in the service quote.";
+    detail.append(note);
+   }
+  }
  }catch(error){
   if(marker===previewRevision&&path()==="/transfer")
    updatePreviewState("Fee estimate unavailable: "+String(error.message||error).slice(0,150)+". No transfer was initiated.");

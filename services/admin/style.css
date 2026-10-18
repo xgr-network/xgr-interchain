@@ -50,3 +50,13 @@
 .treasury-address code{display:block;color:var(--ink);padding-top:4px;overflow-wrap:anywhere}
 .treasury-unavailable{color:#f0c38a}
 @media(max-width:520px){.treasury-values{grid-template-columns:1fr}}
+
+/* Fee Gateway actions form their own row; never squeeze the label to one-character columns. */
+.component-row{min-width:0}
+.component-row>span:first-child{min-width:0;overflow-wrap:break-word}
+.component-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex-wrap:wrap}
+.component-controls button{max-width:100%}
+.component-row.is-fee-gateway{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.component-row.is-fee-gateway>span:first-child{display:block;max-width:none;overflow-wrap:normal;word-break:normal;line-height:1.5}
+.component-row.is-fee-gateway .component-controls{justify-content:flex-start}
+.component-row.is-fee-gateway .component-controls button{white-space:normal}

@@ -137,8 +137,10 @@ function renderInfrastructure(){
    '<button class="address-copy" data-copy="'+esc(verifier)+'" title="'+esc(verifier)+'">'+esc(displayAddress(verifier))+
    ' ⧉</button></span></div>':"";
   const tasks=c.components.map(part=>
-   '<div class="component-row"><span>'+esc(coreTitles[part.key]||part.key)+
-    (part.optional?' · freiwilliger GmbH-Service':'')+'</span>'+
+   '<div class="component-row'+(part.key==="executionGateway"?' is-fee-gateway':'')+'"><span>'+
+    esc(coreTitles[part.key]||part.key)+
+    (part.optional?' · freiwilliger Service':'')+'</span>'+
+   '<div class="component-controls">'+
    (part.status==="documented"&&part.address?
     '<button class="address-copy" data-copy="'+esc(part.address)+'" title="'+esc(part.address)+'">'+
      esc(displayAddress(part.address))+' ⧉</button>'+
@@ -146,7 +148,8 @@ function renderInfrastructure(){
      '<button type="button" class="outline" data-rotate-chain="'+esc(c.name)+
      '" data-rotate-contract="'+esc(part.address)+'">Service-Wallet ändern</button>':"") :
     '<button class="component-pending" data-open-chain="'+esc(c.name)+
-     '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>')+'</div>').join("");
+     '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>')+
+   '</div></div>').join("");
   const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
   const money=n=>n==null?"":moneyInWei(n,c);
   const liveRows=live?.validatorSetId?
