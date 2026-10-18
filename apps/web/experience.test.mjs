@@ -240,11 +240,12 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
   status:"awaiting-proof",confirmed:true,delivered:false};
  const fresh=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:null,scanning:true});
- assert.match(fresh,/Interchain Fee gateway not deployed/);
+ assert.match(fresh,/Transfer XGR → Base/);
+ assert.doesNotMatch(fresh,/Interchain Fee gateway not deployed/);
  assert.doesNotMatch(fresh,/Checking on-chain transfers/);
  assert.match(fresh,/Previous transfers awaiting delivery/);
  assert.match(fresh,/<option value="" selected>New transfer/);
- assert.doesNotMatch(fresh,/Ready to transfer/);
+ assert.match(fresh,/Ready to transfer/);
  const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:txHash,scanning:true});
  assert.match(selected,/Continue delivery/);
