@@ -23,12 +23,13 @@ const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
 const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const serviceAddress=required("XITA_INTERCHAIN_FEE_ADDRESS");
-if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Invalid public service wallet");
+const configuredServiceAddress=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").trim();
+if(configuredServiceAddress&&!/^0x[0-9a-f]{40}$/i.test(configuredServiceAddress))
+ throw Error("Invalid public service wallet");
 // Read-only estimates must run before the operator installs a signing key.
 const signingKey=String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
 const signer=signingKey?new Wallet(signingKey):null;
-if(signer&&signer.address.toLowerCase()!==serviceAddress.toLowerCase())
+if(signer&&configuredServiceAddress&&signer.address.toLowerCase()!==configuredServiceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
 const sourceAddresses=Object.fromEntries(
  ["xgrchain","base","polygon","arbitrum"].map(name=>[
@@ -86,12 +87,21 @@ async function createQuote(request,{preview=false}={}){
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
  const sourceProvider=await chain(source);
  await chain(destination);
+ // Allow public estimates before any secrets or signer environment exist.
+ // Bind the operator identity to the verified live adapter itself.
+ const liveAdapter=new Contract(executionAddress,EXECUTION_ABI,sourceProvider);
+ const serviceAddress=preview?await liveAdapter.serviceWallet():configuredServiceAddress;
+ if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Public GmbH service wallet unavailable");
+ if(!preview&&(!signer||signer.address.toLowerCase()!==serviceAddress.toLowerCase()))
+  throw Error("GmbH signer is not configured for the live adapter");
  const runtime=await sourceProvider.getCode(executionAddress);
  if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
+ const previewRequest=preview?{...request,payer:request.payer||serviceAddress,
+   recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
-  catalog:CATALOG,request,executionAddress,signer:signer||{address:serviceAddress},
+  catalog:CATALOG,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
   readExecutionOwner:async()=> {
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
@@ -201,9 +211,7 @@ async function handler(req,res){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
-  const payload=preview?{...parsed,payer:parsed.payer||serviceAddress,
-    recipient:parsed.recipient||serviceAddress}:parsed;
-  const reply=await createQuote(payload,{preview});
+   const reply=await createQuote(parsed,{preview});
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
