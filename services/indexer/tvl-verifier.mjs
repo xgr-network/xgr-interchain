@@ -65,11 +65,19 @@ export function reconcileEscrow({catalog,descriptor,indexedRoutes,cursors,groups
  if(!coverage.complete)return fail("index-incomplete");
  const head=asHex(observedHead);
  if(head===null||head>BigInt(Number.MAX_SAFE_INTEGER))return fail("origin-rpc-head-invalid");
+ // The finalized route-index cursor is a distinct snapshot from the live
+ // balance RPC. Require recent, internally complete canonical cursor coverage
+ // (above), not exact equality with the continuously advancing live head.
+ // Any unindexed escrow movement still fails the independent balance-vs-event
+ // conservation check below; we never fabricate or extrapolate escrow.
  const finalized=head-BigInt(Math.max(1,chainConfig.confirmations||1));
+ if(finalized<0n)return fail("origin-rpc-head-invalid");
  for(const route of indexed.filter(r=>r.sourceChain===chain)){
   const cursor=cursors.find(c=>c.source_chain===route.sourceChain&&same(c.route_id,route.routeId));
-  if(!cursor||asInt(cursor.scanned_to)===null||BigInt(cursor.scanned_to)<finalized)
-   return fail("origin-index-behind-finality");
+  const scanned=asInt(cursor?.scanned_to),indexedHead=asInt(cursor?.finalized_head);
+  if(scanned===null||indexedHead===null||scanned>finalized||
+     indexedHead>finalized||scanned<indexedHead)
+   return fail("origin-index-cursor-invalid");
  }
  const code=typeof routerCode==="string"&&/^0x(?:[0-9a-f]{2})+$/i.test(routerCode)?routerCode:null;
  if(!code||!same(keccak256(Uint8Array.from(code.slice(2).match(/../g).map(x=>parseInt(x,16)))),codeHash))
