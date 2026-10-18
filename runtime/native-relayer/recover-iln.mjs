@@ -103,6 +103,7 @@ const hookAbi = [
 ];
 const registryAbi = [
   "function getRoute(uint32 destinationDomain,bytes32 routeId) view returns (uint64 sourceChainId,uint32 sourceDomain,address gateway,address sourceRouter,address mailbox,address merkleTreeHook,address destinationRouter,uint256 validatorFeeWei,bool enabled)",
+  "function factory() view returns (address)",
 ];
 const destISMAbi = [
   "function registry() view returns (address)",
@@ -294,7 +295,14 @@ async function main() {
   if(sourceEvidence)assert(sourceEvidence.blockNumber===operationBlock,
     "signed checkpoint source block does not match source receipt");
 
-  const historicRoute = await sourceRegistry.getRoute(destinationDomain, routeId, { blockTag: operationBlock });
+  // Archive-state-independent source proof. V315 route bindings are append-only,
+  // while their global fee can change; the original fee is authenticated by the
+  // successful Gateway ILNOperation + matching Mailbox.Dispatch receipt.
+  // Never use the current registry fee as historical transfer authorization.
+  const routeFactory = await sourceRegistry.factory();
+  assert(routeFactory !== "0x0000000000000000000000000000000000000000",
+    "source ILN registry does not expose a valid append-only V315 factory");
+  const historicRoute = await sourceRegistry.getRoute(destinationDomain, routeId);
   // A governance action later in the same source block may disable this route.
   // An emitted fee-qualified operation from the canonical immutable Gateway
   // proves the route was enabled when bridge() actually executed.
