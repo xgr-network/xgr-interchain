@@ -1,7 +1,7 @@
 // Public discoverability is a deterministic projection of the publication
 // policy and GitHub-receipted deployments. A configured but not yet deployed
 // spoke never blocks a fully deployed asset on another spoke.
-import {isDeployedChain} from "./route-availability.js";
+import {isDeployedChain,deployedRoutes} from "./route-availability.js";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -53,10 +53,14 @@ export function isDeployedAsset(entry,catalog=null){
    deployment.representations.filter(rep=>rep.chain===chain&&
     rep.component===configured.get(chain)&&bound(rep)&&references.has(rep.receiptPath)));
   if(routers.some(items=>items.length!==1))return false;
-  return deployment.routeDeployments.some(row=>
-   row.routeName===route.name&&row.sourceChain===src&&row.destinationChain===dst&&
-   HASH.test(row.routeId||"")&&bound(row.components?.gateway)&&bound(row.components?.feeVault)&&
-   references.has(row.components.gateway.receiptPath)&&references.has(row.components.feeVault.receiptPath));
+  // Publication and executable inventory must reject ambiguous route instances
+  // by the same rule. Fee adapters remain deliberately irrelevant here.
+  const instances=deployment.routeDeployments.filter(row=>
+   row.routeName===route.name&&row.sourceChain===src&&row.destinationChain===dst);
+  if(instances.length!==1)return false;
+  const row=instances[0];
+  return HASH.test(row.routeId||"")&&bound(row.components?.gateway)&&bound(row.components?.feeVault)&&
+   references.has(row.components.gateway.receiptPath)&&references.has(row.components.feeVault.receiptPath);
  });
 }
 
@@ -89,8 +93,35 @@ export function isPublicAsset(id,entry,visibility,catalog=null){
  return true;
 }
 
+// A planet requires exactly the same publication approval as the token list
+// PLUS a documented representation on a complete chain-specific ILN route.
+// Neither validator quorum readiness nor the optional commercial fee adapter
+// controls public discovery.
+export function isPublicRepresentation(id,chain,catalog,visibility=null){
+ if(!isPublicAsset(id,catalog?.assets?.[id],visibility,catalog))return false;
+ // Legacy standalone ranking catalogs have no infrastructure inventory.
+ if(!catalog?.chains||!catalog?.infrastructure)return true;
+ return deployedRoutes(catalog).some(r=>r.asset===id&&(r.source===chain||r.destination===chain));
+}
+
 export function publicDirectoryCatalog(catalog,visibility){
- return {...catalog,assets:Object.fromEntries(
-  Object.entries(catalog?.assets||{}).filter(([id,entry])=>isPublicAsset(id,entry,visibility,catalog))
- )};
+ // Project one common public asset selection onto tokens, rankings and 3D
+ // systems. Configured-only future spokes must not acquire token planets.
+ const chainsByAsset=new Map();
+ if(catalog?.chains&&catalog?.infrastructure){
+  for(const route of deployedRoutes(catalog)){
+   if(!chainsByAsset.has(route.asset))chainsByAsset.set(route.asset,new Set());
+   chainsByAsset.get(route.asset).add(route.source);
+   chainsByAsset.get(route.asset).add(route.destination);
+  }
+ }
+ const assets=Object.fromEntries(Object.entries(catalog?.assets||{})
+  .filter(([id,entry])=>isPublicAsset(id,entry,visibility,catalog))
+  .map(([id,entry])=>{
+   if(!catalog?.chains||!catalog?.infrastructure)return [id,entry];
+   const ready=chainsByAsset.get(id);
+   return [id,{...entry,metadata:{...entry.metadata,
+    representations:(entry.metadata?.representations||[]).filter(rep=>ready?.has(rep.chain))}}];
+  }));
+ return {...catalog,assets};
 }

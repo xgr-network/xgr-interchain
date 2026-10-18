@@ -3,7 +3,7 @@
 // No price/TVL estimates and no planets for unranked assets.
 import {verifiedMetrics} from "./leaderboard-data.js";
 import {representationFor} from "./token-representation.js";
-import {isPublicAsset} from "./listing-visibility.js";
+import {isPublicRepresentation} from "./listing-visibility.js";
 const SORT=new Set(["lockedUsd","marketCapUsd","movedUsd"]);
 const ADDR=/^0x[0-9a-fA-F]{40}$/;
 const valid=v=>typeof v==="number"&&Number.isFinite(v)&&v>=0;
@@ -23,7 +23,7 @@ export function systemRanking(catalog,snapshot,chain,{sort="lockedUsd",search=""
  const text=String(search||"").trim().toLowerCase().slice(0,80);
  const max=Math.max(1,Math.min(MAX_ORBIT_TOKENS,Number.isSafeInteger(limit)?limit:MAX_ORBIT_TOKENS));
  const candidates=Object.entries(catalog.assets||{}).filter(([id,asset])=>
-   isPublicAsset(id,asset,visibility,catalog)&&representationReady(asset,chain));
+   isPublicRepresentation(id,chain,catalog,visibility)&&representationReady(asset,chain));
  const matches=candidates.filter(([id,a])=>(id+" "+(a.profile?.name||"")+" "+(a.metadata?.symbol||"")).toLowerCase().includes(text));
  const rows=matches.map(([id,asset])=>{
   const metric=verifiedMetrics(snapshot,id);
