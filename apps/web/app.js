@@ -86,7 +86,11 @@ async function refreshFeePreview(){
   if(bridge<principal+validator||fee<=0n)throw Error("Inconsistent protocol quote");
   const native=bridge-principal;
   const total=native+fee;
-  updatePreviewState("Estimated route fee: "+formatWeiFee(total)+" "+coin,
+  if(String(value.estimatedRouteFeeWei)!==total.toString()||
+   !/^(0|[1-9][0-9]*)\\.[0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
+   throw Error("Inconsistent USD fee preview");
+  updatePreviewState("Estimated route fee: "+formatWeiFee(total)+" "+coin+
+   " (≈ $"+value.estimatedRouteFeeUsd+" USD)",
    "Source protocol fee: "+formatWeiFee(native)+" "+coin+
    " · GmbH Interchain Fee: "+formatWeiFee(fee)+" "+coin+
    (onward>0n?" · XGR onward fee included in GmbH quote":"")+
