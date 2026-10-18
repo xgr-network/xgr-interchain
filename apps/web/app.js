@@ -761,7 +761,15 @@ function render(){
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
    notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
- if(p==="/transfer"){void refreshSponsorship();scheduleFeePreview();}
+ if(p==="/transfer"){
+  // The planner normalizes the target when the source changes. Commit the
+  // actual visible form values before any preview or wallet transaction.
+  for(const [key,id] of [["asset","ux-asset"],["origin","ux-origin"],["destination","ux-destination"]]){
+   const value=document.getElementById(id)?.value;
+   if(typeof value==="string"&&value)state.experience[key]=value;
+  }
+  void refreshSponsorship();scheduleFeePreview();
+ }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{
