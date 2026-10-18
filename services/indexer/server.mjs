@@ -14,9 +14,9 @@ import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
 const HOST=process.env.XITA_INDEXER_HOST||"127.0.0.1";
-const evidencePath=process.env.XITA_METRICS_EVIDENCE||null;
+const evidencePath=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
 function readEvidence(){
- if(!evidencePath)return null;
+ if(!existsSync(evidencePath))return null;
  const info=statSync(evidencePath);
  if(!info.isFile()||info.size>2_000_000)throw Error("Metrics evidence size invalid");
  const data=JSON.parse(readFileSync(evidencePath,"utf8"));

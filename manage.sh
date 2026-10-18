@@ -402,17 +402,16 @@ install_interchain_fee() (
 install_tvl() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner." >&2; return 1; }
-  local user group node_bin unit name
+  local user group node_bin unit
   user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
-  for name in /etc/xita/tvl.env /etc/xita/indexer.env; do
-    [[ -f "$name" ]] || { echo "ERROR: missing $name" >&2; return 1; }
-    if ! privileged grep -qxF 'XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json' "$name"; then
-      echo "ERROR: $name must specify shared XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json" >&2
-      return 1
-    fi
-  done
-  if ! privileged grep -q '^XITA_INDEXER_DATABASE_URL=postgresql' /etc/xita/tvl.env; then
-    echo "ERROR: dedicated SELECT-only transfer-index PostgreSQL URL missing" >&2
+  # Reuse the already configured SELECT-only metrics/indexer environment.
+  # Do not demand a second manually provisioned /etc/xita/tvl.env.
+  [[ -f /etc/xita/indexer.env ]] || {
+    echo "ERROR: existing /etc/xita/indexer.env missing" >&2
+    return 1
+  }
+  if ! privileged grep -q '^XITA_INDEXER_DATABASE_URL=postgresql' /etc/xita/indexer.env; then
+    echo "ERROR: existing indexer read-only PostgreSQL connection missing" >&2
     return 1
   fi
   privileged install -d -m 0700 -o "$user" -g "$group" /var/lib/xita
@@ -427,7 +426,10 @@ install_tvl() (
   privileged systemctl enable --now xita-tvl.service
   privileged systemctl restart xita-tvl.service
   privileged systemctl is-active xita-tvl.service
-  echo "XITA token-agnostic TVL worker installed. Values remain unavailable until fully verified."
+  if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-indexer.service
+  fi
+  echo "XITA TVL worker installed using existing indexer read-only configuration. Unverified amounts remain unavailable."
 )
 
 complete_update() {

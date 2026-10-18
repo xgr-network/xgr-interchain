@@ -7,7 +7,8 @@ Wants=network-online.target
 Type=simple
 User=xgradmin
 WorkingDirectory=/home/xgradmin/repos/xgr-interchain
-EnvironmentFile=/etc/xita/tvl.env
+EnvironmentFile=/etc/xita/indexer.env
+Environment=XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json
 ExecStart=/usr/bin/node services/indexer/tvl-worker.mjs
 Restart=on-failure
 RestartSec=20

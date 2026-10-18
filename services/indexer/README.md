@@ -265,3 +265,15 @@ Installation requires:
 The commercial Interchain Fee Execution Gateways are unrelated to TVL and
 to these measurements. Subsequent manage.sh update restarts an active
 xita-tvl.service, but never silently provisions credentials or enables it.
+
+
+## TVL installer correction (18 October 2026)
+
+Run `./manage.sh install-tvl` after `./manage.sh update`. It reuses the existing
+`/etc/xita/indexer.env` database reader credentials; do NOT create
+`/etc/xita/tvl.env` and do NOT copy example credentials. Both services share
+the fixed, owner-readable evidence path `/var/lib/xita/verified-tvl.json`.
+The metrics API returns unavailable evidence until the worker writes a valid
+file; the installer restarts the running metrics API after enabling the worker.
+Verified USD TVL still requires finalized route index coverage and valid
+CoinGecko pricing. No chain transactions are performed.
