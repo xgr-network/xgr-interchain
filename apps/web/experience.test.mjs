@@ -205,7 +205,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
 test("no catalog deployment does not invent actionable transfer routes",()=>{
  const model=buildExperienceModel({chains:catalog.chains,assets:{}});
  const html=renderPlanRoute(model,{},"not-deployed",{account:"0x1111111111111111111111111111111111111111"});
- assert.match(html,/Route unavailable/);
+ assert.match(html,/Interchain Fee gateway not deployed/);
  assert.doesNotMatch(html,/eth_sendTransaction/);
 });
 
@@ -228,7 +228,7 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.match(html,/ux-transfer-available/);
  assert.match(html,/Available on /);
  // This fixture has no deployment receipts, so the UI must not invent an available amount.
- assert.match(html,/Route unavailable/);
+ assert.match(html,/Interchain Fee gateway not deployed/);
  assert.equal((html.match(/Token balances/g)||[]).length,0);
  assert.match(html,/New transfers need a verified Interchain Fee/);
  assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
