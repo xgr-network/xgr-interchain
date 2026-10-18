@@ -1,7 +1,7 @@
 // The admin writes ONLY a signal after a verified receipt was committed to
 // GitHub. A separate unprivileged systemd service synchronizes the checkout.
 // No HTTP endpoint can trigger a git operation.
-import {existsSync,lstatSync,mkdirSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,existsSync,lstatSync,mkdirSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {join,dirname,basename} from "node:path";
@@ -97,7 +97,15 @@ export function publishLiveCatalog(root,target=LIVE_CATALOG){
   throw Error("Invalid generated public catalog");
  const temp=join(dir,".catalog-"+randomUUID()+".tmp");
  try{
+  // systemd receipt/poll sync units run with UMask=0077. writeFileSync's
+  // requested 0644 is masked to 0600; nginx then serves /catalog.json as
+  // HTTP 403, hiding all token lists, planets and executable routes.
+  // Make this ONE explicitly public, non-secret JSON readable BEFORE atomic
+  // rename. Never relax the service umask or permissions of private state.
   writeFileSync(temp,bytes,{mode:0o644,flag:"wx"});
+  chmodSync(temp,0o644);
+  if((lstatSync(temp).mode&0o777)!==0o644)
+   throw Error("Public catalog access mode not established");
   renameSync(temp,target);
  }catch(error){try{unlinkSync(temp)}catch{}throw error}
  return {catalogPublished:true,bytes:bytes.length};
