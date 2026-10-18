@@ -320,19 +320,9 @@ function dashboardTopTokens(catalog,metrics){
   '<p class="ux-small ux-dashboard-source">Ranking: published assets only · Market prices from eligible external sources · Transfer and TVL metrics require finalized on-chain evidence.</p></section>';
 }
 
-export function renderXGRWalletSummary(model,wallet={}){
- const xgr=model.assets.find(a=>a.id==="XGR");
- if(!xgr)return "";
- const configured=xgr.representations.filter(r=>r.chain==="xgrchain"||verifiedSyntheticContract(model.deployments,"XGR",r));
- return '<section class="ux-wallet-inventory" aria-label="XGR contract addresses and balances">'+
-  '<div class="ux-wallet-inventory-heading"><div><span class="ux-kicker">XGR · NETWORK REPRESENTATIONS</span><h2>Your XGR across chains</h2></div>'+
-  (wallet.account?'<button type="button" data-xita-gas-refresh>Refresh balances</button>':'<span class="ux-small">Connect wallet to display balances</span>')+'</div>'+
-  '<div class="ux-wallet-inventory-grid">'+configured.map(r=>renderRepresentationInventory(model,"XGR",r.chain,wallet)).join("")+'</div></section>';
-}
-
 export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null,wallet={}){
  return '<div class="ux-app ux-dashboard ux-northstar-page">'+
-  northstarStage(model)+renderXGRWalletSummary(model,wallet)+northstarCards(model,metrics)+allianceIntro()+
+  northstarStage(model)+northstarCards(model,metrics)+allianceIntro()+
   dashboardTopTokens(catalog||{assets:{}},metrics)+
   '<section class="ux-dashboard-outro"><div><span class="ux-kicker">DISCOVER · CONNECT · EXPAND</span>'+
   '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+

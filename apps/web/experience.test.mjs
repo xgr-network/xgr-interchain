@@ -270,3 +270,16 @@ test("transfer status replaces redundant right-side network inventory",()=>{
  assert.equal((markup.match(/class="ux-transfer-progress/g)||[]).length,1);
  assert.ok(markup.indexOf('id="xita-transfer-primary"')<markup.indexOf('<aside class="ux-panel'));
 });
+
+test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const m=buildExperienceModel(c),wallet={account:"0x"+"1".repeat(40)};
+ const html=renderDashboard(m,{},"ready",null,c,wallet);
+ assert.match(html,/ux-ns-stage/);
+ assert.match(html,/Locked TVL/);
+ assert.doesNotMatch(html,/Your XGR across chains|XGR · NETWORK REPRESENTATIONS|ux-wallet-inventory|ux-representation-entry|Native currency · no ERC-20 contract/);
+ // Contract and wallet information still belongs on the XGR token detail view.
+ const {renderRepresentationInventory}=await import("./experience.js");
+ assert.match(renderRepresentationInventory(m,"XGR","xgrchain",wallet),/Native currency · no ERC-20 contract/);
+ assert.match(renderRepresentationInventory(m,"XGR","base",wallet),/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+});
