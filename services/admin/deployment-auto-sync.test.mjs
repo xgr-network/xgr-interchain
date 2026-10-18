@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,readFileSync,existsSync,rmSync,mkdirSync,writeFileSync,symlinkSync} from "node:fs";
+import {mkdtempSync,readFileSync,existsSync,rmSync,mkdirSync,writeFileSync,symlinkSync,statSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {queueDeploymentSync,validateDeploymentDiff,syncDeploymentCheckout,publishLiveCatalog,SYNC_REQUEST} from "./deployment-auto-sync.mjs";
@@ -106,6 +106,27 @@ test("atomically publish catalog; refuse symlinked live target",()=>{
   symlinkSync(join(dir,"apps","web","catalog.json"),target);
   assert.throws(()=>publishLiveCatalog(dir,target),/regular file/);
  }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("public catalog publication stays world-readable under systemd UMask 0077",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-catalog-umask-"));
+ const previous=process.umask(0o077);
+ try{
+  mkdirSync(join(dir,"apps","web"),{recursive:true});
+  mkdirSync(join(dir,"live"));
+  writeFileSync(join(dir,"apps","web","catalog.json"),JSON.stringify({
+   schemaVersion:1,assets:{XGR:{}},chains:{xgrchain:{}},infrastructure:{xgrchain:{}}
+  }));
+  const target=join(dir,"live","catalog.json");
+  publishLiveCatalog(dir,target);
+  assert.equal(statSync(target).mode&0o777,0o644,"nginx must read initial catalog");
+  writeFileSync(join(dir,"apps","web","catalog.json"),JSON.stringify({
+   schemaVersion:1,assets:{XGR:{deployment:{present:true}}},chains:{xgrchain:{}},
+   infrastructure:{xgrchain:{}}
+  }));
+  publishLiveCatalog(dir,target);
+  assert.equal(statSync(target).mode&0o777,0o644,
+   "receipt-triggered atomic overwrite must not turn the catalog into HTTP 403");
+ }finally{process.umask(previous);rmSync(dir,{recursive:true,force:true})}
 });
 test("an intermediate application change is rejected even if later reverted",()=>{
  let merged=false;
