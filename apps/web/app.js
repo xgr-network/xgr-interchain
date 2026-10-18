@@ -2,7 +2,7 @@ import {publicDirectoryCatalog,isDeployedAsset,listingStatus} from "./listing-vi
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
@@ -497,9 +497,8 @@ function token(){
   (a.deployment?.routeDeployments?.length||0)+' / '+routes().length+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
- '<section class="section"><h2>Network representations</h2><div class="routes">'+(a.metadata.representations||[]).map(rep=>
- '<div class="route"><strong>'+x(names[rep.chain]||rep.chain)+'</strong> · '+x(rep.symbol)+
- '<p class="muted">'+x(rep.representation)+' · '+(rep.assetAddress?x(rep.assetAddress):"Deployment pending verification")+'</p></div>').join("")+'</div></section>'+
+ '<section class="section"><h2>Network representations</h2><p class="ux-small">Contract addresses from documented deployment receipts.</p><div class="routes">'+(a.metadata.representations||[]).map(rep=>
+ renderRepresentationInventory(model,id,rep.chain,walletGasView())).join("")+'</div></section>'+
  '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
  '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">'+
    (a.deployment?.routeDeployments?.some(r=>r.routeName===rt.name)?
@@ -614,7 +613,7 @@ async function updateWalletGas(){
   return;
  }
  state.walletGasLoading=true;state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;
- if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
+ if(path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
  try{
   // Read balances only. Never switch chains, sign, approve or submit.
   const [result,tokenBalances]=await Promise.all([
@@ -633,7 +632,7 @@ async function updateWalletGas(){
  }finally{
   if(request===walletGasRequest){
    state.walletGasLoading=false;
-   if(path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
+   if(path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
   }
  }
 }
@@ -658,7 +657,7 @@ function render(){
  // Universe is an infrastructure map, not the public TVL-qualified token leaderboard.
  // Show documented token representations without claiming public listing or live delivery.
  const universe=buildExperienceModel(state.catalog,()=>false);
- el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
+ el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog(),walletGasView()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
    notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
@@ -684,7 +683,7 @@ function render(){
   if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:false,selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
-   if(details)details.innerHTML=renderUniverse(universe,key,state.leaderboard).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+   if(details)details.innerHTML=renderUniverse(universe,key,state.leaderboard,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
    void loadSystemRanking(key);
   },onToken:token=>{history.pushState(null,"","/token/"+encodeURIComponent(token.slug));render();scrollTo(0,0);}});
   if(state.experience.system!=="xgrchain")void loadSystemRanking(state.experience.system);
@@ -795,6 +794,15 @@ document.addEventListener("click",e=>{
  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
  e.preventDefault();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });
+document.addEventListener("click",e=>{
+ const copy=e.target.closest("button[data-xita-copy-address]");
+ if(!copy)return;
+ const address=copy.dataset.xitaCopyAddress;
+ if(!/^0x[0-9a-f]{40}$/i.test(address||""))return;
+ e.preventDefault();
+ if(!navigator.clipboard?.writeText){copy.textContent="Copy unavailable";return;}
+ void navigator.clipboard.writeText(address).then(()=>{copy.textContent="Copied";}).catch(()=>{copy.textContent="Copy unavailable";});
+});
 window.addEventListener("popstate",render);
 refreshTransferLink();
 // Dashboard loads the 10 KB same-origin catalog, never RPC/indexer data.
@@ -882,6 +890,6 @@ async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
-   details.innerHTML=renderUniverse(model,state.experience.system,body).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
+   details.innerHTML=renderUniverse(model,state.experience.system,body,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
  }}catch{ /* Unavailable is not zero */ }}
