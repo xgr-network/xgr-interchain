@@ -64,3 +64,17 @@ test("asset evidence remains per token and misses do not become zero",()=>{
  const rows=verifiedEvidence(catalog,{XGR:{status:"unavailable",reason:"no-index"}},now);
  assert.equal(Object.hasOwn(rows.assets,"XGR"),false);
 });
+
+test("new blocks after complete index snapshot do not invalidate balanced custody",()=>{
+ const x=data([g(route,100n,true)],"0x64");
+ x.observedHead="0x10000";
+ assert.equal(result(x).status,"verified",JSON.stringify(result(x)));
+});
+test("invalid finalized cursor and a live balance mismatch still fail closed",()=>{
+ const x=data([g(route,100n,true)],"0x64");
+ x.observedHead="0x10000";x.cursors[0].finalized_head=201;
+ assert.equal(result(x).reason,"index-incomplete");
+ const y=data([g(route,100n,true)],"0x65");
+ y.observedHead="0x10000";
+ assert.equal(result(y).reason,"escrow-balance-mismatch");
+});
