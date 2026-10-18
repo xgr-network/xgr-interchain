@@ -5,6 +5,7 @@ import {apiJSON} from "./api-client.mjs";
 import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
+import {chainDeploymentIntent,hasOutstandingWalletTransaction} from "./chain-intent-view.mjs";
 import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
@@ -377,6 +378,7 @@ async function openContractModal(chainName,component){
    get("/admin/api/chain-deploy/status")]);
   if(selectedDeployment?.chainName!==chainName||selectedDeployment.component!==component)return;
   const r=response.readiness;
+  const existing=chainDeploymentIntent(status,chainName,component);
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
   const requiresValues=component==="validatorRegistry"||
@@ -455,9 +457,17 @@ async function openContractModal(chainName,component){
    presentModalStatus("Validator-Bootstrap: "+(r.evidenceError||"BLS-Nachweis nicht bestätigt"),"warn");
    return;
   }
+  // An existing wallet broadcast/receipt must be reconciled, never
+  // replaced by an implicit new MetaMask deployment.
+  if(hasOutstandingWalletTransaction(existing)){
+   el("modal-deploy").disabled=true;
+   presentModalStatus("Bereits gesendete Transaktion ("+existing.stage+
+    ") für "+chainName+" · "+component+" vorhanden. Erst über die Deployment-Wiederherstellung prüfen; keine neue Wallet-Signatur.","warn");
+   return;
+  }
   el("modal-deploy").disabled=false;
-  presentModalStatus(existing&&existing.stage!=="prepared"
-   ?"Bereits gesendete Transaktion erkannt. Deploy setzt sie automatisch fort."
+  presentModalStatus(existing?.stage==="prepared"
+   ?"Nicht gesendeter Deployment-Entwurf vorhanden. Vor einem neuen Wallet-Deploy den Entwurf prüfen oder abbrechen."
    :"Werte prüfen und mit Wallet deployen. Gebühren zeigt MetaMask.");
 
  }catch(e){presentModalStatus("Prüfung nicht möglich: "+e.message,"error")}

@@ -140,6 +140,7 @@ const staticFiles=new Map([
  ["/admin/deployment-batch.mjs",["deployment-batch.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-sync-wait.mjs",["deployment-sync-wait.mjs","text/javascript; charset=utf-8"]],
  ["/admin/factory-defaults.mjs",["factory-defaults.mjs","text/javascript; charset=utf-8"]],
+ ["/admin/chain-intent-view.mjs",["chain-intent-view.mjs","text/javascript; charset=utf-8"]],
  ["/admin/style.css",["style.css","text/css; charset=utf-8"]],
  ["/admin/keccak.mjs",["keccak.mjs","text/javascript; charset=utf-8"]],
  ["/admin/service-wallet-rotation.mjs",["service-wallet-rotation.mjs","text/javascript; charset=utf-8"]],
