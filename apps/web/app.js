@@ -96,7 +96,7 @@ async function refreshFeePreview(){
    !/^(0|[1-9][0-9]*)[.][0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
    throw Error("Inconsistent USD fee preview");
   const detail=document.getElementById("ux-fee-preview-details");
-  updatePreviewState("Estimated additional route fees", "");
+  updatePreviewState("", "");
   if(detail){
    detail.hidden=false;
    const main=document.createElement("div");
@@ -793,6 +793,9 @@ function render(){
   transferActivity.selectedTxHash=e.target.value;render();
  });
  document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
+ document.querySelector("#ux-fee-info-trigger")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.showModal());
+ document.querySelector("#ux-fee-info-close")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
+ document.querySelector("[data-fee-info-close]")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
  document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelector("#xita-scan-transfers")?.addEventListener("click",()=>void scanWalletHistory());
  document.querySelector("#xita-lookup-form")?.addEventListener("submit",event=>{
