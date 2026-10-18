@@ -1,6 +1,6 @@
 # Mainnet transfer evidence: XGRChain → Base (native XGR → wXGR)
 
-**Evidence recorded:** 2026-10-18. **Classification:** forward-direction mainnet cross-chain transfer evidenced on the source chain and by an operator-supplied third-party BaseScan token-holder screenshot. **Destination transfer receipt and on-chain mint logs not yet independently verified.** This is not a full reverse-direction roundtrip or validator-rotation test.
+**Evidence recorded:** 2026-10-18. **Classification:** successful source-chain lock/message confirmed by XGRChain RPC plus BaseScan screenshots showing (a) 1 wXGR held by the source wallet and (b) a successful Base transaction with an ERC-20 mint/Transfer from the zero address of 1 wXGR to the same wallet. **Base receipt logs have not been independently retrieved via RPC, nor has the destination mint transaction been cryptographically tied to the specific XGRChain messageId.** This is not a reverse roundtrip or validator-rotation test.
 
 ## Canonical identifiers
 
@@ -23,6 +23,11 @@
 | Base wrapped-token contract | [`0x2ca97eff807744f81f13c59a75a8eb0add1c715d`](https://basescan.org/token/0x2ca97eff807744f81f13c59a75a8eb0add1c715d) — exactly matches the `syntheticRouter` address documented in `apps/web/catalog.json` and the address encoded in the source Mailbox message |
 | BaseScan token page shown by operator | `Wrapped XGR (wXGR)`, ERC-20, 18 decimals; total supply **1 wXGR**, **1 holder** |
 | BaseScan reported token holder | `0x6a6415Aa1c945Ee437336c136c2de9E8baB1F05E`, balance **1.0000 wXGR** (100% of screenshot supply), matches source sender and target recipient |
+| Base mint transaction (BaseScan screenshot) | [`0xabae3fa63e6dc4be09910c8fb00c57b784bd8a1e983cf9ea67bac0bee7b659db`](https://basescan.org/tx/0xabae3fa63e6dc4be09910c8fb00c57b784bd8a1e983cf9ea67bac0bee7b659db) |
+| Base mint TX state | **Success**, block `52767651`, displayed timestamp `2026-10-18 11:57:29 UTC` (BaseScan screenshot) |
+| Base mint event shown | ERC-20 Transfer **from Null / zero address** to `0x6a6415Aa1c945Ee437336c136c2de9E8baB1F05E` of **1 Wrapped XGR (wXGR)** |
+| Base TX externally sent by / interacted with | Sender: original wallet; `To`: MetaMask Delegation Manager `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3` according to BaseScan screenshot; this address is **not** asserted to be the Mailbox |
+| Base mint TX receipt logs | BaseScan UI reports `Logs (5)`; individual raw event addresses/topics/data **not** decoded in this review |
 
 ## Independently confirmed
 
@@ -35,7 +40,7 @@
 
 The operator supplied a screenshot of the public BaseScan token page showing **Wrapped XGR (wXGR)**, contract `0x2ca97eff807744f81f13c59a75a8eb0add1c715d` with **18 decimals**. The token overview reports **max total supply 1 wXGR**, exactly **one holder**, and the holder table shows the same wallet `0x6a6415Aa1c945Ee437336c136c2de9E8baB1F05E` holding **1.0000 wXGR (100%)**. That matches the source-chain lock amount, the recipient in the source message and the documented XITA Base `syntheticRouter` contract address.
 
-This adds *explorer-presented destination state evidence*, beyond an XITA UI delivery report. The underlying BaseScan page could not be queried live by the review tool and no Base mint transaction hash was supplied: preserve the distinction between **user-provided external explorer screenshot** and **independently decoded destination transaction receipt**. The screenshot is not a cryptographic proof linking a specific `Mailbox.process` call to the mint.
+This provides explorer-presented destination state evidence beyond an XITA UI delivery report. The operator additionally supplied the **successful Base Mint transaction screenshot** with its full transaction hash. BaseScan's transaction overview shows an ERC-20 `Transfer` **from the zero address** of **1 wXGR** to the original wallet. The screenshot displays block `52767651`, date/time `2026-10-18 11:57:29 UTC`, and a five-log transaction. These are **externally presented explorer observations**, not independently decoded raw `eth_getTransactionReceipt` data. Direct BaseScan and Blockscout URL fetching and Base RPC access were unavailable during this review. The screenshot alone cannot prove which `Mailbox.process` message triggered the mint, so keep `messageId` attribution at the UI/receipt-correlation level pending raw logs.
 
 ## Operator-reported delivery status
 
@@ -44,14 +49,15 @@ The user copied the XITA transfer UI state:
 > **XGR · xgrchain → base — Delivered**  
 > The target Mailbox confirms that the message was delivered.
 
-The delivery status plus the independent-explorer screenshot are consistent with a successful forward lock/mint; nevertheless, the Base `Mailbox.delivered(messageId)` value, successful destination `process()` receipt and token `Transfer(address(0), wallet, 1e18)` mint event have not been extracted from Base chain data during this review.
+The XITA delivered status plus the two BaseScan screenshots demonstrate the user-visible forward lock/mint result, including a success-status destination transaction with a displayed ERC-20 mint. Nevertheless, `Mailbox.delivered(messageId)`, the actual `process()` transaction receipt and the full raw token `Transfer(address(0),wallet,1e18)` topics/data have not been independently extracted from Base RPC by this review.
 
 ## Not yet proven by this evidence
 
-- Base destination transaction hash, successful `Mailbox.process` transaction receipt, and independently queried `delivered(messageId)=true`.
-- ERC-20 `Transfer(address(0), recipient, 1e18)` mint event in a confirmed Base receipt; exact balance change from pre-mint to post-mint. Current token address and a **1 wXGR holder balance in BaseScan screenshot are established**.
+- Independent Base-RPC retrieval of the **known destination mint transaction hash** receipt (`0xabae3fa63e6dc4be09910c8fb00c57b784bd8a1e983cf9ea67bac0bee7b659db`), decoding the five logs including token address, zero-address mint Transfer and indexed recipient, and validating successful execution.
+- Determination whether the displayed mint receipt or another linked transaction executed `Mailbox.process()`; independent `Mailbox.delivered(messageId)=true` and proof-level correlation with source messageId.
+- Historical pre-mint/post-mint `balanceOf` delta. Current token address, **1 wXGR holder balance** and **mint event shown in successful BaseScan TX screenshot** are established.
 - Reverse Base → XGRChain `burn/unlock` transaction and complete roundtrip.
 - Validator rotation, re-attestation of an in-flight message, recovery after relayer outage or replay protection under live conditions.
 - Admission of a fresh interchain validator under Registry V3 (audit A-02).
 
-**Audit disposition:** Forward XGRChain → Base lock/mint is **supported by source receipt + BaseScan token-holder screenshot + operator's Delivered report**. Mark forward-direction user-visible result **OBSERVED**; do not mark transaction-level destination `process()/mint` proof **VERIFIED** until a Base receipt and Mint Transfer log are independently checked. A-01 recovery, validator rotation and reverse-direction roundtrip remain **PENDING**. No full audit sign-off.
+**Audit disposition:** Forward XGRChain → Base lock/mint is **observed successful** using a verified XGRChain source receipt, operator-provided XITA `Delivered`, and **two BaseScan screenshots including a successful zero-address mint of 1 wXGR in a concrete Base transaction**. Mark **FORWARD_LOCK_MINT_OBSERVED**. Independent Base raw receipt validation and cross-message ID provenance remain **PENDING**; A-01 recovery, A-02 new-validator admission, validator rotation and reverse-direction roundtrip remain **PENDING**. This evidence alone is not comprehensive audit sign-off.
