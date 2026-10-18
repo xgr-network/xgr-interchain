@@ -87,7 +87,7 @@ async function refreshFeePreview(){
   const native=bridge-principal;
   const total=native+fee;
   if(String(value.estimatedRouteFeeWei)!==total.toString()||
-   !/^(0|[1-9][0-9]*)\\.[0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
+   !/^(0|[1-9][0-9]*)[.][0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
    throw Error("Inconsistent USD fee preview");
   updatePreviewState("Estimated route fee: "+formatWeiFee(total)+" "+coin+
    " (≈ $"+value.estimatedRouteFeeUsd+" USD)",
