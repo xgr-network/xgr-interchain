@@ -220,11 +220,16 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.ok(html.indexOf('id="ux-transfer-amount"')<html.indexOf('id="xita-transfer-primary"'));
  assert.match(html,/ADDITIONAL ROUTE FEES/);
  assert.match(html,/XITA transfer fees/);
- assert.match(html,/separate wallet gas applies|Separate wallet gas applies|Network transaction gas/);
- assert.match(html,/Gas sponsorship/);
+ assert.match(html,/network gas for wallet transactions/);
+ assert.match(html,/Gas sponsorship|gas sponsorship/);
  assert.doesNotMatch(html,/Route, network gas &amp; safety checks/);
  assert.doesNotMatch(html,/ux-transfer-advanced/);
- assert.ok(html.indexOf('id="ux-fee-preview-status"')<html.indexOf('id="xita-transfer-primary"'));
+ assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('id="ux-fee-preview-status"'));
+ assert.ok(html.indexOf("Transfer progress")<html.indexOf("Transfer costs"));
+ assert.match(html,/class="ux-transfer-side"/);
+ assert.match(html,/id="ux-fee-info-trigger"/);
+ assert.match(html,/<dialog id="ux-fee-info-dialog"/);
+ assert.match(html,/data-fee-info-close/);
  assert.match(html,/ux-transfer-available/);
  assert.match(html,/Available on /);
  // This fixture has no deployment receipts, so the UI must not invent an available amount.
@@ -233,7 +238,7 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.match(html,/New transfers need a verified Interchain Fee/);
  assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
  const noWallet=renderPlanRoute(model,{},"ready");
- assert.ok(noWallet.indexOf("ADDITIONAL ROUTE FEES")<noWallet.indexOf("Connect wallet to transfer"));
+ assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("ADDITIONAL ROUTE FEES"));
  assert.match(noWallet,/id="xita-transfer-primary"/);
 });
 
@@ -295,6 +300,6 @@ test("customer-facing transfers never label the route quote as GmbH fee",()=>{
  const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"1"},"ready");
  assert.doesNotMatch(html,/GmbH Interchain Fee/);
  assert.doesNotMatch(html,/Route, network gas/);
- assert.match(html,/additional to regular blockchain transaction gas/);
+ assert.match(html,/Network gas is additional/);
  assert.match(renderFAQ(),/XITA Service Fee/);
 });
