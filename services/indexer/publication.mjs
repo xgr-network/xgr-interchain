@@ -1,51 +1,51 @@
-// A public listing is a derived view of an approved asset, complete verified
-// deployment receipts, and finalized independent escrow valuations from DB.
-// An unset policy or missing/stale/untrusted evidence is UNKNOWN, never zero.
-import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
+// Publication is a pure derived view of receipt-backed deployments and
+// separately verified, finalized net escrow valuations. Null means no TVL
+// threshold; numeric zero requires strictly positive TVL.
+import {isDeployedAsset,validPublicationPolicy,usdUnits} from "../../apps/web/listing-visibility.js";
 
 const HASH=/^0x[0-9a-f]{64}$/i;
-const NUMBER=/^(?:0|[1-9]\d*)(?:\.\d{1,8})?$/;
 const nowIso=n=>new Date(n).toISOString();
-const usdUnits=s=>{
- const literal=String(s??"");
- if(!NUMBER.test(literal)||!Number.isFinite(Number(literal)))return null;
- const [integer,fraction=""]=literal.split(".");
- return BigInt(integer)*100000000n+BigInt(fraction.padEnd(8,"0"));
-};
-const validUsd=s=>usdUnits(s)!==null;
 function normalizedRow(raw,now,maxAgeMs,id){
  const at=Date.parse(raw?.asOf);
- if(!raw||String(raw.assetId||"").toLowerCase()!==id.toLowerCase()||
+ const locked=usdUnits(raw?.lockedUsd);
+ if(!raw||String(raw.assetId||"").toLowerCase()!==String(id||"").toLowerCase()||
     raw.verified!==true||raw.complete!==true||raw.valuationVerified!==true||
-    !HASH.test(raw.proofDigest||"")||
-    !validUsd(raw.lockedUsd)||!Number.isFinite(at)||
+    !HASH.test(raw.proofDigest||"")||locked===null||
+    !Number.isFinite(Number(raw.lockedUsd))||!Number.isFinite(at)||
     at>now+30000||now-at>maxAgeMs)return null;
  return {lockedUsd:Number(raw.lockedUsd),asOf:nowIso(at)};
 }
 export function derivedVisibility(catalog,positions=null,{now=Date.now()}={}){
  const policy=catalog?.publication;
+ const valid=validPublicationPolicy(policy);
  const minimum=policy?.minimumLockedUsd;
  const maxAge=policy?.maxEvidenceAgeSeconds;
- const policyValid=policy?.kind==="xita-publication-policy"&&policy.schemaVersion===1&&
-   (minimum===null||typeof minimum==="number"&&minimum>0&&validUsd(minimum))&&
-   Number.isSafeInteger(maxAge)&&maxAge>=60&&maxAge<=86400;
  const assets={};
  for(const [key,entry] of Object.entries(catalog?.assets||{})){
   const assetId=entry?.metadata?.assetId||null;
-  if(!isDeployedAsset(entry)){
+  if(!isDeployedAsset(entry,catalog)){
    assets[key]={assetId,status:"prospect",deployment:"prospect",lockedUsd:null,asOf:null};
    continue;
   }
-  const position=positions?.[key];
-  const valid=policyValid&&minimum!==null&&normalizedRow(position,now,maxAge*1000,assetId);
-  assets[key]=valid?
-   {assetId,status:usdUnits(position.lockedUsd)>=usdUnits(minimum)?"public":"accepted",
-    deployment:"deployed",...valid}:
-   {assetId,status:"unknown",deployment:"deployed",lockedUsd:null,asOf:null};
+  const evidence=valid&&positions?.[key]?
+   normalizedRow(positions[key],now,maxAge*1000,assetId):null;
+  if(!valid){
+   assets[key]={assetId,status:"unknown",deployment:"deployed",lockedUsd:null,asOf:null};
+  }else if(minimum===null){
+   // An unrestricted deployment listing must not depend on a DB/indexer.
+   assets[key]={assetId,status:"public",deployment:"deployed",
+    lockedUsd:evidence?.lockedUsd??null,asOf:evidence?.asOf??null};
+  }else if(evidence){
+   const qualified=usdUnits(positions[key].lockedUsd)>usdUnits(minimum);
+   assets[key]={assetId,status:qualified?"public":"accepted",deployment:"deployed",...evidence};
+  }else{
+   assets[key]={assetId,status:"unknown",deployment:"deployed",lockedUsd:null,asOf:null};
+  }
  }
- return {schemaVersion:1,kind:"xita-visibility-v1",minimumLockedUsd:policyValid?minimum:null,
-   status:!policyValid||minimum===null?"threshold-unconfigured":!positions?"evidence-unavailable":"evaluated",
-   asOf:nowIso(now),assets};
+ return {schemaVersion:1,kind:"xita-visibility-v1",minimumLockedUsd:valid?minimum:null,
+  status:!valid?"policy-invalid":minimum===null?"unrestricted":
+   !positions?"evidence-unavailable":"evaluated",
+  asOf:nowIso(now),assets};
 }
 // Read-only PostgreSQL adapter. The trusted verifier (NOT this HTTP service)
 // must produce the complete finalized rows. No writable HTTP ingestion exists.

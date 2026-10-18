@@ -1,58 +1,95 @@
-// XITA visibility derives from verified deployment records plus an indexer snapshot.
-// No listing.json, manual publication switches, or inferred bridge activation.
+// Public discoverability is a deterministic projection of the publication
+// policy and GitHub-receipted deployments. A configured but not yet deployed
+// spoke never blocks a fully deployed asset on another spoke.
+import {isDeployedChain} from "./route-availability.js";
+
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const RECEIPT=/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/;
+const USD=/^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,8})?$/;
 const match=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
-const bound=(item)=>ADDRESS.test(item?.address||"")&&HASH.test(item?.runtimeCodeKeccak256||"")&&RECEIPT.test(item?.receiptPath||"");
+const bound=item=>ADDRESS.test(item?.address||"")&&HASH.test(item?.runtimeCodeKeccak256||"")&&
+ RECEIPT.test(item?.receiptPath||"");
 const componentFor=role=>({native:"nativeRouter",collateral:"collateralRouter",synthetic:"syntheticRouter"})[role]||null;
 
-export function isDeployedAsset(entry){
+// USD thresholds use fixed-point integer comparisons, never binary floats.
+export function usdUnits(value){
+ const text=String(value??"");
+ if(!USD.test(text))return null;
+ const [integer,fraction=""]=text.split(".");
+ return BigInt(integer)*100000000n+BigInt(fraction.padEnd(8,"0"));
+}
+export function validPublicationPolicy(policy){
+ return policy?.schemaVersion===1&&policy?.kind==="xita-publication-policy"&&
+  (policy.minimumLockedUsd===null||
+   typeof policy.minimumLockedUsd==="number"&&Number.isFinite(policy.minimumLockedUsd)&&
+    policy.minimumLockedUsd>=0&&usdUnits(policy.minimumLockedUsd)!==null)&&
+  Number.isSafeInteger(policy.maxEvidenceAgeSeconds)&&
+  policy.maxEvidenceAgeSeconds>=60&&policy.maxEvidenceAgeSeconds<=86400;
+}
+
+export function isDeployedAsset(entry,catalog=null){
  const asset=entry?.metadata,deployment=entry?.deployment,routes=entry?.routes?.routes;
  if(!asset||!deployment||deployment.present!==true||
    !HASH.test(asset.assetId||"")||!match(asset.assetId,deployment.assetId)||
    asset.asset!==deployment.asset||!Array.isArray(asset.representations)||
-   asset.representations.length<2||!Array.isArray(routes)||routes.length<2||
-   !Array.isArray(deployment.representations)||!Array.isArray(deployment.routeDeployments)||
-   !Array.isArray(deployment.receiptPaths))return false;
- const references=new Set(deployment.receiptPaths);
- const repChains=new Set();
+   !Array.isArray(routes)||!Array.isArray(deployment.representations)||
+   !Array.isArray(deployment.routeDeployments)||!Array.isArray(deployment.receiptPaths))
+   return false;
+ const configured=new Map(),references=new Set(deployment.receiptPaths);
  for(const rep of asset.representations){
-  if(!rep?.chain||repChains.has(rep.chain))return false;
-  repChains.add(rep.chain);
-  const component=componentFor(rep.representation);
-  const matched=deployment.representations.filter(r=>r.chain===rep.chain&&r.component===component);
-  if(!component||matched.length!==1||!bound(matched[0])||!references.has(matched[0].receiptPath))return false;
+  if(!rep?.chain||configured.has(rep.chain)||!componentFor(rep.representation))return false;
+  configured.set(rep.chain,componentFor(rep.representation));
  }
- const routeNames=new Set();
- for(const route of routes){
-  if(!route?.name||routeNames.has(route.name)||!repChains.has(route.sourceChain)||
-    !repChains.has(route.destinationChain)||route.sourceChain===route.destinationChain||
-    (route.sourceChain!=="xgrchain"&&route.destinationChain!=="xgrchain"))return false;
-  routeNames.add(route.name);
-  const records=deployment.routeDeployments.filter(r=>r.routeName===route.name&&
-   r.sourceChain===route.sourceChain&&r.destinationChain===route.destinationChain);
-  // A configured direction may have multiple independent route instances.
-  // Require at least one fully verified instance; ignore incomplete extras.
-  if(!records.some(record=>HASH.test(record.routeId||"")&&bound(record.components?.gateway)&&
-    bound(record.components?.feeVault)&&
-    [record.components.gateway.receiptPath,record.components.feeVault.receiptPath].every(p=>references.has(p))))return false;
- }
- return true;
+ // At least ONE complete, valid directed route. Additional planned spokes or
+ // directions must NOT suppress an already deployed token from the directory.
+ return routes.some(route=>{
+  const src=route?.sourceChain,dst=route?.destinationChain;
+  if(!route?.name||!configured.has(src)||!configured.has(dst)||src===dst||
+   (src!=="xgrchain"&&dst!=="xgrchain"))return false;
+  if(catalog&&(!isDeployedChain(catalog,src)||!isDeployedChain(catalog,dst)))return false;
+  const routers=[src,dst].map(chain=>
+   deployment.representations.filter(rep=>rep.chain===chain&&
+    rep.component===configured.get(chain)&&bound(rep)&&references.has(rep.receiptPath)));
+  if(routers.some(items=>items.length!==1))return false;
+  return deployment.routeDeployments.some(row=>
+   row.routeName===route.name&&row.sourceChain===src&&row.destinationChain===dst&&
+   HASH.test(row.routeId||"")&&bound(row.components?.gateway)&&bound(row.components?.feeVault)&&
+   references.has(row.components.gateway.receiptPath)&&references.has(row.components.feeVault.receiptPath));
+ });
 }
-export function listingStatus(entry,visibilityRow){
- if(!isDeployedAsset(entry))return "prospect";
+
+export function listingStatus(entry,visibilityRow,catalog=null){
+ if(!isDeployedAsset(entry,catalog))return "prospect";
+ if(catalog?.publication){
+  if(!validPublicationPolicy(catalog.publication))return "unknown";
+  if(catalog.publication.minimumLockedUsd===null)return "public";
+ }
  if(visibilityRow?.status==="public")return "public";
  if(visibilityRow?.status==="accepted")return "accepted";
  return "unknown";
 }
-export function isPublicAsset(id,entry,visibility){
+
+export function isPublicAsset(id,entry,visibility,catalog=null){
+ if(!isDeployedAsset(entry,catalog))return false;
+ const policy=catalog?.publication;
+ if(policy){
+  if(!validPublicationPolicy(policy))return false;
+  if(policy.minimumLockedUsd===null)return true;
+ }
  const row=visibility?.schemaVersion===1&&visibility?.kind==="xita-visibility-v1"?
   visibility.assets?.[id]:null;
- return isDeployedAsset(entry)&&row?.status==="public"&&match(row.assetId,entry.metadata.assetId);
+ if(row?.status!=="public"||!match(row.assetId,entry.metadata.assetId))return false;
+ if(policy){
+  if(visibility.minimumLockedUsd!==policy.minimumLockedUsd)return false;
+  const value=usdUnits(row.lockedUsd),minimum=usdUnits(policy.minimumLockedUsd);
+  if(value===null||minimum===null||value<=minimum)return false;
+ }
+ return true;
 }
+
 export function publicDirectoryCatalog(catalog,visibility){
  return {...catalog,assets:Object.fromEntries(
-  Object.entries(catalog?.assets||{}).filter(([id,entry])=>isPublicAsset(id,entry,visibility))
+  Object.entries(catalog?.assets||{}).filter(([id,entry])=>isPublicAsset(id,entry,visibility,catalog))
  )};
 }

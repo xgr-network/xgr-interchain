@@ -21,18 +21,21 @@ switch may control public discovery.
 | Condition | Token page | Public directory, Tokens, search, Universe and rankings |
 | --- | --- | --- |
 | Only config (prospect) | No | No |
-| Fully deployed, threshold unset | Yes (bridge subject to live safety) | No; visibility unknown |
-| Fully deployed, collateral below threshold (accepted) | Yes | No |
-| Fully deployed, collateral at or above threshold (public) | Yes | Yes |
+| Fully deployed, threshold `null` | Yes | Yes, independent of TVL evidence |
+| Fully deployed, verified collateral at or below numeric threshold | Yes | No |
+| Fully deployed, verified collateral strictly greater than numeric threshold | Yes | Yes |
 | Verified collateral declines below threshold | Yes | No; returns to accepted |
 
 `accepted` and `public` can alternate without GitHub commits. Unlocks
 and independent price changes can both trigger reevaluation. Deployed
 contracts and direct token URL persist after delisting.
 
-**Threshold intentionally unset.** `config/publication.json` contains
-`minimumLockedUsd: null` until an explicit later policy decision. Null
-does not mean 0: it forbids automatic publication, regardless of collateral.
+**Threshold semantics.** `minimumLockedUsd: null` publishes every sufficiently
+receipt-backed deployed token, independent of TVL. `0` publishes only if
+verified net locked TVL is strictly greater than $0; `1` requires strictly
+more than $1, etc. The comparison is `>` in integer USD units (8 decimals).
+Missing, stale or incomplete verification NEVER counts as a zero-valued
+verified proof and cannot qualify for numeric thresholds.
 The maximum evidence age is separately configured
 (`maxEvidenceAgeSeconds: 900`). No numeric USDC minimum is hardcoded.
 
@@ -54,11 +57,12 @@ immutable evidence digest. A row's Boolean verification flags alone do
 - `GET /api/xeta/v1/metrics/toplist`: existing metrics plus `visibility`.
 - `GET /api/xeta/v1/systems/<chain>`: public eligible assets only.
 
-No DB row, stale/future evidence, invalid digest, absent verified price,
-unknown completeness, missing DB connection or null threshold yields
-`unknown`, **not** `accepted` or a fabricated zero. The browser only
-publishes a token when the indexer explicitly says public and the catalog
-has a complete verified deployment. The XGRChain network hub always
+No DB row, stale/future evidence, invalid digest, absent verified price or
+unknown completeness yields `unknown` under a NUMERIC threshold, never an
+invented zero. The `null` policy is intentionally independent of DB evidence. The browser uses its validated catalog to publish receipt-backed deployments
+when the policy is `null`; for numeric thresholds it also requires the
+indexer's matching fresh `public` evidence. Transfer readiness is independent
+of publication and TVL thresholds. The XGRChain network hub always
 remains in the Universe even if XGR token deployment is incomplete.
 
 ## Transfer readiness is a separate safety gate

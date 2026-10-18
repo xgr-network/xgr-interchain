@@ -10,34 +10,43 @@ const catalog=minimum=>({
  publication:{schemaVersion:1,kind:"xita-publication-policy",minimumLockedUsd:minimum,maxEvidenceAgeSeconds:900},
  assets:{ABC:deployedFixture("ABC")}
 });
-const status=(minimum,row)=>derivedVisibility(catalog(minimum),{ABC:row},{now:NOW}).assets.ABC.status;
-test("publication threshold is NOT selected in GitHub yet",()=>{
- const out=derivedVisibility(catalog(null),{ABC:good(1000000)},{now:NOW});
- assert.equal(out.minimumLockedUsd,null);
- assert.equal(out.status,"threshold-unconfigured");
- assert.equal(out.assets.ABC.status,"unknown");
+const status=(minimum,row)=>derivedVisibility(catalog(minimum),row?{ABC:row}:null,{now:NOW}).assets.ABC.status;
+test("null publishes documented token independently of TVL and indexer",()=>{
+ assert.equal(status(null,null),"public");
+ assert.equal(status(null,good(0)),"public");
+ assert.equal(status(null,good(1000000)),"public");
+ const out=derivedVisibility(catalog(null),null,{now:NOW});
+ assert.equal(out.status,"unrestricted");
+ assert.equal(out.assets.ABC.lockedUsd,null);
 });
-test("verified valuation crosses future configurable threshold in both directions",()=>{
- assert.equal(status(20,good(19.99)),"accepted");
- assert.equal(status(20,good(20)),"public");
- assert.equal(status(20.00000001,good("20.00000000")),"accepted");
- assert.equal(status(20.00000001,good("20.00000001")),"public");
- assert.equal(status(20,good(0)),"accepted");
- assert.equal(status(20,good(21)),"public");
+test("strict greater-than in eight-decimal USD integer units",()=>{
+ assert.equal(status(0,good(0)),"accepted");
+ assert.equal(status(0,good("0.00000001")),"public");
+ assert.equal(status(1,good(1)),"accepted");
+ assert.equal(status(1,good("1.00000001")),"public");
+ assert.equal(status(20,good("19.99")),"accepted");
+ assert.equal(status(20,good(20)),"accepted");
+ assert.equal(status(20,good("20.00000001")),"public");
 });
-test("missing, stale, future, duplicate and invalid proof never masquerade as zero",()=>{
- assert.equal(derivedVisibility(catalog(20),null,{now:NOW}).assets.ABC.status,"unknown");
- assert.equal(status(20,{...good(100),complete:false}),"unknown");
- assert.equal(status(20,{...good(100),valuationVerified:false}),"unknown");
- assert.equal(status(20,{...good(100),proofDigest:"invalid"}),"unknown");
- assert.equal(status(20,{...good(100),assetId:"0x"+"f".repeat(64)}),"unknown");
- assert.equal(status(20,{...good(100),asOf:new Date(NOW-901000).toISOString()}),"unknown");
- assert.equal(status(20,{...good(100),asOf:new Date(NOW+90000).toISOString()}),"unknown");
- assert.equal(status(20,{...good(100),lockedUsd:"NaN"}),"unknown");
+test("missing, stale, future, incomplete and forged TVL remain unknown under numeric threshold",()=>{
+ assert.equal(status(0,null),"unknown");
+ assert.equal(status(0,{...good(100),complete:false}),"unknown");
+ assert.equal(status(0,{...good(100),valuationVerified:false}),"unknown");
+ assert.equal(status(0,{...good(100),proofDigest:"invalid"}),"unknown");
+ assert.equal(status(0,{...good(100),assetId:"0x"+"f".repeat(64)}),"unknown");
+ assert.equal(status(0,{...good(100),asOf:new Date(NOW-901000).toISOString()}),"unknown");
+ assert.equal(status(0,{...good(100),asOf:new Date(NOW+90000).toISOString()}),"unknown");
+ assert.equal(status(0,{...good(100),lockedUsd:"NaN"}),"unknown");
 });
-test("config-only and incomplete token is prospect regardless of asserted custody",()=>{
- const c=catalog(20);
- c.assets.ABC.deployment.routeDeployments.pop();
- const out=derivedVisibility(c,{ABC:good(999999)},{now:NOW});
- assert.equal(out.assets.ABC.status,"prospect");
+test("one complete route publishes even if future spokes remain planned",()=>{
+ const c=catalog(null),a=c.assets.ABC;
+ a.metadata.representations.push({chain:"polygon",representation:"synthetic",symbol:"wABC"});
+ a.routes.routes.push({name:"base_to_polygon",sourceChain:"base",destinationChain:"polygon"});
+ assert.equal(derivedVisibility(c,null,{now:NOW}).assets.ABC.status,"public");
+ c.assets.ABC.deployment.routeDeployments=[];
+ assert.equal(derivedVisibility(c,null,{now:NOW}).assets.ABC.status,"prospect");
+});
+test("invalid publication policy does not silently remove TVL restrictions",()=>{
+ const c=catalog(-1);
+ assert.equal(derivedVisibility(c,{ABC:good(50)},{now:NOW}).assets.ABC.status,"unknown");
 });

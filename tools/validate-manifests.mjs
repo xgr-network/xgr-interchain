@@ -28,7 +28,7 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
  const ids=new Set(),domains=new Set(),routeKeys=new Set();
  check(publication?.schemaVersion===1&&publication?.kind==="xita-publication-policy"&&
    (publication.minimumLockedUsd===null||(typeof publication.minimumLockedUsd==="number"&&
-   Number.isFinite(publication.minimumLockedUsd)&&publication.minimumLockedUsd>0&&
+   Number.isFinite(publication.minimumLockedUsd)&&publication.minimumLockedUsd>=0&&
    /^(?:0|[1-9][0-9]*)(?:[.][0-9]{1,8})?$/.test(String(publication.minimumLockedUsd))))&&
    Number.isSafeInteger(publication.maxEvidenceAgeSeconds)&&publication.maxEvidenceAgeSeconds>=60&&
    publication.maxEvidenceAgeSeconds<=86400,
