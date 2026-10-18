@@ -74,10 +74,16 @@ async function refreshFeePreview(){
   const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
    credentials:"omit",headers:{"content-type":"application/json"},
    signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
-  const value=await res.json();
+  const type=res.headers?.get?.("content-type")||"";
+  if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
+   throw Error("Kostenvorschau-API liefert HTTP "+res.status+
+    " statt JSON. Nginx-Route /api/xita/v1/managed/preview und Dienst xita-fee-preview prüfen");
+  let value;
+  try{value=await res.json();}
+  catch{throw Error("Kostenvorschau-API liefert ungültiges JSON (HTTP "+res.status+")");}
   if(marker!==previewRevision||path()!=="/transfer")return;
   if(!res.ok||!value?.status||value.status!=="UNSIGNED_FEE_PREVIEW")
-   throw Error(value?.error||"Quote service unavailable");
+   throw Error(value?.error||"Quote service unavailable (HTTP "+res.status+")");
   const coin=sourceFeeCoin(source),fee=BigInt(value.interchainFeeWei),
    validator=BigInt(value.validatorFeeWei),
    principal=BigInt(value.sourceTokenPrincipalWei||0),
