@@ -210,7 +210,7 @@ test("no catalog deployment does not invent actionable transfer routes",()=>{
 });
 
 
-test("Transfer CTA appears immediately after amount, before collapsed gas diagnostics",()=>{
+test("Transfer CTA follows structured route fees without old gas diagnostics",()=>{
  const model=buildExperienceModel(catalog);
  const wallet={account:"0x1111111111111111111111111111111111111111",
   tokenBalances:{"XGR:xgrchain":{status:"ready",balanceRaw:"12000000000000000000",decimals:18,symbol:"XGR"}},
@@ -218,8 +218,13 @@ test("Transfer CTA appears immediately after amount, before collapsed gas diagno
    base:{status:"ready",balanceWei:"2000000000000000"}}};
  const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",wallet);
  assert.ok(html.indexOf('id="ux-transfer-amount"')<html.indexOf('id="xita-transfer-primary"'));
- assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('class="ux-transfer-advanced"'));
- assert.match(html,/<details class="ux-transfer-advanced">/);
+ assert.match(html,/ADDITIONAL ROUTE FEES/);
+ assert.match(html,/XITA transfer fees/);
+ assert.match(html,/separate wallet gas applies|Separate wallet gas applies|Network transaction gas/);
+ assert.match(html,/Gas sponsorship/);
+ assert.doesNotMatch(html,/Route, network gas &amp; safety checks/);
+ assert.doesNotMatch(html,/ux-transfer-advanced/);
+ assert.ok(html.indexOf('id="ux-fee-preview-status"')<html.indexOf('id="xita-transfer-primary"'));
  assert.match(html,/ux-transfer-available/);
  assert.match(html,/Available on /);
  // This fixture has no deployment receipts, so the UI must not invent an available amount.
@@ -228,7 +233,7 @@ test("Transfer CTA appears immediately after amount, before collapsed gas diagno
  assert.match(html,/New transfers need a verified Interchain Fee/);
  assert.doesNotMatch(html,/Route delivery not verified\. No signing or sending is enabled/);
  const noWallet=renderPlanRoute(model,{},"ready");
- assert.ok(noWallet.indexOf("Connect wallet to transfer")<noWallet.indexOf("Route, network gas"));
+ assert.ok(noWallet.indexOf("ADDITIONAL ROUTE FEES")<noWallet.indexOf("Connect wallet to transfer"));
  assert.match(noWallet,/id="xita-transfer-primary"/);
 });
 
@@ -283,4 +288,13 @@ test("Dashboard never displays XGR wallet inventory or contract-address panels",
  const {renderRepresentationInventory}=await import("./experience.js");
  assert.match(renderRepresentationInventory(m,"XGR","xgrchain",wallet),/Native currency · no ERC-20 contract/);
  assert.match(renderRepresentationInventory(m,"XGR","base",wallet),/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+});
+
+test("customer-facing transfers never label the route quote as GmbH fee",()=>{
+ const model=buildExperienceModel(catalog);
+ const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"1"},"ready");
+ assert.doesNotMatch(html,/GmbH Interchain Fee/);
+ assert.doesNotMatch(html,/Route, network gas/);
+ assert.match(html,/additional to regular blockchain transaction gas/);
+ assert.match(renderFAQ(),/XITA Service Fee/);
 });
