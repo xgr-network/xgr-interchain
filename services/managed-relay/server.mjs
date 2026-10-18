@@ -7,6 +7,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
+import {usdPrice12} from "./fee-quote.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
@@ -139,9 +140,19 @@ async function createQuote(request,{preview=false}={}){
   getCoinGeckoSnapshot:getSnapshot,preview
  });
  if(preview){
+  // Bridge value for native collateral contains the PRINCIPAL. Exclude that
+  // from the fee preview; only native protocol fee + commercial price count.
+  const routeFeeWei=BigInt(result.sourceBridgeNativeWei)-
+   BigInt(result.sourceTokenPrincipalWei)+BigInt(result.pricing.grossInterchainFeeWei);
+  if(routeFeeWei<=0n)throw Error("Invalid fee preview amount");
+  const usdPrecision=10n**22n; // 18 wei decimals + 12 price decimals - 8 USD decimals
+  const usd8=(routeFeeWei*usdPrice12(result.pricing.sourceNativeUsd)+usdPrecision-1n)/usdPrecision;
+  const feeUsd=(usd8/100000000n).toString()+"."+
+   (usd8%100000000n).toString().padStart(8,"0");
   // No nonce, signature, transaction data, wallet key, or 90-second credential
   // ever leaves this read-only estimate endpoint.
   return {status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
+   estimatedRouteFeeWei:routeFeeWei.toString(),estimatedRouteFeeUsd:feeUsd,
    estimatedAt:new Date().toISOString(),validatorFeeWei:result.validatorFeeWei,
    sourceBridgeNativeWei:result.sourceBridgeNativeWei,
    sourceTokenPrincipalWei:result.sourceTokenPrincipalWei,
