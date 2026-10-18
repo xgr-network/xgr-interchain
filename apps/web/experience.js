@@ -270,9 +270,9 @@ function northstarCards(model,metrics=null){
    '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
    '<p class="ux-small">Verified net collateral held in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence"> '+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
-  '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR</h2></div>'+
+  '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
    '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.movedUsd))+'</strong>'+
-   '<p class="ux-small">Cumulative completed interchain journey value, counted once per journey.</p>'+
+   '<p class="ux-small">Gross escrow inflows and confirmed outflows over the previous 24 hours, valued in USD.</p>'+
    '<span class="ux-ns-evidence">'+(metrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article></section>';
 }
 function allianceIntro(){
