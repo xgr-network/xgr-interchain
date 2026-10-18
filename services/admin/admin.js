@@ -547,8 +547,14 @@ async function executeModalDeployment(){
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
   await waitForDeploymentSync(result.result);
- }catch(e){button.disabled=false;presentModalStatus(
-  "Deployment noch nicht abgeschlossen: "+e.message+". Erneuter Klick startet eine neue Wallet-Transaktion.","error")}
+ }catch(e){
+  // A prepare/preflight RPC 429 happens BEFORE any wallet signature. Never
+  // suggest a previous on-chain transaction exists when nothing was sent.
+  // Conversely, once the wallet was invoked, require journal recovery first.
+  button.disabled=false;
+  presentModalStatus("Deployment-Vorbereitung bzw. -Prüfung fehlgeschlagen: "+e.message+
+   ". Falls eine Wallet-Transaktion signiert wurde, zuerst deren Status prüfen; nicht erneut signieren.","error");
+}
 }
 function formatBalance(b,c){return formatNative(b,c.nativeCurrency.decimals||18)+" "+c.nativeCurrency.symbol;}
 async function refreshWalletBalances(){
