@@ -17,22 +17,41 @@ const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 // Only receipt-backed gateway deployments are eligible for automatic claims.
 // Undeployed chains are skipped. Partial, malformed or contradictory
 // deployments fail closed rather than falling back to operator ENV addresses.
-export function documentedFeeClaimAdapters(catalog){
+export function documentedFeeClaimAdapters(catalog,{readReceipt=path=>JSON.parse(
+ readFileSync(new URL("../../"+path,import.meta.url),"utf8"))}={}){
  const targets=[];
  for(const name of DEPLOYMENT_CHAINS){
-  const receipt=catalog?.infrastructure?.[name]?.xitaV315?.components?.executionGateway;
-  if(receipt===undefined||receipt===null)continue;
+  const gateway=catalog?.infrastructure?.[name]?.xitaV315?.components?.executionGateway;
+  if(gateway===undefined||gateway===null)continue;
   const chain=catalog?.chains?.[name];
-  const pathOk=typeof receipt.receiptPath==="string"&&
-   new RegExp("^deployments/receipts/"+name+"/[a-zA-Z0-9-]+\\.json$").test(receipt.receiptPath);
-  if(!ADDRESS.test(receipt.address||"")||
-   !CODE_HASH.test(receipt.runtimeCodeKeccak256||"")||!pathOk||
+  const prefix="deployments/receipts/"+name+"/";
+  const file=typeof gateway.receiptPath==="string"&&
+   gateway.receiptPath.startsWith(prefix)?gateway.receiptPath.slice(prefix.length):"";
+  if(!ADDRESS.test(gateway.address||"")||
+   !CODE_HASH.test(gateway.runtimeCodeKeccak256||"")||
+   !/^[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(file)||
+   !file.endsWith("-"+gateway.address.toLowerCase().slice(2)+".json")||
    !Number.isSafeInteger(chain?.chainId)||chain.chainId<=0||
    !Array.isArray(chain.rpcUrls)||!/^https:\/\//.test(chain.rpcUrls[0]||"")||
    chain.configurationStatus==="planned-unverified")
    throw Error("Fee claim gateway lacks a verified chain deployment receipt: "+name);
-  targets.push({name,chain,address:receipt.address,
-   runtimeCodeKeccak256:receipt.runtimeCodeKeccak256});
+  // The catalog references the GitHub-generated receipt. Read that exact
+  // checked-in file and prove its chain, tx hash, address and runtime agree.
+  // A forged receiptPath string by itself is not evidence.
+  let receipt;
+  try{receipt=readReceipt(gateway.receiptPath);}
+  catch{throw Error("Fee claim deployment receipt unavailable: "+name);}
+  if(receipt?.kind!=="xita-v315-deployment-receipt"||
+   receipt?.network!=="mainnet"||receipt?.status!=="onchain-deployment-verified"||
+   receipt?.component!=="executionGateway"||receipt?.chain!==name||
+   receipt?.chainId!==chain.chainId||
+   !/^0x[a-f0-9]{64}$/i.test(receipt?.transactionHash||"")||
+   !file.startsWith(receipt.transactionHash.toLowerCase().slice(2)+"-")||
+   !eq(receipt.address,gateway.address)||
+   !eq(receipt.runtimeCodeKeccak256,gateway.runtimeCodeKeccak256))
+   throw Error("Fee claim catalog and GitHub receipt mismatch: "+name);
+  targets.push({name,chain,address:gateway.address,
+   runtimeCodeKeccak256:gateway.runtimeCodeKeccak256});
  }
  return targets;
 }
