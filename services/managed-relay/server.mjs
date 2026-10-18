@@ -67,7 +67,7 @@ async function fetchUncachedPrices(){
  lastPriceSnapshot=value;lastPriceAt=Date.now();
  return value;
 }
-async function createQuote(request){
+async function createQuote(request,{preview=false}={}){
  const source=request?.source,destination=request?.destination;
  if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
@@ -117,8 +117,19 @@ async function createQuote(request){
      await client.getBalance(address):0n;
     return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
    },
-  getCoinGeckoSnapshot:getSnapshot
+  getCoinGeckoSnapshot:getSnapshot,preview
  });
+ if(preview){
+  // No nonce, signature, transaction data, wallet key, or 90-second credential
+  // ever leaves this read-only estimate endpoint.
+  return {status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
+   estimatedAt:new Date().toISOString(),validatorFeeWei:result.validatorFeeWei,
+   sourceBridgeNativeWei:result.sourceBridgeNativeWei,
+   sourceTokenPrincipalWei:result.sourceTokenPrincipalWei,
+   interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
+   pricing:result.pricing,sourceNativeSymbol:CATALOG.chains[source].nativeCurrency?.symbol||source,
+   notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
+ }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
   chainId:result.sourceChainId,value:"0x"+BigInt(result.sourceValueWei).toString(16),
@@ -172,7 +183,8 @@ async function handler(req,res){
    enabledChains:Object.entries(sourceAddresses).filter(x=>
     /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
    sponsorship:await readSponsorAvailability()});
- if(req.method!=="POST"||req.url!=="/api/xita/v1/managed/quote")
+ const preview=req.url==="/api/xita/v1/managed/preview";
+ if(req.method!=="POST"||(!preview&&req.url!=="/api/xita/v1/managed/quote"))
   return send(404,{ok:false,error:"Unknown endpoint"});
  let body="";
  try{
@@ -184,7 +196,7 @@ async function handler(req,res){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
-  const reply=await createQuote(parsed);
+  const reply=await createQuote(parsed,{preview});
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
