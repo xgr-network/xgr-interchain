@@ -2,6 +2,7 @@ import http from "node:http";
 import {readFileSync,writeFileSync,mkdirSync,renameSync,existsSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {inspectContract,rpcCall} from "./inspector.mjs";
+import {inspectFeeTreasury} from "./fee-treasury.mjs";
 import {getJobs,recordJobEvent} from "./github-jobs.mjs";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -161,6 +162,9 @@ http.createServer(async(req,res)=>{
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
    return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/fee-treasury"){
+   return reply(res,200,await inspectFeeTreasury({root,catalog:load("apps/web/catalog.json")}));
   }
   if(req.method==="GET"&&path==="/admin/api/balance"){
    const queue=await readOnlyWorkQueue(root);

@@ -587,6 +587,41 @@ async function refreshWalletBalances(){
   el("wallet-balances").textContent=balances.map(([name,b])=>name+": "+b).join(" · ");
  }catch(e){el("wallet-status").textContent=e.message;}
 }
+function treasuryUnits(raw,decimals=18){
+ const n=BigInt(raw),scale=10n**BigInt(decimals),whole=n/scale;
+ const fractional=(n%scale).toString().padStart(decimals,"0").slice(0,9).replace(/0+$/,"");
+ return whole.toString()+(fractional?"."+fractional:"");
+}
+let treasuryRequest=0;
+async function refreshFeeTreasury(){
+ const ticket=++treasuryRequest,button=el("treasury-refresh");
+ button.disabled=true;el("treasury-status").textContent="Fee-Treasury wird on-chain geprüft …";
+ try{
+  const data=await get("/admin/api/fee-treasury");
+  if(ticket!==treasuryRequest)return;
+  el("treasury-status").textContent="Nur Lesezugriff · geprüft: "+new Date(data.checkedAt).toLocaleString("de-DE")+
+   " · Keine Transaktion ausgeführt";
+  el("treasury-chains").innerHTML=(data.chains||[]).map(c=>{
+   if(c.status==="not-deployed")return '<article class="chain-card"><strong>'+esc(c.chain)+
+    '</strong><p>Execution Gateway noch nicht deployed.</p></article>';
+   if(c.status!=="verified")return '<article class="chain-card"><strong>'+esc(c.chain)+
+    '</strong><p class="treasury-unavailable">Nicht verifiziert: '+esc(c.error||"RPC nicht verfügbar")+'</p></article>';
+   const coin=esc(c.symbol),dec=c.decimals,number=v=>esc(treasuryUnits(v,dec))+" "+coin;
+   const flag=c.gasStatus==="low"?"Gasreserve niedrig":
+    c.gasStatus==="sufficient"?"Gasreserve ausreichend":"Gasreserve nicht bewertbar";
+   return '<article class="chain-card treasury-card"><div class="chain-top"><strong>'+esc(c.chain)+
+    '</strong><span class="status '+(c.gasStatus==="low"?"partial":c.gasStatus==="sufficient"?"deployed":"")+'">'+esc(flag)+'</span></div>'+
+    '<small>Chain '+esc(c.chainId)+' · '+coin+'</small>'+
+    '<div class="treasury-values"><div><span>Service-Wallet · verfügbar</span><strong>'+number(c.serviceBalanceWei)+'</strong></div>'+
+    '<div><span>Im Contract claimbar</span><strong>'+number(c.claimableWei)+'</strong></div>'+
+    '<div><span>Gateway-Gesamtbalance</span><strong>'+number(c.contractBalanceWei)+'</strong></div>'+
+    '<div><span>Indikative Gasreserve</span><strong>'+(c.minimumGasReserveWei==null?"Nicht verfügbar":number(c.minimumGasReserveWei))+'</strong></div></div>'+
+    '<div class="treasury-address">Service-Wallet <code>'+esc(c.serviceWallet)+'</code></div>'+
+    '<div class="treasury-address">Fee Gateway <code>'+esc(c.gatewayAddress)+'</code></div></article>';
+  }).join("");
+ }catch(e){if(ticket===treasuryRequest){el("treasury-status").textContent="Fee Treasury nicht erreichbar: "+e.message;el("treasury-chains").textContent="Keine verifizierten Werte verfügbar.";}}
+ finally{if(ticket===treasuryRequest)button.disabled=false;}
+}
 let selectedDeployChain=null;
 function renderQueue(){} // No separate work queue: cards are the actionable interface.
 function setView(name){
@@ -771,8 +806,8 @@ el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
 
-for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();});
-setView(["assets","infrastructure"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
+for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();if(a.dataset.view==="treasury")void refreshFeeTreasury();});
+setView(["assets","infrastructure","treasury"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
 el("connect-wallet").addEventListener("click",async()=>{
  try{
   const providerList=walletsAvailable();
@@ -794,5 +829,7 @@ async function checkLiveInfrastructure(){
  }catch(e){el("preflight").textContent="Infrastrukturprüfung fehlgeschlagen: "+e.message;}
 }
 el("refresh").addEventListener("click",checkLiveInfrastructure);
+el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
+if(location.hash==="#treasury")void refreshFeeTreasury();
 loadMainWorkqueue();loadPlan();
 // Chain RPC state is queried only in the dedicated Chains view or on refresh.
