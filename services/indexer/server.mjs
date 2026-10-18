@@ -22,6 +22,15 @@ function readEvidence(){
  const data=JSON.parse(readFileSync(evidencePath,"utf8"));
  if(data?.schemaVersion!==1||data?.kind!=="xita-asset-metrics-v1"||typeof data.assets!=="object")
   throw Error("Unexpected evidence schema");
+ // A valid but stale verified native escrow snapshot must never be reused
+ // as current TVL (or for publication under numeric thresholds).
+ const proof=data.nativeTvl?.proof;
+ if(proof&&(
+  proof.status!=="verified"||
+  !Number.isFinite(Date.parse(proof.asOf))||
+  Date.now()-Date.parse(proof.asOf)>120000||
+  Date.now()<Date.parse(proof.asOf)-30000
+ ))return null;
  return data;
 }
 export function projectMetrics(catalog,evidence,marketSnapshot=null){
