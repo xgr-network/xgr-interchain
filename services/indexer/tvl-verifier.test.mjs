@@ -47,7 +47,7 @@ test("ERC20 requires matching underlying token identity and native reserve zero"
  const x=data([g(route,100n,true)],"0x64");
  x.descriptor={...d,kind:"erc20",token:addr("e"),decimals:6};
  x.tokenAddress=addr("e");x.tokenDecimals=6;x.tokenCode=code;
- assert.equal(result(x).status,"verified");
+ assert.equal(result(x).status,"verified",JSON.stringify(result(x)));
  x.tokenAddress=addr("f");assert.equal(result(x).reason,"underlying-erc20-identity-mismatch");
 });
 test("price conversion scales native and ERC20 decimals and rejects stale prices",()=>{
