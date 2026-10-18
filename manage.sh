@@ -363,9 +363,23 @@ install_fee_preview() (
   privileged systemctl enable --now xita-fee-preview.service
   privileged systemctl restart xita-fee-preview.service
   privileged systemctl is-active xita-fee-preview.service
-  curl --fail --silent --show-error --max-time 6 \
-    http://127.0.0.1:4093/api/xita/v1/managed/health
-  echo
+  # systemctl active does NOT mean that Node's loopback listener is ready.
+  # Avoid leaving the Nginx setup half-done due to a transient startup race.
+  local ready=0 attempt
+  for attempt in $(seq 1 15); do
+    if curl --fail --silent --max-time 2 -o /dev/null \
+      http://127.0.0.1:4093/api/xita/v1/managed/health; then
+      ready=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$ready" != "1" ]]; then
+    echo "ERROR: fee-preview loopback health not ready after 15 attempts" >&2
+    privileged systemctl --no-pager --full status xita-fee-preview.service || true
+    return 1
+  fi
+  echo "SUCCESS: unsigned fee preview loopback health ready on 4093."
   # Validate that the running keyless instance CANNOT issue signed quotes.
   local signed_status
   signed_status="$(curl --silent --show-error --max-time 6 -o /dev/null -w '%{http_code}' \
