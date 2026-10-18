@@ -1060,3 +1060,25 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-contract-line code{font-size:11px;overflow-wrap:anywhere;min-width:0;color:#d9eaff}
 .ux-contract-line a{color:#b7dafa;font-size:11px;text-decoration:underline}
 .ux-representation-balance{font-size:12px;margin-top:11px;color:#bcd6eb}
+
+/* Transfer pricing: additional route fees separated from wallet network gas. */
+.ux-plan-page .ux-fee-preview{margin:18px 0 4px;border:1px solid #34506a;border-radius:13px;padding:18px;background:#0b1b2f;min-width:0}
+.ux-fee-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ux-fee-header h3{font-size:19px;line-height:1.25;margin:6px 0 0;color:#f2f6ff}
+.ux-fee-estimate-tag{font-size:11px;color:#b9d2eb;border:1px solid #3d5a76;border-radius:20px;padding:5px 10px}
+.ux-fee-intro{font-size:12px;line-height:1.6;color:#aebfd5;margin:12px 0 16px}
+.ux-fee-status{font-size:12px;line-height:1.5;color:#c5dcf5;margin:0 0 8px}
+.ux-fee-breakdown{display:grid;gap:0;border:1px solid #36516a;border-radius:10px;overflow:hidden;margin-top:10px;background:#101f32}
+.ux-fee-total{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:15px 14px;border-bottom:1px solid #37516b}
+.ux-fee-total span,.ux-fee-row span{font-size:12px;color:#b9cce2}
+.ux-fee-total strong{font-size:18px;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.ux-fee-total small{grid-column:1/-1;font-size:12px;color:#a9bfdd;text-align:right}
+.ux-fee-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:10px 14px}
+.ux-fee-row+.ux-fee-row{border-top:1px solid #253d55}
+.ux-fee-row strong{font-size:12px;font-weight:650;color:#edf4ff;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.ux-fee-gas-note{border-top:1px solid #344960;margin-top:16px;padding-top:14px}
+.ux-fee-gas-note strong,.ux-fee-sponsor strong{display:block;font-size:12px;color:#e9f1fc;margin-bottom:5px}
+.ux-fee-gas-note p,.ux-fee-sponsor span{font-size:11px;line-height:1.65;color:#a6bad2;margin:0}
+.ux-fee-sponsor{margin-top:12px}
+.ux-fee-fineprint{font-size:11px;line-height:1.5;color:#829ab6;margin:12px 0 0}
+@media(max-width:490px){.ux-plan-page .ux-fee-preview{padding:13px}.ux-fee-total{grid-template-columns:1fr}.ux-fee-total strong,.ux-fee-total small{text-align:left}}
