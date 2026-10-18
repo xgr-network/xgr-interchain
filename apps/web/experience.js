@@ -1,4 +1,4 @@
-import {deployedRoutes,executableTransferRoutes,supportedRouteChains} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway} from "./route-availability.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
 import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
@@ -16,12 +16,37 @@ const chainLabel = (key,chain) => LABELS[key] || chain?.name || key;
 const tokenLink = token => "/token/"+encodeURIComponent(token.slug);
 const pill = (isActive) => '<span class="ux-badge '+(isActive?"is-verified":"is-pending")+'">'+(isActive?"Verified active":"Not verified")+"</span>";
 const valueOrDash = value => value===null||value===undefined ? "—" : String(value);
+// Public project links come only from approved asset profiles. Never render
+// javascript:, credentials-bearing, or arbitrary protocol URLs from a catalog.
+function projectUrl(value){
+ if(typeof value!=="string"||value.length>1024)return null;
+ try{
+  const url=new URL(value);
+  return url.protocol==="https:"&&url.hostname&&!url.username&&!url.password?
+   url.href:null;
+ }catch{return null}
+}
+const tokenAddress=value=>/^0x[0-9a-f]{40}$/i.test(value||"")&&
+ !/^0x0{40}$/i.test(value);
+const chainTokenExplorer=(chain,address)=>{
+ if(!tokenAddress(address))return null;
+ if(chain==="xgrchain")return "https://explorer.xgr.network/address/"+address;
+ return tokenExplorerUrl(chain,address);
+};
+const chainAddressExplorer=(chain,address)=>{
+ if(!tokenAddress(address))return null;
+ const roots={xgrchain:"https://explorer.xgr.network/address/",
+  base:"https://basescan.org/address/",polygon:"https://polygonscan.com/address/",
+  arbitrum:"https://arbiscan.io/address/"};
+ return roots[chain]?roots[chain]+address:null;
+};
 
 export function buildExperienceModel(catalog, isVerified = () => false) {
   const assets = Object.entries(catalog?.assets||{}).map(([id,entry])=>({
     id, name:entry?.profile?.name||entry?.metadata?.name||id,
     slug:entry?.profile?.slug||id.toLowerCase(),
     canonical:entry?.metadata?.canonical?.chain||null,
+    website:projectUrl(entry?.profile?.links?.website),
     representations:Array.isArray(entry?.metadata?.representations)?entry.metadata.representations:[]
   }));
   const chains = Object.entries(catalog?.chains||{}).map(([key,entry])=>({
@@ -43,7 +68,9 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
       routes.push({assetId,name:item.name,source,destination,active});
     }
   }
-  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog),transferRoutes:executableTransferRoutes(catalog),tokenDecimals:Object.fromEntries(Object.entries(catalog?.assets||{}).map(([id,a])=>[id,a?.metadata?.decimals??18]))};
+  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog),transferRoutes:executableTransferRoutes(catalog),
+  feeAdapters:Object.fromEntries(Object.keys(catalog?.chains||{}).map(chain=>
+   [chain,documentedExecutionGateway(catalog,chain)])),tokenDecimals:Object.fromEntries(Object.entries(catalog?.assets||{}).map(([id,a])=>[id,a?.metadata?.decimals??18]))};
 }
 
 export function previewRoute(model,source,destination,assetId){
@@ -328,6 +355,68 @@ export function renderDashboard(model,selection={},apiState="not-deployed",metri
   '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+
   '<div class="ux-dashboard-outro-links"><a data-nav href="/faq">Read the FAQ →</a><a data-nav href="/transfer">Transfer Tokens →</a></div></section></div>';
 }
+
+// Source/destination token addresses MUST NOT be confused with ILN Gateways,
+// route escrow contracts or Execution Gateways. Synthetic ERC-20 routers are
+// the ERC-20 contract. A native asset has no ERC-20 address. Original ERC-20
+// addresses are manifest-listed and explicitly not called on-chain verified.
+export function transferTokenIdentity(model,assetId,chain){
+ const asset=model?.assets?.find(a=>a.id===assetId);
+ const rep=asset?.representations?.find(r=>r.chain===chain);
+ const kind=rep?.representation, symbol=rep?.symbol||assetId;
+ if(kind==="native"&&asset?.canonical===chain)
+  return {symbol,kind:"native",description:"Native coin · no ERC-20 contract",address:null,
+   evidence:"native"};
+ if(kind==="synthetic"){
+  const address=verifiedSyntheticContract(model?.deployments,assetId,rep);
+  return {symbol,kind:"synthetic",description:"Wrapped ERC-20",address,
+   evidence:address?"deployment":"unavailable"};
+ }
+ if(kind==="collateral"&&asset?.canonical===chain){
+  const address=tokenAddress(rep?.assetAddress)?rep.assetAddress:null;
+  return {symbol,kind:"collateral",description:"Original ERC-20",address,
+   evidence:address?"asset-manifest":"unavailable"};
+ }
+ return {symbol,kind:"unknown",description:"Representation not verified",
+  address:null,evidence:"unavailable"};
+}
+function renderTransferIdentity(model,assetId,path){
+ const asset=model.assets.find(a=>a.id===assetId);
+ const steps=path.path.map((chain,i)=>{
+  const record=transferTokenIdentity(model,assetId,chain);
+  const label=i===0?"YOU SEND":i===path.path.length-1?"YOU RECEIVE":"VIA XGRCHAIN HUB";
+  const explorer=chainTokenExplorer(chain,record.address);
+  const tokenText=record.kind==="native"?
+   '<span>Native coin · no token contract</span>':record.address?
+   '<code>'+esc(record.address)+'</code>'+
+   '<button type="button" data-xita-copy-address="'+esc(record.address)+
+   '" aria-label="Copy '+esc(record.symbol)+' token contract address on '+
+    esc(chain)+'">Copy</button>'+
+   (explorer?'<a href="'+esc(explorer)+'" target="_blank" rel="noopener noreferrer">Explorer ↗</a>':'')+
+   (record.evidence==="asset-manifest"?
+    '<small>Address from asset manifest · verify with the project</small>':''):
+   '<span>Token contract not independently verified</span>';
+  return '<div class="ux-route-identity-row"><div class="ux-route-identity-name">'+
+   '<span class="ux-kicker">'+label+'</span><strong>'+
+   esc(model.chains.find(c=>c.key===chain)?.label||chain)+' · '+esc(record.symbol)+'</strong>'+
+   '<small>'+esc(record.description)+'</small></div>'+
+   '<div class="ux-route-identity-contract">'+tokenText+'</div></div>';
+ }).join("");
+ const source=path.path[0],sourceRepresentation=transferTokenIdentity(model,assetId,source);
+ const adapter=model.feeAdapters?.[source],adapterExplorer=chainAddressExplorer(source,adapter);
+ const approval=(sourceRepresentation.kind!=="native"&&tokenAddress(adapter))?
+  '<div class="ux-route-identity-approval"><span>ERC-20 allowance spender: <strong>XITA Execution Gateway</strong></span>'+
+  '<code>'+esc(adapter)+'</code>'+
+  (adapterExplorer?'<a href="'+esc(adapterExplorer)+'" target="_blank" rel="noopener noreferrer">Explorer ↗</a>':'')+
+  '<p>An approval transaction is required only if your existing token allowance for this spender is insufficient. Approval alone does not bridge or burn tokens.</p></div>':"";
+ return '<section class="ux-route-identity" aria-label="Token project and verified transfer contracts">'+
+  '<div class="ux-route-identity-head"><div><span class="ux-kicker">TOKEN IDENTITY</span>'+
+  '<h3>What you send & receive</h3></div><div class="ux-route-identity-links">'+
+  (asset?.website?'<a href="'+esc(asset.website)+'" target="_blank" rel="noopener noreferrer">Official project ↗</a>':'')+
+  (asset?'<a data-nav href="'+esc(tokenLink(asset))+'">Token details ↗</a>':'')+
+  '</div></div>'+
+  '<div class="ux-route-identity-rows">'+steps+'</div>'+approval+'</section>';
+}
 // A real standalone planner; no longer extracted from dashboard markup.
 export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={},progress={}){
  // New commercial transfers are available only with fee adapters on BOTH
@@ -461,6 +550,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
+  (deployed?renderTransferIdentity(model,assetId,path):'')+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+

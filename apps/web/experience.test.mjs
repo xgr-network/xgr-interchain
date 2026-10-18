@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity} from "./experience.js";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
 
 
@@ -302,4 +302,36 @@ test("customer-facing transfers never label the route quote as GmbH fee",()=>{
  assert.doesNotMatch(html,/Route, network gas/);
  assert.match(html,/Network gas is additional/);
  assert.match(renderFAQ(),/XITA Service Fee/);
+});
+
+test("transfer displays documented wXGR token contract, native XGR and official website",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const model=buildExperienceModel(c),acct="0x"+"1".repeat(40);
+ const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready",{account:acct});
+ assert.match(html,/Official project/);
+ assert.match(html,/https:\/\/xgr\.network/);
+ assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+ assert.match(html,/Native coin · no token contract/);
+ assert.match(html,/XITA Execution Gateway/);
+ assert.match(html,/0x9b6b92ef1745611f402341965f7fc649cbe0da8c/i);
+ assert.match(html,/Approval alone does not bridge or burn tokens/);
+ assert.match(html,/basescan\.org\/token/);
+ assert.match(html,/data-xita-copy-address/);
+ assert.equal(transferTokenIdentity(model,"XGR","xgrchain").address,null);
+ assert.equal(transferTokenIdentity(model,"XGR","base").evidence,"deployment");
+});
+test("untrusted project URI is not rendered as executable link; conflicting synthetic is not verified",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ c.assets.XGR.profile.links.website="javascript:alert(1)";
+ c.assets.XGR.metadata.representations.find(x=>x.chain==="base").assetAddress="0x"+"f".repeat(40);
+ const model=buildExperienceModel(c);
+ const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready");
+ assert.doesNotMatch(html,/javascript:alert/);
+ assert.doesNotMatch(html,/Official project/);
+ assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+ const conflict=structuredClone(model);
+ conflict.deployments.push({...conflict.deployments.find(x=>x.source==="base"),sourceToken:"0x"+"f".repeat(40)});
+ const info=transferTokenIdentity(conflict,"XGR","base");
+ assert.equal(info.address,null);
+ assert.equal(info.evidence,"unavailable");
 });
