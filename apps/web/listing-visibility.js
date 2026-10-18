@@ -47,7 +47,8 @@ export function isDeployedAsset(entry,catalog=null){
   const src=route?.sourceChain,dst=route?.destinationChain;
   if(!route?.name||!configured.has(src)||!configured.has(dst)||src===dst||
    (src!=="xgrchain"&&dst!=="xgrchain"))return false;
-  if(catalog&&(!isDeployedChain(catalog,src)||!isDeployedChain(catalog,dst)))return false;
+  if(catalog?.chains&&catalog?.infrastructure&&
+    (!isDeployedChain(catalog,src)||!isDeployedChain(catalog,dst)))return false;
   const routers=[src,dst].map(chain=>
    deployment.representations.filter(rep=>rep.chain===chain&&
     rep.component===configured.get(chain)&&bound(rep)&&references.has(rep.receiptPath)));
