@@ -219,7 +219,7 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",wallet);
  assert.ok(html.indexOf('id="ux-transfer-amount"')<html.indexOf('id="xita-transfer-primary"'));
  assert.match(html,/ADDITIONAL ROUTE FEES/);
- assert.match(html,/XITA transfer fees/);
+ assert.match(html,/Transfer costs/);
  assert.match(html,/network gas for wallet transactions/);
  assert.match(html,/Gas sponsorship|gas sponsorship/);
  assert.doesNotMatch(html,/Route, network gas &amp; safety checks/);
