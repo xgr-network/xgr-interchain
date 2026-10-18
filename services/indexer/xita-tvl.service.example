@@ -1,0 +1,22 @@
+[Unit]
+Description=XITA verified token-agnostic native and ERC20 escrow TVL (read only)
+After=network-online.target postgresql.service xita-transfer-indexer.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/tvl.env
+ExecStart=/usr/bin/node services/indexer/tvl-worker.mjs
+Restart=on-failure
+RestartSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/xita
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
