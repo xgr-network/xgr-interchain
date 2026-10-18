@@ -36,7 +36,7 @@ test("24h: lock inflow and delivered unlock outflow are summed gross, not net",a
  assert.equal(r.movedUsd,3);assert.equal(r.kind,"escrow-gross-24h");
 });
 test("24h: burn without final delivery is not an escrow outflow",async()=>{
- const r=await verifyGrossEscrowFlows24h({descriptor,operations:[outflow],
+ const r=await verifyGrossEscrowFlows24h({descriptor,operations:[{...outflow,delivered:false}],
   read:get("pending"),price,now});
  assert.equal(r.status,"verified");assert.equal(r.grossRaw,"0");
 });
