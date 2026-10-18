@@ -219,3 +219,49 @@ read includes an `observed` source TX as `pending-source` with
 Previously locked XGR must **never** be locked or burned again merely because
 a scan is behind. Existing wallet lookups and the original finalized-chain
 backfill work independently of the optional staging service.
+
+
+## Verified token-agnostic TVL and 24h gross escrow movements
+
+Implementation: services/indexer/tvl-verifier.mjs, tvl-worker.mjs and escrow-flow-24h.mjs.
+Every deployed asset is resolved from the immutable deployment catalog. The native
+XGR router reports its physical XGR balance, less only beneficiary liabilities
+(totalPendingNativeXGR); a canonical ERC-20 collateral router reports actual
+underlying.balanceOf(router). Synthetic balances are never custody. A shared
+router spanning multiple spokes is counted once. The independent finalized
+route index checks source locks and confirmed destination releases to reject
+unrelated transfers, uncertain coverage and inconsistent balances. A missing
+CoinGecko price or incomplete proof is **unavailable**, not zero.
+
+Moved via XGR / Escrow moved (24h) is the **gross sum of physical escrow inflows
+and confirmed outflows during the last 24 hours**, not cumulative volume and
+not net TVL change. Inflows use canonical source-block timestamps; releases use
+verified destination Mailbox ProcessId event blocks. A pending reverse burn
+is not an outflow. Multi-hop synthetic mint/burn does not count again. All
+movements are valued with the latest fresh CoinGecko price, not execution-time
+historical prices. The proof rejects absent, duplicated, unfinalized or
+ambiguous events and caps a snapshot to 10,000 operations per asset. TVL and
+24h gross metrics fail independently.
+
+Installation requires:
+1. Verify the bidirectional finalized transfer index has COMPLETE coverage
+   for every active origin route. The existing Base archive-RPC log source may
+   need a qualified endpoint; an index with scan gaps is never a TVL proof.
+2. Provision SELECT-only xita_indexer_reader grants on
+   xita_transfer_operations and xita_transfer_index_cursors. Set
+   /etc/xita/tvl.env (mode 0600) from services/indexer/tvl.env.example.
+3. Add XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json to BOTH
+   /etc/xita/indexer.env and /etc/xita/tvl.env; never populate this file
+   manually. The installer checks the exact path and does not overwrite secrets.
+4. Once all code has passed CI, run ./manage.sh update and then
+   ./manage.sh install-tvl. This creates an opt-in restricted systemd service.
+   Inspect journalctl -u xita-tvl.service -n 80 --no-pager and
+   curl -fsS http://127.0.0.1:4088/api/xeta/v1/metrics/toplist.
+5. Check source/destination event finality, first lock, reverse delivery,
+   physical router balances, pending claim liabilities and 24-hour movements
+   against actual mainnet RPC receipts. Do not accept a positive number when
+   these checks fail. No blockchain write transactions are needed.
+
+The commercial Interchain Fee Execution Gateways are unrelated to TVL and
+to these measurements. Subsequent manage.sh update restarts an active
+xita-tvl.service, but never silently provisions credentials or enables it.

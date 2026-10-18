@@ -418,7 +418,7 @@ function indexerNotice(){
 function markets(){
  const rows=rankAssets(buildLeaderboardRows(publicCatalog(),state.leaderboard),state.leaderboardSort,state.leaderboardDir)
   .filter(row=>(row.name+" "+row.id).toLowerCase().includes(state.leaderboardSearch.toLowerCase()));
- const columns=[["lockedUsd","Locked TVL"],["movedUsd","Moved via XGR"],["marketCapUsd","Market cap"]];
+ const columns=[["lockedUsd","Locked TVL"],["movedUsd","Escrow moved · 24h"],["marketCapUsd","Market cap"]];
  const th=columns.map(([key,label])=>'<th><button class="ux-sort-btn" type="button" data-leader-sort="'+key+'" aria-pressed="'+(state.leaderboardSort===key)+'">'+label+' <span>'+(state.leaderboardSort===key?(state.leaderboardDir==="desc"?"↓":"↑"):"↕")+'</span></button></th>').join("");
  const cells=rows.map((row,i)=>'<tr data-token="'+x(row.id)+'"><td class="ux-rank">'+(i+1)+'</td><td><a class="ux-leader-token" data-nav href="/token/'+encodeURIComponent(row.slug)+'">'+
  (typeof row.logo==="string"&&row.logo.startsWith("https://")?'<img src="'+x(row.logo)+'" loading="lazy" alt="">':'<span class="ux-leader-placeholder">✦</span>')+
@@ -432,7 +432,7 @@ function markets(){
  '<div class="ux-leader-info">Locked and moved: on-chain verified<br><small>Market caps: external provider data when configured</small></div></div>'+
  '<div class="ux-leader-highlights"><div><span>Assets listed</span><strong>'+Object.keys(publicCatalog().assets).length+'</strong></div>'+
  '<div><span>Verified custody TVL</span><strong>'+formatUsd(state.leaderboard?.totals?.lockedUsd)+'</strong></div>'+
- '<div><span>Moved through XGR</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
+ '<div><span>Escrow moved · 24h</span><strong>'+formatUsd(state.leaderboard?.totals?.movedUsd)+'</strong></div></div>'+
  '<section class="ux-panel ux-leader-table-panel"><div class="ux-leader-toolbar"><div><h2>Explore assets</h2><p class="ux-small">Click a column heading to sort · Missing metrics always rank last</p></div>'+
  '<label class="ux-leader-search-label"><span>Search tokens</span><input id="ux-leader-search" type="search" placeholder="Name or symbol…" value="'+x(state.leaderboardSearch)+'"></label></div>'+
  '<div class="ux-leader-scroll"><table class="ux-leader-table"><thead><tr><th>#</th><th>Asset</th>'+th+'<th>Routes configured</th></tr></thead>'+

@@ -26,6 +26,7 @@ Usage: ./manage.sh <command>
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
+  install-tvl  Install read-only generic escrow TVL and gross 24h evidence worker (preconfigured credentials required)
   install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
@@ -63,7 +64,7 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
+    node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
     node --test tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
@@ -398,12 +399,46 @@ install_interchain_fee() (
   echo "SUCCESS: fee quote HTTP service, aggregate claim and verified sponsor timers installed. No blockchain TX sent."
 )
 
+install_tvl() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner." >&2; return 1; }
+  local user group node_bin unit name
+  user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
+  for name in /etc/xita/tvl.env /etc/xita/indexer.env; do
+    [[ -f "$name" ]] || { echo "ERROR: missing $name" >&2; return 1; }
+    if ! privileged grep -qxF 'XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json' "$name"; then
+      echo "ERROR: $name must specify shared XITA_METRICS_EVIDENCE=/var/lib/xita/verified-tvl.json" >&2
+      return 1
+    fi
+  done
+  if ! privileged grep -q '^XITA_INDEXER_DATABASE_URL=postgresql' /etc/xita/tvl.env; then
+    echo "ERROR: dedicated SELECT-only transfer-index PostgreSQL URL missing" >&2
+    return 1
+  fi
+  privileged install -d -m 0700 -o "$user" -g "$group" /var/lib/xita
+  unit="$(mktemp)"
+  trap 'rm -f "${unit:-}"' EXIT
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/indexer/tvl-worker.mjs|" \
+      "$ROOT/services/indexer/xita-tvl.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-tvl.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-tvl.service
+  privileged systemctl restart xita-tvl.service
+  privileged systemctl is-active xita-tvl.service
+  echo "XITA token-agnostic TVL worker installed. Values remain unavailable until fully verified."
+)
+
 complete_update() {
   require_clean_main
   publish_web
   install_sync
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-indexer.service
+  fi
+  if systemctl is-active --quiet xita-tvl.service 2>/dev/null; then
+    privileged systemctl restart xita-tvl.service
   fi
   # Archive-RPC selection and canonical catalog updates must reach the live
   # history worker too; leaving its prior Node process running keeps stale RPCs.
@@ -475,6 +510,7 @@ case "${1:-help}" in
     install_transfer_intake
     ;;
   install-transfer-api) install_transfer_api ;;
+  install-tvl) install_tvl ;;
   install-interchain-fee) install_interchain_fee ;;
   help|-h|--help) usage ;;
   *)

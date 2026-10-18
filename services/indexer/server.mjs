@@ -22,6 +22,9 @@ function readEvidence(){
  const data=JSON.parse(readFileSync(evidencePath,"utf8"));
  if(data?.schemaVersion!==1||data?.kind!=="xita-asset-metrics-v1"||typeof data.assets!=="object")
   throw Error("Unexpected evidence schema");
+ const at=Date.parse(data.asOf);
+ if(!Number.isFinite(at)||at>Date.now()+30000||Date.now()-at>120000)
+  return null;
  return data;
 }
 export function projectMetrics(catalog,evidence,marketSnapshot=null){
@@ -46,13 +49,14 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
  }
  // Keep unknown aggregate unknown; never sum a partial selection as network TVL.
  const facts=buildLeaderboardRows(catalog,{kind:"xita-asset-metrics-v1",schemaVersion:1,assets},{includeUnlisted:true});
- const complete=keys.length>0&&facts.every(f=>f.lockedUsd!==null&&f.movedUsd!==null);
- const totals=complete?{
-   lockedUsd:facts.reduce((s,x)=>s+x.lockedUsd,0),
-   movedUsd:facts.reduce((s,x)=>s+x.movedUsd,0)
- }:null;
+ const completeTVL=keys.length>0&&facts.every(f=>f.lockedUsd!==null);
+ const completeMoved=keys.length>0&&facts.every(f=>f.movedUsd!==null);
+ const totals={
+  lockedUsd:completeTVL?facts.reduce((s,x)=>s+x.lockedUsd,0):null,
+  movedUsd:completeMoved?facts.reduce((s,x)=>s+x.movedUsd,0):null
+ };
  return {schemaVersion:1,kind:"xita-asset-metrics-v1",assets,totals,
-  status:complete?"verified":"incomplete",
+  status:completeTVL&&completeMoved?"verified":"incomplete",
   metadata:{configuredAssets:keys.length,verifiedAssets:facts.filter(f=>f.lockedUsd!==null&&f.movedUsd!==null).length,
    source:evidence?"trusted-evidence-file":"no-finalized-chain-evidence"}};
 }
@@ -145,9 +149,15 @@ export async function handler(req,res){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}
   }
-  const metrics=projectMetrics(catalog,readEvidence(),cache.snapshot);
+  const evidence=readEvidence();
+  const metrics=projectMetrics(catalog,evidence,cache.snapshot);
   let positions=null;
   try{positions=await readPublicationPositions();}catch{ /* Not zero: public eligibility unavailable. */ }
+  // Native and ERC20 positions must be produced by the local read-only
+  // finalized escrow worker, never by an HTTP visitor or browser wallet.
+  if(evidence?.custodyEvidence?.kind==="xita-verified-tvl-v1"){
+   positions={...(positions||{}),...evidence.custodyEvidence.positions};
+  }
   const visibility=derivedVisibility(catalog,positions);
   if(pathname==="/api/xeta/v1/visibility")return send(200,visibility);
   if(pathname.startsWith("/api/xeta/v1/systems/")){

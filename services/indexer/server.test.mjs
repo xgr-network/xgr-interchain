@@ -9,7 +9,7 @@ const verified=(id)=>({assetId:id,verified:true,
 });
 test("unavailable evidence never invents zero TVL or movement",()=>{
  const result=projectMetrics(catalog,null);
- assert.equal(result.totals,null);
+ assert.deepEqual(result.totals,{lockedUsd:null,movedUsd:null});
  assert.equal(result.status,"incomplete");
  assert.equal(result.assets.XGR.verified,false);
 });
@@ -21,7 +21,7 @@ test("fully verified unique assets produce totals only with complete coverage",(
 });
 test("a single unverifiable asset invalidates aggregate totals",()=>{
  const result=projectMetrics(catalog,{schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:verified("XGR")}});
- assert.equal(result.totals,null);
+ assert.deepEqual(result.totals,{lockedUsd:null,movedUsd:null});
  assert.equal(result.assets.ABC.verified,false);
 });
 
@@ -30,5 +30,5 @@ test("CoinGecko public market data does not fabricate locked collateral",()=>{
  const m={records:{"example-token":{priceUsd:2,marketCapUsd:2000,circulating:1000,asOf:"2026-10-10T00:00:00Z"}}};
  const rows=projectMetrics(c,null,m);
  assert.equal(rows.assets.ABC.market.marketCapUsd,2000);
- assert.equal(rows.assets.ABC.verified,false);assert.equal(rows.totals,null);
+ assert.equal(rows.assets.ABC.verified,false);assert.deepEqual(rows.totals,{lockedUsd:null,movedUsd:null});
 });
