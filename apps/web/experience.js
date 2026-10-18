@@ -1,5 +1,6 @@
 import {deployedRoutes,executableTransferRoutes,supportedRouteChains} from "./route-availability.js";
 import {representationFor} from "./token-representation.js";
+import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
 import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
@@ -42,7 +43,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
       routes.push({assetId,name:item.name,source,destination,active});
     }
   }
-  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog),transferRoutes:executableTransferRoutes(catalog)};
+  return {assets,chains,routes,hub:chains.find(c=>c.key===HUB)||null,deployments:deployedRoutes(catalog),transferRoutes:executableTransferRoutes(catalog),tokenDecimals:Object.fromEntries(Object.entries(catalog?.assets||{}).map(([id,a])=>[id,a?.metadata?.decimals??18]))};
 }
 
 export function previewRoute(model,source,destination,assetId){
@@ -87,7 +88,26 @@ export function universeMap(model,selected,compact=false){
     '<div class="ux-map-legend">XGRChain is the mandatory transit hub · Dashed paths do not prove secure delivery</div></div>';
 }
 
-function systemDetails(model,selected,metrics=null){
+
+export function renderRepresentationInventory(model,assetId,chainKey,wallet={}){
+ const token=model.assets.find(a=>a.id===assetId);
+ const rep=token?.representations?.find(r=>r.chain===chainKey);
+ if(!rep)return "";
+ const system=model.chains.find(c=>c.key===chainKey);
+ const native=rep.representation==="native";
+ const address=verifiedSyntheticContract(model.deployments,assetId,rep);
+ const contract=native?'<span class="ux-small">Native currency · no ERC-20 contract</span>':
+  address?'<div class="ux-contract-line"><code>'+esc(address)+'</code><button type="button" data-xita-copy-address="'+esc(address)+'" aria-label="Copy '+esc(rep.symbol||assetId)+' contract address">Copy</button>'+
+   (tokenExplorerUrl(chainKey,address)?'<a target="_blank" rel="noopener noreferrer" href="'+esc(tokenExplorerUrl(chainKey,address))+'">Explorer ↗</a>':'')+'</div>':
+  '<span class="ux-small">Contract not independently verified</span>';
+ const result=walletRepresentationBalance(wallet,assetId,rep,{
+  tokenDecimals:model.tokenDecimals?.[assetId]??18,nativeDecimals:system?.nativeCurrencyDecimals??18
+ });
+ return '<div class="ux-representation-entry" data-representation-chain="'+esc(chainKey)+'"><strong>'+esc(system?.label||chainKey)+' · '+esc(rep.symbol||assetId)+'</strong>'+
+  '<div>'+contract+'</div>'+(result?'<div class="ux-representation-balance">Wallet: '+esc(result.label)+'</div>':'')+'</div>';
+}
+
+function systemDetails(model,selected,metrics=null,wallet={}){
   const system=model.chains.find(c=>c.key===selected)||model.hub||model.chains[0];
   if(!system)return '<p class="ux-muted">No configured chains found.</p>';
   const associated=model.routes.filter(r=>r.source===system.key||r.destination===system.key);
@@ -115,7 +135,8 @@ function systemDetails(model,selected,metrics=null){
     '<div><span>Verified active routes</span><strong>'+active+'</strong></div></div>'+
     (marketRows?'<h4>Market data</h4>'+marketRows:'')+
     '<h4>Tokens on this system</h4>'+(list||'<p class="ux-muted">No listed token representations yet.</p>')+
-    (system.tokens.length>5?'<p class="ux-small">+'+(system.tokens.length-5)+' more tokens · <a data-nav href="/markets">Browse directory →</a></p>':"");
+    (system.tokens.length>5?'<p class="ux-small">+'+(system.tokens.length-5)+' more tokens · <a data-nav href="/markets">Browse directory →</a></p>':"")+
+    (system.tokens.some(t=>t.id==="XGR")?'<h4>XGR representation</h4>'+renderRepresentationInventory(model,"XGR",system.key,wallet):"");
 }
 function chainOptions(model,selected){
   return model.chains.map(c=>'<option value="'+esc(c.key)+'"'+(c.key===selected?" selected":"")+'>'+esc(c.label)+'</option>').join("");
@@ -298,9 +319,20 @@ function dashboardTopTokens(catalog,metrics){
     '<p>Tokens will be ranked here when public listings and independent market data are available. No estimated values are displayed.</p></div>')+
   '<p class="ux-small ux-dashboard-source">Ranking: published assets only · Market prices from eligible external sources · Transfer and TVL metrics require finalized on-chain evidence.</p></section>';
 }
-export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null){
+
+export function renderXGRWalletSummary(model,wallet={}){
+ const xgr=model.assets.find(a=>a.id==="XGR");
+ if(!xgr)return "";
+ const configured=xgr.representations.filter(r=>r.chain==="xgrchain"||verifiedSyntheticContract(model.deployments,"XGR",r));
+ return '<section class="ux-wallet-inventory" aria-label="XGR contract addresses and balances">'+
+  '<div class="ux-wallet-inventory-heading"><div><span class="ux-kicker">XGR · NETWORK REPRESENTATIONS</span><h2>Your XGR across chains</h2></div>'+
+  (wallet.account?'<button type="button" data-xita-gas-refresh>Refresh balances</button>':'<span class="ux-small">Connect wallet to display balances</span>')+'</div>'+
+  '<div class="ux-wallet-inventory-grid">'+configured.map(r=>renderRepresentationInventory(model,"XGR",r.chain,wallet)).join("")+'</div></section>';
+}
+
+export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null,wallet={}){
  return '<div class="ux-app ux-dashboard ux-northstar-page">'+
-  northstarStage(model)+northstarCards(model,metrics)+allianceIntro()+
+  northstarStage(model)+renderXGRWalletSummary(model,wallet)+northstarCards(model,metrics)+allianceIntro()+
   dashboardTopTokens(catalog||{assets:{}},metrics)+
   '<section class="ux-dashboard-outro"><div><span class="ux-kicker">DISCOVER · CONNECT · EXPAND</span>'+
   '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+
@@ -509,7 +541,7 @@ export function renderFAQ(){
   '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/transfer">Transfer Tokens →</a>'+
   '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a></div></div>';
 }
-export function renderUniverse(model,selected=HUB,metrics=null){
+export function renderUniverse(model,selected=HUB,metrics=null,wallet={}){
  const active=model.routes.filter(r=>r.active).length;
  return '<div class="ux-app ux-universe-page ux-northstar-page">'+northstarStage(model,{universe:true})+
   '<div class="ux-ns-universe-intro"><span class="ux-kicker">EXPLORE THE XITA NETWORK</span>'+
@@ -523,7 +555,7 @@ export function renderUniverse(model,selected=HUB,metrics=null){
    '<span class="ux-chain-symbol'+(c.key===HUB?" is-hub":"")+'"></span>'+
    '<strong>'+esc(c.label)+'</strong><small>'+c.tokens.length+' listed assets</small><span>Explore ↗</span></button>').join("")+'</div></section>'+
   '<aside class="ux-panel ux-details" id="ux-selected-details" aria-live="polite">'+
-   systemDetails(model,selected,metrics)+'</aside></div></div>';
+   systemDetails(model,selected,metrics,wallet)+'</aside></div></div>';
 }
 export function renderRoutes(model){
   return '<div class="ux-app ux-routes-page"><div class="ux-kicker">XITA · VERIFIED NETWORK INVENTORY</div><h1>Directed <span>Routes</span></h1>'+

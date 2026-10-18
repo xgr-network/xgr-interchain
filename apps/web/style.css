@@ -1047,3 +1047,16 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-transfer-status-help{font-size:11px;line-height:1.7;color:#95afc9;margin:12px 0 0}
 @media(max-width:960px){.ux-plan-page .ux-ns-operations-grid{grid-template-columns:minmax(0,1fr)}.ux-transfer-milestones{grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}.ux-transfer-milestones:before{display:none}}
 @media(max-width:490px){.ux-plan-page .ux-transfer-status-panel{padding:20px 17px}.ux-transfer-milestones{grid-template-columns:1fr;gap:13px}}
+
+/* Read-only, verified token representations and wallet balances */
+.ux-wallet-inventory{margin:20px 0 28px;padding:20px;border:1px solid #314962;border-radius:13px;background:#071624bf}
+.ux-wallet-inventory-heading{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap}
+.ux-wallet-inventory-heading h2{font-size:20px;margin:6px 0 0}
+.ux-wallet-inventory-heading button,.ux-contract-line button{border:1px solid #547695;border-radius:6px;background:#193249;color:#e3f1ff;padding:6px 10px;font-size:11px}
+.ux-wallet-inventory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:12px}
+.ux-representation-entry{min-width:0;padding:12px;border:1px solid #304762;border-radius:9px;background:#0b1c2e}
+.ux-representation-entry>strong{display:block;margin-bottom:10px;font-size:13px}
+.ux-contract-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ux-contract-line code{font-size:11px;overflow-wrap:anywhere;min-width:0;color:#d9eaff}
+.ux-contract-line a{color:#b7dafa;font-size:11px;text-decoration:underline}
+.ux-representation-balance{font-size:12px;margin-top:11px;color:#bcd6eb}
