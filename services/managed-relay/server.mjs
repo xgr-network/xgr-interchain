@@ -31,11 +31,16 @@ const signingKey=String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
 const signer=signingKey?new Wallet(signingKey):null;
 if(signer&&configuredServiceAddress&&signer.address.toLowerCase()!==configuredServiceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
+const PREVIEW_ONLY=process.env.XITA_INTERCHAIN_PREVIEW_ONLY==="1";
 const sourceAddresses=Object.fromEntries(
- ["xgrchain","base","polygon","arbitrum"].map(name=>[
-  name,String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
-   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim()
- ])
+ ["xgrchain","base","polygon","arbitrum"].map(name=>{
+  const configured=String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
+   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim();
+  // The receipt-verified public catalog is sufficient for UNSIGNED estimates.
+  // Do not require a copied address or any private-key environment to boot.
+  const documented=String(CATALOG.infrastructure?.[name]?.xitaV315?.components?.executionGateway?.address||"");
+  return [name,configured||documented];
+ })
 );
 const providers=new Map();
 async function chain(name){
@@ -74,7 +79,7 @@ async function fetchUncachedPrices(){
 }
 async function createQuote(request,{preview=false}={}){
  const source=request?.source,destination=request?.destination;
- if(!preview&&!signer)throw Error("GmbH service wallet not configured");
+ if(!preview&&(PREVIEW_ONLY||!signer))throw Error("GmbH service wallet not configured");
  if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
@@ -201,6 +206,7 @@ async function handler(req,res){
  const preview=req.url==="/api/xita/v1/managed/preview";
  if(req.method!=="POST"||(!preview&&req.url!=="/api/xita/v1/managed/quote"))
   return send(404,{ok:false,error:"Unknown endpoint"});
+ if(PREVIEW_ONLY&&!preview)return send(403,{ok:false,error:"Signing disabled in read-only preview mode"});
  let body="";
  try{
   for await(const chunk of req){
