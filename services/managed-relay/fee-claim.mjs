@@ -2,7 +2,7 @@
 // chain-specific adapter. No customer transfer, no token swap or gas donation.
 // The immutable interchainFeeRecipient alone receives a claim; the invoking
 // signer pays the chain gas. Use the same wallet for claims and sponsorship.
-import {Wallet,JsonRpcProvider,Contract} from "ethers";
+import {Wallet,JsonRpcProvider,Contract,keccak256} from "ethers";
 import {readFileSync} from "node:fs";
 const ABI=[
  "function interchainFeeRecipient() view returns (address)",
@@ -11,14 +11,45 @@ const ABI=[
 ];
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const POSITIVE=/^[1-9][0-9]*$/;
+const CODE_HASH=/^0x[0-9a-f]{64}$/i;
+const DEPLOYMENT_CHAINS=["base","polygon","arbitrum","xgrchain"];
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
+// Only receipt-backed gateway deployments are eligible for automatic claims.
+// Undeployed chains are skipped. Partial, malformed or contradictory
+// deployments fail closed rather than falling back to operator ENV addresses.
+export function documentedFeeClaimAdapters(catalog){
+ const targets=[];
+ for(const name of DEPLOYMENT_CHAINS){
+  const receipt=catalog?.infrastructure?.[name]?.xitaV315?.components?.executionGateway;
+  if(receipt===undefined||receipt===null)continue;
+  const chain=catalog?.chains?.[name];
+  const pathOk=typeof receipt.receiptPath==="string"&&
+   new RegExp("^deployments/receipts/"+name+"/[a-zA-Z0-9-]+\\.json$").test(receipt.receiptPath);
+  if(!ADDRESS.test(receipt.address||"")||
+   !CODE_HASH.test(receipt.runtimeCodeKeccak256||"")||!pathOk||
+   !Number.isSafeInteger(chain?.chainId)||chain.chainId<=0||
+   !Array.isArray(chain.rpcUrls)||!/^https:\/\//.test(chain.rpcUrls[0]||"")||
+   chain.configurationStatus==="planned-unverified")
+   throw Error("Fee claim gateway lacks a verified chain deployment receipt: "+name);
+  targets.push({name,chain,address:receipt.address,
+   runtimeCodeKeccak256:receipt.runtimeCodeKeccak256});
+ }
+ return targets;
+}
 export async function claimAccruedFees({provider,signer,adapterAddress,expectedChainId,
- minClaimWei,gasCostMultiplier=3n}){
- if(!ADDRESS.test(adapterAddress||"")||!POSITIVE.test(String(minClaimWei))||
+ expectedRuntimeCodeKeccak256,minClaimWei,gasCostMultiplier=3n}){
+ if(!ADDRESS.test(adapterAddress||"")||!CODE_HASH.test(expectedRuntimeCodeKeccak256||"")||
+  !POSITIVE.test(String(minClaimWei))||
   !Number.isSafeInteger(expectedChainId)||expectedChainId<=0||
   BigInt(gasCostMultiplier)<2n)throw Error("Invalid fee claim configuration");
  const network=await provider.getNetwork();
  if(network.chainId!==BigInt(expectedChainId))throw Error("Fee claim RPC chain mismatch");
+ // Verify actual deployed runtime, not merely the claimed contract address.
+ // No claim transaction may be simulated or signed before this check.
+ const code=await provider.getCode(adapterAddress);
+ if(!/^0x(?:[0-9a-f]{2})+$/i.test(code||"")||
+  !eq(keccak256(code),expectedRuntimeCodeKeccak256))
+  throw Error("Fee claim runtime differs from the verified GitHub deployment receipt");
  const adapter=new Contract(adapterAddress,ABI,signer.connect(provider));
  if(!eq(await adapter.interchainFeeRecipient(),signer.address))
   throw Error("Fee claim signer must be the immutable GmbH beneficiary");
@@ -52,7 +83,9 @@ export async function claimAccruedFees({provider,signer,adapterAddress,expectedC
 }
 export async function runConfiguredFeeClaims({
  env=process.env,catalog=JSON.parse(readFileSync(
-  new URL("../../apps/web/catalog.json",import.meta.url),"utf8"))
+  new URL("../../apps/web/catalog.json",import.meta.url),"utf8")),
+ providerForChain=chain=>new JsonRpcProvider(chain.rpcUrls[0],chain.chainId),
+ claim=claimAccruedFees
 }={}){
  // Separate claims from transfers and sponsorship; opt-in after deployment.
  if(env.XITA_INTERCHAIN_CLAIM_ENABLED!=="true")return {status:"disabled"};
@@ -60,21 +93,25 @@ export async function runConfiguredFeeClaims({
  const wallet=new Wallet(value("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
  if(!eq(wallet.address,value("XITA_INTERCHAIN_FEE_ADDRESS")))
   throw Error("Fee wallet private key and configured public address differ");
+ const documented=documentedFeeClaimAdapters(catalog);
+ if(!documented.length)throw Error("No deployed fee adapters configured");
+ // Validate EVERY configured chain before considering an on-chain claim.
+ // Only explicit native-wei claim thresholds remain in the operator ENV.
+ const targets=documented.map(item=>{
+  const minClaimWei=value("XITA_INTERCHAIN_"+item.name.toUpperCase()+"_MIN_CLAIM_WEI");
+  if(!POSITIVE.test(minClaimWei))
+   throw Error("Invalid fee claim threshold for "+item.name);
+  return {...item,minClaimWei};
+ });
  const results=[];
- for(const name of ["base","polygon","arbitrum","xgrchain"]){
-  const suffix=name.toUpperCase();
-  const address=env["XITA_INTERCHAIN_"+suffix+"_ADAPTER"];
-  if(!address)continue;
-  const config=catalog.chains?.[name];
-  if(!config?.rpcUrls?.length)throw Error("Fee claim chain unavailable: "+name);
-  const min=value("XITA_INTERCHAIN_"+suffix+"_MIN_CLAIM_WEI");
-  const provider=new JsonRpcProvider(config.rpcUrls[0],config.chainId);
-  results.push({chain:name,...await claimAccruedFees({
-   provider,signer:wallet,adapterAddress:address,
-   expectedChainId:config.chainId,minClaimWei:min
+ for(const target of targets){
+  const provider=providerForChain(target.chain);
+  results.push({chain:target.name,...await claim({
+   provider,signer:wallet,adapterAddress:target.address,
+   expectedRuntimeCodeKeccak256:target.runtimeCodeKeccak256,
+   expectedChainId:target.chain.chainId,minClaimWei:target.minClaimWei
   })});
  }
- if(!results.length)throw Error("No deployed fee adapters configured");
  return {status:"ok",results};
 }
 // One loop is enough: each tick reads the aggregate contract balance and
