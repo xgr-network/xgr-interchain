@@ -140,7 +140,7 @@ export function priceEscrow(proof,record,{now=Date.now()}={}){
   lockedUsdExact:usdText};
 }
 
-export function verifiedEvidence(catalog,proofs,now=Date.now()){
+export function verifiedEvidence(catalog,proofs,now=Date.now(),flows={}){
  const assets={},positions={},statuses={};
  for(const [asset,entry] of Object.entries(catalog.assets||{})){
   if(!isDeployedAsset(entry,catalog))continue;
@@ -157,10 +157,19 @@ export function verifiedEvidence(catalog,proofs,now=Date.now()){
   const lockedUsd=proof.lockedUsd;
   const vault={verified:true,chain:proof.chain,router:proof.router,
    netLockedRaw:proof.netLockedRaw,valueUsd:lockedUsd};
+  const f=flows[asset];
+  // Gross ESCROW movement is separate from end-to-end journey turnover and
+  // is only counted when canonical physical inflows/outflows were verified.
+  const movement=f?.status==="verified"&&f.kind==="escrow-gross-24h"&&
+   f.assetId===proof.assetId?{
+    status:"verified",complete:true,movedUsd:f.movedUsd,
+    windowStart:f.windowStart,windowEnd:f.windowEnd,metric:"escrow-gross-24h",
+    inflowRaw:f.inflowRaw,outflowRaw:f.outflowRaw,proofDigest:f.proofDigest
+   }:{status:"unavailable"};
   assets[asset]={assetId:asset,verified:true,asOf:proof.observedAt,
    market:{status:"unavailable"},
    custody:{status:"verified",complete:true,lockedUsd,vaults:[vault]},
-   movement:{status:"unavailable"}};
+   movement};
   const proofDigest=keccak256(JSON.stringify({assetId:proof.assetId,
    chain:proof.chain,router:proof.router,token:proof.token,raw:proof.netLockedRaw,
    lockedUsdExact:proof.lockedUsdExact,codeHash:proof.codeHash,
