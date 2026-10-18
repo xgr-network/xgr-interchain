@@ -406,10 +406,13 @@ install_tvl() (
   user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
   # Reuse the already configured SELECT-only metrics/indexer environment.
   # Do not demand a second manually provisioned /etc/xita/tvl.env.
-  [[ -f /etc/xita/indexer.env ]] || {
-    echo "ERROR: existing /etc/xita/indexer.env missing" >&2
+  # /etc/xita/ is root:root mode 0750 and the .env is root:root mode 0600.
+  # xgradmin cannot traverse the directory; a shell [[ -f ]] check reports
+  # falsely missing even though the root-owned systemd manager loads it.
+  if ! privileged test -f /etc/xita/indexer.env; then
+    echo "ERROR: /etc/xita/indexer.env unavailable to the system manager" >&2
     return 1
-  }
+  fi
   if ! privileged grep -q '^XITA_INDEXER_DATABASE_URL=postgresql' /etc/xita/indexer.env; then
     echo "ERROR: existing indexer read-only PostgreSQL connection missing" >&2
     return 1

@@ -63,3 +63,11 @@ test("optional global Interchain Fee install is separate from blockchain deploym
  const completion=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
  assert.match(completion,/systemctl restart xita-interchain-fee-quote\.service/);
 });
+
+test("TVL installer checks root-only indexer env with privileged access",()=>{
+ const part=shell.split("install_tvl() (")[1]?.split("\n)\n")[0];
+ assert.ok(part);
+ assert.match(part,/privileged test -f \/etc\/xita\/indexer\.env/);
+ assert.doesNotMatch(part,/\[\[ -f \/etc\/xita\/indexer\.env \]\]/);
+ assert.match(part,/privileged grep -q/);
+});
