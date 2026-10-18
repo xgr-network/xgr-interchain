@@ -27,6 +27,7 @@ Usage: ./manage.sh <command>
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
   install-tvl  Install read-only generic escrow TVL and gross 24h evidence worker (preconfigured credentials required)
+  install-fee-preview  Install read-only unsigned transfer fee preview (no keys, no sponsor timers)
   install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
@@ -65,7 +66,7 @@ check() {
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
     node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
-    node --test tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs
+    node --test tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/transfer-recovery-nginx.test.mjs tools/interchain-fee-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
@@ -337,6 +338,44 @@ install_transfer_intake() (
 
 # Enabled only after operator configures /etc/xita/interchain-fee.env
 # and deploys the distinct per-chain ExecutionGateway contracts via Admin UI.
+# A separate keyless read-only worker. Does not load interchain-fee.env,
+# enable claim/sponsor timers or expose the signed quote RPC.
+install_fee_preview() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner." >&2; return 1; }
+  local user node_bin unit
+  user="$(id -un)"
+  node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$ROOT" == /* && "$node_bin" == /* ]] || {
+    echo "Unsafe fee preview service path or user" >&2
+    return 1
+  }
+  echo "Installing unsigned fee preview dependencies ..."
+  npm install --prefix "$ROOT/services/managed-relay" --ignore-scripts --no-audit --no-fund --package-lock=false
+  unit="$(mktemp)"
+  trap 'rm -f "${unit:-}"' EXIT
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/server.mjs|" \
+      "$ROOT/services/managed-relay/xita-fee-preview.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-fee-preview.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-fee-preview.service
+  privileged systemctl restart xita-fee-preview.service
+  privileged systemctl is-active xita-fee-preview.service
+  curl --fail --silent --show-error --max-time 6 \
+    http://127.0.0.1:4093/api/xita/v1/managed/health
+  echo
+  if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
+    privileged env XITA_INTERCHAIN_FEE_PREVIEW_NGINX=1 "$node_bin" \
+      "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
+  else
+    privileged env XITA_INTERCHAIN_FEE_PREVIEW_NGINX=1 "$node_bin" \
+      "$ROOT/tools/install-transfer-recovery-nginx.mjs"
+  fi
+  echo "SUCCESS: unsigned public cost preview available on loopback 4093 and HTTPS. No fee wallet key, Claim worker, Sponsor worker or on-chain TX."
+)
+
 install_interchain_fee() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -456,6 +495,9 @@ complete_update() {
   if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
     privileged systemctl restart xita-interchain-fee-quote.service
   fi
+  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
+    privileged systemctl restart xita-fee-preview.service
+  fi
 }
 
 update() {
@@ -516,6 +558,7 @@ case "${1:-help}" in
     ;;
   install-transfer-api) install_transfer_api ;;
   install-tvl) install_tvl ;;
+  install-fee-preview) install_fee_preview ;;
   install-interchain-fee) install_interchain_fee ;;
   help|-h|--help) usage ;;
   *)
