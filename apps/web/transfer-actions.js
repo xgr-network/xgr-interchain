@@ -276,7 +276,20 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
   const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
    data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
-  if(BigInt(allowance)<units){
+  let approved=BigInt(allowance)>=units;
+  if(!approved){
+   // Before issuing ANY additional approval, independently inspect the
+   // canonical source chain. A wallet RPC may lag behind a prior approval.
+   const identity=await publicRead(src.rpcUrls?.[0],"eth_chainId",[],fetcher);
+   if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(src.chainId))
+    throw Error("Cannot verify source token allowance; no approval sent");
+   const readback=await publicRead(src.rpcUrls?.[0],"eth_call",[
+    {to:route.sourceToken,data:selector("allowance(address,address)")+
+     addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"],fetcher);
+   if(!QTY.test(readback||""))throw Error("Source allowance unverified; no approval sent");
+   approved=BigInt(readback)>=units;
+  }
+  if(!approved){
    const approve={from:account,to:route.sourceToken,value:"0x0",
     data:selector("approve(address,uint256)")+addrWord(paidAdapter||onwardAdapter||route.gateway)+word(units)};
    const gas=await request(provider,"eth_estimateGas",[approve]);
