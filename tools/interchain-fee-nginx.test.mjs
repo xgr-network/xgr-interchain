@@ -8,8 +8,9 @@ const vhost=["server {",
 test("add exact fee quote and status, not a broad public signer proxy",()=>{
  const a=patchInterchainFeeNginx(vhost);
  assert.deepEqual(a.added,[
-  "/api/xita/v1/managed/health","/api/xita/v1/managed/quote"]);
+  "/api/xita/v1/managed/health","/api/xita/v1/managed/quote","/api/xita/v1/managed/preview"]);
  assert.match(a.config,/location = \/api\/xita\/v1\/managed\/quote/);
+ assert.match(a.config,/location = \/api\/xita\/v1\/managed\/preview/);
  assert.match(a.config,/limit_except POST \{ deny all; \}/);
  assert.match(a.config,/client_max_body_size 4k/);
  assert.match(a.config,/location = \/api\/xita\/v1\/managed\/health/);
