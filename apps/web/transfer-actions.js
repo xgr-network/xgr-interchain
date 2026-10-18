@@ -341,8 +341,21 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    headers:{"content-type":"application/json",accept:"application/json"},
    body:JSON.stringify(quoteRequest)
   });
-  if(!response?.ok)throw Error("Interchain Fee quote unavailable; no bridge was submitted");
-  const result=await response.json();
+  // A failed signed-quote HTTP response is NOT a failed token transfer.
+  // Distinguish a missing signer/proxy from a source-chain quote rejection.
+  const type=response?.headers?.get?.("content-type")||"";
+  let result=null;
+  try{result=await response?.json();}catch{}
+  if(!response?.ok){
+   const status=Number(response?.status)||0;
+   const message=typeof result?.error==="string"?result.error.slice(0,170):"";
+   if(status===404||status===405||status===502||status===504||!status)
+    throw Error("Signed fee quote endpoint unavailable (HTTP "+(status||"network")+"). Check nginx and xita-interchain-fee-quote.service on port 4092. No bridge was submitted");
+   if(status===403)throw Error("Signed fee quote rejected (HTTP 403). Verify signer configuration and public quote routing. No bridge was submitted");
+   throw Error("Signed fee quote failed (HTTP "+status+"): "+
+    (message||"Check the signed quote service logs")+". No bridge was submitted");
+  }
+  if(!result?.ok)throw Error("Signed fee quote response invalid; no bridge was submitted");
   const validated=checkInterchainQuote(result,{catalog,account,asset,source,
    destination,route,firstDestination,amountRaw:units,
    validatorNativeWei:quote.value,adapter:paidAdapter});
