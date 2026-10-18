@@ -3,7 +3,8 @@
 const MARKER="location ^~ /api/xeta/ {";
 const PATHS=Object.freeze([
  {path:"/api/xita/v1/managed/health",method:"GET",timeout:4},
- {path:"/api/xita/v1/managed/quote",method:"POST",timeout:15}
+ {path:"/api/xita/v1/managed/quote",method:"POST",timeout:15},
+ {path:"/api/xita/v1/managed/preview",method:"POST",timeout:15}
 ]);
 const upstream="proxy_pass http://127.0.0.1:4092;";
 export function patchInterchainFeeNginx(config){
