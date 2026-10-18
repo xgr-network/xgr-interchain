@@ -366,6 +366,15 @@ install_fee_preview() (
   curl --fail --silent --show-error --max-time 6 \
     http://127.0.0.1:4093/api/xita/v1/managed/health
   echo
+  # Validate that the running keyless instance CANNOT issue signed quotes.
+  local signed_status
+  signed_status="$(curl --silent --show-error --max-time 6 -o /dev/null -w '%{http_code}' \
+    -X POST -H 'Content-Type: application/json' --data '{}' \
+    http://127.0.0.1:4093/api/xita/v1/managed/quote)"
+  [[ "$signed_status" == "403" ]] || {
+    echo "ERROR: preview-only service did not reject signed quote endpoint (HTTP $signed_status)" >&2
+    return 1
+  }
   if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
     privileged env XITA_INTERCHAIN_FEE_PREVIEW_NGINX=1 "$node_bin" \
       "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
