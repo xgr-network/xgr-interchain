@@ -19,7 +19,7 @@ export const ESCROW_FLOW_WINDOW_MS=86400000;
 function checkedBlock(block,expectedHeight=null,expectedHash=null){
  const height=quantity(block?.number),timestamp=quantity(block?.timestamp);
  if(height===null||height>BigInt(Number.MAX_SAFE_INTEGER)||
-    timestamp===null||timestamp>BigInt(Number.MAX_SAFE_INTEGER/1000)||
+    timestamp===null||timestamp>BigInt(Math.floor(Number.MAX_SAFE_INTEGER/1000))||
     !HASH.test(block?.hash||"")||
     expectedHeight!==null&&height!==BigInt(expectedHeight)||
     expectedHash!==null&&norm(block.hash)!==norm(expectedHash))
