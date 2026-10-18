@@ -1134,3 +1134,15 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-route-identity-approval{margin-top:13px;padding-top:12px;border-top:1px solid #34516f;display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11px;color:#c0d4e9}
 .ux-route-identity-approval p{width:100%;margin:2px 0 0;color:#a5b9cf;font-size:11px;line-height:1.5}
 @media(max-width:620px){.ux-route-identity-row{grid-template-columns:1fr}.ux-route-identity{padding:12px}}
+
+/* Compact identity: the contract list opens only when requested. */
+.ux-route-identity{padding:0;margin:12px 0;background:#0a192b}
+.ux-route-identity>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:12px 14px;list-style:none}
+.ux-route-identity>summary::-webkit-details-marker{display:none}
+.ux-route-identity-summary{display:grid;gap:5px;min-width:0}
+.ux-route-identity-summary strong{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.ux-route-identity-expand{font-size:11px;color:#b6d7f5;flex-shrink:0}
+.ux-route-identity[open] .ux-route-identity-expand{font-size:0}
+.ux-route-identity[open] .ux-route-identity-expand:after{content:"Hide details ⌃";font-size:11px}
+.ux-route-identity-body{padding:0 14px 14px}
+.ux-route-identity-rows{margin-top:10px}

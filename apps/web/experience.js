@@ -409,13 +409,16 @@ function renderTransferIdentity(model,assetId,path){
   '<code>'+esc(adapter)+'</code>'+
   (adapterExplorer?'<a href="'+esc(adapterExplorer)+'" target="_blank" rel="noopener noreferrer">Explorer ↗</a>':'')+
   '<p>An approval transaction is required only if your existing token allowance for this spender is insufficient. Approval alone does not bridge or burn tokens.</p></div>':"";
- return '<section class="ux-route-identity" aria-label="Token project and verified transfer contracts">'+
-  '<div class="ux-route-identity-head"><div><span class="ux-kicker">TOKEN IDENTITY</span>'+
-  '<h3>What you send & receive</h3></div><div class="ux-route-identity-links">'+
+ return '<details class="ux-route-identity" aria-label="Token project and verified transfer contracts">'+
+  '<summary><span class="ux-route-identity-summary"><span class="ux-kicker">TOKEN IDENTITY</span>'+
+  '<strong>'+esc(path.path.map((chain,i)=>{
+   const token=transferTokenIdentity(model,assetId,chain);
+   return (model.chains.find(c=>c.key===chain)?.label||chain)+' · '+token.symbol;
+  }).join(" → "))+'</strong></span><span class="ux-route-identity-expand">Contract details ⌄</span></summary>'+
+  '<div class="ux-route-identity-body"><div class="ux-route-identity-links">'+
   (asset?.website?'<a href="'+esc(asset.website)+'" target="_blank" rel="noopener noreferrer">Official project ↗</a>':'')+
   (asset?'<a data-nav href="'+esc(tokenLink(asset))+'">Token details ↗</a>':'')+
-  '</div></div>'+
-  '<div class="ux-route-identity-rows">'+steps+'</div>'+approval+'</section>';
+  '</div><div class="ux-route-identity-rows">'+steps+'</div>'+approval+'</div></details>';
 }
 // A real standalone planner; no longer extracted from dashboard markup.
 export function renderPlanRoute(model,selection={},apiState="not-deployed",wallet={},progress={}){
