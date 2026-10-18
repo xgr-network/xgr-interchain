@@ -16,12 +16,12 @@ const outflow={...inflow,source_chain:"base",destination_chain:"xgrchain",route_
  amount_raw:"1000000",delivered:true};
 const processTopic=keccak256("ProcessId(bytes32)");
 const price={priceUsd:3,asOf:new Date(now).toISOString(),source:"coingecko"};
-const get=(status="delivered")=>async (_chain,method,args)=>{
+const get=(status="delivered",sourceRecent=false)=>async (_chain,method,args)=>{
  if(method==="eth_blockNumber")return hex(1000);
  if(method==="eth_getBlockByNumber"){
   const n=Number(BigInt(args[0]));
   return {number:hex(n),hash:n===100?hash("d"):n===900?hash("9"):hash("f"),
-   timestamp:hex(Math.floor((now-(n<900?ESCROW_FLOW_WINDOW_MS+1000:1000))/1000))};
+   timestamp:hex(Math.floor((now-(n<900&&!sourceRecent?ESCROW_FLOW_WINDOW_MS+1000:1000))/1000))};
  }
  if(method==="eth_getLogs"){
   return status==="delivered"?[{address:addr("3"),topics:[processTopic,hash("e")],blockNumber:hex(900),blockHash:hash("9"),removed:false}]:[];
@@ -30,10 +30,10 @@ const get=(status="delivered")=>async (_chain,method,args)=>{
  throw Error("unexpected RPC "+method);
 };
 test("24h: lock inflow and delivered unlock outflow are summed gross, not net",async()=>{
- const r=await verifyGrossEscrowFlows24h({descriptor,operations:[inflow,outflow],read:get(),price,now});
- assert.equal(r.status,"verified");assert.equal(r.grossRaw,"1000000");
- assert.equal(r.inflowRaw,"0");assert.equal(r.outflowRaw,"1000000");
- assert.equal(r.movedUsd,3);assert.equal(r.kind,"escrow-gross-24h");
+ const r=await verifyGrossEscrowFlows24h({descriptor,operations:[inflow,outflow],read:get("delivered",true),price,now});
+ assert.equal(r.status,"verified");assert.equal(r.grossRaw,"3000000");
+ assert.equal(r.inflowRaw,"2000000");assert.equal(r.outflowRaw,"1000000");
+ assert.equal(r.movedUsd,9);assert.equal(r.kind,"escrow-gross-24h");
 });
 test("24h: burn without final delivery is not an escrow outflow",async()=>{
  const r=await verifyGrossEscrowFlows24h({descriptor,operations:[{...outflow,delivered:false}],
