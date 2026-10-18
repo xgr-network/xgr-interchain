@@ -401,6 +401,31 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (selected?.txHash===r.txHash?' selected':'')+'>'+
    esc((r.asset||"Token")+' · '+r.sourceChain+' → '+r.destinationChain+' · '+r.txHash.slice(0,10)+'…')+
   '</option>').join("");
+ const destinationLabel=model.chains.find(c=>c.key===destination)?.label||destination;
+ const feeCard=
+  '<section class="ux-panel ux-fee-preview" aria-labelledby="ux-fee-heading">'+
+  '<div class="ux-fee-header"><div><span class="ux-kicker">ADDITIONAL ROUTE FEES</span>'+
+  '<h3 id="ux-fee-heading">Transfer costs</h3></div>'+
+  '<button type="button" class="ux-fee-help" id="ux-fee-info-trigger" aria-haspopup="dialog" aria-controls="ux-fee-info-dialog" aria-label="How are transfer fees calculated?" title="About route fees and network gas">?</button></div>'+
+  '<div class="ux-fee-route">'+esc(originLabel)+' → '+esc(destinationLabel)+(isDirect?'':' · via XGRChain')+'</div>'+
+  '<div id="ux-fee-preview-status" class="ux-fee-status" role="status" aria-live="polite">Enter an amount to estimate route fees.</div>'+
+  '<div id="ux-fee-preview-details" class="ux-fee-breakdown" hidden></div>'+
+  '<p class="ux-fee-footnote">Plus network gas for wallet transactions'+
+   (progress.sponsorship?.available===true?' (sponsorship subject to eligibility).':' (unless sponsored).')+
+  '</p></section>';
+ const feeDialog=
+  '<dialog id="ux-fee-info-dialog" class="ux-fee-dialog" aria-labelledby="ux-fee-info-title">'+
+  '<div class="ux-fee-dialog-header"><div><span class="ux-kicker">XITA · TRANSFER FEES</span>'+
+  '<h2 id="ux-fee-info-title">What will I pay?</h2></div>'+
+  '<button id="ux-fee-info-close" type="button" aria-label="Close fee information">×</button></div>'+
+  '<dl><dt>Protocol fee</dt><dd>The native network protocol fee required for the source route.</dd>'+
+  '<dt>XITA Service Fee</dt><dd>A fee for the optional XITA execution service. Its estimate includes quoted downstream execution and processing costs for the selected route.</dd></dl>'+
+  '<h3>Network gas is additional</h3>'+
+  '<p>Every hop involves wallet-authorized blockchain transactions. Source lock/burn, destination message delivery and any onward hop require network gas in the respective chain’s native currency. An ERC-20 approval can require an additional transaction. These wallet gas costs are not included in the route fee shown here.</p>'+
+  '<p>Gas sponsorship only applies to specific steps when explicitly offered and confirmed. Otherwise ensure that you have enough gas on each required chain.</p>'+
+  '<p>Figures are non-binding estimates. XITA requests a fresh signed service quote before the source transaction. Exchange rates and network gas can change.</p>'+
+  '<button type="button" class="ux-fee-dialog-done" data-fee-info-close>Close</button>'+
+  '</dialog>';
  const statusMarkup=
   '<section class="ux-transfer-progress'+(progress.error?' has-error':'')+'" role="status" aria-live="polite">'+
   '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
@@ -436,21 +461,6 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
-  '<section class="ux-fee-preview" aria-label="Additional route fees">'+
-  '<div class="ux-fee-header"><div><span class="ux-kicker">ADDITIONAL ROUTE FEES</span>'+
-  '<h3>XITA transfer fees</h3></div><span class="ux-fee-estimate-tag">Estimate</span></div>'+
-  '<p class="ux-fee-intro">These fees are additional to regular blockchain transaction gas for each hop. Network gas is paid separately unless eligible gas sponsorship covers it.</p>'+
-  '<div id="ux-fee-preview-status" class="ux-fee-status" role="status" aria-live="polite">Enter an amount to calculate route fees.</div>'+
-  '<div id="ux-fee-preview-details" class="ux-fee-breakdown" hidden></div>'+
-  '<div class="ux-fee-gas-note"><strong>Network transaction gas</strong>'+
-  '<p>Separate wallet gas applies to the source transaction and destination delivery, for every hop. An ERC-20 approval may add another transaction. Optional sponsorship is only available when explicitly confirmed.</p></div>'+
-  '<div class="ux-fee-sponsor"><strong>Gas sponsorship</strong><span>'+
-  esc(progress.sponsorship?.available===true?
-   "Potentially available on: "+Object.entries(progress.sponsorship?.chains||{}).filter(([,v])=>v===true).map(([chain])=>chain).join(", ")+". Eligibility is checked before each grant.":
-   "Not confirmed — plan to pay all network gas yourself.")+
-  '</span></div>'+
-  '<p class="ux-fee-fineprint">Non-binding estimate. A fresh signed quote is checked before wallet confirmation; actual network gas can change.</p>'+
-  '</section>'+
   (pending.length?'<div class="ux-transfer-outstanding">'+activeLabel+
    '<label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery ('+pending.length+')</label>'+
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+
@@ -470,7 +480,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
-  '</section><aside class="ux-panel ux-ns-operations-data ux-transfer-status-panel">'+
+  '</section><div class="ux-transfer-side"><aside class="ux-panel ux-ns-operations-data ux-transfer-status-panel">'+
   '<div class="ux-transfer-status-heading"><span class="ux-kicker">TRANSACTION STATUS</span><h2>Transfer progress</h2></div>'+
   statusMarkup+
   '<div class="ux-transfer-milestones" aria-label="Transfer steps">'+
@@ -482,7 +492,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
     '<small>Process the verified message</small></div></div>'+
   '</div>'+
   '<p class="ux-transfer-status-help">Your wallet authorizes each step. Private keys stay with you.</p>'+
-  '</aside></div>'+ 
+  '</aside>'+feeCard+'</div></div>'+feeDialog+
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
   '</section></div>';
 }
