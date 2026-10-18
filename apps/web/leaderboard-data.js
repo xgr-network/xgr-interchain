@@ -24,7 +24,16 @@ export function verifiedMetrics(snapshot,assetId){
  new Set(custody.vaults.map(x=>x.chain.toLowerCase()+":"+x.router.toLowerCase())).size===custody.vaults.length
   ?Math.abs(custody.vaults.reduce((n,x)=>n+x.valueUsd,0)-custody.lockedUsd)<=Math.max(.000001,custody.lockedUsd*.00000001)?custody.lockedUsd:null:null;
  // One journey ID = one end-user transfer across XGR (not twice for two hops).
- const moved=ledgerVerified&&movement.status==="verified"&&movement.complete===true&&finite(movement.movedUsd)&&
+ const grossEscrow=ledgerVerified&&movement.status==="verified"&&movement.complete===true&&
+  movement.metric==="escrow-gross-24h"&&
+  typeof movement.windowStart==="string"&&typeof movement.windowEnd==="string"&&
+  Number.isFinite(Date.parse(movement.windowStart))&&Number.isFinite(Date.parse(movement.windowEnd))&&
+  Date.parse(movement.windowEnd)-Date.parse(movement.windowStart)===86400000&&
+  /^0x[0-9a-f]{64}$/i.test(movement.proofDigest||"")&&
+  /^(0|[1-9][0-9]*)$/.test(movement.inflowRaw||"")&&
+  /^(0|[1-9][0-9]*)$/.test(movement.outflowRaw||"")&&finite(movement.movedUsd)?movement.movedUsd:null;
+ const moved=grossEscrow!==null?grossEscrow:
+ ledgerVerified&&movement.status==="verified"&&movement.complete===true&&finite(movement.movedUsd)&&
  Array.isArray(movement.journeys)&&
  movement.journeys.every(x=>typeof x.id==="string"&&x.id.length>0&&x.verified===true&&x.viaHub===true&&finite(x.valueUsd)&&Array.isArray(x.hops)&&x.hops.length>=1&&x.hops.length<=2&&x.hops.every(h=>h.includes("xgrchain")))&&
  new Set(movement.journeys.map(x=>x.id)).size===movement.journeys.length&&
