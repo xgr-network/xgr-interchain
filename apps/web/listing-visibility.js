@@ -98,8 +98,10 @@ export function isPublicAsset(id,entry,visibility,catalog=null){
 // Neither validator quorum readiness nor the optional commercial fee adapter
 // controls public discovery.
 export function isPublicRepresentation(id,chain,catalog,visibility=null){
- return isPublicAsset(id,catalog?.assets?.[id],visibility,catalog)&&
-  deployedRoutes(catalog).some(r=>r.asset===id&&(r.source===chain||r.destination===chain));
+ if(!isPublicAsset(id,catalog?.assets?.[id],visibility,catalog))return false;
+ // Legacy standalone ranking catalogs have no infrastructure inventory.
+ if(!catalog?.chains||!catalog?.infrastructure)return true;
+ return deployedRoutes(catalog).some(r=>r.asset===id&&(r.source===chain||r.destination===chain));
 }
 
 export function publicDirectoryCatalog(catalog,visibility){
