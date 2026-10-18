@@ -67,6 +67,11 @@
         "address": "0xbd87ceebbac310186b0caf2ec4ed6c50f7d767c3",
         "runtimeCodeKeccak256": "0x4d0b24018a02adc0f16478ed0954f291b286227c2e018028c889bef58cf05269",
         "receiptPath": "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json"
+      },
+      "executionGateway": {
+        "address": "0x9b6b92ef1745611f402341965f7fc649cbe0da8c",
+        "runtimeCodeKeccak256": "0xb4a21b0648ad22789c17a0426bad54235406eb2d8b9355995b59aa441ae626ab",
+        "receiptPath": "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
       }
     },
     "receiptPaths": [
@@ -81,7 +86,8 @@
       "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-a831991450e2a150951da8c2f3344f940603c714.json",
       "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-d3389684b69f80f7a281569b64a2e47872f74add.json",
       "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json",
-      "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json"
+      "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json",
+      "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
     ]
   }
 }
