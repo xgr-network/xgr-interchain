@@ -22,7 +22,7 @@ const g=(r,amount,delivered)=>({asset:"XGR",asset_id:hash("a"),
  source_chain:r.source,destination_chain:r.destination,route_id:r.routeId,gateway:r.gateway,
  delivered,operation_count:"1",bad_count:"0",amount_raw:String(amount),max_source_block:"12"});
 const data=(groups,routerBalance,pendingBalance="0x0")=>({catalog:{},descriptor:d,
- indexedRoutes:iRoutes,cursors,groups,routerCode:code,routerBalance,
+ indexedRoutes:iRoutes,cursors:structuredClone(cursors),groups,routerCode:code,routerBalance,
  pendingBalance,observedHead:"0xc9",now});
 const result=x=>reconcileEscrow(x);
 test("physical balance is counted once, NOT reduced a second time by unlocks",()=>{
