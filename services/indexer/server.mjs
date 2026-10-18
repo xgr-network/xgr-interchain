@@ -46,13 +46,12 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
  }
  // Keep unknown aggregate unknown; never sum a partial selection as network TVL.
  const facts=buildLeaderboardRows(catalog,{kind:"xita-asset-metrics-v1",schemaVersion:1,assets},{includeUnlisted:true});
- const complete=keys.length>0&&facts.every(f=>f.lockedUsd!==null&&f.movedUsd!==null);
- const totals=complete?{
-   lockedUsd:facts.reduce((s,x)=>s+x.lockedUsd,0),
-   movedUsd:facts.reduce((s,x)=>s+x.movedUsd,0)
- }:null;
+ const completeLocked=keys.length>0&&facts.every(f=>f.lockedUsd!==null);
+ const completeMoved=keys.length>0&&facts.every(f=>f.movedUsd!==null);
+ const totals={lockedUsd:completeLocked?facts.reduce((s,x)=>s+x.lockedUsd,0):null,
+  movedUsd:completeMoved?facts.reduce((s,x)=>s+x.movedUsd,0):null};
  return {schemaVersion:1,kind:"xita-asset-metrics-v1",assets,totals,
-  status:complete?"verified":"incomplete",
+  status:completeLocked&&completeMoved?"verified":"incomplete",
   metadata:{configuredAssets:keys.length,verifiedAssets:facts.filter(f=>f.lockedUsd!==null&&f.movedUsd!==null).length,
    source:evidence?"trusted-evidence-file":"no-finalized-chain-evidence"}};
 }
@@ -145,9 +144,21 @@ export async function handler(req,res){
    try{cache.snapshot=await getCoinGeckoPrices(catalog);cache.until=Date.now()+120000;}
    catch{cache.snapshot=null;cache.until=Date.now()+60000;}
   }
-  const metrics=projectMetrics(catalog,readEvidence(),cache.snapshot);
+  const evidence=readEvidence();
+  const metrics=projectMetrics(catalog,evidence,cache.snapshot);
   let positions=null;
-  try{positions=await readPublicationPositions();}catch{ /* Not zero: public eligibility unavailable. */ }
+  try{positions=await readPublicationPositions();}catch{ /* DB view optional. */ }
+  // Only the dedicated worker's authenticated, recent local evidence can
+  // fill a missing DB publication position. An untrusted browser hint cannot.
+  const proof=evidence?.nativeTvl?.proof;
+  const localPosition=evidence?.nativeTvl?.positions?.XGR;
+  if(proof?.status==="verified"&&proof.assetId===catalog.assets?.XGR?.metadata?.assetId&&
+     localPosition?.assetId===proof.assetId&&
+     localPosition.lockedUsd===proof.lockedUsd&&
+     Date.now()-Date.parse(proof.asOf)<120000&&
+     Date.now()>=Date.parse(proof.asOf)-30000){
+    positions={...(positions||{}),XGR:localPosition};
+  }
   const visibility=derivedVisibility(catalog,positions);
   if(pathname==="/api/xeta/v1/visibility")return send(200,visibility);
   if(pathname.startsWith("/api/xeta/v1/systems/")){

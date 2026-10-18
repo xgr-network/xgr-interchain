@@ -219,3 +219,47 @@ read includes an `observed` source TX as `pending-source` with
 Previously locked XGR must **never** be locked or burned again merely because
 a scan is behind. Existing wallet lookups and the original finalized-chain
 backfill work independently of the optional staging service.
+
+
+## Native XGR TVL verifier (opt-in; v3.1.7+)
+
+The first XGRChain -> Base mint does **not** by itself prove USD TVL.
+Run `node services/indexer/native-tvl-worker.mjs` only after the finalized
+transfer index has **complete** coverage of both XGR directions.
+
+This **separate read-only process** checks immutable GitHub deployment
+receipts, route-specific finalized scan cursors, canonical Gateway operation
+amounts and confirmed destination delivery, computes native XGR lock minus
+confirmed Base -> XGR unlock, and compares the result **exactly** to the
+XGRChain router's `eth_getBalance(latest)`. The contract runtime bytecode
+is Keccak-checked against the deployed receipt. Only then does it apply the
+configured XGR CoinGecko USD price. Missing logs, stale cursors, pending
+delivery, unrelated native deposits, deferred claims, mismatched escrow,
+price errors or RPC errors make USD TVL unavailable.
+
+This version intentionally prioritizes **fail closed** over liveness.
+If there are source transactions between finalized index scan and latest
+balance read, the snapshot may remain unavailable until the system is
+quiet and consistent. A dedicated snapshot pinned to finalized EVM state
+would require archive-state support and is deliberately NOT used.
+
+Installation is **not automatic** in `./manage.sh update`. Use a dedicated
+SELECT-only DB role and `/etc/xita/native-tvl.env` based on the example;
+set the same `XITA_METRICS_EVIDENCE` path for the existing 4088 indexer
+HTTP service. Create `/var/lib/xita` with access restricted to the
+`xgradmin` service account. Install
+`services/indexer/xita-native-tvl.service.example` as a systemd unit
+and start it only after verifying your route index coverage.
+
+No PostgreSQL write grants are needed: the worker writes an atomic, mode
+0600 local evidence file. It removes the evidence file if a check fails;
+HTTP also refuses snapshots older than two minutes. `minimumLockedUsd`
+retains its independent publication semantics; `null` continues listing
+deployed tokens without a TVL feed, while numeric thresholds require
+verified USD TVL. The `movedUsd` metric remains unavailable until the
+separate cross-hop journey evidence verifier exists. Never convert indexed
+hop counts or ERC-20 supply into volume or escrow.
+
+A live, contract-aware mainnet smoke test is still required before
+production: check successful first-hop lock, minted wrapped balance,
+confirmed reverse unlock and evidence invalidation on a denied RPC.

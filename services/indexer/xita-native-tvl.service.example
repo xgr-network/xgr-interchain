@@ -1,0 +1,22 @@
+[Unit]
+Description=XITA verified native escrow TVL snapshot (read only)
+Wants=network-online.target
+After=network-online.target xita-transfer-indexer.service
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/native-tvl.env
+ExecStart=/usr/bin/node services/indexer/native-tvl-worker.mjs
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/xita
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
