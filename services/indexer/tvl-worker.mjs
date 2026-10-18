@@ -79,10 +79,12 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
  for(const asset of names)try{
   proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes});
   if(proofs[asset].status!=="verified")continue;
-  const d=escrowDescriptor(catalog,asset);
-  const rows=await pool.query({text:"SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,message_id,source_block_number,source_block_hash,amount_raw::text AS amount_raw,delivered,destination_mailbox FROM xita_transfer_operations WHERE asset=$1 ORDER BY source_block_number DESC LIMIT 10001",values:[asset]});
-  flows[asset]=await verifyGrossEscrowFlows24h({descriptor:d,operations:rows.rows,read,
-   price:snap.records?.[d.coingeckoId],now});
+  try{
+   const d=escrowDescriptor(catalog,asset);
+   const rows=await pool.query({text:"SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,message_id,source_block_number,source_block_hash,amount_raw::text AS amount_raw,delivered,destination_mailbox FROM xita_transfer_operations WHERE asset=$1 ORDER BY source_block_number DESC LIMIT 10001",values:[asset]});
+   flows[asset]=await verifyGrossEscrowFlows24h({descriptor:d,operations:rows.rows,read,
+    price:snap.records?.[d.coingeckoId],now});
+  }catch{flows[asset]={status:"unavailable",reason:"24h-volume-rpc-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return verifiedEvidence(catalog,proofs,now,flows);
 }
