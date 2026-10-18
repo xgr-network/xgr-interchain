@@ -51,10 +51,10 @@ test("exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whiteliste
 test("keyless preview installs only POST /preview on isolated 4093, not signer on 4092",()=>{
  const {config,added}=patchFeePreviewNginx(vhost);
  assert.deepEqual(added,["/api/xita/v1/managed/preview"]);
- assert.match(config,/location = \\/api\\/xita\\/v1\\/managed\\/preview/);
- assert.match(config,/proxy_pass http:\\/\\/127\\.0\\.0\\.1:4093;/);
- assert.doesNotMatch(config,/location = \\/api\\/xita\\/v1\\/managed\\/quote/);
- assert.doesNotMatch(config,/location = \\/api\\/xita\\/v1\\/managed\\/health/);
+ assert.ok(config.includes("location = /api/xita/v1/managed/preview {"));
+ assert.ok(config.includes("proxy_pass http://127.0.0.1:4093;"));
+ assert.ok(!config.includes("location = /api/xita/v1/managed/quote {"));
+ assert.ok(!config.includes("location = /api/xita/v1/managed/health {"));
  assert.deepEqual(patchFeePreviewNginx(config),{config,changed:false,added:[]});
  const bad=config.replace("proxy_pass http://127.0.0.1:4093;","proxy_pass http://127.0.0.1:4092;");
  assert.throws(()=>patchFeePreviewNginx(bad),/Unapproved/);
@@ -63,6 +63,9 @@ test("later fee signer route setup keeps preview isolated and existing signer pr
  const first=patchFeePreviewNginx(vhost).config;
  const full=patchInterchainFeeNginx(first);
  assert.deepEqual(full.added,["/api/xita/v1/managed/health","/api/xita/v1/managed/quote"]);
- assert.match(full.config,/location = \\/api\\/xita\\/v1\\/managed\\/quote[\\s\\S]*?proxy_pass http:\\/\\/127\\.0\\.0\\.1:4092;/);
- assert.match(full.config,/location = \\/api\\/xita\\/v1\\/managed\\/preview[\\s\\S]*?proxy_pass http:\\/\\/127\\.0\\.0\\.1:4093;/);
+ assert.ok(full.config.includes("location = /api/xita/v1/managed/quote {"));
+ assert.ok(full.config.includes("location = /api/xita/v1/managed/preview {"));
+ assert.ok(full.config.includes("proxy_pass http://127.0.0.1:4092;"));
+ assert.ok(full.config.includes("proxy_pass http://127.0.0.1:4093;"));
+ assert.equal(full.config.split("proxy_pass http://127.0.0.1:4093;").length-1,1);
 });
