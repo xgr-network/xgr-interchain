@@ -335,3 +335,14 @@ test("untrusted project URI is not rendered as executable link; conflicting synt
  assert.equal(info.address,null);
  assert.equal(info.evidence,"unavailable");
 });
+
+test("token identity is collapsed by default while full contract data stays accessible",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const m=buildExperienceModel(c);
+ const html=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready");
+ assert.match(html,/<details class="ux-route-identity"/);
+ assert.doesNotMatch(html,/<details class="ux-route-identity"[^>]* open/);
+ assert.match(html,/Contract details/);
+ assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+ assert.match(html,/Official project/);
+});
