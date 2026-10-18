@@ -7,6 +7,7 @@ import {indexedRoutes} from "./transfer-index.mjs";
 import {transferReaderPool} from "./transfer-index-store.mjs";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {escrowDescriptor,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
+import {verifyGrossEscrowFlows24h} from "./escrow-flow-24h.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
@@ -73,12 +74,17 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
  return priceEscrow(proof,priceSnapshot?.records?.[d.coingeckoId],{now});
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
- const snap=await prices(catalog),routes=indexedRoutes(catalog),proofs={};
+ const snap=await prices(catalog),routes=indexedRoutes(catalog),proofs={},flows={};
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
   proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes});
+  if(proofs[asset].status!=="verified")continue;
+  const d=escrowDescriptor(catalog,asset);
+  const rows=await pool.query({text:"SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,message_id,source_block_number,source_block_hash,amount_raw::text AS amount_raw,delivered,destination_mailbox FROM xita_transfer_operations WHERE asset=$1 ORDER BY source_block_number DESC LIMIT 10001",values:[asset]});
+  flows[asset]=await verifyGrossEscrowFlows24h({descriptor:d,operations:rows.rows,read,
+   price:snap.records?.[d.coingeckoId],now});
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
- return verifiedEvidence(catalog,proofs,now);
+ return verifiedEvidence(catalog,proofs,now,flows);
 }
 function atomic(path,payload){
  const tmp=path+".tmp."+process.pid;
