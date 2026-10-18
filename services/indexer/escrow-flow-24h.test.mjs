@@ -24,6 +24,7 @@ const get=(status="delivered",sourceRecent=false)=>async (_chain,method,args)=>{
    timestamp:hex(Math.floor((now-(n<900&&!sourceRecent?ESCROW_FLOW_WINDOW_MS+1000:1000))/1000))};
  }
  if(method==="eth_getLogs"){
+  if(BigInt(args[0].fromBlock)>900n||BigInt(args[0].toBlock)<900n)return [];
   return status==="delivered"?[{address:addr("3"),topics:[processTopic,hash("e")],blockNumber:hex(900),blockHash:hash("9"),removed:false}]:[];
  }
  if(method==="eth_call")return hex(status==="delivered"?1:0);
