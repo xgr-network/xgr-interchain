@@ -7,7 +7,6 @@ import {selector,keccak256} from "../../apps/web/keccak.js";
 import {priceEscrow} from "./tvl-verifier.mjs";
 const HASH=/^0x[0-9a-f]{64}$/i, ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x[0-9a-f]+$/i, UINT=/^(0|[1-9][0-9]*)$/;
-const PROCESS_AT=selector("processedAt(bytes32)");
 const PROCESS_TOPIC=keccak256("ProcessId(bytes32)");
 const fail=reason=>({status:"unavailable",reason});
 const norm=x=>String(x??"").toLowerCase();
@@ -82,36 +81,49 @@ export async function verifyGrossEscrowFlows24h({
    if(!ADDRESS.test(mailbox||"")||!ADDRESS.test(route.destinationMailbox||"")||
       norm(mailbox)!==norm(route.destinationMailbox))
     return fail("unverified-destination-mailbox");
-   // processedAt is canonical Mailbox state, not when the indexer noticed
-   // delivery. The emitter's ProcessId log must also match the same block.
-   const processed=await read(chainConfig,"eth_call",[
-    {to:mailbox,data:PROCESS_AT+row.message_id.slice(2)},"latest"
-   ]);
-   const destHeight=quantity(processed);
-   if(destHeight===null||destHeight>BigInt(Number.MAX_SAFE_INTEGER))
-    return fail("invalid-destination-delivery-block");
-   if(destHeight===0n){
-    if(row.delivered===true)return fail("indexed-delivery-disagrees-with-mailbox");
-    continue;
-   }
+   // Mailbox ProcessId logs establish the actual delivery time. No inferred
+   // timestamp from the SQL delivery_checked_at or client-submitted hash.
    const head=quantity(await read(chainConfig,"eth_blockNumber",[]));
    const depth=Math.max(1,chainConfig.confirmations||1);
-   if(head===null||destHeight>head-BigInt(depth))
-    return fail("destination-delivery-not-finalized");
-   const deliveryBlock=await readBlock(chainConfig,destHeight);
-   if(deliveryBlock.timestamp>now+30000)return fail("future-delivery-block-time");
-   if(deliveryBlock.timestamp<start||deliveryBlock.timestamp>now)continue;
-   const logs=await read(chainConfig,"eth_getLogs",[{
-    address:mailbox,topics:[PROCESS_TOPIC,row.message_id],
-    fromBlock:hex(destHeight),toBlock:hex(destHeight)
-   }]);
-   if(!Array.isArray(logs)||logs.length!==1||
-      norm(logs[0].address)!==norm(mailbox)||
-      norm(logs[0].topics?.[0])!==norm(PROCESS_TOPIC)||
-      norm(logs[0].topics?.[1])!==norm(row.message_id)||
-      norm(logs[0].blockHash)!==deliveryBlock.hash||
-      logs[0].removed===true)
+   if(head===null||head<BigInt(depth))return fail("destination-head-unavailable");
+   const finalized=head-BigInt(depth);
+   // The last 24h is located via canonical block timestamps, not an assumed
+   // block rate. A bounded binary search avoids an expensive genesis scan.
+   let lo=0n,hi=finalized;
+   while(lo<hi){
+    const mid=(lo+hi)/2n;
+    const block=await readBlock(chainConfig,mid);
+    if(block.timestamp<start)lo=mid+1n;else hi=mid;
+   }
+   const logs=[];
+   for(let from=lo;from<=finalized;from+=750n){
+    const to=from+749n<finalized?from+749n:finalized;
+    const chunk=await read(chainConfig,"eth_getLogs",[{
+      address:mailbox,topics:[PROCESS_TOPIC,row.message_id],
+      fromBlock:hex(from),toBlock:hex(to)
+    }]);
+    if(!Array.isArray(chunk)||chunk.length>1)return fail("ambiguous-destination-process-event");
+    logs.push(...chunk);
+    if(logs.length>1)return fail("duplicate-destination-process-event");
+   }
+   if(!logs.length){
+    if(row.delivered===true){
+     // A message can have been delivered *before* the 24h window.
+     // Verify current mailbox delivered state; it then counts as historical.
+     const current=await read(chainConfig,"eth_call",[
+      {to:mailbox,data:selector("delivered(bytes32)")+row.message_id.slice(2)},"latest"]);
+     if(quantity(current)!==1n)return fail("indexed-delivery-disagrees-with-mailbox");
+    }
+    continue;
+   }
+   const log=logs[0],blockHeight=quantity(log.blockNumber);
+   if(blockHeight===null||blockHeight>finalized||
+     norm(log.address)!==norm(mailbox)||
+     norm(log.topics?.[0])!==norm(PROCESS_TOPIC)||
+     norm(log.topics?.[1])!==norm(row.message_id)||log.removed===true)
     return fail("unverified-destination-process-event");
+   const deliveryBlock=await readBlock(chainConfig,blockHeight,log.blockHash);
+   if(deliveryBlock.timestamp<start||deliveryBlock.timestamp>now)continue;
    outRaw+=raw;outCount++;
    receipts.push("out:"+id+":"+raw+":"+deliveryBlock.height+":"+deliveryBlock.hash);
   }else return fail("non-escrow-route-in-volume");
