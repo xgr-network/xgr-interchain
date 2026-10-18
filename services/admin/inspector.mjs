@@ -19,7 +19,16 @@ function decode(data,type){
 // accepting a response from an alternative public endpoint. No wallet write
 // or rebroadcast is ever performed by this transport.
 const BASE_RPC="https://base-rpc.publicnode.com";
+// The approved chain manifest currently selects the public Tenderly endpoint.
+// The old Base fallback only recognized PublicNode and silently disabled
+// failover for the ACTUAL deployed configuration. All endpoints below are
+// known Base RPCs; check chainId 8453 BEFORE any alternative request.
+const BASE_CONFIGURED=["https://gateway.tenderly.co/public/base",
+ "https://base.gateway.tenderly.co"];
 const BASE_ALTERNATES=["https://mainnet.base.org","https://base.llamarpc.com"];
+const BASE_APPROVED=new Set([BASE_RPC,...BASE_CONFIGURED,...BASE_ALTERNATES]);
+const baseReadEndpoints=url=>[...new Set([url,...BASE_ALTERNATES,
+ ...BASE_CONFIGURED,BASE_RPC])];
 async function rpcOnce(url,method,params){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
  try{
@@ -31,13 +40,19 @@ async function rpcOnce(url,method,params){
    throw error;
   }
   const payload=await response.json();
-  if(payload.error)throw Error("RPC error: "+String(payload.error.message||"unknown").slice(0,120));
+  if(payload.error){
+   const error=new Error("RPC error: "+String(payload.error.message||"unknown").slice(0,120));
+   error.rpcRateLimit=payload.error.code===-32005||
+    /(?:rate.?limit|too many requests|429|quota exceeded|request limit)/i.test(error.message);
+   throw error;
+  }
   return payload.result;
  }finally{clearTimeout(timer)}
 }
 export async function rpcCall(url,method,params=[]){
  if(typeof url!=="string"||!/^https:\/\//.test(url))throw Error("RPC URL must use HTTPS");
- const endpoints=url===BASE_RPC?[url,...BASE_ALTERNATES]:[url];
+ const baseApproved=BASE_APPROVED.has(url);
+ const endpoints=baseApproved?baseReadEndpoints(url):[url];
  let last;
  for(const endpoint of endpoints){
   try{
@@ -56,8 +71,8 @@ export async function rpcCall(url,method,params=[]){
     throw e;
    const code=e.rpcHttpStatus;
    const transient=code===403||code===408||code===429||code>=500||
-    e.name==="AbortError"||e instanceof TypeError;
-   if(!transient||url!==BASE_RPC)throw e;
+    e.rpcRateLimit===true||e.name==="AbortError"||e instanceof TypeError;
+   if(!transient||!baseApproved)throw e;
    last=e;
   }
  }
