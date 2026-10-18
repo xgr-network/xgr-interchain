@@ -23,8 +23,12 @@ const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
 const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const signer=new Wallet(required("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
-if(signer.address.toLowerCase()!==required("XITA_INTERCHAIN_FEE_ADDRESS").toLowerCase())
+const serviceAddress=required("XITA_INTERCHAIN_FEE_ADDRESS");
+if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Invalid public service wallet");
+// Read-only estimates must run before the operator installs a signing key.
+const signingKey=String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
+const signer=signingKey?new Wallet(signingKey):null;
+if(signer&&serviceAddress.toLowerCase()!==serviceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
 const sourceAddresses=Object.fromEntries(
  ["xgrchain","base","polygon","arbitrum"].map(name=>[
@@ -69,6 +73,7 @@ async function fetchUncachedPrices(){
 }
 async function createQuote(request,{preview=false}={}){
  const source=request?.source,destination=request?.destination;
+ if(!preview&&!signer)throw Error("GmbH service wallet not configured");
  if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
@@ -86,7 +91,7 @@ async function createQuote(request,{preview=false}={}){
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
  const result=await buildManagedQuote({
-  catalog:CATALOG,request,executionAddress,signer,
+  catalog:CATALOG,request,executionAddress,signer:signer||{address:serviceAddress},
   readExecutionOwner:async()=> {
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
@@ -112,7 +117,7 @@ async function createQuote(request,{preview=false}={}){
   getDestinationGasQuote:async({destination:gasChain})=>{
     const client=await chain(gasChain),fee=await client.getFeeData();
     // Fee quote must not be gated on optional sponsor-wallet reserves.
-    const address=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"");
+    const address=serviceAddress;
     const availableWei=/^0x[0-9a-f]{40}$/i.test(address)?
      await client.getBalance(address):0n;
     return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
@@ -196,7 +201,9 @@ async function handler(req,res){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
-  const reply=await createQuote(parsed,{preview});
+  const payload=preview?{...parsed,payer:parsed.payer||serviceAddress,
+    recipient:parsed.recipient||serviceAddress}:parsed;
+  const reply=await createQuote(payload,{preview});
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
