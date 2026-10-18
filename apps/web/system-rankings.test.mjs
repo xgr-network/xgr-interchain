@@ -15,10 +15,14 @@ const market=(id,cap)=>({assetId:id,verified:false,market:{
  custody:{status:"unavailable"},movement:{status:"unavailable"}});
 const metrics={kind:"xita-asset-metrics-v1",schemaVersion:1,assets:{
  ABC:market("ABC",100),HIDDEN:market("HIDDEN",1_000_000)}};
-test("only deployed public assets with sourced metrics can orbit",()=>{
+test("only deployed published assets can orbit; unsourced TVL remains unknown",()=>{
  const result=systemRanking(catalog,metrics,"base",{sort:"marketCapUsd",visibility});
  assert.equal(result.items.length,1);assert.equal(result.items[0].assetId,"ABC");
- assert.equal(systemRanking(catalog,metrics,"base",{sort:"lockedUsd",visibility}).items.length,0);
+ const unranked=systemRanking(catalog,metrics,"base",{sort:"lockedUsd",visibility});
+ assert.equal(unranked.items.length,1);
+ assert.equal(unranked.items[0].assetId,"ABC");
+ assert.equal(unranked.items[0].lockedUsd,null);
+ assert.equal(unranked.status,"unranked");
  assert.equal(systemRanking(catalog,metrics,"base",{search:"HIDDEN",sort:"marketCapUsd",visibility}).items.length,0);
  assert.equal(systemRanking(catalog,metrics,"base",{sort:"marketCapUsd"}).items.length,0);
  assert.equal(systemRanking(catalog,metrics,"unknown",{visibility}),null);

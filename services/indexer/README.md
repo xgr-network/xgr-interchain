@@ -23,8 +23,9 @@ An asset's public profile may specify `market.priceSource = "coingecko"` and a C
 ## Chain ranking API and deployment
 
 `GET /api/xeta/v1/systems/<chain>?sort=lockedUsd|marketCapUsd|movedUsd&q=<text>`
-returns at most six qualifying public, chain-represented assets. Unknown metrics produce
-an empty array and explicit unavailable status. `marketCapUsd` is provider-sourced
+returns at most six qualifying public, chain-represented assets. Under `null` policy, documented token representations remain discoverable
+and sortable even if their USD metrics are unknown. Unknown values sort last
+and are never invented. `marketCapUsd` is provider-sourced
 public market capitalization, not chain-specific locked value. `lockedUsd` and
 `movedUsd` are asset-wide values and cannot be described as chain-level TVL.
 
@@ -48,8 +49,10 @@ requires separate provisioning. Use a SELECT-only role configured through
 A separately audited finalized-chain observer must write only genuinely
 verified collateral snapshots and independently reliable USD valuations.
 This reader is NOT that verifier. If absent or untrusted, eligibility is
-unknown, never zero. The minimum in `config/publication.json` remains null
-until a later decision; **no public token listings are enabled yet**.
+unknown, never zero. The minimum in `config/publication.json` is currently `null`, which
+publishes receipt-backed deployed tokens without a TVL threshold. Numeric
+values require an independently audited finalized escrow verifier and valid
+USD valuation (strictly greater-than threshold).
 See [publication policy](../../docs/XITA_PUBLICATION_POLICY.md).
 
 

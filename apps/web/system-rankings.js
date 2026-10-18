@@ -23,7 +23,7 @@ export function systemRanking(catalog,snapshot,chain,{sort="lockedUsd",search=""
  const text=String(search||"").trim().toLowerCase().slice(0,80);
  const max=Math.max(1,Math.min(MAX_ORBIT_TOKENS,Number.isSafeInteger(limit)?limit:MAX_ORBIT_TOKENS));
  const candidates=Object.entries(catalog.assets||{}).filter(([id,asset])=>
-   isPublicAsset(id,asset,visibility)&&representationReady(asset,chain));
+   isPublicAsset(id,asset,visibility,catalog)&&representationReady(asset,chain));
  const matches=candidates.filter(([id,a])=>(id+" "+(a.profile?.name||"")+" "+(a.metadata?.symbol||"")).toLowerCase().includes(text));
  const rows=matches.map(([id,asset])=>{
   const metric=verifiedMetrics(snapshot,id);
@@ -34,10 +34,13 @@ export function systemRanking(catalog,snapshot,chain,{sort="lockedUsd",search=""
    marketCapUsd:metric?.marketCapUsd??null,lockedUsd:metric?.lockedUsd??null,movedUsd:metric?.movedUsd??null,
    asOf:metric?.asOf||null,value};
  });
- const ranking=rows.filter(row=>valid(row.value)).sort((a,b)=>b.value-a.value||a.assetId.localeCompare(b.assetId));
+ const ranking=rows.sort((a,b)=>{
+  const av=valid(a.value),bv=valid(b.value);
+  return av!==bv?(av?-1:1):av?(b.value-a.value||a.assetId.localeCompare(b.assetId)):a.assetId.localeCompare(b.assetId);
+ });
  return {schemaVersion:1,kind:"xita-system-ranking-v1",chain,sort,
   verifiedMetricCount:ranking.length,eligibleAssets:candidates.length,matchedAssets:matches.length,
-  items:ranking.slice(0,max),status:ranking.length?"available":"unavailable",
+  items:ranking.slice(0,max),status:ranking.some(item=>valid(item.value))?"available":ranking.length?"unranked":"unavailable",
   note:ranking.length?"Ranked by sourced "+sort+"; asset-wide values, not chain-specific escrow totals.":
    "No eligible tokens have an independently available "+sort+" metric. No estimated planets are displayed."};
 }

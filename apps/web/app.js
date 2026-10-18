@@ -1,4 +1,5 @@
 import {publicDirectoryCatalog,isDeployedAsset,listingStatus} from "./listing-visibility.js";
+import {deployedRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
@@ -368,7 +369,7 @@ const tokenUrl=id=>"/token/"+encodeURIComponent(profile(id).slug);
 const allAssets=()=>Object.keys(state.catalog.assets);
 const publicCatalog=()=>publicDirectoryCatalog(state.catalog,state.visibility);
 const routes=()=>asset().routes.routes;
-const activeFor=id=>0;
+const activeFor=id=>deployedRoutes(state.catalog).filter(r=>r.asset===id).length;
 const path=()=>decodeURIComponent(location.pathname).replace(/\/+$/,"")||"/";
 const btn=(url,label,alt=false)=>'<a data-nav href="'+url+'" class="btn'+(alt?" alt":"")+'">'+label+'</a>';
 const fmt=(n,dec=18)=>formatUnits(n,dec,10);
@@ -485,7 +486,7 @@ function tokenMarketMarkup(id){
 function token(){
  const id=state.assetId,a=asset(),p=profile(id),canonical=a.metadata.canonical?.chain||"unknown";
  const model=buildExperienceModel(state.catalog,()=>false);
- const stage=listingStatus(a,state.visibility?.assets?.[id]);
+ const stage=listingStatus(a,state.visibility?.assets?.[id],state.catalog);
  const chips=(p.categories||[]).map(cat=>'<span class="category-chip">'+x(cat)+'</span>').join(" ");
  return '<div class="columns"><article><a href="/markets" data-nav class="muted">← All tokens</a>'+
  '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(names[canonical]||canonical)+' · Canonical asset</div>'+
@@ -656,7 +657,7 @@ function render(){
  state.assetId=id||"XGR";
  // Universe is an infrastructure map, not the public TVL-qualified token leaderboard.
  // Show documented token representations without claiming public listing or live delivery.
- const universe=buildExperienceModel(state.catalog,()=>false);
+ const universe=buildExperienceModel(p==="/transfer"?state.catalog:publicCatalog(),()=>false);
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog(),walletGasView()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
@@ -667,7 +668,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset()))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):((id||p==="/xgr")&&isDeployedAsset(asset(),state.catalog))?token():(id||p==="/xgr")?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer")void refreshSponsorship();
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
