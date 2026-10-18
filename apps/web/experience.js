@@ -436,6 +436,12 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '"'+(selected?' readonly':'')+'>'+
   '<div class="ux-transfer-available" aria-live="polite"><span>Available on '+esc(originLabel)+'</span><strong>'+
   esc(sourceTokenAmount)+'</strong></div></div></div>'+
+  '<section class="ux-fee-preview" aria-label="Estimated transfer costs">'+
+  '<div class="ux-kicker">ESTIMATED TRANSFER COST</div>'+
+  '<div id="ux-fee-preview-status" role="status" aria-live="polite">Choose route and enter an amount to estimate fees. No wallet transaction.</div>'+
+  '<div id="ux-fee-preview-details" hidden></div>'+
+  '<p class="ux-small">Unbinding estimate. Final signed quote is issued just before your wallet authorizes the source transfer. Source-chain wallet gas and any ERC-20 approval gas are extra.</p>'+
+  '</section>'+
   '<div class="ux-sponsor-status" role="status" aria-live="polite">'+
   '<strong>Optional gas sponsorship</strong><span class="ux-small">'+
   esc(progress.sponsorship?.available===true?

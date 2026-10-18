@@ -1,0 +1,23 @@
+[Unit]
+Description=XITA unsigned Interchain Fee cost preview (no service-wallet private key)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+Environment=XITA_INTERCHAIN_PREVIEW_ONLY=1
+Environment=XITA_MANAGED_QUOTE_PORT=4093
+UnsetEnvironment=XITA_INTERCHAIN_FEE_PRIVATE_KEY
+ExecStart=/usr/bin/node services/managed-relay/server.mjs
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -10,7 +10,7 @@ import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
-import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt} from "./transfer-actions.js";
+import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -40,6 +40,72 @@ async function refreshSponsorship(){
  }
 }
 
+let previewRevision=0,previewTimer=null;
+function sourceFeeCoin(chain){return {xgrchain:"XGR",base:"ETH",arbitrum:"ETH",polygon:"POL"}[chain]||chain;}
+function formatWeiFee(wei){
+ const n=BigInt(wei),scale=10n**18n;
+ return (n/scale).toString()+"."+(n%scale).toString().padStart(18,"0").slice(0,9).replace(/0+$/,"");
+}
+function updatePreviewState(status,details=""){
+ const element=document.getElementById("ux-fee-preview-status");
+ const output=document.getElementById("ux-fee-preview-details");
+ if(!element||!output)return;
+ element.textContent=status;
+ output.textContent=details;output.hidden=!details;
+}
+async function refreshFeePreview(){
+ const marker=++previewRevision;
+ const asset=state.experience.asset,source=state.experience.origin,
+  destination=state.experience.destination,amount=state.experience.amount||"";
+ if(path()!=="/transfer"||!state.catalog)return;
+ const catalog=state.catalog;
+ const first=source!=="xgrchain"&&destination!=="xgrchain"?"xgrchain":destination;
+ const routes=deployedRoutes(catalog);
+ if(!routes.some(r=>r.asset===asset&&r.source===source&&r.destination===first)||
+  (first!==destination&&!routes.some(r=>r.asset===asset&&r.source==="xgrchain"&&r.destination===destination))){
+  updatePreviewState("This route is not fully deployed.");return;
+ }
+ let raw;
+ try{raw=amountToUnits(amount,catalog.assets[asset].metadata.decimals).toString();}
+ catch{updatePreviewState("Enter a positive token amount to estimate costs.");return;}
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),13000);
+ updatePreviewState("Calculating verified protocol and Interchain Fee costs…");
+ try{
+  const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
+   credentials:"omit",headers:{"content-type":"application/json"},
+   signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
+  const value=await res.json();
+  if(marker!==previewRevision||path()!=="/transfer")return;
+  if(!res.ok||!value?.status||value.status!=="UNSIGNED_FEE_PREVIEW")
+   throw Error(value?.error||"Quote service unavailable");
+  const coin=sourceFeeCoin(source),fee=BigInt(value.interchainFeeWei),
+   validator=BigInt(value.validatorFeeWei),
+   principal=BigInt(value.sourceTokenPrincipalWei||0),
+   bridge=BigInt(value.sourceBridgeNativeWei);
+  const onward=BigInt(value.pricing?.onwardProtocolFeeWei||0);
+  if(bridge<principal+validator||fee<=0n)throw Error("Inconsistent protocol quote");
+  const native=bridge-principal;
+  const total=native+fee;
+  if(String(value.estimatedRouteFeeWei)!==total.toString()||
+   !/^(0|[1-9][0-9]*)[.][0-9]{8}$/.test(String(value.estimatedRouteFeeUsd||"")))
+   throw Error("Inconsistent USD fee preview");
+  updatePreviewState("Estimated route fee: "+formatWeiFee(total)+" "+coin+
+   " (≈ $"+value.estimatedRouteFeeUsd+" USD)",
+   "Source protocol fee: "+formatWeiFee(native)+" "+coin+
+   " · GmbH Interchain Fee: "+formatWeiFee(fee)+" "+coin+
+   (onward>0n?" · XGR onward fee included in GmbH quote":"")+
+   " · Source wallet gas and ERC-20 approval gas excluded. Quote valid only when signed at transfer.");
+ }catch(error){
+  if(marker===previewRevision&&path()==="/transfer")
+   updatePreviewState("Fee estimate unavailable: "+String(error.message||error).slice(0,150)+". No transfer was initiated.");
+ }finally{clearTimeout(timer);}
+}
+function scheduleFeePreview(){
+ ++previewRevision;
+ if(previewTimer!==null)clearTimeout(previewTimer);
+ if(path()!=="/transfer")return;
+ previewTimer=setTimeout(()=>{previewTimer=null;void refreshFeePreview();},450);
+}
 let transferRequest=0;
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 function refreshTransferLink(){
@@ -672,7 +738,7 @@ function render(){
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
    notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
- if(p==="/transfer")void refreshSponsorship();
+ if(p==="/transfer"){void refreshSponsorship();scheduleFeePreview();}
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{
@@ -699,7 +765,7 @@ function render(){
  document.querySelector("#ux-token-origin")?.addEventListener("change",e=>{state.experience.origin=e.target.value;render();});
  document.querySelector("#ux-token-destination")?.addEventListener("change",e=>{state.experience.destination=e.target.value;render();});
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
- document.querySelector("#ux-transfer-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
+ document.querySelector("#ux-transfer-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;scheduleFeePreview();});
  document.querySelector("#xita-open-transfer")?.addEventListener("change",e=>{
   transferActivity.selectedTxHash=e.target.value;render();
  });

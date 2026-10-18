@@ -1,18 +1,21 @@
-// Patch exactly two public XITA service endpoints, no broad proxy prefix.
+// Patch exact public XITA service endpoints, no broad proxy prefix.
 // No access to quote or sponsor keys; the upstream is loopback-only.
 const MARKER="location ^~ /api/xeta/ {";
 const PATHS=Object.freeze([
- {path:"/api/xita/v1/managed/health",method:"GET",timeout:4},
- {path:"/api/xita/v1/managed/quote",method:"POST",timeout:15}
+ {path:"/api/xita/v1/managed/health",method:"GET",timeout:4,port:4092},
+ {path:"/api/xita/v1/managed/quote",method:"POST",timeout:15,port:4092},
+ {path:"/api/xita/v1/managed/preview",method:"POST",timeout:15,port:4093}
 ]);
-const upstream="proxy_pass http://127.0.0.1:4092;";
-export function patchInterchainFeeNginx(config){
+export function patchInterchainFeeNginx(config){return patchFeeRoutes(config,PATHS)}
+export function patchFeePreviewNginx(config){return patchFeeRoutes(config,PATHS.slice(-1))}
+function patchFeeRoutes(config,paths){
  if(typeof config!=="string"||
    !config.includes("server_name xita.xgr.network"))
   throw Error("Wrong XITA virtual host");
  let next=config;
  const added=[];
- for(const {path,method,timeout} of PATHS){
+ for(const {path,method,timeout,port} of paths){
+  const upstream="proxy_pass http://127.0.0.1:"+port+";";
   const matches=[...next.matchAll(new RegExp(
    String.raw`(?:^|\n)\s*location\s*=\s*`+path+String.raw`\s*\{`,"g"))];
   if(matches.length>1)throw Error("Duplicate Interchain Fee API route: "+path);

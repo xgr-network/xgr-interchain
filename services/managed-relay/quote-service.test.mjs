@@ -195,3 +195,18 @@ test("browser reconstructs exactly the signed EIP-712 execute ABI calldata",asyn
  const altered={...r.quote,amount:(BigInt(r.quote.amount)+1n).toString()};
  assert.notEqual(executeQuoteCalldata(altered,r.signature),reference);
 });
+
+test("preview reuses exact priced source and two-hop fees but never signs or allocates a nonce",async()=>{
+ let signing=0,nonces=0;
+ const preview=await buildManagedQuote({...defaults(),preview:true,
+  signer:{address:signer.address,signTypedData:()=>{signing++;throw Error("unexpected signing");}},
+  nonce:()=>{nonces++;throw Error("unexpected nonce");}});
+ const signed=await buildManagedQuote(defaults());
+ assert.equal(preview.status,"UNSIGNED_FEE_PREVIEW");
+ assert.equal(preview.signature,null);
+ assert.equal(preview.quote,null);
+ assert.equal(preview.expiresAt,null);
+ assert.equal(preview.validatorFeeWei,signed.validatorFeeWei);
+ assert.equal(preview.pricing.grossInterchainFeeWei,signed.pricing.grossInterchainFeeWei);
+ assert.equal(signing,0);assert.equal(nonces,0);
+});

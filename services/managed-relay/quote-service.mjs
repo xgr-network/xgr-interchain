@@ -27,7 +27,7 @@ const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,getDestinationGasQuote,getCoinGeckoSnapshot,
- clock=Date.now,nonce=NONCE,gasUnits=1200000n
+ clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout,
   firstHopDestination=null}=request||{};
@@ -127,20 +127,23 @@ export async function buildManagedQuote({
   finalRecipient:zeroPadValue(recipientAddress,32),
   onwardRouteId:second?second[0].routeId:"0x"+"00".repeat(32),
   amount:amount.toString(),bridgeValueWei:bridgeValue.toString(),
-  interchainFeeWei:interchainFeeWei.toString(),nonce:nonce().toString(),
+  interchainFeeWei:interchainFeeWei.toString(),nonce:preview?"0":nonce().toString(),
   issuedAt
  };
  const domain={name:"XITA Interchain Fee",version:"1",chainId:src.chainId,
   verifyingContract:execution};
- const signature=await signer.signTypedData(domain,MANAGED_QUOTE_TYPES,q);
- if(!/^0x[0-9a-f]{130}$/i.test(signature))
+ const signature=preview?null:await signer.signTypedData(domain,MANAGED_QUOTE_TYPES,q);
+ if(!preview&&!/^0x[0-9a-f]{130}$/i.test(signature))
   throw Error("Invalid operator quote signature");
  return {
-  status:"SIGNED_INTERCHAIN_FEE_QUOTE",source,sourceChainId:src.chainId,destination,
+  status:preview?"UNSIGNED_FEE_PREVIEW":"SIGNED_INTERCHAIN_FEE_QUOTE",source,sourceChainId:src.chainId,destination,
   asset,relayerOwner:owner,executionAddress:execution,
-  quote:q,signature,expiresAt,quoteLifetimeSeconds:Number(ttl),
+  quote:preview?null:q,signature:preview?null:signature,expiresAt:preview?null:expiresAt,quoteLifetimeSeconds:Number(ttl),
   feeCurrency:COINGECKO_GAS_COIN_IDS[source], // CoinGecko ID, not an ERC20
   sourceValueWei:(bridgeValue+interchainFeeWei).toString(),
+  validatorFeeWei:String(bridge.validatorFeeWei),
+  sourceBridgeNativeWei:bridgeValue.toString(),
+  sourceTokenPrincipalWei:route.sourceToken===null?amount.toString():"0",
   pricing:{sourceNativeCoinGeckoId:oracle.sourceId,
    destinationNativeCoinGeckoId:oracle.destinationId,
    sourceNativeUsd:oracle.sourceUsd,destinationNativeUsd:oracle.destinationUsd,

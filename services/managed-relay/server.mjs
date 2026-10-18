@@ -7,6 +7,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
+import {usdPrice12} from "./fee-quote.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
@@ -22,15 +23,24 @@ const EXECUTION_ABI=[
 const BRIDGE_ABI=[
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ];
-const required=k=>{const v=(process.env[k]||"").trim();if(!v)throw Error("Missing "+k);return v};
-const signer=new Wallet(required("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
-if(signer.address.toLowerCase()!==required("XITA_INTERCHAIN_FEE_ADDRESS").toLowerCase())
+const PREVIEW_ONLY=process.env.XITA_INTERCHAIN_PREVIEW_ONLY==="1";
+const configuredServiceAddress=PREVIEW_ONLY?"":String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").trim();
+if(configuredServiceAddress&&!/^0x[0-9a-f]{40}$/i.test(configuredServiceAddress))
+ throw Error("Invalid public service wallet");
+// Read-only estimates must run before the operator installs a signing key.
+const signingKey=PREVIEW_ONLY?"":String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_KEY||"").trim();
+const signer=signingKey?new Wallet(signingKey):null;
+if(signer&&configuredServiceAddress&&signer.address.toLowerCase()!==configuredServiceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
 const sourceAddresses=Object.fromEntries(
- ["xgrchain","base","polygon","arbitrum"].map(name=>[
-  name,String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
-   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim()
- ])
+ ["xgrchain","base","polygon","arbitrum"].map(name=>{
+  const configured=String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
+   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim();
+  // The receipt-verified public catalog is sufficient for UNSIGNED estimates.
+  // Do not require a copied address or any private-key environment to boot.
+  const documented=String(CATALOG.infrastructure?.[name]?.xitaV315?.components?.executionGateway?.address||"");
+  return [name,PREVIEW_ONLY?documented:configured||documented];
+ })
 );
 const providers=new Map();
 async function chain(name){
@@ -67,8 +77,9 @@ async function fetchUncachedPrices(){
  lastPriceSnapshot=value;lastPriceAt=Date.now();
  return value;
 }
-async function createQuote(request){
+async function createQuote(request,{preview=false}={}){
  const source=request?.source,destination=request?.destination;
+ if(!preview&&(PREVIEW_ONLY||!signer))throw Error("GmbH service wallet not configured");
  if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
@@ -81,17 +92,26 @@ async function createQuote(request){
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
  const sourceProvider=await chain(source);
  await chain(destination);
+ // Allow public estimates before any secrets or signer environment exist.
+ // Bind the operator identity to the verified live adapter itself.
+ const liveAdapter=new Contract(executionAddress,EXECUTION_ABI,sourceProvider);
+ const serviceAddress=preview?await liveAdapter.serviceWallet():configuredServiceAddress;
+ if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Public GmbH service wallet unavailable");
+ if(!preview&&(!signer||signer.address.toLowerCase()!==serviceAddress.toLowerCase()))
+  throw Error("GmbH signer is not configured for the live adapter");
  const runtime=await sourceProvider.getCode(executionAddress);
  if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
+ const previewRequest=preview?{...request,payer:request.payer||serviceAddress,
+   recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
-  catalog:CATALOG,request,executionAddress,signer,
+  catalog:CATALOG,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
   readExecutionOwner:async()=> {
    const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
     c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient(),c.serviceWallet()]);
-   if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==signer.address.toLowerCase()))
+   if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==serviceAddress.toLowerCase()))
     throw Error("Single on-chain GmbH service wallet differs from configured signer/beneficiary");
    const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
@@ -112,13 +132,34 @@ async function createQuote(request){
   getDestinationGasQuote:async({destination:gasChain})=>{
     const client=await chain(gasChain),fee=await client.getFeeData();
     // Fee quote must not be gated on optional sponsor-wallet reserves.
-    const address=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"");
+    const address=serviceAddress;
     const availableWei=/^0x[0-9a-f]{40}$/i.test(address)?
      await client.getBalance(address):0n;
     return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
    },
-  getCoinGeckoSnapshot:getSnapshot
+  getCoinGeckoSnapshot:getSnapshot,preview
  });
+ if(preview){
+  // Bridge value for native collateral contains the PRINCIPAL. Exclude that
+  // from the fee preview; only native protocol fee + commercial price count.
+  const routeFeeWei=BigInt(result.sourceBridgeNativeWei)-
+   BigInt(result.sourceTokenPrincipalWei)+BigInt(result.pricing.grossInterchainFeeWei);
+  if(routeFeeWei<=0n)throw Error("Invalid fee preview amount");
+  const usdPrecision=10n**22n; // 18 wei decimals + 12 price decimals - 8 USD decimals
+  const usd8=(routeFeeWei*usdPrice12(result.pricing.sourceNativeUsd)+usdPrecision-1n)/usdPrecision;
+  const feeUsd=(usd8/100000000n).toString()+"."+
+   (usd8%100000000n).toString().padStart(8,"0");
+  // No nonce, signature, transaction data, wallet key, or 90-second credential
+  // ever leaves this read-only estimate endpoint.
+  return {status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
+   estimatedRouteFeeWei:routeFeeWei.toString(),estimatedRouteFeeUsd:feeUsd,
+   estimatedAt:new Date().toISOString(),validatorFeeWei:result.validatorFeeWei,
+   sourceBridgeNativeWei:result.sourceBridgeNativeWei,
+   sourceTokenPrincipalWei:result.sourceTokenPrincipalWei,
+   interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
+   pricing:result.pricing,sourceNativeSymbol:CATALOG.chains[source].nativeCurrency?.symbol||source,
+   notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
+ }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
   chainId:result.sourceChainId,value:"0x"+BigInt(result.sourceValueWei).toString(16),
@@ -172,8 +213,10 @@ async function handler(req,res){
    enabledChains:Object.entries(sourceAddresses).filter(x=>
     /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
    sponsorship:await readSponsorAvailability()});
- if(req.method!=="POST"||req.url!=="/api/xita/v1/managed/quote")
+ const preview=req.url==="/api/xita/v1/managed/preview";
+ if(req.method!=="POST"||(!preview&&req.url!=="/api/xita/v1/managed/quote"))
   return send(404,{ok:false,error:"Unknown endpoint"});
+ if(PREVIEW_ONLY&&!preview)return send(403,{ok:false,error:"Signing disabled in read-only preview mode"});
  let body="";
  try{
   for await(const chunk of req){
@@ -184,7 +227,7 @@ async function handler(req,res){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
-  const reply=await createQuote(parsed);
+   const reply=await createQuote(parsed,{preview});
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
@@ -195,7 +238,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const port=Number(process.env.XITA_MANAGED_QUOTE_PORT||4092);
  if(!Number.isInteger(port)||port<1||port>65535)throw Error("Invalid listen port");
  createServer((req,res)=>{void handler(req,res)}).listen(port,"127.0.0.1",()=>{
-  console.log("XITA managed relay quote signer listening on loopback "+port);
+  console.log("XITA "+(PREVIEW_ONLY?"read-only unsigned fee preview":"managed quote signer")+" listening on loopback "+port);
  });
 }
 export {createQuote,handler};
