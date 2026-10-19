@@ -232,7 +232,7 @@ async function scanWalletHistory(){
    "Indexer synchronized across all finalized deployed routes.":
    "Finalized wallet index incomplete ("+(data.coverage?.indexedRoutes||0)+"/"+
      (data.coverage?.requiredRoutes||0)+" routes). Prior source locks remain on-chain. "+
-     "Use the original source TX hash in My Transfers until backfill completes.";
+     "XITA will refresh wallet history automatically. Never resend the source transfer.";
   refreshTransferLink();
  }catch(error){
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
@@ -241,9 +241,9 @@ async function scanWalletHistory(){
   transferActivity.report=null;
   transferActivity.indexCoverage=null;
   transferActivity.notice="Wallet history index unavailable or timed out. "+
-   "Previously locked source transfers remain on-chain. Open My Transfers "+
-   "and paste the original source transaction hash in Find a previous transfer. "+
-   "Check the transfer indexer and PostgreSQL migrations.";
+   "Previously sent transfers remain on-chain. XITA will retry automatically "+
+   "while the wallet is connected. The indexer may need repair; never rebroadcast "+
+   "the original source transfer.";
   transferActivity.error="";
  }finally{
   clearTimeout(timeout);
@@ -908,6 +908,12 @@ document.addEventListener("click",e=>{
  void navigator.clipboard.writeText(address).then(()=>{copy.textContent="Copied";}).catch(()=>{copy.textContent="Copy unavailable";});
 });
 window.addEventListener("popstate",render);
+setInterval(()=>{
+ if(!state.account||!state.catalog||transferActivity.scanning||
+    transferActivity.working||document.visibilityState==="hidden")return;
+ if(path()==="/my-transfers"||path()==="/transfer")
+  void scanWalletHistory();
+},45000);
 refreshTransferLink();
 // Dashboard loads the 10 KB same-origin catalog, never RPC/indexer data.
 async function start(){
