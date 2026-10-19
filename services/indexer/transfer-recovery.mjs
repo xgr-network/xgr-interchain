@@ -152,6 +152,12 @@ async function runRecoveryAttempt(configured,timeoutMs){
 export async function runRecoveryProcess(configured,{timeoutMs=45000,
  archiveProbe=probeBaseArchive,fetcher=globalThis.fetch,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+ // Base historical RPC prequalification is applicable ONLY when Base is
+ // either the source or destination. Other EVM routes must not depend on
+ // Base availability merely because Base is in the global catalog.
+ const needsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453||
+  Number(configured.env.DESTINATION_CHAIN_ID)===8453;
+ if(!needsBase)return runRecoveryAttempt(configured,timeoutMs);
  const candidates=recoveryBaseUrls(configured,{baseUrls});
  const deadline=Date.now()+timeoutMs;
  let last=null;
