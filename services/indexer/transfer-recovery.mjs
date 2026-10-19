@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {selector} from "../../apps/web/keccak.js";
-import {probe as probeBaseArchive} from "../../tools/probe-base-rpc.mjs";
+import {rpc as readPublicRpc} from "../../tools/probe-base-rpc.mjs";
 import {rpcCandidates} from "./transfer-index.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
@@ -67,7 +67,8 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
  if(!HASH.test(route.routeId))throw Error("Invalid deployed route ID");
  return {route,messageId:messageId.toLowerCase(),destinationMailbox:dstCore.mailbox.address,
   destinationChainId:dst.chainId,env:values,
-  baseRpcUrls:catalog.chains.base?.rpcUrls||[]};
+  baseRpcUrls:catalog.chains.base?.rpcUrls||[],
+  sourceRpcUrls:src.rpcUrls||[],destinationRpcUrls:dst.rpcUrls||[]};
 }
 export function validateUnsignedRecovery(result,configured){
  if(!result||typeof result!=="object"||!["READY_UNSIGNED_CALL","PENDING","ALREADY_DELIVERED","FRESH_QUORUM_REQUIRED"].includes(result.status))
