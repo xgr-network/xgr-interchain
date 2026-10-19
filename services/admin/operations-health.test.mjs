@@ -13,7 +13,7 @@ test("systemd parses loaded and not-installed without inventing uptime",()=>{
  const def=UNITS[0];
  assert.equal(parseUnitShow("LoadState=loaded\nActiveState=active\nSubState=running\nNRestarts=2\n",def).state,"ok");
  assert.equal(parseUnitShow("LoadState=not-found\nActiveState=inactive\n",def).state,"not-installed");
- assert.equal(parseUnitShow("LoadState=loaded\nActiveState=failed\n",def).state,"down");
+ assert.equal(parseUnitShow("LoadState=loaded\nActiveState=failed\n",def).state,"failed");
 });
 test("indexer health recognizes freshness, historical backlog, stale cursors and missing values",()=>{
  assert.equal(summarizeTransferIndex(stats([cursor("2026-10-19T11:59:30Z")]),{now}).state,"ok");
@@ -53,4 +53,17 @@ test("overall health is sound with absent optional services but flags core failu
  const bad=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-indexer.service"?
   "LoadState=loaded\nActiveState=failed\n":readUnit(name),readHTTP,checkChain,readEvidence,now});
  assert.equal(bad.status,"degraded");
+});
+
+test("fee timers distinguish disabled, stopped and actually failed",()=>{
+ const timer=UNITS.find(x=>x.id==="gas-sponsor");
+ const disabled=parseUnitShow("LoadState=loaded\\nActiveState=inactive\\nUnitFileState=disabled\\n",timer);
+ assert.equal(disabled.state,"not-enabled");
+ const stopped=parseUnitShow("LoadState=loaded\\nActiveState=inactive\\nUnitFileState=enabled\\n",timer);
+ assert.equal(stopped.state,"stopped");
+ assert.equal(parseUnitShow("LoadState=loaded\\nActiveState=failed\\nUnitFileState=enabled\\n",timer).state,"failed");
+ const active=parseUnitShow("LoadState=loaded\\nActiveState=active\\nUnitFileState=enabled\\nNextElapseUSecRealtime=Mon 2026-10-19 16:50:00 CEST\\n",timer);
+ assert.equal(active.state,"ok");
+ assert.match(active.nextTrigger,/2026-10-19/);
+ assert.equal(UNITS.find(x=>x.id==="quote").unit,"xita-interchain-fee-quote.service");
 });
