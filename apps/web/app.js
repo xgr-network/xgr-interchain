@@ -5,7 +5,7 @@ import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leade
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
-import {connectWallet,shorten,formatUnits} from "./wallet-core.js";
+import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
@@ -137,6 +137,9 @@ function refreshTransferLink(){
  if(link)link.hidden=!connected;
  const alert=document.querySelector("#wallet-pending-alert");
  if(!alert)return;
+ // Opening the badge must lead to the wallet's verified worklist, never
+ // an accidental "new transfer" source action.
+ alert.href="/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
   items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
  alert.hidden=pending===0;
@@ -734,8 +737,14 @@ function render(){
  if(rawPath==="/plan-route")history.replaceState(null,"","/transfer"+location.search);
  const p=rawPath==="/universe"?"/":rawPath==="/plan-route"?"/transfer":rawPath;
  if(p==="/transfer"){
-  const preselect=new URLSearchParams(location.search).get("token");
+  const query=new URLSearchParams(location.search);
+  const preselect=query.get("token");
   if(preselect&&state.catalog?.assets?.[preselect])state.experience.asset=preselect;
+  // A resume URL is only a selection intent; it never verifies ownership
+  // or authorizes a source TX. Only wallet-indexed records can do that.
+  const requested=query.get("resume");
+  transferActivity.selectedTxHash=/^0x[0-9a-f]{64}$/i.test(requested||"")?
+   requested.toLowerCase():null;
  }
  if(p==="/my-transfers"&&!state.account){
   history.replaceState(null,"","/");
@@ -798,7 +807,12 @@ function render(){
  document.querySelector("#ux-token-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;});
  document.querySelector("#ux-transfer-amount")?.addEventListener("input",e=>{state.experience.amount=e.target.value;scheduleFeePreview();});
  document.querySelector("#xita-open-transfer")?.addEventListener("change",e=>{
-  transferActivity.selectedTxHash=e.target.value;render();
+  const params=new URLSearchParams(location.search);
+  if(/^0x[0-9a-f]{64}$/i.test(e.target.value||""))
+   params.set("resume",e.target.value.toLowerCase());
+  else params.delete("resume");
+  history.replaceState(null,"","/transfer"+(params.size?"?"+params.toString():""));
+  render();
  });
  document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
  document.querySelector("#ux-fee-info-trigger")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.showModal());
@@ -844,14 +858,48 @@ connect.addEventListener("click",async()=>{
  if(!globalThis.ethereum){alert("An injected EIP-1193 EVM wallet is required.");return;}
  try{setConnectedAccount(await connectWallet(globalThis.ethereum));await updateWalletGas();}catch(e){alert(e.message);}
 });
-if(globalThis.ethereum?.on){
- globalThis.ethereum.on("accountsChanged",accounts=>{
+let boundWalletProvider=null;
+function bindWalletEvents(){
+ const provider=globalThis.ethereum;
+ if(!provider?.on||boundWalletProvider===provider)return;
+ boundWalletProvider=provider;
+ provider.on("accountsChanged",accounts=>{
   setConnectedAccount(Array.isArray(accounts)?accounts[0]:null);
   state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;state.walletGas=null;
   void updateWalletGas();
  });
- globalThis.ethereum.on("chainChanged",()=>{state.walletBalances=null;state.walletTokenBalances=null;state.walletGasCheckedAt=null;void updateWalletGas();});
+ provider.on("chainChanged",()=>{
+  state.walletBalances=null;state.walletTokenBalances=null;
+  state.walletGasCheckedAt=null;void updateWalletGas();
+ });
 }
+// This is intentionally permissionless: a user who authorized the website
+// before reload does not have to press Connect Wallet again. A new user sees
+// no wallet activity and gets no permission/signature dialog.
+async function restoreAuthorizedWallet(){
+ const provider=globalThis.ethereum;
+ if(!provider||state.account)return;
+ let timer=null;
+ try{
+  const known=await Promise.race([
+   authorizedWalletAccount(provider),
+   new Promise(resolve=>{timer=setTimeout(()=>resolve(null),1600);})
+  ]);
+  if(known&&!state.account){
+   bindWalletEvents();
+   setConnectedAccount(known);
+   if(state.catalog)void updateWalletGas();
+  }
+ }catch{ /* An unavailable/locked wallet must not block the website. */ }
+ finally{if(timer!==null)clearTimeout(timer);}
+}
+bindWalletEvents();
+// A wallet may inject after the module loads (common in mobile browsers).
+// Never request account authorization just because injection was delayed.
+window.addEventListener("ethereum#initialized",()=>{
+ bindWalletEvents();
+ if(state.catalog&&!state.account)void restoreAuthorizedWallet();
+});
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("click",event=>{
  const button=event.target.closest("[data-join-action]");
@@ -925,8 +973,11 @@ async function start(){
   const catalog=await response.json();
   if(!catalog?.assets?.XGR?.routes||!catalog?.infrastructure?.xgrchain||!catalog?.chains?.xgrchain)throw Error("Invalid local catalog");
   state.catalog=catalog;
+  // Check previously authorized accounts BEFORE rendering a direct
+  // /my-transfers URL, otherwise the unauthenticated deep-link redirect
+  // would discard the pending-transfer view on every browser restart.
+  await restoreAuthorizedWallet();
   render();
-  if(state.account)void updateWalletGas();
   el.dataset.ready="1";
   void loadPublicData();
   void loadLeaderboard();

@@ -453,6 +453,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const connected=typeof wallet.account==="string"&&/^0x[0-9a-f]{40}$/i.test(wallet.account);
  const selected=active&&active.account?.toLowerCase()===wallet.account?.toLowerCase()?active:null;
  const busy=progress.busy===true;
+ // A resume deep link is not authorization to initiate a source TX.
+ // Unknown records remain non-actionable until the wallet index verifies them.
+ const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
+ const recoveryUnresolved=connected&&resumeRequested&&!selected;
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const actionLabel=!connected?"Connect wallet to transfer":
@@ -461,11 +465,12 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
   selected?.status==="awaiting-final-proof"?"Continue final delivery":
   selected?"Check delivery status":
+  recoveryUnresolved?"Locating previous transfer…":
   !routes.length?"Interchain Fee gateway not deployed":
   !deployed?"Route unavailable":
   !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
- const buttonDisabled=busy||connected&&(!deployed&&!selected);
+ const buttonDisabled=busy||recoveryUnresolved||connected&&(!deployed&&!selected);
  const progressValue=selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
@@ -475,6 +480,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
+  recoveryUnresolved?"Previous transfer not yet verified":
   connected?"Wallet connected":
   "Connect your wallet";
  const formatTokenBalance=(balance)=>{
@@ -524,9 +530,11 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   esc(progress.error?"Action needs attention":
    busy?"Checking transaction safety…":
    selected?(selected.onwardRouteId?"2 / 4 · ":"1 / 2 · ")+statusLabel:
+   recoveryUnresolved?statusLabel:
    deployed?(connected?"Ready to transfer":"Wallet not connected"):
    "Selected route unavailable")+'</strong></div>'+
   (selected||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
+  (recoveryUnresolved?'<p class="ux-transfer-warning">Original transfer has not yet been found in verified wallet history. XITA will retry; no new source transfer can be signed from this link. <a data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Return to new transfer</a></p>':'')+
   (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
    (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
   (progress.notice&&(!progress.scanning||progress.busy)?

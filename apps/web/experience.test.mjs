@@ -346,3 +346,28 @@ test("token identity is collapsed by default while full contract data stays acce
  assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
  assert.match(html,/Official project/);
 });
+
+test("resume query intent never becomes a new source transaction when index unavailable",()=>{
+ const live=JSON.parse(readFileSync(new URL("catalog.json",import.meta.url),"utf8"));
+ const model=buildExperienceModel(live),account="0x"+"a".repeat(40),
+  txHash="0x"+"d".repeat(64);
+ const wallet={account};
+ const missing=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},
+  "ready",wallet,{items:[],selectedTxHash:txHash});
+ assert.match(missing,/Locating previous transfer/);
+ assert.match(missing,/id="xita-transfer-primary" disabled/);
+ assert.match(missing,/no new source transfer can be signed/);
+ const record={account,asset:"XGR",sourceChain:"base",destinationChain:"xgrchain",
+  txHash,messageId:"0x"+"e".repeat(64),status:"awaiting-proof",
+  confirmed:true,delivered:false};
+ const found=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},
+  "ready",wallet,{items:[record],selectedTxHash:txHash});
+ assert.match(found,/Continue delivery/);
+ assert.match(found,/Source confirmed/);
+ assert.match(found,/id="xita-open-transfer"/);
+ assert.doesNotMatch(found,/Locating previous transfer/);
+ const other=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},
+  "ready",{account:"0x"+"b".repeat(40)},{items:[record],selectedTxHash:txHash});
+ assert.match(other,/Locating previous transfer/);
+ assert.match(other,/id="xita-transfer-primary" disabled/);
+});

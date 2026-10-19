@@ -13,3 +13,12 @@ export async function connectWallet(provider){
  if(!account)throw Error("No authorized EVM account");
  return account;
 }
+
+// Passive restore after navigation/reload. Never requests new wallet
+// permissions, switches chains, signs, or reads account from browser storage.
+export async function authorizedWalletAccount(provider){
+ if(!provider||typeof provider.request!=="function")return null;
+ const accounts=await provider.request({method:"eth_accounts",params:[]});
+ return Array.isArray(accounts)?
+  accounts.find(x=>typeof x==="string"&&ADDRESS.test(x)&&!/^0x0{40}$/i.test(x))||null:null;
+}

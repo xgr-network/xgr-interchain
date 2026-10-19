@@ -24,7 +24,7 @@ test("wallet-specific transfer cards never expose previous connected account",()
  const html=renderMyTransfers({account,catalog:cat,items:[item]});
  assert.match(html,/Message ID/);assert.match(html,/Source TX/);
  assert.match(html,/Original source confirmed/);
- assert.match(html,/href="\/transfer\?token=XGR"/);
+ assert.match(html,new RegExp('href="/transfer\\?token=XGR&amp;resume='+h("6")+'"'));
  assert.match(html,/xita-lookup-form/);
  const stranger=renderMyTransfers({account:other,catalog:cat,items:[item]});
  assert.doesNotMatch(stranger,new RegExp(h("6")));
@@ -50,4 +50,19 @@ test("manual source TX hash is optional while wallet discovery is primary",()=>{
  assert.match(html,/<details class="ux-transfer-lookup">/);
  assert.match(html,/optional\)<\/summary>/);
  assert.match(html,/id="xita-lookup-form"/);
+});
+
+test("every unresolved transfer links to its own verified wallet recovery intent",()=>{
+ const tx=h("c");
+ for(const status of ["awaiting-proof","awaiting-onward","awaiting-final-proof",
+   "delivery-unknown","final-delivery-unknown","confirming","pending-source"]){
+  const html=renderMyTransfers({account,catalog:cat,items:[{
+   account,asset:"XGR",sourceChain:"base",destinationChain:"xgrchain",
+   txHash:tx,status,confirmed:status!=="pending-source"
+  }]});
+  assert.match(html,new RegExp('href="/transfer\\?token=XGR&amp;resume='+tx+'"'),status);
+ }
+ const alien=renderMyTransfers({account:other,catalog:cat,items:[{
+  account,txHash:tx,status:"awaiting-proof",asset:"XGR"}]});
+ assert.doesNotMatch(alien,/&amp;resume=/);
 });
