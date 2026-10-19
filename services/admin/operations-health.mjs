@@ -2,6 +2,7 @@
 // Deployment authority, source transfers and validator quorum are never touched.
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
+import {readFileSync,statSync} from "node:fs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
@@ -110,6 +111,21 @@ export function summarizeTransferIndex(stats,{now=Date.now(),staleMs=180000}={})
    state==="not-configured"?"No deployed transfer routes":
    "Route scanning still incomplete, unverified or catching up"};
 }
+export function inspectEvidenceFile(path,{now=Date.now()}={}){
+ try{
+  const stat=statSync(path);
+  if(!stat.isFile()||stat.size>2000000)return {status:"invalid",asOf:null,verifiedAssets:0};
+  const doc=JSON.parse(readFileSync(path,"utf8"));
+  if(doc?.schemaVersion!==1||doc?.kind!=="xita-asset-metrics-v1"||
+    !doc.assets||typeof doc.assets!=="object"||Array.isArray(doc.assets))
+   return {status:"invalid",asOf:null,verifiedAssets:0};
+  const asOf=safeDate(doc.asOf);
+  if(!asOf)return {status:"invalid",asOf:null,verifiedAssets:0};
+  const age=now-Date.parse(asOf);
+  const verifiedAssets=Object.values(doc.assets).filter(v=>v?.verified===true).length;
+  return {status:age>=-30000&&age<=120000?"fresh":"stale",asOf,verifiedAssets};
+ }catch(e){return {status:e?.code==="ENOENT"?"missing":"invalid",asOf:null,verifiedAssets:0};}
+}
 export function summarizeEvidence(result){
  if(!result||typeof result!=="object")return {state:"unknown",asOf:null};
  const raw=result.evidence;
@@ -163,7 +179,7 @@ function aggregateState(units,checks,indexer,chains){
 }
 export async function collectOperationsHealth({
  catalog,readUnit=readSystemdUnit,readHTTP=readLocalJSON,
- checkChain=probeChain,now=Date.now()
+ checkChain=probeChain,readEvidence=inspectEvidenceFile,now=Date.now()
 }={}){
  if(!catalog||typeof catalog!=="object"||!catalog.chains)
   throw Error("Configured chain catalog unavailable");
@@ -203,7 +219,7 @@ export async function collectOperationsHealth({
  const api=observedProbes.find(p=>p.id==="indexer-api");
  const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
- const evidence=summarizeEvidence(api?.data);
+ const evidence=summarizeEvidence({evidence:readEvidence(process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json",{now})});
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
    "transfer-intake":["transfer-intake-api"],quote:["quote-api"],preview:["preview-api"]}[unit.id]||[];
