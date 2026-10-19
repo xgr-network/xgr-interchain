@@ -46,6 +46,7 @@ const exchange=()=>({xgr:{usd:0.0001,last_updated_at:Math.floor(now/1000)-10},
 const defaults=()=>({catalog:fixture(),request,executionAddress:address(44),
  signer,readExecutionOwner:async()=>signer.address,
  readQuoteLifetime:async()=>90n,
+ readSourceBlockTimestamp:async()=>Math.floor(now/1000),
  readGatewayQuote:async()=>({bridgeNativeWei:1100000000000000000n,
  validatorFeeWei:100000000000000000n,tokenAmount:0n}),
  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:100000000000000000n}),
@@ -58,7 +59,7 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
  assert.equal(r.quote.interchainFeeWei,"34925000000000000000000");
  assert.equal(r.sourceValueWei,"34926100000000000000000");
  assert.equal(r.quote.nonce,"42");
- assert.equal(r.quote.issuedAt,Math.floor(now/1000));
+ assert.equal(r.quote.issuedAt,Math.floor(now/1000)-3);
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
  assert.equal(r.quoteLifetimeSeconds,90);
  assert.equal(Object.hasOwn(r.quote,"deadline"),false);
@@ -109,7 +110,7 @@ test("worldwide source-native quote is not gated on VAT customer location",async
 });
 test("honors owner-configured on-chain TTL, never exceeds 90 seconds",async()=>{
  const r=await buildManagedQuote({...defaults(),readQuoteLifetime:async()=>30n});
- assert.equal(r.quote.issuedAt,Math.floor(now/1000));
+ assert.equal(r.quote.issuedAt,Math.floor(now/1000)-3);
  assert.equal(r.expiresAt,r.quote.issuedAt+30);
  assert.equal(r.quoteLifetimeSeconds,30);
  for(const invalid of [0n,91n,-1n])
@@ -209,4 +210,18 @@ test("preview reuses exact priced source and two-hop fees but never signs or all
  assert.equal(preview.validatorFeeWei,signed.validatorFeeWei);
  assert.equal(preview.pricing.grossInterchainFeeWei,signed.pricing.grossInterchainFeeWei);
  assert.equal(signing,0);assert.equal(nonces,0);
+});
+
+test("signed quote never carries a future timestamp relative to source block",async()=>{
+ const tip=Math.floor(now/1000)-7;
+ const r=await buildManagedQuote({...defaults(),readSourceBlockTimestamp:async()=>tip});
+ assert.equal(r.quote.issuedAt,tip-3);
+ assert.ok(r.quote.issuedAt<=tip);
+ assert.equal(r.expiresAt,tip-3+90);
+});
+test("signer refuses stale or invalid source block rather than issuing unsafe quote",async()=>{
+ for(const t of [0,Math.floor(now/1000)-19,Math.floor(now/1000)+10]){
+  await assert.rejects(()=>buildManagedQuote({...defaults(),readSourceBlockTimestamp:async()=>t}),
+   /Source chain tip clock unavailable or stale/);
+ }
 });
