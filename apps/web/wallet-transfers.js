@@ -88,18 +88,9 @@ export function onwardJourneyEvidence(log,route,payer,messageId){
 }
 const deliveredSelector=selector("delivered(bytes32)");
 const accountMatches=(a,b)=>isAddress(a)&&lower(a)===lower(b);
-// Some MetaMask wallets execute the approved Gateway call inside this
-// observed Base wallet executor. Identity still comes from tx.from and
-// canonical Gateway ILNOperation + Mailbox Dispatch within the SAME receipt.
-const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
-const BRIDGE_SELECTOR=selector("bridge(uint32,bytes32,uint256)");
-function executorRoutes(tx,routes){
- if(!accountMatches(tx?.to,BASE_WALLET_EXECUTOR))return [];
- const input=lower(tx?.input??tx?.data);
- if(typeof input!=="string"||!/^0x[0-9a-f]+$/.test(input)||
-   !input.startsWith("0xcef6d209")||!input.includes(BRIDGE_SELECTOR.slice(2)))return [];
- return routes.filter(r=>r.sourceChain==="base"&&input.includes(r.gateway.slice(2)));
-}
+// No Base-specific wallet executor allowlist: on every source chain a mined
+// wallet transaction is attributable only by its canonical receipt evidence.
+// Unmined/failed intermediary calls remain unattributed.
 export function configuredGatewayRoutes(catalog){
  const result=[];
  if(!catalog?.chains||!catalog?.infrastructure)return result;
@@ -195,20 +186,39 @@ function validDispatch(log,route,id){
  const msg=dispatchMessage(log.data);
  return lower(keccak256(msg))===lower(id);
 }
+// An on-chain fee event identifies the original user even if their wallet
+// delegates the outer transaction to an executor (e.g. EIP-7702). Without
+// that payer-bound event, only a direct canonical Gateway call can be
+// attributed to the wallet. A Gateway Dispatch alone does not prove whose
+// assets an arbitrary intermediary bridged.
+function verifiedFeeAdapterEvent(receiptLogs,route,payer,messageId){
+ if(!route.executionAdapter)return {present:false,evidence:null};
+ const linked=receiptLogs.filter(log=>{
+  if(!accountMatches(log?.address,route.executionAdapter)||
+     !Array.isArray(log.topics))return false;
+  const topic=lower(log.topics[0]);
+  return (topic===lower(INTERCHAIN_FEE_TOPIC)&&lower(log.topics[1])===messageId)||
+    (topic===lower(ONWARD_JOURNEY_TOPIC)&&lower(log.topics[2])===messageId);
+ });
+ if(linked.length!==1)return {present:linked.length>0,evidence:null};
+ const log=linked[0];
+ const evidence=lower(log.topics[0])===lower(INTERCHAIN_FEE_TOPIC)?
+  adapterFeeEvidence(log,route,payer,messageId):
+  onwardJourneyEvidence(log,route,payer,messageId);
+ return {present:true,evidence};
+}
 export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc}){
  if(!isAddress(account)||!HASH.test(txHash||""))throw Error("Connect wallet and enter a valid source transaction hash");
- const routes=configuredGatewayRoutes(catalog).filter(x=>x.sourceChain===sourceChain);
+ const routes=configuredGatewayRoutes(catalog).filter(r=>r.sourceChain===sourceChain);
  if(!routes.length)throw Error("No verified deployed XITA Gateway for this source chain");
  const reader=createReader(routes[0].sourceConfig,fetcher,rpc);
  await reader.verify();
  const tx=await reader.read("eth_getTransactionByHash",[txHash]);
  if(!tx)throw Error("Source transaction not found yet; check chain and hash");
+ if(tx.hash&&lower(tx.hash)!==lower(txHash))throw Error("Untrusted source transaction hash");
  if(!accountMatches(tx.from,account))throw Error("Source transaction is not from the connected wallet");
  const direct=routes.filter(r=>accountMatches(tx.to,r.gateway));
- const executor=executorRoutes(tx,routes);
  const adapter=routes.filter(r=>r.executionAdapter&&accountMatches(tx.to,r.executionAdapter));
- // Both adapter paths invoke the canonical Gateway within the single wallet TX.
- // "continueJourney" on XGRChain does NOT charge another GmbH Interchain Fee.
  const input=lower(tx.input??tx.data??"");
  const paidAdapter=adapter.length>0&&input.startsWith(EXECUTE_SELECTOR);
  const onwardAdapter=adapter.length>0&&sourceChain==="xgrchain"&&
@@ -216,43 +226,39 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  if(adapter.length&&(!/^0x[0-9a-f]+$/.test(input)||
     (!paidAdapter&&!onwardAdapter)))
   throw Error("Adapter source call has unexpected ABI selector");
- const named=[...direct,...executor,...adapter],matches=new Set(named.map(r=>r.routeId));
- if(!matches.size)throw Error("Source transaction does not target a documented Gateway or fee adapter");
+
+ // No canonical operation or payer receipt exists for an unmined transaction.
+ // In particular, never infer a wallet transfer from an unknown executor's
+ // calldata or from a selector that merely contains a Gateway address.
+ let pendingCandidates=[...direct,...adapter];
+ if(adapter.length&&pendingCandidates.length>1){
+  const routeId=input.length>=10+3*64?
+    "0x"+input.slice(10+2*64,10+3*64):null;
+  pendingCandidates=pendingCandidates.filter(r=>r.routeId===routeId);
+ }
  const receipt=await reader.read("eth_getTransactionReceipt",[txHash]);
- const status=receipt?.status;
  if(receipt&&(!accountMatches(receipt.from,account)||
-    !(accountMatches(receipt.to,tx.to))||
-    lower(receipt.transactionHash)!==lower(txHash)||!Array.isArray(receipt.logs)))
+    !accountMatches(receipt.to,tx.to)||
+    lower(receipt.transactionHash)!==lower(txHash)||
+    !Array.isArray(receipt.logs)))
   throw Error("Untrusted source receipt");
- // Without a mined receipt an adapter serves many routes. Decode the source
- // calldata route binding to identify one candidate, never invent finality.
- let candidates=named;
- if(adapter.length&&matches.size>1&&input.length>=10+4*64){
-  const target="0x"+input.slice(10+2*64,10+3*64);
-  candidates=named.filter(r=>r.routeId===lower(target));
- }
- if(!receipt){
-  if(candidates.length!==1)throw Error("Pending adapter route ambiguous; retry after receipt");
-  const route=candidates[0];
+ if(!receipt||receipt.status==="0x0"){
+  if(pendingCandidates.length!==1)
+   throw Error("Unconfirmed or failed intermediary transaction cannot be linked to a documented XITA Gateway");
+  const route=pendingCandidates[0];
   return {account:lower(account),txHash:lower(txHash),sourceChain,
    destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
    routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
-   messageId:null,status:"pending-source"};
+   messageId:null,status:receipt?"source-failed":"pending-source"};
  }
- if(status==="0x0"){
-  if(candidates.length!==1)throw Error("Failed adapter route ambiguous");
-  const route=candidates[0];
-  return {account:lower(account),txHash:lower(txHash),sourceChain,
-   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
-   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
-   messageId:null,status:"source-failed"};
- }
- if(status!=="0x1"||!QTY.test(receipt.blockNumber||""))
+ if(receipt.status!=="0x1"||!QTY.test(receipt.blockNumber||""))
   throw Error("Source receipt status or finality missing");
  const head=await reader.read("eth_blockNumber",[]);
  if(!QTY.test(head||""))throw Error("Current source block unavailable");
  const valid=[];
- for(const route of named){
+ for(const route of routes){
+  // Always derive the confirmed route from the emitted Gateway and Mailbox
+  // logs, not from the outer tx target, wallet-specific RPCs, or the UI route.
   const operations=receipt.logs.filter(log=>validateOperation(log,route));
   if(operations.length!==1)continue;
   const id=lower(operations[0].topics[2]);
@@ -260,19 +266,20 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
    try{return validDispatch(log,route,id)}catch{return false}
   });
   if(dispatches.length!==1)continue;
-  let evidence=null;
-  if(adapter.length){
-   const events=receipt.logs.map(log=>paidAdapter?
-     adapterFeeEvidence(log,route,account,id):
-     onwardJourneyEvidence(log,route,account,id)).filter(Boolean);
-   if(events.length!==1)continue;
-   evidence=events[0];
-   if(BigInt(evidence.validatorFeeWei)!==BigInt(operations[0].data))continue;
-  }
+  const {present,evidence}=verifiedFeeAdapterEvent(receipt.logs,route,account,id);
+  if(present&&!evidence)continue;
+  // A paid adapter call must carry its payer-bound fee evidence. A different
+  // outer target is accepted only if that same evidence proves that this
+  // wallet (rather than the intermediary) paid for the canonical bridge.
+  if(!evidence&&!accountMatches(tx.to,route.gateway))continue;
+  if(accountMatches(tx.to,route.executionAdapter)&&!evidence)continue;
+  if(evidence&&BigInt(evidence.validatorFeeWei)!==BigInt(operations[0].data))
+   continue;
   valid.push({route,messageId:id,validatorFeeWei:BigInt(operations[0].data).toString(),
    evidence});
  }
- if(valid.length!==1)throw Error("Missing or ambiguous verified Gateway operation or Mailbox Dispatch / Interchain Fee evidence");
+ if(valid.length!==1)
+  throw Error("Missing or ambiguous verified Gateway operation or Mailbox Dispatch / Interchain Fee evidence");
  const {route,messageId,validatorFeeWei,evidence}=valid[0];
  const base={account:lower(account),txHash:lower(txHash),sourceChain,
   destinationChain:route.destinationChain,asset:route.asset,routeName:route.routeName,
