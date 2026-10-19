@@ -122,3 +122,75 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   await new Promise(ok=>server.close(ok));
  }
 });
+
+
+test("real browser reconnects wallet and opens pending transfer without TX input", {timeout:60000},async()=>{
+ assert.ok(executable,"Headless Chrome or Chromium required for reconnect smoke test");
+ const wallet="0x"+"a".repeat(40),txHash="0x"+"c".repeat(64);
+ const record={account:wallet,sourceChain:"base",destinationChain:"xgrchain",
+  asset:"XGR",routeName:"base_to_xgr",txHash,
+  routeId:"0x"+"b".repeat(64),messageId:"0x"+"d".repeat(64),
+  confirmed:true,delivered:false,status:"awaiting-proof"};
+ const walletResponse={ok:true,kind:"xita-wallet-transfer-index-v1",
+  status:"partial",wallet,items:[record],openCount:1,unknownCount:0,
+  coverage:{complete:false,indexedRoutes:0,requiredRoutes:2,routes:[]}};
+ const received=[];
+ const server=createServer(async(request,response)=>{
+  const parsed=new URL(request.url,"http://127.0.0.1");
+  const path=parsed.pathname;
+  received.push(path);
+  if(path==="/api/xeta/v1/transfers/wallet"){
+   response.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store"});
+   response.end(JSON.stringify(walletResponse));return;
+  }
+  if(path.startsWith("/api/")){
+   response.writeHead(503,{"Content-Type":"application/json"});
+   response.end('{"ok":false,"error":"No test-side signing service"}');return;
+  }
+  const page=path==="/transfer"||path==="/my-transfers"||path==="/";
+  const full=resolve(root,page?"index.html":path.slice(1));
+  if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
+   response.writeHead(403);response.end();return;
+  }
+  try{
+   let content=await readFile(full);
+   if(page){
+    const walletMock='<script>'+
+     'window.ethereum={on:function(){},request:async function(x){'+
+     'if(x.method==="eth_accounts"){document.body.dataset.passiveWallet="yes";return ["'+wallet+'"];}'+
+     'if(x.method==="eth_requestAccounts"||x.method==="eth_sendTransaction"){document.body.dataset.unwantedWalletPrompt="yes";throw Error("No permission or signing allowed");}'+
+     'if(x.method==="eth_chainId")return "0x2105";'+
+     'if(x.method==="eth_getBalance")return "0x0";'+
+     'if(x.method==="eth_call")return "0x"+"0".repeat(64);'+
+     'return "0x0";}};'+
+     '</script>';
+    content=Buffer.from(content.toString("utf8").replace("</head>",walletMock+"</head>"));
+   }
+   response.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream",
+    "Cache-Control":"no-store"});
+   response.end(content);
+  }catch{
+   response.writeHead(404);response.end("Missing static asset: "+path);
+  }
+ });
+ await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
+ try{
+  const origin="http://127.0.0.1:"+server.address().port;
+  const history=await visit(executable,origin+"/my-transfers");
+  assert.match(history,/data-passive-wallet="yes"/);
+  assert.doesNotMatch(history,/data-unwanted-wallet-prompt="yes"/);
+  assert.match(history,/class="ux-app ux-my-transfers"/,
+   "Authorized wallet must stay on My Transfers after fresh browser start");
+  assert.ok(history.includes(txHash),"Wallet index must rediscover pending source TX");
+  assert.match(history,/&amp;resume=0x[c]{64}/,
+   "Resume link must include exact verified source TX identity");
+  const transfer=await visit(executable,origin+"/transfer?token=XGR&resume="+txHash);
+  assert.match(transfer,/data-passive-wallet="yes"/);
+  assert.doesNotMatch(transfer,/data-unwanted-wallet-prompt="yes"/);
+  assert.match(transfer,/Continue delivery/);
+  assert.match(transfer,/id="xita-open-transfer"/);
+  assert.ok(transfer.includes(txHash),"Existing transfer must be selected by exact TX");
+  assert.ok(received.filter(path=>path==="/api/xeta/v1/transfers/wallet").length>=2,
+   "Wallet history API must be queried after both independent browser starts");
+ }finally{await new Promise(done=>server.close(done));}
+});
