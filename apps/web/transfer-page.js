@@ -28,7 +28,11 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
  const cards=items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
-  const canRecover=["awaiting-proof","awaiting-onward","awaiting-final-proof"].includes(t.status);
+  const canRecover=HASH.test(t.txHash||"")&&[
+   "pending-source","confirming","awaiting-proof","awaiting-onward",
+   "awaiting-final-proof","delivery-unknown","final-delivery-unknown",
+   "journey-ambiguous","destination-not-deployed"
+  ].includes(t.status);
   return '<article class="ux-transfer-card" data-source-tx="'+esc(t.txHash)+'">'+
    '<div class="ux-transfer-head"><strong>'+esc(t.asset||"Token")+' · '+
    esc(chains[t.sourceChain]?.name||t.sourceChain)+' → '+
@@ -44,7 +48,9 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    (canRecover?'<p class="ux-transfer-warning">'+esc(t.status==="awaiting-onward"?
      "First hop delivered on XGRChain; final journey not proven. Never repeat source lock or blindly retry hop 2.":
      "Original source confirmed. It is never submitted again. Only destination delivery can be continued.")+'</p>':'')+
-   (canRecover?'<a class="ux-button" data-nav href="/transfer?token='+encodeURIComponent(t.asset||"XGR")+'">Open in Transfer Tokens →</a>':'')+
+   (canRecover?'<a class="ux-button" data-nav href="/transfer?token='+
+     encodeURIComponent(t.asset||"XGR")+'&amp;resume='+encodeURIComponent(t.txHash)+
+     '">Open in Transfer Tokens →</a>':'')+
    '</article>';
  }).join("");
  return '<section class="ux-app ux-my-transfers" aria-label="My Transfers">'+
