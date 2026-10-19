@@ -209,9 +209,9 @@ test("verified transfer RPC routing supports every source and destination backup
  const read=bindVerifiedTransferRpc(r,async(chain)=>chain.chainId);
  assert.equal(await read("https://s.two","eth_call",[]),8453);
  assert.equal(await read("https://d.two","eth_call",[]),1643);
- await assert.rejects(()=>read("https://unknown","eth_call",[]),/Unknown or ambiguous/);
+ assert.throws(()=>read("https://unknown","eth_call",[]),/Unknown or ambiguous/);
  const shared={...r,destinationConfig:{...r.destinationConfig,rpcUrls:["https://s.two"]}};
- await assert.rejects(()=>bindVerifiedTransferRpc(shared,async()=>1)("https://s.two","eth_call",[]),/Unknown or ambiguous/);
+ assert.throws(()=>bindVerifiedTransferRpc(shared,async()=>1)("https://s.two","eth_call",[]),/Unknown or ambiguous/);
 });
 
 test("candidate RPC reads confirmed TX from fallback after primary returns null",async()=>{
