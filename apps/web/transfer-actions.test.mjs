@@ -314,3 +314,30 @@ test("commercial transfer refuses fee-free fallback when either execution gatewa
   provider:sourceProvider(sent),fetcher}),/Execution Gateway must be deployed on both chains/);
  assert.equal(sent.length,0);
 });
+
+test("RPC failure is not mislabeled as a missing validator quorum",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"base_to_xgr",messageId:hash("4")});
+ const notices=[];
+ const result=await awaitUnsignedDeliveryProof({query,attempts:2,delayMs:0,
+  sleep:async()=>{},onStatus:x=>notices.push(x),
+  fetcher:async()=>({ok:false,status:503,json:async()=>({
+   reason:"PROOF_RPC_UNAVAILABLE",stage:"request-validator-quorum"})})});
+ assert.equal(result.status,"waiting");
+ assert.equal(result.reason,"PROOF_RPC_UNAVAILABLE");
+ assert.match(result.notice,/RPC is unavailable/);
+ assert.ok(notices.every(x=>!x.includes("Waiting for validator quorum")));
+});
+test("unsupported quorum RPC fails promptly without a wallet transaction",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"base_to_xgr",messageId:hash("4")});
+ await assert.rejects(()=>awaitUnsignedDeliveryProof({query,attempts:4,delayMs:0,
+  sleep:async()=>{},fetcher:async()=>({ok:false,status:503,
+   json:async()=>({reason:"PROOF_RPC_METHOD_UNAVAILABLE",stage:"get-validator-attestation"})})}),
+  /quorum RPC method is unavailable/);
+});
+test("quorum pending remains distinct from proof-service outage",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"base_to_xgr",messageId:hash("4")});
+ const result=await awaitUnsignedDeliveryProof({query,attempts:1,delayMs:0,
+  fetcher:async()=>({ok:true,status:200,json:async()=>({ok:true,status:"PENDING"})})});
+ assert.equal(result.reason,"QUORUM_PENDING");
+ assert.match(result.notice,/Validator quorum requested/);
+});

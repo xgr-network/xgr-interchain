@@ -432,30 +432,98 @@ export async function startVerifiedOnwardHop({
 }
 // Poll only the immutable message ID from a confirmed source receipt.
 // Never sends a wallet transaction; caller handles destination signing separately.
+// A recovery attempt never signs, burns or delivers. The proof service may
+// legitimately return PENDING, but an RPC error is NOT evidence of quorum lag.
+// Limit wall-clock polling so a closed/reopened browser remains usable.
 export async function awaitUnsignedDeliveryProof({query,fetcher=globalThis.fetch,
- attempts=9,delayMs=16500,onStatus,signal,sleep=ms=>new Promise(done=>setTimeout(done,ms))}){
+ attempts=4,delayMs=16500,maxWaitMs=90000,onStatus,signal,
+ sleep=ms=>new Promise(done=>setTimeout(done,ms))}){
+ if(!Number.isInteger(attempts)||attempts<1||attempts>9||
+    !Number.isSafeInteger(delayMs)||delayMs<0||delayMs>60000||
+    !Number.isSafeInteger(maxWaitMs)||maxWaitMs<1000||maxWaitMs>300000)
+  throw Error("Invalid bounded proof polling configuration");
+ const deadline=Date.now()+maxWaitMs;
+ let lastNotice="Unsigned destination proof not yet available.";
+ let lastReason=null,lastStage=null;
  for(let i=0;i<attempts;i++){
-  if(signal?.aborted)return {status:"paused",notice:"Automatic proof checks paused."};
-  let response=null,proof=null;
+  if(signal?.aborted)return {status:"paused",notice:"Proof checks paused. The original source transaction remains confirmed."};
+  const remaining=deadline-Date.now();
+  if(remaining<=0)break;
+  let response=null,proof=null,requestFailed=false,timedOut=false;
+  const controller=new AbortController();
+  const abortRequest=()=>controller.abort();
+  if(signal){
+   signal.addEventListener("abort",abortRequest,{once:true});
+   if(signal.aborted)abortRequest();
+  }
+  const timer=setTimeout(abortRequest,Math.min(48000,remaining));
   try{
-   response=await fetcher("/api/xeta/v1/transfer/recovery?"+query,{credentials:"omit",
-    cache:"no-store",headers:{accept:"application/json"},signal});
+   response=await fetcher("/api/xeta/v1/transfer/recovery?"+query,{
+    credentials:"omit",cache:"no-store",headers:{accept:"application/json"},
+    signal:controller.signal
+   });
    proof=await response.json().catch(()=>null);
-  }catch(error){if(signal?.aborted)return {status:"paused",notice:"Proof checks paused."};}
+  }catch{
+   requestFailed=true;
+   timedOut=controller.signal.aborted;
+  }finally{
+   clearTimeout(timer);
+   signal?.removeEventListener("abort",abortRequest);
+  }
+  if(signal?.aborted)return {status:"paused",notice:"Proof checks paused. The original source transaction remains confirmed."};
+  const stage=/^[a-z][a-z0-9-]{1,54}$/.test(proof?.stage||"")?proof.stage:null;
+  const where=stage?" (stage: "+stage+")":"";
+  lastStage=stage||lastStage;
   if(response?.ok&&proof?.ok){
    if(proof.status==="READY_UNSIGNED_CALL")return {status:"ready",proof};
    if(proof.status==="ALREADY_DELIVERED")return {status:"delivered"};
-   if(!["PENDING","PREPARING","FRESH_QUORUM_REQUIRED"].includes(proof.status))
-    throw Error("Unexpected proof-builder result; destination signing blocked.");
+   if(proof.status==="PENDING"){
+    lastReason="QUORUM_PENDING";
+    lastNotice="Validator quorum requested; independent validator signatures are still pending.";
+   }else if(proof.status==="PREPARING"){
+    lastReason="PROOF_PREPARING";
+    lastNotice="The unsigned destination proof is being prepared. No wallet transaction is needed yet.";
+   }else if(proof.status==="FRESH_QUORUM_REQUIRED"){
+    lastReason="FRESH_QUORUM_REQUIRED";
+    lastNotice="The validator set has changed; fresh signatures for this original message are required.";
+   }else throw Error("Unexpected proof-builder result; destination signing blocked.");
+  }else if(proof?.reason==="PROOF_CONFIG_MISMATCH"){
+   throw Error("Proof service configuration mismatch"+where+
+    "; contact XITA support. The original source transaction remains confirmed.");
+  }else if(proof?.reason==="PROOF_RPC_METHOD_UNAVAILABLE"){
+   throw Error("Required ILN quorum RPC method is unavailable"+where+
+    "; operator intervention is required. No wallet transaction was sent.");
+  }else if(proof?.reason==="PROOF_RPC_ARGUMENT_INVALID"){
+   throw Error("ILN quorum RPC rejected the proof request"+where+
+    "; operator intervention is required. No wallet transaction was sent.");
+  }else if(proof?.reason==="PROOF_RPC_UNAVAILABLE"){
+   lastReason=proof.reason;
+   lastNotice="Required chain RPC is unavailable"+where+
+    "; destination proof preparation cannot finish until it recovers.";
+  }else if(proof?.reason==="PROOF_TIMEOUT"||timedOut){
+   lastReason="PROOF_TIMEOUT";
+   lastNotice="Proof preparation timed out"+where+". The source transfer remains recorded.";
+  }else if(proof?.reason==="PROOF_QUORUM_UNAVAILABLE"){
+   lastReason=proof.reason;
+   lastNotice="The validator service cannot assemble the required quorum"+where+".";
+  }else if(proof?.reason==="PROOF_RECONSTRUCTION_UNAVAILABLE"){
+   lastReason=proof.reason;
+   lastNotice="Source Merkle proof reconstruction is unavailable"+where+".";
+  }else if(response?.status===429){
+   lastReason="PROOF_BUSY";
+   lastNotice="Proof service is busy or rate-limited. The source transfer remains confirmed.";
+  }else if(requestFailed||!response?.ok||!proof){
+   lastReason="PROOF_SERVICE_UNAVAILABLE";
+   lastNotice="Proof service is unreachable or returned an invalid response. This is not evidence of missing validator signatures.";
+  }else{
+   throw Error("Unexpected unsigned proof service result; destination signing blocked.");
   }
-  const fatal=proof?.reason==="PROOF_CONFIG_MISMATCH";
-  if(fatal)throw Error("Proof service configuration mismatch; contact XITA support. Source lock remains confirmed.");
-  if(i===attempts-1)break;
-  onStatus?.(proof?.status==="PREPARING"?"Preparing validator proof…":
-    "Waiting for validator quorum and destination proof…");
-  await sleep(delayMs);
+  if(i===attempts-1||Date.now()+delayMs>=deadline)break;
+  onStatus?.(lastNotice+" Checking again without any wallet transaction…");
+  await sleep(Math.min(delayMs,Math.max(0,deadline-Date.now())));
  }
- return {status:"waiting",notice:"Validator proof not yet available. Your source lock is confirmed; XITA will not repeat it. Continue this delivery later."};
+ return {status:"waiting",reason:lastReason,stage:lastStage,
+  notice:lastNotice+" You may leave XITA and reconnect later; the original source transaction must not be repeated."};
 }
 export async function resumeDelivery({catalog,account,record,provider,
  fetcher=globalThis.fetch,onBroadcast,waitForProof=false,onStatus,signal}){
@@ -472,7 +540,7 @@ export async function resumeDelivery({catalog,account,record,provider,
  const query=new URLSearchParams({asset:current.asset,route:current.routeName,
   messageId:current.messageId,sourceTxHash:current.txHash});
  const prepared=await awaitUnsignedDeliveryProof({query,fetcher,
-  attempts:waitForProof?9:1,onStatus,signal});
+  attempts:waitForProof?4:1,onStatus,signal});
  if(prepared.status==="delivered")return {status:"delivered"};
  if(prepared.status!=="ready")return prepared;
  const proof=prepared.proof;
