@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -133,4 +133,36 @@ test("proof builder Base RPC candidates follow canonical approved catalog, never
  assert.deepEqual(recoveryBaseUrls(conf,{baseUrls:""}),c.chains.base.rpcUrls);
  assert.equal(conf.env.DESTINATION_CHAIN_ID,"8453");
  assert.equal(conf.env.DESTINATION_RPC_URL,c.chains.base.rpcUrls[0]);
+});
+
+test("actual Base source TX qualifies while unrelated historical archive probes are irrelevant",async()=>{
+ const c=fixture(),tx=hash("5"),message=hash("7");
+ const conf=resolveRecoveryRoute(c,"xgr_to_base",message,"ABC",tx);
+ const calls=[];
+ conf.env.ORIGIN_CHAIN_ID="8453";
+ conf.env.ORIGIN_MERKLE_TREE_HOOK=addr("6");
+ const result=await probeRouteSourceRpc("https://rpc.example/base",conf,{
+  readRpc:null,
+  fetcher:async(url,{body})=>{
+   const {method,params}=JSON.parse(body);calls.push(method);
+   const value=method==="eth_chainId"?"0x2105":
+    method==="eth_getTransactionReceipt"?{
+     transactionHash:tx,status:"0x1",blockNumber:"0x123"}:
+    method==="eth_getLogs"?[{transactionHash:tx,address:addr("6")}]:null;
+   return {ok:true,status:200,json:async()=>({jsonrpc:"2.0",id:1,result:value})};
+  }
+ });
+ assert.equal(result.ok,true);
+ assert.deepEqual(calls,["eth_chainId","eth_getTransactionReceipt","eth_getLogs"]);
+});
+test("qualifying Base destination reads actual mailbox delivery state",async()=>{
+ const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("8"),"ABC");
+ const calls=[];
+ const r=await probeRouteSourceRpc("https://rpc.example/base",conf,{fetcher:async(url,{body})=>{
+  const x=JSON.parse(body);calls.push(x.method);
+  return {ok:true,status:200,json:async()=>({jsonrpc:"2.0",id:1,
+   result:x.method==="eth_chainId"?"0x2105":"0x"+"0".repeat(64)})};
+ }});
+ assert.equal(r.ok,true);
+ assert.deepEqual(calls,["eth_chainId","eth_call"]);
 });

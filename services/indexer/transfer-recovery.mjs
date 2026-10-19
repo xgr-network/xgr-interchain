@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {selector} from "../../apps/web/keccak.js";
-import {probe as probeBaseArchive} from "../../tools/probe-base-rpc.mjs";
+import {rpc as readPublicRpc} from "../../tools/probe-base-rpc.mjs";
 import {rpcCandidates} from "./transfer-index.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
@@ -67,7 +67,8 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
  if(!HASH.test(route.routeId))throw Error("Invalid deployed route ID");
  return {route,messageId:messageId.toLowerCase(),destinationMailbox:dstCore.mailbox.address,
   destinationChainId:dst.chainId,env:values,
-  baseRpcUrls:catalog.chains.base?.rpcUrls||[]};
+  baseRpcUrls:catalog.chains.base?.rpcUrls||[],
+  sourceRpcUrls:src.rpcUrls||[],destinationRpcUrls:dst.rpcUrls||[]};
 }
 export function validateUnsignedRecovery(result,configured){
  if(!result||typeof result!=="object"||!["READY_UNSIGNED_CALL","PENDING","ALREADY_DELIVERED","FRESH_QUORUM_REQUIRED"].includes(result.status))
@@ -122,6 +123,42 @@ export function classifyRecoveryFailure(err,stderr=""){
 export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
 }
+// Qualify the actual route, not an unrelated historical Base test block.
+export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
+ try{
+  const call=(method,params)=>readPublicRpc(url,method,params,{fetcher,ms});
+  const sourceIsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453;
+  const expected=sourceIsBase?configured.env.ORIGIN_CHAIN_ID:
+   configured.env.DESTINATION_CHAIN_ID;
+  if(BigInt(await call("eth_chainId",[]))!==BigInt(expected))
+   throw Error("Configured route RPC chain identity mismatch");
+  const txHash=sourceIsBase?configured.env.SOURCE_TX_HASH:null;
+  if(txHash){
+   const receipt=await call("eth_getTransactionReceipt",[txHash]);
+   if(!receipt||!same(receipt.transactionHash,txHash)||receipt.status!=="0x1")
+    throw Error("Original source receipt unavailable");
+   const block=receipt.blockNumber;
+   if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
+   const logs=await call("eth_getLogs",[{
+    address:configured.env.ORIGIN_MERKLE_TREE_HOOK,
+    fromBlock:block,toBlock:block
+   }]);
+   if(!Array.isArray(logs)||!logs.some(x=>same(x.transactionHash,txHash)))
+    throw Error("Source Merkle insertion logs unavailable");
+  }else if(!sourceIsBase){
+   const value=await call("eth_call",[{
+    to:configured.env.DESTINATION_MAILBOX,
+    data:selector("delivered(bytes32)")+configured.messageId.slice(2)
+   },"latest"]);
+   if(!/^0x[0-9a-f]{64}$/i.test(value||"")||![0n,1n].includes(BigInt(value)))
+    throw Error("Destination Mailbox unavailable");
+  }else{
+   const head=await call("eth_blockNumber",[]);
+   if(!/^0x[0-9a-f]+$/i.test(head||""))throw Error("Source head unavailable");
+  }
+  return {ok:true};
+ }catch(error){return {ok:false,error:String(error.message||error).slice(0,170)};}
+}
 const baseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",
  "source-receipt","merkle-proof","simulate-base-delivery","base-archive"
@@ -150,7 +187,7 @@ async function runRecoveryAttempt(configured,timeoutMs){
  });
 }
 export async function runRecoveryProcess(configured,{timeoutMs=45000,
- archiveProbe=probeBaseArchive,fetcher=globalThis.fetch,
+ archiveProbe=probeRouteSourceRpc,fetcher=globalThis.fetch,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
  // Base historical RPC prequalification is applicable ONLY when Base is
  // either the source or destination. Other EVM routes must not depend on
@@ -165,7 +202,7 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
   const url=candidates[i];
   try{
    if(deadline-Date.now()<6000)break;
-   const qualified=await archiveProbe(url,{fetcher,ms:6000});
+   const qualified=await archiveProbe(url,configured,{fetcher,ms:6000});
    if(!qualified?.ok)continue;
    const env={...configured.env};
    if(Number(env.ORIGIN_CHAIN_ID)===8453)env.ORIGIN_RPC_URL=url;
