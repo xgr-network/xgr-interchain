@@ -131,3 +131,102 @@ test("source fee adapter is verified using canonical Gateway, Mailbox and fee ev
     mockRPC({receiptObject:tampered}).rpc(url,method,args)}),
    /Interchain Fee evidence/);
 });
+
+
+function chainAgnosticScenario(source,chainId){
+ const route=hash("7"),sourceGateway=addr("7"),sourceRouter=addr("8");
+ const mailbox=addr("9"),feeAdapter=addr("c"),outerExecutor=addr("d");
+ const component={address:feeAdapter,runtimeCodeKeccak256:hash("f"),
+  receiptPath:"deployments/receipts/"+source+"/"+("b".repeat(64))+"-"+feeAdapter.slice(2)+".json"};
+ const catalog=structuredClone(cat);
+ catalog.chains[source]={chainId,domainId:chainId,confirmations:2,
+  rpcUrls:["https://rpc.example/"+source]};
+ catalog.infrastructure[source]={xitaV315:{components:{
+  mailbox:{address:mailbox},executionGateway:component},
+  receiptPaths:[component.receiptPath]}};
+ catalog.assets.XGR.routes.routes.push({
+  name:source+"_to_xgr",sourceChain:source,destinationChain:"xgrchain"});
+ catalog.assets.XGR.deployment.routeDeployments.push({
+  routeName:source+"_to_xgr",routeId:route,sourceChain:source,
+  destinationChain:"xgrchain",components:{gateway:{address:sourceGateway}}});
+ catalog.assets.XGR.deployment.representations.push({chain:source,address:sourceRouter});
+ const op={address:sourceGateway,topics:[
+  OPERATION_TOPIC,route,messageId,toTopic(1643)],data:toTopic(100000000000000000n)};
+ const dispatch={address:mailbox,topics:[
+  DISPATCH_TOPIC,toTopic(BigInt(sourceRouter)),toTopic(1643),toTopic(1)],
+  data:dispatchData};
+ const fields=[route,toTopic(1643),toTopic(BigInt(user)),toTopic(1643),
+  toTopic(BigInt(user)),hash("0"),toTopic(500000000000000000n),
+  toTopic(100000000000000000n),toTopic(100000000000000000n),
+  toTopic(2000),toTopic(42)];
+ const fee={address:feeAdapter,topics:[
+  INTERCHAIN_FEE_TOPIC,messageId,toTopic(BigInt(user)),toTopic(BigInt(sourceGateway))],
+  data:"0x"+fields.map(w=>w.slice(2)).join("")};
+ const mined={from:user,to:outerExecutor,transactionHash:txHash,
+  status:"0x1",blockNumber:"0x10",logs:[op,dispatch,fee]};
+ const tx={from:user,to:outerExecutor,hash:txHash,input:"0x12345678"};
+ const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method)=>{
+  if(method==="eth_chainId")return url.endsWith("/"+source)?
+   "0x"+BigInt(chainId).toString(16):"0x66b";
+  if(method==="eth_getTransactionByHash")return transaction;
+  if(method==="eth_getTransactionReceipt")return receiptObject;
+  if(method==="eth_blockNumber")return head;
+  if(method==="eth_call")return toTopic(0);
+  throw Error("Unexpected "+method);
+ };
+ return {catalog,route,sourceGateway,sourceRouter,feeAdapter,outerExecutor,
+  op,dispatch,fee,mined,tx,rpc};
+}
+
+for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+ test("mined fee adapter transfer recovers across arbitrary wallet executors on "+source,async()=>{
+  const f=chainAgnosticScenario(source,chainId);
+  const result=await findWalletSourceTx({
+   catalog:f.catalog,account:user,sourceChain:source,txHash,rpc:f.rpc()});
+  assert.equal(result.status,"awaiting-proof");
+  assert.equal(result.confirmed,true);
+  assert.equal(result.gateway,f.sourceGateway);
+  assert.equal(result.executionAdapter,f.feeAdapter);
+  assert.equal(result.interchainFeeWei,"2000");
+  assert.equal(result.messageId,messageId);
+  assert.equal(result.amountRaw,"500000000000000000");
+ });
+
+ test("canonical direct Gateway call remains valid without fee event on "+source,async()=>{
+  const f=chainAgnosticScenario(source,chainId);
+  const direct={...f.tx,to:f.sourceGateway,input:"0xabcdef12"};
+  const mined={...f.mined,to:f.sourceGateway,logs:[f.op,f.dispatch]};
+  const result=await findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({transaction:direct,receiptObject:mined})});
+  assert.equal(result.status,"awaiting-proof");
+  assert.equal(result.executionAdapter,undefined);
+ });
+
+ test("unverified intermediate calls never claim ownership of canonical logs on "+source,async()=>{
+  const f=chainAgnosticScenario(source,chainId);
+  const noFee={...f.mined,logs:[f.op,f.dispatch]};
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({receiptObject:noFee})}),/Interchain Fee evidence/);
+  const wrongPayer={...f.fee,topics:[INTERCHAIN_FEE_TOPIC,messageId,
+   toTopic(BigInt(other)),toTopic(BigInt(f.sourceGateway))]};
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({
+    receiptObject:{...f.mined,logs:[f.op,f.dispatch,wrongPayer]}})}),/Interchain Fee evidence/);
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({receiptObject:null})}),/Unconfirmed or failed intermediary/);
+ });
+
+ test("route evidence cannot be duplicated or mismatched on "+source,async()=>{
+  const f=chainAgnosticScenario(source,chainId);
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({
+    receiptObject:{...f.mined,logs:[...f.mined.logs,f.op]}})}),/Interchain Fee evidence/);
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:user,
+   sourceChain:source,txHash,rpc:f.rpc({
+    receiptObject:{...f.mined,logs:[f.op,f.dispatch,{
+     ...f.fee,data:"0x"+toTopic(0).slice(2)+f.fee.data.slice(66)
+    }]}})}),/Interchain Fee evidence/);
+  await assert.rejects(()=>findWalletSourceTx({catalog:f.catalog,account:other,
+   sourceChain:source,txHash,rpc:f.rpc()}),/not from/);
+ });
+}
