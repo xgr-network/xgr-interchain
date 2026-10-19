@@ -127,9 +127,12 @@ export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_BASE_ARCH
 export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
  try{
   const call=(method,params)=>readPublicRpc(url,method,params,{fetcher,ms});
-  if(BigInt(await call("eth_chainId",[]))!==BigInt(configured.env.ORIGIN_CHAIN_ID))
-   throw Error("Source chain identity mismatch");
-  const txHash=configured.env.SOURCE_TX_HASH;
+  const sourceIsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453;
+  const expected=sourceIsBase?configured.env.ORIGIN_CHAIN_ID:
+   configured.env.DESTINATION_CHAIN_ID;
+  if(BigInt(await call("eth_chainId",[]))!==BigInt(expected))
+   throw Error("Configured route RPC chain identity mismatch");
+  const txHash=sourceIsBase?configured.env.SOURCE_TX_HASH:null;
   if(txHash){
    const receipt=await call("eth_getTransactionReceipt",[txHash]);
    if(!receipt||!same(receipt.transactionHash,txHash)||receipt.status!=="0x1")
@@ -142,6 +145,13 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
    }]);
    if(!Array.isArray(logs)||!logs.some(x=>same(x.transactionHash,txHash)))
     throw Error("Source Merkle insertion logs unavailable");
+  }else if(!sourceIsBase){
+   const value=await call("eth_call",[{
+    to:configured.env.DESTINATION_MAILBOX,
+    data:selector("delivered(bytes32)")+configured.messageId.slice(2)
+   },"latest"]);
+   if(!/^0x[0-9a-f]{64}$/i.test(value||"")||![0n,1n].includes(BigInt(value)))
+    throw Error("Destination Mailbox unavailable");
   }else{
    const head=await call("eth_blockNumber",[]);
    if(!/^0x[0-9a-f]+$/i.test(head||""))throw Error("Source head unavailable");
