@@ -75,14 +75,25 @@ export async function checkedDelivery({route,messageId,rpc}){
   throw Error("Invalid finalized destination Mailbox.delivery result");
  return {delivered:BigInt(raw)===1n,finalizedHead};
 }
+// Browser recovery may retry any configured source/destination RPC URL.
+// A source backup must never silently be treated as the destination.
+export function bindVerifiedTransferRpc(route,rpc){
+ if(typeof rpc!=="function")throw Error("Missing verified transfer RPC");
+ const sources=route?.sourceConfig?.rpcUrls||[];
+ const destinations=route?.destinationConfig?.rpcUrls||[];
+ return (url,method,params)=>{
+  const source=sources.includes(url),destination=destinations.includes(url);
+  if(source===destination)throw Error("Unknown or ambiguous chain RPC for verified transfer");
+  return rpc(source?route.sourceConfig:route.destinationConfig,method,params);
+ };
+}
 export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
  if(!HASH.test(transactionHash||""))throw Error("Invalid canonical source tx");
  const tx=await rpc(route.sourceConfig,"eth_getTransactionByHash",[transactionHash]);
  if(!ADDRESS.test(tx?.from||""))throw Error("Missing canonical source wallet");
  const evidence=await findWalletSourceTx({catalog,account:tx.from,
   sourceChain:route.sourceChain,txHash:transactionHash,
-  rpc:(url,method,params)=>rpc(url===route.sourceConfig.rpcUrls[0]?
-    route.sourceConfig:route.destinationConfig,method,params)});
+  rpc:bindVerifiedTransferRpc(route,rpc)});
  if(!evidence.confirmed||!HASH.test(evidence.messageId||"")||
    norm(evidence.routeId)!==norm(route.routeId)||
    norm(evidence.gateway)!==norm(route.gateway)||
@@ -165,7 +176,7 @@ export function candidateRpc({fetcher=globalThis.fetch,
  return async (chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid candidate source chain");
-  let last=null;
+  let last=null,missing=false;
   for(const url of rpcCandidates(chain,{baseUrls})){
    try{
     const prev=identities.get(url);
@@ -175,9 +186,15 @@ export function candidateRpc({fetcher=globalThis.fetch,
       throw Error("Candidate RPC chain ID mismatch");
      identities.set(url,{chainId:chain.chainId,expire:now()+300000});
     }
-    return await publicRead(url,method,params,fetcher);
+    const result=await publicRead(url,method,params,fetcher);
+    // Receipt propagation can lag behind block finalization on one provider.
+    // Before treating a missing source TX as pending, try verified backups.
+    if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
+      "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
+    return result;
    }catch(error){identities.delete(url);last=error;}
   }
+  if(missing)return null;
   throw Error("All candidate RPCs failed for "+String(chain.name||chain.chainId)+": "+
    String(last?.message||"unknown").slice(0,125));
  };
