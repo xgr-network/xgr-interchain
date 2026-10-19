@@ -230,3 +230,77 @@ for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]
    sourceChain:source,txHash,rpc:f.rpc()}),/not from/);
  });
 }
+
+
+test("source RPC failover works for every connected spoke source, not just Base",async()=>{
+ for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+  const fixture=chainAgnosticScenario(source,chainId);
+  const broken="https://rpc.example/outage-"+source;
+  fixture.catalog.chains[source].rpcUrls=[broken,"https://rpc.example/"+source];
+  const requests=[],good=fixture.rpc();
+  const rpc=async(url,method,params)=>{
+   requests.push({url,method});
+   if(url===broken)throw Error("RPC HTTP 503");
+   return good(url,method,params);
+  };
+  const result=await findWalletSourceTx({catalog:fixture.catalog,
+   account:user,sourceChain:source,txHash,rpc});
+  assert.equal(result.messageId,messageId);
+  assert.equal(result.status,"awaiting-proof");
+  assert.ok(requests.some(x=>x.url===broken&&x.method==="eth_chainId"));
+  assert.ok(requests.some(x=>x.url.endsWith("/"+source)&&x.method==="eth_getTransactionReceipt"));
+ }
+});
+
+test("XGRChain source also selects an independently verified backup RPC",async()=>{
+ const catalog=structuredClone(cat);
+ const wrong="https://rpc.example/wrong-chain";
+ catalog.chains.xgrchain.rpcUrls=[wrong,"https://rpc.example/xgr"];
+ const good=mockRPC().rpc;
+ const result=await findWalletSourceTx({catalog,account:user,sourceChain:"xgrchain",
+  txHash,rpc:async(url,method,params)=>{
+   if(url===wrong)return method==="eth_chainId"?"0x2105":null;
+   return good(url,method,params);
+  }});
+ assert.equal(result.messageId,messageId);
+ assert.equal(result.status,"awaiting-proof");
+});
+
+test("lagging RPC null receipt does not mask a mined canonical source",async()=>{
+ const fixture=chainAgnosticScenario("base",8453);
+ const lagging="https://rpc.example/lagging-base";
+ fixture.catalog.chains.base.rpcUrls=[lagging,"https://rpc.example/base"];
+ const good=fixture.rpc();
+ const rpc=async(url,method,params)=>{
+  if(url===lagging){
+   if(method==="eth_chainId")return "0x2105";
+   if(method==="eth_getTransactionReceipt")return null;
+  }
+  return good(url,method,params);
+ };
+ const result=await findWalletSourceTx({catalog:fixture.catalog,
+  account:user,sourceChain:"base",txHash,rpc});
+ assert.equal(result.confirmed,true);
+ assert.equal(result.messageId,messageId);
+});
+
+test("RPC failover cannot admit a mismatched chain ID or untrusted URL",async()=>{
+ const fixture=chainAgnosticScenario("base",8453);
+ fixture.catalog.chains.base.rpcUrls=[
+  "https://rpc.example/unavailable","https://rpc.example/wrong-chain"];
+ let nonIdentityCalls=0;
+ await assert.rejects(()=>findWalletSourceTx({
+  catalog:fixture.catalog,account:user,sourceChain:"base",txHash,
+  rpc:async(url,method)=>{
+   if(method!=="eth_chainId"){nonIdentityCalls++;return fixture.tx}
+   if(url.endsWith("/unavailable"))throw Error("RPC timeout");
+   return "0x89";
+  }
+ }),/No chain-ID-verified/);
+ assert.equal(nonIdentityCalls,0);
+ fixture.catalog.chains.base.rpcUrls=["http://rpc.example/insecure"];
+ await assert.rejects(()=>findWalletSourceTx({
+  catalog:fixture.catalog,account:user,sourceChain:"base",txHash,
+  rpc:fixture.rpc()
+ }),/Untrusted HTTPS RPC/);
+});

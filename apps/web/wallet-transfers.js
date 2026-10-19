@@ -159,15 +159,62 @@ export async function publicRead(url,method,params,fetcher=globalThis.fetch){
   return body.result;
  }finally{clearTimeout(timeout)}
 }
+// Read-only RPC failover is chain-agnostic. Every replacement endpoint is
+// independently chain-ID verified BEFORE it can supply transaction/receipt
+// evidence. A missing recent TX/receipt may also mean a provider is lagging.
 function createReader(chain,fetcher,rpc){
- const url=chain?.rpcUrls?.[0];
- if(typeof url!=="string"||!url.startsWith("https://"))throw Error("Chain RPC URL missing");
- const read=(method,params)=>rpc?rpc(url,method,params):publicRead(url,method,params,fetcher);
- return {read,verify:async()=>{
-  const id=await read("eth_chainId",[]);
+ const configured=chain?.rpcUrls;
+ if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<=0||
+    !Array.isArray(configured)||configured.length===0||configured.length>8)
+  throw Error("Source or destination chain RPC configuration missing");
+ const urls=[...new Set(configured)];
+ for(const url of urls){
+  let parsed;
+  try{parsed=new URL(url)}catch{throw Error("Untrusted HTTPS RPC endpoint")}
+  if(typeof url!=="string"||url.length>500||parsed.protocol!=="https:"||
+     !parsed.hostname||parsed.username||parsed.password||parsed.hash)
+   throw Error("Untrusted HTTPS RPC endpoint");
+ }
+ const call=(url,method,params)=>rpc?rpc(url,method,params):
+  publicRead(url,method,params,fetcher);
+ const checkIdentity=async(url)=>{
+  const id=await call(url,"eth_chainId",[]);
   if(!QTY.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
    throw Error("Source or destination RPC chain mismatch");
- }};
+ };
+ let current=null;
+ const verify=async()=>{
+  let last;
+  for(const url of urls){
+   try{await checkIdentity(url);current=url;return}
+   catch(error){last=error}
+  }
+  throw Error("No chain-ID-verified source or destination RPC available: "+
+   String(last?.message||"unknown").slice(0,120));
+ };
+ const read=async(method,params)=>{
+  if(!current)await verify();
+  let missing=false,last;
+  const candidates=[current,...urls.filter(url=>url!==current)];
+  for(const url of candidates){
+   try{
+    if(url!==current)await checkIdentity(url);
+    const value=await call(url,method,params);
+    // Not-found is nonfinal evidence. Before reporting pending, check
+    // verified alternatives (which may have a fresher TX / receipt).
+    if(value===null&&["eth_getTransactionByHash","eth_getTransactionReceipt"].includes(method)){
+     missing=true;
+     continue;
+    }
+    current=url;
+    return value;
+   }catch(error){last=error}
+  }
+  if(missing)return null;
+  throw Error("All verified source or destination RPCs failed: "+
+   String(last?.message||"unknown").slice(0,120));
+ };
+ return {read,verify};
 }
 const hex=x=>"0x"+BigInt(x).toString(16);
 function validateOperation(log,route){
