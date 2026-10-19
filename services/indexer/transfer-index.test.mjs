@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,
- checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc} from "./transfer-index.mjs";
+ checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
 import {commitWindow,catchUpRoute} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
@@ -201,4 +201,25 @@ test("known Base tx hash checks skip archive-only gate but still fail over and v
  assert.equal(response.transactionHash,"0x"+"a".repeat(64));
  assert.ok(calls.some(c=>c[0]===b&&c[1]==="eth_getTransactionReceipt"));
  assert.ok(!calls.some(c=>c[1]==="eth_getLogs"),"No archive probe on a known hash");
+});
+
+test("verified transfer RPC routing supports every source and destination backup",async()=>{
+ const r={sourceConfig:{chainId:8453,rpcUrls:["https://s.one","https://s.two"]},
+  destinationConfig:{chainId:1643,rpcUrls:["https://d.one","https://d.two"]}};
+ const read=bindVerifiedTransferRpc(r,async(chain)=>chain.chainId);
+ assert.equal(await read("https://s.two","eth_call",[]),8453);
+ assert.equal(await read("https://d.two","eth_call",[]),1643);
+ await assert.rejects(()=>read("https://unknown","eth_call",[]),/Unknown or ambiguous/);
+ const shared={...r,destinationConfig:{...r.destinationConfig,rpcUrls:["https://s.two"]}};
+ await assert.rejects(()=>bindVerifiedTransferRpc(shared,async()=>1)("https://s.two","eth_call",[]),/Unknown or ambiguous/);
+});
+
+test("candidate RPC reads confirmed TX from fallback after primary returns null",async()=>{
+ const read=candidateRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);
+  const result=method==="eth_chainId"?"0x2105":url.endsWith("/first")?null:{transactionHash:hash("d")};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})};
+ }});
+ const chain={name:"base",chainId:8453,rpcUrls:["https://source.test/first","https://source.test/second"]};
+ assert.equal((await read(chain,"eth_getTransactionReceipt",[hash("d")])).transactionHash,hash("d"));
 });
