@@ -43,3 +43,11 @@ test("without deployed routes, import is disabled and does not invent wallet his
  assert.match(html,/Transfer index unavailable/);
  assert.doesNotMatch(html,/data-message-id/);
 });
+
+test("manual source TX hash is optional while wallet discovery is primary",()=>{
+ const html=renderMyTransfers({account,catalog:cat});
+ assert.match(html,/normally discovers transfers automatically/);
+ assert.match(html,/<details class="ux-transfer-lookup">/);
+ assert.match(html,/optional\)<\/summary>/);
+ assert.match(html,/id="xita-lookup-form"/);
+});
