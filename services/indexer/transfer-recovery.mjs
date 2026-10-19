@@ -123,6 +123,32 @@ export function classifyRecoveryFailure(err,stderr=""){
 export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
 }
+// Qualify the actual route, not an unrelated historical Base test block.
+export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
+ try{
+  const call=(method,params)=>readPublicRpc(url,method,params,{fetcher,ms});
+  if(BigInt(await call("eth_chainId",[]))!==BigInt(configured.env.ORIGIN_CHAIN_ID))
+   throw Error("Source chain identity mismatch");
+  const txHash=configured.env.SOURCE_TX_HASH;
+  if(txHash){
+   const receipt=await call("eth_getTransactionReceipt",[txHash]);
+   if(!receipt||!same(receipt.transactionHash,txHash)||receipt.status!=="0x1")
+    throw Error("Original source receipt unavailable");
+   const block=receipt.blockNumber;
+   if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
+   const logs=await call("eth_getLogs",[{
+    address:configured.env.ORIGIN_MERKLE_TREE_HOOK,
+    fromBlock:block,toBlock:block
+   }]);
+   if(!Array.isArray(logs)||!logs.some(x=>same(x.transactionHash,txHash)))
+    throw Error("Source Merkle insertion logs unavailable");
+  }else{
+   const head=await call("eth_blockNumber",[]);
+   if(!/^0x[0-9a-f]+$/i.test(head||""))throw Error("Source head unavailable");
+  }
+  return {ok:true};
+ }catch(error){return {ok:false,error:String(error.message||error).slice(0,170)};}
+}
 const baseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",
  "source-receipt","merkle-proof","simulate-base-delivery","base-archive"
@@ -151,7 +177,7 @@ async function runRecoveryAttempt(configured,timeoutMs){
  });
 }
 export async function runRecoveryProcess(configured,{timeoutMs=45000,
- archiveProbe=probeBaseArchive,fetcher=globalThis.fetch,
+ archiveProbe=probeRouteSourceRpc,fetcher=globalThis.fetch,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
  // Base historical RPC prequalification is applicable ONLY when Base is
  // either the source or destination. Other EVM routes must not depend on
@@ -166,7 +192,7 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
   const url=candidates[i];
   try{
    if(deadline-Date.now()<6000)break;
-   const qualified=await archiveProbe(url,{fetcher,ms:6000});
+   const qualified=await archiveProbe(url,configured,{fetcher,ms:6000});
    if(!qualified?.ok)continue;
    const env={...configured.env};
    if(Number(env.ORIGIN_CHAIN_ID)===8453)env.ORIGIN_RPC_URL=url;
