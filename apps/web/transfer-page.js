@@ -62,14 +62,14 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    "Transfer index unavailable. Older transfers may be found by source TX hash.")+'</span></div>'+
   (notice?'<p class="ux-transfer-notice" role="status">'+esc(notice)+'</p>':'')+
   (error?'<p class="ux-transfer-error" role="alert">'+esc(error)+'</p>':'')+
-  '<section class="ux-transfer-lookup"><h2>Find a previous transfer</h2>'+
-  '<p class="ux-small">Paste the FIRST/source transaction hash, including if you changed devices. The original wallet must be connected. Recovery never calls TX 1 again.</p>'+
+  '<details class="ux-transfer-lookup"><summary>Advanced: manually verify a source transaction (optional)</summary>'+
+  '<p class="ux-small">XITA normally discovers transfers automatically using your connected wallet. A TX hash is only an optional diagnostic fallback. Recovery never calls TX 1 again.</p>'+
   '<form id="xita-lookup-form"><label>Source chain<select name="sourceChain" required>'+
     (options||'<option value="">No deployed source route</option>')+'</select></label>'+
    '<label>Source transaction hash<input name="txHash" type="text" spellcheck="false" autocomplete="off"'+
    ' placeholder="0x…" minlength="66" maxlength="66" required></label>'+
    '<button type="submit"'+(available.length===0?" disabled":"")+'>Find transfer</button></form>'+
-  '</section>'+
+  '</details>'+
   '<section class="ux-transfer-cards"><h2>Wallet transfers and unconfirmed source transactions</h2>'+
   (cards||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
   '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Unsigned proofs are built from canonical chain events and validator attestations; only the connected wallet can sign destination gas.</p>'+
