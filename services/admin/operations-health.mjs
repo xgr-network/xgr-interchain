@@ -6,6 +6,8 @@ import {promisify} from "node:util";
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
  {id:"admin",title:"Admin API",group:"Core",unit:"xita-admin.service"},
+ {id:"web-proxy",title:"Nginx HTTPS Gateway",group:"Core",unit:"nginx.service"},
+ {id:"postgresql",title:"PostgreSQL",group:"Core",unit:"postgresql.service"},
  {id:"metrics-api",title:"Metrics / Proof Builder API",group:"Indexer",unit:"xita-indexer.service"},
  {id:"transfer-worker",title:"Transfer Index Worker",group:"Indexer",unit:"xita-transfer-indexer.service"},
  {id:"transfer-intake",title:"TX Announcement Intake",group:"Indexer",unit:"xita-transfer-intake.service",optional:true},
@@ -27,7 +29,8 @@ const HTTP_TARGETS=Object.freeze([
  {id:"quote-api",title:"Fee Quote API",port:4092,path:"/api/xita/v1/managed/health",group:"Managed Services",optional:true},
  {id:"preview-api",title:"Fee Preview API",port:4093,path:"/api/xita/v1/managed/health",group:"Managed Services",optional:true}
 ]);
-const safeNumber=x=>Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
+const safeNumber=x=>x===null||x===undefined||x===""?null:
+ Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
 const safeDate=x=>{
  if(typeof x!=="string")return null;
  const n=Date.parse(x);
@@ -146,14 +149,16 @@ export async function probeChain(chain,{fetcher=globalThis.fetch,timeoutMs=3000}
 }
 function aggregateState(units,checks,indexer,chains){
  // Not-installed optional services are informational, not a green check.
- const relevant=units.filter(x=>x.state!=="not-installed"&&
-  !(x.optional&&x.state==="unknown"));
- const serious=relevant.some(x=>x.state==="down"||x.state==="disabled")||
-  checks.some(x=>x.state==="unavailable"&&!x.optional)||indexer.state==="stalled";
+ const relevant=units.filter(x=>!(x.optional&&
+  ["not-installed","unknown"].includes(x.state)));
+ const serious=relevant.some(x=>
+  ["down","disabled","not-installed"].includes(x.state))||
+  checks.some(x=>x.state==="unavailable"&&!x.optional)||
+  indexer.state==="stalled";
  const partial=serious||relevant.some(x=>x.state==="unknown"||x.state==="warning")||
-  checks.some(x=>x.state==="unavailable"||x.state==="warning")||
+  checks.some(x=>!x.optional&&["unavailable","warning"].includes(x.state))||
   (indexer.state!=="ok"&&indexer.state!=="not-configured")||
-  chains.some(x=>x.state!=="ok");
+  chains.some(x=>!["ok","fallback"].includes(x.state));
  return serious?"degraded":partial?"warning":"ok";
 }
 export async function collectOperationsHealth({
@@ -183,15 +188,26 @@ export async function collectOperationsHealth({
     attempted:0,head:null,state:"unavailable"}}
   }))
  ]);
- const api=probes.find(p=>p.id==="indexer-api");
- const stats=probes.find(p=>p.id==="transfer-stats");
- const proof=probes.find(p=>p.id==="proof-builder");
+ // Optional inactive components must not make a healthy deployment yellow.
+ // Preserve the probe state if the endpoint responds despite missing systemd.
+ const optionalServiceByProbe={
+  "transfer-intake-api":"transfer-intake",
+  "quote-api":"quote","preview-api":"preview"
+ };
+ const observedProbes=probes.map(p=>{
+  const unit=units.find(s=>s.id===optionalServiceByProbe[p.id]);
+  if(p.optional&&unit?.state==="not-installed"&&p.state==="unavailable")
+   return {...p,state:"not-installed"};
+  return p;
+ });
+ const api=observedProbes.find(p=>p.id==="indexer-api");
+ const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
  const evidence=summarizeEvidence(api?.data);
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
    "transfer-intake":["transfer-intake-api"],quote:["quote-api"],preview:["preview-api"]}[unit.id]||[];
-  const observed=probes.filter(p=>linked.includes(p.id));
+  const observed=observedProbes.filter(p=>linked.includes(p.id));
   let state=unit.state;
   if(unit.state==="ok"&&observed.some(p=>p.state!=="ok"))
    state="warning";
@@ -201,13 +217,15 @@ export async function collectOperationsHealth({
    state="warning";
   return {...unit,state};
  });
- const checks=probes.map(p=>({
+ const checks=observedProbes.map(p=>({
   id:p.id,title:p.title,group:p.group,optional:Boolean(p.optional),
   state:p.state,
   ...(p.id==="proof-builder"&&p.data?{installationOnly:true}:{}),
   ...(p.id==="quote-api"&&p.data?{enabledChains:Array.isArray(p.data.enabledChains)?
    p.data.enabledChains.filter(x=>/^[a-z0-9-]+$/.test(x)).slice(0,20):[]}:{}),
  }));
+ // Evidence is diagnostic: a responding API alone cannot establish that
+ // the TVL/market verification worker has produced fresh evidence.
  const status=aggregateState(services,checks,indexer,chains);
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
