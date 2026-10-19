@@ -26,7 +26,8 @@ const toUint=v=>{if(typeof v!=="string"||!DECIMAL.test(v))throw Error("Invalid p
 const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
- readExecutionOwner,readQuoteLifetime,getDestinationGasQuote,getCoinGeckoSnapshot,
+ readExecutionOwner,readQuoteLifetime,readSourceBlockTimestamp,
+ getDestinationGasQuote,getCoinGeckoSnapshot,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout,
@@ -60,14 +61,15 @@ export async function buildManagedQuote({
  const secondRoute=second?.[0]??null;
  const stageChains=[firstDestination,...(secondRoute?[destination]:[])];
  const gasByChain=new Map;
- const [bridge,priceData,onChainLifetime,secondBridge]=await Promise.all([
+ const [bridge,priceData,onChainLifetime,secondBridge,sourceTipTimestamp]=await Promise.all([
   readGatewayQuote({source,route,destinationDomain:dst.domainId,
    recipient:zeroPadValue(recipientAddress,32),amount}),
   getCoinGeckoSnapshot({source,destination}),
   readQuoteLifetime({source,executionAddress:execution}),
   secondRoute?readGatewayQuote({source:"xgrchain",route:secondRoute,
    destinationDomain:finalChain.domainId,
-   recipient:zeroPadValue(recipientAddress,32),amount}):Promise.resolve(null)
+   recipient:zeroPadValue(recipientAddress,32),amount}):Promise.resolve(null),
+  preview?Promise.resolve(null):readSourceBlockTimestamp?.({source,executionAddress:execution})
  ]);
  if(!Number.isSafeInteger(Number(dst?.domainId))||dst.domainId<1)
   throw Error("Invalid first destination domain");
@@ -110,9 +112,23 @@ export async function buildManagedQuote({
  const ttl=BigInt(onChainLifetime);
  if(ttl<1n||ttl>90n)throw Error("Invalid deployed fee quote lifetime");
  const now=clock();
- const issuedAt=Math.floor(now/1000);
- if(!Number.isSafeInteger(issuedAt)||issuedAt<1)
+ const wallSecond=Math.floor(now/1000);
+ if(!Number.isSafeInteger(wallSecond)||wallSecond<1)
   throw Error("Invalid quote issuance clock");
+ let issuedAt=wallSecond;
+ if(!preview){
+  // The contract rejects issuedAt > block.timestamp, even by one second.
+  // Service wall clocks can run ahead of the latest Base/XGRChain block.
+  // Bind to the live SOURCE BLOCK and add a small three-second safety margin
+  // for wallets using a second slightly lagging RPC.
+  const tipSecond=Number(sourceTipTimestamp);
+  if(!Number.isSafeInteger(tipSecond)||tipSecond<1||
+     tipSecond>wallSecond+5||wallSecond-tipSecond>15)
+   throw Error("Source chain tip clock unavailable or stale; no fee quote signed");
+  issuedAt=Math.min(wallSecond,tipSecond)-3;
+  if(issuedAt<1||wallSecond-issuedAt>20)
+   throw Error("Source chain timestamp cannot safely issue fee quote");
+ }
  const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
  const fee=quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
