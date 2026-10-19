@@ -810,7 +810,7 @@ el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
 
 let healthBusy=false;
-const healthPill=state=>'<span class="health-pill health-'+esc(state||"unknown")+'">'+esc(({ok:"OK",fallback:"Fallback",down:"Ausgefallen",disabled:"Deaktiviert",warning:"Prüfen",degraded:"Gestört",unknown:"Unbekannt",unavailable:"Nicht erreichbar",stalled:"Veraltet", "catching-up":"Holt auf","not-installed":"Nicht installiert","not-configured":"Keine Routen",fresh:"Aktuell",stale:"Veraltet",missing:"Fehlt",invalid:"Ungültig"})[state]||state||"Unbekannt")+'</span>';
+const healthPill=state=>'<span class="health-pill health-'+esc(state||"unknown")+'">'+esc(({ok:"OK",fallback:"Fallback",down:"Ausgefallen",failed:"Fehlgeschlagen",stopped:"Unerwartet gestoppt",inactive:"Inaktiv", "not-enabled":"Nicht aktiviert",disabled:"Deaktiviert",warning:"Prüfen",degraded:"Gestört",unknown:"Unbekannt",unavailable:"Nicht erreichbar",stalled:"Veraltet", "catching-up":"Holt auf","not-installed":"Nicht installiert","not-configured":"Keine Routen",fresh:"Aktuell",stale:"Veraltet",missing:"Fehlt",invalid:"Ungültig"})[state]||state||"Unbekannt")+'</span>';
 const healthValue=n=>Number.isSafeInteger(n)?n.toLocaleString("de-DE"):"—";
 function healthTile(name,state,info="",detail=""){
  return '<article class="health-tile"><div class="health-tile-head"><strong>'+esc(name)+'</strong>'+healthPill(state)+'</div><p>'+esc(info)+'</p>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</article>';
@@ -833,7 +833,7 @@ async function refreshOperationsHealth(){
   el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
    '<tr><td>'+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
    '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
-  el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),s.restarts!==null?"Neustarts: "+s.restarts:"")).join("");
+  el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
   el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
    c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
    c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");
