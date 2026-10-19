@@ -137,6 +137,13 @@ async function createQuote(request,{preview=false}={}){
      await client.getBalance(address):0n;
     return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
    },
+  readSourceBlockTimestamp:async({source:sourceChain})=>{
+    const provider=await chain(sourceChain);
+    const block=await provider.getBlock("latest");
+    if(!block||!Number.isSafeInteger(block.timestamp)||block.timestamp<1)
+     throw Error("Cannot verify live source-chain block time");
+    return block.timestamp;
+  },
   getCoinGeckoSnapshot:getSnapshot,preview
  });
  if(preview){
