@@ -8,6 +8,15 @@ permissions:
   contents: read
 
 jobs:
+  fresh-deployment-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject old XITA deployment generation, receipts and routes
+        run: node tools/assert-xita-v320-fresh-deploy.mjs
+      - name: Verify generation guard
+        run: node --test tools/assert-xita-v320-fresh-deploy.test.mjs
+
   admin:
     runs-on: ubuntu-latest
     steps:
