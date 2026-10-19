@@ -237,13 +237,15 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
  const matchingTarget=related.some(rt=>
   normalize(tx.to)===normalize(rt.gateway)||
   rt.executionAdapter&&normalize(tx.to)===normalize(rt.executionAdapter));
- if(normalize(tx.from)!==normalize(hint.account)||!matchingTarget||
+ if(normalize(tx.from)!==normalize(hint.account)||
    normalize(tx.hash)!==normalize(hint.source_tx_hash)){
   await setAnnouncementState(pool,hint,"rejected",{now,retry:false});return {status:"rejected"};
  }
  const receipt=await rpc(chain,"eth_getTransactionReceipt",[hint.source_tx_hash]);
  if(!receipt){
-  await setAnnouncementState(pool,hint,"observed",{now});return {status:"observed"};
+  // Unknown intermediary cannot be advertised as a verified pending bridge.
+  const state=matchingTarget?"observed":"reported";
+  await setAnnouncementState(pool,hint,state,{now});return {status:state};
  }
  if(normalize(receipt.transactionHash)!==normalize(hint.source_tx_hash)||
    normalize(receipt.from)!==normalize(hint.account)||
@@ -293,6 +295,12 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
  }
  const {route,event}=matches[0];
  const record=await verify({catalog,route,transactionHash:hint.source_tx_hash,rpc});
+ if(!matchingTarget&&!(route.executionAdapter&&
+   normalize(record.executionAdapter)===normalize(route.executionAdapter)&&
+   (record.interchainFeeWei!=null||record.parentMessageId!=null))){
+  await setAnnouncementState(pool,hint,"rejected",{now,retry:false});
+  return {status:"rejected"};
+ }
  if(normalize(record.account)!==normalize(hint.account)||
     normalize(record.messageId)!==event.messageId||
     normalize(record.routeId)!==normalize(route.routeId))
@@ -310,6 +318,27 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
     blockNumber,event.blockHash,event.messageId]});
  });
  return {status:"indexed",messageId:event.messageId,sourceTxHash:hint.source_tx_hash};
+}
+// Startup-only unverified replay of recent hints rejected by the old
+// outer-target rule. Canonical verification is still required before indexing.
+export async function reopenRecentlyRejectedAnnouncements({pool,limit=200}){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>200)throw Error("Unsafe repair limit");
+ const result=await pool.query({text:`WITH candidates AS (
+  SELECT a.source_chain,a.source_tx_hash,a.account
+  FROM xita_transfer_announcements a
+  WHERE a.state='rejected'
+    AND a.first_reported_at > NOW()-INTERVAL '48 hours'
+    AND NOT EXISTS(SELECT 1 FROM xita_transfer_operations o
+      WHERE o.source_chain=a.source_chain AND o.source_tx_hash=a.source_tx_hash)
+  ORDER BY a.first_reported_at DESC LIMIT $1
+ )
+ UPDATE xita_transfer_announcements a SET state='reported',
+  next_attempt_at=NOW(), attempts=0
+ FROM candidates c
+ WHERE a.source_chain=c.source_chain AND a.source_tx_hash=c.source_tx_hash
+   AND a.account=c.account AND a.state='rejected'
+ RETURNING a.source_tx_hash`,values:[limit]});
+ return result.rows.length;
 }
 export async function processTransferAnnouncements({catalog,routes,pool,rpc,limit=4,now=Date.now()}){
  if(!Number.isInteger(limit)||limit<1||limit>25)throw Error("Unsafe hint batch size");
@@ -452,6 +481,13 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
 export async function runTransferIndexWorker({intervalMs=12000}={}){
  const pool=await transferWriterPool();
  const rpc=canonicalRpc(),hintRpc=candidateRpc();
+ try{
+  const count=await reopenRecentlyRejectedAnnouncements({pool});
+  if(count)console.log("[xita-transfer-hints] restaged",count,"unverified hints");
+ }catch(error){
+  console.warn("[xita-transfer-hints] startup repair unavailable",
+   String(error?.message||error).slice(0,150));
+ }
  let running=true;
  process.once("SIGTERM",()=>{running=false;});
  process.once("SIGINT",()=>{running=false;});
