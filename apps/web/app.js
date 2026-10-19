@@ -387,6 +387,13 @@ async function performTransferAction(){
     result.status==="waiting"?result.notice||"Validator proof pending; retry later.":
     result.status==="failed"?"Destination TX failed; retry only the destination.":
     "Destination TX pending; do not repeat it until chain status is checked.";
+   if(result.status==="waiting"||result.status==="paused"){
+    // Preserve the proof-builder's actual quorum/RPC/stage diagnostic. A
+    // second source lookup would replace this with a generic success notice.
+    await scanWalletHistory();
+    transferActivity.notice=result.notice||transferActivity.notice;
+    return;
+   }
    await lookupWalletTransfer(selected.sourceChain,selected.txHash);
    return;
   }
