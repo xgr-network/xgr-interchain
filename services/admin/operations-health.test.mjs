@@ -57,12 +57,12 @@ test("overall health is sound with absent optional services but flags core failu
 
 test("fee timers distinguish disabled, stopped and actually failed",()=>{
  const timer=UNITS.find(x=>x.id==="gas-sponsor");
- const disabled=parseUnitShow("LoadState=loaded\\nActiveState=inactive\\nUnitFileState=disabled\\n",timer);
+ const disabled=parseUnitShow("LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n",timer);
  assert.equal(disabled.state,"not-enabled");
- const stopped=parseUnitShow("LoadState=loaded\\nActiveState=inactive\\nUnitFileState=enabled\\n",timer);
+ const stopped=parseUnitShow("LoadState=loaded\nActiveState=inactive\nUnitFileState=enabled\n",timer);
  assert.equal(stopped.state,"stopped");
- assert.equal(parseUnitShow("LoadState=loaded\\nActiveState=failed\\nUnitFileState=enabled\\n",timer).state,"failed");
- const active=parseUnitShow("LoadState=loaded\\nActiveState=active\\nUnitFileState=enabled\\nNextElapseUSecRealtime=Mon 2026-10-19 16:50:00 CEST\\n",timer);
+ assert.equal(parseUnitShow("LoadState=loaded\nActiveState=failed\nUnitFileState=enabled\n",timer).state,"failed");
+ const active=parseUnitShow("LoadState=loaded\nActiveState=active\nUnitFileState=enabled\nNextElapseUSecRealtime=Mon 2026-10-19 16:50:00 CEST\n",timer);
  assert.equal(active.state,"ok");
  assert.match(active.nextTrigger,/2026-10-19/);
  assert.equal(UNITS.find(x=>x.id==="quote").unit,"xita-interchain-fee-quote.service");
