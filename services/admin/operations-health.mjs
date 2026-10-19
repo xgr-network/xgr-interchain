@@ -13,7 +13,7 @@ export const UNITS=Object.freeze([
  {id:"transfer-worker",title:"Transfer Index Worker",group:"Indexer",unit:"xita-transfer-indexer.service"},
  {id:"transfer-intake",title:"TX Announcement Intake",group:"Indexer",unit:"xita-transfer-intake.service",optional:true},
  {id:"tvl-worker",title:"Verified TVL Worker",group:"Indexer",unit:"xita-tvl.service",optional:true},
- {id:"quote",title:"Fee Quote Signer",group:"Managed Services",unit:"xita-managed-quote.service",optional:true},
+ {id:"quote",title:"Fee Quote Signer",group:"Managed Services",unit:"xita-interchain-fee-quote.service",optional:true},
  {id:"preview",title:"Fee Preview",group:"Managed Services",unit:"xita-fee-preview.service",optional:true},
  {id:"managed-relayer",title:"Managed Relay Worker",group:"Managed Services",unit:"xita-managed-relayer.service",optional:true},
  {id:"gas-sponsor",title:"Gas Sponsoring Timer",group:"Managed Services",unit:"xita-gas-sponsor.timer",optional:true},
@@ -41,23 +41,36 @@ export function parseUnitShow(text,definition){
  if(typeof text!=="string"||text.length>16000)throw Error("Unexpected systemd reply");
  const fields=Object.fromEntries(text.split(/\r?\n/).filter(x=>x.includes("=")).map(x=>[x.slice(0,x.indexOf("=")),x.slice(x.indexOf("=")+1)]));
  const load=fields.LoadState,active=fields.ActiveState,sub=fields.SubState||null;
+ const unitFileState=fields.UnitFileState||null;
  let state="unknown";
  if(load==="not-found")state="not-installed";
+ else if(load==="masked"||unitFileState==="masked")state="disabled";
  else if(load==="loaded"&&active==="active")state="ok";
- else if(load==="loaded"&&["inactive","failed","activating","deactivating"].includes(active))
-  state=active==="activating"?"warning":"down";
- else if(load==="masked")state="disabled";
+ else if(load==="loaded"&&active==="failed")state="failed";
+ else if(load==="loaded"&&active==="inactive"){
+  // "inactive" alone is not a crash. In particular, fee Claim and Gas
+  // Sponsoring timers are deliberately inactive under install-fee-preview.
+  // A disabled unit is intentionally not scheduled; an *enabled* inactive
+  // unit is unexpectedly stopped, but has not necessarily failed.
+  state=unitFileState==="disabled"||unitFileState==="indirect"?"not-enabled":
+   ["enabled","enabled-runtime","linked","linked-runtime"].includes(unitFileState)?"stopped":"inactive";
+ }else if(load==="loaded"&&["activating","deactivating","reloading"].includes(active))
+  state="warning";
+ const timer=definition.unit.endsWith(".timer");
+ const systemdTime=x=>typeof x==="string"&&x!=="n/a"&&x!=="0"&&x.length<110?x:null;
  return {
   id:definition.id,title:definition.title,group:definition.group,
   unit:definition.unit,optional:Boolean(definition.optional),
-  state,active:active||null,sub,
-  restarts:safeNumber(fields.NRestarts)
+  state,active:active||null,sub,unitFileState,
+  restarts:safeNumber(fields.NRestarts),
+  ...(timer?{lastTrigger:systemdTime(fields.LastTriggerUSec),
+   nextTrigger:systemdTime(fields.NextElapseUSecRealtime)}:{})
  };
 }
 export async function readSystemdUnit(unit){
  if(!UNIT_NAMES.has(unit))throw Error("Unrecognized monitoring unit");
  const {stdout}=await execFileAsync("systemctl",[
-  "show",unit,"--no-pager","--property=LoadState,ActiveState,SubState,NRestarts"
+  "show",unit,"--no-pager","--property=LoadState,ActiveState,SubState,UnitFileState,NRestarts,LastTriggerUSec,NextElapseUSecRealtime"
  ],{timeout:2500,maxBuffer:16000,encoding:"utf8"});
  return stdout;
 }
@@ -166,9 +179,9 @@ export async function probeChain(chain,{fetcher=globalThis.fetch,timeoutMs=3000}
 function aggregateState(units,checks,indexer,chains){
  // Not-installed optional services are informational, not a green check.
  const relevant=units.filter(x=>!(x.optional&&
-  ["not-installed","unknown"].includes(x.state)));
+  ["not-installed","unknown","not-enabled","inactive"].includes(x.state)));
  const serious=relevant.some(x=>
-  ["down","disabled","not-installed"].includes(x.state))||
+  ["failed","stopped","disabled","not-installed"].includes(x.state))||
   checks.some(x=>x.state==="unavailable"&&!x.optional)||
   indexer.state==="stalled";
  const partial=serious||relevant.some(x=>x.state==="unknown"||x.state==="warning")||
@@ -248,7 +261,7 @@ export async function collectOperationsHealth({
   services,checks,indexer,evidence,chains,
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
-   servicesDown:services.filter(s=>s.state==="down").length,
+   servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
    servicesNotInstalled:services.filter(s=>s.state==="not-installed").length,
    chainsReachable:chains.filter(c=>["ok","fallback"].includes(c.state)).length,
    chainsConfigured:chains.length},

@@ -85,3 +85,5 @@
 .health-table small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
 #health-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 @media(max-width:700px){.health-grid{grid-template-columns:1fr}.health-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.health-failed,.health-stopped{color:#f3a4a8;border-color:#9f5258}.health-not-enabled,.health-inactive{color:#aab8c8;border-color:#5a687a}
