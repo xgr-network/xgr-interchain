@@ -120,7 +120,13 @@ export async function readWalletTransferIndex(catalog,account,{
     FROM xita_transfer_operations p
     WHERE p.account=$1 AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
       OR (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
-    ORDER BY p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT $3`,
+    -- Always surface unresolved work before older/newer completed transfers.
+    -- A 100-row wallet page must not hide a pending bridge behind 100
+    -- completed transactions. Do not infer delivery from pagination.
+    ORDER BY CASE WHEN (p.delivered IS DISTINCT FROM TRUE OR
+      (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
+      THEN 0 ELSE 1 END,
+      p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT $3`,
   values:[lowercase(account),onlyPending,limit]
  });
  const totals=await connected.query({text:`SELECT
