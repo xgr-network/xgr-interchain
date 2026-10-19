@@ -22,6 +22,7 @@ import {createChainOperator} from "./chain-operator.mjs";
 import {createAssetOperator} from "./asset-operator.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
+import {collectOperationsHealth} from "./operations-health.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -154,6 +155,9 @@ http.createServer(async(req,res)=>{
  try{
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
+  if(req.method==="GET"&&path==="/admin/api/operations/health"){
+   return reply(res,200,await collectOperationsHealth({catalog:load("apps/web/catalog.json")}));
+  }
   if(req.method==="GET"&&path==="/admin/api/deployment-sync/status"){
    return reply(res,200,{ok:true,sync:deploymentSyncDiagnostic()});
   }
