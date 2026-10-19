@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {inspectAnnouncedTx,reconcileAnnouncedBlocks,
- processTransferAnnouncements} from "./transfer-index-worker.mjs";
+ processTransferAnnouncements,reopenRecentlyRejectedAnnouncements} from "./transfer-index-worker.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const account=addr("a"),txHash=hash("b"),blockHash=hash("c"),id=hash("d"),routeId=hash("e");
 const route={sourceChain:"xgrchain",destinationChain:"base",routeName:"xgr_to_base",
@@ -121,4 +121,28 @@ test("untrusted hash queue is strictly bounded",async()=>{
  assert.equal(x.selected,0);
  await assert.rejects(()=>processTransferAnnouncements({
   catalog:{},routes:[route],pool,rpc:mock(),limit:100}),/Unsafe/);
+});
+
+test("wrapped wallet target is accepted only with matching fee adapter evidence",async()=>{
+ const wrapper=addr("9"),feeAdapter=addr("2"),configured={...route,executionAdapter:feeAdapter};
+ const tx={...transaction,to:wrapper},rcpt={...receipt,to:wrapper};
+ const success=await inspectAnnouncedTx({catalog:{},routes:[configured],hint,pool:db(),
+  rpc:mock({tx,rcpt}),verify:async()=>({...await validProof(),
+   executionAdapter:feeAdapter,interchainFeeWei:"20"})});
+ assert.equal(success.status,"indexed");
+ const failure=await inspectAnnouncedTx({catalog:{},routes:[configured],hint,pool:db(),
+  rpc:mock({tx,rcpt}),verify:validProof});
+ assert.equal(failure.status,"rejected");
+ const pending=await inspectAnnouncedTx({catalog:{},routes:[configured],hint,pool:db(),
+  rpc:mock({tx,rcpt:null})});
+ assert.equal(pending.status,"reported");
+});
+
+test("recently rejected announcements can be restaged without trusting them",async()=>{
+ const calls=[],pool={query:async arg=>{calls.push(arg);return {rows:[{source_tx_hash:txHash}]}}};
+ assert.equal(await reopenRecentlyRejectedAnnouncements({pool}),1);
+ assert.match(calls[0].text,/state='rejected'/);
+ assert.match(calls[0].text,/NOT EXISTS/);
+ assert.match(calls[0].text,/state='reported'/);
+ await assert.rejects(()=>reopenRecentlyRejectedAnnouncements({pool,limit:201}),/Unsafe repair limit/);
 });
