@@ -60,3 +60,28 @@
 .component-row.is-fee-gateway>span:first-child{display:block;max-width:none;overflow-wrap:normal;word-break:normal;line-height:1.5}
 .component-row.is-fee-gateway .component-controls{justify-content:flex-start}
 .component-row.is-fee-gateway .component-controls button{white-space:normal}
+
+/* Read-only Operations Health dashboard */
+.health-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0 24px}
+.health-kpi{background:#172636;border:1px solid var(--line);border-radius:10px;padding:15px}
+.health-kpi strong{display:block;font-size:23px;font-variant-numeric:tabular-nums}
+.health-kpi span{display:block;color:var(--muted);font-size:11px;margin-top:6px}
+#health h3{font-size:15px;margin:24px 0 12px}
+.health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:12px}
+.health-tile{border:1px solid var(--line);background:#111e2d;border-radius:11px;padding:14px;min-width:0}
+.health-tile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.health-tile-head strong{font-size:12px;overflow-wrap:anywhere}
+.health-tile p{margin:9px 0 0;font-size:11px;overflow-wrap:anywhere}
+.health-tile small{display:block;margin-top:6px;color:var(--muted);overflow-wrap:anywhere}
+.health-pill{display:inline-block;border:1px solid #586476;border-radius:7px;padding:5px 8px;font-size:10px;font-weight:800;white-space:nowrap;color:#aabed3}
+.health-ok,.health-fresh{color:#80dec2;border-color:#427963}
+.health-fallback,.health-warning,.health-catching-up,.health-stale{color:#f4ca88;border-color:#927c52}
+.health-down,.health-degraded,.health-unavailable,.health-stalled,.health-invalid{color:#f3a4a8;border-color:#9f5258}
+.health-not-installed,.health-not-configured,.health-unknown{color:#aab8c8;border-color:#5a687a}
+.health-table-wrap{overflow-x:auto}
+.health-table{width:100%;border-collapse:collapse;font-size:12px}
+.health-table th{text-align:left;font-size:10px;text-transform:uppercase;color:var(--muted);font-weight:700;letter-spacing:.07em}
+.health-table th,.health-table td{padding:11px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+.health-table small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+#health-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+@media(max-width:700px){.health-grid{grid-template-columns:1fr}.health-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}

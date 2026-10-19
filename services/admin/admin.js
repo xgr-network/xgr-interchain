@@ -809,8 +809,42 @@ el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
 
-for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();if(a.dataset.view==="treasury")void refreshFeeTreasury();});
-setView(["assets","infrastructure","treasury"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
+let healthBusy=false;
+const healthPill=state=>'<span class="health-pill health-'+esc(state||"unknown")+'">'+esc(({ok:"OK",fallback:"Fallback",down:"Ausgefallen",disabled:"Deaktiviert",warning:"Prüfen",degraded:"Gestört",unknown:"Unbekannt",unavailable:"Nicht erreichbar",stalled:"Veraltet", "catching-up":"Holt auf","not-installed":"Nicht installiert","not-configured":"Keine Routen",fresh:"Aktuell",stale:"Veraltet",missing:"Fehlt",invalid:"Ungültig"})[state]||state||"Unbekannt")+'</span>';
+const healthValue=n=>Number.isSafeInteger(n)?n.toLocaleString("de-DE"):"—";
+function healthTile(name,state,info="",detail=""){
+ return '<article class="health-tile"><div class="health-tile-head"><strong>'+esc(name)+'</strong>'+healthPill(state)+'</div><p>'+esc(info)+'</p>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</article>';
+}
+async function refreshOperationsHealth(){
+ if(healthBusy)return;
+ healthBusy=true;
+ el("health-refresh").disabled=true;
+ el("health-status").textContent="Live-Diagnose läuft …";
+ try{
+  const d=await get("/admin/api/operations/health");
+  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Automatische Aktualisierung alle 30 Sekunden bei geöffnetem Tab</span>';
+  el("health-summary").innerHTML=[
+   ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
+   ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
+   ["Chain RPC erreichbar",healthValue(d.summary.chainsReachable)+"/"+healthValue(d.summary.chainsConfigured)],
+   ["Indexer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)]
+  ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
+  const routes=d.indexer.routes||[];
+  el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
+   '<tr><td>'+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
+   '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
+  el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),s.restarts!==null?"Neustarts: "+s.restarts:"")).join("");
+  el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
+   c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
+   c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");
+  el("health-chains").innerHTML=d.chains.map(c=>healthTile(c.name,c.state,
+   "Chain-ID "+c.chainId+" · Head "+healthValue(c.head),
+   c.attempted+" von "+c.configuredEndpoints+" konfigurierten RPCs getestet")).join("");
+ }catch(e){el("health-status").textContent="Health-Diagnose nicht verfügbar: "+e.message;}
+ finally{healthBusy=false;el("health-refresh").disabled=false;}
+}
+for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();if(a.dataset.view==="treasury")void refreshFeeTreasury();if(a.dataset.view==="health")void refreshOperationsHealth();});
+setView(["assets","infrastructure","treasury","health"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
 el("connect-wallet").addEventListener("click",async()=>{
  try{
   const providerList=walletsAvailable();
@@ -834,5 +868,8 @@ async function checkLiveInfrastructure(){
 el("refresh").addEventListener("click",checkLiveInfrastructure);
 el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
 if(location.hash==="#treasury")void refreshFeeTreasury();
+if(location.hash==="#health")void refreshOperationsHealth();
+el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth());
+setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
 loadMainWorkqueue();loadPlan();
 // Chain RPC state is queried only in the dedicated Chains view or on refresh.
