@@ -105,3 +105,22 @@ test("only RPC-observed unconfirmed source hints appear and cannot count as deli
  assert.equal(result.items[0].messageId,null);
  assert.equal(result.openCount,0,"Unconfirmed source is not a mint/unlock");
 });
+
+test("wallet history prioritizes older unfinished transfers before newer completed history",async()=>{
+ const wallet=addr("a"),calls=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;
+  calls.push(sql);
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"1",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_announcements"))return {rows:[]};
+  return {rows:[]};
+ }};
+ await readWalletTransferIndex({},wallet,{pool,routeList:[],limit:100});
+ const sql=calls.find(x=>x.includes("FROM xita_transfer_operations p")&&x.includes("ORDER BY"));
+ assert.ok(sql,"wallet query must have a deterministic worklist ordering");
+ assert.match(sql,/ORDER BY CASE WHEN/);
+ assert.match(sql,/p.delivered IS DISTINCT FROM TRUE/);
+ assert.match(sql,/p.onward_route_id IS NOT NULL AND NOT/);
+ assert.match(sql,/p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT/);
+});
