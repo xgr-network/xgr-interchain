@@ -8,14 +8,18 @@ permissions:
   contents: read
 
 jobs:
-  fresh-deployment-only:
+  retained-contract-compatibility:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject old XITA deployment generation, receipts and routes
-        run: node tools/assert-xita-v320-fresh-deploy.mjs
-      - name: Verify generation guard
-        run: node --test tools/assert-xita-v320-fresh-deploy.test.mjs
+        with:
+          fetch-depth: 0
+      - name: Verify retained mainnet deployments and unchanged Solidity
+        run: node tools/assert-xita-v320-compatible-deploy.mjs
+      - name: Verify no-regression deployment guard
+        run: node --test tools/assert-xita-v320-compatible-deploy.test.mjs
+      - name: Validate active chain and asset inventories
+        run: node tools/validate-manifests.mjs
 
   admin:
     runs-on: ubuntu-latest
