@@ -315,8 +315,10 @@ async function main() {
     "function destinationDomain() view returns (uint32)",
   ],origin);
   const [allocated,feeSetId,vaultGateway,vaultRouteId,vaultDomain]=await Promise.all([
-    feeVault.allocatedOperation(id,{blockTag:checkpointBlock}),
-    feeVault.allocatedSetId(id,{blockTag:checkpointBlock}),
+    // These mappings are write-once on the immutable FeeVault; the signed
+    // checkpoint still must follow the authenticated source receipt.
+    feeVault.allocatedOperation(id),
+    feeVault.allocatedSetId(id),
     feeVault.gateway(),feeVault.routeId(),feeVault.destinationDomain(),
   ]);
   eq("source FeeVault gateway",vaultGateway,originGatewayAddress);
