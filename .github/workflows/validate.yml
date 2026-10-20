@@ -78,6 +78,9 @@ jobs:
 
       - name: Validate persisted wallet TX announcement intake
         run: node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs tools/transfer-intake-nginx.test.mjs
+      - name: Validate local Base RPC throttling, single-flight and safety
+        run: node --test services/rpc-guard/server.test.mjs
+
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
       - name: Validate token-agnostic TVL and 24h escrow gross volume
