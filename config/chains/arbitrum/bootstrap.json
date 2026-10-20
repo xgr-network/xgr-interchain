@@ -14,16 +14,17 @@
     "notes": "Initial Interchain validators are manually selected in genesisValidatorManifest. Public destination BLS proofs are automatically checked; no PoS snapshot required"
   },
   "reserve": {
-    "minimumWei": null,
-    "maxExecutorReimbursementWei": null,
-    "perValidatorWei": null
+    "minimumWei": "50000000000000",
+    "maxExecutorReimbursementWei": "30000000000000",
+    "perValidatorWei": "100000000000000",
+    "notes": "Approved Arbitrum initial Registry V3 economics (operator decision 2026-10-20): same native-ETH reserve parameters as Base: 0.00005 ETH minimum, 0.00003 ETH maximum executor reimbursement, 0.0001 ETH initial reserve per validator (0.0003 ETH for the three existing initial validators), excluding deployment gas. Wallet sender must confirm exact signed value."
   },
   "sourceFee": {
-    "targetWei": null,
+    "targetWei": "100000000000",
     "governance": "validator-bls-quorum",
     "ttlSeconds": 300,
     "initialization": "factory-constructor-no-quorum",
-    "notes": "The initial positive fee is a constructor-bound factory parameter. Nonce starts at 0. Only changes after deployment need BLS validator quorum."
+    "notes": "Approved Arbitrum initial source-native validator fee (operator decision 2026-10-20): same as Base, 0.0000001 ETH (100000000000 wei) per Arbitrum-originating transfer, additional to chain gas. Fixed at Factory constructor with source Registry nonce 0; subsequent changes require validator BLS quorum."
   },
   "notes": "EIP-2537 runtime verifier requires proven precompile support and negative/positive BLS vectors before deployment.",
   "genesisValidatorManifest": "config/validators/initial.json"
