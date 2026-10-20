@@ -35,7 +35,10 @@ export function verifyV320ReplicaProof({
   const checkpointBlock = integer(response.checkpointBlock,"checkpoint block",{positive:true});
   const checkpointIndex = integer(response.checkpointIndex,"checkpoint index");
   const messageIndex = integer(response.messageIndex,"message index");
-  check(checkpointBlock === integer(attestation.sourceBlockNumber,
+  // Hyperlane source tree is append-only. A later verified replica with the
+  // same independently reconstructed root/count proves the signed prefix.
+  // Never accept a replica OLDER than the attested checkpoint.
+  check(checkpointBlock >= integer(attestation.sourceBlockNumber,
     "attestation checkpoint block",{positive:true}) &&
     checkpointIndex === integer(attestation.index,"attestation checkpoint index") &&
     messageIndex <= checkpointIndex,
