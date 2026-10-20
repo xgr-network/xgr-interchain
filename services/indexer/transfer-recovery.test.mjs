@@ -153,7 +153,7 @@ test("actual Base source TX qualifies while unrelated historical archive probes 
   }
  });
  assert.equal(result.ok,true);
- assert.deepEqual(calls,["eth_chainId","eth_getTransactionReceipt","eth_getLogs"]);
+ assert.deepEqual(calls,["eth_chainId","eth_getTransactionReceipt"]);
 });
 test("qualifying Base destination reads actual mailbox delivery state",async()=>{
  const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("8"),"ABC");
@@ -165,4 +165,12 @@ test("qualifying Base destination reads actual mailbox delivery state",async()=>
  }});
  assert.equal(r.ok,true);
  assert.deepEqual(calls,["eth_chainId","eth_call"]);
+});
+
+// The supervising service must preserve the exact last RPC stage when
+// a child is killed at its per-attempt deadline (rather than "unknown").
+test("killed recovery CLI surfaces the last stage without exposing RPC internals",()=>{
+ const failure=classifyRecoveryFailure({killed:true},"XITA_RECOVERY_STAGE:verify-chain-ids\\nXITA_RECOVERY_STAGE:confirmed-fee-vault-allocation\\n");
+ assert.equal(failure.code,"PROOF_TIMEOUT");
+ assert.equal(failure.stage,"confirmed-fee-vault-allocation");
 });
