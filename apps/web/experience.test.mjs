@@ -371,3 +371,23 @@ test("resume query intent never becomes a new source transaction when index unav
  assert.match(other,/Locating previous transfer/);
  assert.match(other,/id="xita-transfer-primary" disabled/);
 });
+
+test("completed Base to XGR delivery is success, never unresolved or repeat-signable",()=>{
+ const live=JSON.parse(readFileSync(new URL("catalog.json",import.meta.url),"utf8"));
+ const m=buildExperienceModel(live),account="0x"+"a".repeat(40),txHash="0x"+"d".repeat(64);
+ const completed={account,asset:"XGR",sourceChain:"base",destinationChain:"xgrchain",
+  txHash,messageId:"0x"+"e".repeat(64),confirmed:true,delivered:true,status:"delivered"};
+ const html=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",
+  {account},{items:[completed],selectedTxHash:txHash});
+ assert.match(html,/Destination delivery confirmed/);
+ assert.match(html,/Transfer complete/);
+ assert.match(html,/2 \/ 2/);
+ assert.match(html,/No further transaction is required/);
+ assert.match(html,/id="xita-transfer-primary" disabled/);
+ assert.doesNotMatch(html,/Previous transfer not yet verified|Original transfer has not yet been found/);
+ assert.doesNotMatch(html,/Continue delivery/);
+ const foreign=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",
+  {account:"0x"+"b".repeat(40)},{items:[completed],selectedTxHash:txHash});
+ assert.match(foreign,/Previous transfer not yet verified/);
+ assert.match(foreign,/id="xita-transfer-primary" disabled/);
+});
