@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Permissionless, one-shot ILN v3.1.4 delivery recovery.
+// Permissionless, one-shot ILN v3.2.0 destination recovery.
 // Reads only public RPC data and prints unsigned Mailbox.process calldata.
 // No relayer service, persistent relayer state, privileged wallet or server secrets.
 import {
@@ -10,12 +10,7 @@ import {
   keccak256,
   zeroPadValue,
 } from "ethers";
-import {
-  addLeaf,
-  branchRoot,
-  buildProofFromNodes,
-  snapshotNodes,
-} from "./merkle.mjs";
+import {verifyV320ReplicaProof,verifyV320FeeAllocation} from "./iln-v320-proof.mjs";
 import { wrapAggregationMetadata } from "./metadata.mjs";
 import {
   ILN_OPERATION_EVENT,
@@ -97,10 +92,6 @@ const mailboxAbi = [
   "function delivered(bytes32 messageId) view returns (bool)",
   "function process(bytes metadata,bytes message) payable",
 ];
-const hookAbi = [
-  "event InsertedIntoTree(bytes32 messageId,uint32 index)",
-  "function tree() view returns (tuple(bytes32[32] branch,uint256 count))",
-];
 const registryAbi = [
   "function getRoute(uint32 destinationDomain,bytes32 routeId) view returns (uint64 sourceChainId,uint32 sourceDomain,address gateway,address sourceRouter,address mailbox,address merkleTreeHook,address destinationRouter,uint256 validatorFeeWei,bool enabled)",
   "function factory() view returns (address)",
@@ -115,8 +106,9 @@ const destSetAbi = [
 ];
 
 const sourceMailbox = new Contract(originMailboxAddress, mailboxAbi, origin);
-const sourceHook = new Contract(originHookAddress, hookAbi, origin);
-const sourceGateway = new Contract(originGatewayAddress, [ILN_OPERATION_EVENT, "function activationBlock() view returns (uint256)"], origin);
+const sourceGateway = new Contract(originGatewayAddress, [ILN_OPERATION_EVENT,
+  "function activationBlock() view returns (uint256)",
+  "function feeVault() view returns (address)"], origin);
 const sourceRegistry = new Contract(originRegistryAddress, registryAbi, origin);
 const destMailbox = new Contract(destinationMailboxAddress, mailboxAbi, destination);
 const destISM = new Contract(destinationISMAddress, destISMAbi, destination);
@@ -138,53 +130,26 @@ async function sourceEvidenceFromReceipt(hash) {
  return evidence;
 }
 
-async function reconstructProof(operationBlock, checkpointIndex) {
-  // The gateway operation and its Merkle insertion are in the same source tx.
-  // Starting at the previous block reconstructs an exact fresh proof without
-  // any persistent relayer files. An archive RPC speeds this up enormously.
-  let start = operationBlock;
-  let state;
-  try {
-    const snapshot = await sourceHook.tree({ blockTag: operationBlock - 1 });
-    const branch = Array.from(snapshot.branch ?? snapshot[0]);
-    const count = Number(snapshot.count ?? snapshot[1]);
-    assert(Number.isSafeInteger(count), "invalid source Merkle tree count");
-    state = {
-      treeCount: count,
-      snapshotCount: count,
-      nodes: snapshotNodes(branch, count),
-    };
-  } catch {
-    // An archive RPC is not required for correctness. Replaying public hook
-    // events from genesis is slower but is not a private relayer dependency.
-    start = 0;
-    state = { treeCount: 0, snapshotCount: 0, nodes: {} };
-    console.error("Historical hook snapshot unavailable; replaying public Merkle insertion logs from genesis.");
-  }
-
-  let messageIndex;
-  for (let from = start; from <= operationBlock; from += chunkSize) {
-    const to = Math.min(operationBlock, from + chunkSize - 1);
-    const events = await sourceHook.queryFilter(sourceHook.filters.InsertedIntoTree(), from, to);
-    events.sort((a, b) => a.blockNumber - b.blockNumber || a.index - b.index);
-    for (const event of events) {
-      const insertedId = lower(event.args.messageId);
-      const insertedIndex = Number(event.args.index);
-      addLeaf(state, insertedIndex, insertedId);
-      if (insertedId === id && event.blockNumber === operationBlock) {
-        assert(messageIndex === undefined, "duplicate source Merkle insertion");
-        messageIndex = insertedIndex;
-      }
+// Optional no-TX-hint fallback: lookup only the immutable Gateway operation
+// necessary to identify the original source block and serialized Dispatch.
+// This is NOT Merkle proof reconstruction or validator fee authorization.
+async function findOriginalOperationBlock() {
+  const startBlock=Number(await sourceGateway.activationBlock());
+  const confirmed=Number(await origin.getBlockNumber()) - confirmationDepth;
+  assert(Number.isSafeInteger(startBlock) && startBlock>0 &&
+    confirmed>=startBlock,"invalid source Gateway activation/confirmed head");
+  let operationBlock=0;
+  for(let from=startBlock;from<=confirmed;from+=chunkSize) {
+    const to=Math.min(confirmed,from+chunkSize-1);
+    const entries=await sourceGateway.queryFilter(
+      sourceGateway.filters.ILNOperation(routeId,id,destinationDomain),from,to);
+    for(const event of entries) {
+      assert(!operationBlock,"multiple source Gateway operations for the same message ID");
+      operationBlock=event.blockNumber;
     }
   }
-
-  assert(messageIndex !== undefined, "authorized message has no source Merkle insertion");
-  assert(checkpointIndex < state.treeCount, "source checkpoint is beyond the indexed Merkle tree");
-  assert(messageIndex <= checkpointIndex, "message index exceeds signed checkpoint");
-  const proof = buildProofFromNodes(
-    state.nodes, messageIndex, checkpointIndex, state.snapshotCount,
-  );
-  return { messageIndex, proof };
+  assert(operationBlock>0,"canonical source Gateway operation not found; provide SOURCE_TX_HASH for direct receipt recovery");
+  return operationBlock;
 }
 
 async function main() {
@@ -211,6 +176,7 @@ async function main() {
     destinationSet.verifierKeyFormat(),
   ]);
   let sourceEvidence=null;
+  let originalOperationBlock=0;
   if(sourceTxHash){
    mark("source-receipt");
    sourceEvidence=await sourceEvidenceFromReceipt(sourceTxHash);
@@ -223,22 +189,8 @@ async function main() {
     // First-time delivery and post-rotation recovery use exactly the same
     // public request path. No relayer or operator-specific signing endpoint.
     mark("source-receipt");
-    let operationBlock=sourceEvidence?.blockNumber||0;
-    if (!Number.isSafeInteger(operationBlock) || operationBlock <= 0) {
-      const startBlock = Number(await sourceGateway.activationBlock());
-      const confirmed = await origin.getBlockNumber() - confirmationDepth;
-      assert(Number.isSafeInteger(startBlock) && startBlock > 0, "invalid gateway activation block");
-      for (let from = startBlock; from <= confirmed; from += chunkSize) {
-        const to = Math.min(confirmed, from + chunkSize - 1);
-        const events = await sourceGateway.queryFilter(
-          sourceGateway.filters.ILNOperation(routeId, id, destinationDomain), from, to,
-        );
-        if (events.length > 0) {
-          assert(events.length === 1 && operationBlock === 0, "duplicate Gateway operations");
-          operationBlock = events[0].blockNumber;
-        }
-      }
-    }
+    const operationBlock=sourceEvidence?.blockNumber||await findOriginalOperationBlock();
+    originalOperationBlock=operationBlock;
     assert(operationBlock > 0, "canonical source Gateway operation not found");
     mark("request-validator-quorum");
     await attestations.send("xgr_requestILNQuorum", [routeName, id, operationBlock]);
@@ -286,14 +238,16 @@ async function main() {
     return;
   }
 
-  const operationBlock = Number(attestation.sourceBlockNumber);
+  const checkpointBlock = Number(attestation.sourceBlockNumber);
   const checkpointIndex = Number(attestation.index);
-  assert(Number.isSafeInteger(operationBlock) && operationBlock > 0, "invalid source block");
+  assert(Number.isSafeInteger(checkpointBlock) && checkpointBlock > 0,
+    "invalid signed confirmed Hook checkpoint block");
   assert(Number.isSafeInteger(checkpointIndex) && checkpointIndex >= 0, "invalid checkpoint index");
   const latestSource = await origin.getBlockNumber();
-  assert(operationBlock <= latestSource - confirmationDepth, "source block not sufficiently confirmed");
-  if(sourceEvidence)assert(sourceEvidence.blockNumber===operationBlock,
-    "signed checkpoint source block does not match source receipt");
+  assert(checkpointBlock <= latestSource - confirmationDepth,
+    "source Hook checkpoint not sufficiently confirmed");
+  if(sourceEvidence)assert(sourceEvidence.blockNumber<=checkpointBlock,
+    "original source transaction occurred after signed Hook checkpoint");
 
   // Archive-state-independent source proof. V315 route bindings are append-only,
   // while their global fee can change; the original fee is authenticated by the
@@ -318,6 +272,10 @@ async function main() {
   ]) eq(`historic route ${field}`, actual, expected);
 
   let operationFeeWei,message;
+  const operationBlock=sourceEvidence?.blockNumber ||
+    originalOperationBlock || await findOriginalOperationBlock();
+  assert(operationBlock<=checkpointBlock,
+    "source Gateway operation occurred after signed Hook checkpoint");
   if(sourceEvidence){
     // Receipt verifies BOTH events in the very same successful source tx.
     // Do not rescan this historical Gateway/Mailbox block via eth_getLogs.
@@ -341,10 +299,31 @@ async function main() {
       "Gateway operation and Dispatch must share source transaction");
     message=matches[0].args.message;
   }
-  assert(operationFeeWei===BigInt(attestation.validatorFeeWei),
-    "Gateway operation fee does not match signed fee");
-  // Canonical fee-paid operation and Dispatch are verified independently
-  // of the selected BLS quorum before destination calldata is generated.
+  // Original receipt/Dispatch establishes canonical message bytes.
+  // The source FeeVault records the immutable *per-message* allocation,
+  // while the later BLS checkpoint signs the then-current source fee policy.
+  // Those two amounts may legitimately differ after fee governance changes.
+  mark("confirmed-fee-vault-allocation");
+  const feeVaultAddress=getAddress(await sourceGateway.feeVault());
+  const feeVault=new Contract(feeVaultAddress,[
+    "function allocatedOperation(bytes32) view returns (bool)",
+    "function allocatedSetId(bytes32) view returns (uint64)",
+    "function gateway() view returns (address)",
+    "function routeId() view returns (bytes32)",
+    "function destinationDomain() view returns (uint32)",
+  ],origin);
+  const [allocated,feeSetId,vaultGateway,vaultRouteId,vaultDomain]=await Promise.all([
+    feeVault.allocatedOperation(id,{blockTag:checkpointBlock}),
+    feeVault.allocatedSetId(id,{blockTag:checkpointBlock}),
+    feeVault.gateway(),feeVault.routeId(),feeVault.destinationDomain(),
+  ]);
+  eq("source FeeVault gateway",vaultGateway,originGatewayAddress);
+  eq("source FeeVault route",vaultRouteId,routeId);
+  assert(Number(vaultDomain)===destinationDomain,"source FeeVault destination mismatch");
+  verifyV320FeeAllocation({
+    originalFeeWei:operationFeeWei,checkpointFeeWei:attestation.validatorFeeWei,
+    allocated,setId:feeSetId,
+  });
 
   const expectedPayload = encodeCheckpointPayloadV2({
     sourceChainId: originChainId,
@@ -352,7 +331,7 @@ async function main() {
     destinationDomain,
     routeId,
     setId: attestedSetId,
-    sourceBlockNumber: BigInt(operationBlock),
+    sourceBlockNumber: BigInt(checkpointBlock),
     registry: originRegistryAddress,
     gateway: originGatewayAddress,
     sourceRouter: originWarpRouterAddress,
@@ -378,8 +357,11 @@ async function main() {
   );
 
   mark("merkle-proof");
-  const { messageIndex, proof } = await reconstructProof(operationBlock, checkpointIndex);
-  eq("Merkle inclusion root", branchRoot(id, proof, messageIndex), attestation.root);
+  const replicaProof=await attestations.send("xgr_getILNReplicaProof",[routeName,id]);
+  const {messageIndex,proof}=verifyV320ReplicaProof({
+    response:replicaProof,attestation,route:routeName,messageId:id,
+    sourceChainId:originChainId,hook:originHookAddress,
+  });
   const inner = encodeISMMetadataV314({
     messageIndex,
     merkleProof: proof,
