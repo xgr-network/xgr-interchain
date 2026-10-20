@@ -105,8 +105,10 @@ export function classifyRecoveryFailure(err,stderr=""){
  if(!parsed&&raw.trimStart().startsWith("{")){
   try{const old=JSON.parse(raw.trim());if(old?.status==="RECOVERY_NOT_READY")parsed=old;}catch{}
  }
+ const progress=raw.split(/\r?\n/).filter(line=>line.startsWith("XITA_RECOVERY_STAGE:")).at(-1)?.slice("XITA_RECOVERY_STAGE:".length).trim();
  const detail=String(parsed?.error||err?.message||"").slice(0,650);
- const stage=/^[a-z][a-z0-9-]{1,54}$/.test(parsed?.stage||"")?parsed.stage:"unknown";
+ const lastStage=parsed?.stage||progress||"";
+ const stage=/^[a-z][a-z0-9-]{1,54}$/.test(lastStage)?lastStage:"unknown";
  const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
  const t=detail.toLowerCase();
  const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
@@ -139,12 +141,9 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
     throw Error("Original source receipt unavailable");
    const block=receipt.blockNumber;
    if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
-   const logs=await call("eth_getLogs",[{
-    address:configured.env.ORIGIN_MERKLE_TREE_HOOK,
-    fromBlock:block,toBlock:block
-   }]);
-   if(!Array.isArray(logs)||!logs.some(x=>same(x.transactionHash,txHash)))
-    throw Error("Source Merkle insertion logs unavailable");
+   // The original receipt is only a locator. Full Gateway/Dispatch/Merkle
+   // verification is performed by the recovery CLI, never skipped.
+   // Avoid redundant archive-sensitive eth_getLogs preflight.
   }else if(!sourceIsBase){
    const value=await call("eth_call",[{
     to:configured.env.DESTINATION_MAILBOX,
@@ -160,15 +159,21 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
  }catch(error){return {ok:false,error:String(error.message||error).slice(0,170)};}
 }
 const baseStages=new Set([
- "verify-chain-ids","destination-delivery","destination-ism-registry",
- "source-receipt","merkle-proof","simulate-base-delivery","base-archive"
+ "verify-chain-ids","source-receipt","validate-attestation",
+ "confirmed-fee-vault-allocation","base-archive"
 ]);
 async function runRecoveryAttempt(configured,timeoutMs){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
+ // Prefer validator-local ILN attestation/proof RPC over public RPC gateways.
+ const localXGR=process.env.XITA_RECOVERY_XGR_RPC_URL||"http://127.0.0.1:8545";
+ if(!/^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(localXGR))throw Error("Invalid loopback XGR recovery RPC configuration");
  return new Promise((yes,no)=>{
   execFile(process.execPath,[script,configured.messageId],{
    cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",
-    NODE_ENV:"production",...configured.env},maxBuffer:750000,
+    NODE_ENV:"production",...configured.env,
+     ATTESTATION_RPC_URL:localXGR,
+     ...(Number(configured.env.DESTINATION_CHAIN_ID)===1643?{DESTINATION_RPC_URL:localXGR}:{}),
+     ...(Number(configured.env.ORIGIN_CHAIN_ID)===1643?{ORIGIN_RPC_URL:localXGR}:{})},maxBuffer:750000,
     timeout:timeoutMs,windowsHide:true,
   },(err,stdout,stderr)=>{
    try{yes(parseRecoveryCliOutput(stdout,configured))}
