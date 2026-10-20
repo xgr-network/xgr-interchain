@@ -120,11 +120,12 @@ export function classifyRecoveryFailure(err,stderr=""){
   /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
+const recoveryBaseDefaultUrls=()=>process.env.XITA_RECOVERY_BASE_RPC_URLS||
+ ["https://mainnet.base.org",process.env.XITA_BASE_ARCHIVE_RPC_URLS||""].filter(Boolean).join(",");
 // Prefer Base mainnet for the current-state FeeVault reads used by XITA.
 // Operators may override ordering privately; other approved catalog endpoints
 // remain fallbacks. Never accept browser-supplied or per-token RPC URLs.
-export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_RECOVERY_BASE_RPC_URLS||
- process.env.XITA_BASE_ARCHIVE_RPC_URLS||"https://mainnet.base.org"}={}){
+export function recoveryBaseUrls(configured,{baseUrls=recoveryBaseDefaultUrls()}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
 }
 // Qualify the actual route, not an unrelated historical Base test block.
@@ -208,8 +209,7 @@ async function runRecoveryAttempt(configured,timeoutMs){
 }
 export async function runRecoveryProcess(configured,{timeoutMs=45000,
  archiveProbe=probeRouteSourceRpc,fetcher=globalThis.fetch,
- baseUrls=process.env.XITA_RECOVERY_BASE_RPC_URLS||
-  process.env.XITA_BASE_ARCHIVE_RPC_URLS||"https://mainnet.base.org",
+ baseUrls=recoveryBaseDefaultUrls(),
  runAttempt=runRecoveryAttempt}={}){
  // Base historical RPC prequalification is applicable ONLY when Base is
  // either the source or destination. Other EVM routes must not depend on
