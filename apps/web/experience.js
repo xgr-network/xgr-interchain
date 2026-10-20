@@ -428,6 +428,13 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const available=new Set(routes.flatMap(r=>[r.source,r.destination]));
  const openChoice=openWalletTransfers(progress.items,wallet.account);
  const currentWork=selectedRecovery(progress.items,wallet.account,progress.selectedTxHash);
+ // Completed source TXs are excluded from actionable recovery, but a resume
+ // deep link must report canonical successful delivery, never "not verified".
+ const completedWork=(progress.items||[]).find(item=>
+  item?.account?.toLowerCase()===wallet.account?.toLowerCase()&&
+  item.txHash?.toLowerCase()===progress.selectedTxHash?.toLowerCase()&&
+  item.confirmed===true&&item.delivered===true&&
+  ["delivered","journey-delivered"].includes(item.status))||null;
  // Recovery must remain usable even if the old Gateway route predates the
  // deployment of the commercial Execution Gateway contracts.
  const recoveryChains=new Set(currentWork?[
@@ -456,7 +463,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  // A resume deep link is not authorization to initiate a source TX.
  // Unknown records remain non-actionable until the wallet index verifies them.
  const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
- const recoveryUnresolved=connected&&resumeRequested&&!selected;
+ const recoveryUnresolved=connected&&resumeRequested&&!selected&&!completedWork;
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const actionLabel=!connected?"Connect wallet to transfer":
@@ -465,13 +472,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
   selected?.status==="awaiting-final-proof"?"Continue final delivery":
   selected?"Check delivery status":
+  completedWork?"Transfer complete":
   recoveryUnresolved?"Locating previous transfer…":
   !routes.length?"Interchain Fee gateway not deployed":
   !deployed?"Route unavailable":
   !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
- const buttonDisabled=busy||recoveryUnresolved||connected&&(!deployed&&!selected);
- const progressValue=selected?.confirmed?1:0;
+ const buttonDisabled=busy||recoveryUnresolved||Boolean(completedWork)||connected&&(!deployed&&!selected);
+ const progressValue=completedWork?2:selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
   selected?.status==="awaiting-final-proof"?"Second hop confirmed · final delivery outstanding":
@@ -480,6 +488,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   selected?.status==="confirming"?"Source transaction is awaiting finality":
   selected?.status==="pending-source"?"Source transaction pending":
   selected?.status==="destination-not-deployed"?"Destination Mailbox unavailable":
+  completedWork?"Destination delivery confirmed":
   recoveryUnresolved?"Previous transfer not yet verified":
   connected?"Wallet connected":
   "Connect your wallet";
@@ -529,14 +538,16 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
   esc(progress.error?"Action needs attention":
    busy?"Checking transaction safety…":
+   completedWork?"2 / 2 · "+statusLabel:
    selected?(selected.onwardRouteId?"2 / 4 · ":"1 / 2 · ")+statusLabel:
    recoveryUnresolved?statusLabel:
    deployed?(connected?"Ready to transfer":"Wallet not connected"):
    "Selected route unavailable")+'</strong></div>'+
-  (selected||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
+  (selected||completedWork||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
   (recoveryUnresolved?'<p class="ux-transfer-warning">Original transfer has not yet been found in verified wallet history. XITA will retry; no new source transfer can be signed from this link. <a data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Return to new transfer</a></p>':'')+
-  (selected?'<p class="ux-small">Source TX: <code>'+esc(selected.txHash)+'</code>'+
-   (selected.messageId?' · Message ID: <code>'+esc(selected.messageId)+'</code>':'')+'</p>':'')+
+  (completedWork?'<p class="ux-transfer-notice">The original source transaction and destination delivery are independently verified. No further transaction is required.</p>':'')+
+  (selected||completedWork?'<p class="ux-small">Source TX: <code>'+esc((selected||completedWork).txHash)+'</code>'+
+   ((selected||completedWork).messageId?' · Message ID: <code>'+esc((selected||completedWork).messageId)+'</code>':'')+'</p>':'')+
   (progress.notice&&(!progress.scanning||progress.busy)?
    '<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
   (progress.error?'<p class="ux-transfer-error" role="alert">'+esc(progress.error)+'</p>':'')+
@@ -585,10 +596,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-transfer-status-heading"><span class="ux-kicker">TRANSACTION STATUS</span><h2>Transfer progress</h2></div>'+
   statusMarkup+
   '<div class="ux-transfer-milestones" aria-label="Transfer steps">'+
-   '<div class="ux-transfer-milestone'+(selected?.confirmed?' is-complete':' is-current')+'">'+
+   '<div class="ux-transfer-milestone'+(completedWork||selected?.confirmed?' is-complete':' is-current')+'">'+
     '<span class="ux-transfer-milestone-number">01</span><div><strong>Source transaction</strong>'+
     '<small>Lock or burn with your wallet</small></div></div>'+
-   '<div class="ux-transfer-milestone'+(selected?.confirmed?' is-current':'')+'">'+
+   '<div class="ux-transfer-milestone'+(completedWork?' is-complete':selected?.confirmed?' is-current':'')+'">'+
     '<span class="ux-transfer-milestone-number">02</span><div><strong>Destination delivery</strong>'+
     '<small>Process the verified message</small></div></div>'+
   '</div>'+
