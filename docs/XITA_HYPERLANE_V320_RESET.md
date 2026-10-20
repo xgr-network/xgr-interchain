@@ -1,57 +1,69 @@
-# XITA Hyperlane/ILN rebaseline and fresh deployment plan
+# XITA / XGR-Node v3.2.0 — minimum-diff Hyperlane recovery
 
-Status: **draft patch, NOT mainnet-ready**. Target: xgr-node v3.2.0.
+**Status: implementation and security tests still in progress. Do not release, deploy, or merge without end-to-end proof.**
 
-## Preserve from the working XGR-hyperlane implementation
-Hyperlane Mailbox, MerkleTreeHook, TokenRouter lock/mint and burn/unlock,
-destination `Mailbox.process()`, permissionless relayer/proof builders,
-independent validators with 2/3 BLS quorum.
+## Fixed architecture
+- Hyperlane Mailbox, MerkleTreeHook and Warp TokenRouter stay the transport and token custody boundary.
+- Permissionless route registration, XGRChain (domain 1643) as hub and current 2/3 BLS destination ISM remain intact.
+- `ILNGateway.bridge()` is a public protocol entry point. It atomically collects the mandatory **source-native validator fee**, locks/burns and dispatches, then allocates the fee to the immutable route FeeVault. No XITA GmbH wallet, UI, relayer or service charge is needed for direct access.
+- `XITAExecutionGateway` is **optional**. Service quoting, signing, charging, and any sponsored gas are controlled by the company backend and not by source checkpoint voting.
+- A corrupt peer cannot authorize roots: each validator checks its own reconstructed Merkle prefix against the *canonical confirmed source MerkleTreeHook state*. The destination ISM verifies 2/3 signature, authorized message ID and supplied Hyperlane Merkle proof.
+- No new compulsory wallet transactions and no extension of XGRChain IBFT consensus.
+- Source FeeVault allocation is separate from 2/3 fee-governance: quorum changes the source fee rate, not accounting for each transfer.
 
-## Generalize ONLY the ILN layer
-Permissionless immutable route instances; XGRChain as the sole hub; source
-fee quorum and immutable fee-qualified message binding; generic per-chain ISM,
-registries, and router factory. Do not introduce a mandatory fifth wallet TX,
-administrator-controlled routes, central custody, or new interchain finality.
+## Deployment: preserve deployed audited contracts
+The current v3.2.0 PR changes **no** production `.sol` contract. It therefore requires **no contract redeployment**. Preserve the on-chain addresses, receipts, active route records, liquidity/escrow and pending deliveries.
 
-## Blockers before protocol release
-- Design and benchmark the minimal exact-message recovery data requirement.
-  A root/count alone cannot reconstruct arbitrary earlier Hyperlane messages or
-  inclusion proofs after complete data loss; indexer redundancy is NOT identical
-  to zero-history disaster recovery. The result must be explicit, not assumed.
-- Ensure a canonical confirmed checkpoint can be read using recent EVM state,
-  no archive nodes, and no historical eth_getLogs on any required path.
-- Prove old source-operation fee and route binding without trusting today's
-  mutable fee, an untrusted proof service, or a single RPC backend.
-- 10,000 concurrent/pending messages, worker restarts, quorum rotation,
-  reorg/finality boundary, provider HTTP 429 and complete indexer loss.
-- Measure source gas, destination gas, permanent state growth and RPC load.
+The previous fresh-deployment-only proposal is withdrawn. In particular **do not delete**
+`deployments/chains/base.json`, `deployments/chains/xgrchain.json`, deployed representations,
+directed routes, historical receipts, or admin deployment journals as a v3.2.0 prerequisite.
 
-## One atomic deployment reset once changed Contracts are ready
-The **same reviewed XITA patch** must:
-1. Remove ACTIVE records in deployments/chains/base.json and
-   deployments/chains/xgrchain.json.
-2. Remove deployments/assets/*/*/representations.json, directed routes,
-   linked gateway and vault registrations.
-3. Remove ALL old files under deployments/receipts/base and
-   deployments/receipts/xgrchain from the active tree; no legacy or archive
-   directories.
-4. Clear stale address/receipt references in config assets, Admin UI,
-   deploy journals, sync work queues, indexer bootstrap and publication data.
-5. Rebuild the constructor-ABI seal, artifact registry, dependency graph,
-   transaction intent handling and wallet-step recovery.
-6. Make 'Chain fertig deployen' start cleanly with missing prerequisites
-   and register the new chain contracts/receipts back to GitHub.
-7. Make route deployment independently recreate representations,
-   both directed gateways and fee vaults, and document their receipts.
-8. Fail CI on stale deployments, stale runtime code hashes and mixed
-   old/new contract generations.
+The compatibility CI checks unchanged Solidity code against base `main`, active
+deployment identity, component addresses and existing immutable receipt evidence.
+A completed green CI proves repository provenance, **not** current on-chain
+bytecode; mainnet deployment/runtimeCodeKeccak256 should be independently queried
+and checked before go-live.
 
-No changes to production contracts or active deployments before this
-coordinated patch is compiled, tested and reviewed.
+If later review demonstrates an actual contract/ABI incompatibility, create a **separate**
+explicit reviewed contract-diff migration, including the exact affected deployments,
+liquidity migration and pending route escrow; never silently reset mainnet state.
 
-## Already-issued test transfer
-The Base burn associated with message ID
-0xf735484813a91eda5c60e959f4038b97ea518de5a9e92de440bd5612c1f387a5
-is ON-CHAIN and will not be undone by deleting GitHub receipts. Confirm its
-destination delivery or explicitly account for the remaining old-route
-escrow before removing active deployment references.
+## Node work and security gates before v3.2.0
+1. Source checkpoint is a confirmed Hyperlane Hook root/count at its *own*
+   block epoch. Do not falsely label the root as the original operation-block root.
+2. A valid canonical inclusion proof for the **exact fee-allocated message ID**
+   must be checked before a validator signs; the root/count alone proves no
+   specific message. When reconstructing an incoming peer vote, fail closed
+   on missing/inconsistent proof or source fee allocation.
+3. Fee authorization should follow the registered immutable Gateway and
+   per-message FeeVault state. Do not require historical `ILNOperation` logs
+   or the current fee to equal an old fee at the transaction block.
+4. Validator P2P transfers are authenticated, bounded and untrusted. Every
+   received snapshot is verified against the source root independently before
+   persistence or use for voting. Persist all replica and route data under
+   `data/interchain/`; cover with normal consistent node backups.
+5. Public read-only proof and message availability must not depend on XITA's
+   private relayer/indexer. Clients need complete original Hyperlane bytes and
+   a proven leaf index before `Mailbox.process()`.
+6. Multi-validator tests must cover honest bootstrap, corrupt/disconnected peers,
+   slow join, checkpoint rotation, recovery after restart, source RPC 403/429/503,
+   10k-message scale, and complete direct Wallet-to-Mailbox settlement.
+7. Check live destination BLS set rotation, ISM proofs, route binding and gas,
+   and benchmark state/disk/RPC growth.
+8. The known old-route Base burn for message
+   `0xf735484813a91eda5c60e959f4038b97ea518de5a9e92de440bd5612c1f387a5`
+   must be settled or explicitly tracked before any unrelated route migration.
+
+## Data availability: explicit boundary
+The Hook root is a cryptographic commitment, **not** an archive of message
+bytes or hashes. If all validator data dirs and independent backups lose
+the underlying insertion/message history, no protocol can reconstruct it
+from the root alone. Onboard the first archival validator from intact
+historical data or a verified backup; replicate redundantly thereafter.
+Back up data dirs with consistent snapshots and verify against source
+chain on restore. Do not silently substitute a trusted relayer.
+
+## Release gate
+Keep XGR-Node PR #38 and XITA PR #175 in Draft until the complete validator
+network and direct execution tests pass. Successful Go unit tests, Foundry
+tests and existing receipt checks alone do NOT meet the release gate.
