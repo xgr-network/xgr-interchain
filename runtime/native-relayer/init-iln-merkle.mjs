@@ -4,12 +4,12 @@
 // No private keys, transfers, blockchain transactions, or trust in peers.
 import {
   readFileSync, existsSync, mkdirSync, openSync, writeSync, fsyncSync,
-  closeSync, renameSync, copyFileSync, statSync, realpathSync, constants,
+  closeSync, renameSync, copyFileSync, statSync, realpathSync, unlinkSync, constants,
 } from "node:fs";
 import { resolve, isAbsolute, dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  JsonRpcProvider, Interface, concat, getAddress, id, keccak256, toBeHex,
+  JsonRpcProvider, Interface, concat, getAddress, id, keccak256,
 } from "ethers";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -312,27 +312,13 @@ function writeReplicaAtomic(path, replica, {replace = false, dryRun = false} = {
   } finally {
     if (fd !== undefined) closeSync(fd);
     if (existsSync(temporary)) {
-      const {unlinkSync} = requireUnlink();
       unlinkSync(temporary);
     }
   }
   return "initialized";
 }
-function requireUnlink() {
-  // Keep the top-level write pathway self-contained and no private input.
-  return {unlinkSync: (path) => rmTemporary(path)};
-}
-function rmTemporary(path) {
-  // Only a known tool-generated temporary file can be removed.
-  importTemporaryDelete(path);
-}
-function importTemporaryDelete(path) {
-  // See imported unlinkSync in the production script.
-  unlinkSync(path);
-}
 export {writeReplicaAtomic};
 
-// Replaced below by Node's directly imported unlinkSync.
 async function main() {
   const args = parseBootstrapArgs(process.argv.slice(2));
   const evidence = loadChainEvidence(args.chain);
