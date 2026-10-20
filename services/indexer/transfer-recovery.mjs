@@ -120,9 +120,11 @@ export function classifyRecoveryFailure(err,stderr=""){
   /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
-// Select from canonical, archive-qualified Base endpoints only. The candidate
-// list is chain-scoped, not user-supplied, and never authorizes a source lock.
-export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+// Prefer Base mainnet for the current-state FeeVault reads used by XITA.
+// Operators may override ordering privately; other approved catalog endpoints
+// remain fallbacks. Never accept browser-supplied or per-token RPC URLs.
+export function recoveryBaseUrls(configured,{baseUrls=process.env.XITA_RECOVERY_BASE_RPC_URLS||
+ process.env.XITA_BASE_ARCHIVE_RPC_URLS||"https://mainnet.base.org"}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
 }
 // Qualify the actual route, not an unrelated historical Base test block.
@@ -158,10 +160,23 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
   return {ok:true};
  }catch(error){return {ok:false,error:String(error.message||error).slice(0,170)};}
 }
-const baseStages=new Set([
+const sourceBaseStages=new Set([
  "verify-chain-ids","source-receipt","validate-attestation",
  "confirmed-fee-vault-allocation","base-archive"
 ]);
+const destinationBaseStages=new Set([
+ "verify-chain-ids","destination-delivery","destination-ism-registry",
+ "simulate-base-delivery","base-archive"
+]);
+// Only source/destination Base RPC failures can switch providers. Immutable
+// route failures, invalid fees, Merkle proofs and BLS verification never do.
+export function canRetryBaseRecovery(error,configured){
+ if(error?.code!=="PROOF_RPC_UNAVAILABLE"&&error?.code!=="PROOF_TIMEOUT")return false;
+ const sourceBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453;
+ const destinationBase=Number(configured.env.DESTINATION_CHAIN_ID)===8453;
+ return (sourceBase&&sourceBaseStages.has(error.stage))||
+  (destinationBase&&destinationBaseStages.has(error.stage));
+}
 async function runRecoveryAttempt(configured,timeoutMs){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
  // Prefer validator-local ILN attestation/proof RPC over public RPC gateways.
@@ -193,13 +208,15 @@ async function runRecoveryAttempt(configured,timeoutMs){
 }
 export async function runRecoveryProcess(configured,{timeoutMs=45000,
  archiveProbe=probeRouteSourceRpc,fetcher=globalThis.fetch,
- baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||""}={}){
+ baseUrls=process.env.XITA_RECOVERY_BASE_RPC_URLS||
+  process.env.XITA_BASE_ARCHIVE_RPC_URLS||"https://mainnet.base.org",
+ runAttempt=runRecoveryAttempt}={}){
  // Base historical RPC prequalification is applicable ONLY when Base is
  // either the source or destination. Other EVM routes must not depend on
  // Base availability merely because Base is in the global catalog.
  const needsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453||
   Number(configured.env.DESTINATION_CHAIN_ID)===8453;
- if(!needsBase)return runRecoveryAttempt(configured,timeoutMs);
+ if(!needsBase)return runAttempt(configured,timeoutMs);
  const candidates=recoveryBaseUrls(configured,{baseUrls});
  const deadline=Date.now()+timeoutMs;
  let last=null;
@@ -207,22 +224,25 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
   const url=candidates[i];
   try{
    if(deadline-Date.now()<6000)break;
-   const qualified=await archiveProbe(url,configured,{fetcher,ms:6000});
+   const qualified=await archiveProbe(url,configured,{fetcher,ms:4000});
    if(!qualified?.ok)continue;
    const env={...configured.env};
    if(Number(env.ORIGIN_CHAIN_ID)===8453)env.ORIGIN_RPC_URL=url;
    if(Number(env.DESTINATION_CHAIN_ID)===8453)env.DESTINATION_RPC_URL=url;
    const current={...configured,env};
    const remaining=Math.max(3000,deadline-Date.now()-2000);
-   // Bounded overall budget: allow a second qualified endpoint after a
-   // transient first-source failure without crossing Nginx's 60s timeout.
-   const attemptTimeout=i<candidates.length-1?Math.min(30000,remaining):remaining;
-   return await runRecoveryAttempt(current,attemptTimeout);
+   // Reserve time for independent provider retries when a Base eth_call
+   // stalls. Keep the complete operation inside the existing 45s budget.
+   const attemptTimeout=i<candidates.length-1?Math.min(12000,remaining):remaining;
+   return await runAttempt(current,attemptTimeout);
   }catch(error){
    last=error;
-   if(error.code!=="PROOF_RPC_UNAVAILABLE"||
-      !baseStages.has(error.stage)||i===candidates.length-1)
+   if(!canRetryBaseRecovery(error,configured)||i===candidates.length-1)
     throw error;
+   // Log hostname only: private operator URLs can contain API tokens.
+   console.warn("XITA recovery Base failover",JSON.stringify({
+    provider:new URL(url).hostname,reason:error.code,stage:error.stage
+   }));
   }
  }
  throw last||Object.assign(new Error("Base historical RPC unavailable"),{
