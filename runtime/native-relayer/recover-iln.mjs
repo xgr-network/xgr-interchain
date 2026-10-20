@@ -249,7 +249,7 @@ async function main() {
   if(sourceEvidence)assert(sourceEvidence.blockNumber<=checkpointBlock,
     "original source transaction occurred after signed Hook checkpoint");
 
-  // Archive-state-independent source proof. V315 route bindings are append-only,
+  // Validator-native proof; V315 route bindings are append-only,
   // while their global fee can change; the original fee is authenticated by the
   // successful Gateway ILNOperation + matching Mailbox.Dispatch receipt.
   // Never use the current registry fee as historical transfer authorization.
@@ -370,7 +370,7 @@ async function main() {
     destinationDomain,
     routeId,
     setId: attestedSetId,
-    sourceBlockNumber: BigInt(operationBlock),
+    sourceBlockNumber: BigInt(checkpointBlock),
     registry: originRegistryAddress,
     gateway: originGatewayAddress,
     sourceRouter: originWarpRouterAddress,
