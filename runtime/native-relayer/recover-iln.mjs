@@ -44,7 +44,9 @@ const assert = (condition, message) => {
 const isHash = (v) => /^0x[0-9a-fA-F]{64}$/.test(String(v));
 const id = process.argv[2]?.toLowerCase();
 let stage = "startup";
-const mark = value => { stage=value; };
+// Recovery progress is private stderr for the supervising proof worker; never
+// include canonical message/transaction bytes or user-specific secrets.
+const mark = value => { stage=value; console.error("XITA_RECOVERY_STAGE:"+stage); };
 
 // Optional untrusted locator only: independently verify the successful source
 // receipt, Gateway operation and matching Dispatch BEFORE requesting a quorum.
