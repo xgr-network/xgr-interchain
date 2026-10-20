@@ -133,7 +133,7 @@ contract XITAExecutionGatewayTest is Test {
         assertGt(validatorFee, 0);
         vm.prank(USER);
         tokenRouter.approve(address(gateway), AMOUNT);
-        vm.expectRevert(ILNGateway.InvalidValue.selector);
+        vm.expectRevert(abi.encodeWithSelector(ILNGateway.InvalidValue.selector, bridgeValue, bridgeValue - validatorFee));
         vm.prank(USER);
         gateway.bridge{value:bridgeValue - validatorFee}(TARGET, RECIPIENT, AMOUNT);
         assertEq(tokenRouter.balanceOf(USER), 10 ether);
