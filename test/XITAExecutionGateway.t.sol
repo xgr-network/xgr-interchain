@@ -108,6 +108,39 @@ contract XITAExecutionGatewayTest is Test {
         managed.execute{value:value}(q,signature);
     }
 
+    /// @dev ILN validator fees are mandatory, but the XITA GmbH service is not.
+    ///      A wallet can call the PUBLIC route gateway without our UI,
+    ///      service signature, fee adapter, sponsor or private relayer.
+    function testDirectPermissionlessILNBridgeNeverPaysXITAServiceFee() public {
+        (uint256 validatorFee,,uint256 bridgeValue,) = gateway.quoteILN(TARGET, RECIPIENT, AMOUNT);
+        assertGt(validatorFee, 0);
+        vm.prank(USER);
+        tokenRouter.approve(address(gateway), AMOUNT);
+        vm.prank(USER);
+        bytes32 messageId = gateway.bridge{value:bridgeValue}(TARGET, RECIPIENT, AMOUNT);
+        assertTrue(messageId != bytes32(0));
+        assertTrue(gateway.feeVault().allocatedOperation(messageId));
+        assertEq(address(gateway.feeVault()).balance, validatorFee);
+        assertEq(tokenRouter.balanceOf(USER), 9 ether);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
+        assertEq(address(managed).balance, 0);
+        (,,,bool platformReceiptExists) = managed.feeReceipt(messageId);
+        assertFalse(platformReceiptExists);
+    }
+
+    function testDirectILNBridgeWithoutMandatoryValidatorFeeReverts() public {
+        (uint256 validatorFee,,uint256 bridgeValue,) = gateway.quoteILN(TARGET, RECIPIENT, AMOUNT);
+        assertGt(validatorFee, 0);
+        vm.prank(USER);
+        tokenRouter.approve(address(gateway), AMOUNT);
+        vm.expectRevert(abi.encodeWithSelector(ILNGateway.InvalidValue.selector, bridgeValue, bridgeValue - validatorFee));
+        vm.prank(USER);
+        gateway.bridge{value:bridgeValue - validatorFee}(TARGET, RECIPIENT, AMOUNT);
+        assertEq(tokenRouter.balanceOf(USER), 10 ether);
+        assertEq(address(gateway.feeVault()).balance, 0);
+        assertEq(managed.pendingInterchainFeesWei(), 0);
+    }
+
     function testAtomicERC20DispatchNativeFeeVaultAndOwnerPayout() public {
         XITAExecutionGateway.Quote memory q = _quote(5);
         bytes32 message = _execute(q);

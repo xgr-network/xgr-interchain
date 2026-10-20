@@ -122,3 +122,38 @@ catalog, and server sync use the existing secure chain deploy machinery.
 This component is not mandatory ILN infrastructure and is not part of the
 bulk "finish chain" deployment. Use the same public GmbH service wallet on every chain; fee balances and chain deployments remain independent. After deployment each chain card exposes a wallet-signed "Service-Wallet ändern" action that requires the live Recovery Admin. Contract fee claim, quote signer and gas sponsor rotate together; previously accrued unclaimed fees flow to the new wallet. The Recovery Admin private key must not be on the XITA server.
 The owner has NO ILN protocol, token, Mailbox or validator privilege.
+
+
+## XGR v3.2.0 — validator-native Merkle indexer health
+
+Configure the Admin **server** environment variable `XITA_VALIDATOR_RPC_URLS`
+with a comma-separated list of already trusted JSON-RPC endpoints, one per
+validator. Example: `XITA_VALIDATOR_RPC_URLS=http://127.0.0.1:8545`.
+When nodes run on other hosts, prefer authenticated internal HTTPS endpoints
+or private network ingress; do not expose unrestricted validator administration
+ports. This list is explicitly configured by the operator and never taken from
+a user-facing browser request.
+
+The read-only Admin endpoint `GET /admin/api/operations/health` queries
+`xgr_getILNIndexerStatus` on those nodes with a bounded timeout. Each
+validator reports `workerAlive`, `updatedUnix`, per-route
+`sourceHead`, `checkpointBlock`, `leaves`, `localLeaves`,
+`lagLeaves`, `pendingPeers`, and `state`.
+An unavailable RPC or stale worker is shown independently; a connected node
+does not count as a ready Merkle replica until the canonical source root
+matches. The browser polls every 30 seconds when Health is visible.
+
+The XGR-Node's standard Prometheus exporter exposes the
+`edge_interchain_iln_replica_ready`,
+`edge_interchain_iln_replica_lag_leaves`,
+`edge_interchain_iln_source_rpc_up` and
+`edge_interchain_iln_worker_up` metric families via the existing
+HashiCorp metrics Prometheus sink (subject to normal exporter configuration).
+Alerting should also test Prometheus target `up == 0` for node outages:
+an in-process gauge cannot announce the failure of its own process.
+Use a sustained source RPC error, nonzero replica lag and stale
+`updatedUnix` as distinct alert conditions. Never infer successful
+Mailbox delivery solely from a healthy indexer.
+
+The Admin probes are diagnostics only. No PR merge, transfer,
+wallet signature, validator fee, or on-chain state mutation occurs.
