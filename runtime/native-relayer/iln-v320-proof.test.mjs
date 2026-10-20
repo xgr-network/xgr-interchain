@@ -68,3 +68,11 @@ test("original paid source fee may differ from checkpoint fee when governance ch
   {originalFeeWei:100n,checkpointFeeWei:100n,allocated:true,setId:0},
  ]) assert.throws(()=>verifyV320FeeAllocation(bad),/fee|Vault/i);
 });
+
+test("newer independently verified identical Hook prefix remains valid for an older signed checkpoint",()=>{
+ const proof=verify({...response,checkpointBlock:160});
+ assert.equal(proof.checkpointBlock,160);
+ assert.equal(proof.checkpointIndex,0);
+ assert.throws(()=>verify({...response,checkpointBlock:96}),/checkpoint/i);
+ assert.throws(()=>verify({...response,checkpointBlock:160,root:"0x"+"b".repeat(64)}),/root/i);
+});
