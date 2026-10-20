@@ -131,6 +131,9 @@ function scheduleFeePreview(){
 }
 let transferRequest=0;
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
+// Explicit resume-link fallback only: never scan arbitrary historical chains
+// or accept an unverified indexer claim as canonical wallet ownership.
+const resumeProbed=new Set;
 function refreshTransferLink(){
  const connected=validWalletAddress(state.account);
  const link=document.querySelector("#my-transfers-link");
@@ -164,6 +167,7 @@ function setConnectedAccount(next){
  if(changed){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
+  resumeProbed.clear();
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
@@ -228,6 +232,27 @@ async function scanWalletHistory(){
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
   transferActivity.indexCoverage=data.coverage||null;
+  // A complete route cursor is not proof that a specific older wallet TX is
+  // present in the SQL worklist. A user-supplied resume hash is only a locator;
+  // verify source tx.from and canonical Gateway+Dispatch receipt independently.
+  const requested=transferActivity.selectedTxHash;
+  const probeKey=account.toLowerCase()+":"+requested;
+  if(/^0x[0-9a-f]{64}$/i.test(requested||"")&&
+      !transferActivity.items.some(t=>t.txHash?.toLowerCase()===requested.toLowerCase())&&
+      !resumeProbed.has(probeKey)){
+   resumeProbed.add(probeKey);
+   for(const chain of ["base","xgrchain"]){
+    try{
+     const record=await findWalletSourceTx({catalog:state.catalog,account,
+      sourceChain:chain,txHash:requested});
+     if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+     upsertTransfer(record);
+     break;
+    }catch{
+     // The other source chain may contain the original canonical operation.
+    }
+   }
+  }
   const complete=data.status==="complete"&&data.coverage?.complete===true&&data.truncated!==true;
   transferActivity.report={source:"indexer",lookback:null,
    scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
