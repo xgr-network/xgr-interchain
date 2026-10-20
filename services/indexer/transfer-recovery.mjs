@@ -223,14 +223,17 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
  for(let i=0;i<candidates.length;i++){
   const url=candidates[i];
   try{
-   if(deadline-Date.now()<6000)break;
-   const qualified=await archiveProbe(url,configured,{fetcher,ms:4000});
+   // Two sequential chain/receipt probes can each take 3s. Do not start
+   // another attempt too close to the browser's 48s maximum wait.
+   if(deadline-Date.now()<9000)break;
+   const qualified=await archiveProbe(url,configured,{fetcher,ms:3000});
    if(!qualified?.ok)continue;
    const env={...configured.env};
    if(Number(env.ORIGIN_CHAIN_ID)===8453)env.ORIGIN_RPC_URL=url;
    if(Number(env.DESTINATION_CHAIN_ID)===8453)env.DESTINATION_RPC_URL=url;
    const current={...configured,env};
-   const remaining=Math.max(3000,deadline-Date.now()-2000);
+   const remaining=deadline-Date.now()-2000;
+   if(remaining<3000)break;
    // Reserve time for independent provider retries when a Base eth_call
    // stalls. Keep the complete operation inside the existing 45s budget.
    const attemptTimeout=i<candidates.length-1?Math.min(12000,remaining):remaining;
