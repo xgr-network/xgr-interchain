@@ -3,6 +3,7 @@
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {readFileSync,statSync} from "node:fs";
+import {probeILNValidators} from "./validator-indexer-health.mjs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
@@ -192,7 +193,7 @@ function aggregateState(units,checks,indexer,chains){
 }
 export async function collectOperationsHealth({
  catalog,readUnit=readSystemdUnit,readHTTP=readLocalJSON,
- checkChain=probeChain,readEvidence=inspectEvidenceFile,now=Date.now()
+ checkChain=probeChain,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
 }={}){
  if(!catalog||typeof catalog!=="object"||!catalog.chains)
   throw Error("Configured chain catalog unavailable");
@@ -255,15 +256,19 @@ export async function collectOperationsHealth({
  }));
  // Evidence is diagnostic: a responding API alone cannot establish that
  // the TVL/market verification worker has produced fresh evidence.
- const status=aggregateState(services,checks,indexer,chains);
+ const validators=await checkValidators({now});
+ const baseStatus=aggregateState(services,checks,indexer,chains);
+ const status=validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
-  services,checks,indexer,evidence,chains,
+  services,checks,indexer,evidence,chains,validators,
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
    servicesNotInstalled:services.filter(s=>s.state==="not-installed").length,
    chainsReachable:chains.filter(c=>["ok","fallback"].includes(c.state)).length,
-   chainsConfigured:chains.length},
+   chainsConfigured:chains.length,
+   validatorsHealthy:validators.filter(v=>v.state==="ok").length,
+   validatorsConfigured:validators.length},
   note:"Read-only observations. Process active, API answering and finalized indexing are separate signals. A healthy proof-builder installation does not establish validator quorum or delivered funds."};
 }
