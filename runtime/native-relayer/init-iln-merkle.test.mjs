@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
-  mkdtempSync, readFileSync, rmSync, existsSync,
+  mkdtempSync, readFileSync, rmSync, existsSync, readdirSync,
 } from "node:fs";
 import {
   AbiCoder, Interface, id, keccak256, toUtf8Bytes,
@@ -192,7 +192,7 @@ test("atomic verified bootstrap never overwrites a different snapshot without --
     assert.equal(writeReplicaAtomic(path,two,{replace:true}),"initialized");
     assert.deepEqual(JSON.parse(readFileSync(path,"utf8")),two);
     assert.equal(
-      (await import("node:fs")).readdirSync(dir).filter(name=>name.includes(".backup-")).length,
+      readdirSync(dir).filter(name=>name.includes(".backup-")).length,
       1);
     assert.throws(()=>writeReplicaAtomic(path,{...two,leaves:[leaves[1],leaves[0]]},{replace:true}),/unverified Merkle root/);
     assert.deepEqual(JSON.parse(readFileSync(path,"utf8")),two);
