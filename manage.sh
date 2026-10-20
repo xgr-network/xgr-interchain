@@ -25,6 +25,7 @@ Usage: ./manage.sh <command>
   update        Pull GitHub main, validate, publish web, restart admin
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
+  init-merkle   Bootstrap and verify an XGR v3.2.0 validator Merkle replica (requires --chain and --data-dir)
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
   install-tvl  Install read-only generic escrow TVL and gross 24h evidence worker (preconfigured credentials required)
   install-fee-preview  Install read-only unsigned transfer fee preview (no keys, no sponsor timers)
@@ -566,6 +567,14 @@ case "${1:-help}" in
     install_transfer_intake
     ;;
   install-transfer-api) install_transfer_api ;;
+  init-merkle)
+    shift
+    if [[ ! -d "$ROOT/runtime/native-relayer/node_modules/ethers" ]]; then
+      echo "Installing read-only Merkle initializer dependency (ethers) ..."
+      npm install --prefix "$ROOT/runtime/native-relayer" --ignore-scripts --no-audit --no-fund --package-lock=false
+    fi
+    exec node "$ROOT/runtime/native-relayer/init-iln-merkle.mjs" "$@"
+    ;;
   install-tvl) install_tvl ;;
   install-fee-preview) install_fee_preview ;;
   install-interchain-fee) install_interchain_fee ;;
