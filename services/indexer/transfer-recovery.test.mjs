@@ -170,7 +170,7 @@ test("qualifying Base destination reads actual mailbox delivery state",async()=>
 // The supervising service must preserve the exact last RPC stage when
 // a child is killed at its per-attempt deadline (rather than "unknown").
 test("killed recovery CLI surfaces the last stage without exposing RPC internals",()=>{
- const failure=classifyRecoveryFailure({killed:true},"XITA_RECOVERY_STAGE:verify-chain-ids\\nXITA_RECOVERY_STAGE:confirmed-fee-vault-allocation\\n");
+ const failure=classifyRecoveryFailure({killed:true},"XITA_RECOVERY_STAGE:verify-chain-ids\nXITA_RECOVERY_STAGE:confirmed-fee-vault-allocation\n");
  assert.equal(failure.code,"PROOF_TIMEOUT");
  assert.equal(failure.stage,"confirmed-fee-vault-allocation");
 });
