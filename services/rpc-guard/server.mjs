@@ -139,8 +139,12 @@ export function createBaseRpcGuard({
         if(textBody.length>MAX_RESPONSE) throw Error("upstream payload exceeds bound");
         parsedBody=JSON.parse(textBody);
       }catch{
-        metrics.errors++;metrics.lastErrorUnix=Math.floor(now()/1000);
-        throw jsonError(-32000,"Base RPC returned invalid or oversized JSON");
+        // Public providers sometimes reply to 429 with plain text / HTML.
+        // Treat the HTTP status as a retryable throttle regardless of body.
+        if(response.status!==429){
+          metrics.errors++;metrics.lastErrorUnix=Math.floor(now()/1000);
+          throw jsonError(-32000,"Base RPC returned invalid or oversized JSON");
+        }
       }
       const throttled=response.status===429 ||
         (parsedBody?.error && RATE_LIMIT_ERROR.test(
