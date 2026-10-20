@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
-  mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync, mkdirSync,
+  mkdtempSync, readFileSync, rmSync, existsSync,
 } from "node:fs";
 import {
   AbiCoder, Interface, id, keccak256, toUtf8Bytes,
@@ -118,9 +118,8 @@ test("two ordered source insertions produce the exact canonical Hyperlane root",
     assert.equal(writeReplicaAtomic(file,c),"initialized");
     assert.deepEqual(JSON.parse(readFileSync(file,"utf8")),c);
     assert.equal(writeReplicaAtomic(file,c),"already-current");
-    assert.equal(writeReplicaAtomic(file,{...c,root:ZERO},{replace:true}),undefined);
-  }catch(e){
-    assert.match(String(e),/unverified Merkle root/);
+    assert.throws(()=>writeReplicaAtomic(file,{...c,root:ZERO},{replace:true}),
+      /unverified Merkle root/);
   }finally{rmSync(join(file,".."),{recursive:true,force:true});}
 });
 test("event parser accepts all three Hyperlane indexed ABI variants",()=>{
