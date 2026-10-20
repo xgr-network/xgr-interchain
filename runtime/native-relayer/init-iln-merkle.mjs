@@ -4,7 +4,7 @@
 // No private keys, transfers, blockchain transactions, or trust in peers.
 import {
   readFileSync, existsSync, mkdirSync, openSync, writeSync, fsyncSync,
-  closeSync, renameSync, copyFileSync, statSync, realpathSync, unlinkSync, constants,
+  closeSync, renameSync, copyFileSync, statSync, lstatSync, realpathSync, unlinkSync, constants,
 } from "node:fs";
 import { resolve, isAbsolute, dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,7 @@ const MAX_LEAVES = 1 << 20; // matches Go VerifyILNReplica v3.2.0
 const MAX_FILE_BYTES = 40 << 20;
 const DEPTH = 32;
 const INSERT_TOPIC = id("InsertedIntoTree(bytes32,uint32)").toLowerCase();
+// Hard limits match the validator's documented 1,048,576-leaf snapshot cap.
 const HOOK_IFACE = new Interface([
   "function mailbox() view returns (address)",
   "function root() view returns (bytes32)",
@@ -155,6 +156,30 @@ async function hookCall(provider, hook, fn, epoch) {
   const result = await provider.call({to: hook, data, blockTag: epoch});
   return HOOK_IFACE.decodeFunctionResult(fn, result)[0];
 }
+// Providers sometimes limit eth_getLogs to 10-100 blocks or fewer. Split
+// provider-rejected ranges while preserving exact canonical log order; never
+// accept a partial range and never silently skip a failing single block.
+export async function fetchCompleteInsertionRange(provider, hook, start, end) {
+  requireCondition(Number.isSafeInteger(start) && Number.isSafeInteger(end) &&
+    start > 0 && end >= start, "invalid confirmed source log range");
+  try {
+    return await provider.getLogs({
+      address: hook, topics: [INSERT_TOPIC],
+      fromBlock: start, toBlock: end,
+    });
+  } catch (err) {
+    if (start === end) {
+      throw new Error("source RPC cannot provide canonical Hook logs at block " +
+        start + ": " + String(err?.shortMessage || err?.message || err));
+    }
+    const mid = start + Math.floor((end - start) / 2);
+    return [
+      ...await fetchCompleteInsertionRange(provider, hook, start, mid),
+      ...await fetchCompleteInsertionRange(provider, hook, mid + 1, end),
+    ];
+  }
+}
+
 export async function buildVerifiedReplica({
   provider, evidence, chunkSize = 1000, expectMessageId = "", onProgress = () => {},
 }) {
@@ -197,10 +222,8 @@ export async function buildVerifiedReplica({
   let lastBlock = 0, lastIndex = -1, matched = false, batches = 0;
   for (let start = evidence.fromBlock; start <= checkpointBlock; start += chunkSize) {
     const end = Math.min(start + chunkSize - 1, checkpointBlock);
-    const logs = await provider.getLogs({
-      address: evidence.hook, topics: [INSERT_TOPIC],
-      fromBlock: start, toBlock: end,
-    });
+    const logs = await fetchCompleteInsertionRange(
+      provider, evidence.hook, start, end);
     requireCondition(Array.isArray(logs) && logs.length <= MAX_LEAVES,
       "invalid or unbounded Hook insertion RPC response");
     logs.sort((a, b) =>
@@ -284,11 +307,30 @@ export function parseBootstrapArgs(args) {
       "invalid expected message ID");
   return options;
 }
+function assertCanonicalReplica(replica) {
+  requireCondition(replica && Number.isSafeInteger(replica.chainId) &&
+    replica.chainId > 0 && HASH.test(replica.root) &&
+    typeof replica.hook === "string" &&
+    /^0x[0-9a-f]{40}$/i.test(replica.hook) &&
+    Number.isSafeInteger(replica.checkpointBlock) &&
+    replica.checkpointBlock > 0 &&
+    Array.isArray(replica.leaves) && replica.leaves.length > 0 &&
+    replica.leaves.length <= MAX_LEAVES,
+  "invalid Merkle replica format");
+  const tree = new ILNAccumulator();
+  replica.leaves.forEach((leaf, index) => tree.insert(index, leaf));
+  requireCondition(tree.root().toLowerCase() === replica.root.toLowerCase(),
+    "refusing to persist an unverified Merkle root");
+}
+
 function writeReplicaAtomic(path, replica, {replace = false, dryRun = false} = {}) {
+  assertCanonicalReplica(replica);
   const data = JSON.stringify(replica) + "\n";
   requireCondition(Buffer.byteLength(data) <= MAX_FILE_BYTES,
     "Go v3.2.0 validator refuses snapshots larger than 40 MiB");
   if (existsSync(path)) {
+    requireCondition(!lstatSync(path).isSymbolicLink(),
+      "refusing to follow a symlink at the validator replica path");
     const current = JSON.parse(readFileSync(path, "utf8"));
     if (JSON.stringify(current) === JSON.stringify(replica)) return "already-current";
     requireCondition(replace, "existing replica differs; use --replace after stopping the validator");
@@ -309,6 +351,8 @@ function writeReplicaAtomic(path, replica, {replace = false, dryRun = false} = {
     closeSync(fd);
     fd = undefined;
     renameSync(temporary, path);
+    const dir = openSync(dirname(path), constants.O_RDONLY);
+    try { fsyncSync(dir); } finally { closeSync(dir); }
   } finally {
     if (fd !== undefined) closeSync(fd);
     if (existsSync(temporary)) {
@@ -336,6 +380,13 @@ async function main() {
   });
   const path = join(args.dataDir, "interchain", "iln", "replicas",
     String(evidence.chainId), evidence.hook.toLowerCase() + ".json");
+  if (!args.dryRun) {
+    const heartbeat = join(args.dataDir, "interchain", "worker.heartbeat");
+    if (existsSync(heartbeat) &&
+        Date.now() - statSync(heartbeat).mtimeMs < 30_000) {
+      throw new Error("validator worker appears active; stop this validator before writing its initial Merkle snapshot, or use --dry-run");
+    }
+  }
   const outcome = writeReplicaAtomic(path, replica,
     {replace: args.replace, dryRun: args.dryRun});
   console.log(JSON.stringify({
