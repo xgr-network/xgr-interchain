@@ -827,12 +827,17 @@ async function refreshOperationsHealth(){
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
    ["Chain RPC erreichbar",healthValue(d.summary.chainsReachable)+"/"+healthValue(d.summary.chainsConfigured)],
-   ["Indexer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)]
+   ["Indexer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
+   ["ILN Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
   const routes=d.indexer.routes||[];
   el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
    '<tr><td>'+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
    '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
+  el("health-validators").innerHTML=(d.validators||[]).length?(d.validators||[]).map(v=>healthTile(v.name,v.state,
+   "Worker: "+(v.workerAlive?"aktiv":"nicht erreichbar")+" · Routen: "+(v.routes||[]).length,
+   (v.routes||[]).map(r=>r.source+" → "+r.destination+" · "+r.state+
+   " · "+healthValue(r.localLeaves)+"/"+healthValue(r.leaves)+" Leaves"+(r.error?" · "+r.error:"")).join(" | ")||v.reason||"")).join(""):"<p>Keine Validator-RPCs konfiguriert (XITA_VALIDATOR_RPC_URLS).</p>";
   el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
   el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
    c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
