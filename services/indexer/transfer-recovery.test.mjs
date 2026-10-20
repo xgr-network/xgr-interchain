@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc,canRetryBaseRecovery,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -173,4 +173,59 @@ test("killed recovery CLI surfaces the last stage without exposing RPC internals
  const failure=classifyRecoveryFailure({killed:true},"XITA_RECOVERY_STAGE:verify-chain-ids\nXITA_RECOVERY_STAGE:confirmed-fee-vault-allocation\n");
  assert.equal(failure.code,"PROOF_TIMEOUT");
  assert.equal(failure.stage,"confirmed-fee-vault-allocation");
+});
+
+test("Base recovery retries source FeeVault RPC timeout on next chain-ID-qualified provider",async()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("7"),"ABC",hash("8"));
+ // Test the Base-to-XGR path without adding a synthetic second asset manifest.
+ conf.env.ORIGIN_CHAIN_ID="8453";
+ conf.env.DESTINATION_CHAIN_ID="1643";
+ conf.baseRpcUrls=["https://gateway.tenderly.co/public/base"];
+ const calls=[];
+ const response=await runRecoveryProcess(conf,{
+  baseUrls:"https://mainnet.base.org",timeoutMs:45000,
+  archiveProbe:async()=>({ok:true}),
+  runAttempt:async(current,ms)=>{
+   calls.push({url:current.env.ORIGIN_RPC_URL,ms});
+   if(calls.length===1)throw Object.assign(new Error("Timed out"),{
+    code:"PROOF_TIMEOUT",stage:"confirmed-fee-vault-allocation"
+   });
+   return {status:"PENDING"};
+  }
+ });
+ assert.equal(response.status,"PENDING");
+ assert.deepEqual(calls.map(c=>c.url),[
+  "https://mainnet.base.org","https://gateway.tenderly.co/public/base"
+ ]);
+ assert.ok(calls[0].ms<=12000&&calls[0].ms>0);
+});
+test("RPC timeout on local XGR quorum and conclusive proof failure never switches Base providers",async()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("9"),"ABC",hash("8"));
+ conf.env.ORIGIN_CHAIN_ID="8453";
+ conf.env.DESTINATION_CHAIN_ID="1643";
+ conf.baseRpcUrls=["https://gateway.tenderly.co/public/base"];
+ assert.equal(canRetryBaseRecovery({code:"PROOF_TIMEOUT",stage:"confirmed-fee-vault-allocation"},conf),true);
+ assert.equal(canRetryBaseRecovery({code:"PROOF_TIMEOUT",stage:"get-validator-attestation"},conf),false);
+ assert.equal(canRetryBaseRecovery({code:"PROOF_NOT_READY",stage:"confirmed-fee-vault-allocation"},conf),false);
+ let count=0;
+ await assert.rejects(()=>runRecoveryProcess(conf,{
+  baseUrls:"https://mainnet.base.org",
+  archiveProbe:async()=>({ok:true}),
+  runAttempt:async()=>{
+   count++;
+   throw Object.assign(new Error("invalid verified Merkle root"),{
+    code:"PROOF_RECONSTRUCTION_UNAVAILABLE",stage:"confirmed-fee-vault-allocation"
+   });
+  }
+ }),/invalid verified Merkle root/);
+ assert.equal(count,1);
+});
+test("Base destination failure cannot be retried on irrelevant source FeeVault stage",()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("a"),"ABC");
+ assert.equal(canRetryBaseRecovery({
+  code:"PROOF_TIMEOUT",stage:"confirmed-fee-vault-allocation"
+ },conf),false);
+ assert.equal(canRetryBaseRecovery({
+  code:"PROOF_TIMEOUT",stage:"simulate-base-delivery"
+ },conf),true);
 });
