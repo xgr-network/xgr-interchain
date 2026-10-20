@@ -1,0 +1,23 @@
+[Unit]
+Description=XITA loopback Base JSON-RPC throttle and request coalescing for XGR v3.2.0
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+Environment=XITA_BASE_RPC_UPSTREAM=https://mainnet.base.org
+Environment=XITA_BASE_RPC_RPS=2
+EnvironmentFile=-/etc/xita/base-rpc-guard.env
+ExecStart=/usr/bin/node services/rpc-guard/server.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
