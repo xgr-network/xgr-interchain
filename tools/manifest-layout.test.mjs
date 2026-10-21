@@ -14,7 +14,7 @@ test("only receipt-verified chains have deployment files",()=>{
  for(const name of names){
   const file=chainDeploymentPath(name);
   assert.equal(existsSync(join(root,file)),name==="xgrchain"||name==="base"||name==="arbitrum");
-  assert.equal(catalog.infrastructure[name].present,name==="xgrchain"||name==="base");
+  assert.equal(catalog.infrastructure[name].present,name==="xgrchain"||name==="base"||name==="arbitrum");
   assert.equal(existsSync(join(root,chainBootstrapPath(name))),true);
  }
  const registry=catalog.infrastructure.xgrchain.xitaV315.components.validatorRegistry;
