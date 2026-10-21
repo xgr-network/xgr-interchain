@@ -6,18 +6,20 @@ import {dirname,resolve} from "node:path";
 import {findWalletSourceTx,configuredGatewayRoutes} from "../apps/web/wallet-transfers.js";
 import {canonicalRpc,checkedDelivery} from "../services/indexer/transfer-index.mjs";
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
-export function roundtripArguments(args){
+export function roundtripArguments(args,catalog=null){
  if(!Array.isArray(args)||![2,4].includes(args.length))
-  throw Error("usage: node tools/verify-xita-roundtrip.mjs xgrchain SOURCE_TX [base RETURN_TX]");
+  throw Error("usage: node tools/verify-xita-roundtrip.mjs SOURCE_CHAIN SOURCE_TX [RETURN_SOURCE_CHAIN RETURN_TX]");
  const targets=[];
  for(let i=0;i<args.length;i+=2){
   const sourceChain=args[i],txHash=args[i+1];
-  if(!["xgrchain","base"].includes(sourceChain)||!HASH.test(txHash||""))
-   throw Error("Invalid source chain or transaction hash");
+  if(!/^[a-z][a-z0-9-]{0,50}$/.test(sourceChain||"")||
+    !HASH.test(txHash||"")||
+    (catalog&&!Object.hasOwn(catalog.chains||{},sourceChain)))
+   throw Error("Invalid or undocumented source chain or transaction hash");
   targets.push({sourceChain,txHash:txHash.toLowerCase()});
  }
- if(targets.length===2&&(targets[0].sourceChain!=="xgrchain"||
-   targets[1].sourceChain!=="base"))throw Error("Expected XGRChain -> Base -> XGRChain");
+ if(targets.length===2&&targets[0].sourceChain===targets[1].sourceChain)
+  throw Error("Return source chain must differ from forward source");
  return targets;
 }
 export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRpc(),
@@ -36,8 +38,10 @@ export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRp
  if(evidence?.sourceChain!==sourceChain||
   evidence.txHash?.toLowerCase()!==txHash.toLowerCase()||
   evidence.account?.toLowerCase()!==tx.from.toLowerCase()||
-  !["xgrchain","base"].includes(evidence.destinationChain))
-   throw Error("Receipt identity mismatch");
+  !catalog?.chains?.[evidence.destinationChain]||
+  !catalog?.assets?.[evidence.asset]||
+  sourceChain===evidence.destinationChain)
+   throw Error("Receipt asset identity or chain mismatch");
  let finality={delivered:null};
  if(evidence.confirmed===true){
   if(!HASH.test(evidence.messageId||""))throw Error("Confirmed source missing canonical Message ID");
@@ -57,9 +61,15 @@ export async function verifyTransfer({catalog,sourceChain,txHash,rpc=canonicalRp
   validatorFeeWei:evidence.validatorFeeWei??null};
 }
 export function classifyRoundtrip(legs){
- if(!legs.length||legs.some(x=>x.asset!=="XGR"))return "INVALID";
- if(legs.length===2&&(legs[0].destinationChain!=="base"||
-  legs[1].destinationChain!=="xgrchain"||
+ if(!Array.isArray(legs)||legs.length===0||legs.length>2||
+    legs.some(x=>!x?.asset||!ADDRESS.test(x.account||"")||
+     !/^[a-z][a-z0-9-]{0,50}$/.test(x.sourceChain||"")||
+     !/^[a-z][a-z0-9-]{0,50}$/.test(x.destinationChain||"")||
+     x.sourceChain===x.destinationChain))return "INVALID";
+ if(legs.length===2&&(
+  legs[0].asset!==legs[1].asset||
+  legs[0].sourceChain!==legs[1].destinationChain||
+  legs[0].destinationChain!==legs[1].sourceChain||
   legs[0].account.toLowerCase()!==legs[1].account.toLowerCase()))return "INVALID";
  if(legs.length===2&&legs.every(x=>x.sourceConfirmed&&x.destinationDelivered))
   return "ROUNDTRIP_DELIVERED";
@@ -71,7 +81,7 @@ export function classifyRoundtrip(legs){
 }
 export async function auditRoundtrip({catalog,args,rpc}){
  const legs=[];
- for(const target of roundtripArguments(args))
+ for(const target of roundtripArguments(args,catalog))
   legs.push(await verifyTransfer({catalog,...target,rpc}));
  return {schema:"xita-roundtrip-receipt-audit-v1",
   source:"canonical-onchain-receipts-and-destination-mailboxes",
