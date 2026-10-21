@@ -226,6 +226,18 @@ export function deploymentIntents({directory,chains}){
     e.updatedAt=new Date().toISOString();return e;
    });
   },
+  documentRecovered(id,createdAt,path){
+   if(!ID.test(id||"")||typeof createdAt!=="string"||
+      !/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(path))
+    throw Error("Invalid recovered receipt identity");
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(!e||e.createdAt!==createdAt||!["prepared","submitted","confirmed"].includes(e.stage))
+     throw Error("Recovered intent changed before publishing");
+    delete s.entries[id];
+    return {stage:"documented",receiptPath:path};
+   });
+  },
   document(id,path){
    if(!ID.test(id||"")||typeof path!=="string"||
       !/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/.test(path))
