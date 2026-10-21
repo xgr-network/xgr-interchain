@@ -7,7 +7,7 @@ const FACTORY="0x3b83687d77170d42feddfe221629cc21e771e021";
 const FROM=516837230n;
 const txLast="0xe9bcb7a2b7bac5a7a575494dbd212fbf55b7b11e7e929040105441abcfd7c76c";
 const txOld="0xf02ceb03ff4619a3efcce6dc7ce6cf6e6e1f0522eda95a678acbad9ea353589e";
-const rpcUrls=["https://arbitrum-one-rpc.publicnode.com","https://arb1.arbitrum.io/rpc"];
+const rpcUrls=["https://arb1.arbitrum.io/rpc","https://arbitrum-one-rpc.publicnode.com"];
 const compactTx=t=>t?{hash:t.hash,from:t.from,to:t.to,nonce:t.nonce,inputStart:(t.input||"").slice(0,20),value:t.value,blockNumber:t.blockNumber}:null;
 const compactReceipt=r=>r?{transactionHash:r.transactionHash,from:r.from,to:r.to,status:r.status,blockNumber:r.blockNumber,blockHash:r.blockHash,logs:(r.logs||[]).filter(e=>e.address?.toLowerCase()===FACTORY).map(e=>({address:e.address,topics:e.topics,transactionHash:e.transactionHash,blockHash:e.blockHash,blockNumber:e.blockNumber}))}:null;
 const codeHash=s=>typeof s==="string"&&s.length>2?keccak256(Uint8Array.from(Buffer.from(s.slice(2),"hex"))):null;
