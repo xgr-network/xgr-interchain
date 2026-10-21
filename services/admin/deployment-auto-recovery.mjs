@@ -26,28 +26,9 @@ export function matchesWalletIntent(entry,tx,{allowWalletNonceDrift=false}={}){
    TX.test(tx.hash||"");
  }catch{return false}
 }
-async function lookupMinedNonce(rpc,url,entry,head){
- // Standard JSON-RPC: find the first block in which this account's mined
- // nonce exceeds the original nonce, then inspect actual signed tx data.
- // Some RPC providers do not retain historical nonce state. In that case
- // this is best effort, not a blocker for the next MetaMask-confirmed try.
- const wanted=uint(entry.transaction.nonce);
- let low=0n,high=head;
- try{
-  for(let i=0;low<high&&i<40;i++){
-   const mid=(low+high)/2n;
-   const used=uint(await rpc(url,"eth_getTransactionCount",[
-    entry.wallet,"0x"+mid.toString(16)]));
-   if(used>wanted)high=mid;
-   else low=mid+1n;
-  }
-  if(low!==high)return null;
-  const block=await rpc(url,"eth_getBlockByNumber",[
-   "0x"+low.toString(16),true]);
-  return block?.transactions?.find(tx=>tx&&typeof tx==="object"&&
-   same(tx.from,entry.wallet)&&uint(tx.nonce)===wanted)||null;
- }catch{return null}
-}
+// Historical nonce binary search deliberately removed: public RPCs cannot
+// be relied upon to serve old EVM account state. Saved TX hashes and receipts
+// remain the authoritative way to reconcile an interrupted wallet deploy.
 async function lookupPendingNonce(rpc,url,entry){
  try{
   const block=await rpc(url,"eth_getBlockByNumber",["pending",true]);
@@ -192,8 +173,7 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
   if(transaction)return {action:"reconcile",reason:"submitted-transaction"};
  }
  if(latest>wanted){
-  const head=uint(await rpc(url,"eth_blockNumber",[]));
-  const found=await lookupMinedNonce(rpc,url,entry,head);
+  const found=null;
   if(found&&matchesWalletIntent(entry,found))
    return {action:"reconcile",txHash:found.hash,reason:"recovered-mined-wallet-nonce"};
   // Original nonce was irrevocably consumed, either by a replacement
