@@ -9,7 +9,7 @@ Status: visual frontend implemented. **No production bridge is active.**
 - `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
 - `/token/<slug>`: token detail and prospects; link to the only transfer page
 - `/transfer?token=<ASSET>`: single transfer UI with on-chain worklist and destination-only recovery
-- `/join`: four-step Alliance onboarding with live token universe preview, local JSON export, and optional manifest preview backend. GitHub draft PR creation is gated by confirmed applicant email, independent CoinGecko contract checks and a server-side writer; without configured private storage and email delivery it fails closed.
+- `/join`: three-step Alliance onboarding (identity, home chain, review). Network targets are derived from every GitHub-approved chain, not selected by applicants; the resulting hub-and-spoke manifests are proposals only with live token universe preview, local JSON export, and optional manifest preview backend. GitHub draft PR creation is gated by confirmed applicant email, independent CoinGecko contract checks and a server-side writer; without configured private storage and email delivery it fails closed.
 
 There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
 v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
