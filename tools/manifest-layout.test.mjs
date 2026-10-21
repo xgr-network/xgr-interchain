@@ -10,10 +10,10 @@ test("only receipt-verified chains have deployment files",()=>{
  const names=["arbitrum","base","polygon","xgrchain"];
  const catalog=loadCatalog(root);
  assert.deepEqual(Object.keys(catalog.chains),names);
- assert.deepEqual(readdirSync(join(root,"deployments/chains")).sort(),["base.json","xgrchain.json"]);
+ assert.deepEqual(readdirSync(join(root,"deployments/chains")).sort(),["arbitrum.json","base.json","xgrchain.json"]);
  for(const name of names){
   const file=chainDeploymentPath(name);
-  assert.equal(existsSync(join(root,file)),name==="xgrchain"||name==="base");
+  assert.equal(existsSync(join(root,file)),name==="xgrchain"||name==="base"||name==="arbitrum");
   assert.equal(catalog.infrastructure[name].present,name==="xgrchain"||name==="base");
   assert.equal(existsSync(join(root,chainBootstrapPath(name))),true);
  }
