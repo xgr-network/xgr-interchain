@@ -55,12 +55,8 @@ async function verifiedFrom(url,runtime){
  const current=await call(url,"eth_blockNumber");
  const confirmations=BigInt(current)-BigInt(receipt.blockNumber)+1n;
  if(confirmations<12n)throw Error("Only "+confirmations+" confirmations (need >=12)");
- let code,codeBlock=receipt.blockNumber;
- try{code=await call(url,"eth_getCode",[ADDRESS,receipt.blockNumber])}
- catch(e){
-  code=await call(url,"eth_getCode",[ADDRESS,"latest"]);
-  codeBlock="latest";
- }
+ const code=await call(url,"eth_getCode",[ADDRESS,"latest"]);
+ const codeBlock="latest";
  // Require identical executable instructions, wrapper, Solidity compiler
  // version and CBOR structure. The ONLY allowed difference is the 32-byte
  // IPFS digest inside the exact Solidity 0.8.24 metadata footer. Verify
