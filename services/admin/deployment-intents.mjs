@@ -161,12 +161,8 @@ export function deploymentIntents({directory,chains}){
     if(!e||e.createdAt!==createdAt||
        !["prepared","submitted"].includes(e.stage))
      throw Error("Interrupted deployment changed while checking nonce; retry status refresh");
-    // Keep immutable local audit evidence. This file is NOT a deployment
-    // index, and cannot be used to claim an on-chain contract exists.
-    const archive=join(dir,"retired-"+randomUUID()+".json");
-    writeFileSync(archive,JSON.stringify({
-     reason,retiredAt:new Date().toISOString(),entry:e
-    },null,2)+"\n",{mode:0o600,flag:"wx"});
+    // Failed, rejected or abandoned attempts are NOT deployments and
+    // must not be archived or committed to the GitHub deployment catalog.
     delete s.entries[id];
     return {stage:"ready",retryReason:reason,previousTxHash:e.txHash||null};
    });
