@@ -183,11 +183,15 @@ contract XITATwoHopTokenAccountingTest is Test {
         assertFalse(XETARouterCore(targetRouter).verifyInboundRoute(
             source.chainId,uint32(source.chainId),sourceRouter,
             bytes32(uint256(0xDEADBEEF))),"wrong source RouteID accepted");
+        // Evaluate any external getter BEFORE setting vm.prank; an
+        // intervening lastBody() getter would consume the one-shot prank
+        // and wrongly call the target as the test contract.
+        bytes memory body=source.mailbox.lastBody();
         vm.prank(address(target.mailbox));
         IXITATwoHopRecipient(targetRouter).handle(
             uint32(source.chainId),
             bytes32(uint256(uint160(sourceRouter))),
-            source.mailbox.lastBody()
+            body
         );
     }
 
