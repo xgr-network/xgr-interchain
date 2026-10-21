@@ -28,7 +28,7 @@ then run the same command without --dry-run:
       --data-dir /ABSOLUTE/PATH/TO/XGR-DATADIR \
       --rpc https://mainnet.base.org --chunk-size 250
 
-Initialize the other source Hook as well:
+Initialize the other existing source Hook as well:
 
     ./manage.sh init-merkle --chain xgrchain \
       --data-dir /ABSOLUTE/PATH/TO/XGR-DATADIR \
@@ -37,10 +37,24 @@ Initialize the other source Hook as well:
 To insist on a particular pending transfer, also supply
 --expect-message-id with its complete actual 0x-prefixed 32-byte message ID.
 
-The Base/XGR output files are written at:
+Arbitrum is also supported once its MerkleTreeHook has at least one confirmed
+insertion. Run a dry-run first using a source RPC capable of historical
+`InsertedIntoTree` log reads:
+
+    ./manage.sh init-merkle --chain arbitrum \
+      --data-dir /home/xgradmin/xgrchain/data \
+      --rpc https://arb1.arbitrum.io/rpc --chunk-size 250 --dry-run
+
+If the new Hook has count=0, do not fabricate an initial replica; no nonempty
+tree can be seeded yet. Keep the nodes running and initialize after the first
+confirmed source message. The source's correct Merkle root will be verified
+during seeding; it is not a fixed value to copy into node.conf.
+
+The Base/XGR/Arbitrum output files are written at:
 
     <DATADIR>/interchain/iln/replicas/8453/0xa831991450e2a150951da8c2f3344f940603c714.json
     <DATADIR>/interchain/iln/replicas/1643/0x44a8374cf1ff674a92a6876832af245b805e2161.json
+    <DATADIR>/interchain/iln/replicas/42161/0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json
 
 These files contain the complete ordered 32-byte message-hash leaves and
 the confirmed checkpoint root/count. Their exact format matches XGR-Node

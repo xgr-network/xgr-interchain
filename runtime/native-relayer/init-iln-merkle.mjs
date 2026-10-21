@@ -107,14 +107,15 @@ export class ILNAccumulator {
 }
 
 export function loadChainEvidence(chain, repoRoot = REPO) {
-  requireCondition(["base", "xgrchain"].includes(chain),
-    "unsupported chain; expected base or xgrchain");
+  requireCondition(/^[a-z][a-z0-9-]{0,50}$/.test(chain || "") &&
+    existsSync(join(repoRoot, "deployments", "chains", chain + ".json")),
+    "unsupported chain: no documented mainnet deployment manifest");
   const config = JSON.parse(readFileSync(
     join(repoRoot, "config", "chains", chain, "chain.json"), "utf8"));
   const manifest = JSON.parse(readFileSync(
     join(repoRoot, "deployments", "chains", chain + ".json"), "utf8"));
-  const expectedId = chain === "base" ? 8453 : 1643;
-  requireCondition(config.chainId === expectedId &&
+  const expectedId = config.chainId;
+  requireCondition(Number.isSafeInteger(expectedId) && expectedId > 0 &&
     config.domainId === expectedId &&
     manifest.chainId === expectedId && manifest.domainId === expectedId &&
     config.environment === "mainnet" && manifest.network === "mainnet",
@@ -129,7 +130,7 @@ export function loadChainEvidence(chain, repoRoot = REPO) {
   "incomplete verified transport bundle configuration");
   const receiptRelative = components.merkleTreeHook.receiptPath;
   requireCondition(typeof receiptRelative === "string" &&
-    /^deployments\/receipts\/(base|xgrchain)\/[0-9a-f-]+\.json$/i.test(receiptRelative) &&
+    /^deployments\/receipts\/[a-z][a-z0-9-]*\/[0-9a-f]{64}-[0-9a-f]{40}\.json$/i.test(receiptRelative) &&
     receiptRelative.startsWith("deployments/receipts/" + chain + "/"),
   "unsafe Hook receipt path");
   const receipt = JSON.parse(readFileSync(join(repoRoot, receiptRelative), "utf8"));
@@ -288,8 +289,9 @@ export function parseBootstrapArgs(args) {
     else if (option === "--dry-run") options.dryRun = true;
     else throw new Error("unknown initializer option: " + option);
   }
-  requireCondition(["base", "xgrchain"].includes(options.chain),
-    "--chain must be base or xgrchain");
+  requireCondition(/^[a-z][a-z0-9-]{0,50}$/.test(options.chain) &&
+    existsSync(join(REPO, "deployments", "chains", options.chain + ".json")),
+    "--chain must have a documented mainnet deployment");
   requireCondition(isAbsolute(options.dataDir) &&
     options.dataDir !== sep && options.dataDir.trim() !== "",
     "--data-dir must be the absolute, existing XGR-Node data directory");

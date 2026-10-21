@@ -92,15 +92,19 @@ const expectFailure = async(p,pattern) =>
     provider:p,evidence:evidence(),chunkSize:10,
   }),pattern);
 
-test("initializer reads actual documented Base/XGR Hook provenance",()=>{
+test("initializer reads actual documented Base/XGR/Arbitrum Hook provenance",()=>{
   const base = loadChainEvidence("base");
   const xgr = loadChainEvidence("xgrchain");
+  const arb = loadChainEvidence("arbitrum");
   assert.equal(base.chainId,8453);
   assert.equal(base.hook.toLowerCase(),hook.toLowerCase());
   assert.equal(base.fromBlock,52602508);
   assert.equal(xgr.chainId,1643);
   assert.equal(xgr.hook.toLowerCase(),"0x44a8374cf1ff674a92a6876832af245b805e2161");
   assert.ok(xgr.fromBlock > 0);
+  assert.equal(arb.chainId,42161);
+  assert.equal(arb.hook.toLowerCase(),"0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70");
+  assert.ok(arb.fromBlock > 0);
   assert.throws(()=>loadChainEvidence("polygon"),/unsupported chain/);
 });
 test("two ordered source insertions produce the exact canonical Hyperlane root",async()=>{
@@ -170,7 +174,7 @@ test("absolute explicit data-dir, invalid chain and options handled without writ
     assert.equal(parseBootstrapArgs(["--chain","base","--data-dir",dir]).chainId,undefined);
     assert.equal(parseBootstrapArgs(["--chain","base","--data-dir",dir]).dataDir,dir);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir","relative"]),/absolute/);
-    assert.throws(()=>parseBootstrapArgs(["--chain","polygon","--data-dir",dir]),/chain must be/);
+    assert.throws(()=>parseBootstrapArgs(["--chain","polygon","--data-dir",dir]),/documented mainnet deployment/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--rpc","https://user:pass@remote.example"]),/RPC endpoint/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--chunk-size","0"]),/chunk-size/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--bad"]),/unknown initializer option/);
