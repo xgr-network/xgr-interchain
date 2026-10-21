@@ -3,6 +3,7 @@
 // expose GitHub write credentials or this function to a browser-supplied
 // receipt, address, bytecode hash, or unrestricted HTTP API.
 import {keccak256} from "../../apps/web/keccak.mjs";
+import {isObservedWalletExecutor} from "./wallet-executor.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
 import {readFileSync,existsSync} from "node:fs";
@@ -73,7 +74,7 @@ function proveCreation(receipt,componentAddress,provenance){
     equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
-      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||baseExecutor||factoryCreatorLog))||
+      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||delegatedExecutor||factoryCreatorLog))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
