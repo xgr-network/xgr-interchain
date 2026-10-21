@@ -71,11 +71,12 @@ export function normalizeApplication(raw,inventory){
  if(!HEX.test(address)||ZERO.test(address))note("Original ERC-20 contract address required");
  if(!Number.isInteger(raw.decimals)||raw.decimals<0||raw.decimals>36)
   note("Invalid token decimals");
- const chosen=raw.targets;
- if(!Array.isArray(chosen)||chosen.length<1||chosen.length>16||
-    new Set(chosen).size!==chosen.length||
-    chosen.some(key=>!Object.hasOwn(inventory.chains,key)||key===canonicalChain))
-  note("Choose at least one distinct supported destination");
+ // Applicants choose only the canonical token identity. XITA always proposes
+ // the complete current inventory, including XGRChain as the mandatory hub.
+ // Ignore any legacy or forged browser "targets" field: it must never reduce
+ // or expand the GitHub-approved route graph.
+ const chosen=Object.keys(inventory.chains).filter(key=>
+  key!==canonicalChain&&key!=="xgrchain").sort();
  const categories=raw.categories;
  if(!Array.isArray(categories)||categories.length<1||categories.length>8||
     new Set(categories).size!==categories.length||
