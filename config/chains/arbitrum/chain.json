@@ -6,7 +6,6 @@
   "chainId": 42161,
   "domainId": 42161,
   "rpcUrls": [
-    "https://arb1.arbitrum.io/rpc",
     "https://arbitrum-one-rpc.publicnode.com"
   ],
   "nativeCurrency": {
