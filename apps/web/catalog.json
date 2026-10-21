@@ -314,10 +314,18 @@
       "domainId": 42161,
       "xitaV315": {
         "schemaVersion": 1,
-        "components": {},
-        "receiptPaths": []
+        "components": {
+          "blsVerifier": {
+            "address": "0x202c10bdecf3b796ea4b4025c81952c4f2dd9f93",
+            "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+            "receiptPath": "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
+          }
+        },
+        "receiptPaths": [
+          "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
+        ]
       },
-      "present": false
+      "present": true
     },
     "base": {
       "schemaVersion": 1,
