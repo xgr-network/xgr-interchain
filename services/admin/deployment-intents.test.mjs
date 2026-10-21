@@ -197,7 +197,7 @@ test("fresh XITA transport bundle intent survives journal transitions and remain
    parameters:{},validatorSnapshot:null,transaction:{...input.transaction,to:null}};
   const prepared=open.prepare(entry);
   assert.equal(prepared.txHash,null);
-  assert.equal(open.prepare(entry).stage,"prepared");
+  assert.throws(()=>open.prepare(entry),/Unresolved deployment intent/);
   open.attachHash(entry.id,hash);
   assert.equal(open.read().entries[entry.id].stage,"submitted");
   open.confirm(entry.id,hash,{contractAddress:wallet,
