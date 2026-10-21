@@ -72,7 +72,7 @@ test("event proof rejects failed receipts and foreign Registry events",()=>{
   receipt:{...receipt,status:"0x0"}}),/not successful/);
  assert.throws(()=>verifyFactoryRegistryReceipt({
   factory,registry,txHash:hash,transaction:baseTx,event,
-  receipt:{...receipt,logs:[{...event,address:executor}]}),/not emitted/);
+  receipt:{...receipt,logs:[{...event,address:executor}]}}),/not emitted/);
  assert.throws(()=>verifyFactoryRegistryReceipt({
   factory,registry,txHash:hash,transaction:baseTx,event,
   receipt:{...receipt,blockHash:"0x"+"c".repeat(64)}}),/different blocks/);
