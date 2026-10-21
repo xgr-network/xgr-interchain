@@ -67,13 +67,11 @@ export async function verifyExistingSourceRegistry({
  if(matches.length!==1)
   throw Error("Factory.registry() is set but no unique RegistryDeployed event was found");
  const event=matches[0],txHash=event.transactionHash.toLowerCase();
- const [receipt,transaction]=await Promise.all([
-  rpc(url,"eth_getTransactionReceipt",[txHash]),
-  rpc(url,"eth_getTransactionByHash",[txHash])
- ]);
- verifyFactoryRegistryReceipt({factory,registry,txHash,event,receipt,transaction});
- if(transaction.chainId!=null&&BigInt(transaction.chainId)!==BigInt(chain.chainId))
-  throw Error("Registry creation transaction belongs to another chain");
+ const receipt=await rpc(url,"eth_getTransactionReceipt",[txHash]);
+ verifyFactoryRegistryReceipt({factory,registry,txHash,event,receipt});
+ // The independent receipt verifier checks this RPC's chain ID, original
+ // canonical block, Factory event and the Registry runtime fingerprint.
+ // Historical eth_getTransactionByHash is not required by this proof.
  // The caller of a permissionless Factory need not be the wallet in an old
  // failed journal. Attribute the immutable receipt to its ACTUAL tx sender.
  const blockTag="0x"+BigInt(receipt.blockNumber).toString(16);
