@@ -8,7 +8,7 @@ const application={
  website:"https://example.org",shortDescription:"A sample test token for cross-chain routing.",
  description:"A sample project with valid fields for testing the XITA onboarding manifest generation process.",
  canonicalChain:"base",canonicalAddress:"0x1234567890123456789012345678901234567890",
- decimals:18,targets:["xgrchain","polygon"],categories:["DeFi"],tags:["Cross-chain"],
+ decimals:18,categories:["DeFi"],tags:["Cross-chain"],
  logoUrl:"https://example.org/logo.png",priceSource:"coingecko",coingeckoId:"example-token",contactEmail:"partner@example.org",applicantRole:"founder",confirmed:true
 };
 test("route bundle matches authoritative main schemas and transits XGR",()=>{
@@ -20,16 +20,26 @@ test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const routes=JSON.parse(b.files[base+"/routes.json"]);
  assert.equal(asset.canonical.tokenAddress,application.canonicalAddress);
  assert.match(asset.assetId,/^0x[0-9a-f]{64}$/);
- assert.equal(routes.routes.length,4);
+ const spokes=Object.keys(catalog.chains).filter(chain=>chain!=="xgrchain");
+ assert.equal(routes.routes.length,spokes.length*2);
+ assert.deepEqual([...new Set(asset.representations.map(r=>r.chain))].sort(),
+  Object.keys(catalog.chains).sort());
+ assert.deepEqual([...new Set(routes.routes.filter(r=>r.sourceChain!=="xgrchain").map(r=>r.sourceChain))].sort(),spokes.sort());
+ assert.equal(b.summary.routeCount,spokes.length*2);
  assert.ok(routes.routes.every(x=>[x.sourceChain,x.destinationChain].includes("xgrchain")));
- assert.equal(routes.routes.filter(x=>x.sourceChain==="xgrchain").length,2);
+ assert.equal(routes.routes.filter(x=>x.sourceChain==="xgrchain").length,spokes.length);
  assert.equal(Object.keys(b.files).some(p=>p.startsWith("deployments/")),false);
  assert.equal(Object.keys(b.files).some(p=>p.includes("mainnet.json")),false);
  const newCat=JSON.parse(b.files["apps/web/catalog.json"]);
  assert.deepEqual(validateCatalog(newCat),[]);
 });
 test("reject direct bridge and duplicate canonical token",()=>{
- assert.throws(()=>buildManifestBundle({...application,targets:["polygon","polygon"]},catalog),/distinct/);
+ const expected=buildManifestBundle(application,catalog).files;
+ for(const targets of [[],["polygon"],["polygon","polygon"],["xgrchain"],["unknown-chain"]]){
+  // Clients cannot select fewer, extra or duplicate networks; GitHub inventory
+  // alone determines the exact bidirectional proposal graph.
+  assert.deepEqual(buildManifestBundle({...application,targets},catalog).files,expected);
+ }
  assert.throws(()=>buildManifestBundle({...application,canonicalChain:"unknown"},catalog),/Unknown canonical/);
  assert.throws(()=>buildManifestBundle({...application,canonicalAddress:"0x0000000000000000000000000000000000000000"},catalog),/Original ERC-20/);
  assert.throws(()=>buildManifestBundle({...application,confirmed:false},catalog),/acknowledgement/);

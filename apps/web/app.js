@@ -668,7 +668,6 @@ function captureJoin(){
   else d[key]=el.value;
  });
  d.symbol=d.symbol.trim().toUpperCase();d.slug=d.slug.trim().toLowerCase();
- if(document.querySelector("[data-join-target]"))d.targets=[...document.querySelectorAll("[data-join-target]:checked")].map(el=>el.dataset.joinTarget);
 }
 async function runJoin(action){
  captureJoin();
@@ -691,7 +690,7 @@ async function runJoin(action){
      "ERC-20 contract address":"canonicalAddress",
      "Canonical chain":"canonicalChain",Decimals:"decimals",
      "Logo URL or PNG":"logoUrl","Token URL slug":"slug","HTTPS website":"website",
-     "Project confirmation":"confirmed","One or more other chains":"targets"};
+     "Project confirmation":"confirmed"};
    drawJoin();
    const errors=[];
    for(const problem of problems){
@@ -709,7 +708,7 @@ async function runJoin(action){
    errors[0]?.focus({preventScroll:true});
    return;
  }
- if(action==="next"){joinState.step=Math.min(3,joinState.step+1);joinState.status="";drawJoin();return;}
+ if(action==="next"){joinState.step=Math.min(2,joinState.step+1);joinState.status="";drawJoin();return;}
  if(action==="submit"){
   joinState.status="Validating public token manifests…";drawJoin();
   try{
@@ -968,7 +967,6 @@ el.addEventListener("change",event=>{
   reader.onerror=()=>{joinState.status="Could not read the PNG.";drawJoin();};
   reader.readAsDataURL(file);return;
  }
- if(field.matches("[data-join-target]")){captureJoin();drawJoin();return;}
  if(field.matches('[data-join="canonicalChain"],[data-join="priceSource"]')){
   captureJoin();drawJoin();
  }

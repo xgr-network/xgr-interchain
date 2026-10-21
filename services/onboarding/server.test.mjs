@@ -13,7 +13,7 @@ const input={
  website:"https://example.org",shortDescription:"A sample test token for cross-chain routing.",
  description:"A sample project with valid fields for testing the XITA onboarding manifest generation process.",
  canonicalChain:"base",canonicalAddress:"0x1234567890123456789012345678901234567890",
- decimals:18,targets:["xgrchain","polygon"],categories:["DeFi"],tags:["Cross-chain"],
+ decimals:18,categories:["DeFi"],tags:["Cross-chain"],
  logoUrl:"https://example.org/logo.png",priceSource:"coingecko",coingeckoId:"example-token",
  contactEmail:"partner@example.org",applicantRole:"holder",confirmed:true
 };
@@ -34,6 +34,9 @@ test("email confirmation is private, single-use and required before public GitHu
   publisher:async(bundle,{expectedMain})=>{
    proposals++;assert.equal(expectedMain,"a".repeat(40));
    assert.equal(bundle.summary.applicantRole,"holder");
+   assert.equal(bundle.summary.routeCount,
+    Object.keys(catalog.chains).filter(name=>name!=="xgrchain").length*2);
+   assert.deepEqual(bundle.summary.chains.sort(),Object.keys(catalog.chains).sort());
    assert.equal(JSON.stringify(bundle.files).includes("partner@example.org"),false);
    return {number:271,url:"https://github.com/xgr-network/xgr-interchain/pull/271",status:"draft"};
   }
@@ -49,6 +52,8 @@ test("email confirmation is private, single-use and required before public GitHu
   const preview=await post("/api/xita/join/preview",input);
   assert.equal(preview.status,200);
   assert.equal(preview.body.assetId.length,66);
+  assert.deepEqual(preview.body.summary.chains.sort(),Object.keys(catalog.chains).sort());
+  assert.equal(preview.body.summary.routeCount,(Object.keys(catalog.chains).length-1)*2);
   assert.equal(JSON.stringify(preview.body).includes(input.contactEmail),false);
   const result=await post("/api/xita/join/submit",input);
   assert.equal(result.status,202);
