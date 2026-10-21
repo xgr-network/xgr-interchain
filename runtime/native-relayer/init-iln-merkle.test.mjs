@@ -54,7 +54,7 @@ function fakeProvider({logs=[entry(leaves[0],0,101,0),entry(leaves[1],1,117,0)],
     },
     call:async({to,data,blockTag}) => {
       assert.equal(to.toLowerCase(),hook.toLowerCase());
-      assert.equal(blockTag,128);
+      assert.equal(blockTag,"latest");
       if (data === hookAbi.getFunction("mailbox").selector)
         return hookAbi.encodeFunctionResult("mailbox",[sourceMailbox]);
       if (data === hookAbi.getFunction("count").selector)
