@@ -89,6 +89,7 @@ contract XITATwoHopTokenAccountingTest is Test {
     Network internal hub;
     Network internal base;
     Network internal arb;
+    Network internal polygon;
 
     function setUp() public {
         vm.warp(1_800_000_000);
@@ -370,6 +371,196 @@ contract XITATwoHopTokenAccountingTest is Test {
         assertEq(XETAGuardedSyntheticWarpRouter(hubWrapped).totalSupply(),0);
         assertEq(token.balanceOf(baseCollateral),amount,
             "Arbitrum supply must be fully backed by the original Base escrow");
+        assertEq(baseAdapter.pendingInterchainFeesWei(),SERVICE_FEE);
+    }
+
+    /// @notice Original collateral sits on ARBITRUM. Its synthetic copies
+    /// circulate on Base and the hub. A Base->Arbitrum transfer must
+    /// BURN Base -> MINT hub -> BURN hub -> UNLOCK original Arbitrum ERC20.
+    function testArbitrumOriginalBurnMintBurnUnlock() public {
+        uint256 amount=77*1e6;
+        vm.chainId(ARBITRUM);
+        XITATwoHopOriginal6 token=new XITATwoHopOriginal6();
+        token.transfer(USER,amount);
+        (bytes32 assetId,address arbCollateral)=arb.factory.deployCollateralRouter(
+            address(token),bytes32(uint256(20)));
+        vm.chainId(HUB);
+        (bytes32 hubId,address hubSynthetic)=hub.factory.deploySyntheticRouter(
+            ARBITRUM,address(token),6,"Hub claim","hwARB",bytes32(uint256(21)));
+        vm.chainId(BASE);
+        (bytes32 baseId,address baseSynthetic)=base.factory.deploySyntheticRouter(
+            ARBITRUM,address(token),6,"Base claim","bwARB",bytes32(uint256(22)));
+        assertEq(assetId,hubId);
+        assertEq(assetId,baseId);
+
+        (bytes32 seedId,ILNGateway arbToHub)=
+            _register(arb,arbCollateral,hub,hubSynthetic,hubSynthetic);
+        (bytes32 onwardId,ILNGateway hubToArb)=
+            _register(hub,hubSynthetic,arb,arbCollateral,address(token));
+        (bytes32 transferId,ILNGateway hubToBase)=
+            _register(hub,hubSynthetic,base,baseSynthetic,baseSynthetic);
+        (bytes32 baseRouteId,ILNGateway baseToHub)=
+            _register(base,baseSynthetic,hub,hubSynthetic,hubSynthetic);
+
+        // Pre-existing Base balance is created through legitimate locks
+        // of the origin ERC20; never mint a synthetic token in test setup.
+        vm.chainId(ARBITRUM);
+        vm.prank(USER);
+        token.approve(address(arbToHub),amount);
+        _bridge(arb,hub,arbCollateral,hubSynthetic,seedId,arbToHub,amount);
+        assertEq(token.balanceOf(arbCollateral),amount);
+        _deliver(arb,hub,arbCollateral,hubSynthetic,seedId);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),amount);
+        vm.chainId(HUB);
+        vm.prank(USER);
+        ERC20(hubSynthetic).approve(address(hubToBase),amount);
+        _bridge(hub,base,hubSynthetic,baseSynthetic,transferId,hubToBase,amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),0);
+        _deliver(hub,base,hubSynthetic,baseSynthetic,transferId);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),amount);
+
+        XITAExecutionGateway baseAdapter=_adapter(base);
+        XITAExecutionGateway hubAdapter=_adapter(hub);
+        bytes32 parent=_paidBaseFirstHop(baseToHub,onwardId,amount,baseAdapter);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),0);
+        _deliver(base,hub,baseSynthetic,hubSynthetic,baseRouteId);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),amount);
+        bytes32 onward=_onwardHop(hubToArb,parent,amount,hubAdapter);
+        assertTrue(onward!=parent);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),0);
+        _deliver(hub,arb,hubSynthetic,arbCollateral,onwardId);
+        assertEq(token.balanceOf(USER),amount,
+            "the exact original Arbitrum ERC20 must be unlocked");
+        assertEq(token.balanceOf(arbCollateral),0);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),0);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),0);
+        assertEq(baseAdapter.pendingInterchainFeesWei(),SERVICE_FEE);
+    }
+
+    /// @notice Origin token resides on a DIFFERENT spoke (Polygon). Both Base
+    /// and Arbitrum hold synthetic claims, so even the intermediate hub token
+    /// is synthetic: BURN -> MINT -> BURN -> MINT.
+    function testThirdChainOriginalBurnMintBurnMint() public {
+        uint64 originId=137;
+        Network memory origin=_network(originId);
+        // Store in a named storage slot; _register/_bridge keep storage context.
+        polygon=origin;
+        uint256 amount=345*1e6;
+        vm.chainId(originId);
+        XITATwoHopOriginal6 original=new XITATwoHopOriginal6();
+        original.transfer(USER,amount);
+        (bytes32 assetId,address collateral)=polygon.factory.deployCollateralRouter(
+            address(original),bytes32(uint256(30)));
+        vm.chainId(HUB);
+        (bytes32 hubId,address hubSynthetic)=hub.factory.deploySyntheticRouter(
+            originId,address(original),6,"Hub claim","hwPOL",bytes32(uint256(31)));
+        vm.chainId(BASE);
+        (bytes32 baseId,address baseSynthetic)=base.factory.deploySyntheticRouter(
+            originId,address(original),6,"Base claim","bwPOL",bytes32(uint256(32)));
+        vm.chainId(ARBITRUM);
+        (bytes32 arbId,address arbSynthetic)=arb.factory.deploySyntheticRouter(
+            originId,address(original),6,"Arbitrum claim","awPOL",bytes32(uint256(33)));
+        assertEq(assetId,hubId);
+        assertEq(assetId,baseId);
+        assertEq(assetId,arbId);
+
+        (bytes32 seedId,ILNGateway origToHub)=
+            _register(polygon,collateral,hub,hubSynthetic,hubSynthetic);
+        _register(hub,hubSynthetic,polygon,collateral,address(original));
+        (bytes32 toBaseId,ILNGateway hubToBase)=
+            _register(hub,hubSynthetic,base,baseSynthetic,baseSynthetic);
+        (bytes32 baseIdBack,ILNGateway baseToHub)=
+            _register(base,baseSynthetic,hub,hubSynthetic,hubSynthetic);
+        (bytes32 onwardId,ILNGateway hubToArb)=
+            _register(hub,hubSynthetic,arb,arbSynthetic,arbSynthetic);
+        _register(arb,arbSynthetic,hub,hubSynthetic,hubSynthetic);
+
+        // Establish a fully backed Base synthetic starting from Polygon.
+        vm.chainId(originId);
+        vm.prank(USER);
+        original.approve(address(origToHub),amount);
+        _bridge(polygon,hub,collateral,hubSynthetic,seedId,origToHub,amount);
+        _deliver(polygon,hub,collateral,hubSynthetic,seedId);
+        vm.chainId(HUB);
+        vm.prank(USER);
+        ERC20(hubSynthetic).approve(address(hubToBase),amount);
+        _bridge(hub,base,hubSynthetic,baseSynthetic,toBaseId,hubToBase,amount);
+        _deliver(hub,base,hubSynthetic,baseSynthetic,toBaseId);
+        assertEq(original.balanceOf(collateral),amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),0);
+
+        XITAExecutionGateway baseAdapter=_adapter(base);
+        XITAExecutionGateway hubAdapter=_adapter(hub);
+        bytes32 parent=_paidBaseFirstHop(baseToHub,onwardId,amount,baseAdapter);
+        _deliver(base,hub,baseSynthetic,hubSynthetic,baseIdBack);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),0);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),amount);
+        bytes32 onward=_onwardHop(hubToArb,parent,amount,hubAdapter);
+        assertTrue(onward!=parent);
+        assertEq(XETAGuardedSyntheticWarpRouter(hubSynthetic).totalSupply(),0);
+        _deliver(hub,arb,hubSynthetic,arbSynthetic,onwardId);
+        assertEq(XETAGuardedSyntheticWarpRouter(arbSynthetic).balanceOf(USER),amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(arbSynthetic).totalSupply(),amount);
+        assertEq(original.balanceOf(collateral),amount,
+            "final synthetic amount must stay backed by original Polygon collateral");
+        assertEq(original.balanceOf(USER),0);
+        assertEq(baseAdapter.pendingInterchainFeesWei(),SERVICE_FEE);
+    }
+
+    /// @notice The hub may also secure an original ERC20 instead of native
+    /// XGR. Source and target spokes are still synthetic, so the sequence
+    /// remains BURN -> UNLOCK -> LOCK -> MINT, with actual ERC20 allowances.
+    function testHubOriginalERC20BurnUnlockLockMint() public {
+        uint256 amount=19*1e6;
+        vm.chainId(HUB);
+        XITATwoHopOriginal6 original=new XITATwoHopOriginal6();
+        original.transfer(USER,amount);
+        (bytes32 assetId,address hubCollateral)=hub.factory.deployCollateralRouter(
+            address(original),bytes32(uint256(40)));
+        vm.chainId(BASE);
+        (bytes32 baseId,address baseSynthetic)=base.factory.deploySyntheticRouter(
+            HUB,address(original),6,"Base claim","bwHUB",bytes32(uint256(41)));
+        vm.chainId(ARBITRUM);
+        (bytes32 arbId,address arbSynthetic)=arb.factory.deploySyntheticRouter(
+            HUB,address(original),6,"Arbitrum claim","awHUB",bytes32(uint256(42)));
+        assertEq(assetId,baseId);
+        assertEq(assetId,arbId);
+
+        (bytes32 seedId,ILNGateway hubToBase)=_register(
+            hub,hubCollateral,base,baseSynthetic,baseSynthetic);
+        (bytes32 baseToHubId,ILNGateway baseToHub)=_register(
+            base,baseSynthetic,hub,hubCollateral,address(original));
+        (bytes32 onwardId,ILNGateway hubToArb)=_register(
+            hub,hubCollateral,arb,arbSynthetic,arbSynthetic);
+        _register(arb,arbSynthetic,hub,hubCollateral,address(original));
+
+        vm.chainId(HUB);
+        vm.prank(USER);
+        original.approve(address(hubToBase),amount);
+        _bridge(hub,base,hubCollateral,baseSynthetic,seedId,hubToBase,amount);
+        assertEq(original.balanceOf(hubCollateral),amount);
+        _deliver(hub,base,hubCollateral,baseSynthetic,seedId);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).balanceOf(USER),amount);
+
+        XITAExecutionGateway baseAdapter=_adapter(base);
+        XITAExecutionGateway hubAdapter=_adapter(hub);
+        bytes32 parent=_paidBaseFirstHop(baseToHub,onwardId,amount,baseAdapter);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),0);
+        _deliver(base,hub,baseSynthetic,hubCollateral,baseToHubId);
+        assertEq(original.balanceOf(hubCollateral),0,
+            "original hub ERC20 must be unlocked before next hop");
+        assertEq(original.balanceOf(USER),amount);
+        bytes32 onward=_onwardHop(hubToArb,parent,amount,hubAdapter);
+        assertTrue(onward!=parent);
+        assertEq(original.balanceOf(hubCollateral),amount,
+            "same original hub ERC20 must be re-locked for Arbitrum");
+        assertEq(original.balanceOf(USER),0);
+        _deliver(hub,arb,hubCollateral,arbSynthetic,onwardId);
+        assertEq(XETAGuardedSyntheticWarpRouter(arbSynthetic).balanceOf(USER),amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(arbSynthetic).totalSupply(),amount);
+        assertEq(original.balanceOf(hubCollateral),amount);
+        assertEq(XETAGuardedSyntheticWarpRouter(baseSynthetic).totalSupply(),0);
         assertEq(baseAdapter.pendingInterchainFeesWei(),SERVICE_FEE);
     }
 }
