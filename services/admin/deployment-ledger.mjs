@@ -60,11 +60,15 @@ function proveCreation(receipt,componentAddress,provenance){
  // observed smart-wallet executor. The receipt must still contain an exact
  // Factory-originated deployment event for this target, and the caller must
  // match the signed user wallet (verified separately below).
+ // A SourceRegistry is created exactly once by its approved Factory.
+ // Its RegistryDeployed event in a successful canonical receipt also proves
+ // execution via an outer smart-wallet transaction on ANY supported chain.
+ // All other Factory provenance rules remain unchanged.
  const baseExecutor=receipt._chainId===8453&&
     equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
-      !(equal(receipt.to,provenance.factory)||baseExecutor))||
+      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||baseExecutor))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);

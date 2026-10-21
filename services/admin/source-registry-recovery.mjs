@@ -7,6 +7,7 @@ import {selector,keccak256} from "../../apps/web/keccak.mjs";
 import {verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {verifyChainBindings} from "./chain-reconcile.mjs";
 import {verifyDeploymentReceipt} from "./deployment-ledger.mjs";
+import {verifyFactoryRegistryReceipt} from "./registry-event-proof.mjs";
 
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,WORD=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -66,25 +67,11 @@ export async function verifyExistingSourceRegistry({
  if(matches.length!==1)
   throw Error("Factory.registry() is set but no unique RegistryDeployed event was found");
  const event=matches[0],txHash=event.transactionHash.toLowerCase();
- const [receipt,transaction]=await Promise.all([
-  rpc(url,"eth_getTransactionReceipt",[txHash]),
-  rpc(url,"eth_getTransactionByHash",[txHash])
- ]);
- if(!receipt||!transaction||!same(transaction.hash,txHash)||
-    !same(transaction.from,receipt.from)||
-    !same(transaction.to,factory)||
-    !same(transaction.input??transaction.data,selector("deployRegistry()"))||
-    BigInt(transaction.value||"0x0")!==0n||
-    (transaction.chainId!=null&&BigInt(transaction.chainId)!==BigInt(chain.chainId))||
-    !same(receipt.transactionHash,txHash)||
-    !validAddress(receipt.from)||BigInt(receipt.status||"0x0")!==1n||
-    !same(receipt.blockHash,event.blockHash)||
-    BigInt(receipt.blockNumber)!==BigInt(event.blockNumber)||
-    !Array.isArray(receipt.logs)||!receipt.logs.some(log=>
-     same(log.address,factory)&&Array.isArray(log.topics)&&
-     log.topics.length===2&&same(log.topics[0],topic)&&
-     same(log.topics[1],registryTopic)))
-  throw Error("SourceRegistry Factory event does not match a successful receipt");
+ const receipt=await rpc(url,"eth_getTransactionReceipt",[txHash]);
+ verifyFactoryRegistryReceipt({factory,registry,txHash,event,receipt});
+ // The independent receipt verifier checks this RPC's chain ID, original
+ // canonical block, Factory event and the Registry runtime fingerprint.
+ // Historical eth_getTransactionByHash is not required by this proof.
  // The caller of a permissionless Factory need not be the wallet in an old
  // failed journal. Attribute the immutable receipt to its ACTUAL tx sender.
  const blockTag="0x"+BigInt(receipt.blockNumber).toString(16);
