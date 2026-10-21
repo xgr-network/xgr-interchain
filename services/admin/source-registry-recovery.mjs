@@ -66,8 +66,17 @@ export async function verifyExistingSourceRegistry({
  if(matches.length!==1)
   throw Error("Factory.registry() is set but no unique RegistryDeployed event was found");
  const event=matches[0],txHash=event.transactionHash.toLowerCase();
- const receipt=await rpc(url,"eth_getTransactionReceipt",[txHash]);
- if(!receipt||!same(receipt.transactionHash,txHash)||
+ const [receipt,transaction]=await Promise.all([
+  rpc(url,"eth_getTransactionReceipt",[txHash]),
+  rpc(url,"eth_getTransactionByHash",[txHash])
+ ]);
+ if(!receipt||!transaction||!same(transaction.hash,txHash)||
+    !same(transaction.from,receipt.from)||
+    !same(transaction.to,factory)||
+    !same(transaction.input??transaction.data,selector("deployRegistry()"))||
+    BigInt(transaction.value||"0x0")!==0n||
+    (transaction.chainId!=null&&BigInt(transaction.chainId)!==BigInt(chain.chainId))||
+    !same(receipt.transactionHash,txHash)||
     !validAddress(receipt.from)||BigInt(receipt.status||"0x0")!==1n||
     !same(receipt.blockHash,event.blockHash)||
     BigInt(receipt.blockNumber)!==BigInt(event.blockNumber)||
