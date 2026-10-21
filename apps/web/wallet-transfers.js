@@ -140,24 +140,48 @@ export function dispatchMessage(logData){
  if(payload.length<128+2*n)throw Error("Truncated Dispatch message");
  return Uint8Array.from({length:n},(_,i)=>parseInt(payload.slice(128+i*2,130+i*2),16));
 }
-export async function publicRead(url,method,params,fetcher=globalThis.fetch){
+// Browsers cannot assume remote RPC servers accept cross-origin POST/CSP.
+// All website reads use the SAME-ORIGIN, strictly read-only API; the server
+// resolves approved chain endpoints from the current receipt-backed catalog.
+// No wallet signing/broadcast ever traverses this proxy.
+export async function publicRead(url,method,params,fetcher=globalThis.fetch,{
+ viaProxy=typeof window!=="undefined",signal=null
+}={}){
  if(typeof url!=="string"||!url.startsWith("https://")||typeof fetcher!=="function")
   throw Error("Untrusted HTTPS RPC endpoint");
  const parsed=new URL(url);
  if(parsed.protocol!=="https:"||parsed.username||parsed.password)
   throw Error("Untrusted HTTPS RPC endpoint");
  const controller=new AbortController();
- const timeout=setTimeout(()=>controller.abort(),7000);
+ const abort=()=>controller.abort();
+ if(signal){
+  if(signal.aborted)controller.abort();
+  else signal.addEventListener("abort",abort,{once:true});
+ }
+ const timeout=setTimeout(abort,viaProxy?21000:7000);
  try{
-  const response=await fetcher(url,{method:"POST",credentials:"omit",cache:"no-store",
-   headers:{"content-type":"application/json",accept:"application/json"},
-   body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),signal:controller.signal});
-  if(!response?.ok)throw Error("Chain RPC unavailable");
-  const body=await response.json();
-  if(body?.jsonrpc!=="2.0"||body.id!==1||body.error||
-      !Object.hasOwn(body,"result"))throw Error("Invalid chain RPC response");
-  return body.result;
- }finally{clearTimeout(timeout)}
+  const endpoint=viaProxy?"/api/xeta/v1/rpc/read":url;
+  const body=viaProxy?{rpcUrl:url,method,params}:{jsonrpc:"2.0",id:1,method,params};
+  let response;
+  try{
+   response=await fetcher(endpoint,{method:"POST",credentials:"omit",cache:"no-store",
+    headers:{"content-type":"application/json",accept:"application/json"},
+    body:JSON.stringify(body),signal:controller.signal});
+  }catch{
+   throw Error(viaProxy?"XITA read-only RPC proxy unreachable; no wallet transaction sent":
+    "Chain RPC request failed");
+  }
+  if(!response?.ok)throw Error(viaProxy?
+   "XITA read-only RPC proxy unavailable (HTTP "+String(response?.status||"network")+
+    "); no wallet transaction sent":"Chain RPC unavailable");
+  const reply=await response.json();
+  if(reply?.jsonrpc!=="2.0"||reply.id!==1||reply.error||
+      !Object.hasOwn(reply,"result"))throw Error("Invalid chain RPC response");
+  return reply.result;
+ }finally{
+  clearTimeout(timeout);
+  signal?.removeEventListener("abort",abort);
+ }
 }
 // Read-only RPC failover is chain-agnostic. Every replacement endpoint is
 // independently chain-ID verified BEFORE it can supply transaction/receipt
