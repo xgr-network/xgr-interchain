@@ -36,7 +36,7 @@ const fakeRpc=(options={})=>async(_url,method,params)=>{
  switch(method){
   case "eth_call":return getters.get(params[0].data);
   case "eth_chainId":return "0xa4b1";
-  case "eth_blockNumber":return "0x88";
+  case "eth_blockNumber":return "0x200";
   case "eth_getLogs":return [options.event??event];
   case "eth_getTransactionReceipt":return options.receipt??receipt;
   case "eth_getTransactionByHash":return options.transaction??baseTx;
@@ -75,7 +75,7 @@ test("event proof rejects failed receipts and foreign Registry events",()=>{
   receipt:{...receipt,logs:[{...event,address:executor}]}}),/not emitted/);
  assert.throws(()=>verifyFactoryRegistryReceipt({
   factory,registry,txHash:hash,transaction:baseTx,event,
-  receipt:{...receipt,blockHash:"0x"+"c".repeat(64)}}),/different blocks/);
+  receipt:{...receipt,blockHash:"0x"+"c".repeat(64)}}),/canonical receipt block/);
 });
 test("Factory.registry zero means a new wallet-confirmed Registry call is still needed",async()=>{
  const empty=async(...args)=>{
