@@ -9,6 +9,7 @@
       "chainId": 42161,
       "domainId": 42161,
       "rpcUrls": [
+        "https://arb1.arbitrum.io/rpc",
         "https://arbitrum-one-rpc.publicnode.com"
       ],
       "nativeCurrency": {
@@ -18,8 +19,7 @@
       },
       "confirmations": 64,
       "blsVerifierFormat": "eip2537",
-      "observedInfrastructure": "deployments/chains/arbitrum.json",
-      "configurationStatus": "planned-unverified"
+      "observedInfrastructure": "deployments/chains/arbitrum.json"
     },
     "base": {
       "schemaVersion": 1,

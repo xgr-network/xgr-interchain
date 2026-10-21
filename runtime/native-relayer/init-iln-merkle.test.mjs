@@ -65,7 +65,7 @@ function fakeProvider({logs=[entry(leaves[0],0,101,0),entry(leaves[1],1,117,0)],
     },
     getCode:async(to,blockTag)=>{
       assert.equal(to.toLowerCase(),hook.toLowerCase());
-      assert.equal(blockTag,128);
+      assert.equal(blockTag,"latest");
       return runtime;
     },
     getLogs:async(filter)=>{
@@ -92,15 +92,19 @@ const expectFailure = async(p,pattern) =>
     provider:p,evidence:evidence(),chunkSize:10,
   }),pattern);
 
-test("initializer reads actual documented Base/XGR Hook provenance",()=>{
+test("initializer reads actual documented Base/XGR/Arbitrum Hook provenance",()=>{
   const base = loadChainEvidence("base");
   const xgr = loadChainEvidence("xgrchain");
+  const arb = loadChainEvidence("arbitrum");
   assert.equal(base.chainId,8453);
   assert.equal(base.hook.toLowerCase(),hook.toLowerCase());
   assert.equal(base.fromBlock,52602508);
   assert.equal(xgr.chainId,1643);
   assert.equal(xgr.hook.toLowerCase(),"0x44a8374cf1ff674a92a6876832af245b805e2161");
   assert.ok(xgr.fromBlock > 0);
+  assert.equal(arb.chainId,42161);
+  assert.equal(arb.hook.toLowerCase(),"0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70");
+  assert.ok(arb.fromBlock > 0);
   assert.throws(()=>loadChainEvidence("polygon"),/unsupported chain/);
 });
 test("two ordered source insertions produce the exact canonical Hyperlane root",async()=>{
@@ -145,6 +149,21 @@ test("never accepts an incomplete, duplicate, wrong-root or wrong-ABI prefix",as
   await expectFailure(fakeProvider({chainId:1643}),/chainId mismatch/);
   await expectFailure(fakeProvider({reorg:true}),/reorganized during bootstrap/);
 });
+test("new Arbitrum Hook with zero insertions is identified without creating a fake Merkle replica",async()=>{
+  const result=await buildVerifiedReplica({
+    provider:fakeProvider({logs:[],actualCount:0n,actualRoot:ZERO}),
+    evidence:evidence(),chunkSize:10,
+  });
+  assert.equal(result.empty,true);
+  assert.deepEqual(result.leaves,[]);
+  assert.equal(result.checkpointBlock,128);
+  assert.equal(result.root,ZERO);
+  const file=join(mkdtempSync(join(tmpdir(),"xita-empty-hook-")),"snapshot.json");
+  try{
+    assert.throws(()=>writeReplicaAtomic(file,result),/invalid Merkle replica format/);
+    assert.equal(existsSync(file),false);
+  }finally{rmSync(join(file,".."),{recursive:true,force:true});}
+});
 test("source RPC range limits may split, but every block remains verified",async()=>{
   const provider=fakeProvider({failedBatch:true});
   const c=await buildVerifiedReplica({provider,evidence:evidence(),chunkSize:10});
@@ -170,7 +189,7 @@ test("absolute explicit data-dir, invalid chain and options handled without writ
     assert.equal(parseBootstrapArgs(["--chain","base","--data-dir",dir]).chainId,undefined);
     assert.equal(parseBootstrapArgs(["--chain","base","--data-dir",dir]).dataDir,dir);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir","relative"]),/absolute/);
-    assert.throws(()=>parseBootstrapArgs(["--chain","polygon","--data-dir",dir]),/chain must be/);
+    assert.throws(()=>parseBootstrapArgs(["--chain","polygon","--data-dir",dir]),/documented mainnet deployment/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--rpc","https://user:pass@remote.example"]),/RPC endpoint/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--chunk-size","0"]),/chunk-size/);
     assert.throws(()=>parseBootstrapArgs(["--chain","base","--data-dir",dir,"--bad"]),/unknown initializer option/);

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,rmSync,mkdirSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createChainOperator} from "./chain-operator.mjs";
 import {deploymentIntents} from "./deployment-intents.mjs";
@@ -92,6 +92,20 @@ test("normal chain reconcile documents original Factory deployment despite unrel
  const stateDir=mkdtempSync(join(tmpdir(),"xita-registry-reconcile-"));
  try{
   const sourceCommit="a".repeat(40);
+  // Reconstruct pre-deployment mainnet state in an isolated fixture: real
+  // Arbitrum SourceRegistry is now documented and must remain untouched.
+  const testRoot=join(stateDir,"repo");
+  mkdirSync(join(testRoot,"deployments","chains"),{recursive:true});
+  symlinkSync(join(root,"config"),join(testRoot,"config"),"dir");
+  symlinkSync(join(root,"deployments","assets"),join(testRoot,"deployments","assets"),"dir");
+  symlinkSync(join(root,"deployments","receipts"),join(testRoot,"deployments","receipts"),"dir");
+  const earlier=JSON.parse(JSON.stringify(manifest));
+  const current=earlier.xitaV315.components.sourceRegistry;
+  assert.ok(current?.receiptPath,"real SourceRegistry must be documented");
+  delete earlier.xitaV315.components.sourceRegistry;
+  earlier.xitaV315.receiptPaths=earlier.xitaV315.receiptPaths.filter(x=>x!==current.receiptPath);
+  writeFileSync(join(testRoot,"deployments","chains","arbitrum.json"),
+    JSON.stringify(earlier));
   const factoryBlock=JSON.parse(readFileSync(join(root,components.factory.receiptPath),"utf8")).blockNumber;
   const creationBlock="0x"+(factoryBlock+2).toString(16);
   const head="0x"+(factoryBlock+200).toString(16);
@@ -116,7 +130,7 @@ test("normal chain reconcile documents original Factory deployment despite unrel
   const unrelatedHash="0x"+"e".repeat(64);
   journal.attachHash(intent,unrelatedHash);
   let published=null;
-  const operator=createChainOperator({root,stateDir,publicEvidenceDir:stateDir,rpc,
+  const operator=createChainOperator({root:testRoot,stateDir,publicEvidenceDir:stateDir,rpc,
    mainCheck:async()=>sourceCommit,
    build:async()=>({artifacts:{sourceRegistry:artifact}}),
    publish:async(_root,items)=>{published=items;return {commit:sourceCommit};}

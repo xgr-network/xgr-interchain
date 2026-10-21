@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// XGR-Node v3.2.0 canonical Merkle-tree bootstrap. READ-ONLY on both chains;
+// XGR-Node v3.2.0 canonical Merkle-tree bootstrap. READ-ONLY on all chains;
 // the only side effect is an atomic verified snapshot under --data-dir.
 // No private keys, transfers, blockchain transactions, or trust in peers.
 import {
@@ -107,14 +107,15 @@ export class ILNAccumulator {
 }
 
 export function loadChainEvidence(chain, repoRoot = REPO) {
-  requireCondition(["base", "xgrchain"].includes(chain),
-    "unsupported chain; expected base or xgrchain");
+  requireCondition(/^[a-z][a-z0-9-]{0,50}$/.test(chain || "") &&
+    existsSync(join(repoRoot, "deployments", "chains", chain + ".json")),
+    "unsupported chain: no documented mainnet deployment manifest");
   const config = JSON.parse(readFileSync(
     join(repoRoot, "config", "chains", chain, "chain.json"), "utf8"));
   const manifest = JSON.parse(readFileSync(
     join(repoRoot, "deployments", "chains", chain + ".json"), "utf8"));
-  const expectedId = chain === "base" ? 8453 : 1643;
-  requireCondition(config.chainId === expectedId &&
+  const expectedId = config.chainId;
+  requireCondition(Number.isSafeInteger(expectedId) && expectedId > 0 &&
     config.domainId === expectedId &&
     manifest.chainId === expectedId && manifest.domainId === expectedId &&
     config.environment === "mainnet" && manifest.network === "mainnet",
@@ -129,7 +130,7 @@ export function loadChainEvidence(chain, repoRoot = REPO) {
   "incomplete verified transport bundle configuration");
   const receiptRelative = components.merkleTreeHook.receiptPath;
   requireCondition(typeof receiptRelative === "string" &&
-    /^deployments\/receipts\/(base|xgrchain)\/[0-9a-f-]+\.json$/i.test(receiptRelative) &&
+    /^deployments\/receipts\/[a-z][a-z0-9-]*\/[0-9a-f]{64}-[0-9a-f]{40}\.json$/i.test(receiptRelative) &&
     receiptRelative.startsWith("deployments/receipts/" + chain + "/"),
   "unsafe Hook receipt path");
   const receipt = JSON.parse(readFileSync(join(repoRoot, receiptRelative), "utf8"));
@@ -208,15 +209,28 @@ export async function buildVerifiedReplica({
     "confirmed Hook mailbox differs from deployed XITA bundle");
   const targetCount = Number(onchainCount);
   requireCondition(Number.isSafeInteger(targetCount) &&
-    targetCount > 0 && targetCount <= MAX_LEAVES &&
-    HASH.test(onchainRoot) && onchainRoot.toLowerCase() !== ZERO,
-  "empty or unsupported canonical Merkle checkpoint");
+    targetCount >= 0 && targetCount <= MAX_LEAVES && HASH.test(onchainRoot),
+  "invalid or unsupported canonical Merkle checkpoint");
   // Before processing potentially lengthy RPC scans, verify the current
   // runtime bytecode against immutable GitHub deployment receipt.
-  const runtime = await provider.getCode(evidence.hook, checkpointBlock);
+  // The documented Hyperlane Hook is immutable/non-upgradeable. Verify its
+  // receipt-pinned bytecode at latest to avoid requiring archived state.
+  // Canonical mailbox, count and root MUST still be read at the confirmed epoch.
+  const runtime = await provider.getCode(evidence.hook, "latest");
   requireCondition(runtime !== "0x" &&
     keccak256(runtime).toLowerCase() === evidence.runtimeCodeHash,
   "source Hook runtime code differs from documented deployed contract");
+  // Fresh infrastructure may have dispatched no messages. The Go validator
+  // deliberately rejects zero-leaf replicas. Never fabricate one.
+  if (targetCount === 0) {
+    const finalBlock = await provider.getBlock(checkpointBlock);
+    requireCondition(finalBlock?.hash?.toLowerCase() ===
+      epochBlock.hash.toLowerCase(), "source checkpoint reorganized during bootstrap");
+    return {chainId: evidence.chainId, hook: evidence.hook.toLowerCase(),
+      checkpointBlock, root: onchainRoot.toLowerCase(), leaves: [], empty: true};
+  }
+  requireCondition(onchainRoot.toLowerCase() !== ZERO,
+    "nonempty canonical Merkle tree has zero root");
   const tree = new ILNAccumulator();
   const leaves = [];
   let lastBlock = 0, lastIndex = -1, matched = false, batches = 0;
@@ -288,8 +302,9 @@ export function parseBootstrapArgs(args) {
     else if (option === "--dry-run") options.dryRun = true;
     else throw new Error("unknown initializer option: " + option);
   }
-  requireCondition(["base", "xgrchain"].includes(options.chain),
-    "--chain must be base or xgrchain");
+  requireCondition(/^[a-z][a-z0-9-]{0,50}$/.test(options.chain) &&
+    existsSync(join(REPO, "deployments", "chains", options.chain + ".json")),
+    "--chain must have a documented mainnet deployment");
   requireCondition(isAbsolute(options.dataDir) &&
     options.dataDir !== sep && options.dataDir.trim() !== "",
     "--data-dir must be the absolute, existing XGR-Node data directory");
@@ -378,6 +393,15 @@ async function main() {
       "Scanned to block " + x.end + "/" + x.total +
       "; validated " + x.leaves + "/" + x.targetCount + " leaves"),
   });
+  if (replica.empty) {
+    console.log(JSON.stringify({
+      status: "empty-hook-no-replica", chain: evidence.chain,
+      checkpointBlock: replica.checkpointBlock, merkleTreeHook: evidence.hook,
+      count: 0, root: replica.root,
+      note: "No confirmed Hyperlane insertions. No snapshot was written. Re-run after the first confirmed source message.",
+    }, null, 2));
+    return;
+  }
   const path = join(args.dataDir, "interchain", "iln", "replicas",
     String(evidence.chainId), evidence.hook.toLowerCase() + ".json");
   if (!args.dryRun) {
