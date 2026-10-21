@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof,verifyDestinationInboundRoute} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
+import {deployedRoutes} from "./route-availability.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
 const account=address("e"),srcRouter=address("6"),dstRouter=address("7");
 const gateway=address("8"),reverseGateway=address("9"),srcMailbox=address("3"),dstMailbox=address("4");
@@ -73,10 +74,49 @@ function sourceProvider(sends,overrides={}){
 const rpcResponse=(result)=>({ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})});
 const testFetch=(result="0x"+(1n*10n**18n).toString(16))=>async(url,options)=>{
  if(url==="/api/xeta/v1/transfer/health")return {ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
- const method=JSON.parse(options.body).method;
+ const body=JSON.parse(options.body),method=body.method;
  return rpcResponse(method==="eth_chainId"?"0x2105":
-  method==="eth_gasPrice"?"0x3b9aca00":result);
+  method==="eth_gasPrice"?"0x3b9aca00":
+  method==="eth_call"&&body.params?.[0]?.data?.startsWith(
+   selector("verifyInboundRoute(uint64,uint32,address,bytes32)"))?word(1):result);
 };
+test("a documented route whose destination rejects its identity blocks a source lock before wallet interaction",async()=>{
+ const sends=[],rpcCalls=[],rpc=async(url,options)=>{
+  if(url==="/api/xeta/v1/transfer/health")return {
+   ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
+  const body=JSON.parse(options.body);
+  rpcCalls.push(body.method);
+  if(body.method==="eth_chainId")return rpcResponse("0x2105");
+  if(body.method==="eth_call"&&body.params[0].data.startsWith(
+    selector("verifyInboundRoute(uint64,uint32,address,bytes32)")))
+    return rpcResponse(word(0));
+  throw Error("Unexpected preflight RPC "+body.method);
+ };
+ const provider={request:async()=>{sends.push("wallet interaction");throw Error("wallet touched")}};
+ await assert.rejects(()=>startTransfer({catalog:catalog(),commercial:false,
+  account,asset:"XGR",source:"xgrchain",destination:"base",amount:"0.1",
+  provider,fetcher:rpc}),/Destination router rejects canonical inbound asset route/);
+ assert.deepEqual(sends,[],"No MetaMask operation, approval or lock before destination acceptance");
+ assert.deepEqual(rpcCalls,["eth_chainId","eth_call"]);
+});
+test("destination inbound route verification binds exact canonical source chain, router and route ID",async()=>{
+ const c=catalog(),route=deployedRoutes(c).find(r=>r.source==="xgrchain"&&r.destination==="base");
+ assert.ok(route);
+ const fetcher=async(url,opts)=>{
+  const {method,params}=JSON.parse(opts.body);
+  if(method==="eth_chainId")return rpcResponse("0x2105");
+  if(method==="eth_call"){
+   const expected=selector("verifyInboundRoute(uint64,uint32,address,bytes32)")+
+    word(1643).slice(2)+word(1643).slice(2)+word(BigInt(srcRouter)).slice(2)+routeId.slice(2);
+   assert.equal(params[0].to,dstRouter);
+   assert.equal(params[0].data,expected);
+   assert.equal(params[1],"latest");
+   return rpcResponse(word(1));
+  }
+  throw Error(method);
+ };
+ assert.equal(await verifyDestinationInboundRoute({catalog:c,route,fetcher}),true);
+});
 test("amount conversion and Gateway ABI are fixed, with no floating point",()=>{
  assert.equal(amountToUnits("1.125",18),1125000000000000000n);
  assert.throws(()=>amountToUnits("0",18),/positive/);
