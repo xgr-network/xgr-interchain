@@ -7,9 +7,12 @@ const services=[
  {path:"/api/xeta/v1/transfer/health",readTimeout:5},
  {path:"/api/xeta/v1/transfer/recovery",readTimeout:95},
  {path:"/api/xeta/v1/transfers/wallet",readTimeout:15},
- {path:"/api/xeta/v1/transfers/stats",readTimeout:15}
+ {path:"/api/xeta/v1/transfers/stats",readTimeout:15},
+ // Shared same-origin read-only RPC bridge. POST is for bounded JSON-RPC reads
+ // only; the backend explicitly rejects eth_sendTransaction and private APIs.
+ {path:"/api/xeta/v1/rpc/read",readTimeout:20,method:"POST"}
 ];
-function exactLocation(config,path){
+function exactLocation(config,path,method="GET"){
  // Every path is a hardcoded ASCII literal; none has regex metacharacters.
  const regex=new RegExp("(?:^|\\n)\\s*location\\s*=\\s*"+path+"\\s*\\{","g");
  const matches=[...config.matchAll(regex)];
@@ -31,6 +34,9 @@ function exactLocation(config,path){
  }
  if(end<0||depth!==0)throw Error("Unclosed XITA location: "+path);
  const body=config.slice(open+1,end);
+ if(method==="POST"&&(!/limit_except\s+POST\s*\{\s*deny all;\s*\}/.test(body)||
+    !/client_max_body_size\s+8k;/.test(body)))
+  throw Error("Unsafe existing read-only RPC nginx location: "+path);
  const proxies=[...body.matchAll(/\bproxy_pass\s+([^;]+);/g)];
  if(proxies.length!==1||proxies[0][1].trim()!==upstream||
     /\breturn\s+\d{3}\s*;/.test(body))
@@ -65,14 +71,15 @@ export function patchXitaBrowserRpcCsp(config){
 export function patchXitaTransferNginx(config){
  if(typeof config!=="string"||!config.includes("server_name xita.xgr.network"))
   throw Error("Wrong XITA virtual host");
- const missing=services.filter(item=>!exactLocation(config,item.path));
+ const missing=services.filter(item=>!exactLocation(config,item.path,item.method));
  let next=config;
  if(missing.length){
   if(config.split(marker).length!==2)
    throw Error("Expected exactly one existing XITA fail-closed API location");
-  const blocks=missing.map(({path,readTimeout})=>
+  const blocks=missing.map(({path,readTimeout,method="GET"})=>
    "location = "+path+" {\n"+
-   "        limit_except GET { deny all; }\n"+
+   "        limit_except "+method+" { deny all; }\n"+
+   (method==="POST"?"        client_max_body_size 8k;\n":"")+
    "        proxy_pass "+upstream+";\n"+
    "        proxy_connect_timeout 2s;\n"+
    "        proxy_read_timeout "+readTimeout+"s;\n"+

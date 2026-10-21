@@ -71,7 +71,7 @@ export function resolveCatalogRpcRead(catalog,request){
 async function rawRpc(url,method,params,fetcher){
  const response=await fetcher(url,{method:"POST",redirect:"error",
   headers:{"content-type":"application/json","accept":"application/json"},
-  signal:AbortSignal.timeout(6000),
+  signal:AbortSignal.timeout(4000),
   body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});
  if(!response?.ok)throw Error("Upstream chain RPC unavailable");
  const content=await response.text();

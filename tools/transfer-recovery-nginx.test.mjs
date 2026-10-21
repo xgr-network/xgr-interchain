@@ -23,7 +23,7 @@ const health=[
 ].join("\n");
 test("fresh install provides both exact read-only proxy paths",()=>{
  const first=patchXitaTransferNginx(base);
- assert.deepEqual(first.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
+ assert.deepEqual(first.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats","/api/xeta/v1/rpc/read"]);
  assert.match(first.config,/location = \/api\/xeta\/v1\/transfer\/health/);
  assert.match(first.config,/location = \/api\/xeta\/v1\/transfer\/recovery/);
  assert.match(first.config,/location \^~ \/api\/xeta\/ \{ return 503; \}/);
@@ -36,7 +36,7 @@ test("fresh install provides both exact read-only proxy paths",()=>{
 test("existing recovery route alone does not skip missing health endpoint",()=>{
  const prior=base.replace("location ^~ /api/xeta/ {",recovery+"\n    location ^~ /api/xeta/ {");
  const result=patchXitaTransferNginx(prior);
- assert.deepEqual(result.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
+ assert.deepEqual(result.added,["/api/xeta/v1/transfer/health","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats","/api/xeta/v1/rpc/read"]);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/recovery").length-1,1);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/health").length-1,1);
  assert.equal(patchXitaTransferNginx(result.config).changed,false);
@@ -44,7 +44,7 @@ test("existing recovery route alone does not skip missing health endpoint",()=>{
 test("existing health route alone does not skip destination recovery",()=>{
  const prior=base.replace("location ^~ /api/xeta/ {",health+"\n    location ^~ /api/xeta/ {");
  const result=patchXitaTransferNginx(prior);
- assert.deepEqual(result.added,["/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats"]);
+ assert.deepEqual(result.added,["/api/xeta/v1/transfer/recovery","/api/xeta/v1/transfers/wallet","/api/xeta/v1/transfers/stats","/api/xeta/v1/rpc/read"]);
  assert.equal(result.config.split("location = /api/xeta/v1/transfer/health").length-1,1);
 });
 test("wrong virtual host, duplicate route or untrusted upstream fail closed",()=>{
@@ -102,4 +102,19 @@ test("CSP modification refuses missing or multiple policies rather than loosenin
  assert.throws(()=>patchXitaTransferNginx(base.replace(/    add_header Content-Security-Policy[^\n]*\n/,"")),/Content-Security-Policy/);
  const header=base.split("\n").find(x=>x.includes("add_header Content-Security-Policy"));
  assert.throws(()=>patchXitaTransferNginx(base.replace(header,header+"\n"+header)),/Content-Security-Policy/);
+});
+
+test("same-origin RPC proxy uses exact POST-only loopback location and idempotent install",()=>{
+ const result=patchXitaTransferNginx(base);
+ const start=result.config.indexOf("location = /api/xeta/v1/rpc/read {");
+ assert.ok(start>=0);
+ const end=result.config.indexOf("proxy_read_timeout 20s;",start);
+ const block=result.config.slice(start,end+24);
+ assert.match(block,/limit_except POST \{ deny all; \}/);
+ assert.match(block,/client_max_body_size 8k;/);
+ assert.match(block,/proxy_pass http:\/\/127\.0\.0\.1:4088;/);
+ assert.equal(patchXitaTransferNginx(result.config).changed,false);
+ const invalid=result.config.replace("limit_except POST { deny all; }",
+  "limit_except GET { deny all; }");
+ assert.throws(()=>patchXitaTransferNginx(invalid),/Unsafe existing read-only RPC/);
 });
