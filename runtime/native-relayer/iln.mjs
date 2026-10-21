@@ -262,16 +262,21 @@ function saveState(state) {
   fs.renameSync(tmp, STATE_PATH);
 }
 
-async function readTreeSnapshot(blockTag) {
-  const raw = await originHook.tree({ blockTag });
+async function readTreeSnapshot() {
+  // Bootstrap is safe without archive state only while the current Hook
+  // remains empty. Once leaves exist, recover from complete confirmed events
+  // using the maintained Merkle bootstrap utility instead of guessing a past tree.
+  const raw = await originHook.tree();
   const branch = Array.from(raw.branch ?? raw[0]);
   const count = Number(raw.count ?? raw[1]);
   if (!Number.isSafeInteger(count) || count < 0) {
     throw new Error("origin MerkleTreeHook returned invalid tree count");
   }
+  if (count !== 0) {
+    throw new Error("Cannot bootstrap an already populated source Hook without a verified event-derived snapshot");
+  }
   return { branch, count };
 }
-
 async function resolvedStartBlock() {
   if (CONFIGURED_START_BLOCK > 0) return CONFIGURED_START_BLOCK;
   const activation = Number(await originGateway.activationBlock());
@@ -287,7 +292,7 @@ async function bootstrapState() {
     throw new Error("ILN origin start block must be at least 1");
   }
   const snapshotBlock = startBlock - 1;
-  const { branch, count } = await readTreeSnapshot(snapshotBlock);
+  const { branch, count } = await readTreeSnapshot();
   return validateState({
     version: 2,
     routeId: ROUTE_ID,
@@ -330,39 +335,12 @@ async function loadState() {
 }
 
 async function compactState(state, force = false) {
-  if (Object.keys(state.operations).length !== 0) return;
-  if (
-    !force &&
-    state.treeCount - state.snapshotCount < COMPACT_AFTER_LEAVES
-  ) {
-    return;
-  }
-
-  const snapshotBlock = state.nextBlock - 1;
-  const { branch, count } = await readTreeSnapshot(snapshotBlock);
-  if (count !== state.treeCount) {
-    throw new Error(
-      `ILN compaction tree count mismatch: rpc ${count}, indexed ${state.treeCount}`,
-    );
-  }
-
-  state.snapshotBlock = snapshotBlock;
-  state.snapshotCount = count;
-  state.nodes = snapshotNodes(branch, count);
-  state.indices = {};
-  state.messages = {};
-  saveState(state);
-
-  console.log(
-    JSON.stringify({
-      event: "iln_relayer_state_compacted",
-      route: ATTESTATION_ROUTE,
-      snapshotBlock,
-      snapshotCount: count,
-    }),
-  );
+  // Keep the already persisted complete incremental tree. Compaction used to
+  // ask public RPCs for historical Hook state at nextBlock-1, which is not
+  // reliably served and could stall delivery. Event-derived safe compaction
+  // needs a separately verified checkpoint; until then, never discard nodes.
+  return;
 }
-
 async function assertNetworks() {
   const [originNetwork, attestationNetwork, destinationNetwork] =
     await Promise.all([
