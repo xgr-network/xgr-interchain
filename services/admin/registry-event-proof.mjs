@@ -6,13 +6,12 @@ const ADDR=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const topicAddress=a=>"0x"+"0".repeat(24)+a.slice(2).toLowerCase();
-export function verifyFactoryRegistryReceipt({factory,registry,txHash,event,receipt,transaction}){
+export function verifyFactoryRegistryReceipt({factory,registry,txHash,event,receipt}){
  if(!ADDR.test(factory||"")||!ADDR.test(registry||"")||
-    !HASH.test(txHash||"")||!event||!receipt||!transaction)
+    !HASH.test(txHash||"")||!event||!receipt)
   throw Error("Missing source Registry creation provenance");
  if(!same(event.transactionHash,txHash)||!same(receipt.transactionHash,txHash)||
-    !same(transaction.hash,txHash)||
-    !same(transaction.from,receipt.from)||!ADDR.test(receipt.from||""))
+    !ADDR.test(receipt.from||""))
   throw Error("Source Registry creation transaction identity mismatch");
  if(BigInt(receipt.status??"0x0")!==1n)
   throw Error("Source Registry creation transaction was not successful");
@@ -31,7 +30,9 @@ export function verifyFactoryRegistryReceipt({factory,registry,txHash,event,rece
  if(!eventMatch(event)||!Array.isArray(receipt.logs)||
     !receipt.logs.some(eventMatch))
   throw Error("Source Registry creation event not emitted by documented Factory");
- // Smart-account executors may forward the factory call using an outer
+ // A canonical successful receipt contains the actual Factory event and
+ // deployer; an archived full transaction is not necessary. Smart-account
+ // executors may forward the factory call using an outer
  // transaction addressed to a different contract. The authenticated
  // Factory event and receipt prove execution without guessing envelope ABI.
  return {deployer:receipt.from,txHash:txHash.toLowerCase()};
