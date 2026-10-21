@@ -47,11 +47,16 @@ test("pending block recovers original wallet hash by exact nonce and calldata",a
  assert.deepEqual(result,{action:"reconcile",txHash:replacement,
   reason:"recovered-pending-wallet-nonce"});
 });
-test("historically mined original tx is reconstructed instead of being deployed again",async()=>{
+test("consumed nonce with unavailable original hash does not query historical state",async()=>{
+ const observed=[];
  const result=await classifyInterruptedDeployment({entry:entry(),chain,
-  rpc:rpc({latest:10,pending:10,mined:true})});
- assert.equal(result.action,"reconcile");
- assert.equal(result.txHash,replacement);
+  rpc:async(url,method,args)=>{
+   if(method==="eth_getTransactionCount")observed.push(args[1]);
+   return rpc({latest:10,pending:10,mined:true})(url,method,args);
+  }});
+ assert.equal(result.action,"retry");
+ assert.equal(result.reason,"old-nonce-consumed-untraceable");
+ assert.deepEqual(observed,["latest","pending"]);
 });
 test("untraceable consumed original nonce allows a NEW explicitly confirmed wallet deploy",async()=>{
  const result=await classifyInterruptedDeployment({entry:entry("submitted"),chain,
