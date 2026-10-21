@@ -152,9 +152,9 @@ export function loadChainEvidence(chain, repoRoot = REPO) {
     txHash: receipt.transactionHash.toLowerCase(),
   };
 }
-async function hookCall(provider, hook, fn, epoch) {
+async function hookCall(provider, hook, fn) {
   const data = HOOK_IFACE.encodeFunctionData(fn);
-  const result = await provider.call({to: hook, data, blockTag: epoch});
+  const result = await provider.call({to: hook, data, blockTag: "latest"});
   return HOOK_IFACE.decodeFunctionResult(fn, result)[0];
 }
 // Providers sometimes limit eth_getLogs to 10-100 blocks or fewer. Split
@@ -201,9 +201,9 @@ export async function buildVerifiedReplica({
   requireCondition(epochBlock && HASH.test(epochBlock.hash),
     "cannot independently anchor confirmed checkpoint block");
   const [onchainMailbox, onchainCount, onchainRoot] = await Promise.all([
-    hookCall(provider, evidence.hook, "mailbox", "latest"),
-    hookCall(provider, evidence.hook, "count", "latest"),
-    hookCall(provider, evidence.hook, "root", "latest"),
+    hookCall(provider, evidence.hook, "mailbox"),
+    hookCall(provider, evidence.hook, "count"),
+    hookCall(provider, evidence.hook, "root"),
   ]);
   requireCondition(onchainMailbox.toLowerCase() === evidence.mailbox.toLowerCase(),
     "confirmed Hook mailbox differs from deployed XITA bundle");
