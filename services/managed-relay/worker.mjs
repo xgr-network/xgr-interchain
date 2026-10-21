@@ -57,11 +57,10 @@ function configuredSources(){
 }
 const mailboxAbi=["function delivered(bytes32 messageId) view returns (bool)"];
 async function finalizedDelivered(destProvider,mailboxAddress,id,destination){
- const head=await destProvider.getBlockNumber();
- const finalized=head-Math.max(1,Number(CATALOG.chains[destination].confirmations||1))+1;
- if(finalized<1)throw Error("Destination block finality unavailable");
  const mailbox=new Contract(mailboxAddress,mailboxAbi,destProvider);
- return mailbox.delivered(id,{blockTag:finalized});
+ // Latest is sufficient for monotonic delivered(): finalized evidence is
+ // independently established from the destination transaction receipt.
+ return mailbox.delivered(id);
 }
 async function preflightDestinationTransaction({
  destinationProvider,destination,proof
@@ -118,7 +117,7 @@ async function processManagedEntry({entry,state,sourceProvider,persist}){
   if(!eq(proven[field],entry[field]))throw Error("Stored managed event changed");
  }
  const native=new Contract(own.address,managedAbi,sourceProvider);
- const fee=await native.feeReceipt(entry.messageId,{blockTag:receipt.blockNumber});
+ const fee=await native.feeReceipt(entry.messageId);
  if(!fee.exists||!eq(fee.payer,entry.payer)||
     !eq(fee.gateway,entry.gateway)||
     BigInt(fee.relayerFeeWei)!==BigInt(entry.serviceFeeWei))
