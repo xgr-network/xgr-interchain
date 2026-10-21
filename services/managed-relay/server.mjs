@@ -10,7 +10,19 @@ import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
-const CATALOG=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+const CATALOG_PATH=resolve(root,"apps/web/catalog.json");
+// The canonical deployment catalog advances while long-running fee workers stay
+// online. Read one consistent snapshot for EVERY request, not at process boot.
+export function loadCatalogSnapshot(path=CATALOG_PATH){
+ const catalog=JSON.parse(readFileSync(path,"utf8"));
+ if(catalog?.schemaVersion!==1||!catalog.chains||!catalog.infrastructure||
+    !catalog.assets||typeof catalog.chains!=="object"||
+    typeof catalog.infrastructure!=="object"||typeof catalog.assets!=="object"||
+    Array.isArray(catalog.chains)||Array.isArray(catalog.infrastructure)||
+    Array.isArray(catalog.assets))
+  throw Error("Invalid generated deployment catalog");
+ return catalog;
+}
 const EXECUTION_ABI=[
  "function relayerOwner() view returns (address)",
  "function sourceRegistry() view returns (address)",
@@ -32,22 +44,30 @@ const signingKey=PREVIEW_ONLY?"":String(process.env.XITA_INTERCHAIN_FEE_PRIVATE_
 const signer=signingKey?new Wallet(signingKey):null;
 if(signer&&configuredServiceAddress&&signer.address.toLowerCase()!==configuredServiceAddress.toLowerCase())
  throw Error("One GmbH service wallet must sign quotes, receive fees and sponsor gas");
-const sourceAddresses=Object.fromEntries(
- ["xgrchain","base","polygon","arbitrum"].map(name=>{
-  const configured=String(process.env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
-   process.env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim();
-  // The receipt-verified public catalog is sufficient for UNSIGNED estimates.
-  // Do not require a copied address or any private-key environment to boot.
-  const documented=String(CATALOG.infrastructure?.[name]?.xitaV315?.components?.executionGateway?.address||"");
-  return [name,PREVIEW_ONLY?documented:configured||documented];
- })
-);
+export function sourceExecutionAddressesFromCatalog(catalog,{
+ env=process.env,previewOnly=PREVIEW_ONLY
+}={}){
+ // All chains/routes are discovered via the CURRENT verified deployment
+ // catalog; no hardcoded chain list or manual adapter address per new route.
+ return Object.fromEntries(Object.keys(catalog?.chains||{}).filter(name=>
+  /^[a-z][a-z0-9-]{0,50}$/.test(name)).map(name=>{
+  const configured=String(env["XITA_INTERCHAIN_"+name.toUpperCase()+"_ADAPTER"]||
+   env["XITA_MANAGED_"+name.toUpperCase()+"_EXECUTION_ADDRESS"]||"").trim();
+  const documented=String(catalog.infrastructure?.[name]?.xitaV315?.components?.executionGateway?.address||"");
+  return [name,previewOnly?documented:configured||documented];
+ }));
+}
 const providers=new Map();
-async function chain(name){
- const cfg=CATALOG.chains[name];
+async function chain(name,catalog){
+ const cfg=catalog.chains[name];
  if(!cfg?.rpcUrls?.[0])throw Error("Unsupported chain");
- if(!providers.has(name))providers.set(name,new JsonRpcProvider(cfg.rpcUrls[0]));
- const provider=providers.get(name);
+ // Refresh the provider when an approved catalog changes an RPC endpoint.
+ const previous=providers.get(name);
+ if(!previous||previous.url!==cfg.rpcUrls[0]||
+    previous.chainId!==cfg.chainId)
+  providers.set(name,{url:cfg.rpcUrls[0],chainId:cfg.chainId,
+   provider:new JsonRpcProvider(cfg.rpcUrls[0])});
+ const provider=providers.get(name).provider;
  const network=await provider.getNetwork();
  if(network.chainId!==BigInt(cfg.chainId))throw Error("Chain RPC identity mismatch");
  return provider;
@@ -77,21 +97,22 @@ async function fetchUncachedPrices(){
  lastPriceSnapshot=value;lastPriceAt=Date.now();
  return value;
 }
-async function createQuote(request,{preview=false}={}){
+async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
+ const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
  const source=request?.source,destination=request?.destination;
  if(!preview&&(PREVIEW_ONLY||!signer))throw Error("GmbH service wallet not configured");
- if(!CATALOG.chains[source]||!CATALOG.chains[destination]||source===destination)
+ if(!catalog.chains[source]||!catalog.chains[destination]||source===destination)
   throw Error("Unsupported source/destination");
  const executionAddress=sourceAddresses[source];
  if(!/^0x[0-9a-f]{40}$/i.test(executionAddress||""))
   throw Error("Interchain Fee execution contract not deployed");
- const documented=CATALOG.infrastructure?.[source]?.xitaV315?.components?.executionGateway;
+ const documented=catalog.infrastructure?.[source]?.xitaV315?.components?.executionGateway;
  if(!documented?.address||String(documented.address).toLowerCase()!==
     String(executionAddress).toLowerCase()||
     !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
- const sourceProvider=await chain(source);
- await chain(destination);
+ const sourceProvider=await chain(source,catalog);
+ await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
  // Bind the operator identity to the verified live adapter itself.
  const liveAdapter=new Contract(executionAddress,EXECUTION_ABI,sourceProvider);
@@ -106,31 +127,31 @@ async function createQuote(request,{preview=false}={}){
  const previewRequest=preview?{...request,payer:request.payer||serviceAddress,
    recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
-  catalog:CATALOG,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
+  catalog,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
   readExecutionOwner:async()=> {
-   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
+   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source,catalog));
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
     c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient(),c.serviceWallet()]);
    if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==serviceAddress.toLowerCase()))
     throw Error("Single on-chain GmbH service wallet differs from configured signer/beneficiary");
-   const expected=CATALOG.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
+   const expected=catalog.infrastructure[source]?.xitaV315?.components?.sourceRegistry?.address;
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
     throw Error("Managed relay does not bind canonical source ILN Registry");
    return owner;
   },
   readQuoteLifetime:async()=>{
-   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source));
+   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source,catalog));
    const [lifetime,maximum]=await Promise.all([c.quoteLifetimeSeconds(),c.MAX_QUOTE_LIFETIME()]);
    if(BigInt(maximum)!==90n)throw Error("Unexpected managed quote validity ceiling");
    return lifetime;
   },
   readGatewayQuote:async({source:gatewaySource,route,destinationDomain,recipient,amount})=>{
-    const gateway=new Contract(route.gateway,BRIDGE_ABI,await chain(gatewaySource));
+    const gateway=new Contract(route.gateway,BRIDGE_ABI,await chain(gatewaySource,catalog));
    const result=await gateway.quoteILN(destinationDomain,recipient,amount);
    return {validatorFeeWei:result[0],bridgeNativeWei:result[2],tokenAmount:result[3]};
   },
   getDestinationGasQuote:async({destination:gasChain})=>{
-    const client=await chain(gasChain),fee=await client.getFeeData();
+    const client=await chain(gasChain,catalog),fee=await client.getFeeData();
     // Fee quote must not be gated on optional sponsor-wallet reserves.
     const address=serviceAddress;
     const availableWei=/^0x[0-9a-f]{40}$/i.test(address)?
@@ -138,7 +159,7 @@ async function createQuote(request,{preview=false}={}){
     return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
    },
   readSourceBlockTimestamp:async({source:sourceChain})=>{
-    const provider=await chain(sourceChain);
+    const provider=await chain(sourceChain,catalog);
     const block=await provider.getBlock("latest");
     if(!block||!Number.isSafeInteger(block.timestamp)||block.timestamp<1)
      throw Error("Cannot verify live source-chain block time");
@@ -164,7 +185,7 @@ async function createQuote(request,{preview=false}={}){
    sourceBridgeNativeWei:result.sourceBridgeNativeWei,
    sourceTokenPrincipalWei:result.sourceTokenPrincipalWei,
    interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
-   pricing:result.pricing,sourceNativeSymbol:CATALOG.chains[source].nativeCurrency?.symbol||source,
+   pricing:result.pricing,sourceNativeSymbol:catalog.chains[source].nativeCurrency?.symbol||source,
    notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
  }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
@@ -179,7 +200,7 @@ function publicError(err){
  return text.slice(0,170);
 }
 let sponsorPool=null;
-async function readSponsorAvailability(){
+async function readSponsorAvailability(catalog){
  const feeAddress=String(process.env.XITA_INTERCHAIN_FEE_ADDRESS||"").toLowerCase();
  const url=String(process.env.XITA_SPONSOR_STATUS_DATABASE_URL||"").trim();
  if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true"||
@@ -196,7 +217,7 @@ async function readSponsorAvailability(){
    "FROM xita_sponsor_monitor_state");
   const chains={};
   for(const row of data.rows){
-   if(!CATALOG.chains?.[row.chain_name])continue;
+   if(!catalog.chains?.[row.chain_name])continue;
    const last=new Date(row.checked_at).getTime();
    chains[row.chain_name]=String(row.sponsor_address).toLowerCase()===feeAddress&&
      row.gas_ready===true&&Number.isFinite(last)&&
@@ -209,17 +230,21 @@ async function readSponsorAvailability(){
   return {available:false,chains:{},reason:"sponsor-readiness-unavailable"};
  }
 }
-async function handler(req,res){
+async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
   res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
    "x-content-type-options":"nosniff"});
   res.end(JSON.stringify(obj));
  };
- if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health")
-  return send(200,{ok:true,service:"xita-source-native-fee-quote",
-   enabledChains:Object.entries(sourceAddresses).filter(x=>
-    /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
-   sponsorship:await readSponsorAvailability()});
+ if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health"){
+  try{
+   const catalog=loadCatalog();
+   return send(200,{ok:true,service:"xita-source-native-fee-quote",
+    enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
+     /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
+    sponsorship:await readSponsorAvailability(catalog)});
+  }catch(e){return send(503,{ok:false,error:publicError(e)})}
+ }
  const preview=req.url==="/api/xita/v1/managed/preview";
  if(req.method!=="POST"||(!preview&&req.url!=="/api/xita/v1/managed/quote"))
   return send(404,{ok:false,error:"Unknown endpoint"});
@@ -234,7 +259,7 @@ async function handler(req,res){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
-   const reply=await createQuote(parsed,{preview});
+   const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
