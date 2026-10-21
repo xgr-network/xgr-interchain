@@ -72,7 +72,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
           const input=app.querySelector('[data-join="'+key+'"]');if(input){input.value=value;input.dispatchEvent(new Event("input",{bubbles:true}));}
         }
         app.querySelector('[data-join-action="next"]')?.click();
-        document.body.dataset.joinAdvance=app.textContent.includes("Step 2 / 4")?"pass":"fail";
+        document.body.dataset.joinAdvance=app.textContent.includes("Step 2 / 3")?"pass":"fail";
        },25);
      })();
      </script>`;
