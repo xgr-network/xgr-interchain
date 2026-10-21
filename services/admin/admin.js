@@ -636,7 +636,7 @@ let batchStopRequested=false;
 let batchRetry=null;
 const walletRejected=e=>e?.code===4001||e?.code==="ACTION_REJECTED"||
  /user (rejected|denied|cancelled)|userrejectedrequest/i.test(String(e?.message||""));
-async function runDeploymentBatch(type,target,{forceRetry=false}={}){
+async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
  if(batchActive)return;
  batchActive=true;batchStopRequested=false;
  selectedDeployment=null;selectedAssetTask=null;assetPreview=null;
@@ -649,7 +649,7 @@ async function runDeploymentBatch(type,target,{forceRetry=false}={}){
  el("modal-deploy").hidden=true;
  el("batch-stop").hidden=false;
  if(!dialog.open)dialog.showModal();
- let stepCount=0;
+ let stepCount=0,failedComponent=null;
  try{
   let wallet=await currentWalletState();
   if(!wallet)wallet=await connectDeploymentWallet({onChange:refreshWalletBalances});
@@ -672,6 +672,7 @@ async function runDeploymentBatch(type,target,{forceRetry=false}={}){
    }
    if(next.kind==="blocked")
     throw Error("Nächster Schritt "+next.id+" benötigt: "+next.blockers.join(", "));
+   failedComponent=type==="chain"?next.component:null;
    const chain=workqueue.inventory.chains.find(c=>c.name===next.chain);
    if(!chain)throw Error("Nicht freigegebene Zielchain: "+next.chain);
    presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Netzwerkwechsel zu "+chain.name+" …");
@@ -694,7 +695,7 @@ async function runDeploymentBatch(type,target,{forceRetry=false}={}){
     prepared=core?
      await postJSON("/admin/api/chain-deploy/prepare",{
       chain:chain.name,component:next.component,wallet:wallet.address,parameters:params,
-      forceRetry
+      forceRetry:forceRetryComponent===next.component
      }):await postJSON("/admin/api/asset-deploy/prepare",{
       taskId:next.id,wallet:wallet.address
      });
@@ -733,7 +734,7 @@ async function runDeploymentBatch(type,target,{forceRetry=false}={}){
   batchActive=false;el("batch-stop").hidden=true;
   await loadMainWorkqueue();
   el("modal-deploy").hidden=false;el("modal-deploy").disabled=false;
-  el("modal-deploy").textContent="Erneut mit Wallet deployen";batchRetry={type,target};
+  el("modal-deploy").textContent="Erneut mit Wallet deployen";batchRetry={type,target,component:failedComponent};
  }
 }
 async function waitForDeploymentSync(result){
@@ -804,7 +805,13 @@ el("modal-deploy").addEventListener("click",()=>{
  if(batchRetry){const next=batchRetry;batchRetry=null;
   // Reuse the still-open dialog. Closing and immediately reopening caused
   // the delayed close event to stop the NEW batch involuntarily.
-  void runDeploymentBatch(next.type,next.target);return;}
+  const override=next.type==="chain"&&next.component&&window.confirm(
+   "Erneut versuchen: "+next.target+" / "+next.component+"?\\n\\n"+
+   "Nur ein nicht in GitHub dokumentierter Contract darf erneut gesendet werden. "+
+   "Eine frühere TX kann dennoch später bestätigt werden und zusätzliche Gas-Kosten verursachen. "+
+   "Vorhandene bestätigte Deployments werden nicht überschrieben.\\n\\n"+
+   "OK = expliziter Override für diesen einen Schritt. Abbrechen = normale sichere Recovery.");
+  void runDeploymentBatch(next.type,next.target,{forceRetryComponent:override?next.component:null});return;}
  void executeModalDeployment();
 });
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
