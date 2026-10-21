@@ -636,7 +636,7 @@ let batchStopRequested=false;
 let batchRetry=null;
 const walletRejected=e=>e?.code===4001||e?.code==="ACTION_REJECTED"||
  /user (rejected|denied|cancelled)|userrejectedrequest/i.test(String(e?.message||""));
-async function runDeploymentBatch(type,target){
+async function runDeploymentBatch(type,target,{forceRetry=false}={}){
  if(batchActive)return;
  batchActive=true;batchStopRequested=false;
  selectedDeployment=null;selectedAssetTask=null;assetPreview=null;
@@ -693,7 +693,8 @@ async function runDeploymentBatch(type,target){
     presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Vertragsdaten und Gas geprüft; MetaMask-Bestätigung …");
     prepared=core?
      await postJSON("/admin/api/chain-deploy/prepare",{
-      chain:chain.name,component:next.component,wallet:wallet.address,parameters:params
+      chain:chain.name,component:next.component,wallet:wallet.address,parameters:params,
+      forceRetry
      }):await postJSON("/admin/api/asset-deploy/prepare",{
       taskId:next.id,wallet:wallet.address
      });
@@ -795,12 +796,15 @@ async function loadJobs(){
 }
 el("modal-close").addEventListener("click",()=>{if(batchActive)batchStopRequested=true;el("contract-deploy-dialog").close();});
 el("contract-deploy-dialog").addEventListener("cancel",()=>{if(batchActive)batchStopRequested=true;});
-el("contract-deploy-dialog").addEventListener("close",()=>{if(batchActive)batchStopRequested=true;selectedDeployment=null;selectedAssetTask=null;assetPreview=null;batchRetry=null;});
+el("contract-deploy-dialog").addEventListener("close",()=>{if(batchActive)batchStopRequested=true;selectedDeployment=null;selectedAssetTask=null;batchRetry=null;});
 
 
 el("batch-stop").addEventListener("click",()=>{batchStopRequested=true;presentModalStatus("Pausiert nach der aktuellen Wallet-Transaktion …","warn");});
 el("modal-deploy").addEventListener("click",()=>{
- if(batchRetry){const next=batchRetry;batchRetry=null;el("contract-deploy-dialog").close();void runDeploymentBatch(next.type,next.target);return;}
+ if(batchRetry){const next=batchRetry;batchRetry=null;
+  // Reuse the still-open dialog. Closing and immediately reopening caused
+  // the delayed close event to stop the NEW batch involuntarily.
+  void runDeploymentBatch(next.type,next.target);return;}
  void executeModalDeployment();
 });
 el("reload-inventory").addEventListener("click",loadMainWorkqueue);
