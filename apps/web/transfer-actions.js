@@ -117,6 +117,29 @@ function requirePair(catalog,asset,source,destination){
  if(!catalog?.chains?.[source]||!catalog?.chains?.[destination])throw Error("Chain not configured");
  return found[0];
 }
+// A deployed source Gateway does not prove that a destination can accept its
+// message. Before ANY irreversible lock/burn, ask the real destination
+// router to verify this exact signed source route against its enrolled
+// reverse route and canonical asset ID. No user token is needed to test this.
+export async function verifyDestinationInboundRoute({
+ catalog,route,fetcher=globalThis.fetch
+}){
+ const src=catalog.chains?.[route.source],dest=catalog.chains?.[route.destination];
+ if(!src||!dest||!ADDRESS.test(route.sourceRouter||"")||
+    !ADDRESS.test(route.destinationRouter||"")||!HASH.test(route.routeId||""))
+  throw Error("Cannot verify destination inbound route: incomplete canonical catalog");
+ const rpc=dest.rpcUrls?.[0];
+ const id=await publicRead(rpc,"eth_chainId",[],fetcher);
+ if(!QTY.test(id||"")||BigInt(id)!==BigInt(dest.chainId))
+  throw Error("Destination chain identity unavailable; no source assets locked");
+ const input=selector("verifyInboundRoute(uint64,uint32,address,bytes32)")+
+  word(src.chainId)+word(src.domainId)+addrWord(route.sourceRouter)+route.routeId.slice(2);
+ const accepted=await publicRead(rpc,"eth_call",
+  [{to:route.destinationRouter,data:input},"latest"],fetcher);
+ if(!/^0x[0-9a-f]{64}$/i.test(accepted||"")||BigInt(accepted)!==1n)
+  throw Error("Destination router rejects canonical inbound asset route; no source assets locked");
+ return true;
+}
 export function quoteCalldata(domain,recipient,amount){
  if(!Number.isSafeInteger(domain)||domain<=0||domain>4294967295||
   !ADDRESS.test(recipient||""))throw Error("Invalid destination domain or recipient");
@@ -221,6 +244,10 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   if(!paidAdapter||!hubAdapter?.address)
    throw Error("Two-hop transfer requires both deployed and verified fee/continuation adapters");
  }
+ // Require that the actual destination router accepts this exact asset route.
+ // GitHub receipts alone are insufficient; check live reverse route enrollment
+ // before the wallet is asked to sign ANY source approval or lock/burn.
+ await verifyDestinationInboundRoute({catalog,route,fetcher});
  // Require public permissionless recovery proof infrastructure before
  // locking/burning source assets. This is an execution preflight, never a
  // separate administrator activation flag.
