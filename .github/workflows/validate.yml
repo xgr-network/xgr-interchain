@@ -83,6 +83,9 @@ jobs:
       - name: Validate token-agnostic TVL and 24h escrow gross volume
         run: node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs
 
+      - name: Install read-only indexer dependencies for live route audit
+        run: npm install --prefix services/indexer --ignore-scripts --no-audit --no-fund --package-lock=false
+
       - name: Validate unsigned on-chain destination recovery
         run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/transfer-index-store.test.mjs
 
