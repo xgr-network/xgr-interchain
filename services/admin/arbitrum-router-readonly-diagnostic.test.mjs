@@ -42,5 +42,29 @@ test("TEMP Arbitrum router create2 and preflight gas evidence; never broadcasts"
   req("eth_call",[{...tx,from:"0x1111111111111111111111111111111111111111",gas:"0x1c9c380"},"latest"])
  ]);
  ["estimateWallet","callWallet30m","estimateWallet30m","callOther30m"].forEach((x,i)=>out[x]=short(tries[i]));
+ const topic=keccak256("RouterDeployed(bytes32,address,address)");
+ const actor="0x"+"0".repeat(24)+WALLET.slice(2).toLowerCase();
+ let events=[],scanErrors=[];
+ // Documented Factory was deployed around 516837230. Scan bounded,
+ // read-only logs for this exact asset and originating wallet.
+ const head=BigInt(basic[1]?.result||"0x0");
+ for(let start=516837230n;start<=head;start+=1900n){
+  const end=start+1899n<head?start+1899n:head;
+  const query=await req("eth_getLogs",[{address:FACTORY,
+   fromBlock:"0x"+start.toString(16),toBlock:"0x"+end.toString(16),
+   topics:[topic,ASSET,null,actor]}]);
+  if(query.error){scanErrors.push({start:Number(start),error:query.error});break}
+  if(Array.isArray(query.result))events.push(...query.result);
+  if(events.length>=3)break;
+ }
+ out.walletRouterEvents=events.map(e=>({transactionHash:e.transactionHash,blockNumber:e.blockNumber,
+  topics:e.topics,address:e.address}));
+ out.scanErrors=scanErrors;
+ for(const [i,e] of events.entries()){
+  const a="0x"+e.topics[2].slice(-40);
+  out["existingRouter"+i]={address:a,code:short(await req("eth_getCode",[a,"latest"])),
+   factoryAssetId:short(await req("eth_call",[{to:FACTORY,
+    data:selector("assetIdForRouter(address)")+a.slice(2).padStart(64,"0")},"latest"]))};
+ }
  console.log("XITA_ROUTER_EVIDENCE="+JSON.stringify(out));
 });
