@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
+import {mkdtempSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {createChainOperator} from "./chain-operator.mjs";
+import {deploymentIntents} from "./deployment-intents.mjs";
 import {selector,keccak256} from "../../apps/web/keccak.mjs";
 import {verifyFactoryRegistryReceipt} from "./registry-event-proof.mjs";
 import {verifyExistingSourceRegistry} from "./source-registry-recovery.mjs";
@@ -83,4 +87,46 @@ test("Factory.registry zero means a new wallet-confirmed Registry call is still 
   return args[1]==="eth_call"&&args[2][0].data===selector("registry()")?word(0):r;
  };
  assert.equal(await recover(empty),null);
+});
+
+test("normal chain reconcile documents original Factory deployment despite unrelated latest MetaMask transaction",async()=>{
+ const stateDir=mkdtempSync(join(tmpdir(),"xita-registry-reconcile-"));
+ try{
+  const sourceCommit="a".repeat(40);
+  const factoryBlock=JSON.parse(readFileSync(join(root,components.factory.receiptPath),"utf8")).blockNumber;
+  const creationBlock="0x"+(factoryBlock+2).toString(16);
+  const head="0x"+(factoryBlock+200).toString(16);
+  const creationEvent={...event,blockNumber:creationBlock};
+  const creationReceipt={...receipt,blockNumber:creationBlock,logs:[creationEvent]};
+  const rpc=async(url,method,params)=>{
+   if(method==="eth_blockNumber")return head;
+   if(method==="eth_getLogs")return [creationEvent];
+   if(method==="eth_getTransactionReceipt")return params[0]===hash?creationReceipt:null;
+   if(method==="eth_getBlockByNumber")return {hash:blockHash,number:creationBlock};
+   return fakeRpc()(url,method,params);
+  };
+  const journal=deploymentIntents({directory:join(stateDir,"wallet-intents"),
+   chains:[{name:"arbitrum",chainId:42161}]});
+  const intent="arbitrum:sourceRegistry";
+  journal.prepare({
+   id:intent,chainId:42161,sourceCommit,wallet,buildHash:"c".repeat(64),
+   artifactHash:"d".repeat(64),parameters:{},
+   transaction:{from:wallet,to:factory,data:selector("deployRegistry()"),
+    nonce:"0x8",gas:"0x100000",value:"0x0"}
+  });
+  const unrelatedHash="0x"+"e".repeat(64);
+  journal.attachHash(intent,unrelatedHash);
+  let published=null;
+  const operator=createChainOperator({root,stateDir,publicEvidenceDir:stateDir,rpc,
+   mainCheck:async()=>sourceCommit,
+   build:async()=>({artifacts:{sourceRegistry:artifact}}),
+   publish:async(_root,items)=>{published=items;return {commit:sourceCommit};}
+  });
+  const result=await operator.reconcile({id:intent});
+  assert.equal(result.stage,"documented");
+  assert.equal(result.txHash,hash);
+  assert.equal(published?.[0].txHash,hash);
+  assert.equal(published?.[0].component,"sourceRegistry");
+  assert.equal(journal.read().entries[intent],undefined);
+ }finally{rmSync(stateDir,{recursive:true,force:true})}
 });
