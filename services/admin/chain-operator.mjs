@@ -163,6 +163,41 @@ export function createChainOperator({
    throw Error("Wallet intent chain no longer approved");
   return persistWalletBroadcastHash({journal,id,txHash});
  }
+ // SourceRegistry has one actual creation event per approved Factory.
+ // This recovery applies to every configured chain and does not depend on
+ // the outer calldata/target of any later MetaMask wallet transaction.
+ async function publishExistingSourceRegistry({chain,commit,infrastructure,bootstrap,journal}){
+  if(infrastructure.components.some(c=>c.key==="sourceRegistry"&&c.status==="documented"))
+   return null;
+  const factory=infrastructure.components.find(c=>c.key==="factory"&&c.status==="documented");
+  if(!factory?.address)return null;
+  const approvedFactory=loadChainDeployment(root,chain).xitaV315?.components?.factory;
+  if(!approvedFactory?.receiptPath)throw Error("Documented Factory receipt missing");
+  const factoryReceipt=JSON.parse(readFileSync(join(root,approvedFactory.receiptPath),"utf8"));
+  if(!eq(factoryReceipt.address,factory.address)||
+     factoryReceipt.component!=="factory"||
+     !Number.isSafeInteger(factoryReceipt.blockNumber))
+   throw Error("Factory deployment receipt does not match approved Factory");
+  const compiled=await build(root,commit);
+  const recovered=await verifyExistingSourceRegistry({
+   root,chain,infrastructure,bootstrap,artifact:compiled.artifacts.sourceRegistry,
+   sourceCommit:commit,factoryDeploymentBlock:factoryReceipt.blockNumber,rpc
+  });
+  if(!recovered)return null;
+  const published=await publish(root,[recovered.input],{rpc});
+  if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
+   throw Error("Verified SourceRegistry receipt was not published to GitHub");
+  const path=deploymentReceiptPath(recovered.verified);
+  const id=chain.name+":sourceRegistry";
+  const old=journal.read().entries[id];
+  if(old)journal.documentRecovered(id,old.createdAt,path);
+  let autoSyncQueued=false;
+  try{queueDeploymentSync(stateDir,published.commit);autoSyncQueued=true;}
+  catch(error){console.error("SourceRegistry sync:",String(error.message||error));}
+  return {stage:"documented",receiptPath:path,commit:published.commit,
+   address:recovered.address,txHash:recovered.txHash,
+   automaticallyRecovered:true,checkoutUpdateRequired:true,autoSyncQueued};
+ }
  async function reconcile({id}){
   const all=inventory(),journal=journals(all.chains),entry=journal.read().entries[id];
   if(!entry)throw Error("Unknown deployment intent");
@@ -179,6 +214,12 @@ export function createChainOperator({
   // A new main may have advanced independently after signature. Never replace
   // sourceCommit to evade the main-only publisher check.
   const {commit,infrastructure,bootstrap}=await approved(chain.name);
+  if(id.endsWith(":sourceRegistry")){
+   const recovered=await publishExistingSourceRegistry({
+    chain,commit,infrastructure,bootstrap,journal
+   });
+   if(recovered)return recovered;
+  }
   if(commit!==entry.sourceCommit){
    // GitHub may have accepted a receipt before the HTTP response was lost.
    // Only an immutable, exact source-commit/tx/wallet receipt can settle it.
@@ -270,6 +311,14 @@ export function createChainOperator({
   // The normal chain plan must never wait for an obsolete journal row.
   const documented=new Set(infrastructureInventory(root,[chain])[0]
    .components.filter(c=>c.status==="documented").map(c=>c.key));
+  if((component==="sourceRegistry"||component===null)&&
+     !documented.has("sourceRegistry")){
+   const {commit,infrastructure,bootstrap}=await approved(chainName);
+   const recovered=await publishExistingSourceRegistry({
+    chain,commit,infrastructure,bootstrap,journal:journals(all.chains)
+   });
+   if(recovered)return recovered;
+  }
   const factory=infrastructureInventory(root,[chain])[0].components
    .find(c=>c.key==="factory"&&c.status==="documented");
   const approvedFactory=loadChainDeployment(root,chain).xitaV315?.components?.factory;
@@ -282,33 +331,6 @@ export function createChainOperator({
   const scopedChains=all.chains.map(c=>c.name===chainName&&factory?.address
    ?{...c,sourceRegistryFactory:{address:factory.address,blockNumber:deploymentBlock}}
    :c);
-  if(component==="sourceRegistry"||component===null){
-   const localJournal=journals(all.chains);
-   const original=localJournal.read().entries[chainName+":sourceRegistry"];
-   if(!documented.has("sourceRegistry")&&factory?.address){
-    // The Factory has one idempotent Registry. If it already exists, recover
-    // the REAL deployment rather than paying for another factory call.
-    const {commit,infrastructure,bootstrap}=await approved(chainName);
-    const compiled=await build(root,commit);
-    const recovered=await verifyExistingSourceRegistry({
-     root,chain,infrastructure,bootstrap,artifact:compiled.artifacts.sourceRegistry,
-     sourceCommit:commit,factoryDeploymentBlock:deploymentBlock,rpc
-    });
-    if(recovered){
-     const published=await publish(root,[recovered.input],{rpc});
-     if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
-      throw Error("Recovered SourceRegistry GitHub commit not confirmed");
-     const path=deploymentReceiptPath(recovered.verified);
-     if(original)localJournal.documentRecovered(original.id,original.createdAt,path);
-     try{queueDeploymentSync(stateDir,published.commit);}
-     catch(error){console.error("SourceRegistry sync:",String(error.message||error));}
-     return {stage:"documented",receiptPath:path,commit:published.commit,
-      address:recovered.address,txHash:recovered.txHash,automaticallyRecovered:true};
-    }
-    // Factory.registry() is zero. Any pending previous tx may be a race:
-    // let the ordinary nonce-aware recovery decide whether signing is safe.
-   }
-  }
   return resumeInterruptedDeployments({
    journal:journals(all.chains),chains:scopedChains,rpc,reconcile,
    include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
