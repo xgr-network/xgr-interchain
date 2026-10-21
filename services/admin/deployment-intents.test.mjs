@@ -307,3 +307,30 @@ test("operator can replace an unrecorded confirmed WAL with a NEW explicitly sig
   assert.equal(Object.keys(st.read().entries).length,1);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("explicit override replaces only same-wallet undocumented attempt and preserves previous hash",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-override-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  store.prepare(input);store.attachHash(input.id,hash);
+  assert.throws(()=>store.prepare(input),/Unresolved deployment intent/);
+  assert.throws(()=>store.prepare({...input,wallet:"0x"+"1".repeat(40),
+   transaction:{...input.transaction,from:"0x"+"1".repeat(40)}},{forceRetry:true}),/wallet\/chain/);
+  const retry=store.prepare({...input,transaction:{...input.transaction,nonce:"0x1"}},{forceRetry:true});
+  assert.equal(retry.stage,"prepared");
+  assert.equal(retry.operatorOverride,true);
+  assert.deepEqual(retry.supersededTxHashes,[hash]);
+  assert.equal(store.read().entries[input.id].transaction.nonce,"0x1");
+  assert.deepEqual(readdirSync(dir).filter(x=>x.startsWith("retired-")),[]);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+test("a confirmed but unpublished on-chain deployment cannot be overridden",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-no-confirmed-override-"));
+ try{
+  const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
+  store.prepare(input);store.attachHash(input.id,hash);
+  store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
+  assert.throws(()=>store.prepare(input,{forceRetry:true}),/stage differs/);
+  assert.equal(store.read().entries[input.id].stage,"confirmed");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
