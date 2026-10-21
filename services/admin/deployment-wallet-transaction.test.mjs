@@ -110,3 +110,18 @@ test("Base smart wallet envelope accepts exact target and calldata, but rejects 
  const router={...e,transaction:{...e.transaction,to:target,data:"0xabcd1234"+("aa".repeat(80))}};
  assert.equal(compareCommittedWalletTransaction({...router,txHash:hash},tx).matched,false);
 });
+
+test("Arbitrum MetaMask delegated executor preserves original wallet, target and calldata",async()=>{
+ const {compareCommittedWalletTransaction}=await import("./deployment-wallet-transaction.mjs");
+ const target="0x3b83687d77170d42feddfe221629cc21e771e021";
+ const data="0x502a546d"+"a".repeat(64);
+ const e={...entry,id:"arbitrum:XGR:syntheticRouter:none",chainId:42161,
+  transaction:{...entry.transaction,to:target,data,value:"0x0"}};
+ const signed={hash,from:wallet,to:"0xdb9b1e94b5b69df7e401ddbede43491141047db3",
+  chainId:"0xa4b1",nonce:"0xc",value:"0x0",
+  input:"0xcef6d209"+"00".repeat(100)+target.slice(2)+"00".repeat(32)+data.slice(2)+"00".repeat(20)};
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},signed).matched,true);
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},{...signed,input:signed.input.replace(data.slice(2),"deadbeef")}).matched,false);
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},{...signed,chainId:"0x2105"}).matched,false);
+ assert.equal(compareCommittedWalletTransaction({...e,txHash:hash},{...signed,to:"0x"+"3".repeat(40)}).matched,false);
+});

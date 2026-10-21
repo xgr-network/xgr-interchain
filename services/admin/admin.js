@@ -298,6 +298,7 @@ async function openAssetModal(taskId){
   
   "Gateway, FeeVault und lokale Router-Bindung werden atomar ohne Validator-Votum registriert.";
  el("modal-gas-result").textContent="";
+ el("modal-deploy").textContent="Mit Wallet deployen";
  el("modal-deploy").disabled=task.blockers.length>0;
  el("contract-deploy-dialog").showModal();
  if(task.blockers.length)presentModalStatus("Zuerst erforderlich: "+task.blockers.join(", "),"warn");
@@ -314,6 +315,14 @@ async function previewAssetDeployment(){
  if(!wallet||wallet.chainId!==chain.chainId)throw Error("Wallet-Chain stimmt nicht überein");
  const result=await postJSON("/admin/api/asset-deploy/preview",{taskId:task.id,wallet:wallet.address});
  assetPreview={taskId:task.id,wallet:wallet.address};
+ if(result.preview.mode==="verify-existing-router"){
+  el("modal-gas-result").textContent="Bestehenden Factory-Router kostenlos on-chain prüfen und dokumentieren, ohne weitere MetaMask-Transaktion.";
+  el("modal-deploy").textContent="Vorhandenen Router prüfen";
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Vorhandenen Contract wiederherstellen; keine neue Signatur nötig.","warn");
+  return;
+ }
+ el("modal-deploy").textContent="Mit Wallet deployen";
  el("modal-gas-result").textContent="Gaslimit "+BigInt(result.preview.simulation.gasLimit).toString()+
   " · aktuelle Preisschätzung "+moneyInWei(result.preview.simulation.totalWorstCaseWei,chain)+
   " (zusätzliche Rollup-Datengebühren können anfallen; MetaMask zeigt die verbindliche Transaktion)";
@@ -332,6 +341,11 @@ async function executeAssetDeployment(){
  el("modal-deploy").disabled=true;
  const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
   taskId:task.id,wallet:wallet.address});
+ if(prepared.stage==="documented"){
+  presentModalStatus("Vorhandener Router on-chain verifiziert und in GitHub dokumentiert.","success");
+  await waitForDeploymentSync(prepared);
+   el("contract-deploy-dialog").close();selectedAssetTask=null;return;
+ }
  presentModalStatus("MetaMask-Transaktion bestätigen oder abbrechen.");
  let txHash;
  try{txHash=await broadcastDeploymentIntent(prepared);}
@@ -352,7 +366,7 @@ async function executeAssetDeployment(){
   });
  if(report.result.stage==="pending"){
   el("modal-deploy").disabled=false;
-  presentModalStatus("Transaktion noch ausstehend. Erneuter Klick startet eine neue MetaMask-Transaktion.","warn");
+  presentModalStatus("Transaktion noch ausstehend. Keine erneute Signatur; zunächst die vorherige TX prüfen.","warn");
   return;
  }
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
@@ -510,7 +524,7 @@ async function checkModalGas(){
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
 }
 async function executeModalDeployment(){
- if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){el("modal-deploy").disabled=false;presentModalStatus("Deployment noch nicht abgeschlossen: "+e.message+". Erneuter Klick startet eine neue Wallet-Transaktion.","error");}return;}
+ if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){el("modal-deploy").disabled=false;presentModalStatus("Deployment noch nicht abgeschlossen: "+e.message+". Falls eine TX gesendet wurde, keine weitere signieren, sondern zunächst den Status prüfen.","error");}return;}
  if(!selectedDeployment)return;
  const {chainName,component}=selectedDeployment;
  const button=el("modal-deploy");button.disabled=true;
@@ -699,6 +713,11 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
      }):await postJSON("/admin/api/asset-deploy/prepare",{
       taskId:next.id,wallet:wallet.address
      });
+     if(!core&&prepared.stage==="documented"){
+      presentModalStatus("Schritt "+(stepCount+1)+" · vorhandenen Router verifiziert und in GitHub dokumentiert. Keine MetaMask-Signatur erforderlich.","success");
+      await waitForDeploymentSync(prepared);
+      continue;
+     }
     // EIP-1193 supplies an explicit independent approval for EACH transaction.
     txHash=await broadcastDeploymentIntent(prepared);
     presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · TX "+txHash.slice(0,14)+"… verifizieren …");

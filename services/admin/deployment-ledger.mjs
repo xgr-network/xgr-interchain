@@ -3,6 +3,7 @@
 // expose GitHub write credentials or this function to a browser-supplied
 // receipt, address, bytecode hash, or unrestricted HTTP API.
 import {keccak256} from "../../apps/web/keccak.mjs";
+import {isObservedWalletExecutor} from "./wallet-executor.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
 import {readFileSync,existsSync} from "node:fs";
@@ -64,11 +65,15 @@ function proveCreation(receipt,componentAddress,provenance){
  // Its RegistryDeployed event in a successful canonical receipt also proves
  // execution via an outer smart-wallet transaction on ANY supported chain.
  // All other Factory provenance rules remain unchanged.
- const baseExecutor=receipt._chainId===8453&&
-    equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
+ const factoryCreatorLog=(receipt.logs||[]).some(log=>
+   provenance.kind==="factory-router"&&equal(log.address,provenance.factory)&&
+   equal(log.topics?.[0],keccak256(EVENTS["factory-router"].sig))&&
+   equal(log.topics?.[3],topicAddress(receipt.from))&&
+   equal(log.topics?.[2],topicAddress(componentAddress)));
+ const delegatedExecutor=isObservedWalletExecutor(receipt._chainId,receipt.to);
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
-      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||baseExecutor))||
+      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||delegatedExecutor||factoryCreatorLog))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
