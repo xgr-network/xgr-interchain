@@ -132,9 +132,10 @@ export function deploymentIntents({directory,chains}){
    const entry={...e,stage:"prepared",txHash:null,createdAt:new Date().toISOString()};
    approve(entry);
    return mutate(s=>{
-    // Only the CURRENT wallet attempt is retained here. GitHub main alone
-    // determines deployment completion. A new click replaces stale WAL state
-    // without automatic recovery, historical nonce scans or signing twice.
+    // Do not overwrite an unresolved wallet intent, particularly a broadcast
+    // hash or confirmed deployment. Resume/reconcile it first. Recovery may
+    // explicitly retire an independently verified failed or unused attempt.
+    if(s.entries[entry.id])throw Error("Unresolved deployment intent: reconcile original transaction before any new MetaMask signature");
     s.entries[entry.id]=entry;
     return entry;
    });

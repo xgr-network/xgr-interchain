@@ -15,20 +15,24 @@ function decode(data,type){
  if(type==="bytes32")return data.toLowerCase();
  return BigInt(data).toString();
 }
-// Read-only Base RPC failover. Confirm the destination chain ID before
-// accepting a response from an alternative public endpoint. No wallet write
-// or rebroadcast is ever performed by this transport.
-const BASE_RPC="https://base-rpc.publicnode.com";
-// The approved chain manifest currently selects the public Tenderly endpoint.
-// The old Base fallback only recognized PublicNode and silently disabled
-// failover for the ACTUAL deployed configuration. All endpoints below are
-// known Base RPCs; check chainId 8453 BEFORE any alternative request.
-const BASE_CONFIGURED=["https://gateway.tenderly.co/public/base",
- "https://base.gateway.tenderly.co"];
-const BASE_ALTERNATES=["https://mainnet.base.org","https://base.llamarpc.com"];
-const BASE_APPROVED=new Set([BASE_RPC,...BASE_CONFIGURED,...BASE_ALTERNATES]);
-const baseReadEndpoints=url=>[...new Set([url,...BASE_ALTERNATES,
- ...BASE_CONFIGURED,BASE_RPC])];
+// Read-only, allowlisted EVM RPC failover. NEVER send a wallet transaction.
+// A fallback is used ONLY for transient transport failures, and its actual
+// chain ID is independently confirmed before accepting any returned data.
+const RPC_NETWORKS=[
+ {chainId:8453n,endpoints:[
+  "https://mainnet.base.org",
+  "https://base.llamarpc.com",
+  "https://gateway.tenderly.co/public/base",
+  "https://base.gateway.tenderly.co",
+  "https://base-rpc.publicnode.com"
+ ]},
+ {chainId:42161n,endpoints:[
+  "https://arb1.arbitrum.io/rpc",
+  "https://arbitrum-one-rpc.publicnode.com"
+ ]}
+];
+const READ_METHOD=/^(?:eth_(?:chainId|blockNumber|gasPrice|getTransactionByHash|getTransactionReceipt|getBlockByNumber|getTransactionCount|getBalance|getCode|getLogs|call|estimateGas|feeHistory|syncing)|net_version)$/;
+const resolveNetwork=url=>RPC_NETWORKS.find(n=>n.endpoints.includes(url))||null;
 async function rpcOnce(url,method,params){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
  try{
@@ -51,32 +55,32 @@ async function rpcOnce(url,method,params){
 }
 export async function rpcCall(url,method,params=[]){
  if(typeof url!=="string"||!/^https:\/\//.test(url))throw Error("RPC URL must use HTTPS");
- const baseApproved=BASE_APPROVED.has(url);
- const endpoints=baseApproved?baseReadEndpoints(url):[url];
+ if(!READ_METHOD.test(method||""))throw Error("Only approved read-only EVM RPC methods are available");
+ const network=resolveNetwork(url),endpoints=network?
+  [url,...network.endpoints.filter(endpoint=>endpoint!==url)]:[url];
  let last;
  for(const endpoint of endpoints){
   try{
-   // Always re-check the fallback chain before trusting its result, and do
-   // not fall back for a valid JSON-RPC execution error.
-   if(endpoint!==url){
+   if(network&&endpoint!==url){
     const id=await rpcOnce(endpoint,"eth_chainId",[]);
-    if(BigInt(id)!==8453n)throw Error("Unexpected Base fallback chain ID");
+    if(BigInt(id)!==network.chainId)throw Error("Unexpected fallback chain ID");
    }
    const value=await rpcOnce(endpoint,method,params);
-   if(method==="eth_chainId"&&endpoint!==url&&BigInt(value)!==8453n)
-    throw Error("Unexpected Base fallback chain ID");
+   if(network&&method==="eth_chainId"&&BigInt(value)!==network.chainId)
+    throw Error("Unexpected configured RPC chain ID");
    return value;
   }catch(e){
-   if(endpoint!==url&&String(e.message).includes("Unexpected Base fallback chain ID"))
+   if(String(e.message).includes("Unexpected fallback chain ID")||
+      String(e.message).includes("Unexpected configured RPC chain ID"))
     throw e;
    const code=e.rpcHttpStatus;
    const transient=code===403||code===408||code===429||code>=500||
     e.rpcRateLimit===true||e.name==="AbortError"||e instanceof TypeError;
-   if(!transient||!baseApproved)throw e;
+   if(!transient||!network)throw e;
    last=e;
   }
  }
- throw Error("Base RPC unavailable on all approved read-only endpoints: "+String(last?.message||"unknown"));
+ throw Error("Chain "+String(network?.chainId)+" RPC unavailable on all approved read-only endpoints: "+String(last?.message||"unknown"));
 }
 export async function probeChain(catalog,chainName,rpc=rpcCall){
  const chain=catalog.chains[chainName],infra=catalog.infrastructure[chainName];

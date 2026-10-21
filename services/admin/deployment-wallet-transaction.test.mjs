@@ -21,7 +21,7 @@ test("persist wallet hash synchronously before any RPC lookup; idempotent recove
   assert.equal(persistWalletBroadcastHash({journal:open(),id:entry.id,txHash:hash}).stage,"submitted");
   assert.throws(()=>persistWalletBroadcastHash({journal:open(),id:entry.id,
     txHash:"0x"+"f".repeat(64)}),/replace/);
-  assert.equal(open().prepare(entry).stage,"prepared");
+  assert.throws(()=>open().prepare(entry),/Unresolved deployment intent/);
  }finally{rmSync(dir,{force:true,recursive:true})}
 });
 test("matching transaction can proceed to independent receipt verification",async()=>{
