@@ -97,7 +97,7 @@ export function createChainOperator({
     depositWei:BigInt(draft.transaction.value).toString(),
     parameters:values,mode:"preview-only-no-broadcast-local-clean-main"};
  }
- async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=false}){
+ async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=true}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
