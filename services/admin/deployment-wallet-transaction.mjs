@@ -21,10 +21,10 @@ export function persistWalletBroadcastHash({journal,id,txHash}){
  // This fixed, observed executor forwards a server-approved target/calldata via
  // an envelope. Full Factory events and runtime proofs are still mandatory
  // in chain/asset reconciliation; this check alone never publishes a receipt.
-const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
+import {isObservedWalletExecutor} from "./wallet-executor.mjs";
 export function matchesWalletExecutorEnvelope(entry,tx){
  const t=entry?.transaction,raw=(tx?.input??tx?.data);
- if(entry?.chainId!==8453||!same(tx?.to,BASE_WALLET_EXECUTOR)||
+ if(!isObservedWalletExecutor(entry?.chainId,tx?.to)||
     typeof raw!=="string"||!/^0x[0-9a-f]+$/i.test(raw)||
     !raw.toLowerCase().startsWith("0xcef6d209")||
     !/^0x[0-9a-f]{40}$/i.test(t?.to||"")||
