@@ -10,8 +10,9 @@ export function deployedFixture(symbol="ABC",canonical="base"){
  const assetId="0x"+Buffer.from(symbol).toString("hex").padEnd(64,"0").slice(0,64);
  const home=canonical,other=canonical==="xgrchain"?"base":"xgrchain";
  const homeRole=canonical==="xgrchain"?"native":"collateral";
- const reps=[{chain:home,representation:homeRole,symbol},
-   {chain:other,representation:"synthetic",symbol:"w"+symbol}];
+ const reps=[{chain:home,representation:homeRole,symbol,
+    assetAddress:homeRole==="collateral"?addr("9"):null},
+   {chain:other,representation:"synthetic",symbol:"w"+symbol,assetAddress:null}];
  const representationRecords=[
    {chain:home,component:homeRole==="native"?"nativeRouter":"collateralRouter",...record(home,"1")},
    {chain:other,component:"syntheticRouter",...record(other,"2")}

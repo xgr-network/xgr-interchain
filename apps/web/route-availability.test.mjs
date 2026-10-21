@@ -86,3 +86,23 @@ test("old source locks stay recoverable when the new commercial gateway is absen
  assert.match(html,/Source confirmed/);
  assert.doesNotMatch(html,/<button type="button" class="ux-button" id="xita-transfer-primary" disabled/);
 });
+
+test("collateral source must use underlying ERC20 rather than the router address",()=>{
+ const c=catalog();
+ const original=deployedFixture("XYZ","base");
+ c.assets.XYZ=original;
+ const outgoing=deployedRoutes(c).find(r=>r.asset==="XYZ"&&r.source==="base");
+ const reverse=deployedRoutes(c).find(r=>r.asset==="XYZ"&&r.source==="xgrchain");
+ assert.ok(outgoing&&reverse,"both collateral/synthetic routes must be discoverable");
+ const token=original.metadata.representations.find(r=>r.chain==="base").assetAddress;
+ assert.equal(outgoing.sourceToken,token);
+ assert.notEqual(outgoing.sourceToken,outgoing.sourceRouter);
+ assert.equal(reverse.sourceToken,reverse.sourceRouter,"synthetic ERC20 is its own Warp router");
+ const incomplete=structuredClone(c);
+ incomplete.assets.XYZ.metadata.representations.find(r=>r.chain==="base").assetAddress=null;
+ assert.equal(deployedRoutes(incomplete).some(r=>r.asset==="XYZ"&&r.source==="base"),false);
+ const mismatch=structuredClone(c);
+ mismatch.assets.XYZ.metadata.representations.find(r=>r.chain==="base").representation="synthetic";
+ assert.equal(deployedRoutes(mismatch).some(r=>r.asset==="XYZ"),false,
+  "a contradictory manifest must not expose either direction as transferable");
+});
