@@ -43,7 +43,7 @@ const fakeRpc=(options={})=>async(_url,method,params)=>{
   case "eth_blockNumber":return "0x200";
   case "eth_getLogs":return [options.event??event];
   case "eth_getTransactionReceipt":return options.receipt??receipt;
-  case "eth_getTransactionByHash":return options.transaction??baseTx;
+  case "eth_getTransactionByHash":throw Error("Historical transaction index unavailable");
   case "eth_getCode":return "0x600160";
   case "eth_getBlockByNumber":return {hash:blockHash,number:"0x70"};
   default:throw Error("Unexpected RPC "+method);
@@ -54,7 +54,7 @@ const recover=rpc=>verifyExistingSourceRegistry({
  sourceCommit:"a".repeat(40),factoryDeploymentBlock:100,rpc
 });
 
-test("Arbitrum smart-wallet outer calldata/target does not prevent receipt-verified Registry adoption",async()=>{
+test("Arbitrum delegated execution is documented using the Factory event without historical tx lookup",async()=>{
  const result=await recover(fakeRpc());
  assert.equal(result.address,registry);
  assert.equal(result.txHash,hash);
@@ -66,8 +66,7 @@ test("Arbitrum smart-wallet outer calldata/target does not prevent receipt-verif
   /^deployments\/receipts\/arbitrum\/[a-f0-9]{64}-[a-f0-9]{40}\.json$/);
 });
 test("same Registry event works for direct MetaMask Factory transaction",async()=>{
- const transaction={...baseTx,to:factory,input:selector("deployRegistry()")};
- const result=await recover(fakeRpc({transaction,receipt:{...receipt,to:factory}}));
+ const result=await recover(fakeRpc({receipt:{...receipt,to:factory}}));
  assert.equal(result.verified.provenance.factory,factory);
 });
 test("event proof rejects failed receipts and foreign Registry events",()=>{
