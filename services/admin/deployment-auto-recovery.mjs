@@ -90,7 +90,7 @@ export async function classifyInterruptedDeployment({entry,chain,rpc}){
   const registry="0x"+BigInt(raw).toString(16).padStart(40,"0");
   if(BigInt(raw)===0n)
    return {action:"retry",reason:"source-registry-factory-empty",
-    warning:"On-chain Factory.registry() is empty. The old journal entry is archived; a new MetaMask-confirmed deployRegistry() call is permitted. A concurrent previous transaction may still consume gas."};
+    warning:"On-chain Factory.registry() is empty. The failed local attempt is cleared; a new MetaMask-confirmed deployRegistry() call is permitted. A concurrent previous transaction may still consume gas."};
   // A registry exists already. Recover its actual Factory event/transaction
   // to publish the canonical, immutable GitHub receipt, not a guessed address.
   const factoryBlock=chain.sourceRegistryFactory.blockNumber;
