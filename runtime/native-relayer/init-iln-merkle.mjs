@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// XGR-Node v3.2.0 canonical Merkle-tree bootstrap. READ-ONLY on both chains;
+// XGR-Node v3.2.0 canonical Merkle-tree bootstrap. READ-ONLY on all chains;
 // the only side effect is an atomic verified snapshot under --data-dir.
 // No private keys, transfers, blockchain transactions, or trust in peers.
 import {
@@ -209,15 +209,28 @@ export async function buildVerifiedReplica({
     "confirmed Hook mailbox differs from deployed XITA bundle");
   const targetCount = Number(onchainCount);
   requireCondition(Number.isSafeInteger(targetCount) &&
-    targetCount > 0 && targetCount <= MAX_LEAVES &&
-    HASH.test(onchainRoot) && onchainRoot.toLowerCase() !== ZERO,
-  "empty or unsupported canonical Merkle checkpoint");
+    targetCount >= 0 && targetCount <= MAX_LEAVES && HASH.test(onchainRoot),
+  "invalid or unsupported canonical Merkle checkpoint");
   // Before processing potentially lengthy RPC scans, verify the current
   // runtime bytecode against immutable GitHub deployment receipt.
-  const runtime = await provider.getCode(evidence.hook, checkpointBlock);
+  // The documented Hyperlane Hook is immutable/non-upgradeable. Verify its
+  // receipt-pinned bytecode at latest to avoid requiring archived state.
+  // Canonical mailbox, count and root MUST still be read at the confirmed epoch.
+  const runtime = await provider.getCode(evidence.hook, "latest");
   requireCondition(runtime !== "0x" &&
     keccak256(runtime).toLowerCase() === evidence.runtimeCodeHash,
   "source Hook runtime code differs from documented deployed contract");
+  // Fresh infrastructure may have dispatched no messages. The Go validator
+  // deliberately rejects zero-leaf replicas. Never fabricate one.
+  if (targetCount === 0) {
+    const finalBlock = await provider.getBlock(checkpointBlock);
+    requireCondition(finalBlock?.hash?.toLowerCase() ===
+      epochBlock.hash.toLowerCase(), "source checkpoint reorganized during bootstrap");
+    return {chainId: evidence.chainId, hook: evidence.hook.toLowerCase(),
+      checkpointBlock, root: onchainRoot.toLowerCase(), leaves: [], empty: true};
+  }
+  requireCondition(onchainRoot.toLowerCase() !== ZERO,
+    "nonempty canonical Merkle tree has zero root");
   const tree = new ILNAccumulator();
   const leaves = [];
   let lastBlock = 0, lastIndex = -1, matched = false, batches = 0;
@@ -380,6 +393,15 @@ async function main() {
       "Scanned to block " + x.end + "/" + x.total +
       "; validated " + x.leaves + "/" + x.targetCount + " leaves"),
   });
+  if (replica.empty) {
+    console.log(JSON.stringify({
+      status: "empty-hook-no-replica", chain: evidence.chain,
+      checkpointBlock: replica.checkpointBlock, merkleTreeHook: evidence.hook,
+      count: 0, root: replica.root,
+      note: "No confirmed Hyperlane insertions. No snapshot was written. Re-run after the first confirmed source message.",
+    }, null, 2));
+    return;
+  }
   const path = join(args.dataDir, "interchain", "iln", "replicas",
     String(evidence.chainId), evidence.hook.toLowerCase() + ".json");
   if (!args.dryRun) {

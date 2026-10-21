@@ -42,12 +42,12 @@ insertion. Run a dry-run first using a source RPC capable of historical
 `InsertedIntoTree` log reads:
 
     ./manage.sh init-merkle --chain arbitrum \
-      --data-dir /home/xgradmin/xgrchain/data \
+      --data-dir /ABSOLUTE/PATH/TO/XGR-DATADIR \
       --rpc https://arb1.arbitrum.io/rpc --chunk-size 250 --dry-run
 
-If the new Hook has count=0, do not fabricate an initial replica; no nonempty
-tree can be seeded yet. Keep the nodes running and initialize after the first
-confirmed source message. The source's correct Merkle root will be verified
+For count=0, the tool reports `status: "empty-hook-no-replica"` and
+writes no file. Initialize the Merkle replica after the first confirmed
+source-chain message. The source's correct Merkle root will be verified
 during seeding; it is not a fixed value to copy into node.conf.
 
 The Base/XGR/Arbitrum output files are written at:

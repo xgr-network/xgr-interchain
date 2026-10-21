@@ -65,7 +65,7 @@ function fakeProvider({logs=[entry(leaves[0],0,101,0),entry(leaves[1],1,117,0)],
     },
     getCode:async(to,blockTag)=>{
       assert.equal(to.toLowerCase(),hook.toLowerCase());
-      assert.equal(blockTag,128);
+      assert.equal(blockTag,"latest");
       return runtime;
     },
     getLogs:async(filter)=>{
@@ -148,6 +148,21 @@ test("never accepts an incomplete, duplicate, wrong-root or wrong-ABI prefix",as
   await expectFailure(fakeProvider({sourceMailbox:hook}),/mailbox differs/);
   await expectFailure(fakeProvider({chainId:1643}),/chainId mismatch/);
   await expectFailure(fakeProvider({reorg:true}),/reorganized during bootstrap/);
+});
+test("new Arbitrum Hook with zero insertions is identified without creating a fake Merkle replica",async()=>{
+  const result=await buildVerifiedReplica({
+    provider:fakeProvider({logs:[],actualCount:0n,actualRoot:ZERO}),
+    evidence:evidence(),chunkSize:10,
+  });
+  assert.equal(result.empty,true);
+  assert.deepEqual(result.leaves,[]);
+  assert.equal(result.checkpointBlock,128);
+  assert.equal(result.root,ZERO);
+  const file=join(mkdtempSync(join(tmpdir(),"xita-empty-hook-")),"snapshot.json");
+  try{
+    assert.throws(()=>writeReplicaAtomic(file,result),/invalid Merkle replica format/);
+    assert.equal(existsSync(file),false);
+  }finally{rmSync(join(file,".."),{recursive:true,force:true});}
 });
 test("source RPC range limits may split, but every block remains verified",async()=>{
   const provider=fakeProvider({failedBatch:true});
