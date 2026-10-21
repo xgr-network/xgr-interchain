@@ -31,6 +31,37 @@ compressed/uncompressed BLS keys and signed payload, then uses an
 authenticate each proof. No validator secret is uploaded, no extra wallet
 signature is requested and no gas is spent by these checks.
 
+### Automatic PUBLIC proof collection (XGR-Node)
+
+XITA remains installed **only on validator 1**. The two other validators
+run the ordinary XGR-Node exclusively; no second or third XITA installation,
+HTTP endpoint or key export is necessary.
+
+For an additional, approved destination domain (Arbitrum One: `42161`),
+the three existing XGR-Node validators may opt in locally with
+`XGR_INTERCHAIN_BOOTSTRAP_DOMAINS=42161`. Each active XGR PoS validator
+locally signs its own domain-bound public bootstrap payload using the same
+BLS key and gossips PUBLIC proofs over the existing ILN P2P topic. The
+receiver independently verifies each proof against the exact XGR PoS BLS
+key and makes only validated records available via the read-only local
+`xgr_getILNBootstrapProofs(42161)` RPC.
+
+When all three manual `validator-N.txt` files are present, the Admin keeps
+using them (for example for historical Base bootstrap). When even one is
+missing, the **single** XITA Admin on validator 1 queries its local
+`http://127.0.0.1:8545` XGR Node for all three approved validator
+identities in the pinned genesis order. A partial quorum (including 2/3)
+does NOT authorize Registry genesis. The entire set must be complete; each
+candidate is independently verified by the destination BLS verifier on
+the documented target chain. The Registry constructor checks them again.
+XITA never reads validator private keys and does not sign any proof.
+
+This collector requires the corresponding XGR-Node feature to be installed
+on all three validators and their explicit domain allowlists to be enabled.
+It is not part of a XITA-only update. Roll node binaries one validator at
+a time to preserve IBFT availability. Contract and wallet signing remain
+separate operator-approved actions.
+
 The Registry V3 constructor receives the verified public key/proof arrays
 and the exact native-currency reserve deposit
 (`validatorCount * perValidatorWei`). It independently checks all PoPs,
