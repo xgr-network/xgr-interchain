@@ -143,9 +143,8 @@ export function deploymentIntents({directory,chains}){
      // Deliberate operator action: only the SAME wallet and approved chain
      // may replace a local attempt. Never create a GitHub failed receipt.
      if(previous.chainId!==entry.chainId||
-        previous.wallet.toLowerCase()!==entry.wallet.toLowerCase()||
         !["prepared","submitted","confirmed"].includes(previous.stage))
-      throw Error("Retry override rejected: prior wallet/chain or stage differs");
+      throw Error("Retry override rejected: chain identity or stage differs");
      // Keep only superseded TX hashes in this transient write-ahead journal.
      // Previous transactions may still mine. None is reported as deployed.
      entry.supersededTxHashes=[...new Set([
