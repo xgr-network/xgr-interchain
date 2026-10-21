@@ -64,11 +64,16 @@ function proveCreation(receipt,componentAddress,provenance){
  // Its RegistryDeployed event in a successful canonical receipt also proves
  // execution via an outer smart-wallet transaction on ANY supported chain.
  // All other Factory provenance rules remain unchanged.
+ const factoryCreatorLog=(receipt.logs||[]).some(log=>
+   provenance.kind==="factory-router"&&equal(log.address,provenance.factory)&&
+   equal(log.topics?.[0],keccak256(EVENTS["factory-router"].sig))&&
+   equal(log.topics?.[3],topicAddress(receipt.from))&&
+   equal(log.topics?.[2],topicAddress(componentAddress)));
  const baseExecutor=receipt._chainId===8453&&
     equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
-      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||baseExecutor))||
+      !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||baseExecutor||factoryCreatorLog))||
     (provenance.kind==="factory-feevault"&&!address(provenance.gateway)))
   throw Error("Missing verified factory execution provenance");
  const topic0=keccak256(event.sig);
