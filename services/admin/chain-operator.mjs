@@ -96,12 +96,12 @@ export function createChainOperator({
     depositWei:BigInt(draft.transaction.value).toString(),
     parameters:values,mode:"preview-only-no-broadcast-local-clean-main"};
  }
- async function prepare({chain:chainName,component,wallet,parameters={}}){
+ async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=false}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
-  await recoverBeforeWalletSignature({journal,chain,component,resume});
+  if(!forceRetry)await recoverBeforeWalletSignature({journal,chain,component,resume});
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
@@ -136,7 +136,7 @@ export function createChainOperator({
    parameters:values,
    validatorSnapshot:component==="validatorRegistry"?verified.validatorSnapshot:null,
    transaction
-  });
+  },{forceRetry});
   return {mode:"await-wallet-confirmation",commit,id:item.id,chain:chain.name,
    chainId:chain.chainId,component,buildHash:artifact.buildHash,
    simulation:{gas:transaction.gas,gasPriceWei:simulation.gasPriceWei,
