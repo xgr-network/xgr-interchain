@@ -16,6 +16,7 @@ import {deploymentIntents} from "./deployment-intents.mjs";
 import {persistWalletBroadcastHash} from "./deployment-wallet-transaction.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
+import {recoverBeforeWalletSignature} from "./deployment-retry.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
@@ -100,6 +101,7 @@ export function createChainOperator({
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
+  await recoverBeforeWalletSignature({journal,chain,component,resume});
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
@@ -254,7 +256,7 @@ export function createChainOperator({
   await verifyPrepared({entry:e,chain,rpc});
   return j.cancelPrepared(id,createdAt);
  }
- async function resume({chain:chainName}){
+ async function resume({chain:chainName,component=null}){
   const all=inventory();
   const chain=all.chains.find(c=>c.name===chainName);
   if(!chain)throw Error("Unapproved deployment chain");
@@ -278,6 +280,7 @@ export function createChainOperator({
   return resumeInterruptedDeployments({
    journal:journals(all.chains),chains:scopedChains,rpc,reconcile,
    include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
+    (component===null||entry.id===chainName+":"+component)&&
     !documented.has(entry.id.split(":")[1])
   });
  }
