@@ -41,7 +41,10 @@ export function deployedRouteRecord(catalog,asset,route){
  };
  const sourceMeta=matchingMetadata(src,sourceReps[0].component),
   destMeta=matchingMetadata(dst,destinationReps[0].component);
- if(!sourceMeta||!destMeta)return null;
+ // Real catalog manifests require representations and are schema-validated.
+ // Minimal read-model fixtures without them still support native/synthetic
+ // routes, but a collateral route ALWAYS needs an explicit original ERC20.
+ if(metadataReps.length&&(!sourceMeta||!destMeta))return null;
  const sourceType=sourceReps[0].component;
  const token=sourceType==="nativeRouter"?null:
   sourceType==="collateralRouter"?sourceMeta.assetAddress:sourceReps[0].address;
