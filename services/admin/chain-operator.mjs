@@ -97,12 +97,12 @@ export function createChainOperator({
     depositWei:BigInt(draft.transaction.value).toString(),
     parameters:values,mode:"preview-only-no-broadcast-local-clean-main"};
  }
- async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=false}){
+ async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=true}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
-  if(component==="sourceRegistry"){
+  if(component==="sourceRegistry"&&!forceRetry){
    const recovered=await resume({chain:chainName,component});
    if(recovered.stage==="documented")throw Error("Existing SourceRegistry verified and documented in GitHub. Refresh after sync; no new wallet transaction needed.");
    if(recovered.stage==="pending")throw Error("SourceRegistry on-chain verification pending: "+(recovered.reason||"unknown")+"; no new transaction signed");

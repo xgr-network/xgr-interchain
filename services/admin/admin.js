@@ -695,7 +695,7 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
     prepared=core?
      await postJSON("/admin/api/chain-deploy/prepare",{
       chain:chain.name,component:next.component,wallet:wallet.address,parameters:params,
-      forceRetry:forceRetryComponent===next.component
+      forceRetry:true
      }):await postJSON("/admin/api/asset-deploy/prepare",{
       taskId:next.id,wallet:wallet.address
      });

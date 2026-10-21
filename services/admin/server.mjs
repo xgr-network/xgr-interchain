@@ -255,7 +255,7 @@ http.createServer(async(req,res)=>{
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/preview"){
    const item=await bodyJSON(req);
    const result=await operator.preview({chain:item.chain,component:item.component,
-     wallet:item.wallet,parameters:item.parameters||{},forceRetry:item.forceRetry===true});
+     wallet:item.wallet,parameters:item.parameters||{},forceRetry:item.forceRetry!==false});
    return reply(res,200,{ok:true,preview:result});
   }
   if(req.method==="POST"&&path==="/admin/api/asset-deploy/preview"){
@@ -285,7 +285,7 @@ http.createServer(async(req,res)=>{
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/prepare"){
    const item=await bodyJSON(req);
-   const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet,parameters:item.parameters||{}});
+   const prepared=await operator.prepare({chain:item.chain,component:item.component,wallet:item.wallet,parameters:item.parameters||{},forceRetry:item.forceRetry===true});
    return reply(res,200,{ok:true,...prepared});
   }
   if(req.method==="POST"&&path==="/admin/api/chain-deploy/hash"){

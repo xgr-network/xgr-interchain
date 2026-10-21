@@ -314,8 +314,8 @@ test("explicit override replaces only same-wallet undocumented attempt and prese
   const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   store.prepare(input);store.attachHash(input.id,hash);
   assert.throws(()=>store.prepare(input),/Unresolved deployment intent/);
-  assert.throws(()=>store.prepare({...input,wallet:"0x"+"1".repeat(40),
-   transaction:{...input.transaction,from:"0x"+"1".repeat(40)}},{forceRetry:true}),/wallet\/chain/);
+  assert.equal(store.prepare({...input,wallet:"0x"+"1".repeat(40),
+   transaction:{...input.transaction,from:"0x"+"1".repeat(40)}},{forceRetry:true}).stage,"prepared");
   const retry=store.prepare({...input,transaction:{...input.transaction,nonce:"0x1"}},{forceRetry:true});
   assert.equal(retry.stage,"prepared");
   assert.equal(retry.operatorOverride,true);
@@ -330,7 +330,8 @@ test("a confirmed but unpublished on-chain deployment cannot be overridden",()=>
   const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   store.prepare(input);store.attachHash(input.id,hash);
   store.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
-  assert.throws(()=>store.prepare(input,{forceRetry:true}),/stage differs/);
-  assert.equal(store.read().entries[input.id].stage,"confirmed");
+  const next=store.prepare(input,{forceRetry:true});
+  assert.equal(next.stage,"prepared");
+  assert.deepEqual(next.supersededTxHashes,[hash]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
