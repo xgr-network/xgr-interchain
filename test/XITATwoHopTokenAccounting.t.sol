@@ -252,9 +252,12 @@ contract XITATwoHopTokenAccountingTest is Test {
             vm.prank(USER);
             ERC20(sourceToken).approve(address(adapter),amount);
         }
+        // Read external getters before vm.prank: a routeId() call inside
+        // the Solidity argument list would consume the one-shot prank.
+        bytes32 routeId=gateway.routeId();
         vm.prank(USER);
         messageId = adapter.continueJourney{value:bridgeNativeWei}(
-            parentId,address(gateway),gateway.routeId(),
+            parentId,address(gateway),routeId,
             uint32(ARBITRUM),_recipient(),amount
         );
         assertTrue(messageId != bytes32(0));
@@ -262,10 +265,10 @@ contract XITATwoHopTokenAccountingTest is Test {
         assertTrue(adapter.onwardParentUsed(USER,parentId));
         assertEq(adapter.pendingInterchainFeesWei(),0,
             "second hop must not charge a second XITA service fee");
-        vm.prank(USER);
         vm.expectRevert(XITAExecutionGateway.InvalidQuote.selector);
+        vm.prank(USER);
         adapter.continueJourney{value:bridgeNativeWei}(
-            parentId,address(gateway),gateway.routeId(),
+            parentId,address(gateway),routeId,
             uint32(ARBITRUM),_recipient(),amount
         );
     }
