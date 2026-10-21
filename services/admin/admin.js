@@ -332,6 +332,10 @@ async function executeAssetDeployment(){
  el("modal-deploy").disabled=true;
  const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
   taskId:task.id,wallet:wallet.address});
+ if(prepared.stage==="documented"){
+  presentModalStatus("Vorhandener Router on-chain verifiziert und in GitHub dokumentiert.","success");
+  await waitForDeploymentSync(prepared);return;
+ }
  presentModalStatus("MetaMask-Transaktion bestätigen oder abbrechen.");
  let txHash;
  try{txHash=await broadcastDeploymentIntent(prepared);}
