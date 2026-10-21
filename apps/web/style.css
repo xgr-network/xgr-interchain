@@ -261,7 +261,7 @@ header nav a{font-weight:400;letter-spacing:.045em}
 .ja-hero h1{max-width:900px}
 .ja-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:20px;align-items:start}
 .ja-wizard,.ja-preview{padding:28px}
-.ja-progress{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:37px}
+.ja-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:37px}
 .ja-step{border-top:2px solid #293d5a;padding-top:14px;display:flex;flex-direction:column;gap:8px;color:#71849f}
 .ja-step.is-current{border-color:#b5dbff;color:#d6eaff}.ja-step.is-done{border-color:#6ea3c3}
 .ja-step span{font-size:12px;letter-spacing:.12em;font-weight:700}
