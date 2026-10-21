@@ -349,9 +349,15 @@
             "address": "0x61799183b5e9ee2a1fd1345317e6e201d70713ce",
             "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
             "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-61799183b5e9ee2a1fd1345317e6e201d70713ce.json"
+          },
+          "nativeRouterDeployer": {
+            "address": "0xe4baed23f8b9262eb71ade74a26322288e6a0cb3",
+            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
+            "receiptPath": "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json"
           }
         },
         "receiptPaths": [
+          "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
           "deployments/receipts/arbitrum/0a4760760dece5c16dd7019620b88292c870688b981950d1af1a131691a08298-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
           "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
           "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
