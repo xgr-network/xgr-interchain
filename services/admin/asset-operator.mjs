@@ -119,8 +119,9 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   const j=journal(inventory.chains);
   const id=chain.name+":"+asset.asset+":"+representation.component+":none";
   const saved=j.read().entries[id];
-  // No need to preserve a stale local unsigned intent after immutable publication.
-  if(saved&&saved.stage==="confirmed")j.document(id,path);
+  // A mined Factory event supersedes stale prepared/submitted WAL metadata.
+  // The exact old intent is retired only AFTER the immutable GitHub receipt exists.
+  if(saved)j.documentRecovered(id,saved.createdAt,path);
   let autoSyncQueued=false;
   try{queueDeploymentSync(stateDir,out.commit);autoSyncQueued=true}
   catch(e){console.error("Recovered router sync:",String(e.message||e))}
@@ -209,9 +210,18 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   return {...facts,transaction:entry.transaction,createdAt:entry.createdAt};
  }
  async function preview(args){
-  const d=await draft(args);
-  return {id:d.id,asset:d.asset,chain:d.chain,component:d.component,
-   routeName:d.routeName,simulation:d.simulation,mode:"read-only-verified-gas"};
+  try{
+   const d=await draft(args);
+   return {id:d.id,asset:d.asset,chain:d.chain,component:d.component,
+    routeName:d.routeName,simulation:d.simulation,mode:"read-only-verified-gas"};
+  }catch(error){
+   if(!/RPC error: execution reverted/i.test(String(error.message||error)))throw error;
+   const {task,asset,chain}=await context(args.taskId);
+   if(task.kind!=="router")throw error;
+   // No publication or wallet action on preview; prepare verifies the event.
+   return {id:task.id,asset:asset.asset,chain:chain.name,
+    mode:"verify-existing-router",simulation:null};
+  }
  }
  async function prepare(args){
   let d;
