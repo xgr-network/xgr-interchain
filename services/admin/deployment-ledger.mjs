@@ -70,8 +70,7 @@ function proveCreation(receipt,componentAddress,provenance){
    equal(log.topics?.[0],keccak256(EVENTS["factory-router"].sig))&&
    equal(log.topics?.[3],topicAddress(receipt.from))&&
    equal(log.topics?.[2],topicAddress(componentAddress)));
- const baseExecutor=receipt._chainId===8453&&
-    equal(receipt.to,"0xdb9b1e94b5b69df7e401ddbede43491141047db3");
+ const delegatedExecutor=isObservedWalletExecutor(receipt._chainId,receipt.to);
  if(!event||!address(provenance.factory)||
     (transport?!equal(receipt.contractAddress,provenance.factory)||receipt.to!==null:
       !(provenance.kind==="factory-registry"||equal(receipt.to,provenance.factory)||delegatedExecutor||factoryCreatorLog))||
