@@ -545,7 +545,7 @@ async function executeModalDeployment(){
       (r.reason==="confirmations"?"wartet auf Bestätigungen":"wartet auf On-Chain-Receipt")+
       " – keine weitere Wallet-Signatur.","warn")
    });
-  if(result.result.stage==="pending"){button.disabled=false;presentModalStatus("Wallet-Transaktion noch ausstehend. Erneuter Klick startet eine neue MetaMask-Transaktion.","warn");return;}
+  if(result.result.stage==="pending"){button.disabled=false;presentModalStatus("Wallet-Transaktion noch ausstehend. Erneuter Klick prüft zuerst die ursprüngliche TX; keine automatische zweite Signatur.","warn");return;}
   if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
   presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
   el("contract-deploy-dialog").close();selectedDeployment=null;
@@ -721,7 +721,7 @@ async function runDeploymentBatch(type,target){
       throw Error("MetaMask abgebrochen; Entwurf wird beim nächsten Deploy nach Nonce-Prüfung freigegeben: "+cancelError.message);
      }
     }
-    if(txHash)throw Error("TX "+txHash+" ist noch nicht in GitHub dokumentiert. Ein erneuter Deploy-Klick startet eine neue MetaMask-Transaktion: "+e.message);
+    if(txHash)throw Error("TX "+txHash+" ist noch nicht in GitHub dokumentiert. Erneuter Deploy-Klick prüft zuerst diese TX und signiert nur nach verifiziertem Retry-Status: "+e.message);
     throw e;
    }
   }
