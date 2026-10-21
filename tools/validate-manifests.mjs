@@ -111,6 +111,8 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
    check(["native","collateral","synthetic"].includes(rep.representation),p+": invalid representation");
    check(rep.assetAddress===null||address(rep.assetAddress),p+": invalid ERC20 address");
    if(rep.representation==="native")check(rep.assetAddress===null,p+": native address must be null");
+   if(rep.representation==="collateral")
+    check(address(rep.assetAddress),p+": collateral original ERC20 token address missing or invalid");
    reps.set(rep.chain,rep);
   }
   check(reps.get(m.canonical?.chain)?.representation===m.canonical?.representation,p+": canonical representation differs");

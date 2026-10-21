@@ -29,6 +29,23 @@ export function deployedRouteRecord(catalog,asset,route){
  const sourceReps=matchingReps(src),destinationReps=matchingReps(dst);
  if(sourceReps.length!==1||destinationReps.length!==1||
    !HASH.test(dep.assetId||"")||!match(dep.assetId,entry.metadata?.assetId))return null;
+ // The Gateway's warpToken() is an ORIGINAL underlying ERC-20 for a
+ // collateral router, but is the router address itself for a synthetic token.
+ // Never ask users to approve the collateral router instead of their token.
+ const metadataReps=entry.metadata?.representations||[];
+ const matchingMetadata=(chain,component)=>{
+  const role={nativeRouter:"native",collateralRouter:"collateral",
+   syntheticRouter:"synthetic"}[component];
+  const matches=metadataReps.filter(r=>r.chain===chain&&r.representation===role);
+  return matches.length===1?matches[0]:null;
+ };
+ const sourceMeta=matchingMetadata(src,sourceReps[0].component),
+  destMeta=matchingMetadata(dst,destinationReps[0].component);
+ if(!sourceMeta||!destMeta)return null;
+ const sourceType=sourceReps[0].component;
+ const token=sourceType==="nativeRouter"?null:
+  sourceType==="collateralRouter"?sourceMeta.assetAddress:sourceReps[0].address;
+ if(sourceType==="collateralRouter"&&!ADDRESS.test(token||""))return null;
  const instances=(dep.routeDeployments||[]).filter(r=>
    r.routeName===route.name&&r.sourceChain===src&&r.destinationChain===dst&&
    HASH.test(r.routeId||"")&&valid(r.components?.gateway)&&valid(r.components?.feeVault)&&
@@ -40,7 +57,7 @@ export function deployedRouteRecord(catalog,asset,route){
   feeVault:instances[0].components.feeVault.address,
   sourceRouter:sourceReps[0].address,
   destinationRouter:destinationReps[0].address,
-  sourceToken:sourceReps[0].component==="nativeRouter"?null:sourceReps[0].address};
+  sourceToken:token};
 }
 export function deployedRoutes(catalog){
  const result=[];
