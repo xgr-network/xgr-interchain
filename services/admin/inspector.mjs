@@ -20,11 +20,11 @@ function decode(data,type){
 // chain ID is independently confirmed before accepting any returned data.
 const RPC_NETWORKS=[
  {chainId:8453n,endpoints:[
+  "https://mainnet.base.org",
+  "https://base.llamarpc.com",
   "https://gateway.tenderly.co/public/base",
   "https://base.gateway.tenderly.co",
-  "https://base-rpc.publicnode.com",
-  "https://mainnet.base.org",
-  "https://base.llamarpc.com"
+  "https://base-rpc.publicnode.com"
  ]},
  {chainId:42161n,endpoints:[
   "https://arb1.arbitrum.io/rpc",
