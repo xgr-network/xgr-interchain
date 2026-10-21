@@ -32,4 +32,6 @@ jobs:
         run: |
           node services/admin/assert-evm-deployability.mjs .
       - name: Contract tests
-        run: forge test -vvv
+        run: |
+          forge test --match-contract XITATwoHopTokenAccountingTest -vvvv
+          forge test -vvv
