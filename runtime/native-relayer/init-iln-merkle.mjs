@@ -201,9 +201,9 @@ export async function buildVerifiedReplica({
   requireCondition(epochBlock && HASH.test(epochBlock.hash),
     "cannot independently anchor confirmed checkpoint block");
   const [onchainMailbox, onchainCount, onchainRoot] = await Promise.all([
-    hookCall(provider, evidence.hook, "mailbox", checkpointBlock),
-    hookCall(provider, evidence.hook, "count", checkpointBlock),
-    hookCall(provider, evidence.hook, "root", checkpointBlock),
+    hookCall(provider, evidence.hook, "mailbox", "latest"),
+    hookCall(provider, evidence.hook, "count", "latest"),
+    hookCall(provider, evidence.hook, "root", "latest"),
   ]);
   requireCondition(onchainMailbox.toLowerCase() === evidence.mailbox.toLowerCase(),
     "confirmed Hook mailbox differs from deployed XITA bundle");
@@ -215,7 +215,9 @@ export async function buildVerifiedReplica({
   // runtime bytecode against immutable GitHub deployment receipt.
   // The documented Hyperlane Hook is immutable/non-upgradeable. Verify its
   // receipt-pinned bytecode at latest to avoid requiring archived state.
-  // Canonical mailbox, count and root MUST still be read at the confirmed epoch.
+  // Latest state is compared against the complete confirmed log prefix. If
+ // any unconfirmed insertions advanced the Hook, refuse checkpoint seeding
+ // rather than falsely attributing a newer root to an older block.
   const runtime = await provider.getCode(evidence.hook, "latest");
   requireCondition(runtime !== "0x" &&
     keccak256(runtime).toLowerCase() === evidence.runtimeCodeHash,
