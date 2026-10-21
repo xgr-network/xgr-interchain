@@ -102,7 +102,7 @@ export function createChainOperator({
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
-  if(component==="sourceRegistry"){
+  if(component==="sourceRegistry"&&!forceRetry){
    const recovered=await resume({chain:chainName,component});
    if(recovered.stage==="documented")throw Error("Existing SourceRegistry verified and documented in GitHub. Refresh after sync; no new wallet transaction needed.");
    if(recovered.stage==="pending")throw Error("SourceRegistry on-chain verification pending: "+(recovered.reason||"unknown")+"; no new transaction signed");
