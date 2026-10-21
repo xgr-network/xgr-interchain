@@ -127,19 +127,33 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  if(confirmations<BigInt(c.confirmations))throw Error("Deployment not sufficiently confirmed");
  if(!h32(receipt.blockHash))throw Error("No canonical receipt block hash");
  const blockTag="0x"+blockNumber.toString(16);
- const [block,bytecode]=await Promise.all([
-  rpc(url,"eth_getBlockByNumber",[blockTag,false]),
-  rpc(url,"eth_getCode",[contractAddress.toLowerCase(),blockTag])
- ]);
+ // Always authenticate the canonical creation block AND its Factory event (or
+ // direct-create address) before accepting any code snapshot.
+ const block=await rpc(url,"eth_getBlockByNumber",[blockTag,false]);
  if(!block||!equal(block.hash,receipt.blockHash)||
     asUint(block.number,"block number")!==blockNumber)
   throw Error("Receipt block does not match canonical chain");
+ const origin=proveCreation({...receipt,_chainId:c.chainId},contractAddress,provenance);
+ let bytecode,codeObservedAt=blockTag;
+ try{
+  bytecode=await rpc(url,"eth_getCode",[contractAddress.toLowerCase(),blockTag]);
+ }catch(error){
+  // Public Arbitrum RPCs retain canonical receipts/blocks but may prune old
+  // contract state. For these FINALIZED, authenticated creations only, code
+  // observable at latest is independently required to match the exact
+  // pinned artifact/runtime hash. Never override bad code, failed receipts,
+  // wrong-chain responses, or non-archive RPC errors.
+  const reason=String(error?.message||error);
+  const pruned=/\\bhistorical state\\b.*\\b(?:not available|missing|pruned)\\b|\\bmissing trie node\\b|\\bstate\\b.*\\bis not available\\b/i.test(reason);
+  if(c.chainId!==42161||!pruned)throw error;
+  bytecode=await rpc(url,"eth_getCode",[contractAddress.toLowerCase(),"latest"]);
+  codeObservedAt="latest";
+ }
  if(typeof bytecode!=="string"||!HEXCODE.test(bytecode))
-  throw Error("No contract code at the deployment block");
+  throw Error("No contract bytecode at authenticated deployment or current Arbitrum state");
  const observedHash=keccak256(Uint8Array.from(Buffer.from(bytecode.slice(2),"hex")));
  if(!equal(observedHash,expectedRuntimeKeccak256))
   throw Error("Runtime code hash differs from the main-approved build");
- const origin=proveCreation({...receipt,_chainId:c.chainId},contractAddress,provenance);
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
   approval:{ref:"main",sourceCommit:sourceCommit.toLowerCase()},
@@ -148,6 +162,10 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
   transactionHash:txHash.toLowerCase(),blockNumber:Number(blockNumber),
   blockHash:receipt.blockHash.toLowerCase(),confirmations:Number(confirmations),
   deployer:expectedDeployer.toLowerCase(),provenance:origin,
+  ...(codeObservedAt==="latest"?{runtimeCodeObservation:{
+    blockTag:"latest",reason:"arbitrum-pruned-historical-state",
+    creationBlock: Number(blockNumber)
+  }}:{}),
   status:"onchain-deployment-verified",recordedAt:now()
  };
 }
