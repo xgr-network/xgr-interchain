@@ -16,6 +16,7 @@ import {deploymentIntents} from "./deployment-intents.mjs";
 import {persistWalletBroadcastHash} from "./deployment-wallet-transaction.mjs";
 import {verifyPrepared} from "./prepared-override.mjs";
 import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
+import {verifyExistingSourceRegistry} from "./source-registry-recovery.mjs";
 import {recoverBeforeWalletSignature} from "./deployment-retry.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
@@ -101,7 +102,11 @@ export function createChainOperator({
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
   await requireVersionThree(chain,infrastructure,component);
   const journal=journals(all.chains);
-  if(!forceRetry)await recoverBeforeWalletSignature({journal,chain,component,resume});
+  if(component==="sourceRegistry"){
+   const recovered=await resume({chain:chainName,component});
+   if(recovered.stage==="documented")throw Error("Existing SourceRegistry verified and documented in GitHub. Refresh after sync; no new wallet transaction needed.");
+   if(recovered.stage==="pending")throw Error("SourceRegistry on-chain verification pending: "+(recovered.reason||"unknown")+"; no new transaction signed");
+  }else if(!forceRetry)await recoverBeforeWalletSignature({journal,chain,component,resume});
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
@@ -277,6 +282,33 @@ export function createChainOperator({
   const scopedChains=all.chains.map(c=>c.name===chainName&&factory?.address
    ?{...c,sourceRegistryFactory:{address:factory.address,blockNumber:deploymentBlock}}
    :c);
+  if(component==="sourceRegistry"||component===null){
+   const localJournal=journals(all.chains);
+   const original=localJournal.read().entries[chainName+":sourceRegistry"];
+   if(!documented.has("sourceRegistry")&&factory?.address){
+    // The Factory has one idempotent Registry. If it already exists, recover
+    // the REAL deployment rather than paying for another factory call.
+    const {commit,infrastructure,bootstrap}=await approved(chainName);
+    const compiled=await build(root,commit);
+    const recovered=await verifyExistingSourceRegistry({
+     root,chain,infrastructure,bootstrap,artifact:compiled.artifacts.sourceRegistry,
+     sourceCommit:commit,factoryDeploymentBlock:deploymentBlock,rpc
+    });
+    if(recovered){
+     const published=await publish(root,[recovered.input],{rpc});
+     if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
+      throw Error("Recovered SourceRegistry GitHub commit not confirmed");
+     const path=deploymentReceiptPath(recovered.verified);
+     if(original)localJournal.documentRecovered(original.id,original.createdAt,path);
+     try{queueDeploymentSync(stateDir,published.commit);}
+     catch(error){console.error("SourceRegistry sync:",String(error.message||error));}
+     return {stage:"documented",receiptPath:path,commit:published.commit,
+      address:recovered.address,txHash:recovered.txHash,automaticallyRecovered:true};
+    }
+    // Factory.registry() is zero. Any pending previous tx may be a race:
+    // let the ordinary nonce-aware recovery decide whether signing is safe.
+   }
+  }
   return resumeInterruptedDeployments({
    journal:journals(all.chains),chains:scopedChains,rpc,reconcile,
    include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
