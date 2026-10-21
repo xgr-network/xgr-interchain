@@ -180,3 +180,10 @@ test("fee contract deployment must bind all three service roles to ONE address",
   component:"executionGateway",address:addr(22),chain,bootstrap,
   infra:manifest,parameters:params}),/binding mismatch/);
 });
+
+test("deployment verifier never reads historic eth_getCode or eth_call",async()=>{
+ const source=await import("node:fs/promises");
+ const text=await source.readFile(new URL("./chain-reconcile.mjs",import.meta.url),"utf8");
+ assert.doesNotMatch(text,/eth_getCode"\s*,\s*\[address\s*,\s*"0x"/);
+ assert.doesNotMatch(text,/eth_getCode"\s*,\s*\[address\s*,\s*"0x"\s*\+/);
+});
