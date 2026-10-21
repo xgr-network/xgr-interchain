@@ -5,6 +5,13 @@
   "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
   "representations": [
     {
+      "chain": "arbitrum",
+      "component": "syntheticRouter",
+      "address": "0x86466025acecf74098820b99fc0ec1288f39143e",
+      "runtimeCodeKeccak256": "0x2e8e3e069759c2a00afcdf413a14ee31741f163575ebb14e6b99321cbb49012b",
+      "receiptPath": "deployments/receipts/arbitrum/1e76be880e4df430645805d717ec003d6560d32cd225fc6a86800dfe5e188a58-86466025acecf74098820b99fc0ec1288f39143e.json"
+    },
+    {
       "chain": "base",
       "component": "syntheticRouter",
       "address": "0x2ca97eff807744f81f13c59a75a8eb0add1c715d",
