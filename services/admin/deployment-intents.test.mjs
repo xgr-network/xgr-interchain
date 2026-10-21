@@ -1,7 +1,7 @@
 import {CHAIN_COMPONENTS} from "./chain-transaction-draft.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync} from "node:fs";
+import {mkdtempSync,rmSync,writeFileSync,mkdirSync,readFileSync,readdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {deploymentIntents} from "./deployment-intents.mjs";
@@ -248,7 +248,7 @@ test("an old signed Registry intent with unprovable reserve value cannot be sile
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 
-test("interrupted unused or failed intent is archived and no longer blocks a fresh deploy",()=>{
+test("interrupted unused or failed intent is cleared without creating an archive",()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-auto-resume-retire-"));
  try{
   const store=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
@@ -265,6 +265,7 @@ test("interrupted unused or failed intent is archived and no longer blocks a fre
   assert.equal(store.retireForFreshWalletAttempt({
    id:second.id,createdAt:second.createdAt,reason:"failed-onchain"}).stage,"ready");
   assert.doesNotThrow(()=>store.prepare(input));
+  assert.deepEqual(readdirSync(dir).filter(name=>name.startsWith("retired-")),[]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("a confirmed deployment CANNOT be silently retired or replaced",()=>{
