@@ -1,7 +1,9 @@
 // XITA asset transaction coordinator: same wallet, durable journal and
 // append-only verified GitHub evidence as chain infrastructure deployments.
 // Registered gateway is immediately enabled; transfers remain BLS-secured.
-import {resolve} from "node:path";
+import {resolve,join} from "node:path";
+import {readFileSync} from "node:fs";
+import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
 import {nextAssetRouteTasks,factoryRouteDraft} from "./route-factory-draft.mjs";
@@ -18,9 +20,8 @@ import {selector,keccak256} from "../../apps/web/keccak.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
 const ADDR=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,H32=/^0x[0-9a-f]{64}$/i;
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
-const BASE_WALLET_EXECUTOR="0xdb9b1e94b5b69df7e401ddbede43491141047db3";
-const trustedWalletActor=(chain,caller,wallet)=>equal(caller,wallet)||
- (chain.chainId===8453&&equal(caller,BASE_WALLET_EXECUTOR));
+import {isVerifiedRouterCreator} from "./wallet-executor.mjs";
+const trustedWalletActor=(chain,caller,wallet)=>isVerifiedRouterCreator(chain.chainId,caller,wallet);
 const liveAddr=a=>ADDR.test(a||"")&&!/^0x0{40}$/i.test(a);
 function wordAddress(data){
  if(!H32.test(data||"")||BigInt(data)>=1n<<160n)throw Error("Invalid on-chain address getter");
@@ -56,6 +57,75 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   if(!asset||!chain)throw Error("Unknown configured Asset/Chain");
   const chainInfra=infrastructure.find(x=>x.name===chain.name);
   return {commit,inventory,infrastructure,graph,task,asset,chain,chainInfra};
+ }
+ // Recover an already mined, but never GitHub-documented Factory router.
+ // A Factory CREATE2 call with the same wallet/salt otherwise reverts during gas estimate.
+ async function recoverExistingRouter({taskId,wallet}){
+  const ctx=await context(taskId),{task,asset,chain,chainInfra,commit,inventory}=ctx;
+  if(task.kind!=="router")return null;
+  const factory=chainInfra.components.find(x=>x.key==="factory"&&x.status==="documented")?.address;
+  if(!liveAddr(factory))return null;
+  const proof=loadChainDeployment(root,chain).xitaV315?.components?.factory;
+  if(!proof?.receiptPath)return null;
+  const factoryReceipt=JSON.parse(readFileSync(join(root,proof.receiptPath),"utf8"));
+  if(!equal(factoryReceipt.address,factory)||!Number.isSafeInteger(factoryReceipt.blockNumber))
+   throw Error("Factory deployment proof does not match approved manifest");
+  const url=chain.rpcUrls[0];
+  if(BigInt(await rpc(url,"eth_chainId",[]))!==BigInt(chain.chainId))
+   throw Error("Router recovery RPC chain mismatch");
+  const current=BigInt(await rpc(url,"eth_blockNumber",[]));
+  const topic=keccak256("RouterDeployed(bytes32,address,address)");
+  const walletTopic="0x"+"0".repeat(24)+wallet.slice(2).toLowerCase();
+  const events=[];
+  for(let from=BigInt(factoryReceipt.blockNumber);from<=current;from+=1800n){
+   const to=from+1799n>current?current:from+1799n;
+   const logs=await rpc(url,"eth_getLogs",[{address:factory,
+    fromBlock:"0x"+from.toString(16),toBlock:"0x"+to.toString(16),
+    topics:[topic,asset.assetId,null,walletTopic]}]);
+   if(!Array.isArray(logs))throw Error("Invalid RouterDeployed event query");
+   events.push(...logs.filter(x=>x?.removed!==true&&equal(x.address,factory)&&
+    equal(x.topics?.[0],topic)&&equal(x.topics?.[1],asset.assetId)&&
+    equal(x.topics?.[3],walletTopic)));
+   if(events.length>1)throw Error("Multiple matching routers; operator review required");
+  }
+  if(events.length!==1)return null;
+  const event=events[0],router=wordAddress(event.topics[2]),txHash=event.transactionHash;
+  if(!liveAddr(router)||!TX.test(txHash||""))throw Error("Invalid recovered router identity");
+  const receipt=await rpc(url,"eth_getTransactionReceipt",[txHash]);
+  if(!receipt||BigInt(receipt.status)!==1n||!equal(receipt.transactionHash,txHash)||
+     !equal(receipt.from,wallet)||!equal(receipt.blockHash,event.blockHash)||
+     BigInt(receipt.blockNumber)!==BigInt(event.blockNumber)||
+     !(receipt.logs||[]).some(l=>equal(l.address,factory)&&
+      equal(l.transactionHash,txHash)&&equal(l.topics?.[0],topic)&&
+      equal(l.topics?.[1],asset.assetId)&&equal(l.topics?.[2],event.topics[2])&&
+      equal(l.topics?.[3],walletTopic)))
+   throw Error("Recovered router does not have canonical wallet Factory receipt");
+  const assetIdentity=await view(rpc,url,factory,"assetIdForRouter(address)",["address"],[router]);
+  const creator=wordAddress(await view(rpc,url,factory,"routerCreator(address)",["address"],[router]));
+  if(!equal(assetIdentity,asset.assetId)||!equal(creator,wallet))
+   throw Error("Recovered router asset or creator mismatch");
+  const representation=asset.representations.find(x=>x.chain===chain.name);
+  if(!representation||representation.action!=="deploy-once")return null;
+  const artifacts=await build(root,commit),artifact=artifacts.artifacts[representation.component];
+  if(!artifact)throw Error("Router artifact missing from pinned build");
+  const runtime=verifyRuntimeTemplate(artifact,await rpc(url,"eth_getCode",[router,"latest"]));
+  const out=await publish(root,[{sourceCommit:commit,chain:chain.name,asset:asset.asset,
+   routeName:null,component:representation.component,contractAddress:router,
+   txHash,expectedRuntimeKeccak256:runtime,expectedDeployer:wallet,
+   provenance:{kind:"factory-router",factory,assetId:asset.assetId}}],{rpc});
+  if(!/^[0-9a-f]{40}$/i.test(out.commit||""))throw Error("Router receipt not published");
+  const path=deploymentReceiptPath({kind:"xita-v315-deployment-receipt",chain:chain.name,
+   transactionHash:txHash,address:router});
+  const j=journal(inventory.chains);
+  const id=chain.name+":"+asset.asset+":"+representation.component+":none";
+  const saved=j.read().entries[id];
+  // No need to preserve a stale local unsigned intent after immutable publication.
+  if(saved&&saved.stage==="confirmed")j.document(id,path);
+  let autoSyncQueued=false;
+  try{queueDeploymentSync(stateDir,out.commit);autoSyncQueued=true}
+  catch(e){console.error("Recovered router sync:",String(e.message||e))}
+  return {stage:"documented",address:router,txHash,receiptPath:path,commit:out.commit,
+   automaticallyRecovered:true,checkoutUpdateRequired:true,autoSyncQueued};
  }
  async function draft({taskId,wallet}, {reserve=false}={}){
   if(!ADDR.test(wallet||""))throw Error("Wallet required");
@@ -144,7 +214,14 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    routeName:d.routeName,simulation:d.simulation,mode:"read-only-verified-gas"};
  }
  async function prepare(args){
-  const d=await draft(args,{reserve:true});
+  let d;
+  try{d=await draft(args,{reserve:true});}
+  catch(error){
+   if(!/RPC error: execution reverted/i.test(String(error.message||error)))throw error;
+   const recovered=await recoverExistingRouter(args);
+   if(recovered)return recovered;
+   throw error;
+  }
   return {id:d.id,chainId:d.chainId,chain:d.chain,component:d.component,
    transaction:d.transaction,createdAt:d.createdAt,simulation:d.simulation,mode:"await-wallet-confirmation"};
  }
