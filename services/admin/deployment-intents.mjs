@@ -128,14 +128,32 @@ export function deploymentIntents({directory,chains}){
  };
  return {
   read,
-  prepare(e){
+  prepare(e,{forceRetry=false}={}){
+   if(typeof forceRetry!=="boolean")throw Error("Invalid explicit retry override");
    const entry={...e,stage:"prepared",txHash:null,createdAt:new Date().toISOString()};
    approve(entry);
    return mutate(s=>{
     // Do not overwrite an unresolved wallet intent, particularly a broadcast
     // hash or confirmed deployment. Resume/reconcile it first. Recovery may
     // explicitly retire an independently verified failed or unused attempt.
-    if(s.entries[entry.id])throw Error("Unresolved deployment intent: reconcile original transaction before any new MetaMask signature");
+    const previous=s.entries[entry.id];
+    if(previous){
+     if(!forceRetry)
+      throw Error("Unresolved deployment intent: reconcile original transaction before any new MetaMask signature");
+     // Deliberate operator action: only the SAME wallet and approved chain
+     // may replace a local attempt. Never create a GitHub failed receipt.
+     if(previous.chainId!==entry.chainId||
+        previous.wallet.toLowerCase()!==entry.wallet.toLowerCase()||
+        !["prepared","submitted","confirmed"].includes(previous.stage))
+      throw Error("Retry override rejected: prior wallet/chain or stage differs");
+     // Keep only superseded TX hashes in this transient write-ahead journal.
+     // Previous transactions may still mine. None is reported as deployed.
+     entry.supersededTxHashes=[...new Set([
+      ...(previous.supersededTxHashes||[]),
+      ...(TX.test(previous.txHash||"")?[previous.txHash.toLowerCase()]:[])
+     ])];
+     entry.operatorOverride=true;
+    }
     s.entries[entry.id]=entry;
     return entry;
    });
