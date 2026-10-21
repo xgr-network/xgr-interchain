@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync,unlinkSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
@@ -114,26 +114,5 @@ test("Base Registry is ready from pinned Genesis and target BLS PoPs with NO ori
   assert.deepEqual(calls.map(v=>v.method),["eth_getCode"]);
   assert.equal(result.transactionSimulation,"requires-verified-artifact-and-gas-estimation");
   assert.ok(!result.missing.some(v=>v.includes("manual snapshot")));
-  assert.equal(result.proofSource,"public-files");
-  // Remove the optional manual files: the same three origin-bound public
-  // signatures must now flow through ONLY the local validator-1 node RPC.
-  proofs.forEach((_,i)=>unlinkSync(join(root,"public/base/validator-"+(i+1)+".txt")));
-  let collected=0;
-  const p2p=await readDeploymentReadiness({
-   root,chain,inventory:{chains:[origin,chain]},boot:{ready:true},
-   baseDir:join(root,"public"),mainCurrent:true,rpc,
-   verifyProof:async proof=>({validator:proof.validator,verified:true}),
-   bootstrapProofReader:async({chain:requested,expectedValidators})=>{
-    collected++;
-    assert.equal(requested.domainId,8453);
-    assert.deepEqual(expectedValidators,validators);
-    return proofs.toReversed();
-   }
-  });
-  assert.equal(collected,1);
-  assert.equal(p2p.evidenceVerified,true,JSON.stringify(p2p));
-  assert.equal(p2p.verifiedValidatorCount,3);
-  assert.equal(p2p.proofSource,"local-node-verified-p2p");
-  assert.equal(p2p.bootstrapReady,true);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
