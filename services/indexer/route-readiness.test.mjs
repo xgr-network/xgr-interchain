@@ -55,7 +55,7 @@ function scenario({canonical="xgrchain",invalidInbound=false,collateralAddress=n
  for(const name of ["xgrchain","base"]){
   const records=Object.fromEntries(["factory","sourceRegistry","mailbox",
     "merkleTreeHook","ism","validatorRegistry","executionGateway"].map((key,i)=>
-    [key,comp(name,"abcdefg"[i])]));
+    [key,comp(name,"abcdef1"[i])]));
   comps[name]={present:true,chainId:name==="xgrchain"?1643:8453,
    xitaV315:{components:records,receiptPaths:Object.values(records).map(x=>x.receiptPath)}};
  }
