@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {keccak256,selector} from "./keccak.js";
-import {configuredGatewayRoutes,dispatchMessage,findWalletSourceTx,scanRecentWalletTransfers,OPERATION_TOPIC,DISPATCH_TOPIC,INTERCHAIN_FEE_TOPIC} from "./wallet-transfers.js";
+import {configuredGatewayRoutes,dispatchMessage,findWalletSourceTx,scanRecentWalletTransfers,publicRead,OPERATION_TOPIC,DISPATCH_TOPIC,INTERCHAIN_FEE_TOPIC} from "./wallet-transfers.js";
 const addr=d=>"0x"+d.repeat(40), hash=d=>"0x"+d.repeat(64);
 const user=addr("a"),other=addr("b"),gateway=addr("1"),srcMailbox=addr("2"),dstMailbox=addr("3"),srcRouter=addr("4");
 const routeId=hash("5"), txHash=hash("6"),toTopic=(v)=>"0x"+BigInt(v).toString(16).padStart(64,"0");
@@ -303,4 +303,28 @@ test("RPC failover cannot admit a mismatched chain ID or untrusted URL",async()=
   catalog:fixture.catalog,account:user,sourceChain:"base",txHash,
   rpc:fixture.rpc()
  }),/Untrusted HTTPS RPC/);
+});
+
+test("Arbitrum browser preflight uses same-origin read-only RPC proxy, not blocked cross-origin fetch",async()=>{
+ const url="https://arb1.arbitrum.io/rpc",calls=[];
+ const fetcher=async(target,options)=>{
+  calls.push({target,options});
+  assert.equal(target,"/api/xeta/v1/rpc/read");
+  assert.equal(options.method,"POST");
+  assert.equal(options.credentials,"omit");
+  assert.deepEqual(JSON.parse(options.body),{
+   rpcUrl:url,method:"eth_chainId",params:[]});
+  return {ok:true,status:200,json:async()=>({jsonrpc:"2.0",id:1,result:"0xa4b1"})};
+ };
+ const id=await publicRead(url,"eth_chainId",[],fetcher,{viaProxy:true});
+ assert.equal(id,"0xa4b1");
+ assert.equal(calls.length,1);
+});
+test("browser proxy failing is explicitly identified before wallet signing",async()=>{
+ const url="https://arb1.arbitrum.io/rpc";
+ await assert.rejects(()=>publicRead(url,"eth_chainId",[],async()=>{throw TypeError("Failed to fetch")},{viaProxy:true}),
+  /read-only RPC proxy unreachable; no wallet transaction sent/);
+ await assert.rejects(()=>publicRead(url,"eth_chainId",[],async()=>({
+  ok:false,status:502
+ }),{viaProxy:true}),/proxy unavailable.*no wallet transaction sent/);
 });

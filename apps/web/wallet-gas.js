@@ -1,5 +1,6 @@
 // Read-only native gas balances for the currently connected EVM account.
 // Never request signatures, approvals, transfers, or wallet chain switching.
+import {publicRead} from "./wallet-transfers.js";
 const ACCOUNT=/^0x[0-9a-f]{40}$/i;
 const QUANTITY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const MAX_UINT256=(1n<<256n)-1n;
@@ -18,14 +19,9 @@ function endpointFor(chain){
  return url.toString();
 }
 async function rpcRead(endpoint,method,params,fetcher,signal){
- const response=await fetcher(endpoint,{method:"POST",credentials:"omit",cache:"no-store",
-  headers:{"content-type":"application/json",accept:"application/json"},
-  body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),signal});
- if(!response?.ok)throw Error("Public RPC unavailable");
- const data=await response.json();
- if(data?.jsonrpc!=="2.0"||data?.id!==1||data.error||typeof data.result!=="string")
-  throw Error("Invalid public RPC response");
- return data.result;
+ const result=await publicRead(endpoint,method,params,fetcher,{signal});
+ if(typeof result!=="string")throw Error("Invalid public RPC response");
+ return result;
 }
 export async function readNativeGasBalances({account,chains,provider,fetcher=globalThis.fetch,timeoutMs=7000}={}){
  if(!ACCOUNT.test(account||""))throw Error("Connect an authorized wallet address first");

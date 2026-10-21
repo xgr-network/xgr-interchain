@@ -10,6 +10,7 @@ import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-d
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
+import {proxyCatalogRpcRead} from "./rpc-read.mjs";
 import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
@@ -99,6 +100,26 @@ export async function handler(req,res){
    "Access-Control-Allow-Origin":"https://xita.xgr.network"});
   res.end(JSON.stringify(data));
  };
+ // POST-only same-origin browser transport. No signing, no broadcasting,
+ // no arbitrary URL forwarding: upstreams are selected from local GitHub
+ // deployment catalog and methods are strictly read-only.
+ if(pathname==="/api/xeta/v1/rpc/read"){
+  if(req.method!=="POST")return send(405,{ok:false,error:"POST required"});
+  try{
+   let payload="";
+   for await(const part of req){
+    payload+=part.toString("utf8");
+    if(Buffer.byteLength(payload)>8192)return send(413,{ok:false,error:"RPC request too large"});
+   }
+   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+   const result=await proxyCatalogRpcRead({catalog,request:JSON.parse(payload)});
+   return send(200,{jsonrpc:"2.0",id:1,result});
+  }catch(error){
+   const invalid=error?.httpStatus===400;
+   return send(invalid?400:503,{ok:false,error:invalid?
+    String(error.message).slice(0,130):"Verified chain RPC unavailable"});
+  }
+ }
  if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/stats")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
