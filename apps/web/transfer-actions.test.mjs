@@ -82,6 +82,8 @@ const testFetch=(result="0x"+(1n*10n**18n).toString(16))=>async(url,options)=>{
 };
 test("a documented route whose destination rejects its identity blocks a source lock before wallet interaction",async()=>{
  const sends=[],rpcCalls=[],rpc=async(url,options)=>{
+  if(url==="/api/xeta/v1/transfer/health")return {
+   ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
   const body=JSON.parse(options.body);
   rpcCalls.push(body.method);
   if(body.method==="eth_chainId")return rpcResponse("0x2105");

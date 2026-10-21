@@ -244,10 +244,6 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   if(!paidAdapter||!hubAdapter?.address)
    throw Error("Two-hop transfer requires both deployed and verified fee/continuation adapters");
  }
- // Require that the actual destination router accepts this exact asset route.
- // GitHub receipts alone are insufficient; check live reverse route enrollment
- // before the wallet is asked to sign ANY source approval or lock/burn.
- await verifyDestinationInboundRoute({catalog,route,fetcher});
  // Require public permissionless recovery proof infrastructure before
  // locking/burning source assets. This is an execution preflight, never a
  // separate administrator activation flag.
@@ -258,6 +254,10 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  const proofHealth=await proofService.json().catch(()=>null);
  if(!proofHealth?.ok||proofHealth.proofBuilder!=="installed")
   throw Error("Unsigned BLS/Merkle recovery is not ready; no tokens locked");
+ // Require that the actual destination router accepts this exact asset route.
+ // GitHub receipts alone are insufficient; check live reverse route enrollment
+ // before the wallet is asked to sign ANY source approval or lock/burn.
+ await verifyDestinationInboundRoute({catalog,route,fetcher});
  // Do not lock a new source if a destination has neither the wallet's
  // own native gas nor a fresh, independently verified sponsor reserve.
  const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];
