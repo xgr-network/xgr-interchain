@@ -140,6 +140,20 @@ export async function verifyDestinationInboundRoute({
   throw Error("Destination router rejects canonical inbound asset route; no source assets locked");
  return true;
 }
+// For spoke-to-spoke transfers, source and hub routes are independent.
+// Verify BOTH live destination routers before the FIRST irreversible burn.
+export async function verifyJourneyInboundRoutes({
+ catalog,asset,source,destination,fetcher=globalThis.fetch
+}){
+ const transit=source!=="xgrchain"&&destination!=="xgrchain"?"xgrchain":destination;
+ const first=requirePair(catalog,asset,source,transit);
+ await verifyDestinationInboundRoute({catalog,route:first,fetcher});
+ if(transit!==destination){
+  const second=requirePair(catalog,asset,"xgrchain",destination);
+  await verifyDestinationInboundRoute({catalog,route:second,fetcher});
+ }
+ return true;
+}
 export function quoteCalldata(domain,recipient,amount){
  if(!Number.isSafeInteger(domain)||domain<=0||domain>4294967295||
   !ADDRESS.test(recipient||""))throw Error("Invalid destination domain or recipient");
@@ -257,7 +271,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  // Require that the actual destination router accepts this exact asset route.
  // GitHub receipts alone are insufficient; check live reverse route enrollment
  // before the wallet is asked to sign ANY source approval or lock/burn.
- await verifyDestinationInboundRoute({catalog,route,fetcher});
+ await verifyJourneyInboundRoutes({catalog,asset,source,destination,fetcher});
  // Do not lock a new source if a destination has neither the wallet's
  // own native gas nor a fresh, independently verified sponsor reserve.
  const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];

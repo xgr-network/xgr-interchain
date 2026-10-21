@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof,verifyDestinationInboundRoute} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof,verifyDestinationInboundRoute,verifyJourneyInboundRoutes} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 import {deployedRoutes} from "./route-availability.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
@@ -380,4 +380,53 @@ test("quorum pending remains distinct from proof-service outage",async()=>{
   fetcher:async()=>({ok:true,status:200,json:async()=>({ok:true,status:"PENDING"})})});
  assert.equal(result.reason,"QUORUM_PENDING");
  assert.match(result.notice,/Validator quorum requested/);
+});
+
+function threeChainCatalog(){
+ const c=catalog(),a=c.assets.XGR,arbRouter=address("d");
+ c.chains.arbitrum={name:"arbitrum",chainId:42161,domainId:42161,
+  confirmations:64,rpcUrls:["https://rpc.example/arb"]};
+ c.infrastructure.arbitrum=infrastructure("arbitrum");
+ c.infrastructure.arbitrum.chainId=42161;
+ const rep={chain:"arbitrum",component:"syntheticRouter",...item("arbitrum",arbRouter)};
+ a.deployment.representations.push(rep);a.deployment.receiptPaths.push(rep.receiptPath);
+ for(const r of [
+  {name:"xgr_to_arbitrum",source:"xgrchain",destination:"arbitrum",id:hash("c"),gw:address("e"),vault:address("f")},
+  {name:"arbitrum_to_xgr",source:"arbitrum",destination:"xgrchain",id:hash("d"),gw:address("b"),vault:address("a")}
+ ]){
+  a.routes.routes.push({name:r.name,sourceChain:r.source,destinationChain:r.destination});
+  const gw=item(r.source,r.gw),vault=item(r.source,r.vault);
+  a.deployment.routeDeployments.push({routeName:r.name,sourceChain:r.source,
+   destinationChain:r.destination,routeId:r.id,components:{gateway:gw,feeVault:vault}});
+  a.deployment.receiptPaths.push(gw.receiptPath,vault.receiptPath);
+ }
+ return c;
+}
+test("spoke-to-spoke preflight checks BOTH hub and final destination before any source lock",async()=>{
+ const c=threeChainCatalog(),seen=[];
+ const fetcher=async(url,options)=>{
+  const {method,params}=JSON.parse(options.body);seen.push({url,method});
+  if(method==="eth_chainId")return rpcResponse(url.includes("/arb")?"0xa4b1":"0x66b");
+  if(method==="eth_call"&&params?.[0]?.data?.startsWith(
+   selector("verifyInboundRoute(uint64,uint32,address,bytes32)")))
+   return rpcResponse(url.includes("/arb")?word(0):word(1));
+  throw Error("Unexpected network method");
+ };
+ await assert.rejects(()=>verifyJourneyInboundRoutes({catalog:c,
+  asset:"XGR",source:"base",destination:"arbitrum",fetcher}),
+  /Destination router rejects canonical inbound asset route/);
+ assert.deepEqual(seen.map(x=>x.url),[
+  "https://rpc.example/xgr","https://rpc.example/xgr",
+  "https://rpc.example/arb","https://rpc.example/arb"
+ ]);
+});
+test("spoke-to-spoke live preflight accepts both routed destinations independent of wallet holdings",async()=>{
+ const c=threeChainCatalog(),calls=[];
+ const fetcher=async(url,options)=>{
+  const {method}=JSON.parse(options.body);calls.push(method);
+  return rpcResponse(method==="eth_chainId"?(url.includes("/arb")?"0xa4b1":"0x66b"):word(1));
+ };
+ assert.equal(await verifyJourneyInboundRoutes({catalog:c,asset:"XGR",
+  source:"base",destination:"arbitrum",fetcher}),true);
+ assert.deepEqual(calls,["eth_chainId","eth_call","eth_chainId","eth_call"]);
 });
