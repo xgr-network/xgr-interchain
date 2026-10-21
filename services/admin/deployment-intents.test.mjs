@@ -17,14 +17,14 @@ test("write-ahead wallet intent stores only latest wallet attempt",()=>{
   const open=()=>deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   open().prepare(input);
   assert.equal(open().read().entries[input.id].stage,"prepared");
-  assert.equal(open().prepare(input).stage,"prepared");
+  assert.throws(()=>open().prepare(input),/Unresolved deployment intent/);
   open().attachHash(input.id,hash);
   assert.equal(open().read().entries[input.id].txHash,hash);
   assert.throws(()=>open().attachHash(input.id,"0x"+"f".repeat(64)),/replace/);
   assert.throws(()=>open().document(input.id,"deployments/receipts/polygon/x.json"),/canonical/);
   open().confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
   assert.equal(open().read().entries[input.id].stage,"confirmed");
-  assert.equal(open().prepare(input).stage,"prepared");
+  assert.throws(()=>open().prepare(input),/Unresolved deployment intent/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("unapproved chain, malformed nonce and sender mismatch fail before journaling",()=>{
@@ -48,7 +48,7 @@ test("route Gateway and Router use the SAME persistent write-ahead journal",()=>
    transaction:{...input.transaction,to:"0x"+"3".repeat(40)}};
   open().prepare(route);
   assert.equal(open().read().entries[route.id].stage,"prepared");
-  assert.equal(open().prepare(route).stage,"prepared");
+  assert.throws(()=>open().prepare(route),/Unresolved deployment intent/);
   open().attachHash(route.id,hash);
   assert.equal(open().read().entries[route.id].stage,"submitted");
   assert.throws(()=>open().attachHash(route.id,"0x"+"f".repeat(64)),/replace/);
@@ -151,7 +151,7 @@ test("completed-record cleanup preserves all unresolved router and route transac
   const current=store.read();
   assert.equal(current.entries[input.id],undefined);
   assert.equal(current.entries[route.id].stage,"submitted");
-  assert.equal(store.prepare(route).stage,"prepared");
+  assert.throws(()=>store.prepare(route),/Unresolved deployment intent/);
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(join(dir,"intents.json"),"utf8")).entries),[route.id]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
@@ -234,7 +234,7 @@ test("old submitted Registry intent is read with original hash, nonce and callda
   assert.equal(read.parameters.perValidatorWei,"300");
   assert.deepEqual(read.transaction,legacy.transaction);
   assert.equal(read.txHash,hash);
-  assert.equal(st.prepare({...input,id:legacy.id,chainId:8453}).stage,"prepared");
+  assert.throws(()=>st.prepare({...input,id:legacy.id,chainId:8453}),/Unresolved deployment intent/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
 test("an old signed Registry intent with unprovable reserve value cannot be silently rewritten",()=>{
@@ -300,9 +300,9 @@ test("operator can replace an unrecorded confirmed WAL with a NEW explicitly sig
   const st=deploymentIntents({directory:dir,chains:[{name:"polygon",chainId:137}]});
   st.prepare(input);st.attachHash(input.id,hash);
   st.confirm(input.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
-  const fresh=st.prepare({...input,transaction:{...input.transaction,nonce:"0x42"}});
-  assert.equal(fresh.stage,"prepared");assert.equal(fresh.txHash,null);
-  assert.equal(st.read().entries[input.id].transaction.nonce,"0x42");
+  assert.throws(()=>st.prepare({...input,transaction:{...input.transaction,nonce:"0x42"}}),/Unresolved deployment intent/);
+  assert.equal(st.read().entries[input.id].stage,"confirmed");
+  assert.equal(st.read().entries[input.id].txHash,hash);
   assert.equal(Object.keys(st.read().entries).length,1);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
