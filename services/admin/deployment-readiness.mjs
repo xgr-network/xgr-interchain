@@ -3,7 +3,6 @@
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
-import {collectLocalBootstrapProofs} from "./bootstrap-p2p.mjs";
 import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
@@ -52,7 +51,7 @@ function sameEvidence(a,b,expected){
 }
 export async function readDeploymentReadiness({
  root,chain,inventory,boot,baseDir,mainCurrent=false,
- rpc=rpcCall,verifyProof,bootstrapProofReader=collectLocalBootstrapProofs
+ rpc=rpcCall,verifyProof
 }){
  if(!safeChain(chain?.name)||!inventory?.chains?.some(c=>c.name===chain.name&&c.chainId===chain.chainId))
   throw Error("Chain is not in approved GitHub inventory");
@@ -68,7 +67,6 @@ export async function readDeploymentReadiness({
   snapshotConfirmedDepth:null,manifestMatchesEvidence:false,
   bootstrapReady:boot.ready===true,
   deploymentExecutable:false,transactionSimulation:"not-available",
-  proofSource:null,
   verifiedSnapshot:null,
   values:{sourceFeeWei:config.sourceFee?.targetWei??null,
    minimumReserveWei:config.reserve?.minimumWei??null,
@@ -79,18 +77,10 @@ export async function readDeploymentReadiness({
  try{
   // One independently approved list per destination remains pinned to GitHub. Public
   // domain-bound BLS proofs are mandatory; no duplicate hand-saved candidate.
-  // Use existing public files when complete (backward-compatible Base
-  // bootstrap); otherwise recover the SAME three public BLS signatures over
-  // the validator P2P network using XITA's local node on validator 1 only.
-  const localProofs=initial.validators.map((_,i)=>{
+  const proofs=initial.validators.map((_,i)=>{
    try{return readPublic(join(evidenceDir,"validator-"+(i+1)+".txt"));}
-   catch(e){if(e.code==="ENOENT")return null;throw e;}
+   catch(e){if(e.code==="ENOENT")throw Error("Zielchain-Validator-Nachweis "+(i+1)+" für "+chain.name+" fehlt im Public-Bootstrap-Verzeichnis");throw e;}
   });
-  const allLocal=localProofs.every(Boolean);
-  const proofs=allLocal?localProofs:await bootstrapProofReader({
-   chain,expectedValidators:initial.validators
-  });
-  report.proofSource=allLocal?"public-files":"local-node-verified-p2p";
   let proofBootstrap=config;
   if(chain.blsVerifierFormat==="eip2537"){
    const infrastructure=loadJSON(join(root,chain.observedInfrastructure));
