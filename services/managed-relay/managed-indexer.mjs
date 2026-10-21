@@ -32,7 +32,7 @@ export async function scanManagedWindow({catalog,index,sourceChain,provider,
  parseReceipt=verifiedManagedReceipt,
  readFeeReceipt=async(provider,address,messageId,blockNumber)=>{
   const contract=new Contract(address,managedAbi,provider);
-  return contract.feeReceipt(messageId,{blockTag:blockNumber});
+  return contract.feeReceipt(messageId);
  }}){
  if(!ADDRESS.test(executionAddress||"")||!Number.isSafeInteger(deploymentBlock)||
    deploymentBlock<1||!Number.isSafeInteger(confirmations)||confirmations<1||

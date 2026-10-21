@@ -44,7 +44,9 @@ const fakeRpc=(options={})=>async(_url,method,params)=>{
   case "eth_getLogs":return [options.event??event];
   case "eth_getTransactionReceipt":return options.receipt??receipt;
   case "eth_getTransactionByHash":throw Error("Historical transaction index unavailable");
-  case "eth_getCode":return "0x600160";
+  case "eth_getCode":
+   assert.equal(params[1],"latest","archive state must not be queried");
+   return "0x600160";
   case "eth_getBlockByNumber":return {hash:blockHash,number:"0x70"};
   default:throw Error("Unexpected RPC "+method);
  }

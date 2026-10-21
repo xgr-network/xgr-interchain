@@ -76,3 +76,13 @@ test("deployment catalog generation fails closed on invalid overrides",()=>{
  }]])}),/invalid component deployment binding/);
  assert.throws(()=>updatedDeploymentWebCatalog(process.cwd(),{assets:new Map([["UNKNOWN",{}]])}),/Unknown deployment asset/);
 });
+
+test("receipt proof NEVER requests archived contract state; immutable runtime read at latest",async()=>{
+ const queried=[];
+ const r=await verifyDeploymentReceipt(process.cwd(),params,{rpc:async(url,method,args)=>{
+   if(method==="eth_getCode"){queried.push(args[1]);if(args[1]!=="latest")throw Error("historical state unavailable");}
+   return rpcWith()(url,method,args);
+ }});
+ assert.equal(r.status,"onchain-deployment-verified");
+ assert.deepEqual(queried,["latest"]);
+});

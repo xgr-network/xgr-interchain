@@ -126,8 +126,7 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
  }else throw Error("Unknown infrastructure component");
  return true;
 }
-// Verify every bundle-created child contract independently at the deployment
-// block. All constructor/runtime bindings are validated before GitHub write.
+// Verify every bundle-created child contract independently against latest immutable runtime. All constructor/runtime bindings are validated before GitHub write.
 export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifacts,blockNumber}){
  const addresses={};
  const asChild=async(signature,component)=>{
@@ -136,7 +135,7 @@ export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifact
   if(!ADDR.test(address)||BigInt(address)===0n)throw Error("Missing transport child: "+component);
   const artifact=artifacts[component];
   if(!artifact)throw Error("Missing sealed child artifact: "+component);
-  const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(blockNumber).toString(16)]);
+  const code=await rpc(url,"eth_getCode",[address,"latest"]);
   const hash=verifyRuntimeTemplate(artifact,code);
   addresses[component]={address,runtimeKeccak:hash};
   return address;
@@ -188,7 +187,7 @@ export async function reconcileDeployedContract({
  if(BigInt(head)<BigInt(receipt.blockNumber)||
     BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(chain.confirmations||1))
    return {pending:true,reason:"confirmations",txHash:entry.txHash};
- const code=await rpc(url,"eth_getCode",[address,"0x"+BigInt(receipt.blockNumber).toString(16)]);
+ const code=await rpc(url,"eth_getCode",[address,"latest"]);
  const hash=verifyRuntimeTemplate(artifact,code);
  await verifyChainBindings({rpc,url,component,address,chain,bootstrap,
   infra:infrastructure,parameters:entry.parameters||{}});

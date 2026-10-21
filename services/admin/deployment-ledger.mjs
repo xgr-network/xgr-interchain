@@ -127,19 +127,20 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  if(confirmations<BigInt(c.confirmations))throw Error("Deployment not sufficiently confirmed");
  if(!h32(receipt.blockHash))throw Error("No canonical receipt block hash");
  const blockTag="0x"+blockNumber.toString(16);
- const [block,bytecode]=await Promise.all([
-  rpc(url,"eth_getBlockByNumber",[blockTag,false]),
-  rpc(url,"eth_getCode",[contractAddress.toLowerCase(),blockTag])
- ]);
+ // Historical block headers and canonical receipts are available without
+ // archive STATE access. Authenticate creation first, then verify immutable
+ // deployed bytecode against the pinned runtime at the CURRENT chain state.
+ const block=await rpc(url,"eth_getBlockByNumber",[blockTag,false]);
  if(!block||!equal(block.hash,receipt.blockHash)||
     asUint(block.number,"block number")!==blockNumber)
   throw Error("Receipt block does not match canonical chain");
+ const origin=proveCreation({...receipt,_chainId:c.chainId},contractAddress,provenance);
+ const bytecode=await rpc(url,"eth_getCode",[contractAddress.toLowerCase(),"latest"]);
  if(typeof bytecode!=="string"||!HEXCODE.test(bytecode))
-  throw Error("No contract code at the deployment block");
+  throw Error("No current bytecode for canonically deployed contract");
  const observedHash=keccak256(Uint8Array.from(Buffer.from(bytecode.slice(2),"hex")));
  if(!equal(observedHash,expectedRuntimeKeccak256))
-  throw Error("Runtime code hash differs from the main-approved build");
- const origin=proveCreation({...receipt,_chainId:c.chainId},contractAddress,provenance);
+  throw Error("Current runtime code hash differs from the main-approved build");
  return {
   schemaVersion:1,kind:"xita-v315-deployment-receipt",network:"mainnet",
   approval:{ref:"main",sourceCommit:sourceCommit.toLowerCase()},

@@ -74,8 +74,9 @@ export async function verifyExistingSourceRegistry({
  // Historical eth_getTransactionByHash is not required by this proof.
  // The caller of a permissionless Factory need not be the wallet in an old
  // failed journal. Attribute the immutable receipt to its ACTUAL tx sender.
- const blockTag="0x"+BigInt(receipt.blockNumber).toString(16);
- const runtime=await rpc(url,"eth_getCode",[registry,blockTag]);
+ // Creation is proved by the canonical receipt and Factory event; runtime
+ // is verified at latest to avoid requiring any historical chain state.
+ const runtime=await rpc(url,"eth_getCode",[registry,"latest"]);
  const runtimeKeccak=verifyRuntimeTemplate(artifact,runtime);
  await verifyChainBindings({rpc,url,component:"sourceRegistry",address:registry,
   chain,bootstrap,infra:infrastructure});

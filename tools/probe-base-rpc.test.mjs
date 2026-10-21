@@ -16,7 +16,7 @@ test("403,429 archive errors fail closed",async()=>{for(const e of [403,429]){
  const v=await probe("https://provider.example",{fetcher:responder({eth_getLogs:e})});
  assert.equal(v.ok,false);assert.equal(v.historicalLogs,false);
 }});
-test("historic state is required, not merely old logs",async()=>{
+test("current state is required, not an archive-state call",async()=>{
  const v=await probe("https://provider.example",{fetcher:responder({eth_call:403})});
  assert.equal(v.historicalLogs,true);assert.equal(v.ok,false);
 });

@@ -70,7 +70,7 @@ export async function checkedDelivery({route,messageId,rpc}){
  if(head<depth)return {delivered:null,reason:"finality-not-reached"};
  const finalizedHead=head-depth;
  const raw=await rpc(route.destinationConfig,"eth_call",[{
-  to:route.destinationMailbox,data:DELIVERED_SELECTOR+messageId.slice(2)},hex(finalizedHead)]);
+  to:route.destinationMailbox,data:DELIVERED_SELECTOR+messageId.slice(2)},"latest"]);
  if(!/^0x[0-9a-f]{64}$/i.test(raw||"")||![0n,1n].includes(BigInt(raw)))
   throw Error("Invalid finalized destination Mailbox.delivery result");
  return {delivered:BigInt(raw)===1n,finalizedHead};

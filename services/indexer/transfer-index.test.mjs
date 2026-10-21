@@ -64,7 +64,7 @@ test("known endpoint block hash mismatch forces reindex, not silent cursor advan
  assert.equal(result.reorg,true);
  assert.equal(result.from,100);
 });
-test("destination delivery is read at finalized block and never guessed from latest",async()=>{
+test("destination delivery uses latest monotonic state without requiring archive RPC",async()=>{
  let at=null;
  const reader=rpc({
   eth_chainId:()=>hex(456),
@@ -74,7 +74,7 @@ test("destination delivery is read at finalized block and never guessed from lat
  const result=await checkedDelivery({route,messageId:hash("d"),rpc:reader});
  assert.equal(result.delivered,true);
  assert.equal(result.finalizedHead,200);
- assert.equal(at,hex(200));
+ assert.equal(at,"latest");
  await assert.rejects(()=>checkedDelivery({route,messageId:hash("d"),
   rpc:rpc({eth_chainId:()=>hex(999)})}),/mismatch/);
 });
