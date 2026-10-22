@@ -287,6 +287,25 @@ async function scanWalletHistory(){
     }
    }
   }
+  // Optional official explorer discovery is independent of archive RPC logs.
+  // Explorer-only hits remain unverified and cannot enable "Continue".
+  try{
+   const reply=await fetch("/api/xeta/v1/transfers/discovery?"+
+    new URLSearchParams({account}),{cache:"no-store",credentials:"omit",
+    headers:{accept:"application/json"},signal:controller.signal});
+   if(reply.ok){
+    const found=await reply.json();
+    if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+    if(found?.kind==="xita-explorer-wallet-discovery-v1"&&
+     found.wallet?.toLowerCase()===account.toLowerCase()&&Array.isArray(found.items)){
+     for(const item of found.items.slice(0,24)){
+      if(item?.unverified||item?.status==="explorer-discovered")continue;
+      if(item?.account?.toLowerCase()===account.toLowerCase()&&
+       /^0x[0-9a-f]{64}$/i.test(item.txHash||""))upsertTransfer(item);
+     }
+    }
+   }
+  }catch{/* Explorer access is optional and never downgrades chain evidence. */}
   // A missing SQL cursor must not erase a broadcast source TX after a reload.
   // Hints are never displayed or executable until fresh wallet/receipt
   // verification succeeds. Bound attempts to protect the browser/RPC.
