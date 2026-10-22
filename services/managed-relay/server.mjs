@@ -8,6 +8,7 @@ import {fileURLToPath} from "node:url";
 import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
+import {readCachedGasPrices} from "./price-cache.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG_PATH=resolve(root,"apps/web/catalog.json");
@@ -73,30 +74,9 @@ async function chain(name,catalog){
  return provider;
 }
 const quoteIface=new Interface(EXECUTION_ABI);
-let lastPriceSnapshot=null,lastPriceAt=0,inflightPriceFetch=null;
-async function getSnapshot(){
- if(lastPriceSnapshot&&Date.now()-lastPriceAt<20000)
-  return lastPriceSnapshot;
- if(inflightPriceFetch)return inflightPriceFetch;
- inflightPriceFetch=fetchUncachedPrices();
- try{return await inflightPriceFetch;}
- finally{inflightPriceFetch=null;}
-}
-async function fetchUncachedPrices(){
- const ids=[...new Set(Object.values((await import("./fee-quote.mjs")).COINGECKO_GAS_COIN_IDS))].join(",");
- const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+
-  "&vs_currencies=usd&include_last_updated_at=true";
- const headers={accept:"application/json"};
- if(process.env.XITA_COINGECKO_API_KEY)
-  headers["x-cg-demo-api-key"]=process.env.XITA_COINGECKO_API_KEY;
- const response=await fetch(url,{headers,signal:AbortSignal.timeout(9000)});
- if(!response.ok)throw Error("CoinGecko temporarily unavailable");
- const value=await response.json();
- if(!value||typeof value!=="object"||Array.isArray(value))
-  throw Error("CoinGecko invalid data");
- lastPriceSnapshot=value;lastPriceAt=Date.now();
- return value;
-}
+// Both quote/preview processes consume the SAME persisted backend cache.
+// External CoinGecko requests are exclusively performed by price-refresh.mjs.
+const getSnapshot=()=>readCachedGasPrices();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
  const source=request?.source,destination=request?.destination;
