@@ -172,6 +172,6 @@ export async function buildManagedQuote({
    sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
    markupBps:fee.markupBps,
    priceVatCapBps:fee.priceVatCapBps,
-   oracle:"CoinGecko",maximumAgeSeconds:240},
+   oracle:"CoinGecko · cached backend prices",maximumAgeSeconds:900},
  };
 }
