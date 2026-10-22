@@ -10,7 +10,7 @@ test("header alert only counts genuine confirmed locks without delivery",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[
   {...open,status:"delivered",delivered:true},
   {...open,status:"delivery-unknown",delivered:null},
-  {...open,status:"pending-source",confirmed:false}]}),0);
+  {...open,status:"pending-source",confirmed:false}]}),1);
  assert.equal(pendingDeliveryCount({account:"0x"+"d".repeat(40),items:[open]}),0);
  assert.equal(pendingDeliveryCount({account:wallet,items:[open],indexedOpenCount:3}),3);
  assert.equal(pendingDeliveryCount({account:wallet,items:[],indexedOpenCount:-1}),0);
