@@ -135,7 +135,7 @@ const flowView={open:false,journey:null,stage:"",sourceTxHash:null};
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
-const resumeProbed=new Set;
+const resumeProbed=new Map;
 function refreshTransferLink(){
  const connected=validWalletAddress(state.account);
  const link=document.querySelector("#my-transfers-link");
@@ -247,8 +247,8 @@ async function scanWalletHistory(){
   const probeKey=account.toLowerCase()+":"+requested;
   if(/^0x[0-9a-f]{64}$/i.test(requested||"")&&
       !transferActivity.items.some(t=>t.txHash?.toLowerCase()===requested.toLowerCase())&&
-      !resumeProbed.has(probeKey)){
-   resumeProbed.add(probeKey);
+      Date.now()-(resumeProbed.get(probeKey)||0)>=45000){
+   resumeProbed.set(probeKey,Date.now());
    for(const chain of new Set(configuredGatewayRoutes(state.catalog).map(route=>route.sourceChain))){
     try{
      const record=await findWalletSourceTx({catalog:state.catalog,account,
