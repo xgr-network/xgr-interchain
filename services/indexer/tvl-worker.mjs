@@ -7,10 +7,11 @@ import {indexedRoutes} from "./transfer-index.mjs";
 import {transferReaderPool} from "./transfer-index-store.mjs";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {escrowDescriptor,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
-import {verifyGrossEscrowFlows24h} from "./escrow-flow-24h.mjs";
+import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
+const HISTORY=process.env.XITA_TVL_HISTORY||"/var/lib/xita/verified-tvl-history.json";
 const WORD=/^0x[0-9a-f]{64}$/i, HEX=/^0x[0-9a-f]+$/i;
 const ERC20_BALANCE="0x70a08231", ERC20_DECIMALS="0x313ce567",ROUTER_TOKEN="0xfc0c546a",NATIVE_PENDING="0x"; // computed via selector below
 import {selector} from "../../apps/web/keccak.js";
@@ -79,12 +80,9 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
  for(const asset of names)try{
   proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes});
   if(proofs[asset].status!=="verified")continue;
-  try{
-   const d=escrowDescriptor(catalog,asset);
-   const rows=await pool.query({text:"SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,message_id,source_block_number,source_block_hash,amount_raw::text AS amount_raw,delivered,destination_mailbox FROM xita_transfer_operations WHERE asset=$1 ORDER BY source_block_number DESC LIMIT 10001",values:[asset]});
-   flows[asset]=await verifyGrossEscrowFlows24h({descriptor:d,operations:rows.rows,read,
-    price:snap.records?.[d.coingeckoId],now});
-  }catch{flows[asset]={status:"unavailable",reason:"24h-volume-rpc-unavailable"};}
+  // No historical eth_getBlockByNumber or eth_getLogs for dashboard volume.
+  // Unknown timing of previously indexed operations MUST NOT become "last 24h".
+  flows[asset]={status:"unavailable",reason:"verified-movement-timestamps-not-yet-persisted"};
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return verifiedEvidence(catalog,proofs,now,flows);
 }
@@ -101,6 +99,9 @@ export async function runTVL({interval=60000}={}){
   try{
    const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
    const snap=await tvlSnapshot({catalog,pool});
+   // Persist only snapshots whose COMPLETE TVL reconciles to verified vaults.
+   // Retention, deduplication and monotone timestamps live in tvl-history.mjs.
+   const history=appendVerifiedTvlHistory(HISTORY,snap,catalog);
    atomic(RESULT,snap);
    console.log("[xita-tvl] verified assets:",Object.keys(snap.assets).join(",")||"none");
   }catch(e){
