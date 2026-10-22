@@ -326,6 +326,10 @@ function tvlHistoryChart(metrics,period="24h"){
 }
 
 function northstarCards(model,metrics=null,period="24h"){
+ const recent=Array.isArray(metrics?.history?.points)?metrics.history.points.filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf))).sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf)).at(-1):null;
+ const liveTVL=metrics?.totals?.lockedUsd;
+ const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
+ const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
  const tvlChange=tvlChange24h(metrics);
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
@@ -345,9 +349,10 @@ function northstarCards(model,metrics=null,period="24h"){
    '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
-   '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
+   '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
    '<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
    (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span></div>'+
+   (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
    tvlHistoryChart(metrics,period)+
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
