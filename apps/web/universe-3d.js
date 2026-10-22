@@ -205,20 +205,20 @@ const spriteFS=[
  'float a=uBackground>0.5?1.0-smoothstep(0.25,0.85,r):pow(max(0.0,1.0-r),2.6);',
  'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
 ].join('\n');
-// Diffuse stellar corona: camera-facing triangle quad, not a capped GL point sprite.
-// The GPU point-size limit caused rigid circular discs while zooming.
+// Diffuse stellar glow: perspective-scaled camera-facing quads, not capped GL point sprites.
+// Projected glow radii use ONLY the perspective matrix, never camera-rotation columns.
 const coronaVS=[
  'attribute vec2 aCorner;uniform vec3 uCenter;uniform mat4 uViewProjection;',
- 'uniform float uWorldRadius;uniform float uAspect;',
+ 'uniform float uWorldRadius;uniform vec2 uProjectionScale;',
  'varying vec2 vCorner;',
  'void main(){vec4 clip=uViewProjection*vec4(uCenter,1.0);',
- 'vec2 ndc=aCorner*uWorldRadius*vec2(uViewProjection[1][1]/uAspect,uViewProjection[1][1])/max(clip.w,0.1);',
- 'gl_Position=clip+vec4(ndc*clip.w,0.0,0.0);vCorner=aCorner;}'
+ 'gl_Position=vec4(clip.xy+aCorner*uWorldRadius*uProjectionScale,clip.z,clip.w);',
+ 'vCorner=aCorner;}'
 ].join('\n');
 const coronaFS=[
  'precision mediump float;uniform vec4 uColor;varying vec2 vCorner;',
  'void main(){float r=length(vCorner);',
- 'float a=exp(-15.0*r*r);',
+ 'float a=exp(-16.0*r*r);',
  'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
 ].join('\n');
 function createGPU(gl){
@@ -235,7 +235,7 @@ function createGPU(gl){
   fixed:uniform(spriteP,"uFixed"),background:uniform(spriteP,"uBackground")};
  const corona={p:coronaP,corner:attrib(coronaP,"aCorner"),vp:uniform(coronaP,"uViewProjection"),
  center:uniform(coronaP,"uCenter"),radius:uniform(coronaP,"uWorldRadius"),
- aspect:uniform(coronaP,"uAspect"),color:uniform(coronaP,"uColor")};
+ projection:uniform(coronaP,"uProjectionScale"),color:uniform(coronaP,"uColor")};
  const buffers=[];
  function makeBuffer(type,data){
   const b=gl.createBuffer();gl.bindBuffer(type,b);gl.bufferData(type,data,gl.STATIC_DRAW);buffers.push(b);return b;
@@ -554,7 +554,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform1f(shader.background,background?1:0);
   gl.drawArrays(gl.POINTS,0,1);
  }
- function diffuseCorona(position,radius,color,opacity,vp){
+ function diffuseCorona(position,radius,color,opacity,vp,projection){
   const c=gpu.corona;
   gl.useProgram(c.p);
   gl.bindBuffer(gl.ARRAY_BUFFER,gpu.coronaQuad);
@@ -563,7 +563,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniformMatrix4fv(c.vp,false,vp);
   gl.uniform3fv(c.center,position);
   gl.uniform1f(c.radius,radius);
-  gl.uniform1f(c.aspect,canvas.width/canvas.height);
+  gl.uniform2f(c.projection,projection[0],projection[5]);
   gl.uniform4f(c.color,color[0],color[1],color[2],opacity);
   gl.drawArrays(gl.TRIANGLES,0,6);
  }
@@ -631,7 +631,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   resize();
   const w=canvas.clientWidth||1,h=canvas.clientHeight||1;
   const eye=cameraEye(camera);
-  const vp=matrixMultiply(perspective(Math.PI/3,canvas.width/canvas.height,.1,750),lookAt(eye,camera.target));
+  const projection=perspective(Math.PI/3,canvas.width/canvas.height,.1,750);
+  const vp=matrixMultiply(projection,lookAt(eye,camera.target));
   viewProjection=vp;
   gl.viewport(0,0,canvas.width,canvas.height);
   gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -644,14 +645,18 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniformMatrix4fv(sp.vp,false,vp);gl.uniform4f(sp.color,.80,.87,1.0,.82);
   gl.uniform1f(sp.size,2.0);gl.uniform1f(sp.fixed,1);gl.uniform1f(sp.background,1);
   gl.drawArrays(gl.POINTS,0,stars.count);
-  // Soft additive stellar corona, kept restrained to the website palette.
+  // Wide additive nebula glow from EVERY visible star; distant colors can mix.
+  // Gaussian alpha is ~0 at the quad edge (exp(-16)), eliminating cut-off rings.
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
-   const intensity=(item.portal?.40:.18)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
-   // Gaussian fades below 0.001 long before the quad boundary: no visible disc.
+   const intensity=(item.portal?.42:.33)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
    const center=systemPosition(item,frame,reducedMotion);
-   diffuseCorona(center,item.radius*3.6,item.color,intensity*.85,vp);
-   diffuseCorona(center,item.radius*1.85,item.color,intensity*.50,vp);
+   const mist=item.color.map(channel=>Math.min(1,channel*.78+.22));
+   // Outer light extends past neighbouring stars and blends with their colours.
+   // Radius is WORLD space and scales naturally with camera distance / zoom.
+   diffuseCorona(center,item.radius*18,mist,intensity*.70,vp,projection);
+   diffuseCorona(center,item.radius*9,item.color,intensity*.74,vp,projection);
+   diffuseCorona(center,item.radius*4.5,item.color,intensity*.32,vp,projection);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Northstar: one fine ring per spoke, two warm rings around the hub.
