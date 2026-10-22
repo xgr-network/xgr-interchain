@@ -1204,3 +1204,7 @@ main:has(>.ux-plan-page){padding-top:5px}
 @media(max-width:540px){#xita-flow-dialog.ux-flow-dialog{width:calc(100vw - 12px);max-height:92dvh}#xita-flow-dialog .ux-flow-content{padding:16px}}
 /* The detail view replaces the redundant progress panel, but not route fees. */
 .ux-plan-page .ux-transfer-side{display:grid;grid-template-columns:minmax(0,1fr)}
+
+/* Persistent read-only access to the current transfer status after Hide. */
+.ux-plan-page .ux-transfer-status-trigger{width:100%;min-height:42px;color:#d9ecff;background:#152b43;border:1px solid #567eaa;font-size:12px;font-weight:650}
+.ux-plan-page .ux-transfer-status-trigger:hover,.ux-plan-page .ux-transfer-status-trigger:focus-visible{background:#203d5c;border-color:#8bb6e2}
