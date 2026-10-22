@@ -232,10 +232,26 @@ export async function handler(req,res){
      if(value.kind==="xita-tvl-history-v1"&&value.schemaVersion===1&&Array.isArray(value.points))
       history={kind:value.kind,schemaVersion:1,points:value.points.filter(p=>
        typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf))&&
-       typeof p.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0).slice(-6500)};
+       typeof p.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0).map(p=>({asOf:p.asOf,lockedUsd:p.lockedUsd,assets:p.assets&&typeof p.assets==='object'?Object.fromEntries(Object.entries(p.assets).filter(([id,n])=>Object.hasOwn(catalog.assets||{},id)&&typeof n==='number'&&Number.isFinite(n)&&n>=0)):undefined})).slice(-6500)};
     }
    }
   }catch{/* No guessed chart points on invalid local history. */}
+  // A previously verified asset remains discoverable as historic evidence when
+  // current proof coverage temporarily drops out. It is NEVER marked live.
+  if(history?.points?.length){
+   const point=history.points.at(-1);
+   const recent=Date.parse(point.asOf)>=Date.now()-90*86400000;
+   if(recent){
+    const single=Object.keys(catalog.assets||{}).length===1;
+    metrics.lastVerifiedAssets={};
+    for(const id of Object.keys(catalog.assets||{})){
+     const amount=point.assets?.[id]??(single?point.lockedUsd:null);
+     if(typeof amount==="number"&&Number.isFinite(amount)&&amount>=0&&
+       (point.assets?.[id]!==undefined||single))
+      metrics.lastVerifiedAssets[id]={lockedUsd:amount,asOf:point.asOf};
+    }
+   }
+  }
   return send(200,{...metrics,visibility,history});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
