@@ -10,6 +10,7 @@ import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-d
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
+import {cachedExplorerWallet} from "./explorer-wallet-discovery.mjs";
 import {proxyCatalogRpcRead} from "./rpc-read.mjs";
 import {derivedVisibility,readPublicationPositions} from "./publication.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -140,7 +141,7 @@ export async function handler(req,res){
    return send(503,{ok:false,error:"Verified chain RPC unavailable",...info});
   }
  }
- if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/stats")))
+ if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/discovery"||pathname==="/api/xeta/v1/transfers/stats")))
   return send(404,{ok:false,error:"Not found"});
  if(pathname==="/health")return send(200,{ok:true,service:"xita-metrics",mode:"read-only"});
  if(pathname==="/api/xeta/v1/transfer/health"){
@@ -166,6 +167,20 @@ export async function handler(req,res){
     return send(503,{ok:false,status:"UNAVAILABLE",reason,
       ...(/^[a-z][a-z0-9-]{1,54}$/.test(error?.stage||"")?{stage:error.stage}:{}),
       error:"Unsigned destination proof unavailable. Original source transfer remains confirmed; do not lock again."});
+   }
+  }
+  if(pathname==="/api/xeta/v1/transfers/discovery"){
+   const account=parsed.searchParams.get("account");
+   if(!/^0x[0-9a-f]{40}$/i.test(account||""))
+    return send(400,{ok:false,error:"Valid EVM wallet address required"});
+   try{
+    const result=await cachedExplorerWallet({catalog,account});
+    return send(200,{ok:true,kind:"xita-explorer-wallet-discovery-v1",
+     wallet:account.toLowerCase(),...result,
+     note:"Explorer candidates are never authority for delivery or wallet signatures."});
+   }catch{
+    return send(503,{ok:false,status:"unavailable",
+     error:"Explorer wallet discovery temporarily unavailable"});
    }
   }
   if(pathname==="/api/xeta/v1/transfers/wallet"){

@@ -298,3 +298,36 @@ NOT get stamped with the time of import. Historical volume before activation
 cannot be reconstructed honestly from these two columns. Once deployed, run a
 new lock/unlock and inspect `/api/xeta/v1/metrics/toplist` to validate the
 freshly indexed values; existing balances and transfers are unaffected.
+
+## Official explorer wallet discovery (optional, no new SQL migrations)
+
+Arbitrum (42161) and Base (8453) share the fixed Etherscan V2 API.
+For each connected wallet, the **server** requests at most the latest 100
+`txlist` and 100 `tokentx` records for each deployed source chain, starting
+no earlier than the relevant XITA gateway deployment. It filters by the
+actual, receipt-backed Gateway/ExecutionGateway target addresses and validates
+up to eight candidate transactions per chain using normal XITA source receipt,
+Gateway, Mailbox, Interchain Fee and chain-finality evidence over separately
+chain-ID-verified read-only RPC. Merely observed Explorer claims are never
+counted as verified pending work and cannot authorize a deliver, mint or burn.
+
+Set the API key **server-side only** in the existing private environment file
+read by `xita-indexer.service` (check `systemctl cat xita-indexer.service`):
+
+```ini
+XITA_ETHERSCAN_API_KEY=<private Etherscan V2 API key>
+```
+
+Do **not** put the key in catalog.json, browser JS, GitHub or public Nginx.
+Restart the read-only indexer process after configuring the key.
+The endpoint `GET /api/xeta/v1/transfers/discovery?account=0x...` returns
+`status: not-configured` if no key is supplied. The API is optional:
+normal wallet index/history remains unaffected. Per-wallet response cache
+is two minutes and there is a 36-request/minute hard outbound cap plus
+deduplicated concurrent wallet fetches. Explorer V2 provider plans may not
+cover all networks or historical records; partial/unavailable is explicit.
+XGRChain is handled by the native indexer, not Etherscan.
+
+The `xita_transfer_announcements` SQL 005 migration and intake service are
+**separate optional fast-path infrastructure**; Explorer discovery does not
+modify schema or eliminate historical canonical index maintenance.
