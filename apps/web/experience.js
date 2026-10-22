@@ -539,7 +539,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   esc(progress.error?"Action needs attention":
    busy?"Checking transaction safety…":
    completedWork?"2 / 2 · "+statusLabel:
-   selected?(selected.onwardRouteId?"2 / 4 · ":"1 / 2 · ")+statusLabel:
+   selected?(selected.onwardRouteId?"Hub journey · ":"Direct route · ")+statusLabel:
    recoveryUnresolved?statusLabel:
    deployed?(connected?"Ready to transfer":"Wallet not connected"):
    "Selected route unavailable")+'</strong></div>'+
@@ -595,14 +595,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '</section><div class="ux-transfer-side"><aside class="ux-panel ux-ns-operations-data ux-transfer-status-panel">'+
   '<div class="ux-transfer-status-heading"><span class="ux-kicker">TRANSACTION STATUS</span><h2>Transfer progress</h2></div>'+
   statusMarkup+
-  '<div class="ux-transfer-milestones" aria-label="Transfer steps">'+
-   '<div class="ux-transfer-milestone'+(completedWork||selected?.confirmed?' is-complete':' is-current')+'">'+
-    '<span class="ux-transfer-milestone-number">01</span><div><strong>Source transaction</strong>'+
-    '<small>Lock or burn with your wallet</small></div></div>'+
-   '<div class="ux-transfer-milestone'+(completedWork?' is-complete':selected?.confirmed?' is-current':'')+'">'+
-    '<span class="ux-transfer-milestone-number">02</span><div><strong>Destination delivery</strong>'+
-    '<small>Process the verified message</small></div></div>'+
-  '</div>'+
+  '<button type="button" class="ux-outline-button ux-open-flow" id="xita-flow-open">Open full transfer status →</button>'+
   '<p class="ux-transfer-status-help">Your wallet authorizes each step. Private keys stay with you.</p>'+
   '</aside>'+feeCard+'</div></div>'+feeDialog+
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
