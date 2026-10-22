@@ -207,6 +207,7 @@ function upsertTransfer(record){
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
   t.txHash===record.txHash);
  if(previous?.confirmed===true&&record.confirmed!==true)return;
+ if(previous?.status==="confirming"&&record.status==="pending-source")return;
  if(previous?.status==="journey-delivered"&&record.status!=="journey-delivered")return;
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
  if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
@@ -1113,6 +1114,30 @@ document.addEventListener("click",e=>{
  void navigator.clipboard.writeText(address).then(()=>{copy.textContent="Copied";}).catch(()=>{copy.textContent="Copy unavailable";});
 });
 window.addEventListener("popstate",render);
+// Exact-hash finality polling is separate from the finalized event index.
+// Read-only; an RPC outage never causes another source transaction.
+let directFinalityPoll=false;
+setInterval(async()=>{
+ if(directFinalityPoll||transferActivity.scanning||transferActivity.working||
+  !state.account||!state.catalog||document.visibilityState==="hidden"||
+  path()!=="/transfer")return;
+ const hash=transferActivity.selectedTxHash;
+ const entry=transferActivity.items.find(t=>t.txHash?.toLowerCase()===hash?.toLowerCase()&&
+  t.account?.toLowerCase()===state.account.toLowerCase());
+ if(!entry||!["pending-source","confirming"].includes(entry.status))return;
+ directFinalityPoll=true;
+ const account=state.account;
+ try{
+  const record=await findWalletSourceTx({catalog:state.catalog,account,
+   sourceChain:entry.sourceChain,txHash:entry.txHash});
+  if(state.account?.toLowerCase()!==account.toLowerCase()||
+   transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+  upsertTransfer(record);
+  if(record.confirmed)flowView.stage="first-proof-wait";
+  render();
+ }catch{/* Unknown RPC status cannot downgrade previously observed evidence. */}
+ finally{directFinalityPoll=false}
+},12000);
 setInterval(()=>{
  if(!state.account||!state.catalog||transferActivity.scanning||
     transferActivity.working||document.visibilityState==="hidden")return;
