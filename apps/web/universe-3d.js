@@ -205,8 +205,24 @@ const spriteFS=[
  'float a=uBackground>0.5?1.0-smoothstep(0.25,0.85,r):pow(max(0.0,1.0-r),2.6);',
  'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
 ].join('\n');
+// Diffuse stellar corona: camera-facing triangle quad, not a capped GL point sprite.
+// The GPU point-size limit caused rigid circular discs while zooming.
+const coronaVS=[
+ 'attribute vec2 aCorner;uniform vec3 uCenter;uniform mat4 uViewProjection;',
+ 'uniform float uWorldRadius;uniform float uAspect;',
+ 'varying vec2 vCorner;',
+ 'void main(){vec4 clip=uViewProjection*vec4(uCenter,1.0);',
+ 'vec2 ndc=aCorner*uWorldRadius*vec2(uViewProjection[1][1]/uAspect,uViewProjection[1][1])/max(clip.w,0.1);',
+ 'gl_Position=clip+vec4(ndc*clip.w,0.0,0.0);vCorner=aCorner;}'
+].join('\n');
+const coronaFS=[
+ 'precision mediump float;uniform vec4 uColor;varying vec2 vCorner;',
+ 'void main(){float r=length(vCorner);',
+ 'float a=exp(-8.0*r*r)*(1.0-smoothstep(0.72,1.0,r));',
+ 'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
+].join('\n');
 function createGPU(gl){
- const meshP=program(gl,sphereVS,sphereFS),lineP=program(gl,lineVS,lineFS),spriteP=program(gl,spriteVS,spriteFS);
+ const meshP=program(gl,sphereVS,sphereFS),lineP=program(gl,lineVS,lineFS),spriteP=program(gl,spriteVS,spriteFS),coronaP=program(gl,coronaVS,coronaFS);
  const attrib=(p,key)=>gl.getAttribLocation(p,key);
  const uniform=(p,key)=>gl.getUniformLocation(p,key);
  const mesh={p:meshP,pos:attrib(meshP,"aPos"),normal:attrib(meshP,"aNormal"),
@@ -217,6 +233,9 @@ function createGPU(gl){
  const sprites={p:spriteP,pos:attrib(spriteP,"aPos"),vp:uniform(spriteP,"uViewProjection"),
   color:uniform(spriteP,"uColor"),size:uniform(spriteP,"uSize"),
   fixed:uniform(spriteP,"uFixed"),background:uniform(spriteP,"uBackground")};
+ const corona={p:coronaP,corner:attrib(coronaP,"aCorner"),vp:uniform(coronaP,"uViewProjection"),
+ center:uniform(coronaP,"uCenter"),radius:uniform(coronaP,"uWorldRadius"),
+ aspect:uniform(coronaP,"uAspect"),color:uniform(coronaP,"uColor")};
  const buffers=[];
  function makeBuffer(type,data){
   const b=gl.createBuffer();gl.bindBuffer(type,b);gl.bufferData(type,data,gl.STATIC_DRAW);buffers.push(b);return b;
@@ -228,11 +247,12 @@ function createGPU(gl){
  }
  const sphere=createGeometry(makeSphere()),moon=createGeometry(makeSphere(10,16)),torus=createGeometry(makeTorus());
  const point=makeBuffer(gl.ARRAY_BUFFER,new Float32Array([0,0,0]));
+ const coronaQuad=makeBuffer(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]));
  function dispose(){
   buffers.forEach(b=>gl.deleteBuffer(b));
-  [meshP,lineP,spriteP].forEach(p=>gl.deleteProgram(p));
+  [meshP,lineP,spriteP,coronaP].forEach(p=>gl.deleteProgram(p));
  }
- return {mesh,lines,sprites,sphere,moon,torus,point,makeBuffer,dispose};
+ return {mesh,lines,sprites,corona,coronaQuad,sphere,moon,torus,point,makeBuffer,dispose};
 }
 // Only visual companions: deterministic and wholly independent of token data.
 function makeDecorations(item){
@@ -534,6 +554,19 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   gl.uniform1f(shader.background,background?1:0);
   gl.drawArrays(gl.POINTS,0,1);
  }
+ function diffuseCorona(position,radius,color,opacity,vp){
+  const c=gpu.corona;
+  gl.useProgram(c.p);
+  gl.bindBuffer(gl.ARRAY_BUFFER,gpu.coronaQuad);
+  gl.enableVertexAttribArray(c.corner);
+  gl.vertexAttribPointer(c.corner,2,gl.FLOAT,false,0,0);
+  gl.uniformMatrix4fv(c.vp,false,vp);
+  gl.uniform3fv(c.center,position);
+  gl.uniform1f(c.radius,radius);
+  gl.uniform1f(c.aspect,canvas.width/canvas.height);
+  gl.uniform4f(c.color,color[0],color[1],color[2],opacity);
+  gl.drawArrays(gl.TRIANGLES,0,6);
+ }
  function body(geometry,pos,scale,color,kind,time,rot=IDENTITY,eye,vp){
   const shader=gpu.mesh;
   gl.useProgram(shader.p);
@@ -615,8 +648,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
    const intensity=(item.portal?.40:.18)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
-   point(systemPosition(item,frame,reducedMotion),item.radius*9600,item.color,intensity,vp);
-   point(systemPosition(item,frame,reducedMotion),item.radius*3400,item.color,intensity*.64,vp);
+   diffuseCorona(systemPosition(item,frame,reducedMotion),item.radius*3.8,item.color,intensity,vp);
+   diffuseCorona(systemPosition(item,frame,reducedMotion),item.radius*1.9,item.color,intensity*.64,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Northstar: one fine ring per spoke, two warm rings around the hub.
