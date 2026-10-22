@@ -272,7 +272,7 @@ test("transfer screen has only route fees, status is exclusively modal",()=>{
  assert.match(html,/class="ux-transfer-side"/);
  assert.match(html,/Transfer costs/);
  assert.doesNotMatch(html,/Transfer progress|id="xita-flow-open"|class="ux-transfer-progress/);
- assert.doesNotMatch(html,/RPC unavailable/);
+ assert.match(html,/id="xita-transfer-form-error"[^>]*>RPC unavailable<\/p>/);
 });
 
 test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
@@ -421,7 +421,20 @@ test("transfer status can be reopened without a new wallet action",()=>{
  assert.match(busy,/View transfer status/);
  assert.match(busy,/id="xita-transfer-primary" disabled/);
  const resume=renderPlanRoute(model,selection,"ready",{account},{selectedTxHash:hash,items:[]});
- assert.match(resume,/id="xita-flow-reopen"/);
+ assert.doesNotMatch(resume,/id="xita-flow-reopen"/); // A bare URL hash is not verified ownership.
  assert.match(resume,/id="xita-transfer-primary" disabled/);
  assert.doesNotMatch(renderPlanRoute(model,selection,"ready",{}, {hasFlow:true}),/id="xita-flow-reopen"/);
+});
+
+test("failed input preflight stays inline with NO modal or status reopening",()=>{
+ const model=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+ const account="0x"+"1".repeat(40);
+ const markup=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:""},
+  "ready",{account},{error:"Enter a valid token amount",busy:false,hasFlow:false});
+ assert.match(markup,/id="xita-transfer-form-error"/);
+ assert.match(markup,/Enter a valid token amount/);
+ assert.doesNotMatch(markup,/id="xita-flow-reopen"/);
+ const recovery=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},
+  "ready",{account},{hasFlow:true});
+ assert.match(recovery,/id="xita-flow-reopen"/);
 });

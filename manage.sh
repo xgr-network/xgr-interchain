@@ -375,6 +375,7 @@ install_fee_preview() (
     echo "Unsafe fee preview service path or user" >&2
     return 1
   }
+  install_price_cache
   echo "Installing unsigned fee preview dependencies ..."
   npm install --prefix "$ROOT/services/managed-relay" --ignore-scripts --no-audit --no-fund --package-lock=false
   unit="$(mktemp)"
@@ -410,6 +411,27 @@ install_fee_preview() (
   echo "SUCCESS: unsigned public cost preview available on loopback 4093 and HTTPS. No fee wallet key, Claim worker, Sponsor worker or on-chain TX."
 )
 
+# Price data is refreshed by a keyless timer independently of requests/UI renders.
+install_price_cache() (
+  local user node_bin unit
+  user="$(id -un)"; node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$ROOT" == /* && "$node_bin" == /* ]] || return 1
+  privileged install -d -m 0700 -o "$user" -g "$(id -gn)" /var/lib/xita
+  unit="$(mktemp)"
+  trap 'rm -f "${unit:-}"' EXIT
+  sed -e "s|^User=.*|User=$user|" -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/price-refresh.mjs|" \
+      "$ROOT/services/managed-relay/xita-price-refresh.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-price-refresh.service
+  privileged install -m 0644 "$ROOT/services/managed-relay/xita-price-refresh.timer.example" \
+      /etc/systemd/system/xita-price-refresh.timer
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-price-refresh.timer
+  # Best effort initial refresh: cached quotes remain usable through outages.
+  privileged systemctl start xita-price-refresh.service || \
+    echo "WARNING: CoinGecko temporarily unavailable. Cached rates remain usable until their verified expiry." >&2
+)
+
 install_interchain_fee() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -426,6 +448,7 @@ install_interchain_fee() (
       return 1
     fi
   done
+  install_price_cache
   echo "Installing pinned Interchain Fee signer and sponsor dependencies ..."
   npm install --prefix "$ROOT/services/managed-relay" --ignore-scripts --no-audit --no-fund --package-lock=false
 
@@ -512,6 +535,10 @@ complete_update() {
   require_clean_main
   publish_web
   install_sync
+  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    install_price_cache
+  fi
   # Deploy new read-only API routes alongside the browser release.
   # Restart the indexer FIRST, then wait for its actual HTTP listener.
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
@@ -626,6 +653,7 @@ case "${1:-help}" in
     ;;
   install-tvl) install_tvl ;;
   install-fee-preview) install_fee_preview ;;
+  install-price-cache) install_price_cache ;;
   install-interchain-fee) install_interchain_fee ;;
   help|-h|--help) usage ;;
   *)

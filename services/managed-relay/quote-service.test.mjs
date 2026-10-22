@@ -86,7 +86,7 @@ test("fee quotes remain available without sponsorship but fail on missing gas pr
   gasPriceWei:0n,availableWei:0n
  })}),/Unpriced destination gas/);
  await assert.rejects(()=>buildManagedQuote({...defaults(),getCoinGeckoSnapshot:async()=>({
-  ...exchange(),xgr:{usd:0.0001,last_updated_at:Math.floor(now/1000)-500}
+  ...exchange(),xgr:{usd:0.0001,last_updated_at:Math.floor(now/1000)-1000}
  })}),/stale/);
 });
 test("quotes only canonical deployed routes and exact bridge principal",async()=>{

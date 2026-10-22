@@ -8,6 +8,7 @@ import {fileURLToPath} from "node:url";
 import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
+import {readCachedGasPrices} from "./price-cache.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG_PATH=resolve(root,"apps/web/catalog.json");
@@ -73,31 +74,14 @@ async function chain(name,catalog){
  return provider;
 }
 const quoteIface=new Interface(EXECUTION_ABI);
-let lastPriceSnapshot=null,lastPriceAt=0,inflightPriceFetch=null;
-async function getSnapshot(){
- if(lastPriceSnapshot&&Date.now()-lastPriceAt<20000)
-  return lastPriceSnapshot;
- if(inflightPriceFetch)return inflightPriceFetch;
- inflightPriceFetch=fetchUncachedPrices();
- try{return await inflightPriceFetch;}
- finally{inflightPriceFetch=null;}
-}
-async function fetchUncachedPrices(){
- const ids=[...new Set(Object.values((await import("./fee-quote.mjs")).COINGECKO_GAS_COIN_IDS))].join(",");
- const url="https://api.coingecko.com/api/v3/simple/price?ids="+ids+
-  "&vs_currencies=usd&include_last_updated_at=true";
- const headers={accept:"application/json"};
- if(process.env.XITA_COINGECKO_API_KEY)
-  headers["x-cg-demo-api-key"]=process.env.XITA_COINGECKO_API_KEY;
- const response=await fetch(url,{headers,signal:AbortSignal.timeout(9000)});
- if(!response.ok)throw Error("CoinGecko temporarily unavailable");
- const value=await response.json();
- if(!value||typeof value!=="object"||Array.isArray(value))
-  throw Error("CoinGecko invalid data");
- lastPriceSnapshot=value;lastPriceAt=Date.now();
- return value;
-}
+// Both quote/preview processes consume the SAME persisted backend cache.
+// External CoinGecko requests are exclusively performed by price-refresh.mjs.
+const getSnapshot=()=>readCachedGasPrices();
+const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
+ const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw]):null;
+ const cached=previewKey?previewMemo.get(previewKey):null;
+ if(cached&&Date.now()-cached.at<60000)return cached.value;
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
  const source=request?.source,destination=request?.destination;
  if(!preview&&(PREVIEW_ONLY||!signer))throw Error("GmbH service wallet not configured");
@@ -179,7 +163,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    (usd8%100000000n).toString().padStart(8,"0");
   // No nonce, signature, transaction data, wallet key, or 90-second credential
   // ever leaves this read-only estimate endpoint.
-  return {status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
+  const resultPreview={status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
    estimatedRouteFeeWei:routeFeeWei.toString(),estimatedRouteFeeUsd:feeUsd,
    estimatedAt:new Date().toISOString(),validatorFeeWei:result.validatorFeeWei,
    sourceBridgeNativeWei:result.sourceBridgeNativeWei,
@@ -187,6 +171,11 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
    pricing:result.pricing,sourceNativeSymbol:catalog.chains[source].nativeCurrency?.symbol||source,
    notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
+  if(previewKey){
+   previewMemo.set(previewKey,{at:Date.now(),value:resultPreview});
+   if(previewMemo.size>80)previewMemo.delete(previewMemo.keys().next().value);
+  }
+  return resultPreview;
  }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,

@@ -504,7 +504,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
  const recoveryUnresolved=connected&&resumeRequested&&!selected&&!completedWork;
  // Status reopening never submits or retries a wallet transaction.
- const showStatusButton=connected&&(progress.hasFlow===true||resumeRequested);
+ const showStatusButton=connected&&(progress.hasFlow===true||Boolean(selected)||Boolean(completedWork));
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const actionLabel=!connected?"Connect wallet to transfer":
@@ -604,6 +604,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (showStatusButton?'<button type="button" class="ux-outline-button ux-transfer-status-trigger"'+
    ' id="xita-flow-reopen" aria-haspopup="dialog" aria-controls="xita-flow-dialog">'+
    '↗ View transfer status</button>':'')+
+  (progress.error&&!showStatusButton?'<p class="ux-transfer-error" id="xita-transfer-form-error" role="alert">'+esc(progress.error)+'</p>':"")+
   '<p class="ux-transfer-action-hint">'+
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
    selected?"Existing source transfer selected; the original lock will not be repeated.":

@@ -1,0 +1,16 @@
+[Unit]
+Description=XITA shared CoinGecko price cache refresh (keyless)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+ExecStart=/usr/bin/node services/managed-relay/price-refresh.mjs
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/xita
+ProtectHome=read-only
+UMask=0077
