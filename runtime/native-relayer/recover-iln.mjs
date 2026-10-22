@@ -154,6 +154,33 @@ async function findOriginalOperationBlock() {
   return operationBlock;
 }
 
+// Direct JSON-RPC avoids ethers masking canonical XGR node error messages.
+export async function requestValidatorQuorum(route,messageId,sourceBlock,{
+ rpcUrl=required("ATTESTATION_RPC_URL"),fetcher=globalThis.fetch
+}={}){
+ const parsed=new URL(rpcUrl);
+ assert(parsed.protocol==="http:"&&parsed.hostname==="127.0.0.1"&&/^\\d+$/.test(parsed.port),
+   "Quorum RPC must be approved validator loopback");
+ assert(/^iln_[0-9]+_[0-9]+_[a-f0-9]{64}$/.test(route),"Invalid validator route");
+ assert(isHash(messageId)&&Number.isSafeInteger(sourceBlock)&&sourceBlock>0,
+   "Invalid original source message reference");
+ const response=await fetcher(rpcUrl,{
+  method:"POST",headers:{"content-type":"application/json"},signal:AbortSignal.timeout(12000),
+  body:JSON.stringify({jsonrpc:"2.0",id:1,method:"xgr_requestILNQuorum",
+   params:[route,messageId,sourceBlock]})
+ });
+ if(!response.ok)throw Error("XGR quorum HTTP "+response.status);
+ const result=await response.json();
+ if(result?.error){
+  const err=Error("XGR quorum RPC "+String(result.error.code??"?")+": "+
+    String(result.error.message||"unknown node error").slice(0,400));
+  err.rpcCode=result.error.code;
+  throw err;
+ }
+ assert(result?.jsonrpc==="2.0"&&result.id===1&&result.result,
+  "Malformed XGR quorum RPC response");
+ return result.result;
+}
 async function main() {
   mark("verify-chain-ids");
   await Promise.all([
@@ -195,7 +222,11 @@ async function main() {
     originalOperationBlock=operationBlock;
     assert(operationBlock > 0, "canonical source Gateway operation not found");
     mark("request-validator-quorum");
-    await attestations.send("xgr_requestILNQuorum", [routeName, id, operationBlock]);
+    // ethers may mask an XGR JSON-RPC -32603 response as "could not coalesce error".
+    // Preserve the node's actual response by using a bounded, read-only-transport
+    // JSON-RPC request to the pre-approved loopback endpoint. This queues only
+    // the original source message (no signer, no user-supplied RPC URL).
+    await requestValidatorQuorum(routeName,id,operationBlock);
     try {
       attestation = await attestations.send("xgr_getILNQuorumAttestation", [routeName, id, Number(currentSetId)]);
     } catch {
@@ -413,7 +444,8 @@ async function main() {
 }
 main().catch((error) => {
   const inner=error?.info?.error||error?.error;
-  const rpcCode=Number.isInteger(inner?.code)?inner.code:
+  const rpcCode=Number.isInteger(error?.rpcCode)?error.rpcCode:
+    Number.isInteger(inner?.code)?inner.code:
     Number.isInteger(error?.code)?error.code:null;
   console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
     status:"RECOVERY_NOT_READY",messageId:id,stage,rpcCode,
