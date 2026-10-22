@@ -225,7 +225,7 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.doesNotMatch(html,/Route, network gas &amp; safety checks/);
  assert.doesNotMatch(html,/ux-transfer-advanced/);
  assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('id="ux-fee-preview-status"'));
- assert.ok(html.indexOf("Transfer progress")<html.indexOf("Transfer costs"));
+ assert.doesNotMatch(html,/Transfer progress/);
  assert.match(html,/class="ux-transfer-side"/);
  assert.match(html,/id="ux-fee-info-trigger"/);
  assert.match(html,/<dialog id="ux-fee-info-dialog"/);
@@ -263,23 +263,16 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
  assert.doesNotMatch(fresh,/One transfer page/);
 });
 
-test("transfer status replaces redundant right-side network inventory",()=>{
+test("transfer screen has only route fees, status is exclusively modal",()=>{
  const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  const m=buildExperienceModel(c),account="0x"+"1".repeat(40);
- const markup=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},
-  "ready",{account},{notice:"Checking the deployed source Gateway quote…",error:"Wallet RPC nonce invalid"});
- const aside=markup.slice(markup.indexOf('<aside class="ux-panel ux-ns-operations-data'),markup.indexOf("</aside>"));
- const left=markup.slice(markup.indexOf('class="ux-panel ux-route-panel"'),markup.indexOf('<aside class="ux-panel'));
- assert.match(aside,/TRANSACTION STATUS/);
- assert.match(aside,/Transfer progress/);
- assert.match(aside,/Wallet RPC nonce invalid/);
- assert.match(aside,/Checking the deployed source Gateway quote/);
- assert.match(aside,/Open full transfer status/);
- assert.match(aside,/id="xita-flow-open"/);
- assert.doesNotMatch(aside,/Available networks|Deployed systems|Deployed directed routes/);
- assert.doesNotMatch(left,/ux-transfer-progress|Wallet RPC nonce invalid/);
- assert.equal((markup.match(/class="ux-transfer-progress/g)||[]).length,1);
- assert.ok(markup.indexOf('id="xita-transfer-primary"')<markup.indexOf('<aside class="ux-panel'));
+ const html=renderPlanRoute(m,{origin:"arbitrum",destination:"base",asset:"XGR",amount:"50"},
+  "ready",{account},{notice:"Checking allowance",error:"RPC unavailable"});
+ assert.match(html,/id="xita-transfer-primary"/);
+ assert.match(html,/class="ux-transfer-side"/);
+ assert.match(html,/Transfer costs/);
+ assert.doesNotMatch(html,/Transfer progress|id="xita-flow-open"|class="ux-transfer-progress/);
+ assert.doesNotMatch(html,/RPC unavailable/);
 });
 
 test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
