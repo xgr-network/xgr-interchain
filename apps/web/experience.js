@@ -464,6 +464,9 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  // Unknown records remain non-actionable until the wallet index verifies them.
  const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
  const recoveryUnresolved=connected&&resumeRequested&&!selected&&!completedWork;
+ // A hidden status modal must be reopenable without calling the transfer CTA.
+ // A resume hash alone is a locator, never permission to sign a new source TX.
+ const showStatusButton=connected&&(progress.hasFlow===true||resumeRequested);
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const actionLabel=!connected?"Connect wallet to transfer":
@@ -560,6 +563,9 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<p class="ux-small">Older deliveries are optional to continue here. They do not disable a new transfer. The original source lock is never repeated.</p></div>':'')+
   '<div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary"'+
    (buttonDisabled?' disabled':'')+'>'+esc(actionLabel)+'</button>'+
+  (showStatusButton?'<button type="button" class="ux-outline-button ux-transfer-status-trigger"'+
+   ' id="xita-flow-reopen" aria-haspopup="dialog" aria-controls="xita-flow-dialog">'+
+   '↗ View transfer status</button>':'')+
   '<p class="ux-transfer-action-hint">'+
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
    selected?"Existing source transfer selected; the original lock will not be repeated.":
