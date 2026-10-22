@@ -18,7 +18,11 @@ async function readBody(req){
  for await(const block of req){bytes+=block.length;if(bytes>480000)throw Error("Payload too large");body+=block.toString("utf8");}
  return JSON.parse(body);
 }
-async function github(path,method="GET",body,token=process.env.XITA_JOIN_WRITER_TOKEN){
+export function joinGithubToken(env=process.env){
+ // Reuse the existing XITA deployment GitHub credential; an override is optional.
+ return env.XITA_JOIN_WRITER_TOKEN||env.XITA_GITHUB_TOKEN||"";
+}
+async function github(path,method="GET",body,token=joinGithubToken()){
  if(!token)throw Error("Writer credential not configured");
  const response=await fetch("https://api.github.com/repos/"+REPO+path,{
   method,signal:AbortSignal.timeout(12000),cache:"no-store",
@@ -63,7 +67,7 @@ export async function publishDraft(bundle,{expectedMain,githubCall=github}={}){
 }
 // Only operator-held credentials and a verified email enable public submissions.
 export function joinAvailable(env=process.env){
-  if(!env.XITA_JOIN_WRITER_TOKEN||!mailConfigured(env))return false;
+  if(!joinGithubToken(env)||!mailConfigured(env))return false;
   try{return Boolean(privateLocation(env));}catch{return false;}
 }
 export function localMainSha(){
