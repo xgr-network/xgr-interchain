@@ -33,3 +33,12 @@ test("confirmed source with unknown destination remains visibly pending",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[
   {...unknown,confirmed:false}]}),0);
 });
+
+test("second-hop uncertain after XGR hub delivery is still pending",()=>{
+ const parent={...open,sourceChain:"arbitrum",destinationChain:"xgrchain",
+  finalDestinationChain:"base",onwardRouteId:"0x"+"e".repeat(64),
+  delivered:true,status:"final-delivery-unknown"};
+ assert.equal(pendingDeliveryCount({account:wallet,items:[parent]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-ambiguous"}]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-delivered"}]}),0);
+});
