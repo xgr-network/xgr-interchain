@@ -52,7 +52,7 @@ test("profile URL is generated server-side, not from applicant input",()=>{
  const misleading=buildManifestBundle({...application,slug:"attacker-chosen"},catalog);
  const missing=buildManifestBundle((({slug,...rest})=>rest)(application),catalog);
  assert.deepEqual(misleading.files,missing.files);
- const collision={...catalog,assets:{...catalog.assets,TEMP:{profile:{slug:"example-protocol"}}}};
+ const collision={...catalog,assets:{...catalog.assets,XGR:{...catalog.assets.XGR,profile:{...catalog.assets.XGR.profile,slug:"example-protocol"}}}};
  const next=buildManifestBundle(application,collision);
  assert.equal(JSON.parse(next.files["apps/web/catalog.json"]).assets.EXMP.profile.slug,"example-protocol-exmp");
 });
