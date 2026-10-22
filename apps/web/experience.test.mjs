@@ -410,3 +410,18 @@ test("TVL chart draws observed snapshots but never invents missing history",()=>
  assert.match(html,/2 verified snapshots/);
  assert.match(html,/Moved via XGR/);
 });
+
+test("transfer status can be reopened without a new wallet action",()=>{
+ const model=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+ const account="0x"+"1".repeat(40),hash="0x"+"a".repeat(64);
+ const selection={origin:"arbitrum",destination:"base",asset:"XGR",amount:"50"};
+ assert.doesNotMatch(renderPlanRoute(model,selection,"ready",{account},{}),/id="xita-flow-reopen"/);
+ const busy=renderPlanRoute(model,selection,"ready",{account},{busy:true,hasFlow:true});
+ assert.match(busy,/id="xita-flow-reopen"/);
+ assert.match(busy,/View transfer status/);
+ assert.match(busy,/id="xita-transfer-primary" disabled/);
+ const resume=renderPlanRoute(model,selection,"ready",{account},{selectedTxHash:hash,items:[]});
+ assert.match(resume,/id="xita-flow-reopen"/);
+ assert.match(resume,/id="xita-transfer-primary" disabled/);
+ assert.doesNotMatch(renderPlanRoute(model,selection,"ready",{}, {hasFlow:true}),/id="xita-flow-reopen"/);
+});

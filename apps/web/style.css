@@ -1250,3 +1250,7 @@ main:has(>.ux-plan-page){padding-top:5px}
  .ux-dashboard .ux-ns-network-status{bottom:90px}
  .ux-dashboard .ux-ns-signature{margin-top:22px}
 }
+
+/* Read-only access to a transfer status after the dialog is hidden. */
+.ux-plan-page .ux-transfer-status-trigger{width:100%;min-height:42px;color:#d9ecff;background:#152b43;border:1px solid #567eaa;font-size:12px;font-weight:650}
+.ux-plan-page .ux-transfer-status-trigger:hover,.ux-plan-page .ux-transfer-status-trigger:focus-visible{background:#203d5c;border-color:#8bb6e2}
