@@ -373,9 +373,17 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   routeId:route.routeId,gateway:route.gateway,confirmed:false,delivered:null,
   messageId:null,status:"pending-source"};
  const confirmations=Math.max(1,Number(route.sourceConfig.confirmations||1));
- if(BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(confirmations))
-  return {...base,status:"confirming"};
- const found={...base,messageId,confirmed:true,validatorFeeWei,
+ // A mined successful receipt proves the provisional fee/route intent, but
+ // NOT finality. Expose the linked final destination for read-only recovery
+ // without authorizing TX2, TX3, or a new source transaction.
+ const depth=BigInt(head)>=BigInt(receipt.blockNumber)?
+  BigInt(head)-BigInt(receipt.blockNumber)+1n:0n;
+ const confirmationsObserved=Number(depth>BigInt(confirmations)?BigInt(confirmations):depth);
+ const finality={sourceBlockNumber:Number(BigInt(receipt.blockNumber)),
+  confirmationsObserved,requiredConfirmations:confirmations};
+ if(depth<BigInt(confirmations))
+  return {...base,...finality,...(evidence||{}),status:"confirming"};
+ const found={...base,...finality,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
