@@ -945,6 +945,7 @@ function render(){
  if(rawPath==="/universe"){history.replaceState(null,"","/");}
  if(rawPath==="/plan-route")history.replaceState(null,"","/transfer"+location.search);
  const p=rawPath==="/universe"?"/":rawPath==="/plan-route"?"/transfer":rawPath;
+ document.body.classList.toggle("xita-subpage-planet",p!=="/");
  if(p==="/transfer"){
   const query=new URLSearchParams(location.search);
   const preselect=query.get("token");
