@@ -11,6 +11,14 @@ const cat={chains:{xgrchain:{name:"XGRChain",chainId:1643,domainId:1643},
   routeName:"xgr_to_base",sourceChain:"xgrchain",destinationChain:"base",
   routeId:h("5"),components:{gateway:{address:"0x"+"3".repeat(40)}}}]},
   routes:{routes:[{name:"xgr_to_base",sourceChain:"xgrchain",destinationChain:"base"}]}}}};
+test("My Transfers introduction never uses the global navigation header layout",()=>{
+ const html=renderMyTransfers({account,catalog:cat});
+ assert.match(html,/<div class="ux-my-transfers-intro">/);
+ assert.match(html,/<h1>My Transfers<\/h1>/);
+ assert.doesNotMatch(html,/<header(?:\\s|>)/);
+ assert.match(html,/Only transfers initiated by your connected wallet are shown/);
+ assert.match(html,/Confirmed transfers use canonical Gateway\/Mailbox evidence/);
+});
 test("My Transfers and menu are entirely absent until a valid wallet connects",()=>{
  assert.equal(transferMenuVisible(null),false);
  assert.equal(transferMenuVisible("0x1234"),false);
