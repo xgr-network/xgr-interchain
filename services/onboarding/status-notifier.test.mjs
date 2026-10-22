@@ -21,3 +21,14 @@ test("XITA notifications arise only from merged GitHub proposal and independentl
  wrongAsset.assets.EXMP.assetId="0x"+"b".repeat(64);
  assert.equal(nextPhase(record,approved,wrongAsset),"approved");
 });
+
+test("listed and delisted history is not mistaken for a fresh deployed milestone",()=>{
+ const approved={state:"closed",merged_at:"2026-10-15T12:00:00Z"};
+ const delisted={...record,phase:"delisted"};
+ assert.equal(nextPhase(delisted,approved,snap("accepted",0)),"delisted");
+ assert.equal(nextPhase(delisted,approved,snap("accepted",100)),"delisted");
+ assert.equal(nextPhase({...record,phase:"first-lock"},approved,snap("accepted",0)),"first-lock");
+ assert.equal(nextPhase({...record,phase:"listed"},approved,snap("accepted",0)),"delisted");
+ assert.equal(nextPhase(delisted,approved,snap("public",100)),"listed");
+ assert.equal(nextPhase({...record,phase:"listed"},approved,snap("public",100)),"listed");
+});

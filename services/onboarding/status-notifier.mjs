@@ -14,19 +14,32 @@ const STATUS={
 export function nextPhase(record,pr,visibility){
  if(!record?.pr?.number)return null;
  const merged=Boolean(pr?.merged_at);
- if(!merged&&(pr?.state==="closed"))return "rejected";
+ if(!merged&&pr?.state==="closed")return "rejected";
  if(!merged)return "under-review";
+ const phase=record.phase;
  const v=visibility?.schemaVersion===1&&visibility.kind==="xita-visibility-v1"
    ?visibility.assets?.[record.input.symbol]:null;
+ const alreadyAdvanced=["deployed","first-lock","listed","delisted"].includes(phase);
  if(!v||v.assetId?.toLowerCase()!==record.assetId?.toLowerCase())
-   return ["deployed","first-lock","listed","delisted"].includes(record.phase)?record.phase:"approved";
- if(v.status==="public"&&v.deployment==="deployed"&&
-   Number.isFinite(v.lockedUsd)&&v.lockedUsd>0)return "listed";
- if(v.status==="accepted"&&v.deployment==="deployed"&&Number.isFinite(v.lockedUsd))
-   return record.phase==="listed"?"delisted":v.lockedUsd>0?"first-lock":"deployed";
- if(v.deployment==="deployed"&&
-   !["listed","delisted","first-lock"].includes(record.phase))return "deployed";
- return ["listed","delisted","first-lock","deployed"].includes(record.phase)?record.phase:"approved";
+   return alreadyAdvanced?phase:"approved";
+ const deployed=v.deployment==="deployed";
+ // Never interpret missing, invalid or non-finalized collateral as public visibility.
+ const validValue=Number.isFinite(v.lockedUsd)&&v.lockedUsd>=0;
+ if(deployed&&v.status==="public"&&validValue&&v.lockedUsd>0)
+   return "listed";
+ // Delisting requires explicit, independently derived accepted status. A missing
+ // indexer snapshot is not evidence of delisting.
+ if(phase==="listed"&&deployed&&v.status==="accepted"&&validValue)
+   return "delisted";
+ // These phases record milestones already reported to the applicant.
+ // Falling back to "deployed" would resend deployed and first-lock mails on
+ // every polling cycle after a delisting or temporary drop in collateral.
+ if(phase==="listed"||phase==="delisted"||phase==="first-lock")
+   return phase;
+ if(deployed&&v.status==="accepted"&&validValue)
+   return v.lockedUsd>0?"first-lock":"deployed";
+ if(deployed)return "deployed";
+ return alreadyAdvanced?phase:"approved";
 }
 async function jsonGet(url,headers={}){
  const response=await fetch(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),
