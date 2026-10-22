@@ -547,30 +547,35 @@ repair_transfer_db() (
     < "$ROOT/services/indexer/sql/005_transfer_announcements.sql"
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
     < "$ROOT/services/indexer/sql/006_transfer_flow_timestamps.sql"
-  echo "Verifying transfer schema and existing restricted-role permissions ..."
-  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" <<'SQL'
-DO $
-BEGIN
- IF to_regclass('public.xita_transfer_announcements') IS NULL OR
-    NOT EXISTS(SELECT 1 FROM information_schema.columns
-     WHERE table_schema='public' AND table_name='xita_transfer_operations'
-       AND column_name='source_block_at') OR
-    NOT EXISTS(SELECT 1 FROM information_schema.columns
-     WHERE table_schema='public' AND table_name='xita_transfer_operations'
-       AND column_name='escrow_outflow_observed_at') THEN
-  RAISE EXCEPTION 'Required XITA transfer schema is incomplete';
- END IF;
-END $;
-DO $
-BEGIN
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
-  GRANT SELECT,UPDATE,DELETE ON public.xita_transfer_announcements TO xita_transfer_worker;
- END IF;
- IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_indexer_reader') THEN
-  GRANT SELECT ON public.xita_transfer_announcements TO xita_indexer_reader;
- END IF;
-END $;
-SQL
+  echo "Verifying actual transfer schema ..."
+  # Plain SELECT avoids fragile dollar-quoted procedural SQL; no dynamic SQL.
+  local schema_ok role_present
+  schema_ok="$(privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
+    SELECT CASE WHEN
+      to_regclass('public.xita_transfer_operations') IS NOT NULL AND
+      to_regclass('public.xita_transfer_announcements') IS NOT NULL AND
+      (SELECT COUNT(*) FROM information_schema.columns
+       WHERE table_schema='public' AND table_name='xita_transfer_operations'
+         AND column_name IN ('source_block_at','escrow_outflow_observed_at'))=2
+      THEN 1 ELSE 0 END;")"
+  if [[ "$schema_ok" != "1" ]]; then
+    echo "ERROR: Required XITA transfer schema remains incomplete; indexer not restarted." >&2
+    return 1
+  fi
+  echo "Granting announcement read/repair access only to existing restricted roles ..."
+  role_present="$(privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc     "SELECT COUNT(*) FROM pg_roles WHERE rolname='xita_transfer_worker'")"
+  if [[ "$role_present" == "1" ]]; then
+    privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -q -c       "GRANT SELECT, UPDATE, DELETE ON public.xita_transfer_announcements TO xita_transfer_worker"
+  else
+    echo "WARNING: xita_transfer_worker role not found; verify worker DB permissions." >&2
+  fi
+  role_present="$(privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc     "SELECT COUNT(*) FROM pg_roles WHERE rolname='xita_indexer_reader'")"
+  if [[ "$role_present" == "1" ]]; then
+    privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -q -c       "GRANT SELECT ON public.xita_transfer_announcements TO xita_indexer_reader"
+  else
+    echo "WARNING: xita_indexer_reader role not found; verify indexer API DB permissions." >&2
+  fi
+  echo "Verified XITA announcements table and both flow timestamp columns."
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
   fi
