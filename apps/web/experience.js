@@ -308,7 +308,8 @@ function tvlHistoryChart(metrics,period="24h"){
  const points=all.filter(p=>Date.parse(p.asOf)>=start&&Date.parse(p.asOf)<=end);
  const tabs='<div class="ux-ns-tvl-periods" aria-label="TVL history period">'+
   ["24h","7d","30d"].map(p=>'<button type="button" data-tvl-period="'+p+'" class="'+(p===valid?"is-selected":"")+'" aria-pressed="'+(p===valid)+'">'+p+'</button>').join("")+'</div>';
- const axis='<div class="ux-ns-tvl-axis"><span>'+esc(new Date(start).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span><span>'+esc(new Date(end).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span></div>';
+ const axisFormat=t=>valid==="24h"?new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
+ const axis='<div class="ux-ns-tvl-axis"><span>'+esc(axisFormat(start))+'</span><span>'+esc(axisFormat(end))+'</span></div>';
  if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected; not enough verified history for this period.</p>'+axis+'</div>';
  const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
  const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/(end-start),y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
