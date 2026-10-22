@@ -1,6 +1,6 @@
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes} from "./route-availability.js";
-import {draft,validateStep,joinMarkup} from "./join.js";
+import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
@@ -809,32 +809,39 @@ function token(){
     'Prospect · configured only')+'</div></div>').join("")+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
-const joinState={data:null,step:0,status:""};
+const joinState={data:null,step:0,status:"",busy:false,accepted:false};
+const joinConfirmation={phase:"idle",message:"",prNumber:null,prUrl:null};
 let joinConfirmationProcessed=false;
 async function processJoinEmailConfirmation(){
  if(joinConfirmationProcessed)return;
  joinConfirmationProcessed=true;
  const code=location.hash.slice(1);
+ // Remove the secret fragment before network calls, logging or rendering.
  history.replaceState(null,"","/join/confirm");
- const status=document.querySelector("#ja-confirm-status");
  const match=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(code);
- if(!match){if(status)status.textContent="Confirmation link invalid or missing. Please use the link from your email.";return;}
+ if(!match){joinConfirmation.phase="invalid";render();return;}
+ joinConfirmation.phase="verifying";
+ // Keep the confirmation status in memory so any other render preserves it.
  try{
-  const response=await fetch("/api/xita/join/confirm",{method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({id:match[1],token:match[2]})});
+  const response=await fetch("/api/xita/join/confirm",{method:"POST",
+   headers:{"Content-Type":"application/json"},body:JSON.stringify({id:match[1],token:match[2]})});
   const result=await response.json();
   if(!response.ok||!result.ok)throw Error(result.error||"Confirmation unavailable");
-  if(status)status.textContent="Email verified. Your token proposal has been submitted as GitHub Draft PR #"+result.prNumber+" for XGR review.";
-  const link=document.querySelector("#ja-confirm-pr");
-  if(link&&/^https:\/\/github\.com\/xgr-network\/xgr-interchain\/pull\/\d+$/.test(result.prUrl)){
-    link.href=result.prUrl;link.hidden=false;
-  }
- }catch(e){if(status)status.textContent="Could not confirm the application: "+e.message;}
+  if(!Number.isSafeInteger(result.prNumber)||!/^https:\/\/github\.com\/xgr-network\/xgr-interchain\/pull\/\d+$/.test(result.prUrl||""))
+   throw Error("Confirmation response is incomplete; contact XGR support and do not resubmit");
+  joinConfirmation.phase="success";
+  joinConfirmation.prNumber=result.prNumber;joinConfirmation.prUrl=result.prUrl;
+ }catch(e){
+  joinConfirmation.phase="failed";
+  joinConfirmation.message=String(e.message||"Confirmation unavailable");
+ }
+ if(path()==="/join/confirm")render();
 }
 
 function join(){
+ if(joinState.accepted)return joinPendingMarkup(joinState.data);
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status);
+ return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status,joinState.busy);
 }
 function drawJoin(){if(path()==="/join")render();}
 function captureJoin(){
@@ -848,6 +855,7 @@ function captureJoin(){
  d.symbol=d.symbol.trim().toUpperCase();
 }
 async function runJoin(action){
+ if(joinState.busy||joinState.accepted)return;
  captureJoin();
  const d=joinState.data;
  if(action==="back"){joinState.step=Math.max(0,joinState.step-1);joinState.status="";drawJoin();return;}
@@ -888,6 +896,7 @@ async function runJoin(action){
  }
  if(action==="next"){joinState.step=Math.min(2,joinState.step+1);joinState.status="";drawJoin();return;}
  if(action==="submit"){
+  joinState.busy=true;
   joinState.status="Validating public token manifests…";drawJoin();
   try{
    const response=await fetch("/api/xita/join/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
@@ -897,8 +906,10 @@ async function runJoin(action){
    const submission=await fetch("/api/xita/join/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
    const result=await submission.json();
    if(!submission.ok||!result.ok)throw Error(result.error||"Submit unavailable");
-   joinState.status="Check your email for an application confirmation link. Once confirmed and revalidated, a GitHub Draft PR can be created. No personal contact details enter GitHub.";
-  }catch(e){joinState.status="Preview unavailable: "+e.message+". You can still export the local application draft.";}
+   joinState.accepted=true;
+   joinState.status="";
+  }catch(e){joinState.status="Application could not be completed: "+e.message+". No second submission was made.";}
+  joinState.busy=false;
   drawJoin();
  }
 }
@@ -982,7 +993,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?'<section class="ux-app ja-page"><h1>Confirm your XITA application</h1><p id="ja-confirm-status" role="status">Verifying private email confirmation…</p><a id="ja-confirm-pr" href="#" target="_blank" rel="noopener noreferrer" hidden>View the GitHub draft proposal ↗</a></section>':'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // The planner normalizes the target when the source changes. Commit the
   // actual visible form values before any preview or wallet transaction.
