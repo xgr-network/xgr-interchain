@@ -87,6 +87,20 @@ test("proof CLI failures are categorized without putting raw internals in HTTP r
  assert.equal(classifyRecoveryFailure(null,JSON.stringify({status:"RECOVERY_NOT_READY",error:"Merkle proof unavailable"})).code,"PROOF_RECONSTRUCTION_UNAVAILABLE");
 });
 
+test("XGR internal quorum -32603 is not an RPC transport outage",()=>{
+ const make=(message)=>"XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
+  status:"RECOVERY_NOT_READY",stage:"request-validator-quorum",rpcCode:-32603,
+  error:"XGR quorum RPC -32603: "+message})+"\\n";
+ const internal=classifyRecoveryFailure(new Error("script exit"),make("internal error"));
+ assert.equal(internal.code,"PROOF_VALIDATOR_RPC_REJECTED");
+ assert.equal(internal.stage,"request-validator-quorum");
+ const route=classifyRecoveryFailure(new Error("script exit"),
+  make("route is not configured or discovered locally"));
+ assert.equal(route.code,"PROOF_ROUTE_NOT_REGISTERED");
+ const duplicate=classifyRecoveryFailure(new Error("script exit"),
+  make("ILN request exists with a different source block or invalid content"));
+ assert.equal(duplicate.code,"PROOF_QUORUM_REQUEST_CONFLICT");
+});
 test("structured JSON-RPC error diagnostics retain nested quotes and exact RPC code",()=>{
  const d={status:"RECOVERY_NOT_READY",stage:"request-validator-quorum",rpcCode:-32601,
   error:'method "xgr_requestILNQuorum" not found'};
