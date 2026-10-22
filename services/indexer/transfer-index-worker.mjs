@@ -89,7 +89,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
       CASE WHEN $17::boolean IS NULL THEN NULL ELSE NOW() END,
       $18,$19,$20,$21,$22,$23,$24,
-      CASE WHEN $17::boolean IS TRUE THEN NOW() ELSE NULL END)
+      NULL)
     ON CONFLICT(source_chain,message_id) DO UPDATE SET
       delivered=CASE WHEN xita_transfer_operations.delivered IS TRUE THEN TRUE
        ELSE EXCLUDED.delivered END,
@@ -102,9 +102,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
       onward_route_id=EXCLUDED.onward_route_id,
       parent_message_id=EXCLUDED.parent_message_id,
       source_block_at=COALESCE(xita_transfer_operations.source_block_at,EXCLUDED.source_block_at),
-      escrow_outflow_observed_at=CASE WHEN xita_transfer_operations.delivered IS TRUE
-       THEN xita_transfer_operations.escrow_outflow_observed_at
-       WHEN EXCLUDED.delivered IS TRUE THEN NOW() ELSE NULL END
+      escrow_outflow_observed_at=xita_transfer_operations.escrow_outflow_observed_at
     WHERE xita_transfer_operations.parent_message_id IS NOT DISTINCT FROM EXCLUDED.parent_message_id
       AND xita_transfer_operations.execution_adapter IS NOT DISTINCT FROM EXCLUDED.execution_adapter
       AND xita_transfer_operations.interchain_fee_wei IS NOT DISTINCT FROM EXCLUDED.interchain_fee_wei
