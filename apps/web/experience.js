@@ -280,25 +280,49 @@ function northstarStage(model,{universe=false}={}){
 }
 
 
-function tvlHistoryChart(metrics){
- const points=(Array.isArray(metrics?.history?.points)?metrics.history.points:[])
-  .filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf)))
+export function tvlChange24h(metrics,{now=null}={}){
+ const history=Array.isArray(metrics?.history?.points)?metrics.history.points:[];
+ const points=history.filter(p=>typeof p?.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
+   typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf)))
+   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+ const current=metrics?.totals?.lockedUsd;
+ if(!Number.isFinite(current)||current<0||points.length<2)return null;
+ const asOf=Date.parse(metrics?.asOf||points.at(-1).asOf),target=asOf-86400000;
+ if(!Number.isFinite(asOf)||!Number.isFinite(target))return null;
+ const baseline=points.filter(p=>Date.parse(p.asOf)<=target).at(-1);
+ // A missing 24h baseline is unknown, never approximate it from the oldest point.
+ if(!baseline||target-Date.parse(baseline.asOf)>900000||baseline.lockedUsd<=0)return null;
+ const percent=(current-baseline.lockedUsd)/baseline.lockedUsd*100;
+ return Number.isFinite(percent)?percent:null;
+}
+function tvlHistoryChart(metrics,period="24h"){
+ const valid=["24h","7d","30d"].includes(period)?period:"24h";
+ const intervals={"24h":86400000,"7d":7*86400000,"30d":30*86400000};
+ const latest=Date.parse(metrics?.asOf||"");
+ const all=(Array.isArray(metrics?.history?.points)?metrics.history.points:[])
+  .filter(p=>typeof p?.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
+   typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf)))
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
- if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">TVL history is being collected from verified snapshots.</div>';
- const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf);
- if(last<=first)return '<div class="ux-ns-tvl-history is-empty">TVL history is being collected.</div>';
+ const end=Number.isFinite(latest)?latest:all.length?Date.parse(all.at(-1).asOf):Date.now();
+ const start=end-intervals[valid];
+ const points=all.filter(p=>Date.parse(p.asOf)>=start&&Date.parse(p.asOf)<=end);
+ const tabs='<div class="ux-ns-tvl-periods" aria-label="TVL history period">'+
+  ["24h","7d","30d"].map(p=>'<button type="button" data-tvl-period="'+p+'" class="'+(p===valid?"is-selected":"")+'" aria-pressed="'+(p===valid)+'">'+p+'</button>').join("")+'</div>';
+ const axis='<div class="ux-ns-tvl-axis"><span>'+esc(new Date(start).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span><span>'+esc(new Date(end).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span></div>';
+ if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Not enough verified history for this period.</p>'+axis+'</div>';
  const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
- const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-first)/(last-first),
-  y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/(end-start),y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
- const final=xy.at(-1);
- return '<div class="ux-ns-tvl-history"><div class="ux-ns-tvl-history-label"><span>TVL development</span><span>'+esc(points.length)+' verified snapshots</span></div>'+
-  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Historical verified locked TVL in US dollars, from '+esc(points[0].asOf)+' to '+esc(points.at(-1).asOf)+'">'+
+ const last=xy.at(-1);
+ return '<div class="ux-ns-tvl-history">'+tabs+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL history, '+valid+'">'+
   '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
-  '<circle cx="'+final.x.toFixed(2)+'" cy="'+final.y.toFixed(2)+'" r="3.5" fill="#f8dfa4"/></svg></div>';
+  '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="#f8dfa4"/></svg>'+
+  axis+'</div>';
 }
 
-function northstarCards(model,metrics=null){
+function northstarCards(model,metrics=null,period="24h"){
+ const tvlChange=tvlChange24h(metrics);
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
  const activeChains=new Set((model.transferRoutes||[]).flatMap(r=>[r.source,r.destination]));
@@ -388,7 +412,7 @@ function dashboardTopTokens(catalog,metrics){
 
 export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null,wallet={}){
  return '<div class="ux-app ux-dashboard ux-northstar-page">'+
-  northstarStage(model)+northstarCards(model,metrics)+allianceIntro()+
+  northstarStage(model)+northstarCards(model,metrics,selection.tvlPeriod)+allianceIntro()+
   dashboardTopTokens(catalog||{assets:{}},metrics)+
   '<section class="ux-dashboard-outro"><div><span class="ux-kicker">DISCOVER · CONNECT · EXPAND</span>'+
   '<h2>Explore the XITA ecosystem</h2><p>Learn how the protocol works or inspect a token route before transferring any value.</p></div>'+
