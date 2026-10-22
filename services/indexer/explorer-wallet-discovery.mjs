@@ -85,11 +85,11 @@ export async function discoverExplorerWallet({
  if(!key)return {status:"not-configured",items:[],warnings:[],truncated:false};
  const sources=groups||explorerSourceGroups(catalog);
  if(!sources.length)return {status:"not-supported",items:[],warnings:[],truncated:false};
- const canonical=verify||async(group,txHash)=>{
+ const canonical=verify||(async(group,txHash)=>{
   const chainRpc=candidateRpc({fetcher});
   return findWalletSourceTx({catalog,account,sourceChain:group.sourceChain,txHash,
    rpc:bindVerifiedTransferRpc(group.routes[0],chainRpc)});
- };
+ });
  const items=[],warnings=[],seen=new Set();
  let truncated=false,successfulChains=0;
  for(const group of sources){
