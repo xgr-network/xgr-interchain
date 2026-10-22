@@ -295,6 +295,25 @@ install_join() (
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-join.service
   privileged systemctl is-active --quiet xita-join.service || return 1
+  local join_ready=0
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    if curl --fail --silent --show-error --max-time 2 \
+      http://127.0.0.1:4090/api/xita/join/status >/dev/null 2>&1; then
+      join_ready=1
+      break
+    fi
+    if ! privileged systemctl is-active --quiet xita-join.service; then
+      echo "ERROR: Join service exited before port 4090 was ready." >&2
+      privileged journalctl -u xita-join.service -n 30 --no-pager >&2 || true
+      return 1
+    fi
+    sleep 1
+  done
+  if [[ "$join_ready" != "1" ]]; then
+    echo "ERROR: XITA Join did not become ready on port 4090." >&2
+    privileged journalctl -u xita-join.service -n 30 --no-pager >&2 || true
+    return 1
+  fi
   curl --fail --silent --show-error --max-time 8 http://127.0.0.1:4090/api/xita/join/status
   echo
   # Global Nginx http rate-limit zone must be configured by operator.
