@@ -75,3 +75,13 @@ test("CoinGecko pricing metadata is recorded in generated profile",()=>{
  const p=JSON.parse(b.files[base+"/metadata.json"]);
  assert.equal(p.market.priceSource,"coingecko");assert.equal(p.market.coingeckoId,"ethereum");
 });
+
+test("multiline project descriptions are safe and normalized before publication",()=>{
+ const text="Independent Arbitrum application.\r\n\r\nSubmitted by a holder, not the project team.";
+ const bundle=buildManifestBundle({...application,description:text},catalog);
+ const profile=JSON.parse(bundle.files[Object.keys(bundle.files).find(x=>x.endsWith("/metadata.json"))]);
+ assert.equal(profile.description,"Independent Arbitrum application.\n\nSubmitted by a holder, not the project team.");
+ for(const invalid of ["First line is valid but includes a <script> tag.", "An otherwise valid description\u0000 containing a NUL.", "An otherwise valid description\t containing a tab."]){
+  assert.throws(()=>buildManifestBundle({...application,description:invalid},catalog),/descriptions/);
+ }
+});
