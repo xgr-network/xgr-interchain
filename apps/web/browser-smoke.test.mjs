@@ -165,6 +165,18 @@ test("real browser reconnects wallet and opens pending transfer without TX input
      'return "0x0";}};'+
      '</script>';
     content=Buffer.from(content.toString("utf8").replace("</head>",walletMock+"</head>"));
+    if(path==="/my-transfers"){
+     const layoutProbe='<script>(function(){const task=setInterval(function(){'+
+      'const page=document.querySelector(".ux-my-transfers");'+
+      'const intro=page?.querySelector(".ux-my-transfers-intro");'+
+      'const description=intro?.querySelector(".ux-muted");'+
+      'if(!page||!intro||!description)return;clearInterval(task);'+
+      'const style=getComputedStyle(intro);'+
+      'const wide=description.getBoundingClientRect().width>=page.getBoundingClientRect().width*.7;'+
+      'document.body.dataset.myTransfersLayout=style.display==="block"&&style.position!=="sticky"&&wide?"pass":"fail";'+
+      '},25);})();</script>';
+     content=Buffer.from(content.toString("utf8").replace("</body>",layoutProbe+"</body>"));
+    }
    }
    response.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream",
     "Cache-Control":"no-store"});
@@ -181,6 +193,8 @@ test("real browser reconnects wallet and opens pending transfer without TX input
   assert.doesNotMatch(history,/data-unwanted-wallet-prompt="yes"/);
   assert.match(history,/class="ux-app ux-my-transfers"/,
    "Authorized wallet must stay on My Transfers after fresh browser start");
+  assert.match(history,/data-my-transfers-layout="pass"/,
+   "My Transfers intro must render as a full-width normal block, not the sticky site-header flex row");
   assert.ok(history.includes(txHash),"Wallet index must rediscover pending source TX");
   assert.match(history,/&amp;resume=0x[c]{64}/,
    "Resume link must include exact verified source TX identity");
