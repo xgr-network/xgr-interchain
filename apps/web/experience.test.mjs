@@ -272,7 +272,7 @@ test("transfer screen has only route fees, status is exclusively modal",()=>{
  assert.match(html,/class="ux-transfer-side"/);
  assert.match(html,/Transfer costs/);
  assert.doesNotMatch(html,/Transfer progress|id="xita-flow-open"|class="ux-transfer-progress/);
- assert.doesNotMatch(html,/RPC unavailable/);
+ assert.match(html,/id="xita-transfer-form-error"[^>]*>RPC unavailable<\/p>/);
 });
 
 test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
