@@ -78,16 +78,18 @@ async function storeVerifiedOperation(db,{route,event,record}){
     record.destinationMailbox,record.amountRaw,record.validatorFeeWei,
     record.delivered,record.executionAdapter??null,record.interchainFeeWei??null,
     record.finalDestinationChain??null,record.finalRecipient??null,
-    record.onwardRouteId??null,record.parentMessageId??null
+    record.onwardRouteId??null,record.parentMessageId??null,
+    event.sourceBlockAt??null
    ];
    const row=await db.query({text:`INSERT INTO xita_transfer_operations(
     source_chain,message_id,source_tx_hash,source_block_number,source_block_hash,source_log_index,
     account,asset,asset_id,route_name,route_id,gateway,destination_chain,
     destination_mailbox,amount_raw,validator_fee_wei,delivered,delivery_checked_at,
-    execution_adapter,interchain_fee_wei,final_destination_chain,final_recipient,onward_route_id,parent_message_id)
+    execution_adapter,interchain_fee_wei,final_destination_chain,final_recipient,onward_route_id,parent_message_id,source_block_at,escrow_outflow_observed_at)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
       CASE WHEN $17::boolean IS NULL THEN NULL ELSE NOW() END,
-      $18,$19,$20,$21,$22,$23)
+      $18,$19,$20,$21,$22,$23,$24,
+      CASE WHEN $17::boolean IS TRUE THEN NOW() ELSE NULL END)
     ON CONFLICT(source_chain,message_id) DO UPDATE SET
       delivered=CASE WHEN xita_transfer_operations.delivered IS TRUE THEN TRUE
        ELSE EXCLUDED.delivered END,
@@ -98,7 +100,11 @@ async function storeVerifiedOperation(db,{route,event,record}){
       final_destination_chain=EXCLUDED.final_destination_chain,
       final_recipient=EXCLUDED.final_recipient,
       onward_route_id=EXCLUDED.onward_route_id,
-      parent_message_id=EXCLUDED.parent_message_id
+      parent_message_id=EXCLUDED.parent_message_id,
+      source_block_at=COALESCE(xita_transfer_operations.source_block_at,EXCLUDED.source_block_at),
+      escrow_outflow_observed_at=CASE WHEN xita_transfer_operations.delivered IS TRUE
+       THEN xita_transfer_operations.escrow_outflow_observed_at
+       WHEN EXCLUDED.delivered IS TRUE THEN NOW() ELSE NULL END
     WHERE xita_transfer_operations.parent_message_id IS NOT DISTINCT FROM EXCLUDED.parent_message_id
       AND xita_transfer_operations.execution_adapter IS NOT DISTINCT FROM EXCLUDED.execution_adapter
       AND xita_transfer_operations.interchain_fee_wei IS NOT DISTINCT FROM EXCLUDED.interchain_fee_wei
@@ -294,6 +300,11 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
   await setAnnouncementState(pool,hint,"rejected",{now,retry:false});return {status:"rejected"};
  }
  const {route,event}=matches[0];
+ // This block was already checked for canonical hash and finality above.
+ // Unknown timestamps are kept NULL; a backfill is never dated NOW().
+ if(/^0x[0-9a-f]+$/i.test(block.timestamp||"")&&
+    BigInt(block.timestamp)<=BigInt(Number.MAX_SAFE_INTEGER/1000))
+  event.sourceBlockAt=new Date(Number(BigInt(block.timestamp))*1000).toISOString();
  const record=await verify({catalog,route,transactionHash:hint.source_tx_hash,rpc});
  if(!matchingTarget&&!(route.executionAdapter&&
    normalize(record.executionAdapter)===normalize(route.executionAdapter)&&
