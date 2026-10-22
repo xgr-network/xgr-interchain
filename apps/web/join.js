@@ -62,7 +62,7 @@ export function joinPendingMarkup(data){
   '<p>If you have submitted a token application, check the inbox you entered in the form.</p>';
  return '<section class="ux-app ja-page ja-outcome"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
   '<h1>'+heading+'</h1><div class="ux-panel ja-outcome-panel" role="status">'+
-  '<div class="ja-outcome-label">APPLICATION RECEIVED · AWAITING EMAIL CONFIRMATION</div>'+
+  '<div class="ja-outcome-label">'+(accepted?'APPLICATION RECEIVED · AWAITING EMAIL CONFIRMATION':'EMAIL CONFIRMATION REQUIRED')+'</div>'+
   '<h2>One more step: confirm your email</h2>'+email+
   '<ol class="ja-outcome-steps"><li>Open the email with the subject “Confirm your XITA Network application”.</li>'+
   '<li>Click the private confirmation link within <strong>24 hours</strong>.</li>'+
