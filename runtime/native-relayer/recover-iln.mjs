@@ -417,7 +417,9 @@ main().catch((error) => {
     Number.isInteger(error?.code)?error.code:null;
   console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
     status:"RECOVERY_NOT_READY",messageId:id,stage,rpcCode,
-    error:String(error?.shortMessage||error?.message||"Unknown proof failure").slice(0,1500)
+    // Preserve the *node's* JSON-RPC failure reason when ethers wraps it in
+    // a generic "could not coalesce" message. Keep full detail private to logs.
+    error:String(inner?.message||error?.shortMessage||error?.message||"Unknown proof failure").slice(0,1500)
   }));
   process.exitCode=1;
 });
