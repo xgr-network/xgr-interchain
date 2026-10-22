@@ -397,8 +397,16 @@ export function dashboardMarketRows(catalog,metrics){
 }
 export function dashboardRankingRows(catalog,metrics,key){
  if(!["marketCapUsd","lockedUsd","movedUsd"].includes(key))return [];
- return rankAssets(buildLeaderboardRows(catalog,metrics)
-  .filter(row=>Number.isFinite(row[key])&&row[key]>=0),key,"desc").slice(0,5);
+ const rows=buildLeaderboardRows(catalog,metrics);
+ if(key==="lockedUsd")for(const row of rows){
+  if(row.lockedUsd===null){
+   const historic=metrics?.lastVerifiedAssets?.[row.id];
+   if(typeof historic?.lockedUsd==="number"&&Number.isFinite(historic.lockedUsd)&&historic.lockedUsd>=0){
+    row.lockedUsd=historic.lockedUsd;row.historicalAsOf=historic.asOf;
+   }
+  }
+ }
+ return rankAssets(rows.filter(row=>Number.isFinite(row[key])&&row[key]>=0),key,"desc").slice(0,5);
 }
 function dashboardTopTokens(catalog,metrics){
  const panels=[
@@ -417,7 +425,7 @@ function dashboardTopTokens(catalog,metrics){
       '<span class="ux-dashboard-token-name"><span class="ux-dashboard-token-rank">'+(i+1)+'</span>'+
       '<span class="ux-token-sphere" aria-hidden="true"></span>'+
       '<span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
-      '<strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong></a>').join("")+'</div>':
+      '<span class="ux-dashboard-token-amount"><strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong>'+(row.historicalAsOf?'<small>Last verified</small>':'')+'</span></a>').join("")+'</div>':
       '<p class="ux-dashboard-ranking-empty">'+panel.empty+'</p>')+
      '<a class="ux-dashboard-ranking-link" data-nav href="/markets">Browse tokens →</a></article>';
   }).join("")+'</section>';
