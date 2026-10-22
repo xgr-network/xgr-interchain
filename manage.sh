@@ -489,6 +489,29 @@ complete_update() {
   require_clean_main
   publish_web
   install_sync
+  # Publish newly added read-only API locations as part of the same update
+  # that ships browser code expecting them. The installer is idempotent,
+  # validates Nginx, and restores the vhost on failed validation.
+  # Never leave a new browser release pointing at the fail-closed 503 route.
+  if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
+    if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
+      privileged "$(command -v node)" "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
+    else
+      privileged "$(command -v node)" "$ROOT/tools/install-transfer-recovery-nginx.mjs"
+    fi
+    # Verify that HTTPS requests actually reach this service; a wildcard
+    # fallback 503 or outdated vhost must never pass as a deployed RPC proxy.
+    local status
+    status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+      --resolve xita.xgr.network:443:127.0.0.1 \
+      -H 'Content-Type: application/json' \
+      -d '{"rpcUrl":"https://rpc.xgr.network","method":"eth_chainId","params":[]}' \
+      https://xita.xgr.network/api/xeta/v1/rpc/read)" || status="000"
+    if [[ "$status" != "200" ]]; then
+      echo "ERROR: XITA read-only RPC API is not operational after updating Nginx (HTTP $status)." >&2
+      return 1
+    fi
+  fi
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-indexer.service
   fi

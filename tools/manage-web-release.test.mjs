@@ -71,3 +71,12 @@ test("TVL installer checks root-only indexer env with privileged access",()=>{
  assert.doesNotMatch(part,/\[\[ -f \/etc\/xita\/indexer\.env \]\]/);
  assert.match(part,/privileged grep -q/);
 });
+
+test("update installs exact read-only RPC Nginx route and refuses public fallback 503",()=>{
+ const section=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(section);
+ assert.match(section,/install-transfer-recovery-nginx\.mjs/);
+ assert.match(section,/xita\.xgr\.network\/api\/xeta\/v1\/rpc\/read/);
+ assert.match(section,/http_code/);
+ assert.match(section,/\$status" != "200"/);
+});
