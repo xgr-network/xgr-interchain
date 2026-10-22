@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {draft,validateStep,joinMarkup} from "./join.js";
+import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 
 const chains={
  xgrchain:{name:"XGRChain",nativeCurrency:{symbol:"XGR"}},
@@ -60,4 +60,25 @@ test("invalid formatting is detected on project identity step, not on Review",()
  assert.deepEqual(validateStep(d,0,chains),[]);
  d.description="A description with disallowed <script> markup.";
  assert.deepEqual(validateStep(d,0,chains),["Full description (40–5000 characters)"]);
+});
+
+test("submission displays a standalone email-confirmation page without another submit button",()=>{
+ const h=joinPendingMarkup(valid());
+ assert.match(h,/Check your email/);
+ assert.match(h,/holder@example\.org/);
+ assert.match(h,/24 hours/);
+ assert.doesNotMatch(h,/data-join-action="submit"|Verify & submit application/);
+});
+test("confirmation states always retain error or PR result on re-render",()=>{
+ const working=joinConfirmationMarkup({phase:"verifying"});
+ assert.match(working,/Checking your private confirmation/);
+ const failed=joinConfirmationMarkup({phase:"failed",message:"GitHub rejected request (403)"});
+ assert.match(failed,/GitHub rejected request \(403\)/);
+ assert.doesNotMatch(failed,/id="ja-confirm-pr"/);
+ const success=joinConfirmationMarkup({phase:"success",prNumber:250,prUrl:"https://github.com/xgr-network/xgr-interchain/pull/250"});
+ assert.match(success,/GitHub Draft PR #250/);
+ assert.match(success,/Your application is confirmed/);
+ assert.doesNotMatch(success,/Checking your private confirmation/);
+ const hostile=joinConfirmationMarkup({phase:"failed",message:"<script>alert(1)</script>"});
+ assert.doesNotMatch(hostile,/<script>/);
 });

@@ -26,7 +26,7 @@ export function validateStep(d,step,chains){
  }
  return missing;
 }
-export function joinMarkup(chains,d,step,status=""){
+export function joinMarkup(chains,d,step,status="",busy=false){
  const pick=(field,label,opts={})=>'<label class="ja-field"><span>'+label+'</span><input data-join="'+field+'" type="'+(opts.type||"text")+'" value="'+escape(d[field]??"")+'" '+(opts.required===false?"":"required")+' placeholder="'+escape(opts.placeholder||"")+'" maxlength="'+(opts.max||500)+'"></label>';
  const textarea=(field,label,rows=3)=>'<label class="ja-field"><span>'+label+'</span><textarea data-join="'+field+'" rows="'+rows+'">'+escape(d[field])+'</textarea></label>';
  const selectChain='<label class="ja-field"><span>Canonical blockchain <b>*</b></span><select data-join="canonicalChain"><option value="">Select home chain…</option>'+Object.entries(chains).filter(([key])=>["base","polygon","arbitrum"].includes(key)).map(([key,c])=>'<option value="'+escape(key)+'" '+(key===d.canonicalChain?"selected":"")+'>'+escape(c.name||key)+'</option>').join("")+'</select></label>';
@@ -45,10 +45,54 @@ export function joinMarkup(chains,d,step,status=""){
  '<div class="ja-form-head"><div class="ux-kicker">Step '+(step+1)+' / 3</div><h2>'+steps[step]+'</h2></div>'+
  fieldSets[step]+'<div class="ja-status" id="ja-status" role="alert">'+escape(status)+'</div><div class="ja-actions">'+
  (step>0?'<button class="ux-outline-button" data-join-action="back">← Back</button>':'<span></span>')+
- '<button class="ux-button" data-join-action="'+(step===2?"submit":"next")+'">'+(step===2?"Verify & submit application":"Continue →")+'</button></div>'+
+ '<button class="ux-button" data-join-action="'+(step===2?"submit":"next")+'" '+(busy?"disabled aria-busy=\"true\"":"")+'>'+(busy?"Checking application…":step===2?"Verify & submit application":"Continue →")+'</button></div>'+
  '<button class="ja-export" type="button" data-join-action="export">Export application draft</button></section>'+
  '<aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · CONNECTED UNIVERSE</div><h2 data-join-preview="name">'+escape(d.name||"Your Token")+'</h2>'+
  '<div class="ja-universe-link"><div class="ja-universe-link-mark" aria-hidden="true">✧</div><div class="ja-universe-link-copy"><div class="ux-kicker">EXPLORE THE XITA UNIVERSE</div><strong>Discover connected worlds</strong><p>Explore the real 3D universe, with XGRChain as the interchain gateway.</p><a class="ja-universe-link-action" href="/universe" target="_blank" rel="noopener noreferrer">Explore the Universe ↗</a></div></div>'+
  '<div class="ja-preview-data"><div><span>Origin</span><strong>'+escape(d.canonicalChain||"Not selected")+'</strong></div><div><span>Asset</span><strong data-join-preview="symbol">'+escape(d.symbol||"—")+'</strong></div><div><span>Planned routes</span><strong>'+(d.canonicalChain?Object.keys(chains).filter(k=>k!=="xgrchain").length*2:0)+'</strong></div><div><span>Status</span><strong>Not deployed</strong></div></div>'+
  '<p class="ja-info">Your token page address is assigned automatically after review'+(profileSlug?': /token/'+escape(profileSlug):'')+'. No technical URL setup is required.</p><p class="ja-info">Application preview only. No route has been approved or deployed. XGR sponsors deployment only after a positive review; public discovery requires verified net locked value above the policy threshold.</p></aside></div></div>';
+}
+
+
+// The accepted request is no longer an editable form. No additional submission is possible.
+export function joinPendingMarkup(data){
+ return '<section class="ux-app ja-page ja-outcome"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
+  '<h1>Check your email</h1><div class="ux-panel ja-outcome-panel" role="status">'+
+  '<div class="ja-outcome-label">APPLICATION RECEIVED · EMAIL CONFIRMATION REQUIRED</div>'+
+  '<p>We sent a confirmation link to <strong>'+escape(data?.contactEmail||"your inbox")+'</strong>.</p>'+
+  '<ol class="ja-outcome-steps"><li>Open the email with the subject “Confirm your XITA Network application”.</li>'+
+  '<li>Use its private confirmation link within 24 hours.</li>'+
+  '<li>XITA will verify the token again and, if successful, create a GitHub Draft PR for XGR review.</li></ol>'+
+  '<p class="ja-info">Check your spam folder if necessary. No GitHub proposal or contract deployment has been created yet. Please do not submit the same token a second time.</p>'+
+  '<a class="ux-outline-button ja-outcome-link" href="/markets" data-nav>Browse tokens</a>'+
+  '</div></section>';
+}
+
+export function joinConfirmationMarkup(state={}){
+ const phase=state.phase||"idle";
+ const successful=phase==="success";
+ const failed=phase==="failed";
+ const invalid=phase==="invalid";
+ const title=successful?"Your application is confirmed":failed?"We could not complete confirmation":
+  invalid?"Confirmation link unavailable":"Confirm your XITA application";
+ const heading=successful?"DRAFT PROPOSAL CREATED":failed?"CONFIRMATION NOT COMPLETED":
+  invalid?"INVALID LINK":"CHECKING EMAIL & TOKEN IDENTITY";
+ const safePr=successful&&Number.isSafeInteger(state.prNumber)&&state.prNumber>0&&
+  state.prUrl==="https://github.com/xgr-network/xgr-interchain/pull/"+state.prNumber;
+ const intro=successful?"Your email has been confirmed and the token proposal is awaiting XGR review.":
+  failed?"The application has not been confirmed in this browser. The server reported:":
+  invalid?"Open the complete confirmation link from the email. No public proposal was created by this page.":
+  "Checking your private confirmation, revalidating the token and preparing the GitHub Draft PR. This may take a short while.";
+ const detail=failed?'<p class="ja-outcome-error">'+escape(state.message||"Confirmation service unavailable")+'</p>':"";
+ const more=successful?'<p class="ja-info">Draft PR #'+escape(state.prNumber)+
+  ' is a proposal only. No contracts have been deployed and no routes are live.</p>':
+  failed?'<p class="ja-info">Do not submit a new application. Check whether a GitHub proposal was already created before using the same email link again or contacting XGR support.</p>':
+  invalid?"":'<p class="ja-info">Please keep this page open. Do not submit another application while verification is in progress.</p>';
+ return '<section class="ux-app ja-page ja-outcome"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
+  '<h1>'+title+'</h1><div class="ux-panel ja-outcome-panel">'+
+  '<div class="ja-outcome-label">'+heading+'</div>'+
+  '<p id="ja-confirm-status" role="status" aria-live="polite">'+intro+'</p>'+detail+more+
+  (safePr?'<a id="ja-confirm-pr" class="ux-outline-button ja-outcome-link" href="'+state.prUrl+'" target="_blank" rel="noopener noreferrer">View GitHub Draft PR #'+state.prNumber+' ↗</a>':"")+
+  (successful?'<p class="ja-info">You will receive application status updates by email.</p>':"")+
+  '</div></section>';
 }
