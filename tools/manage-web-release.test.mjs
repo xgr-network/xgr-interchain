@@ -98,3 +98,16 @@ test("indexer installer waits for real HTTP socket readiness before checking pro
  assert.match(probe,/journalctl -u xita-indexer\.service/);
  assert.doesNotMatch(probe,/restart xita-indexer/);
 });
+
+test("DB repair uses idempotent additive migrations and plain SQL checks without malformed DO quoting",()=>{
+ const part=shell.split("repair_transfer_db() (")[1]?.split("\n)\n")[0];
+ assert.ok(part,"missing DB repair command");
+ assert.match(part,/005_transfer_announcements\.sql/);
+ assert.match(part,/006_transfer_flow_timestamps\.sql/);
+ assert.match(part,/to_regclass\('public\.xita_transfer_announcements'\)/);
+ assert.match(part,/source_block_at/);
+ assert.match(part,/escrow_outflow_observed_at/);
+ assert.doesNotMatch(part,/\bDO\s+\$/);
+ assert.match(part,/GRANT SELECT, UPDATE, DELETE/);
+ assert.match(part,/systemctl restart xita-transfer-indexer\.service/);
+});
