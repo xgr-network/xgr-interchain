@@ -28,6 +28,7 @@ Usage: ./manage.sh <command>
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   init-merkle   Bootstrap and verify an XGR v3.2.0 validator Merkle replica (requires --chain and --data-dir)
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
+  repair-transfer-db  Apply missing additive SQL 005/006 to local XITA database and verify schema
   install-tvl  Install read-only generic escrow TVL and gross 24h evidence worker (preconfigured credentials required)
   install-fee-preview  Install read-only unsigned transfer fee preview (no keys, no sponsor timers)
   install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
@@ -531,6 +532,52 @@ install_tvl() (
   echo "XITA TVL worker installed using existing indexer read-only configuration. Unverified amounts remain unavailable."
 )
 
+# Idempotent local schema repair. No public RPC, explorer API keys, wallet
+# actions or validator changes. Requires the existing PostgreSQL admin role.
+repair_transfer_db() (
+  require_clean_main
+  local db="${XITA_TRANSFER_DB_NAME:-xita}"
+  [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || { echo "ERROR: Invalid local DB name" >&2; return 1; }
+  echo "Checking PostgreSQL availability for existing XITA database $db ..."
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "SELECT 1" >/dev/null
+  echo "Applying additive XITA transfer migrations 005 and 006 ..."
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    -f "$ROOT/services/indexer/sql/005_transfer_announcements.sql" \
+    -f "$ROOT/services/indexer/sql/006_transfer_flow_timestamps.sql"
+  echo "Verifying transfer schema and existing restricted-role permissions ..."
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" <<'SQL'
+DO $
+BEGIN
+ IF to_regclass('public.xita_transfer_announcements') IS NULL OR
+    NOT EXISTS(SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='xita_transfer_operations'
+       AND column_name='source_block_at') OR
+    NOT EXISTS(SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='xita_transfer_operations'
+       AND column_name='escrow_outflow_observed_at') THEN
+  RAISE EXCEPTION 'Required XITA transfer schema is incomplete';
+ END IF;
+END $;
+DO $
+BEGIN
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
+  GRANT SELECT,UPDATE,DELETE ON public.xita_transfer_announcements TO xita_transfer_worker;
+ END IF;
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_indexer_reader') THEN
+  GRANT SELECT ON public.xita_transfer_announcements TO xita_indexer_reader;
+ END IF;
+END $;
+SQL
+  if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-transfer-indexer.service
+  fi
+  if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-indexer.service
+    wait_xita_indexer
+  fi
+  echo "SUCCESS: XITA transfer DB schema repaired. Worker progress still requires observing fresh indexer cursors."
+)
+
 complete_update() {
   require_clean_main
   publish_web
@@ -639,6 +686,7 @@ case "${1:-help}" in
     ;;
   update) update ;;
   install-sync) install_sync ;;
+  repair-transfer-db) repair_transfer_db ;;
   install-transfer-intake)
     install_transfer_intake
     ;;
