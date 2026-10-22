@@ -13,7 +13,7 @@ const hook="0x"+"2".repeat(40);
 const route="iln_8453_1643_"+routeId.slice(2);
 const attestation={
  chain:route,routeId,authorizedMessageId:messageId,
- sourceBlockNumber:128,index:0,setId:3,root,payload:"0xabcdef",
+ sourceBlockNumber:1,index:0,setId:3,root,payload:"0xabcdef",
  registry,validatorFeeWei:"100000000000000000",
 };
 const response={
@@ -32,8 +32,8 @@ test("v3.2.0 validator-native proof matches current BLS payload and Merkle root"
  assert.equal(result.checkpointIndex,0);
  assert.deepEqual(result.proof,siblings);
 });
-test("old source transaction can be earlier than a valid BLS checkpoint epoch",()=>{
- assert.ok(96<Number(attestation.sourceBlockNumber));
+test("source transaction block and signed insertion sequence are independent",()=>{
+ assert.equal(Number(attestation.sourceBlockNumber),1);
  assert.equal(verify().checkpointBlock,128);
 });
 test("reject foreign validator route, signed root, message or current set",()=>{
@@ -43,7 +43,7 @@ test("reject foreign validator route, signed root, message or current set",()=>{
   {...response,originChainId:1643},
   {...response,merkleTreeHook:registry},
   {...response,root:"0x"+"b".repeat(64)},
-  {...response,checkpointBlock:96},
+  {...response,checkpointBlock:0},
   {...response,checkpointIndex:1},
   {...response,quorum:{...attestation,setId:4}},
   {...response,quorum:{...attestation,payload:"0x112233"}},
@@ -73,6 +73,6 @@ test("newer independently verified identical Hook prefix remains valid for an ol
  const proof=verify({...response,checkpointBlock:160});
  assert.equal(proof.checkpointBlock,160);
  assert.equal(proof.checkpointIndex,0);
- assert.throws(()=>verify({...response,checkpointBlock:96}),/checkpoint/i);
+ assert.throws(()=>verify({...response,checkpointBlock:0}),/checkpoint/i);
  assert.throws(()=>verify({...response,checkpointBlock:160,root:"0x"+"b".repeat(64)}),/root/i);
 });
