@@ -25,6 +25,7 @@ Usage: ./manage.sh <command>
   publish-web   Publish static apps/web and restart the admin
   update        Pull GitHub main, validate, publish web, restart admin
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
+  install-join  Install private Join API and status mail timer (no chain changes)
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   init-merkle   Bootstrap and verify an XGR v3.2.0 validator Merkle replica (requires --chain and --data-dir)
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
@@ -268,6 +269,40 @@ install_sync() (
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-deployment-sync.path xita-deployment-sync-poll.timer
   echo "SUCCESS: receipt watcher and periodic recovery poll installed."
+)
+
+install_join() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner" >&2; return 1; }
+  local user group node_bin tmp unit
+  user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
+  [[ "$user" =~ ^[a-z_][a-z0-9_-]*$ && "$group" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
+  [[ "$ROOT" == /* && "$node_bin" == /* && "$ROOT$node_bin" != *'@'* && "$ROOT$node_bin" != *'%'* ]] || return 1
+  privileged test -f /etc/xita/join.env || { echo "Missing /etc/xita/join.env" >&2; return 1; }
+  [[ "$(privileged stat -c '%a' /etc/xita/join.env)" == "600" ]] || { echo "Join env needs mode 600" >&2; return 1; }
+  privileged install -d -m 0700 -o "$user" -g "$group" /var/lib/xita/join
+  npm install --prefix "$ROOT/services/onboarding" --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false
+  node --test "$ROOT"/services/onboarding/*.test.mjs "$ROOT/tools/join-nginx.test.mjs"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  for unit in xita-join.service xita-join-notifier.service; do
+    sed -e "s|@SERVICE_USER@|$user|g" -e "s|@SERVICE_GROUP@|$group|g" \
+        -e "s|@ROOT@|$ROOT|g" -e "s|@NODE_BIN@|$node_bin|g" \
+        "$ROOT/deploy/systemd/$unit.in" > "$tmp/$unit"
+    privileged install -m 0644 "$tmp/$unit" "/etc/systemd/system/$unit"
+  done
+  privileged install -m 0644 "$ROOT/deploy/systemd/xita-join-notifier.timer.in" /etc/systemd/system/xita-join-notifier.timer
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-join.service
+  privileged systemctl is-active --quiet xita-join.service || return 1
+  curl --fail --silent --show-error --max-time 8 http://127.0.0.1:4090/api/xita/join/status
+  echo
+  # Global Nginx http rate-limit zone must be configured by operator.
+  privileged "$node_bin" "$ROOT/tools/install-join-nginx.mjs"
+  privileged systemctl enable --now xita-join-notifier.timer
+  curl --fail --silent --show-error --max-time 8 https://xita.xgr.network/api/xita/join/status
+  echo
+  echo "XITA Join installed; check available:true before live applicant submission"
 )
 
 install_transfer_api() (
@@ -694,6 +729,7 @@ case "${1:-help}" in
     ;;
   update) update ;;
   install-sync) install_sync ;;
+  install-join) install_join ;;
   repair-transfer-db) repair_transfer_db ;;
   install-transfer-intake)
     install_transfer_intake
