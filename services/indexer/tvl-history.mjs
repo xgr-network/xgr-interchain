@@ -9,6 +9,9 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=2160}
  const at=Date.parse(snapshot?.asOf);
  if(!Number.isFinite(at))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const amount=facts.reduce((n,f)=>n+f.lockedUsd,0);
+ // Never erase later observations if the clock regresses or an old snapshot is retried.
+ if(previous.length&&at<=Date.parse(previous.at(-1).asOf))
+  return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const points=previous.filter(p=>Date.parse(p.asOf)<at);
  // Snapshots are produced from independent escrow reconciliation, not browser claims.
  points.push({asOf:new Date(at).toISOString(),lockedUsd:amount});
