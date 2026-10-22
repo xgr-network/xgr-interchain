@@ -311,6 +311,9 @@ function tvlHistoryChart(metrics,period="24h"){
  const axisFormat=t=>valid==="24h"?new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
  const axis='<div class="ux-ns-tvl-axis"><span>'+esc(axisFormat(start))+'</span><span>'+esc(axisFormat(end))+'</span></div>';
  if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected; not enough verified history for this period.</p>'+axis+'</div>';
+ const span=Date.parse(points.at(-1).asOf)-Date.parse(points[0].asOf);
+ if(span<intervals[valid]*.05)return '<div class="ux-ns-tvl-history is-empty">'+tabs+
+  '<p>Verified history covers only '+Math.max(1,Math.round(span/60000))+' minutes. Collecting more observations.</p>'+axis+'</div>';
  const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
  const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/(end-start),y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
@@ -323,6 +326,10 @@ function tvlHistoryChart(metrics,period="24h"){
 }
 
 function northstarCards(model,metrics=null,period="24h"){
+ const recent=Array.isArray(metrics?.history?.points)?metrics.history.points.filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf))).sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf)).at(-1):null;
+ const liveTVL=metrics?.totals?.lockedUsd;
+ const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
+ const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
  const tvlChange=tvlChange24h(metrics);
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
@@ -342,9 +349,10 @@ function northstarCards(model,metrics=null,period="24h"){
    '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
-   '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
+   '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
    '<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
    (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span></div>'+
+   (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
    tvlHistoryChart(metrics,period)+
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
