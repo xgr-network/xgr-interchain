@@ -399,9 +399,9 @@ test("dashboard derives active transfers from deployed catalog receipts, not mut
  const html=renderDashboard(model,{},"ready",null,c);
  assert.equal(model.transferRoutes.length,4);
  assert.match(html,/4<\/strong><span>Active directions<\/span>/);
- assert.match(html,/data-xita-system="base"[\\s\\S]*?is-active">Active/);
- assert.match(html,/data-xita-system="arbitrum"[\\s\\S]*?is-active">Active/);
- assert.match(html,/data-xita-system="polygon"[\\s\\S]*?In preparation/);
+ assert.match(html,/data-xita-system="base".*?is-active">Active/);
+ assert.match(html,/data-xita-system="arbitrum".*?is-active">Active/);
+ assert.match(html,/data-xita-system="polygon".*?In preparation/);
  assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
 });
 
