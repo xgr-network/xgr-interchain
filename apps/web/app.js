@@ -499,6 +499,10 @@ async function performTransferAction(){
    onBroadcast:({txHash})=>{
     broadcastKnown=true;
     flowView.sourceTxHash=txHash;setFlowStage("source-pending");
+    // Preserve the canonical source hash in the URL immediately after
+    // broadcast. A reload must not turn a pending source into a new CTA.
+    transferActivity.selectedTxHash=txHash;
+    history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset)+"&resume="+txHash);
     announceWalletSourceTx(origin,txHash,account);
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
     render();
@@ -507,7 +511,11 @@ async function performTransferAction(){
   setFlowStage("source-pending","Source TX submitted. Waiting for lock/burn confirmation…");
   const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
   if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
-  else if(receipt.status!=="0x1")transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+  else if(receipt.status!=="0x1"){
+   transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+   transferActivity.selectedTxHash=null;
+   history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset));
+  }
   else {
    // The source receipt is irreversible. Continue this SAME on-chain message,
    // never start another bridge. The destination still requires a wallet signature.
