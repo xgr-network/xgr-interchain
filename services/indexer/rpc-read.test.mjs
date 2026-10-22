@@ -68,3 +68,63 @@ test("wrong-chain and untrusted RPC responses fail closed",async()=>{
   request:{rpcUrl:arb,method:"eth_chainId",params:[]},
   fetcher:async()=>ok("0x2105")}),/All catalog-approved/);
 });
+
+test("latest-only eth_getCode is allowed; archive-state requests remain refused",()=>{
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]}}};
+ const address="0x"+"a".repeat(40);
+ assert.equal(resolveCatalogRpcRead(catalog,{rpcUrl:"https://rpc.xgr.network",
+  method:"eth_getCode",params:[address,"latest"]}).method,"eth_getCode");
+ assert.throws(()=>resolveCatalogRpcRead(catalog,{rpcUrl:"https://rpc.xgr.network",
+  method:"eth_getCode",params:[address,"0x100"]}),/latest-state/);
+});
+test("many concurrent wallet reads single-flight one verified chain ID",async()=>{
+ const url="https://rpc.xgr.network";
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:[url]}}};
+ let identityCalls=0,reads=0;
+ const fetcher=async(_url,options)=>{
+  const {method}=JSON.parse(options.body);
+  if(method==="eth_chainId"){
+   identityCalls++;
+   await new Promise(resolve=>setImmediate(resolve));
+   return ok("0x66b");
+  }
+  reads++;
+  return ok("0x123");
+ };
+ const responses=await Promise.all(Array.from({length:5},()=>proxyCatalogRpcRead({
+  catalog,request:{rpcUrl:url,method:"eth_getBalance",
+   params:["0x"+"a".repeat(40),"latest"]},fetcher})));
+ assert.deepEqual(responses,Array(5).fill("0x123"));
+ assert.equal(identityCalls,1,"single-flight avoids overloading upstream during wallet refresh");
+ assert.equal(reads,5);
+});
+test("proxy 503 errors preserve safe upstream failure categories, not secrets or request params",async()=>{
+ const url="https://rpc.xgr.network";
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:[url]}}};
+ const request={rpcUrl:url,method:"eth_getBalance",
+  params:["0x"+"a".repeat(40),"latest"]};
+ await assert.rejects(()=>proxyCatalogRpcRead({
+  catalog,request,
+  fetcher:async()=>({ok:false,status:403,text:async()=>"<html>blocked</html>"})
+ }),error=>{
+  assert.equal(error.rpcReadCode,"RPC_ALL_ENDPOINTS_FAILED");
+  assert.deepEqual(error.attempts,[{endpoint:1,phase:"identity",code:"RPC_UPSTREAM_HTTP_403"}]);
+  assert.equal(error.chainId,1643);
+  assert.ok(!JSON.stringify(error.attempts).includes(request.params[0]));
+  return true;
+ });
+});
+test("a failed read invalidates the identity cache and independently checks fallback chain",async()=>{
+ const first="https://arb1.arbitrum.io/rpc",backup="https://arbitrum-one-rpc.publicnode.com";
+ let calls=0;
+ const fetcher=async(url,options)=>{
+  const method=JSON.parse(options.body).method;
+  if(method==="eth_chainId")return ok(url===first?"0xa4b1":"0xa4b1");
+  if(url===first){calls++;return {ok:false,status:503,text:async()=>""}}
+  return ok("0x50");
+ };
+ const result=await proxyCatalogRpcRead({catalog:cat,
+  request:{rpcUrl:first,method:"eth_gasPrice",params:[]},fetcher});
+ assert.equal(result,"0x50");
+ assert.equal(calls,1);
+});

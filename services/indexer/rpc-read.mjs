@@ -4,7 +4,7 @@
 const ALLOWED=new Set([
  "eth_chainId","eth_blockNumber","eth_gasPrice","eth_getBalance",
  "eth_getTransactionCount","eth_call","eth_getTransactionByHash",
- "eth_getTransactionReceipt","eth_getLogs"
+ "eth_getTransactionReceipt","eth_getLogs","eth_getCode"
 ]);
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -28,6 +28,9 @@ function validateParams(method,params){
    ["latest","pending"].includes(params[1])||bad("Invalid account RPC parameters");
  if(method==="eth_getTransactionReceipt"||method==="eth_getTransactionByHash")
   return params.length===1&&HASH.test(params[0])||bad("Invalid transaction hash");
+ if(method==="eth_getCode")
+  return params.length===2&&ADDRESS.test(params[0])&&params[1]==="latest"||
+   bad("Only latest-state contract code is readable");
  if(method==="eth_call"){
   const tx=params[0];
   return params.length===2&&isObj(tx)&&ADDRESS.test(tx.to)&&
@@ -68,37 +71,108 @@ export function resolveCatalogRpcRead(catalog,request){
  }
  bad("RPC URL is not present in the documented chain catalog");
 }
+// Upstream failures are grouped by cause. Never log raw JSON-RPC params,
+// wallet addresses, transaction hashes or provider credentials.
+function rpcProblem(code){
+ const error=Error(code);
+ error.rpcReadCode=code;
+ return error;
+}
+function diagnosticCode(error){
+ if(typeof error?.rpcReadCode==="string"&&
+    /^RPC_[A-Z0-9_]{3,64}$/.test(error.rpcReadCode))
+  return error.rpcReadCode;
+ const type=String(error?.name||"");
+ const cause=String(error?.cause?.code||error?.code||"");
+ if(type==="TimeoutError"||type==="AbortError"||
+    /TIMEOUT|TIMED_OUT|ETIMEDOUT/.test(cause))return "RPC_UPSTREAM_TIMEOUT";
+ if(cause==="ENOTFOUND"||cause==="EAI_AGAIN")return "RPC_UPSTREAM_DNS";
+ if(cause==="ECONNREFUSED"||cause==="ECONNRESET"||
+    cause==="UND_ERR_SOCKET")return "RPC_UPSTREAM_CONNECTION";
+ if(type==="TypeError")return "RPC_UPSTREAM_NETWORK";
+ return "RPC_UPSTREAM_UNEXPECTED";
+}
 async function rawRpc(url,method,params,fetcher){
  const response=await fetcher(url,{method:"POST",redirect:"error",
   headers:{"content-type":"application/json","accept":"application/json"},
-  signal:AbortSignal.timeout(4000),
+  signal:AbortSignal.timeout(6000),
   body:JSON.stringify({jsonrpc:"2.0",id:1,method,params})});
- if(!response?.ok)throw Error("Upstream chain RPC unavailable");
+ if(!response?.ok){
+  const status=Number(response?.status);
+  throw rpcProblem(Number.isInteger(status)&&status>=100&&status<=599?
+   "RPC_UPSTREAM_HTTP_"+status:"RPC_UPSTREAM_HTTP_ERROR");
+ }
  const content=await response.text();
- if(content.length>1500000)throw Error("Upstream chain RPC response too large");
- const j=JSON.parse(content);
- if(!isObj(j)||j.jsonrpc!=="2.0"||j.id!==1||Object.hasOwn(j,"error")||
-  !Object.hasOwn(j,"result"))throw Error("Invalid upstream chain RPC response");
+ if(content.length>1500000)throw rpcProblem("RPC_UPSTREAM_RESPONSE_TOO_LARGE");
+ let j;
+ try{j=JSON.parse(content)}
+ catch{throw rpcProblem("RPC_UPSTREAM_NOT_JSON")}
+ if(!isObj(j)||j.jsonrpc!=="2.0"||j.id!==1||
+   !Object.hasOwn(j,"result")||Object.hasOwn(j,"error"))
+  throw rpcProblem(Object.hasOwn(j||{},"error")?
+   "RPC_UPSTREAM_JSONRPC_ERROR":"RPC_UPSTREAM_INVALID_RESPONSE");
  return j.result;
+}
+// The XITA transfer page makes many concurrent same-chain balance, gas and
+// route checks. Single-flight verification prevents a thundering herd of
+// redundant eth_chainId requests, while retaining bounded periodic identity
+// revalidation and fail-closed behavior on mismatches.
+const identities=new WeakMap();
+const IDENTITY_TTL_MS=15000;
+function fetcherIdentityState(fetcher){
+ let state=identities.get(fetcher);
+ if(!state){
+  state={verified:new Map(),pending:new Map()};
+  identities.set(fetcher,state);
+ }
+ return state;
+}
+async function verifyUpstreamIdentity({url,chainId,fetcher,state}){
+ const key=chainId+"|"+url,now=Date.now();
+ const known=state.verified.get(key);
+ if(known&&known.expiresAt>now)return known.id;
+ const inFlight=state.pending.get(key);
+ if(inFlight)return inFlight;
+ const verify=(async()=>{
+  const actualId=await rawRpc(url,"eth_chainId",[],fetcher);
+  if(!BLOCK.test(actualId)||BigInt(actualId)!==BigInt(chainId))
+   throw rpcProblem("RPC_UPSTREAM_CHAIN_MISMATCH");
+  state.verified.set(key,{id:actualId,expiresAt:Date.now()+IDENTITY_TTL_MS});
+  return actualId;
+ })();
+ state.pending.set(key,verify);
+ try{return await verify}
+ finally{if(state.pending.get(key)===verify)state.pending.delete(key)}
 }
 // Concurrency bound prevents an unauthenticated public client from exhausting
 // a single-loopback read service; no write calls or secrets are forwarded.
 let active=0;
 export async function proxyCatalogRpcRead({catalog,request,fetcher=globalThis.fetch}){
  const spec=resolveCatalogRpcRead(catalog,request);
- if(typeof fetcher!=="function")throw Error("RPC fetch unavailable");
- if(active>=24)throw Error("Read-only RPC capacity exhausted");
+ if(typeof fetcher!=="function")throw rpcProblem("RPC_FETCH_UNAVAILABLE");
+ if(active>=24)throw rpcProblem("RPC_CAPACITY_EXHAUSTED");
  active++;
+ const state=fetcherIdentityState(fetcher);
+ const attempts=[];
  try{
-  for(const url of spec.urls){
+  for(let index=0;index<spec.urls.length;index++){
+   const url=spec.urls[index],key=spec.chainId+"|"+url;
+   let phase="identity";
    try{
-    const actualId=await rawRpc(url,"eth_chainId",[],fetcher);
-    if(!BLOCK.test(actualId)||BigInt(actualId)!==BigInt(spec.chainId))
-     continue;
-    if(spec.method==="eth_chainId")return actualId;
+    const id=await verifyUpstreamIdentity({url,chainId:spec.chainId,fetcher,state});
+    if(spec.method==="eth_chainId")return id;
+    phase="read";
     return await rawRpc(url,spec.method,spec.params,fetcher);
-   }catch{/* Try next approved endpoint; never trust a mismatched chain ID. */}
+   }catch(error){
+    state.verified.delete(key);
+    attempts.push({endpoint:index+1,phase,code:diagnosticCode(error)});
+    // Never trust a mismatched RPC, and never expose raw upstream data.
+   }
   }
-  throw Error("All catalog-approved chain RPCs failed");
+  const error=rpcProblem("RPC_ALL_ENDPOINTS_FAILED");
+  error.chainId=spec.chainId;
+  error.attempts=attempts;
+  error.message="All catalog-approved chain RPCs failed";
+  throw error;
  }finally{active--}
 }

@@ -23,7 +23,7 @@ async function rpcRead(endpoint,method,params,fetcher,signal){
  if(typeof result!=="string")throw Error("Invalid public RPC response");
  return result;
 }
-export async function readNativeGasBalances({account,chains,provider,fetcher=globalThis.fetch,timeoutMs=7000}={}){
+export async function readNativeGasBalances({account,chains,provider,fetcher=globalThis.fetch,timeoutMs=15000}={}){
  if(!ACCOUNT.test(account||""))throw Error("Connect an authorized wallet address first");
  if(!chains||typeof chains!=="object"||typeof fetcher!=="function"||
     !Number.isSafeInteger(timeoutMs)||timeoutMs<500||timeoutMs>30000)
