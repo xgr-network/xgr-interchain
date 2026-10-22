@@ -11,10 +11,8 @@ import {randomBytes} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import {createRequire} from "node:module";
 const require=createRequire(new URL("../services/indexer/package.json",import.meta.url));
-const {JsonRpcProvider,Contract,Interface}=require("ethers");
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const ADDR=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
-const ILN=new Interface(["event RouteAdded(uint32 indexed destinationDomain,bytes32 indexed routeId,address indexed gateway,address sourceRouter,address destinationRouter,uint256 validatorFeeWei,uint64 nonce)","function getRoute(uint32,bytes32) view returns (uint64,uint32,address,address,address,address,address,uint256,bool)"]);
 export function checkedRoute({catalog,source,route,registryReceipt,routeReceipt,chainID,event,onchain}){
  const info=catalog?.chains?.[source],registry=catalog?.infrastructure?.[source]?.xitaV315?.components?.sourceRegistry;
  const dst=catalog?.chains?.[route?.destination];
@@ -44,6 +42,8 @@ export function checkedRoute({catalog,source,route,registryReceipt,routeReceipt,
   gateway:route.gateway.toLowerCase()};
 }
 async function main(){
+ const {JsonRpcProvider,Contract,Interface}=require("ethers");
+ const ILN=new Interface(["event RouteAdded(uint32 indexed destinationDomain,bytes32 indexed routeId,address indexed gateway,address sourceRouter,address destinationRouter,uint256 validatorFeeWei,uint64 nonce)","function getRoute(uint32,bytes32) view returns (uint64,uint32,address,address,address,address,address,uint256,bool)"]);
  const args=process.argv.slice(2),value=k=>{const i=args.indexOf(k);return i>=0?args[i+1]:null};
  const source=value("--source"),dataDir=value("--data-dir"),apply=args.includes("--apply");
  if(!/^[a-z][a-z0-9-]{0,30}$/.test(source||"")||!dataDir||!dataDir.startsWith("/")||
