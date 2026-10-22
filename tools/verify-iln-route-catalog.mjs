@@ -20,7 +20,7 @@ export function checkedRoute({catalog,source,route,registryReceipt,routeReceipt,
    !TX.test(registryReceipt?.transactionHash)||!TX.test(routeReceipt?.transactionHash)||
    registryReceipt.status!==1||routeReceipt.status!==1||
    Number(registryReceipt.blockNumber)!==Number(onchain.registryBlock)||
-   registryReceipt.contractAddress?.toLowerCase()!==registry.address.toLowerCase()||
+   !onchain.registryCode||onchain.registryCode==="0x"||
    Number(routeReceipt.blockNumber)<=Number(registryReceipt.blockNumber)||
    Number(routeReceipt.blockNumber)>Number(onchain.head)||
    !event||!onchain.record||!onchain.record.enabled)
@@ -60,6 +60,7 @@ async function main(){
  const chainID=Number((await provider.getNetwork()).chainId);
  const head=await provider.getBlockNumber();
  const chainRegistry=new Contract(registry.address,ILN,provider);
+ const registryCode=await provider.getCode(registry.address);
  const registryTx=await provider.getTransactionReceipt(registryReceipt.transactionHash);
  const found=[];
  for(const route of routes){
@@ -80,7 +81,7 @@ async function main(){
    sourceRouter:raw[3],mailbox:raw[4],merkleTreeHook:raw[5],
    destinationRouter:raw[6],fee:raw[7],enabled:raw[8]};
   const hint=checkedRoute({catalog,source,route,registryReceipt:registryTx,routeReceipt:tx,
-   chainID,event,onchain:{registryBlock:registryReceipt.blockNumber,head,record}});
+   chainID,event,onchain:{registryBlock:registryReceipt.blockNumber,registryCode,head,record}});
   found.push(hint);
  }
  console.log(JSON.stringify({status:apply?"verified":"verified-dry-run",source,
