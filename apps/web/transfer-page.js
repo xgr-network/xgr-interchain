@@ -54,10 +54,10 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    '</article>';
  }).join("");
  return '<section class="ux-app ux-my-transfers" aria-label="My Transfers">'+
-  '<header><div class="ux-kicker">XITA · WALLET ACTIVITY</div><h1>My Transfers</h1>'+
+  '<div class="ux-my-transfers-intro"><div class="ux-kicker">XITA · WALLET ACTIVITY</div><h1>My Transfers</h1>'+
   '<p class="ux-muted">Only transfers initiated by your connected wallet are shown. Reconnect on another device to search on-chain; never repeat an already confirmed source transaction.</p>'+
   '<p class="ux-small">Connected '+esc(account.slice(0,6)+"…"+account.slice(-4))+
-  ' · Confirmed transfers use canonical Gateway/Mailbox evidence. A pending source TX is not a lock or proof of delivery.</p></header>'+
+  ' · Confirmed transfers use canonical Gateway/Mailbox evidence. A pending source TX is not a lock or proof of delivery.</p></div>'+
   '<div class="ux-transfer-actions"><button type="button" id="xita-scan-transfers"'+
   (scanning?" disabled":"")+'>Refresh wallet history</button>'+
   '<span class="ux-small">'+esc(scanning?"Checking wallet transfers…":
