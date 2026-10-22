@@ -10,7 +10,7 @@ test("header alert only counts genuine confirmed locks without delivery",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[
   {...open,status:"delivered",delivered:true},
   {...open,status:"delivery-unknown",delivered:null},
-  {...open,status:"pending-source",confirmed:false}]}),0);
+  {...open,status:"pending-source",confirmed:false}]}),1);
  assert.equal(pendingDeliveryCount({account:"0x"+"d".repeat(40),items:[open]}),0);
  assert.equal(pendingDeliveryCount({account:wallet,items:[open],indexedOpenCount:3}),3);
  assert.equal(pendingDeliveryCount({account:wallet,items:[],indexedOpenCount:-1}),0);
@@ -23,4 +23,22 @@ test("confirmed XGR transit delivery remains visibly unfinished until final jour
  assert.equal(pendingDeliveryCount({account:wallet,items:[{
   ...onward,onwardRouteId:null
  }]}),0);
+});
+
+test("confirmed source with unknown destination remains visibly pending",()=>{
+ const unknown={...open,status:"delivery-unknown",delivered:null};
+ assert.equal(pendingDeliveryCount({account:wallet,items:[unknown]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[
+  {...unknown,status:"destination-not-deployed"}]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[
+  {...unknown,confirmed:false}]}),0);
+});
+
+test("second-hop uncertain after XGR hub delivery is still pending",()=>{
+ const parent={...open,sourceChain:"arbitrum",destinationChain:"xgrchain",
+  finalDestinationChain:"base",onwardRouteId:"0x"+"e".repeat(64),
+  delivered:true,status:"final-delivery-unknown"};
+ assert.equal(pendingDeliveryCount({account:wallet,items:[parent]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-ambiguous"}]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-delivered"}]}),0);
 });

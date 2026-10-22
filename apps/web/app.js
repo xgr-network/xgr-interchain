@@ -13,6 +13,7 @@ import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
+import {listSourceTxHints,rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -222,6 +223,7 @@ function upsertTransfer(record){
 function announceWalletSourceTx(sourceChain,txHash,account=state.account){
  if(!validWalletAddress(account)||!state.catalog?.chains?.[sourceChain]||
    !/^0x[0-9a-f]{64}$/i.test(txHash||""))return;
+ rememberSourceTxHint({account,sourceChain,txHash});
  void fetch("/api/xeta/v1/transfers/announce",{
   method:"POST",credentials:"omit",cache:"no-store",
   headers:{"content-type":"application/json"},
@@ -284,6 +286,24 @@ async function scanWalletHistory(){
      // The other source chain may contain the original canonical operation.
     }
    }
+  }
+  // A missing SQL cursor must not erase a broadcast source TX after a reload.
+  // Hints are never displayed or executable until fresh wallet/receipt
+  // verification succeeds. Bound attempts to protect the browser/RPC.
+  const hints=listSourceTxHints(account).filter(h=>
+    !transferActivity.items.some(t=>t.sourceChain===h.sourceChain&&
+     t.txHash?.toLowerCase()===h.txHash));
+  for(const hint of hints.slice(0,4)){
+   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+   const key=account.toLowerCase()+":"+hint.sourceChain+":"+hint.txHash;
+   if(Date.now()-(resumeProbed.get(key)||0)<45000)continue;
+   resumeProbed.set(key,Date.now());
+   try{
+    const observed=await findWalletSourceTx({catalog:state.catalog,account,
+     sourceChain:hint.sourceChain,txHash:hint.txHash});
+    if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
+    upsertTransfer(observed);
+   }catch{/* Unverified local hints never become wallet history. */}
   }
   const complete=data.status==="complete"&&data.coverage?.complete===true&&data.truncated!==true;
   transferActivity.report={source:"indexer",lookback:null,
