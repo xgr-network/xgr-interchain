@@ -235,7 +235,7 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
   address:route.gateway,topics:[OPERATION_TOPIC,route.routeId],
   fromBlock:hex(from),toBlock:hex(to)}]);
  if(!Array.isArray(logs)||logs.length>MAX_EVENTS)throw Error("RPC logs ambiguous or exceeding safe bounds");
- const identities=new Set,blockHashes=new Map;
+ const identities=new Set,blockHashes=new Map,blockTimes=new Map;
  const events=[];
  for(const log of logs){
   const item=validateIndexedGatewayLog(log,route,from,to);
@@ -249,8 +249,11 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
    if(!block||number(block.number)!==item.blockNumber||!HASH.test(block.hash||""))
     throw Error("Gateway event block unavailable");
    canonical=norm(block.hash);blockHashes.set(item.blockNumber,canonical);
+   if(HEX.test(block.timestamp||"")&&BigInt(block.timestamp)<=BigInt(Number.MAX_SAFE_INTEGER/1000))
+    blockTimes.set(item.blockNumber,new Date(Number(BigInt(block.timestamp))*1000).toISOString());
   }
   if(item.blockHash!==canonical)throw Error("Gateway log block is not canonical");
+  item.sourceBlockAt=blockTimes.get(item.blockNumber)||null;
   events.push(item);
  }
  const end=await rpc(route.sourceConfig,"eth_getBlockByNumber",[hex(to),false]);
