@@ -95,6 +95,10 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    assert.match(html,/id="my-transfers-link"[^>]*hidden/,path+" must hide My Transfers without connected wallet");
    if(path==="/my-transfers")assert.doesNotMatch(html,/ux-my-transfers/, "Unconnected deep link must not reveal transfer view");
    if(path==="/universe"){assert.match(html,/ux-3d-canvas/,"Legacy universe should resolve to the dashboard");}
+   if(path==="/")assert.doesNotMatch(html,/class="[^"]*xita-subpage-planet/, "Dashboard must not show the decorative planet");
+   if(["/transfer","/faq","/markets","/join","/token/xgr"].includes(path)){
+    assert.match(html,/class="[^"]*xita-subpage-planet/,path+" must show decorative background planet");
+   }
    if(path==="/transfer"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/id="xita-transfer-primary"/);assert.doesNotMatch(html,/id="ux-token-origin"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
    if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
