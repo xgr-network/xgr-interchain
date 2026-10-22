@@ -87,3 +87,12 @@
 @media(max-width:700px){.health-grid{grid-template-columns:1fr}.health-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .health-failed,.health-stopped{color:#f3a4a8;border-color:#9f5258}.health-not-enabled,.health-inactive{color:#aab8c8;border-color:#5a687a}
+
+/* One explicitly visible Merkle replica matrix per configured validator. */
+.health-merkle-validator{border:1px solid var(--line);border-radius:12px;background:#111e2d;padding:15px;min-width:0;margin-bottom:14px}
+.health-merkle-validator-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.health-merkle-validator-head strong{font-size:14px}
+.health-merkle-validator-head small{color:var(--muted);font-size:11px}
+.health-merkle-table{min-width:640px}
+.health-merkle-empty{background:#231f1b;border:1px solid #9a7646;border-radius:10px;padding:15px;line-height:1.7;color:#f1d8ae}
+.health-merkle-empty strong{display:block}

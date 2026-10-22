@@ -38,3 +38,15 @@ test("Admin validator RPC probe keeps individual node outage visible",async()=>{
  assert.equal(calls[0].body.method,"xgr_getILNIndexerStatus");
  assert.deepEqual(calls[0].body.params,[]);
 });
+
+test("Merkle health preserves pending peer count without claiming final delivery",()=>{
+ const now=1_800_000_000_000;
+ const node=summarizeILNValidatorStatus({version:1,updatedUnix:now/1000,workerAlive:true,
+  routes:[{route:"arbitrum_to_xgr",source:"arbitrum",destination:"xgrchain",
+   state:"ok",sourceHead:517200480,checkpointBlock:517200480,
+   leaves:1,localLeaves:1,lagLeaves:0,pendingPeers:2}]},{now});
+ assert.equal(node.state,"ok");
+ assert.equal(node.routes[0].pendingPeers,2);
+ assert.equal(node.routes[0].checkpointBlock,517200480);
+ assert.equal(node.routes[0].localLeaves,1);
+});

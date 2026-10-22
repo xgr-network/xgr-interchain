@@ -22,6 +22,7 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
   leaves:Number.isSafeInteger(r.leaves)?r.leaves:null,
   localLeaves:Number.isSafeInteger(r.localLeaves)?r.localLeaves:null,
   lagLeaves:Number.isSafeInteger(r.lagLeaves)?r.lagLeaves:null,
+  pendingPeers:Number.isSafeInteger(r.pendingPeers)?r.pendingPeers:null,
   error:String(r.error||"").slice(0,200)
  }));
  return {name,workerAlive:true,ageMs,routes,
