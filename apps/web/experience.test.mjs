@@ -384,3 +384,20 @@ test("completed Base to XGR delivery is success, never unresolved or repeat-sign
  assert.match(foreign,/Locating previous transfer/);
  assert.match(foreign,/id="xita-transfer-primary" disabled/);
 });
+
+test("read-only status reopen exists during active flow and for resume hash",()=>{
+ const model=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+ const account="0x"+"1".repeat(40),hash="0x"+"a".repeat(64);
+ const base={origin:"arbitrum",destination:"base",asset:"XGR",amount:"50"};
+ const idle=renderPlanRoute(model,base,"ready",{account},{});
+ assert.doesNotMatch(idle,/id="xita-flow-reopen"/);
+ const working=renderPlanRoute(model,base,"ready",{account},{busy:true,hasFlow:true});
+ assert.match(working,/id="xita-flow-reopen"/);
+ assert.match(working,/View transfer status/);
+ assert.match(working,/id="xita-transfer-primary" disabled/);
+ const resume=renderPlanRoute(model,base,"ready",{account},{selectedTxHash:hash,items:[]});
+ assert.match(resume,/id="xita-flow-reopen"/);
+ assert.match(resume,/id="xita-transfer-primary" disabled/);
+ const anon=renderPlanRoute(model,base,"ready",{}, {hasFlow:true});
+ assert.doesNotMatch(anon,/id="xita-flow-reopen"/);
+});
