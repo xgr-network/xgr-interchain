@@ -541,9 +541,12 @@ repair_transfer_db() (
   echo "Checking PostgreSQL availability for existing XITA database $db ..."
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "SELECT 1" >/dev/null
   echo "Applying additive XITA transfer migrations 005 and 006 ..."
+  # stdin is opened by checkout owner: postgres cannot necessarily traverse
+  # the private /home/xgradmin repository under sudo.
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
-    -f "$ROOT/services/indexer/sql/005_transfer_announcements.sql" \
-    -f "$ROOT/services/indexer/sql/006_transfer_flow_timestamps.sql"
+    < "$ROOT/services/indexer/sql/005_transfer_announcements.sql"
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/006_transfer_flow_timestamps.sql"
   echo "Verifying transfer schema and existing restricted-role permissions ..."
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" <<'SQL'
 DO $
