@@ -1277,8 +1277,9 @@ main:has(>.ux-plan-page){padding-top:5px}
 body.xita-subpage-planet{isolation:isolate}
 body.xita-subpage-planet::after{
  content:"";position:fixed;z-index:0;pointer-events:none;
+ /* Override the global body::after inset and rotation instead of inheriting them. */
+ inset:auto 0 0 auto;transform:none;
  width:min(54vw,115vh);aspect-ratio:863/471;
- right:0;bottom:0;
  background:url("/xita-quarter-planet.webp") right bottom/contain no-repeat;
  opacity:1;filter:none;
 }
