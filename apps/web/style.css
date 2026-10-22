@@ -1293,3 +1293,14 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 .ux-dashboard-token-amount small{color:#92a7bd;font-size:9px;font-weight:400}
 
 
+
+/* Join: explicit post-submit and single-use email-confirmation results */
+.ja-outcome{max-width:880px;margin:42px auto 80px}
+.ja-outcome>h1{font-size:clamp(36px,5vw,62px);line-height:1.1;margin:16px 0 30px}
+.ja-outcome-panel{max-width:770px;padding:34px;line-height:1.75}
+.ja-outcome-panel>p{font-size:15px;color:#dce9f7}
+.ja-outcome-label{color:#9fc6ec;font-size:11px;font-weight:700;letter-spacing:.12em}
+.ja-outcome-steps{padding-left:22px;color:#c8daed;font-size:14px;line-height:2}
+.ja-outcome-error{border-left:3px solid #cc8e68;padding:12px;background:#3b281e38;overflow-wrap:anywhere}
+.ja-outcome-link{display:inline-block;margin:14px 0;padding:11px 16px;border:1px solid #789abc;border-radius:9px;text-decoration:none}
+@media(max-width:550px){.ja-outcome-panel{padding:19px}}
