@@ -8,6 +8,7 @@ export function pendingDeliveryCount({account,items=[],indexedOpenCount=0}={}){
  const seen=new Set;
  for(const item of items){
   if((item?.status==="awaiting-proof"&&item.delivered===false||
+     (item?.status==="delivery-unknown"||item?.status==="final-delivery-unknown"||item?.status==="journey-ambiguous"||item?.status==="destination-not-deployed")&&item.delivered!==true||
      item?.status==="awaiting-onward"&&item.delivered===true&&item.onwardRouteId||
      item?.status==="awaiting-final-proof"&&item.onwardRouteId)&&
    item.confirmed===true&&item.account?.toLowerCase()===account.toLowerCase()&&
