@@ -7,7 +7,7 @@ import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,rend
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
-import {findWalletSourceTx} from "./wallet-transfers.js";
+import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
@@ -249,7 +249,7 @@ async function scanWalletHistory(){
       !transferActivity.items.some(t=>t.txHash?.toLowerCase()===requested.toLowerCase())&&
       !resumeProbed.has(probeKey)){
    resumeProbed.add(probeKey);
-   for(const chain of ["base","xgrchain"]){
+   for(const chain of new Set(configuredGatewayRoutes(state.catalog).map(route=>route.sourceChain))){
     try{
      const record=await findWalletSourceTx({catalog:state.catalog,account,
       sourceChain:chain,txHash:requested});
