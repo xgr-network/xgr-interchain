@@ -252,7 +252,7 @@ export function renderTokenBridge(model,assetId){
 
 
 function northstarStage(model,{universe=false}={}){
- const active=model.routes.filter(route=>route.active).length;
+ const active=model.transferRoutes?.length||0;
  const systems=model.chains.length;
  const introActions=universe?
   '<a data-nav class="ux-ns-primary" href="/markets">Explore tokens <span aria-hidden="true">↗</span></a>'+
@@ -270,7 +270,7 @@ function northstarStage(model,{universe=false}={}){
   '<div class="ux-ns-signature"><span class="ux-ns-signature-mark" aria-hidden="true">✧</span><span>ONE HUB · MANY ECOSYSTEMS<br>AN OPEN INTERCHAIN FUTURE</span></div></div>'+
   '<div class="ux-ns-network-status"><span class="ux-ns-overline">NETWORK INVENTORY</span>'+
   '<strong>'+systems+' configured systems</strong>'+
-  '<small>'+active+' verified active directed routes</small>'+
+  '<small>'+active+' active directed routes</small>'+
   '<small class="ux-ns-network-note">Topology preview · no simulated activity</small></div>'+
   '<div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGRChain hub">◎ XGR Hub</button></div>'+
   '<div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3>'+
@@ -280,28 +280,53 @@ function northstarStage(model,{universe=false}={}){
 }
 
 
+function tvlHistoryChart(metrics){
+ const points=(Array.isArray(metrics?.history?.points)?metrics.history.points:[])
+  .filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf)))
+  .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+ if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">TVL history is being collected from verified snapshots.</div>';
+ const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf);
+ if(last<=first)return '<div class="ux-ns-tvl-history is-empty">TVL history is being collected.</div>';
+ const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-first)/(last-first),
+  y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
+ const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
+ const final=xy.at(-1);
+ return '<div class="ux-ns-tvl-history"><div class="ux-ns-tvl-history-label"><span>TVL development</span><span>'+esc(points.length)+' verified snapshots</span></div>'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Historical verified locked TVL in US dollars, from '+esc(points[0].asOf)+' to '+esc(points.at(-1).asOf)+'">'+
+  '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
+  '<circle cx="'+final.x.toFixed(2)+'" cy="'+final.y.toFixed(2)+'" r="3.5" fill="#f8dfa4"/></svg></div>';
+}
+
 function northstarCards(model,metrics=null){
- const active=model.routes.filter(r=>r.active).length;
+ const active=model.transferRoutes?.length||0;
  const rows=model.chains;
+ const activeChains=new Set((model.transferRoutes||[]).flatMap(r=>[r.source,r.destination]));
  return '<section class="ux-ns-deck ux-ns-overview-deck" aria-label="XITA network overview">'+
   '<article class="ux-ns-card ux-ns-card-systems"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">◎</span><h2>Supported systems</h2><span class="ux-ns-card-count">'+rows.length+'</span></div>'+
-  '<div class="ux-ns-system-list">'+rows.map(c=>'<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
-    '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
-    '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":"Configured network")+'</small>'+
-    '<span class="ux-ns-system-tag">'+(c.key===HUB?"Hub":"Configured")+'</span></button>').join("")+'</div></article>'+
+  '<div class="ux-ns-system-list">'+rows.map(c=>{
+    const ready=c.key===HUB||activeChains.has(c.key);
+    const status=c.key===HUB?"Hub":ready?"Active":"In preparation";
+    return '<button type="button" class="ux-ns-system-row" data-xita-system="'+esc(c.key)+'">'+
+     '<span class="ux-ns-orb '+(c.key===HUB?"is-hub":"is-"+esc(c.key))+'"></span>'+
+     '<strong>'+esc(c.label)+'</strong><small>'+(c.key===HUB?"Interchain hub":ready?"Transfer routes deployed":"Deployment pending")+'</small>'+
+     '<span class="ux-ns-system-tag'+(ready?' is-active':'')+'">'+status+'</span></button>';
+   }).join("")+'</div></article>'+
   '<article class="ux-ns-card ux-ns-network-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span><h2>Interchain network</h2><span class="ux-ns-pill">XGR HUB</span></div>'+
-   '<div class="ux-ns-network-numbers"><div><strong>'+model.routes.length+'</strong><span>Configured directions</span></div><div><strong>'+active+'</strong><span>Verified active</span></div></div>'+
-   '<p class="ux-small">Routes connect to XGRChain. A configured route is not automatically safe to use.</p>'+
+   '<div class="ux-ns-network-numbers"><div><strong>'+model.routes.length+'</strong><span>Configured directions</span></div><div><strong>'+active+'</strong><span>Active directions</span></div></div>'+
+   '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
    '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
-   '<p class="ux-small">Verified net collateral held in route-specific escrows.</p>'+
-   '<span class="ux-ns-evidence"> '+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
+   tvlHistoryChart(metrics)+
+   '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
+   '<span class="ux-ns-evidence">'+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
    '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.movedUsd))+'</strong>'+
-   '<p class="ux-small">Gross escrow inflows and confirmed outflows over the previous 24 hours, valued in USD.</p>'+
-   '<span class="ux-ns-evidence">'+(metrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article></section>';
+   '<p class="ux-small">Gross confirmed lock/unlock activity observed by the finalized indexer over 24h, priced in USD. Backfills are observations, not historical block times.</p>'+
+   '<span class="ux-ns-evidence">'+(metrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
 }
+
 function allianceIntro(){
  return '<section class="ux-alliance-intro" id="about-xita"><div class="ux-alliance-heading"><span class="ux-kicker">THE ALLIANCE BEHIND THE UNIVERSE</span>'+
   '<h2>XGR Interchain <em>Token Alliance.</em></h2>'+
@@ -328,23 +353,37 @@ function allianceIntro(){
   '<a data-nav href="/join">Bring Your Token <span aria-hidden="true">↗</span></a></article>'+
   '</div></section>';
 }
-// UI-only top ten: only public assets and independently sourced market caps.
+// Three compact, independent leaderboards. An unknown figure never enters a ranking.
 export function dashboardMarketRows(catalog,metrics){
  const rows=buildLeaderboardRows(catalog,metrics).filter(row=>row.marketCapUsd!==null);
  return rankAssets(rows,"marketCapUsd","desc").slice(0,10);
 }
+export function dashboardRankingRows(catalog,metrics,key){
+ if(!["marketCapUsd","lockedUsd","movedUsd"].includes(key))return [];
+ return rankAssets(buildLeaderboardRows(catalog,metrics)
+  .filter(row=>Number.isFinite(row[key])&&row[key]>=0),key,"desc").slice(0,5);
+}
 function dashboardTopTokens(catalog,metrics){
- const rows=dashboardMarketRows(catalog,metrics);
- return '<section class="ux-dashboard-ranking" id="top-tokens"><div class="ux-dashboard-ranking-head"><div><span class="ux-kicker">ASSET DISCOVERY · SOURCED MARKETS</span>'+
-  '<h2>Top Tokens <em>by Market Cap</em></h2><p>Up to ten publicly listed assets, ranked only when independent market data is available. Market cap is not bridge TVL.</p></div>'+
-  '<a data-nav href="/markets">Browse tokens ↗</a></div>'+
-  (rows.length?'<div class="ux-dashboard-token-table"><div class="ux-dashboard-token-header"><span>Rank / asset</span><span>Market capitalization</span></div>'+
-   rows.map((row,i)=>'<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'"><span class="ux-dashboard-token-name">'+
-    '<span class="ux-dashboard-token-rank">'+String(i+1).padStart(2,"0")+'</span><span class="ux-token-sphere" aria-hidden="true"></span><span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
-    '<strong class="ux-dashboard-token-cap">'+esc(formatUsd(row.marketCapUsd))+'</strong></a>').join("")+'</div>':
-    '<div class="ux-dashboard-empty"><span class="ux-kicker">MARKET RANKING PENDING</span><strong>No sourced market capitalizations yet.</strong>'+
-    '<p>Tokens will be ranked here when public listings and independent market data are available. No estimated values are displayed.</p></div>')+
-  '<p class="ux-small ux-dashboard-source">Ranking: published assets only · Market prices from eligible external sources · Transfer and TVL metrics require finalized on-chain evidence.</p></section>';
+ const panels=[
+  {key:"marketCapUsd",title:"by Market Cap",caption:"CoinGecko · asset-wide market cap",empty:"No verified market-cap data yet."},
+  {key:"lockedUsd",title:"by Locked TVL",caption:"Verified escrow collateral",empty:"No verified locked TVL yet."},
+  {key:"movedUsd",title:"by 24h Volume",caption:"Verified indexer-observed escrow flow",empty:"No verified 24h volume yet."}
+ ];
+ return '<section class="ux-dashboard-rankings" id="top-tokens" aria-label="Top Tokens leaderboards">'+
+  panels.map(panel=>{
+   const rows=dashboardRankingRows(catalog,metrics,panel.key);
+   return '<article class="ux-dashboard-ranking"><div class="ux-dashboard-ranking-head"><div>'+
+    '<span class="ux-kicker">Top Tokens</span><h2>'+panel.title+'</h2>'+
+    '<p>'+panel.caption+'</p></div></div>'+
+    (rows.length?'<div class="ux-dashboard-token-table">'+rows.map((row,i)=>
+     '<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'">'+
+      '<span class="ux-dashboard-token-name"><span class="ux-dashboard-token-rank">'+(i+1)+'</span>'+
+      '<span class="ux-token-sphere" aria-hidden="true"></span>'+
+      '<span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
+      '<strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong></a>').join("")+'</div>':
+      '<p class="ux-dashboard-ranking-empty">'+panel.empty+'</p>')+
+     '<a class="ux-dashboard-ranking-link" data-nav href="/markets">Browse tokens →</a></article>';
+  }).join("")+'</section>';
 }
 
 export function renderDashboard(model,selection={},apiState="not-deployed",metrics=null,catalog=null,wallet={}){
