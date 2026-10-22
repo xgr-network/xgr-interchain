@@ -198,7 +198,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
   destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
  const html=renderPlanRoute(model,{},"ready",{account},{items:[record],selectedTxHash:record.txHash});
  assert.match(html,/Continue delivery/);
- assert.match(html,/1 \/ 2/);
+ assert.match(html,/Direct route · Source confirmed/);
  assert.match(html,/xita-open-transfer/);
  assert.doesNotMatch(html,/localStorage|sessionStorage|journal/);
 });
@@ -274,8 +274,8 @@ test("transfer status replaces redundant right-side network inventory",()=>{
  assert.match(aside,/Transfer progress/);
  assert.match(aside,/Wallet RPC nonce invalid/);
  assert.match(aside,/Checking the deployed source Gateway quote/);
- assert.match(aside,/Source transaction/);
- assert.match(aside,/Destination delivery/);
+ assert.match(aside,/Open full transfer status/);
+ assert.match(aside,/id="xita-flow-open"/);
  assert.doesNotMatch(aside,/Available networks|Deployed systems|Deployed directed routes/);
  assert.doesNotMatch(left,/ux-transfer-progress|Wallet RPC nonce invalid/);
  assert.equal((markup.match(/class="ux-transfer-progress/g)||[]).length,1);
