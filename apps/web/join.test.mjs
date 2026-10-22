@@ -10,7 +10,7 @@ const chains={
 };
 const valid=()=>({
  ...draft(chains),
- name:"Example Protocol",symbol:"EXMP",slug:"example-protocol",
+ name:"Example Protocol",symbol:"EXMP",
  website:"https://example.org",shortDescription:"A sample test token for cross-chain routing.",
  description:"An independent token community applying for listing on all XITA routes.",
  logoUrl:"https://example.org/logo.png",
@@ -25,6 +25,8 @@ test("Join has exactly three steps with no destination-chain checkbox",()=>{
   const html=joinMarkup(chains,d,step);
   assert.match(html,new RegExp("Step "+(step+1)+" / 3"));
   assert.doesNotMatch(html,/data-join-target|New worlds|Step 4 \/ 4/);
+  assert.doesNotMatch(html,/data-join="slug"|Token URL/);
+  assert.match(html,/\/token\/example-protocol/);
   assert.match(html,/Planned routes/);
   assert.match(html,/>6<\/strong>/);
   if(step===2){
@@ -36,6 +38,12 @@ test("Join has exactly three steps with no destination-chain checkbox",()=>{
    assert.doesNotMatch(html,/data-join-action="submit"/);
   }
  }
+});
+test("Applicant never has to provide a token URL",()=>{
+ const d=valid();
+ assert.equal(Object.hasOwn(d,"slug"),false);
+ assert.deepEqual(validateStep(d,0,chains),[]);
+ assert.doesNotMatch(joinMarkup(chains,d,0),/Token URL|data-join="slug"/);
 });
 test("Review validates identity but never requires chain selection",()=>{
  const d=valid();

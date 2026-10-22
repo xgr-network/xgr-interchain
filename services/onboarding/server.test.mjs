@@ -9,7 +9,7 @@ import {handleJoin,joinAvailable,joinGithubToken} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 const catalog=loadCatalog();
 const input={
- name:"Example Protocol",symbol:"EXMP",slug:"example-protocol",
+ name:"Example Protocol",symbol:"EXMP",
  website:"https://example.org",shortDescription:"A sample test token for cross-chain routing.",
  description:"A sample project with valid fields for testing the XITA onboarding manifest generation process.",
  canonicalChain:"base",canonicalAddress:"0x1234567890123456789012345678901234567890",
