@@ -64,7 +64,8 @@ test("invalid formatting is detected on project identity step, not on Review",()
 
 test("submission displays a standalone email-confirmation page without another submit button",()=>{
  const h=joinPendingMarkup(valid());
- assert.match(h,/Check your email/);
+ assert.match(h,/Thank you for submitting your project!/);
+ assert.match(h,/One more step: confirm your email/);
  assert.match(h,/holder@example\.org/);
  assert.match(h,/24 hours/);
  assert.doesNotMatch(h,/data-join-action="submit"|Verify & submit application/);
@@ -77,8 +78,16 @@ test("confirmation states always retain error or PR result on re-render",()=>{
  assert.doesNotMatch(failed,/id="ja-confirm-pr"/);
  const success=joinConfirmationMarkup({phase:"success",prNumber:250,prUrl:"https://github.com/xgr-network/xgr-interchain/pull/250"});
  assert.match(success,/GitHub Draft PR #250/);
- assert.match(success,/Your application is confirmed/);
+ assert.match(success,/Your email has been verified!/);
  assert.doesNotMatch(success,/Checking your private confirmation/);
  const hostile=joinConfirmationMarkup({phase:"failed",message:"<script>alert(1)</script>"});
  assert.doesNotMatch(hostile,/<script>/);
+});
+
+test("confirmation page distinguishes email verification from receipt",()=>{
+ const page=joinConfirmationMarkup({phase:"success",prNumber:301,prUrl:"https://github.com/xgr-network/xgr-interchain/pull/301"});
+ assert.match(page,/Your email has been verified!/);
+ assert.doesNotMatch(page,/Thank you for submitting your project!/);
+ const fresh=joinPendingMarkup(null);
+ assert.doesNotMatch(fresh,/APPLICATION RECEIVED|We have sent an email/);
 });

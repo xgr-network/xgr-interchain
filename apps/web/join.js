@@ -56,14 +56,18 @@ export function joinMarkup(chains,d,step,status="",busy=false){
 
 // The accepted request is no longer an editable form. No additional submission is possible.
 export function joinPendingMarkup(data){
+ const accepted=typeof data?.contactEmail==="string"&&data.contactEmail.length>0;
+ const heading=accepted?"Thank you for submitting your project!":"Check your email to complete your application";
+ const email=accepted?'<p>We have sent an email to <strong>'+escape(data.contactEmail)+'</strong> with your confirmation link.</p>':
+  '<p>If you have submitted a token application, check the inbox you entered in the form.</p>';
  return '<section class="ux-app ja-page ja-outcome"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
-  '<h1>Check your email</h1><div class="ux-panel ja-outcome-panel" role="status">'+
-  '<div class="ja-outcome-label">APPLICATION RECEIVED · EMAIL CONFIRMATION REQUIRED</div>'+
-  '<p>We sent a confirmation link to <strong>'+escape(data?.contactEmail||"your inbox")+'</strong>.</p>'+
+  '<h1>'+heading+'</h1><div class="ux-panel ja-outcome-panel" role="status">'+
+  '<div class="ja-outcome-label">'+(accepted?'APPLICATION RECEIVED · AWAITING EMAIL CONFIRMATION':'EMAIL CONFIRMATION REQUIRED')+'</div>'+
+  '<h2>One more step: confirm your email</h2>'+email+
   '<ol class="ja-outcome-steps"><li>Open the email with the subject “Confirm your XITA Network application”.</li>'+
-  '<li>Use its private confirmation link within 24 hours.</li>'+
-  '<li>XITA will verify the token again and, if successful, create a GitHub Draft PR for XGR review.</li></ol>'+
-  '<p class="ja-info">Check your spam folder if necessary. No GitHub proposal or contract deployment has been created yet. Please do not submit the same token a second time.</p>'+
+  '<li>Click the private confirmation link within <strong>24 hours</strong>.</li>'+
+  '<li>After confirmation, XITA revalidates the token and attempts to create a GitHub Draft PR for XGR review.</li></ol>'+
+  '<p class="ja-info">You can close this page now. If you cannot find the email, check your spam folder. No GitHub PR, public listing or contract deployment has been created yet. Please do not submit the same application again.</p>'+
   '<a class="ux-outline-button ja-outcome-link" href="/markets" data-nav>Browse tokens</a>'+
   '</div></section>';
 }
@@ -73,7 +77,7 @@ export function joinConfirmationMarkup(state={}){
  const successful=phase==="success";
  const failed=phase==="failed";
  const invalid=phase==="invalid";
- const title=successful?"Your application is confirmed":failed?"We could not complete confirmation":
+ const title=successful?"Your email has been verified!":failed?"We could not complete confirmation":
   invalid?"Confirmation link unavailable":"Confirm your XITA application";
  const heading=successful?"DRAFT PROPOSAL CREATED":failed?"CONFIRMATION NOT COMPLETED":
   invalid?"INVALID LINK":"CHECKING EMAIL & TOKEN IDENTITY";
