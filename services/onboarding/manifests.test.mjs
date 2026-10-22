@@ -32,6 +32,7 @@ test("route bundle matches authoritative main schemas and transits XGR",()=>{
  assert.equal(Object.keys(b.files).some(p=>p.includes("mainnet.json")),false);
  const newCat=JSON.parse(b.files["apps/web/catalog.json"]);
  assert.deepEqual(validateCatalog(newCat),[]);
+ assert.equal(newCat.assets.EXMP.profile.slug,"example-protocol");
 });
 test("reject direct bridge and duplicate canonical token",()=>{
  const expected=buildManifestBundle(application,catalog).files;
@@ -46,6 +47,14 @@ test("reject direct bridge and duplicate canonical token",()=>{
  assert.throws(()=>buildManifestBundle({...application,applicantRole:""},catalog),/relationship/);
  assert.throws(()=>buildManifestBundle({...application,contactEmail:"invalid"},catalog),/email/);
  assert.throws(()=>buildManifestBundle({...application,priceSource:"none"},catalog),/CoinGecko listing/);
+});
+test("profile URL is generated server-side, not from applicant input",()=>{
+ const misleading=buildManifestBundle({...application,slug:"attacker-chosen"},catalog);
+ const missing=buildManifestBundle((({slug,...rest})=>rest)(application),catalog);
+ assert.deepEqual(misleading.files,missing.files);
+ const collision={...catalog,assets:{...catalog.assets,TEMP:{profile:{slug:"example-protocol"}}}};
+ const next=buildManifestBundle(application,collision);
+ assert.equal(JSON.parse(next.files["apps/web/catalog.json"]).assets.EXMP.profile.slug,"example-protocol-exmp");
 });
 test("reject unsafe public metadata",()=>{
  assert.throws(()=>buildManifestBundle({...application,name:"<script>alert(1)</script>"},catalog),/Invalid project/);
