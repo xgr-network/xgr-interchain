@@ -214,13 +214,13 @@ const coronaVS=[
  'void main(){vec4 clip=uViewProjection*vec4(uCenter,1.0);',
  'vec2 ndc=aCorner*uWorldRadius*vec2(uViewProjection[1][1]/uAspect,uViewProjection[1][1])/max(clip.w,0.1);',
  'gl_Position=clip+vec4(ndc*clip.w,0.0,0.0);vCorner=aCorner;}'
-].join('\\n');
+].join('\n');
 const coronaFS=[
  'precision mediump float;uniform vec4 uColor;varying vec2 vCorner;',
  'void main(){float r=length(vCorner);',
- 'float a=exp(-8.0*r*r)*smoothstep(1.0,0.72,r);',
+ 'float a=exp(-8.0*r*r)*(1.0-smoothstep(0.72,1.0,r));',
  'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
-].join('\\n');
+].join('\n');
 function createGPU(gl){
  const meshP=program(gl,sphereVS,sphereFS),lineP=program(gl,lineVS,lineFS),spriteP=program(gl,spriteVS,spriteFS),coronaP=program(gl,coronaVS,coronaFS);
  const attrib=(p,key)=>gl.getAttribLocation(p,key);
