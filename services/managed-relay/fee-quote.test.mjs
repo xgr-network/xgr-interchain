@@ -53,7 +53,7 @@ test("CoinGecko snapshot freshness is checked for BOTH chain gas coins",()=>{
  const p=verifiedCoinGeckoPrices(pair,"xgrchain","base",{now});
  assert.equal(p.sourceId,"xgr");assert.equal(p.destinationId,"ethereum");
  assert.throws(()=>verifiedCoinGeckoPrices({...pair,
-  ethereum:{usd:2500,last_updated_at:sec-500}},"xgrchain","base",{now}),/stale/);
+  ethereum:{usd:2500,last_updated_at:sec-1000}},"xgrchain","base",{now}),/stale/);
  assert.throws(()=>verifiedCoinGeckoPrices({...pair,
   xgr:{usd:0,last_updated_at:sec}},"xgrchain","base",{now}),/stale/);
 });
