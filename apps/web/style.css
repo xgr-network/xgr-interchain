@@ -1146,3 +1146,42 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-route-identity[open] .ux-route-identity-expand:after{content:"Hide details ⌃";font-size:11px}
 .ux-route-identity-body{padding:0 14px 14px}
 .ux-route-identity-rows{margin-top:10px}
+
+/* Persistent, canonical one-hop/two-hop transfer status modal. */
+.ux-open-flow{width:100%;margin-top:18px;min-height:40px;cursor:pointer}
+.ux-flow-dialog{width:min(690px,calc(100vw - 24px));max-width:690px;max-height:min(88dvh,900px);overflow:auto;background:#081827;color:#e9f3ff;border:1px solid #496b89;border-radius:18px;padding:0;box-sizing:border-box;box-shadow:0 30px 100px #000b}
+.ux-flow-dialog::backdrop{background:#010611e6;backdrop-filter:blur(5px)}
+.ux-flow-content{padding:clamp(18px,3.2vw,30px);display:grid;gap:20px;min-width:0}
+.ux-flow-header{display:flex;align-items:start;justify-content:space-between;gap:18px}
+.ux-flow-header h2{font-size:clamp(24px,4vw,34px);font-family:var(--xita-editorial);font-weight:400;margin:8px 0}
+.ux-flow-route{font-size:13px;color:#c4ddf6;margin:0;overflow-wrap:anywhere}
+.ux-flow-close{width:36px;height:36px;flex-shrink:0;display:grid;place-items:center;border:1px solid #52728f;border-radius:9px;color:#eaf4ff;background:#152c43;font-size:23px;cursor:pointer}
+.ux-flow-banner{display:flex;align-items:start;gap:14px;background:#122c46;border:1px solid #476b91;border-radius:12px;padding:17px}
+.ux-flow-banner.is-attention{background:#342b21;border-color:#96734e}
+.ux-flow-banner.is-done{background:#17372c;border-color:#4f8f6c}
+.ux-flow-spinner{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:50%;background:#294a69;font-size:13px}
+.ux-flow-banner strong{font-size:15px;color:#f2f8ff}
+.ux-flow-banner p{font-size:12px;line-height:1.65;margin:7px 0 0;color:#bfd3e8;overflow-wrap:anywhere}
+.ux-flow-steps-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ux-flow-steps-heading strong{font-size:13px}
+.ux-flow-steps-heading small{color:#a8bed4;font-size:11px}
+.ux-flow-steps{display:grid;gap:0;list-style:none;padding:0;margin:0}
+.ux-flow-step{display:flex;align-items:start;gap:14px;position:relative;padding:0 0 23px;min-height:44px}
+.ux-flow-step:last-child{padding-bottom:0}
+.ux-flow-step:not(:last-child)::before{content:"";position:absolute;left:15px;top:33px;bottom:5px;border-left:1px solid #49647d}
+.ux-flow-step-indicator{z-index:1;display:grid;place-items:center;flex:0 0 31px;width:31px;height:31px;border-radius:50%;border:1px solid #526b83;background:#10243a;color:#bdcde0;font-size:11px;font-weight:700}
+.ux-flow-step.is-complete .ux-flow-step-indicator{background:#1a4434;color:#c3f5d6;border-color:#63a27c}
+.ux-flow-step.is-current .ux-flow-step-indicator{background:#265178;color:#f2f8ff;border-color:#81bdeb}
+.ux-flow-step-text{display:grid;gap:5px;min-width:0;flex:1}
+.ux-flow-step-text strong{font-size:13px;color:#e8f3ff}
+.ux-flow-step-text small{font-size:11px;line-height:1.45;color:#a9c1d9}
+.ux-flow-step-state{font-size:10px;color:#b9cedf;padding-top:8px;white-space:nowrap}
+.ux-flow-step.is-complete .ux-flow-step-state{color:#91d8ad}
+.ux-flow-step.is-current .ux-flow-step-state{color:#a9dafa}
+.ux-flow-hash{font-size:11px;line-height:1.5;color:#adc4d8;overflow-wrap:anywhere;margin:0}
+.ux-flow-hash code{color:#e6f3ff}
+.ux-flow-footer{border-top:1px solid #304c67;padding-top:15px;display:grid;gap:13px}
+.ux-flow-footer p{margin:0;font-size:11px;line-height:1.65;color:#a8bfd8}
+.ux-flow-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.ux-flow-actions button{min-height:39px;cursor:pointer}
+@media(max-width:540px){.ux-flow-dialog{max-height:95dvh;width:calc(100vw - 12px);border-radius:12px}.ux-flow-content{gap:15px;padding:16px}.ux-flow-step-state{display:none}.ux-flow-actions button{flex:1 1 42%}}

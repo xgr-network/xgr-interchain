@@ -7,12 +7,13 @@ import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,rend
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
-import {findWalletSourceTx} from "./wallet-transfers.js";
+import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
 import {selectedRecovery} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
+import {renderTransferFlow} from "./transfer-status-flow.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -130,10 +131,11 @@ function scheduleFeePreview(){
  previewTimer=setTimeout(()=>{previewTimer=null;void refreshFeePreview();},450);
 }
 let transferRequest=0;
+const flowView={open:false,journey:null,stage:"",sourceTxHash:null};
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
-const resumeProbed=new Set;
+const resumeProbed=new Map;
 function refreshTransferLink(){
  const connected=validWalletAddress(state.account);
  const link=document.querySelector("#my-transfers-link");
@@ -168,6 +170,7 @@ function setConnectedAccount(next){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
+   flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.stage="";
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
@@ -175,6 +178,11 @@ function setConnectedAccount(next){
  if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
+  if(flowView.journey&&record?.account?.toLowerCase()===state.account?.toLowerCase()&&
+    (record.txHash?.toLowerCase()===flowView.sourceTxHash?.toLowerCase()||
+     record.parentMessageId&&transferActivity.items.some(t=>t.txHash===flowView.sourceTxHash&&t.messageId===record.parentMessageId))){
+     if(!flowView.sourceTxHash)flowView.sourceTxHash=record.txHash;
+  }
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
   t.txHash===record.txHash);
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
@@ -239,9 +247,9 @@ async function scanWalletHistory(){
   const probeKey=account.toLowerCase()+":"+requested;
   if(/^0x[0-9a-f]{64}$/i.test(requested||"")&&
       !transferActivity.items.some(t=>t.txHash?.toLowerCase()===requested.toLowerCase())&&
-      !resumeProbed.has(probeKey)){
-   resumeProbed.add(probeKey);
-   for(const chain of ["base","xgrchain"]){
+      Date.now()-(resumeProbed.get(probeKey)||0)>=45000){
+   resumeProbed.set(probeKey,Date.now());
+   for(const chain of new Set(configuredGatewayRoutes(state.catalog).map(route=>route.sourceChain))){
     try{
      const record=await findWalletSourceTx({catalog:state.catalog,account,
       sourceChain:chain,txHash:requested});
@@ -307,12 +315,59 @@ async function lookupWalletTransfer(sourceChain,txHash){
   }
  }
 }
+function setFlowStage(stage,notice){
+ flowView.stage=stage;
+ if(notice)transferActivity.notice=notice;
+ updateFlowModal();
+}
+function flowRecord(){
+ const hash=flowView.sourceTxHash||transferActivity.selectedTxHash;
+ return transferActivity.items.find(t=>t.account?.toLowerCase()===state.account?.toLowerCase()&&
+  t.txHash?.toLowerCase()===hash?.toLowerCase())||null;
+}
+function updateFlowModal(){
+ const dialog=document.getElementById("xita-flow-dialog");
+ if(!dialog||!flowView.open)return;
+ const record=flowRecord();
+ const journey=flowView.journey||{origin:state.experience.origin,destination:state.experience.destination,asset:state.experience.asset};
+ const html=renderTransferFlow({journey,record,stage:flowView.stage,working:transferActivity.working,
+  scanning:transferActivity.scanning,notice:transferActivity.notice,error:transferActivity.error});
+ const scroll=dialog.scrollTop;
+ dialog.innerHTML=html;dialog.scrollTop=scroll;
+ if(!dialog.open)dialog.showModal();
+ dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
+ dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
+ dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
+ dialog.querySelector("#xita-flow-refresh")?.addEventListener("click",()=>void scanWalletHistory());
+ dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
+  const original=flowView.sourceTxHash;
+  if(original&&/^0x[0-9a-f]{64}$/i.test(original)){
+   history.replaceState(null,"","/transfer?token="+encodeURIComponent(journey.asset||"XGR")+"&resume="+original);
+   transferActivity.selectedTxHash=original;
+  }
+  void performTransferAction();
+ });
+}
+function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow-dialog")?.close();}
+function openFlowModal(){
+ const selected=selectedRecovery(transferActivity.items,state.account,transferActivity.selectedTxHash);
+ const record=selected||transferActivity.items.find(t=>t.txHash?.toLowerCase()===transferActivity.selectedTxHash?.toLowerCase());
+ if(!flowView.journey||!flowView.open){
+  flowView.journey={origin:record?.sourceChain||state.experience.origin,
+   destination:record?.finalDestinationChain||record?.destinationChain||state.experience.destination,
+   asset:record?.asset||state.experience.asset};
+  flowView.sourceTxHash=record?.txHash||null;
+ }
+ flowView.open=true;updateFlowModal();
+}
 async function performTransferAction(){
  if(transferActivity.working||!state.catalog)return;
  if(!state.account){document.querySelector("#connect")?.click();return;}
  const account=state.account;
  const selected=selectedRecovery(transferActivity.items,account,transferActivity.selectedTxHash);
+ if(!flowView.open)openFlowModal();
  transferActivity.working=true;transferActivity.error="";
+ setFlowStage(selected?.status==="awaiting-onward"?"onward-source-sign":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
  let broadcastKnown=false;
  transferActivity.notice=selected?"Rechecking original source and destination chains…":
   "Checking recovery readiness, wallet nonce and source route…";
@@ -320,6 +375,7 @@ async function performTransferAction(){
  try{
   if(selected){
    if(selected.status==="awaiting-final-proof"){
+    setFlowStage("final-proof-wait");
     if(!selected.secondHopTxHash||!selected.secondHopMessageId)
      throw Error("Onward TX is not independently indexed; final delivery is blocked");
     const next=await findWalletSourceTx({catalog:state.catalog,account,
@@ -347,12 +403,14 @@ async function performTransferAction(){
     return;
    }
    if(selected.status==="awaiting-onward"){
+    setFlowStage("onward-source-sign");
     // The first on-chain message is already delivered to XGRChain. NEVER
     // replay its source Gateway, even if an RPC or UI later fails.
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      setFlowStage("onward-source-pending");
       announceWalletSourceTx("xgrchain",txHash,account);
       transferActivity.notice="Onward XGRChain TX "+txHash+
        " submitted. Original first-hop source remains untouched.";
@@ -376,6 +434,7 @@ async function performTransferAction(){
     upsertTransfer(onward);
     if(onward.status==="awaiting-proof"){
      transferActivity.selectedTxHash=onward.txHash;
+     setFlowStage("final-proof-wait");
      transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
      if(path()==="/transfer")render();
      const processed=await resumeDelivery({catalog:state.catalog,account,
@@ -433,22 +492,34 @@ async function performTransferAction(){
    r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
   if(!firstRoute||!onwardRoute)
    throw Error("Both independently deployed XITA routes are required");
+  flowView.journey={origin,destination,asset};flowView.sourceTxHash=null;
+  setFlowStage("source-sign");
   const sent=await startTransfer({catalog:state.catalog,account,asset,source:origin,
    destination,amount,provider:globalThis.ethereum,
    onBroadcast:({txHash})=>{
     broadcastKnown=true;
+    flowView.sourceTxHash=txHash;setFlowStage("source-pending");
+    // Preserve the canonical source hash in the URL immediately after
+    // broadcast. A reload must not turn a pending source into a new CTA.
+    transferActivity.selectedTxHash=txHash;
+    history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset)+"&resume="+txHash);
     announceWalletSourceTx(origin,txHash,account);
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
     render();
    }});
-  transferActivity.notice="Source TX submitted. Waiting for lock/burn confirmation…";
+  flowView.sourceTxHash=sent.txHash;
+  setFlowStage("source-pending","Source TX submitted. Waiting for lock/burn confirmation…");
   const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
   if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
-  else if(receipt.status!=="0x1")transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+  else if(receipt.status!=="0x1"){
+   transferActivity.notice="Source TX reverted; no lock/burn was committed.";
+   transferActivity.selectedTxHash=null;
+   history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset));
+  }
   else {
    // The source receipt is irreversible. Continue this SAME on-chain message,
    // never start another bridge. The destination still requires a wallet signature.
-   transferActivity.notice="Source confirmed. Preparing verified destination delivery…";
+   setFlowStage("first-proof-wait","Source confirmed. Preparing verified destination delivery…");
    if(path()==="/transfer")render();
    const record=await findWalletSourceTx({catalog:state.catalog,account,
     sourceChain:sent.sourceChain,txHash:sent.txHash});
@@ -457,6 +528,7 @@ async function performTransferAction(){
     transferActivity.selectedTxHash=record.txHash;
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
      provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+      setFlowStage("first-proof-wait");
       transferActivity.notice=notice;if(path()==="/transfer")render();
      },onBroadcast:({txHash})=>{
       broadcastKnown=true;
@@ -475,6 +547,7 @@ async function performTransferAction(){
   }
  }catch(error){
   transferActivity.error=String(error.message||error);
+  updateFlowModal();
   // A failed preflight must not keep displaying a stale in-progress status.
   // Preserve broadcast evidence when a transaction actually left the wallet.
   if(!broadcastKnown)transferActivity.notice="";
@@ -482,6 +555,7 @@ async function performTransferAction(){
   if(state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.working=false;
    if(path()==="/transfer")render();
+   updateFlowModal();
   }
  }
 }
@@ -809,8 +883,10 @@ function render(){
    if(typeof value==="string"&&value)state.experience[key]=value;
   }
   void refreshSponsorship();scheduleFeePreview();
+  document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
+ updateFlowModal();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    document.getElementById(id)?.addEventListener("change",e=>{
    state.experience[name]=e.target.value;
@@ -1084,3 +1160,11 @@ async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics
    details.innerHTML=renderUniverse(model,state.experience.system,body,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
  }}catch{ /* Unavailable is not zero */ }}
+
+// The dialog is deliberately outside #app: repainting the planner must not close
+// an active MetaMask/proof status view or reset its scroll/focus state.
+const statusDialog=document.createElement("dialog");
+statusDialog.id="xita-flow-dialog";statusDialog.className="ux-flow-dialog";
+statusDialog.setAttribute("aria-labelledby","xita-flow-title");
+statusDialog.addEventListener("cancel",()=>{flowView.open=false;});
+document.body.append(statusDialog);
