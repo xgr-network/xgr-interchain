@@ -218,7 +218,7 @@ const coronaVS=[
 const coronaFS=[
  'precision mediump float;uniform vec4 uColor;varying vec2 vCorner;',
  'void main(){float r=length(vCorner);',
- 'float a=exp(-8.0*r*r)*(1.0-smoothstep(0.72,1.0,r));',
+ 'float a=exp(-15.0*r*r);',
  'gl_FragColor=vec4(uColor.rgb,uColor.a*a);}'
 ].join('\n');
 function createGPU(gl){
@@ -648,8 +648,10 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   for(const item of topology.systems){
    if(focused&&item.system.key!==selectedKey&&focusBlend>.85)continue;
    const intensity=(item.portal?.40:.18)*(focused&&item.system.key===selectedKey?1-focusBlend*.65:1);
-   diffuseCorona(systemPosition(item,frame,reducedMotion),item.radius*3.8,item.color,intensity,vp);
-   diffuseCorona(systemPosition(item,frame,reducedMotion),item.radius*1.9,item.color,intensity*.64,vp);
+   // Gaussian fades below 0.001 long before the quad boundary: no visible disc.
+   const center=systemPosition(item,frame,reducedMotion);
+   diffuseCorona(center,item.radius*3.6,item.color,intensity*.85,vp);
+   diffuseCorona(center,item.radius*1.85,item.color,intensity*.50,vp);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Northstar: one fine ring per spoke, two warm rings around the hub.
