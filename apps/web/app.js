@@ -1,4 +1,3 @@
-import {mountSubpagePlanet} from "./subpage-planet-render.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup} from "./join.js";
@@ -947,7 +946,6 @@ function render(){
  if(rawPath==="/plan-route")history.replaceState(null,"","/transfer"+location.search);
  const p=rawPath==="/universe"?"/":rawPath==="/plan-route"?"/transfer":rawPath;
  document.body.classList.toggle("xita-subpage-planet",p!=="/");
- mountSubpagePlanet();
  if(p==="/transfer"){
   const query=new URLSearchParams(location.search);
   const preselect=query.get("token");
