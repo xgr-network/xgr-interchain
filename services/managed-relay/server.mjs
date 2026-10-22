@@ -77,7 +77,11 @@ const quoteIface=new Interface(EXECUTION_ABI);
 // Both quote/preview processes consume the SAME persisted backend cache.
 // External CoinGecko requests are exclusively performed by price-refresh.mjs.
 const getSnapshot=()=>readCachedGasPrices();
+const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
+ const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw]):null;
+ const cached=previewKey?previewMemo.get(previewKey):null;
+ if(cached&&Date.now()-cached.at<60000)return cached.value;
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
  const source=request?.source,destination=request?.destination;
  if(!preview&&(PREVIEW_ONLY||!signer))throw Error("GmbH service wallet not configured");
@@ -159,7 +163,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    (usd8%100000000n).toString().padStart(8,"0");
   // No nonce, signature, transaction data, wallet key, or 90-second credential
   // ever leaves this read-only estimate endpoint.
-  return {status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
+  const resultPreview={status:"UNSIGNED_FEE_PREVIEW",source,destination,asset:request.asset,
    estimatedRouteFeeWei:routeFeeWei.toString(),estimatedRouteFeeUsd:feeUsd,
    estimatedAt:new Date().toISOString(),validatorFeeWei:result.validatorFeeWei,
    sourceBridgeNativeWei:result.sourceBridgeNativeWei,
@@ -167,6 +171,11 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
    pricing:result.pricing,sourceNativeSymbol:catalog.chains[source].nativeCurrency?.symbol||source,
    notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
+  if(previewKey){
+   previewMemo.set(previewKey,{at:Date.now(),value:resultPreview});
+   if(previewMemo.size>80)previewMemo.delete(previewMemo.keys().next().value);
+  }
+  return resultPreview;
  }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
