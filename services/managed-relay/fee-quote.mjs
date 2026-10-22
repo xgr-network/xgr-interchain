@@ -104,7 +104,7 @@ export function quotedJourneyCostWei({
   if(gasUnits<0n||gasUnits>5000000n||gasPriceWei<0n||
     nativeFeeWei<0n||(gasUnits>0n&&gasPriceWei===0n)||
     (gasUnits===0n&&nativeFeeWei===0n))throw Error("Unsafe journey gas/fee estimate");
-  const prices=verifiedCoinGeckoPrices(coinGeckoSnapshot,source,item.chain,{now});
+  const prices=verifiedCoinGeckoPrices(coinGeckoSnapshot,source,item.chain,{now,maxAgeSec:900});
   const nativeCost=gasUnits*gasPriceWei+nativeFeeWei;
   const translated=ceilDiv(nativeCost*usdPrice12(prices.destinationUsd),
    usdPrice12(prices.sourceUsd));
@@ -119,7 +119,7 @@ export function quotedJourneyCostWei({
  return {estimatedCostSourceWei:sum.toString(),stages:breakdown,
   ...priceInterchainCostWei({estimatedCostSourceWei:sum,vatBps:0n})};
 }
-export function verifiedCoinGeckoPrices(data,source,destination,{now=Date.now(),maxAgeSec=240}={}){
+export function verifiedCoinGeckoPrices(data,source,destination,{now=Date.now(),maxAgeSec=900}={}){
  const sourceId=COINGECKO_GAS_COIN_IDS[source],
   destinationId=COINGECKO_GAS_COIN_IDS[destination];
  if(!sourceId||!destinationId)throw Error("Unsupported native gas coin");
