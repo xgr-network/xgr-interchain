@@ -280,53 +280,55 @@ function northstarStage(model,{universe=false}={}){
 }
 
 
-export function tvlChange24h(metrics,{now=null}={}){
- const history=Array.isArray(metrics?.history?.points)?metrics.history.points:[];
- const points=history.filter(p=>typeof p?.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
-   typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf)))
-   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+function validTvlPoints(metrics){
+ return (Array.isArray(metrics?.history?.points)?metrics.history.points:[])
+  .filter(p=>typeof p?.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
+    Number.isFinite(Date.parse(p?.asOf)))
+  .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+}
+export function tvlChange24h(metrics){
+ const points=validTvlPoints(metrics);
  const current=metrics?.totals?.lockedUsd;
- if(!Number.isFinite(current)||current<0||points.length<2)return null;
- const asOf=Date.parse(metrics?.asOf||points.at(-1).asOf),target=asOf-86400000;
- if(!Number.isFinite(asOf)||!Number.isFinite(target))return null;
+ const last=points.at(-1);
+ const value=Number.isFinite(current)&&current>=0?current:last?.lockedUsd;
+ const at=Number.isFinite(current)&&current>=0&&Number.isFinite(Date.parse(metrics?.asOf))?
+  Date.parse(metrics.asOf):Date.parse(last?.asOf);
+ if(!Number.isFinite(value)||!Number.isFinite(at))return null;
+ const target=at-86400000;
  const baseline=points.filter(p=>Date.parse(p.asOf)<=target).at(-1);
- // A missing 24h baseline is unknown, never approximate it from the oldest point.
- if(!baseline||target-Date.parse(baseline.asOf)>900000||baseline.lockedUsd<=0)return null;
- const percent=(current-baseline.lockedUsd)/baseline.lockedUsd*100;
- return Number.isFinite(percent)?percent:null;
+ if(!baseline||target-Date.parse(baseline.asOf)>3600000||baseline.lockedUsd<=0)return null;
+ const change=100*(value-baseline.lockedUsd)/baseline.lockedUsd;
+ return Number.isFinite(change)?change:null;
 }
 function tvlHistoryChart(metrics,period="24h"){
  const valid=["24h","7d","30d"].includes(period)?period:"24h";
- const intervals={"24h":86400000,"7d":7*86400000,"30d":30*86400000};
- const latest=Date.parse(metrics?.asOf||"");
- const all=(Array.isArray(metrics?.history?.points)?metrics.history.points:[])
-  .filter(p=>typeof p?.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
-   typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf)))
-  .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
- const end=Number.isFinite(latest)?latest:all.length?Date.parse(all.at(-1).asOf):Date.now();
- const start=end-intervals[valid];
+ const durations={"24h":86400000,"7d":604800000,"30d":2592000000};
+ const all=validTvlPoints(metrics),last=all.at(-1);
+ const end=Date.parse(last?.asOf);
+ const start=end-durations[valid];
  const points=all.filter(p=>Date.parse(p.asOf)>=start&&Date.parse(p.asOf)<=end);
  const tabs='<div class="ux-ns-tvl-periods" aria-label="TVL history period">'+
   ["24h","7d","30d"].map(p=>'<button type="button" data-tvl-period="'+p+'" class="'+(p===valid?"is-selected":"")+'" aria-pressed="'+(p===valid)+'">'+p+'</button>').join("")+'</div>';
- const axisFormat=t=>valid==="24h"?new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
- const axis='<div class="ux-ns-tvl-axis"><span>'+esc(axisFormat(start))+'</span><span>'+esc(axisFormat(end))+'</span></div>';
- if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected; not enough verified history for this period.</p>'+axis+'</div>';
- const span=Date.parse(points.at(-1).asOf)-Date.parse(points[0].asOf);
- if(span<intervals[valid]*.05)return '<div class="ux-ns-tvl-history is-empty">'+tabs+
-  '<p>Verified history covers only '+Math.max(1,Math.round(span/60000))+' minutes. Collecting more observations.</p>'+axis+'</div>';
- const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
- const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/(end-start),y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
+ const stamp=t=>valid==="24h"?new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":
+  new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
+ if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Collecting verified TVL history.</p></div>';
+ const firstAt=Date.parse(points[0].asOf),lastAt=Date.parse(points.at(-1).asOf),span=lastAt-firstAt;
+ if(span<=0)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Collecting verified TVL history.</p></div>';
+ // Scale to observed timestamps, not the 24h container that compressed samples into a tiny strip.
+ const values=points.map(p=>p.lockedUsd),low=Math.min(...values),high=Math.max(...values);
+ const padding=Math.max((high-low)*.15,Math.max(high,1)*.00001),range=high-low+padding*2;
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-firstAt)/span,y:62-50*(p.lockedUsd-low+padding)/range}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
- const last=xy.at(-1);
+ const lastXY=xy.at(-1),coverage=span<durations[valid]*.9?'<span class="ux-ns-tvl-coverage">Observed '+Math.max(1,Math.round(span/60000))+' min · partial '+valid+' history</span>':"";
  return '<div class="ux-ns-tvl-history">'+tabs+
-  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL history, '+valid+'">'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL observations from '+stamp(firstAt)+' to '+stamp(lastAt)+'">'+
   '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
-  '<circle cx="'+last.x.toFixed(2)+'" cy="'+last.y.toFixed(2)+'" r="3.5" fill="#f8dfa4"/></svg>'+
-  axis+'</div>';
+  '<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+'" r="3" fill="#f8dfa4"/></svg>'+
+  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(firstAt))+'</span><span>'+esc(stamp(lastAt))+'</span></div>'+coverage+'</div>';
 }
 
 function northstarCards(model,metrics=null,period="24h"){
- const recent=Array.isArray(metrics?.history?.points)?metrics.history.points.filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf))).sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf)).at(-1):null;
+ const recent=validTvlPoints(metrics).at(-1)||null;
  const liveTVL=metrics?.totals?.lockedUsd;
  const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
  const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
