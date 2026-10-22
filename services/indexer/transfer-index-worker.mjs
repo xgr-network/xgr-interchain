@@ -301,7 +301,7 @@ export async function inspectAnnouncedTx({catalog,routes,rpc,pool,hint,now=Date.
  // This block was already checked for canonical hash and finality above.
  // Unknown timestamps are kept NULL; a backfill is never dated NOW().
  if(/^0x[0-9a-f]+$/i.test(block.timestamp||"")&&
-    BigInt(block.timestamp)<=BigInt(Number.MAX_SAFE_INTEGER/1000))
+    BigInt(block.timestamp)<=(BigInt(Number.MAX_SAFE_INTEGER)/1000n))
   event.sourceBlockAt=new Date(Number(BigInt(block.timestamp))*1000).toISOString();
  const record=await verify({catalog,route,transactionHash:hint.source_tx_hash,rpc});
  if(!matchingTarget&&!(route.executionAdapter&&
