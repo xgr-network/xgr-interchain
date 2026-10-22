@@ -5,7 +5,7 @@ import {mkdtempSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
-import {handleJoin,joinAvailable} from "./server.mjs";
+import {handleJoin,joinAvailable,joinGithubToken} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 const catalog=loadCatalog();
 const input={
@@ -17,9 +17,15 @@ const input={
  logoUrl:"https://example.org/logo.png",priceSource:"coingecko",coingeckoId:"example-token",
  contactEmail:"partner@example.org",applicantRole:"holder",confirmed:true
 };
+test("Join reuses the already configured XITA GitHub writer credential",()=>{
+ assert.equal(joinGithubToken({XITA_GITHUB_TOKEN:"existing-admin"}),"existing-admin");
+ assert.equal(joinGithubToken({XITA_GITHUB_TOKEN:"existing-admin",XITA_JOIN_WRITER_TOKEN:"override"}),"override");
+ assert.equal(joinGithubToken({}),"");
+});
 test("Join status fails closed until private email delivery and writer exist",()=>{
  assert.equal(joinAvailable({}),false);
  assert.equal(joinAvailable({XITA_JOIN_WRITER_TOKEN:"yes"}),false);
+ assert.equal(joinAvailable({XITA_GITHUB_TOKEN:"yes"}),false);
 });
 test("email confirmation is private, single-use and required before public GitHub Draft PR",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-join-integration-")),mail=[];
