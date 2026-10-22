@@ -328,3 +328,33 @@ test("browser proxy failing is explicitly identified before wallet signing",asyn
   ok:false,status:502
  }),{viaProxy:true}),/proxy unavailable.*no wallet transaction sent/);
 });
+
+test("Arbitrum mined two-hop intent survives 64-block finality before unlock",async()=>{
+ const f=chainAgnosticScenario("arbitrum",42161);
+ f.catalog.chains.arbitrum.confirmations=64;
+ const lastDomain=toTopic(8453);
+ // Paid adapter event fields commit to Base as the final target, even when
+ // the first hop destination Mailbox is still XGRChain.
+ const words=[f.route,toTopic(1643),toTopic(BigInt(user)),lastDomain,
+  toTopic(BigInt(user)),hash("d"),toTopic(500000000000000000n),
+  toTopic(100000000000000000n),toTopic(100000000000000000n),
+  toTopic(2000),toTopic(42)];
+ const finalRoute=hash("d");
+ f.catalog.chains.base={chainId:8453,domainId:8453,confirmations:12,rpcUrls:["https://rpc.example/base"]};
+ f.catalog.assets.XGR.routes.routes.push({name:"xgr_to_base",sourceChain:"xgrchain",destinationChain:"base"});
+ f.catalog.assets.XGR.deployment.routeDeployments.push({routeName:"xgr_to_base",
+  routeId:finalRoute,sourceChain:"xgrchain",destinationChain:"base",
+  components:{gateway:{address:addr("e")}}});
+ const fee={...f.fee,data:"0x"+words.map(w=>w.slice(2)).join("")};
+ const read=async(head)=>findWalletSourceTx({catalog:f.catalog,account:user,sourceChain:"arbitrum",
+  txHash,rpc:f.rpc({receiptObject:{...f.mined,logs:[f.op,f.dispatch,fee]},head})});
+ const notFinal=await read("0x2e"); // mined at 0x10, only 31 confirmations
+ assert.equal(notFinal.status,"confirming");
+ assert.equal(notFinal.confirmed,false);
+ assert.equal(notFinal.confirmationsObserved,31);
+ assert.equal(notFinal.requiredConfirmations,64);
+ assert.equal(notFinal.finalDestinationChain,"base");
+ const finalized=await read("0x4f");
+ assert.equal(finalized.confirmed,true);
+ assert.equal(finalized.finalDestinationChain,"base");
+});
