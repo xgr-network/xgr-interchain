@@ -43,7 +43,7 @@ test("dashboard and inventory do not invent real-time operational metrics",()=>{
   const model=buildExperienceModel(catalog);
   const html=renderDashboard(model,{},"error");
   assert.match(html,/Awaiting complete verified evidence/);
-  assert.match(html,/Verified active/);
+  assert.match(html,/Active directions/);
   assert.doesNotMatch(html,/99\.9%|18 seconds|In Transit/);
   assert.match(renderRoutes(model),/Alliance projects start with an application and XGR review/);
 });
@@ -383,4 +383,30 @@ test("completed Base to XGR delivery is success, never unresolved or repeat-sign
   {account:"0x"+"b".repeat(40)},{items:[completed],selectedTxHash:txHash});
  assert.match(foreign,/Locating previous transfer/);
  assert.match(foreign,/id="xita-transfer-primary" disabled/);
+});
+
+test("dashboard derives active transfers from deployed catalog receipts, not mutable activation flags",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const model=buildExperienceModel(c,()=>false);
+ const html=renderDashboard(model,{},"ready",null,c);
+ assert.equal(model.transferRoutes.length,4);
+ assert.match(html,/4<\/strong><span>Active directions<\/span>/);
+ assert.match(html,/data-xita-system="base".*?is-active">Active/);
+ assert.match(html,/data-xita-system="arbitrum".*?is-active">Active/);
+ assert.match(html,/data-xita-system="polygon".*?In preparation/);
+ assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
+});
+
+test("TVL chart draws observed snapshots but never invents missing history",()=>{
+ const model=buildExperienceModel(catalog);
+ const pending=renderDashboard(model);
+ assert.match(pending,/TVL history is being collected/);
+ const metrics={totals:{lockedUsd:5,movedUsd:null},history:{points:[
+  {asOf:"2026-10-20T12:00:00Z",lockedUsd:4},
+  {asOf:"2026-10-21T12:00:00Z",lockedUsd:5}
+ ]}};
+ const html=renderDashboard(model,{},"ready",metrics);
+ assert.match(html,/ux-ns-tvl-sparkline/);
+ assert.match(html,/2 verified snapshots/);
+ assert.match(html,/Moved via XGR/);
 });

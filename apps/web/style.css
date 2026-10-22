@@ -1204,3 +1204,49 @@ main:has(>.ux-plan-page){padding-top:5px}
 @media(max-width:540px){#xita-flow-dialog.ux-flow-dialog{width:calc(100vw - 12px);max-height:92dvh}#xita-flow-dialog .ux-flow-content{padding:16px}}
 /* The detail view replaces the redundant progress panel, but not route fees. */
 .ux-plan-page .ux-transfer-side{display:grid;grid-template-columns:minmax(0,1fr)}
+/* Dashboard: keep hero metadata entirely above the deck at every width. */
+.ux-dashboard .ux-ns-stage,.ux-dashboard .ux-3d-stage.ux-ns-stage:not(.is-compact){height:clamp(780px,85vh,1000px);min-height:780px}
+.ux-dashboard .ux-ns-deck{margin-top:0}
+.ux-dashboard .ux-ns-hero-copy{max-height:calc(100% - 135px)}
+.ux-dashboard .ux-ns-signature{margin-top:38px;padding-top:0}
+.ux-dashboard .ux-ns-network-status{top:24px;bottom:auto}
+.ux-dashboard .ux-ns-stage .ux-3d-controls{bottom:52px}
+.ux-dashboard .ux-ns-stage .ux-3d-status{bottom:19px}
+.ux-ns-system-tag.is-active{border-color:#547c87;background:#123339;color:#a4e8dc}
+.ux-ns-tvl-history{margin:6px 0 1px;min-height:94px}
+.ux-ns-tvl-history-label{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#a9bfce}
+.ux-ns-tvl-sparkline{width:100%;height:72px;display:block}
+.ux-ns-tvl-history.is-empty{min-height:63px;padding-top:19px;color:#819ab0;font-size:10px;line-height:1.6}
+.ux-dashboard-rankings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;width:min(calc(100% - 70px),1450px);margin:68px auto 0}
+.ux-dashboard .ux-dashboard-rankings .ux-dashboard-ranking{width:auto;margin:0;min-width:0;min-height:260px;padding:18px;display:flex;flex-direction:column}
+.ux-dashboard-rankings .ux-dashboard-ranking h2{font-size:clamp(24px,2.1vw,34px);line-height:1.1}
+.ux-dashboard-rankings .ux-dashboard-ranking-head p{font-size:11px}
+.ux-dashboard-rankings .ux-dashboard-token-table{margin-top:15px}
+.ux-dashboard-rankings .ux-dashboard-token-row{padding:10px 8px;gap:5px}
+.ux-dashboard-rankings .ux-dashboard-token-name{gap:6px;min-width:0}
+.ux-dashboard-rankings .ux-dashboard-token-rank{width:16px;flex:0 0 16px}
+.ux-dashboard-rankings .ux-dashboard-token-name .ux-token-sphere{height:19px;width:19px}
+.ux-dashboard-rankings .ux-dashboard-token-cap{font-size:13px;white-space:nowrap}
+.ux-dashboard-ranking-empty{font-size:12px;color:#94acc8;line-height:1.65;margin:26px 0}
+.ux-dashboard-ranking-link{font-size:11px;color:#b5d6fb;margin-top:auto;padding-top:16px}
+@media(max-width:1100px){
+ .ux-dashboard .ux-ns-stage,.ux-dashboard .ux-3d-stage.ux-ns-stage:not(.is-compact){min-height:760px;height:760px}
+ .ux-dashboard .ux-ns-hero-copy{max-height:none}
+ .ux-dashboard-rankings{width:calc(100% - 34px);grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ux-dashboard .ux-ns-signature{margin-top:34px}
+}
+@media(max-width:700px){
+ .ux-dashboard .ux-ns-stage,.ux-dashboard .ux-3d-stage.ux-ns-stage:not(.is-compact){height:790px;min-height:790px}
+ .ux-dashboard .ux-ns-hero-copy{top:86px}
+ .ux-dashboard .ux-ns-network-status{top:auto;bottom:88px;right:14px}
+ .ux-dashboard .ux-ns-stage .ux-3d-controls{bottom:36px}
+ .ux-dashboard .ux-ns-stage .ux-3d-status{bottom:12px}
+ .ux-dashboard .ux-ns-stage .ux-3d-hint{bottom:13px;max-width:58%}
+ .ux-dashboard-rankings{grid-template-columns:1fr;width:calc(100% - 22px);margin-top:35px}
+}
+@media(max-width:440px){
+ .ux-dashboard .ux-ns-stage,.ux-dashboard .ux-3d-stage.ux-ns-stage:not(.is-compact){min-height:830px;height:830px}
+ .ux-dashboard .ux-ns-hero-copy{top:100px}
+ .ux-dashboard .ux-ns-network-status{bottom:90px}
+ .ux-dashboard .ux-ns-signature{margin-top:22px}
+}
