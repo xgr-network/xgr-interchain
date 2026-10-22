@@ -2,6 +2,7 @@
 // Deterministic JSON derived exclusively from validated public inputs + main inventory.
 // This only prepares directory manifests; it NEVER creates a contract or activates a route.
 import {canonicalAssetId} from "../admin/asset-state.mjs";
+import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 
@@ -53,11 +54,11 @@ export function normalizeApplication(raw,inventory){
  const symbol=String(raw.symbol||"").toUpperCase();
  if(!/^[A-Z][A-Z0-9]{1,11}$/.test(symbol)||symbol==="XGR"||Object.hasOwn(inventory.assets||{},symbol))
   note("Invalid or already listed symbol");
- const name=raw.name,slug=raw.slug;
- if(!validText(name,2,80)||!/^[a-z0-9][a-z0-9-]{1,60}$/.test(slug||"")||slug.endsWith("-"))
-  note("Invalid project name or token slug");
- if(Object.values(inventory.assets||{}).some(a=>a.profile?.slug===slug||
-    a.metadata?.canonical?.tokenAddress?.toLowerCase()===String(raw.canonicalAddress||"").toLowerCase()&&
+ const name=raw.name;
+ if(!validText(name,2,80))note("Invalid project name");
+ const slug=suggestedTokenSlug(raw,inventory.assets);
+ if(!slug)note("Cannot derive a token profile URL from name or symbol");
+ if(Object.values(inventory.assets||{}).some(a=>a.metadata?.canonical?.tokenAddress?.toLowerCase()===String(raw.canonicalAddress||"").toLowerCase()&&
     a.metadata?.canonical?.chain===raw.canonicalChain))
   note("Existing token slug or canonical contract");
  const shortDescription=raw.shortDescription,description=raw.description;
