@@ -56,3 +56,16 @@ test("status content escapes errors and hashes safely",()=>{
  const html=renderTransferFlow({journey,notice:"<script>evil</script>"});
  assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
 });
+
+test("mined but unfinalized Arbitrum parent stays at first step and shows count",()=>{
+ const record={...base,confirmed:false,status:"confirming",delivered:null,
+  confirmationsObserved:41,requiredConfirmations:64,finalDestinationChain:"base"};
+ const flow=deriveTransferFlow({journey,record,stage:"first-proof-wait",working:true,
+  notice:"Indexer synchronized across all finalized deployed routes."});
+ assert.equal(flow.twoHop,true);
+ assert.equal(flow.steps[0].state,"current");
+ assert.equal(flow.steps[1].state,"pending");
+ assert.equal(flow.verifiedWalletTx,0);
+ assert.match(flow.message,/41 \/ 64 confirmations/);
+ assert.doesNotMatch(flow.message,/Indexer synchronized/);
+});

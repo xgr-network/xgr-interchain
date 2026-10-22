@@ -509,7 +509,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const deployedAssets=new Set(routes.map(r=>r.asset));
  const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id)||a.id===currentWork?.asset);
  const requestedOrigin=currentWork?.sourceChain||selection.origin;
- const requestedDestination=currentWork?.destinationChain||selection.destination;
+ const requestedDestination=currentWork?.finalDestinationChain||currentWork?.destinationChain||selection.destination;
  const requestedAsset=currentWork?.asset||selection.asset;
  const origin=deployedChains.some(c=>c.key===requestedOrigin)?requestedOrigin:
    deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
