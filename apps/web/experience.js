@@ -382,7 +382,7 @@ function dashboardTopTokens(catalog,metrics){
       '<span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
       '<strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong></a>').join("")+'</div>':
       '<p class="ux-dashboard-ranking-empty">'+panel.empty+'</p>')+
-     '<a class="ux-dashboard-ranking-link" data-nav href="/markets">Browse all tokens →</a></article>';
+     '<a class="ux-dashboard-ranking-link" data-nav href="/markets">Browse tokens →</a></article>';
   }).join("")+'</section>';
 }
 
