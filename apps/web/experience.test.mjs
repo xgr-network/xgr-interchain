@@ -405,9 +405,9 @@ test("TVL chart draws observed snapshots but never invents missing history",()=>
   {asOf:"2026-10-20T12:00:00Z",lockedUsd:4},
   {asOf:"2026-10-21T12:00:00Z",lockedUsd:5}
  ]}};
- const html=renderDashboard(model,{},"ready",metrics);
+ const html=renderDashboard(model,{tvlPeriod:"7d"},"ready",metrics);
  assert.match(html,/ux-ns-tvl-sparkline/);
- assert.match(html,/2 verified snapshots/);
+ assert.match(html,/ux-ns-tvl-axis/);
  assert.match(html,/Moved via XGR/);
 });
 
