@@ -14,6 +14,7 @@ import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
+import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -150,7 +151,7 @@ function scheduleFeePreview(){
  previewTimer=setTimeout(()=>{previewTimer=null;void refreshFeePreview();},450);
 }
 let transferRequest=0;
-const flowView={open:false,journey:null,stage:"",sourceTxHash:null};
+const flowView={open:false,journey:null,stage:"",sourceTxHash:null,account:null};
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
@@ -189,7 +190,8 @@ function setConnectedAccount(next){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
-   flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.stage="";
+   flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.account=null;flowView.stage="";
+    document.getElementById("xita-flow-dialog")?.close();
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
@@ -339,18 +341,27 @@ function setFlowStage(stage,notice){
  if(notice)transferActivity.notice=notice;
  updateFlowModal();
 }
-function flowRecord(){
- const hash=flowView.sourceTxHash||transferActivity.selectedTxHash;
- return transferActivity.items.find(t=>t.account?.toLowerCase()===state.account?.toLowerCase()&&
-  t.txHash?.toLowerCase()===hash?.toLowerCase())||null;
+function currentFlowBinding(){
+ return transferFlowBinding({account:state.account,selectedTxHash:transferActivity.selectedTxHash,
+  items:transferActivity.items,session:flowView});
+}
+function resetFlowView(){
+ flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;
+ flowView.account=null;flowView.stage="";
+ document.getElementById("xita-flow-dialog")?.close();
 }
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
  if(!dialog||!flowView.open)return;
- const record=flowRecord();
- const journey=flowView.journey||{origin:state.experience.origin,destination:state.experience.destination,asset:state.experience.asset};
- const html=renderTransferFlow({journey,record,stage:flowView.stage,working:transferActivity.working,
-  scanning:transferActivity.scanning,notice:transferActivity.notice,error:transferActivity.error});
+ const binding=currentFlowBinding();
+ if(!binding){resetFlowView();return}
+ // Rebuild from the current selected source transaction, NEVER from stale
+ // global journey state or the most recent child hop.
+ const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
+  record:binding.record,stage:binding.sameSession?flowView.stage:"",
+  working:transferActivity.working,scanning:transferActivity.scanning,
+  notice:binding.sameSession?transferActivity.notice:"",
+  error:binding.sameSession?transferActivity.error:""});
  const scroll=dialog.scrollTop;
  dialog.innerHTML=html;dialog.scrollTop=scroll;
  if(!dialog.open)dialog.showModal();
@@ -359,25 +370,24 @@ function updateFlowModal(){
  dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
  dialog.querySelector("#xita-flow-refresh")?.addEventListener("click",()=>void scanWalletHistory());
  dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
-  const original=flowView.sourceTxHash;
-  if(original&&/^0x[0-9a-f]{64}$/i.test(original)){
-   history.replaceState(null,"","/transfer?token="+encodeURIComponent(journey.asset||"XGR")+"&resume="+original);
-   transferActivity.selectedTxHash=original;
-  }
+  const bound=currentFlowBinding();
+  if(!isFlowContinuationAuthorized({account:state.account,
+   selectedTxHash:transferActivity.selectedTxHash,binding:bound})||
+   bound.key!==binding.key||transferActivity.working)return;
+  // No silent re-selection and absolutely no fallback to a new source TX.
   void performTransferAction();
  });
 }
 function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow-dialog")?.close();}
 function openFlowModal(){
- const selected=selectedRecovery(transferActivity.items,state.account,transferActivity.selectedTxHash);
- const record=selected||transferActivity.items.find(t=>t.account?.toLowerCase()===state.account?.toLowerCase()&&t.txHash?.toLowerCase()===transferActivity.selectedTxHash?.toLowerCase());
- if(!flowView.sourceTxHash&&!record)return; // A hash-only URL is not verified ownership.
- if(!flowView.journey){
-  flowView.journey={origin:record?.sourceChain||state.experience.origin,
-   destination:record?.finalDestinationChain||record?.destinationChain||state.experience.destination,
-   asset:record?.asset||state.experience.asset};
-  flowView.sourceTxHash=record?.txHash||null;
+ const binding=currentFlowBinding();
+ if(!binding)return;
+ if(!binding.sameSession){
+  flowView.stage="";transferActivity.error="";transferActivity.notice="";
  }
+ flowView.journey=binding.journey;
+ flowView.sourceTxHash=binding.sourceTxHash;
+ flowView.account=state.account;
  flowView.open=true;updateFlowModal();
 }
 async function performTransferAction(){
@@ -519,6 +529,7 @@ async function performTransferAction(){
    onBroadcast:({txHash})=>{
     broadcastKnown=true;
     flowView.journey={origin,destination,asset};flowView.sourceTxHash=txHash;
+    flowView.account=account;
     flowView.open=true;setFlowStage("source-pending");
     // Preserve the canonical source hash in the URL immediately after
     // broadcast. A reload must not turn a pending source into a new CTA.
@@ -529,6 +540,7 @@ async function performTransferAction(){
     render();
    }});
   flowView.journey={origin,destination,asset};flowView.sourceTxHash=sent.txHash;
+  flowView.account=account;
   flowView.open=true;setFlowStage("source-pending","Source TX submitted. Waiting for lock/burn confirmation…");
   const receipt=await waitForWalletReceipt(globalThis.ethereum,sent.txHash,{attempts:20,delayMs:2500});
   if(!receipt)transferActivity.notice="Source TX still pending. Reconnect later to rescan the chain.";
@@ -568,10 +580,7 @@ async function performTransferAction(){
   }
  }catch(error){
   transferActivity.error=String(error.message||error);
-  if(!broadcastKnown&&!selected&&!flowView.sourceTxHash){
-   flowView.open=false;flowView.journey=null;flowView.stage="";
-   document.getElementById("xita-flow-dialog")?.close();
-  }
+  if(!broadcastKnown&&!selected&&!flowView.sourceTxHash)resetFlowView();
   updateFlowModal();
   // A failed preflight must not keep displaying a stale in-progress status.
   // Preserve broadcast evidence when a transaction actually left the wallet.
@@ -873,8 +882,10 @@ function render(){
   // A resume URL is only a selection intent; it never verifies ownership
   // or authorizes a source TX. Only wallet-indexed records can do that.
   const requested=query.get("resume");
-  transferActivity.selectedTxHash=/^0x[0-9a-f]{64}$/i.test(requested||"")?
+  const nextSelected=/^0x[0-9a-f]{64}$/i.test(requested||"")?
    requested.toLowerCase():null;
+  if(nextSelected!==transferActivity.selectedTxHash&&flowView.sourceTxHash?.toLowerCase()!==nextSelected)resetFlowView();
+  transferActivity.selectedTxHash=nextSelected;
  }
  if(p==="/my-transfers"&&!state.account){
   history.replaceState(null,"","/");
@@ -945,6 +956,7 @@ function render(){
    params.set("resume",e.target.value.toLowerCase());
   else params.delete("resume");
   history.replaceState(null,"","/transfer"+(params.size?"?"+params.toString():""));
+  resetFlowView();transferActivity.error="";transferActivity.notice="";
   render();
  });
  document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
