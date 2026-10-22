@@ -91,6 +91,28 @@ wait_admin() {
   return 1
 }
 
+# systemd Type=simple confirms only that exec was started, not that Node has
+# finished importing modules and bound its socket. Check real HTTP readiness;
+# NEVER repeatedly restart a healthy service merely to win this race.
+wait_xita_indexer() {
+  local i
+  for ((i=1; i<=20; i++)); do
+    if curl --fail --silent --show-error --connect-timeout 1 --max-time 2 \
+        http://127.0.0.1:4088/health >/dev/null 2>&1; then
+      return 0
+    fi
+    if systemctl is-failed --quiet xita-indexer.service 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+  echo "ERROR: XITA indexer did not become HTTP-ready on 127.0.0.1:4088." >&2
+  echo "Indexer status and recent startup errors:" >&2
+  privileged systemctl status xita-indexer.service --no-pager --lines=18 >&2 || true
+  privileged journalctl -u xita-indexer.service -n 45 --no-pager >&2 || true
+  return 1
+}
+
 prepare_solidity_runtime() {
   local forge_bin
   echo "Verifying complete pinned Solidity dependency tree ..."
@@ -271,7 +293,8 @@ install_transfer_api() (
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-indexer.service
   privileged systemctl restart xita-indexer.service
-  privileged systemctl is-active xita-indexer.service
+  # A green 'systemctl is-active' does not mean the Node HTTP socket is ready.
+  wait_xita_indexer || return 1
   echo "Installing exact-match nginx proxy for unsigned destination recovery ..."
   if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
     privileged "$node_bin" "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
@@ -489,31 +512,29 @@ complete_update() {
   require_clean_main
   publish_web
   install_sync
-  # Publish newly added read-only API locations as part of the same update
-  # that ships browser code expecting them. The installer is idempotent,
-  # validates Nginx, and restores the vhost on failed validation.
-  # Never leave a new browser release pointing at the fail-closed 503 route.
+  # Deploy new read-only API routes alongside the browser release.
+  # Restart the indexer FIRST, then wait for its actual HTTP listener.
   if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
+    privileged systemctl restart xita-indexer.service
+    wait_xita_indexer || return 1
     if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
       privileged "$(command -v node)" "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
     else
       privileged "$(command -v node)" "$ROOT/tools/install-transfer-recovery-nginx.mjs"
     fi
-    # Verify that HTTPS requests actually reach this service; a wildcard
-    # fallback 503 or outdated vhost must never pass as a deployed RPC proxy.
+    # A deliberately rejected UNSAFE RPC method must return HTTP 400 from the
+    # current Node handler. This verifies Nginx routing WITHOUT depending on
+    # any external chain RPC: 503 would indicate the old catch-all location.
     local status
     status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
       --resolve xita.xgr.network:443:127.0.0.1 \
       -H 'Content-Type: application/json' \
-      -d '{"rpcUrl":"https://rpc.xgr.network","method":"eth_chainId","params":[]}' \
+      -d '{"rpcUrl":"https://rpc.xgr.network","method":"eth_sendRawTransaction","params":[]}' \
       https://xita.xgr.network/api/xeta/v1/rpc/read)" || status="000"
-    if [[ "$status" != "200" ]]; then
-      echo "ERROR: XITA read-only RPC API is not operational after updating Nginx (HTTP $status)." >&2
+    if [[ "$status" != "400" ]]; then
+      echo "ERROR: XITA read-only RPC Nginx routing check failed (HTTP $status; expected safe rejection 400)." >&2
       return 1
     fi
-  fi
-  if systemctl is-active --quiet xita-indexer.service 2>/dev/null; then
-    privileged systemctl restart xita-indexer.service
   fi
   if systemctl is-active --quiet xita-tvl.service 2>/dev/null; then
     privileged systemctl restart xita-tvl.service

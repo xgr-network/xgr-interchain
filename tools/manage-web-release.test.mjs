@@ -78,5 +78,23 @@ test("update installs exact read-only RPC Nginx route and refuses public fallbac
  assert.match(section,/install-transfer-recovery-nginx\.mjs/);
  assert.match(section,/xita\.xgr\.network\/api\/xeta\/v1\/rpc\/read/);
  assert.match(section,/http_code/);
- assert.match(section,/\$status" != "200"/);
+ assert.match(section,/\$status" != "400"/);
+ assert.match(section,/eth_sendRawTransaction/);
+ assert.match(section,/wait_xita_indexer/);
+ assert.ok(section.indexOf("restart xita-indexer.service")<section.indexOf("install-transfer-recovery-nginx.mjs"),
+  "new indexer must start before the API routing is verified");
+});
+
+test("indexer installer waits for real HTTP socket readiness before checking proof service",()=>{
+ const installer=shell.split("install_transfer_api() (")[1]?.split("\n)\n")[0];
+ assert.ok(installer);
+ assert.match(installer,/restart xita-indexer\.service[\s\S]*?wait_xita_indexer/);
+ assert.ok(installer.indexOf("wait_xita_indexer")<installer.indexOf(
+  "Verifying local proof builder"));
+ const probe=shell.split("\nwait_xita_indexer() {")[1]?.split("\n}\n")[0];
+ assert.ok(probe);
+ assert.match(probe,/127\.0\.0\.1:4088\/health/);
+ assert.match(probe,/i<=20/);
+ assert.match(probe,/journalctl -u xita-indexer\.service/);
+ assert.doesNotMatch(probe,/restart xita-indexer/);
 });
