@@ -111,3 +111,13 @@ test("DB repair uses idempotent additive migrations and plain SQL checks without
  assert.match(part,/GRANT SELECT, UPDATE, DELETE/);
  assert.match(part,/systemctl restart xita-transfer-indexer\.service/);
 });
+
+test("Join installer waits for live loopback readiness before publishing nginx routes",()=>{
+ const section=shell.split("install_join() (")[1]?.split("\n)\n")[0];
+ assert.ok(section);
+ assert.match(section,/join_ready=0/);
+ assert.match(section,/curl --fail --silent --show-error --max-time 2/);
+ assert.match(section,/systemctl is-active --quiet xita-join.service/);
+ assert.match(section,/journalctl -u xita-join.service/);
+ assert.ok(section.indexOf('join_ready=1')<section.indexOf('install-join-nginx.mjs'));
+});
