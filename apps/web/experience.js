@@ -311,9 +311,9 @@ function tvlHistoryChart(metrics,period="24h"){
   ["24h","7d","30d"].map(p=>'<button type="button" data-tvl-period="'+p+'" class="'+(p===valid?"is-selected":"")+'" aria-pressed="'+(p===valid)+'">'+p+'</button>').join("")+'</div>';
  const stamp=t=>valid==="24h"?new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"UTC"})+" UTC":
   new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
- if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Collecting verified TVL history.</p></div>';
+ if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected.</p></div>';
  const firstAt=Date.parse(points[0].asOf),lastAt=Date.parse(points.at(-1).asOf),span=lastAt-firstAt;
- if(span<=0)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Collecting verified TVL history.</p></div>';
+ if(span<=0)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected.</p></div>';
  // Scale to observed timestamps, not the 24h container that compressed samples into a tiny strip.
  const values=points.map(p=>p.lockedUsd),low=Math.min(...values),high=Math.max(...values);
  const padding=Math.max((high-low)*.15,Math.max(high,1)*.00001),range=high-low+padding*2;
