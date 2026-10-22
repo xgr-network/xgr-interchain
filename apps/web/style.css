@@ -1272,18 +1272,19 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-ns-tvl-history.is-empty{padding-top:0;min-height:112px}
 .ux-ns-tvl-history.is-empty p{margin:10px 0 15px;font-size:10px;line-height:1.5}
 
-/* Fictional cinematic night-world; no Earth geography or runtime reprojection. */
+/* Approved cinematic quarter-planet: artwork is already cropped to the visible limb.
+   Do not use sphere scaling, translate(), shaders, Earth maps, or decorative glows. */
 body.xita-subpage-planet{isolation:isolate}
 body.xita-subpage-planet::after{
  content:"";position:fixed;z-index:0;pointer-events:none;
- width:clamp(850px,80vw,1320px);aspect-ratio:1;
- right:0;bottom:0;transform:translate(53%,55%);
- background:url("/fictional-planet.webp") center/contain no-repeat;
- opacity:.88;
- filter:drop-shadow(-18px -22px 42px #2676b136);
+ width:min(54vw,115vh);aspect-ratio:863/471;
+ right:0;bottom:0;
+ background:url("/xita-quarter-planet.webp") right bottom/contain no-repeat;
+ opacity:1;filter:none;
 }
 body.xita-subpage-planet>#app{position:relative;z-index:1}
-@media(max-width:700px){body.xita-subpage-planet::after{width:clamp(520px,125vw,820px);opacity:.68}}
+@media(max-width:1100px){body.xita-subpage-planet::after{width:min(92vw,80vh)}}
+@media(max-width:600px){body.xita-subpage-planet::after{width:min(115vw,70vh)}}
 .ux-ns-tvl-last{display:block;max-width:100%;margin:4px 0 10px;font:11px/1.55 var(--xita-type,Inter,sans-serif);color:#9fb2c9;overflow-wrap:break-word}
 .ux-ns-tvl-history{min-height:122px}
 .ux-ns-tvl-coverage{display:block;color:#7f9eb7;font-size:10px;margin-top:4px}
