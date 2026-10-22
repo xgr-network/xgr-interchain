@@ -1,11 +1,23 @@
 // Append-only verified TVL observations. No historical RPC and no interpolation.
 import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync} from "node:fs";
 import {verifiedMetrics} from "../../apps/web/leaderboard-data.js";
-export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=2160}={}){
+export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}={}){
+ // Maintain high resolution for 48h, one real observed sample per hour
+ // thereafter, up to 90 days. Never synthesize or interpolate snapshots.
+ const compact=(samples,now)=>{
+  const recent=now-48*3600000,oldest=now-90*86400000,byHour=new Map,retained=[];
+  for(const p of samples){
+   const at=Date.parse(p.asOf);
+   if(!Number.isFinite(at)||at<oldest||at>now)continue;
+   if(at>=recent)retained.push(p);
+   else byHour.set(Math.floor(at/3600000),p);
+  }
+  return [...byHour.values(),...retained].sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf)).slice(-limit);
+ };
  const previous=Array.isArray(oldHistory?.points)?oldHistory.points.filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf))):[];
  const assets=Object.keys(catalog?.assets||{}).filter(k=>catalog.assets[k]?.deployment?.present===true);
  const facts=assets.map(id=>verifiedMetrics(snapshot,id));
- if(!assets.length||facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
+ if(!assets.length||facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
  const at=Date.parse(snapshot?.asOf);
  if(!Number.isFinite(at))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const amount=facts.reduce((n,f)=>n+f.lockedUsd,0);
@@ -15,7 +27,7 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=2160}
  const points=previous.filter(p=>Date.parse(p.asOf)<at);
  // Snapshots are produced from independent escrow reconciliation, not browser claims.
  points.push({asOf:new Date(at).toISOString(),lockedUsd:amount});
- return {kind:"xita-tvl-history-v1",schemaVersion:1,points:points.slice(-limit)};
+ return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(points,at)};
 }
 export function appendVerifiedTvlHistory(path,snapshot,catalog){
  let old=null;

@@ -212,12 +212,12 @@ export async function handler(req,res){
   try{
    if(existsSync(historyPath)){
     const stat=statSync(historyPath);
-    if(stat.isFile()&&stat.size<300000){
+    if(stat.isFile()&&stat.size<1200000){
      const value=JSON.parse(readFileSync(historyPath,"utf8"));
      if(value.kind==="xita-tvl-history-v1"&&value.schemaVersion===1&&Array.isArray(value.points))
       history={kind:value.kind,schemaVersion:1,points:value.points.filter(p=>
        typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf))&&
-       typeof p.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0).slice(-2160)};
+       typeof p.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0).slice(-6500)};
     }
    }
   }catch{/* No guessed chart points on invalid local history. */}

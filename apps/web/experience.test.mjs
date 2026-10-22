@@ -405,9 +405,9 @@ test("TVL chart draws observed snapshots but never invents missing history",()=>
   {asOf:"2026-10-20T12:00:00Z",lockedUsd:4},
   {asOf:"2026-10-21T12:00:00Z",lockedUsd:5}
  ]}};
- const html=renderDashboard(model,{},"ready",metrics);
+ const html=renderDashboard(model,{tvlPeriod:"7d"},"ready",metrics);
  assert.match(html,/ux-ns-tvl-sparkline/);
- assert.match(html,/2 verified snapshots/);
+ assert.match(html,/ux-ns-tvl-axis/);
  assert.match(html,/Moved via XGR/);
 });
 
@@ -437,4 +437,23 @@ test("failed input preflight stays inline with NO modal or status reopening",()=
  const recovery=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},
   "ready",{account},{hasFlow:true});
  assert.match(recovery,/id="xita-flow-reopen"/);
+});
+
+test("TVL 24h change requires a genuine nearby baseline and colors gain/loss",async()=>{
+ const {tvlChange24h}=await import("./experience.js");
+ const asOf="2026-10-22T11:00:00.000Z";
+ const baseline="2026-10-21T11:00:00.000Z";
+ const data={asOf,totals:{lockedUsd:120},history:{points:[{asOf:baseline,lockedUsd:100},{asOf,lockedUsd:120}]}};
+ assert.equal(tvlChange24h(data),20);
+ const positive=renderDashboard(buildExperienceModel(catalog),{tvlPeriod:"24h"},"ready",data);
+ assert.match(positive,/\+20\.00% · 24h/);
+ assert.match(positive,/is-positive/);
+ assert.match(positive,/ux-ns-tvl-axis/);
+ assert.match(positive,/data-tvl-period="30d"/);
+ const neg={...data,totals:{lockedUsd:80}};
+ assert.equal(tvlChange24h(neg),-20);
+ assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",neg),/is-negative/);
+ const noBaseline={...data,history:{points:[{asOf:"2026-10-21T07:00:00.000Z",lockedUsd:100},{asOf,lockedUsd:120}]}};
+ assert.equal(tvlChange24h(noBaseline),null);
+ assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",noBaseline),/24h —/);
 });
