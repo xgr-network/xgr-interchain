@@ -118,7 +118,8 @@ export function classifyRecoveryFailure(err,stderr=""){
   /route is not configured or discovered locally/.test(t)?"PROOF_ROUTE_NOT_REGISTERED":
   /iln worker not available/.test(t)?"PROOF_VALIDATOR_WORKER_UNAVAILABLE":
   /request exists with a different source block/.test(t)?"PROOF_QUORUM_REQUEST_CONFLICT":
-  /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
+  /quorum|attestation|signature/.test(t)&&rpcCode!==-32603?"PROOF_QUORUM_UNAVAILABLE":
+  rpcCode===-32603?"PROOF_VALIDATOR_RPC_REJECTED":
   /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
   /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
