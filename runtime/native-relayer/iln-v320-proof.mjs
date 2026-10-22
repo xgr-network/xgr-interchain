@@ -38,8 +38,8 @@ export function verifyV320ReplicaProof({
   // Hyperlane source tree is append-only. A later verified replica with the
   // same independently reconstructed root/count proves the signed prefix.
   // Never accept a replica OLDER than the attested checkpoint.
-  check(checkpointBlock >= integer(attestation.sourceBlockNumber,
-    "attestation checkpoint block",{positive:true}) &&
+  check(integer(attestation.sourceBlockNumber,
+    "signed insertion index",{positive:true}) === checkpointIndex + 1 &&
     checkpointIndex === integer(attestation.index,"attestation checkpoint index") &&
     messageIndex <= checkpointIndex,
   "validator Merkle proof checkpoint/index does not match BLS attestation");
