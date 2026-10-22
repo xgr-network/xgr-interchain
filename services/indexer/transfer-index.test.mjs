@@ -223,3 +223,15 @@ test("candidate RPC reads confirmed TX from fallback after primary returns null"
  const chain={name:"base",chainId:8453,rpcUrls:["https://source.test/first","https://source.test/second"]};
  assert.equal((await read(chain,"eth_getTransactionReceipt",[hash("d")])).transactionHash,hash("d"));
 });
+
+test("Arbitrum indexer converts safe block timestamp without fractional BigInt",async()=>{
+ const log={address:route.gateway,topics:[OPERATION_TOPIC,route.routeId,hash("c"),hash("2")],
+  transactionHash:hash("d"),blockHash:hash("e"),blockNumber:hex(101),logIndex:"0x0",data:"0x"+word(2)};
+ const reader=rpc({
+  eth_chainId:()=>hex(123),eth_blockNumber:()=>hex(110),eth_getLogs:()=>[log],
+  eth_getBlockByNumber:(_,[height])=>({number:height,hash:hash("e"),timestamp:hex(1792667400)})
+ });
+ const result=await readRouteWindow({route,cursor:null,rpc:reader,limit:4});
+ assert.equal(result.events.length,1);
+ assert.equal(result.events[0].sourceBlockAt,new Date(1792667400000).toISOString());
+});
