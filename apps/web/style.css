@@ -1272,22 +1272,18 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-ns-tvl-history.is-empty{padding-top:0;min-height:112px}
 .ux-ns-tvl-history.is-empty p{margin:10px 0 15px;font-size:10px;line-height:1.5}
 
-/* A subdued backlit quarter-planet on subpages, above the body background but below UI. */
+/* Subpage night-side world: precisely one quarter visible from bottom-right. */
 body.xita-subpage-planet{isolation:isolate}
 body.xita-subpage-planet::after{
  content:"";position:fixed;pointer-events:none;z-index:0;
- width:clamp(420px,61vw,970px);aspect-ratio:1;right:clamp(-520px,-30vw,-180px);
- bottom:clamp(-590px,-32vw,-220px);border-radius:50%;
- background:
-  radial-gradient(circle at 15% 13%,#96caff31 0%,#659bda16 22%,transparent 52%),
-  radial-gradient(circle at 35% 29%,#4c7eac46 0%,#15375b99 35%,#08172bdd 64%,#030916fa 100%);
- box-shadow:
-  -16px -22px 45px -21px #81b2e080,
-  -45px -65px 120px -55px #568ac953,
-  inset 16px 24px 53px -17px #9fc9f75c;
- opacity:.66;filter:blur(1px);
+ width:clamp(660px,72vw,1100px);aspect-ratio:1;
+ right:0;bottom:0;transform:translate(50%,50%);
+ border-radius:50%;
+ background:url("/subpage-planet.svg") center/contain no-repeat;
+ opacity:.86;
+ filter:drop-shadow(-14px -18px 36px #4279ab31);
 }
-/* Header already has z-index:20, and subpage content must sit above the planet. */
+/* Keep all interactive page content above the decorative sphere. */
 body.xita-subpage-planet>#app{position:relative;z-index:1}
 
 .ux-ns-tvl-last{display:block;max-width:100%;margin:4px 0 10px;font:11px/1.55 var(--xita-type,Inter,sans-serif);color:#9fb2c9;overflow-wrap:break-word}
@@ -1295,5 +1291,5 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 .ux-ns-tvl-coverage{display:block;color:#7f9eb7;font-size:10px;margin-top:4px}
 .ux-dashboard-token-amount{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .ux-dashboard-token-amount small{color:#92a7bd;font-size:9px;font-weight:400}
-@media(max-width:700px){body.xita-subpage-planet::after{width:580px;right:-440px;bottom:-380px;opacity:.43}}
+@media(max-width:700px){body.xita-subpage-planet::after{width:clamp(430px,115vw,660px);opacity:.58}}
 @media(prefers-reduced-motion:reduce){body.xita-subpage-planet::after{filter:none}}

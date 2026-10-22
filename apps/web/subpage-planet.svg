@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" aria-hidden="true">
+<defs>
+ <radialGradient id="night" cx="24%" cy="19%" r="86%"><stop stop-color="#4d769a"/><stop offset=".25" stop-color="#294d70"/><stop offset=".53" stop-color="#122b43"/><stop offset=".79" stop-color="#071728"/><stop offset="1" stop-color="#020914"/></radialGradient>
+ <radialGradient id="haze" cx="27%" cy="22%" r="77%"><stop stop-color="#83aed1" stop-opacity=".29"/><stop offset=".36" stop-color="#5d94bb" stop-opacity=".11"/><stop offset=".7" stop-color="#284969" stop-opacity=".035"/><stop offset="1" stop-color="#0b1a2b" stop-opacity="0"/></radialGradient>
+ <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b5ddf5" stop-opacity=".72"/><stop offset=".33" stop-color="#81b7df" stop-opacity=".46"/><stop offset=".65" stop-color="#3e739e" stop-opacity=".16"/><stop offset="1" stop-color="#183453" stop-opacity="0"/></linearGradient>
+ <radialGradient id="terrain" cx="40%" cy="36%" r="73%"><stop stop-color="#789fb8" stop-opacity=".22"/><stop offset=".45" stop-color="#527a97" stop-opacity=".09"/><stop offset="1" stop-color="#0a1928" stop-opacity="0"/></radialGradient>
+ <clipPath id="planet"><circle cx="500" cy="500" r="445"/></clipPath>
+ <filter id="cloud" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".009 .016" numOctaves="4" seed="14" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 .50 0 0 0 0 .72 0 0 0 0 .87 3 0 0 0 -1.43"/><feGaussianBlur stdDeviation="1.6"/></filter>
+ <filter id="relief" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".026 .037" numOctaves="3" seed="23" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 .60 0 0 0 0 .78 0 0 0 0 .95 4 0 0 0 -1.93"/></filter>
+ <filter id="soft" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur stdDeviation="13"/></filter>
+</defs>
+<circle cx="500" cy="500" r="452" fill="none" stroke="url(#rim)" stroke-width="28" opacity=".37" filter="url(#soft)"/>
+<circle cx="500" cy="500" r="445" fill="url(#night)"/>
+<g clip-path="url(#planet)">
+<rect x="50" y="50" width="900" height="900" fill="url(#terrain)"/>
+<path d="M16 180Q178 59 348 131T641 150Q704 206 620 284T416 341Q310 430 174 370Z" fill="#6996b3" opacity=".095"/>
+<path d="M91 463Q173 380 321 403T597 449Q671 550 512 592T262 711Q105 647 91 463Z" fill="#8fb1c7" opacity=".055"/>
+<path d="M505 39Q664 135 743 293T953 523Q887 698 765 670T603 477Q560 368 505 39Z" fill="#81aec7" opacity=".055"/>
+<rect x="50" y="50" width="900" height="900" filter="url(#cloud)" opacity=".30"/>
+<rect x="50" y="50" width="900" height="900" filter="url(#relief)" opacity=".12"/>
+<circle cx="500" cy="500" r="445" fill="url(#haze)"/>
+</g>
+<circle cx="500" cy="500" r="446" fill="none" stroke="url(#rim)" stroke-width="3" opacity=".48"/>
+</svg>
