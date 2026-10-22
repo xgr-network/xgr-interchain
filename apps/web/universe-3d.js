@@ -654,9 +654,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    const mist=item.color.map(channel=>Math.min(1,channel*.78+.22));
    // Outer light extends past neighbouring stars and blends with their colours.
    // Radius is WORLD space and scales naturally with camera distance / zoom.
-   diffuseCorona(center,item.radius*18,mist,intensity*.70,vp,projection);
-   diffuseCorona(center,item.radius*9,item.color,intensity*.74,vp,projection);
-   diffuseCorona(center,item.radius*4.5,item.color,intensity*.32,vp,projection);
+   diffuseCorona(center,item.radius*11,mist,intensity*.30,vp,projection);
+   diffuseCorona(center,item.radius*6.5,item.color,intensity*.44,vp,projection);
+   diffuseCorona(center,item.radius*3.5,item.color,intensity*.24,vp,projection);
   }
   gl.enable(gl.DEPTH_TEST);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
   // Northstar: one fine ring per spoke, two warm rings around the hub.
