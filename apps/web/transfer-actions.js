@@ -540,6 +540,15 @@ export async function awaitUnsignedDeliveryProof({query,fetcher=globalThis.fetch
   }else if(proof?.reason==="PROOF_RPC_ARGUMENT_INVALID"){
    throw Error("ILN quorum RPC rejected the proof request"+where+
     "; operator intervention is required. No wallet transaction was sent.");
+  }else if(proof?.reason==="PROOF_ROUTE_NOT_REGISTERED"){
+   lastReason=proof.reason;
+   lastNotice="The validator has not registered the source route"+where+". No source retry is needed.";
+  }else if(proof?.reason==="PROOF_QUORUM_REQUEST_CONFLICT"){
+   lastReason=proof.reason;
+   lastNotice="Validator has an existing quorum request for this message with a conflicting source block"+where+". Operator investigation required.";
+  }else if(proof?.reason==="PROOF_VALIDATOR_WORKER_UNAVAILABLE"||proof?.reason==="PROOF_VALIDATOR_RPC_REJECTED"){
+   lastReason=proof.reason;
+   lastNotice="The XGR validator rejected the quorum request"+where+". Operator investigation required; do not repeat the source transfer.";
   }else if(proof?.reason==="PROOF_RPC_UNAVAILABLE"){
    lastReason=proof.reason;
    lastNotice="Required chain RPC is unavailable"+where+
