@@ -53,3 +53,11 @@ test("Review validates identity but never requires chain selection",()=>{
  assert.match(html,/Proposed networks: XGRChain · Base · Polygon · Arbitrum/);
  assert.doesNotMatch(html,/type="checkbox" data-join-target/);
 });
+
+test("invalid formatting is detected on project identity step, not on Review",()=>{
+ const d=valid();
+ d.description="Arbitrum is an Ethereum scaling ecosystem.\n\nThis is a holder application.";
+ assert.deepEqual(validateStep(d,0,chains),[]);
+ d.description="A description with disallowed <script> markup.";
+ assert.deepEqual(validateStep(d,0,chains),["Full description (40–5000 characters)"]);
+});

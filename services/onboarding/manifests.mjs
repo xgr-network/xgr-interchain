@@ -3,6 +3,7 @@
 // This only prepares directory manifests; it NEVER creates a contract or activates a route.
 import {canonicalAssetId} from "../admin/asset-state.mjs";
 import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
+import {normalizeJoinDescription} from "../../apps/web/join-description.js";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 
@@ -61,8 +62,9 @@ export function normalizeApplication(raw,inventory){
  if(Object.values(inventory.assets||{}).some(a=>a.metadata?.canonical?.tokenAddress?.toLowerCase()===String(raw.canonicalAddress||"").toLowerCase()&&
     a.metadata?.canonical?.chain===raw.canonicalChain))
   note("Existing token slug or canonical contract");
- const shortDescription=raw.shortDescription,description=raw.description;
- if(!validText(shortDescription,15,280)||!validText(description,40,5000))
+ const shortDescription=normalizeJoinDescription(raw.shortDescription,15,280);
+ const description=normalizeJoinDescription(raw.description,40,5000);
+ if(!shortDescription||!description)
   note("Project descriptions do not meet length/format requirements");
  const website=safeUrl(raw.website);
  if(!website)note("Project website must use HTTPS");
