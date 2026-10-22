@@ -26,7 +26,7 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}
   return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const points=previous.filter(p=>Date.parse(p.asOf)<at);
  // Snapshots are produced from independent escrow reconciliation, not browser claims.
- points.push({asOf:new Date(at).toISOString(),lockedUsd:amount});
+ points.push({asOf:new Date(at).toISOString(),lockedUsd:amount,assets:Object.fromEntries(assets.map((id,i)=>[id,facts[i].lockedUsd]))});
  return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(points,at)};
 }
 export function appendVerifiedTvlHistory(path,snapshot,catalog){
