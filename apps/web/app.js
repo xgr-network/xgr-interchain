@@ -13,6 +13,7 @@ import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
+import {renderTransferFlow} from "./transfer-status-flow.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -130,6 +131,7 @@ function scheduleFeePreview(){
  previewTimer=setTimeout(()=>{previewTimer=null;void refreshFeePreview();},450);
 }
 let transferRequest=0;
+const flowView={open:false,journey:null,stage:"",sourceTxHash:null};
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
@@ -168,6 +170,7 @@ function setConnectedAccount(next){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
+   flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.stage="";
  }
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
@@ -175,6 +178,11 @@ function setConnectedAccount(next){
  if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
+  if(flowView.journey&&record?.account?.toLowerCase()===state.account?.toLowerCase()&&
+    (record.txHash?.toLowerCase()===flowView.sourceTxHash?.toLowerCase()||
+     record.parentMessageId&&transferActivity.items.some(t=>t.txHash===flowView.sourceTxHash&&t.messageId===record.parentMessageId))){
+     if(!flowView.sourceTxHash)flowView.sourceTxHash=record.txHash;
+  }
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
   t.txHash===record.txHash);
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
@@ -306,6 +314,51 @@ async function lookupWalletTransfer(sourceChain,txHash){
    if(path()==="/my-transfers"||path()==="/transfer")render();
   }
  }
+}
+function setFlowStage(stage,notice){
+ flowView.stage=stage;
+ if(notice)transferActivity.notice=notice;
+ updateFlowModal();
+}
+function flowRecord(){
+ const hash=flowView.sourceTxHash||transferActivity.selectedTxHash;
+ return transferActivity.items.find(t=>t.account?.toLowerCase()===state.account?.toLowerCase()&&
+  t.txHash?.toLowerCase()===hash?.toLowerCase())||null;
+}
+function updateFlowModal(){
+ const dialog=document.getElementById("xita-flow-dialog");
+ if(!dialog||!flowView.open)return;
+ const record=flowRecord();
+ const journey=flowView.journey||{origin:state.experience.origin,destination:state.experience.destination,asset:state.experience.asset};
+ const html=renderTransferFlow({journey,record,stage:flowView.stage,working:transferActivity.working,
+  scanning:transferActivity.scanning,notice:transferActivity.notice,error:transferActivity.error});
+ const scroll=dialog.scrollTop;
+ dialog.innerHTML=html;dialog.scrollTop=scroll;
+ if(!dialog.open)dialog.showModal();
+ dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
+ dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
+ dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
+ dialog.querySelector("#xita-flow-refresh")?.addEventListener("click",()=>void scanWalletHistory());
+ dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
+  const original=flowView.sourceTxHash;
+  if(original&&/^0x[0-9a-f]{64}$/i.test(original)){
+   history.replaceState(null,"","/transfer?token="+encodeURIComponent(journey.asset||"XGR")+"&resume="+original);
+   transferActivity.selectedTxHash=original;
+  }
+  void performTransferAction();
+ });
+}
+function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow-dialog")?.close();}
+function openFlowModal(){
+ const selected=selectedRecovery(transferActivity.items,state.account,transferActivity.selectedTxHash);
+ const record=selected||transferActivity.items.find(t=>t.txHash?.toLowerCase()===transferActivity.selectedTxHash?.toLowerCase());
+ if(!flowView.journey||!flowView.open){
+  flowView.journey={origin:record?.sourceChain||state.experience.origin,
+   destination:record?.finalDestinationChain||record?.destinationChain||state.experience.destination,
+   asset:record?.asset||state.experience.asset};
+  flowView.sourceTxHash=record?.txHash||null;
+ }
+ flowView.open=true;updateFlowModal();
 }
 async function performTransferAction(){
  if(transferActivity.working||!state.catalog)return;
@@ -457,6 +510,7 @@ async function performTransferAction(){
     transferActivity.selectedTxHash=record.txHash;
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
      provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+      setFlowStage("first-proof-wait");
       transferActivity.notice=notice;if(path()==="/transfer")render();
      },onBroadcast:({txHash})=>{
       broadcastKnown=true;
@@ -1084,3 +1138,11 @@ async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics
    details.innerHTML=renderUniverse(model,state.experience.system,body,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
  }}catch{ /* Unavailable is not zero */ }}
+
+// The dialog is deliberately outside #app: repainting the planner must not close
+// an active MetaMask/proof status view or reset its scroll/focus state.
+const statusDialog=document.createElement("dialog");
+statusDialog.id="xita-flow-dialog";statusDialog.className="ux-flow-dialog";
+statusDialog.setAttribute("aria-labelledby","xita-flow-title");
+statusDialog.addEventListener("cancel",()=>{flowView.open=false;});
+document.body.append(statusDialog);
