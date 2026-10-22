@@ -251,6 +251,10 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
    canonical=norm(block.hash);blockHashes.set(item.blockNumber,canonical);
   }
   if(item.blockHash!==canonical)throw Error("Gateway log block is not canonical");
+  const block=await rpc(route.sourceConfig,"eth_getBlockByNumber",[hex(item.blockNumber),false]);
+  const seconds=block&&HEX.test(block.timestamp||"")?BigInt(block.timestamp):null;
+  if(seconds!==null&&seconds<=BigInt(Number.MAX_SAFE_INTEGER/1000))
+   item.sourceBlockAt=new Date(Number(seconds)*1000).toISOString();
   events.push(item);
  }
  const end=await rpc(route.sourceConfig,"eth_getBlockByNumber",[hex(to),false]);
