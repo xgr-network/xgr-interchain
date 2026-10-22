@@ -112,6 +112,8 @@ export function classifyRecoveryFailure(err,stderr=""){
  const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
  const t=detail.toLowerCase();
  const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
+  /route is not configured or discovered locally|unknown iln checkpoint route/.test(t)?"PROOF_ROUTE_NOT_REGISTERED":
+  /iln worker not available|iln storage unavailable|worker not available/.test(t)?"PROOF_VALIDATOR_WORKER_UNAVAILABLE":
   rpcCode===-32601?"PROOF_RPC_METHOD_UNAVAILABLE":
   rpcCode===-32602?"PROOF_RPC_ARGUMENT_INVALID":
   /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
