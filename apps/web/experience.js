@@ -373,7 +373,7 @@ function dashboardTopTokens(catalog,metrics){
   panels.map(panel=>{
    const rows=dashboardRankingRows(catalog,metrics,panel.key);
    return '<article class="ux-dashboard-ranking"><div class="ux-dashboard-ranking-head"><div>'+
-    '<span class="ux-kicker">TOP TOKENS</span><h2>'+panel.title+'</h2>'+
+    '<span class="ux-kicker">Top Tokens</span><h2>'+panel.title+'</h2>'+
     '<p>'+panel.caption+'</p></div></div>'+
     (rows.length?'<div class="ux-dashboard-token-table">'+rows.map((row,i)=>
      '<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'">'+
