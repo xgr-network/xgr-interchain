@@ -24,6 +24,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  const delivered=twoHop?status==="journey-delivered"&&record?.delivered===true:
    status==="delivered"&&record?.delivered===true;
  const firstSource=Boolean(record?.confirmed)&&sourceConfirmed.has(status);
+ const confirmationText=status==="confirming"&&Number.isInteger(record?.confirmationsObserved)&&Number.isInteger(record?.requiredConfirmations)?
+  "Source mined · "+record.confirmationsObserved+" / "+record.requiredConfirmations+" confirmations":null;
  const firstDestination=twoHop?
    firstDelivered.has(status)&&record?.delivered===true:delivered;
  const onwardSource=twoHop&&secondConfirmed.has(status)&&
@@ -71,17 +73,20 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    working?"Checking transfer — please wait":
    canContinue?"Ready for the next verified step":
    canRefresh?"Transfer not yet complete":"Preparing transfer";
- if(status==="pending-source"||status==="confirming")heading="Source confirmation pending";
+ if(status==="pending-source")heading="Source transaction pending";
+ if(status==="confirming")heading="Source finality pending";
  if(status==="awaiting-onward"&&!working&&!error)heading="XGRChain delivery confirmed";
  if(status==="awaiting-final-proof"&&!working&&!error)heading="Second hop confirmed";
  if(delivered)heading="Transfer complete";
  let message=delivered?"Both destination Mailbox deliveries are confirmed. No further wallet action is required.":
    error?String(error):
+   status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
    notice?String(notice):
    status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
    status==="awaiting-proof"?"Source transaction confirmed. Validator proof preparation and destination delivery may take time.":
-   status==="pending-source"||status==="confirming"?"Awaiting the original source receipt. Do not submit a duplicate transaction.":
+   status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
+   status==="pending-source"?"Awaiting the original source receipt. Do not submit a duplicate transaction.":
    scanning?"Checking verified wallet history…":
    "Keep this window open for updates, or close it and resume from My Transfers.";
  if(twoHop&&delivered)message="Both XGRChain and "+name(destination)+" Mailbox deliveries are independently confirmed. No further transaction is required.";
