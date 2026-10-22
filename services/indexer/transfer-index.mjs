@@ -249,7 +249,7 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
    if(!block||number(block.number)!==item.blockNumber||!HASH.test(block.hash||""))
     throw Error("Gateway event block unavailable");
    canonical=norm(block.hash);blockHashes.set(item.blockNumber,canonical);
-   if(HEX.test(block.timestamp||"")&&BigInt(block.timestamp)<=BigInt(Number.MAX_SAFE_INTEGER/1000))
+   if(HEX.test(block.timestamp||"")&&BigInt(block.timestamp)<=(BigInt(Number.MAX_SAFE_INTEGER)/1000n))
     blockTimes.set(item.blockNumber,new Date(Number(BigInt(block.timestamp))*1000).toISOString());
   }
   if(item.blockHash!==canonical)throw Error("Gateway log block is not canonical");
