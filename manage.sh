@@ -430,7 +430,7 @@ install_price_cache() (
   # Best effort initial refresh: cached quotes remain usable through outages.
   privileged systemctl start xita-price-refresh.service || \
     echo "WARNING: CoinGecko temporarily unavailable. Cached rates remain usable until their verified expiry." >&2
-}
+)
 
 install_interchain_fee() (
   require_clean_main
