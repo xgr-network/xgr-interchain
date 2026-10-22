@@ -8,6 +8,8 @@ import {transferReaderPool} from "./transfer-index-store.mjs";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {escrowDescriptor,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
 import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
+import {indexedGrossFlow24h} from "./indexed-flow-24h.mjs";
+import {routeIndexCoverage} from "./transfer-index-store.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
@@ -80,9 +82,19 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
  for(const asset of names)try{
   proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes});
   if(proofs[asset].status!=="verified")continue;
-  // No historical eth_getBlockByNumber or eth_getLogs for dashboard volume.
-  // Unknown timing of previously indexed operations MUST NOT become "last 24h".
-  flows[asset]={status:"unavailable",reason:"verified-movement-timestamps-not-yet-persisted"};
+  try{
+   const descriptor=escrowDescriptor(catalog,asset);
+   const cursors=await pool.query("SELECT source_chain,route_name,gateway,route_id,deployment_block,scanned_to,finalized_head,updated_at FROM xita_transfer_index_cursors");
+   const needed=routes.filter(r=>descriptor.escrowRoutes.some(e=>e.source===r.sourceChain&&e.routeId.toLowerCase()===r.routeId.toLowerCase()));
+   const coverage=routeIndexCoverage(catalog,cursors.rows,{now,maxAgeMs:120000,routeList:needed});
+   // Query only current SQL index: NEVER repeat historical RPC reads for volume.
+   const events=await pool.query({text:`SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,
+       message_id,source_block_hash,amount_raw::text AS amount_raw,delivered,
+       source_block_at,escrow_outflow_observed_at
+     FROM xita_transfer_operations WHERE asset=$1`,values:[asset]});
+   flows[asset]=indexedGrossFlow24h({descriptor,rows:events.rows,coverage,
+     price:snap.records?.[descriptor.coingeckoId],now});
+  }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return verifiedEvidence(catalog,proofs,now,flows);
 }
