@@ -1,0 +1,11 @@
+[Unit]
+Description=XITA review, deployment and listing email notifications
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+RandomizedDelaySec=30
+Unit=xita-join-notifier.service
+
+[Install]
+WantedBy=timers.target
