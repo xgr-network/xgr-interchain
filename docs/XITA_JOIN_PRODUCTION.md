@@ -5,8 +5,8 @@ This is an independent XITA application service. It never changes node consensus
 ## Security prerequisites
 
 * Rotate any SMTP password previously committed to XGR_Web history before using it.
-* Provision /etc/xita/join.env as root-owned mode 0600. Never commit SMTP_PASS or XITA_JOIN_WRITER_TOKEN.
-* The configuration must provide a working HTTPS or TLS SMTP transport, private contact storage and a narrow GitHub writer token.
+* Provision /etc/xita/join.env as root-owned mode 0600. Never commit SMTP_PASS or GitHub credentials. Reuse XITA_GITHUB_TOKEN already installed for XITA Admin; XITA_JOIN_WRITER_TOKEN is an optional override only.
+* The configuration must provide a working HTTPS or TLS SMTP transport, private contact storage and access to the existing XITA_GITHUB_TOKEN with Contents: write and Pull requests: write. The running Join service must receive this environment variable. Do not create another token if the existing one has these permissions.
 * Ensure the Nginx global http context has exactly one rate-limit zone: `limit_req_zone $binary_remote_addr zone=xita_join_submit:10m rate=2r/m;`
 * The existing XITA privacy policy must be served before collecting addresses.
 
