@@ -42,6 +42,7 @@ async function refreshSponsorship(){
 }
 
 let previewRevision=0,previewTimer=null;
+const feePreviewCache=new Map(); // UI only renders backend quotes; browser never contacts CoinGecko.
 function sourceFeeCoin(chain){return {xgrchain:"XGR",base:"ETH",arbitrum:"ETH",polygon:"POL"}[chain]||chain;}
 function formatWeiFee(wei){
  const n=BigInt(wei),scale=10n**18n;
@@ -69,22 +70,29 @@ async function refreshFeePreview(){
  let raw;
  try{raw=amountToUnits(amount,catalog.assets[asset].metadata.decimals).toString();}
  catch{updatePreviewState("Enter a positive token amount to estimate costs.");return;}
+ const cacheKey=[asset,source,destination,raw].join(":");
+ const cached=feePreviewCache.get(cacheKey);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),13000);
  updatePreviewState("Calculating verified protocol and Interchain Fee costs…");
  try{
-  const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
-   credentials:"omit",headers:{"content-type":"application/json"},
-   signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
-  const type=res.headers?.get?.("content-type")||"";
-  if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
-   throw Error("Kostenvorschau-API liefert HTTP "+res.status+
-    " statt JSON. Nginx-Route /api/xita/v1/managed/preview und Dienst xita-fee-preview prüfen");
   let value;
-  try{value=await res.json();}
-  catch{throw Error("Kostenvorschau-API liefert ungültiges JSON (HTTP "+res.status+")");}
+  if(cached&&Date.now()-cached.at<120000){
+   value=cached.value;
+  }else{
+   const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
+    credentials:"omit",headers:{"content-type":"application/json"},
+    signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
+   const type=res.headers?.get?.("content-type")||"";
+   if(!/application\\/(?:[a-z0-9.-]+\\+)?json\\b/i.test(type))
+    throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
+   try{value=await res.json()}
+   catch{throw Error("Invalid cost preview response (HTTP "+res.status+")")}
+   if(!res.ok||value?.status!=="UNSIGNED_FEE_PREVIEW")
+    throw Error(value?.error||"Quote service unavailable (HTTP "+res.status+")");
+   feePreviewCache.set(cacheKey,{at:Date.now(),value});
+   if(feePreviewCache.size>40)feePreviewCache.delete(feePreviewCache.keys().next().value);
+  }
   if(marker!==previewRevision||path()!=="/transfer")return;
-  if(!res.ok||!value?.status||value.status!=="UNSIGNED_FEE_PREVIEW")
-   throw Error(value?.error||"Quote service unavailable (HTTP "+res.status+")");
   const coin=sourceFeeCoin(source),fee=BigInt(value.interchainFeeWei),
    validator=BigInt(value.validatorFeeWei),
    principal=BigInt(value.sourceTokenPrincipalWei||0),
