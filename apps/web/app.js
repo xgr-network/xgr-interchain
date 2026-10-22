@@ -83,7 +83,7 @@ async function refreshFeePreview(){
     credentials:"omit",headers:{"content-type":"application/json"},
     signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
    const type=res.headers?.get?.("content-type")||"";
-   if(!/application\\/(?:[a-z0-9.-]+\\+)?json\\b/i.test(type))
+   if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
     throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
    try{value=await res.json()}
    catch{throw Error("Invalid cost preview response (HTTP "+res.status+")")}
