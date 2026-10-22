@@ -345,6 +345,24 @@ async function scanWalletHistory(){
    "while the wallet is connected. The indexer may need repair; never rebroadcast "+
    "the original source transfer.";
   transferActivity.error="";
+  // If PostgreSQL is unavailable, official explorer discovery remains an
+  // independent read-only wallet recovery path; never imply empty history.
+  try{
+   const response=await fetch("/api/xeta/v1/transfers/discovery?"+
+    new URLSearchParams({account}),{credentials:"omit",cache:"no-store",
+    headers:{accept:"application/json"},signal:controller.signal});
+   if(response.ok){
+    const discovered=await response.json();
+    if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()&&
+     discovered?.wallet?.toLowerCase()===account.toLowerCase()&&
+     discovered.kind==="xita-explorer-wallet-discovery-v1"&&Array.isArray(discovered.items)){
+     for(const record of discovered.items.slice(0,24)){
+      if(record?.confirmed===true&&record?.unverified!==true&&
+       record.account?.toLowerCase()===account.toLowerCase())upsertTransfer(record);
+     }
+    }
+   }
+  }catch{/* Both sources unavailable: keep existing cached verified wallet rows. */}
  }finally{
   clearTimeout(timeout);
   if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()){
