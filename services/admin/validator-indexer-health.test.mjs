@@ -50,3 +50,15 @@ test("Merkle health preserves pending peer count without claiming final delivery
  assert.equal(node.routes[0].checkpointBlock,517200480);
  assert.equal(node.routes[0].localLeaves,1);
 });
+
+test("XGR source alias is canonical and missing Arbitrum route cannot be healthy",()=>{
+ const now=1800000000000;
+ const raw={version:1,updatedUnix:now/1000,workerAlive:true,routes:[
+  {route:"iln_xgr_base",source:"xgr",destination:"base",state:"ok",sourceHead:120,checkpointBlock:110,leaves:2,localLeaves:2,lagLeaves:0}]};
+ const healthy=summarizeILNValidatorStatus(raw,{now,expectedSources:["xgrchain"]});
+ assert.equal(healthy.state,"ok");
+ assert.equal(healthy.routes[0].source,"xgrchain");
+ const missing=summarizeILNValidatorStatus(raw,{now,expectedSources:["xgrchain","arbitrum"]});
+ assert.equal(missing.state,"degraded");
+ assert.deepEqual(missing.missingSources,["arbitrum"]);
+});
