@@ -6,6 +6,8 @@ import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {publicRead,findWalletSourceTx,configuredGatewayRoutes,ONWARD_SELECTOR} from "./wallet-transfers.js";
 import {ensureNoPendingWalletTransaction} from "./wallet-nonce.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i,QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
+// Solidity eth_call(uint256) returns ABI-padded bytes32, NOT an RPC quantity.
+const ABI_UINT256=/^0x[0-9a-f]{64}$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const hex=n=>"0x"+BigInt(n).toString(16);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -315,19 +317,23 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   const balance=await request(provider,"eth_call",[{to:route.sourceToken,
    data:selector("balanceOf(address)")+addrWord(account)},"latest"]);
   if(BigInt(balance)<units)throw Error("Insufficient source token balance");
-  const allowance=await request(provider,"eth_call",[{to:route.sourceToken,
-   data:selector("allowance(address,address)")+addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"]);
-  let approved=BigInt(allowance)>=units;
+  const spender=paidAdapter||onwardAdapter||route.gateway;
+  const allowanceCall={to:route.sourceToken,
+   data:selector("allowance(address,address)")+addrWord(account)+addrWord(spender)};
+  const walletAllowance=await request(provider,"eth_call",[allowanceCall,"latest"]);
+  if(!ABI_UINT256.test(walletAllowance||""))
+   throw Error("Wallet returned malformed token allowance; no approval sent");
+  let approved=BigInt(walletAllowance)>=units;
   if(!approved){
-   // Before issuing ANY additional approval, independently inspect the
-   // canonical source chain. A wallet RPC may lag behind a prior approval.
+   // Never trust a possibly stale wallet RPC to say that an approval is
+   // absent. Verify the exact same owner/spender pair independently.
    const identity=await publicRead(src.rpcUrls?.[0],"eth_chainId",[],fetcher);
    if(!QTY.test(identity||"")||BigInt(identity)!==BigInt(src.chainId))
     throw Error("Cannot verify source token allowance; no approval sent");
-   const readback=await publicRead(src.rpcUrls?.[0],"eth_call",[
-    {to:route.sourceToken,data:selector("allowance(address,address)")+
-     addrWord(account)+addrWord(paidAdapter||onwardAdapter||route.gateway)},"latest"],fetcher);
-   if(!QTY.test(readback||""))throw Error("Source allowance unverified; no approval sent");
+   const readback=await publicRead(src.rpcUrls?.[0],"eth_call",
+    [allowanceCall,"latest"],fetcher);
+   if(!ABI_UINT256.test(readback||""))
+    throw Error("Source allowance unverified; no approval sent");
    approved=BigInt(readback)>=units;
   }
   if(!approved){
@@ -343,9 +349,6 @@ export async function startTransfer({catalog,account,asset,source,destination,am
    const approvalReceipt=await waitForWalletReceipt(provider,approvalHash);
    if(!approvalReceipt)throw Error("Token approval pending. Wait before starting transfer again");
    if(approvalReceipt.status!=="0x1")throw Error("Token approval failed. No tokens were bridged");
-   const spender=paidAdapter||onwardAdapter||route.gateway;
-   const allowanceCall={to:route.sourceToken,
-    data:selector("allowance(address,address)")+addrWord(account)+addrWord(spender)};
    // Wallet RPC nodes can briefly report stale state immediately after a
    // confirmed receipt. Check the canonical public source RPC independently
    // before interpreting a readback as a failed approval. Never send another
@@ -357,7 +360,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
      throw Error("Approval verification RPC chain mismatch; do not approve again");
     const current=await publicRead(src.rpcUrls?.[0],"eth_call",
      [allowanceCall,"latest"],fetcher);
-    if(!QTY.test(current||""))throw Error("Approval readback unavailable; do not approve again");
+    if(!ABI_UINT256.test(current||""))throw Error("Approval readback unavailable; do not approve again");
     if(BigInt(current)>=units){sufficient=true;break;}
     if(attempt<3)await new Promise(done=>setTimeout(done,1500));
    }

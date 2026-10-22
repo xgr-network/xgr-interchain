@@ -198,7 +198,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
   destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
  const html=renderPlanRoute(model,{},"ready",{account},{items:[record],selectedTxHash:record.txHash});
  assert.match(html,/Continue delivery/);
- assert.match(html,/Direct route · Source confirmed/);
+ assert.match(html,/Existing source transfer selected/);
  assert.match(html,/xita-open-transfer/);
  assert.doesNotMatch(html,/localStorage|sessionStorage|journal/);
 });
@@ -225,7 +225,7 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.doesNotMatch(html,/Route, network gas &amp; safety checks/);
  assert.doesNotMatch(html,/ux-transfer-advanced/);
  assert.ok(html.indexOf('id="xita-transfer-primary"')<html.indexOf('id="ux-fee-preview-status"'));
- assert.ok(html.indexOf("Transfer progress")<html.indexOf("Transfer costs"));
+ assert.doesNotMatch(html,/Transfer progress/);
  assert.match(html,/class="ux-transfer-side"/);
  assert.match(html,/id="ux-fee-info-trigger"/);
  assert.match(html,/<dialog id="ux-fee-info-dialog"/);
@@ -255,31 +255,24 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
  assert.doesNotMatch(fresh,/Checking on-chain transfers/);
  assert.match(fresh,/Previous transfers awaiting delivery/);
  assert.match(fresh,/<option value="" selected>New transfer/);
- assert.match(fresh,/Ready to transfer/);
+ assert.match(fresh,/Transfer XGR → Base/);
  const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:txHash,scanning:true});
  assert.match(selected,/Continue delivery/);
- assert.match(selected,/Source confirmed/);
+ assert.match(selected,/Existing source transfer selected/);
  assert.doesNotMatch(fresh,/One transfer page/);
 });
 
-test("transfer status replaces redundant right-side network inventory",()=>{
+test("transfer screen has only route fees, status is exclusively modal",()=>{
  const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  const m=buildExperienceModel(c),account="0x"+"1".repeat(40);
- const markup=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},
-  "ready",{account},{notice:"Checking the deployed source Gateway quote…",error:"Wallet RPC nonce invalid"});
- const aside=markup.slice(markup.indexOf('<aside class="ux-panel ux-ns-operations-data'),markup.indexOf("</aside>"));
- const left=markup.slice(markup.indexOf('class="ux-panel ux-route-panel"'),markup.indexOf('<aside class="ux-panel'));
- assert.match(aside,/TRANSACTION STATUS/);
- assert.match(aside,/Transfer progress/);
- assert.match(aside,/Wallet RPC nonce invalid/);
- assert.match(aside,/Checking the deployed source Gateway quote/);
- assert.match(aside,/Open full transfer status/);
- assert.match(aside,/id="xita-flow-open"/);
- assert.doesNotMatch(aside,/Available networks|Deployed systems|Deployed directed routes/);
- assert.doesNotMatch(left,/ux-transfer-progress|Wallet RPC nonce invalid/);
- assert.equal((markup.match(/class="ux-transfer-progress/g)||[]).length,1);
- assert.ok(markup.indexOf('id="xita-transfer-primary"')<markup.indexOf('<aside class="ux-panel'));
+ const html=renderPlanRoute(m,{origin:"arbitrum",destination:"base",asset:"XGR",amount:"50"},
+  "ready",{account},{notice:"Checking allowance",error:"RPC unavailable"});
+ assert.match(html,/id="xita-transfer-primary"/);
+ assert.match(html,/class="ux-transfer-side"/);
+ assert.match(html,/Transfer costs/);
+ assert.doesNotMatch(html,/Transfer progress|id="xita-flow-open"|class="ux-transfer-progress/);
+ assert.doesNotMatch(html,/RPC unavailable/);
 });
 
 test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
@@ -356,14 +349,14 @@ test("resume query intent never becomes a new source transaction when index unav
   "ready",wallet,{items:[],selectedTxHash:txHash});
  assert.match(missing,/Locating previous transfer/);
  assert.match(missing,/id="xita-transfer-primary" disabled/);
- assert.match(missing,/no new source transfer can be signed/);
+ assert.match(missing,/id="xita-transfer-primary" disabled/);
  const record={account,asset:"XGR",sourceChain:"base",destinationChain:"xgrchain",
   txHash,messageId:"0x"+"e".repeat(64),status:"awaiting-proof",
   confirmed:true,delivered:false};
  const found=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR"},
   "ready",wallet,{items:[record],selectedTxHash:txHash});
  assert.match(found,/Continue delivery/);
- assert.match(found,/Source confirmed/);
+ assert.match(found,/Existing source transfer selected/);
  assert.match(found,/id="xita-open-transfer"/);
  assert.doesNotMatch(found,/Locating previous transfer/);
  const other=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},
@@ -379,15 +372,15 @@ test("completed Base to XGR delivery is success, never unresolved or repeat-sign
   txHash,messageId:"0x"+"e".repeat(64),confirmed:true,delivered:true,status:"delivered"};
  const html=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",
   {account},{items:[completed],selectedTxHash:txHash});
- assert.match(html,/Destination delivery confirmed/);
  assert.match(html,/Transfer complete/);
- assert.match(html,/2 \/ 2/);
- assert.match(html,/No further transaction is required/);
+ assert.match(html,/Transfer complete/);
+ assert.doesNotMatch(html,/Continue delivery/);
+ assert.match(html,/id="xita-transfer-primary" disabled/);
  assert.match(html,/id="xita-transfer-primary" disabled/);
  assert.doesNotMatch(html,/Previous transfer not yet verified|Original transfer has not yet been found/);
  assert.doesNotMatch(html,/Continue delivery/);
  const foreign=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",
   {account:"0x"+"b".repeat(40)},{items:[completed],selectedTxHash:txHash});
- assert.match(foreign,/Previous transfer not yet verified/);
+ assert.match(foreign,/Locating previous transfer/);
  assert.match(foreign,/id="xita-transfer-primary" disabled/);
 });

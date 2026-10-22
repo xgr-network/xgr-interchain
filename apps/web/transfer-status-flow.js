@@ -109,11 +109,11 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
     '<div class="ux-flow-step-text"><strong>'+esc(step.label)+'</strong><small>'+esc(step.detail)+'</small></div>'+
     '<span class="ux-flow-step-state">'+(step.state==="complete"?"Verified":
       step.state==="current"?"Current":"Pending")+'</span></li>').join("");
- return '<div class="ux-flow-content"><header class="ux-flow-header">'+
+ return '<div class="ux-flow-content"><div class="ux-flow-header">'+
    '<div><span class="ux-kicker">XITA · VERIFIED TRANSFER</span><h2 id="xita-flow-title">Transfer status</h2>'+
    '<p class="ux-flow-route">'+esc(flow.asset)+' · '+esc(sequence)+'</p></div>'+
    '<button id="xita-flow-close" class="ux-flow-close" type="button" aria-label="Close transfer status">×</button>'+
-  '</header>'+
+  '</div>'+
   '<div class="ux-flow-banner'+(flow.needsAttention?" is-attention":flow.delivered?" is-done":"")+'" role="status" aria-live="polite">'+
    '<span class="ux-flow-spinner" aria-hidden="true">'+(flow.delivered?"✓":flow.needsAttention?"!":"⌛")+'</span>'+
    '<div><strong>'+esc(flow.heading)+'</strong><p>'+esc(flow.message)+'</p></div></div>'+
@@ -122,11 +122,11 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
    ' wallet transactions verified</small></div>'+
   '<ol class="ux-flow-steps">'+rows+'</ol>'+
   (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
-  '<footer class="ux-flow-footer"><p>Closing this view does not cancel a blockchain transaction. Resume using the original source TX in My Transfers. Never repeat a confirmed lock or burn.</p>'+
+  '<div class="ux-flow-footer"><p>Closing this view does not cancel a blockchain transaction. Resume using the original source TX in My Transfers. Never repeat a confirmed lock or burn.</p>'+
    '<div class="ux-flow-actions">'+
     (flow.canContinue?'<button id="xita-flow-continue" type="button" class="ux-button">'+esc(flow.continueLabel)+'</button>':
      flow.canRefresh?'<button id="xita-flow-refresh" type="button" class="ux-outline-button">Refresh verified status</button>':'')+
     '<button id="xita-flow-history" class="ux-outline-button" type="button">My Transfers</button>'+
     '<button id="xita-flow-done" class="ux-outline-button" type="button">'+(flow.delivered?"Close":"Hide status")+'</button>'+
-   '</div></footer></div>';
+   '</div></div></div>';
 }

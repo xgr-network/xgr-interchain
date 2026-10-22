@@ -533,25 +533,6 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<p>Figures are non-binding estimates. XITA requests a fresh signed service quote before the source transaction. Exchange rates and network gas can change.</p>'+
   '<button type="button" class="ux-fee-dialog-done" data-fee-info-close>Close</button>'+
   '</dialog>';
- const statusMarkup=
-  '<section class="ux-transfer-progress'+(progress.error?' has-error':'')+'" role="status" aria-live="polite">'+
-  '<div class="ux-status-primary"><span class="ux-status-dot" aria-hidden="true"></span><strong>'+
-  esc(progress.error?"Action needs attention":
-   busy?"Checking transaction safety…":
-   completedWork?"2 / 2 · "+statusLabel:
-   selected?(selected.onwardRouteId?"Hub journey · ":"Direct route · ")+statusLabel:
-   recoveryUnresolved?statusLabel:
-   deployed?(connected?"Ready to transfer":"Wallet not connected"):
-   "Selected route unavailable")+'</strong></div>'+
-  (selected||completedWork||busy?'<progress max="2" value="'+progressValue+'"></progress>':'')+
-  (recoveryUnresolved?'<p class="ux-transfer-warning">Original transfer has not yet been found in verified wallet history. XITA will retry; no new source transfer can be signed from this link. <a data-nav href="/transfer?token='+encodeURIComponent(assetId)+'">Return to new transfer</a></p>':'')+
-  (completedWork?'<p class="ux-transfer-notice">The original source transaction and destination delivery are independently verified. No further transaction is required.</p>':'')+
-  (selected||completedWork?'<p class="ux-small">Source TX: <code>'+esc((selected||completedWork).txHash)+'</code>'+
-   ((selected||completedWork).messageId?' · Message ID: <code>'+esc((selected||completedWork).messageId)+'</code>':'')+'</p>':'')+
-  (progress.notice&&(!progress.scanning||progress.busy)?
-   '<p class="ux-transfer-notice">'+esc(progress.notice)+'</p>':'')+
-  (progress.error?'<p class="ux-transfer-error" role="alert">'+esc(progress.error)+'</p>':'')+
-  '</section>';
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
   '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro">'+
   '<span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1>'+
@@ -592,12 +573,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
-  '</section><div class="ux-transfer-side"><aside class="ux-panel ux-ns-operations-data ux-transfer-status-panel">'+
-  '<div class="ux-transfer-status-heading"><span class="ux-kicker">TRANSACTION STATUS</span><h2>Transfer progress</h2></div>'+
-  statusMarkup+
-  '<button type="button" class="ux-outline-button ux-open-flow" id="xita-flow-open">Open full transfer status →</button>'+
-  '<p class="ux-transfer-status-help">Your wallet authorizes each step. Private keys stay with you.</p>'+
-  '</aside>'+feeCard+'</div></div>'+feeDialog+
+  '</section><div class="ux-transfer-side">'+feeCard+'</div></div>'+feeDialog+
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
   '</section></div>';
 }
