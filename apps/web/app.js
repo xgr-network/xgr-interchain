@@ -845,7 +845,7 @@ function captureJoin(){
   else if(key==="decimals")d[key]=el.value===""?null:Number(el.value);
   else d[key]=el.value;
  });
- d.symbol=d.symbol.trim().toUpperCase();d.slug=d.slug.trim().toLowerCase();
+ d.symbol=d.symbol.trim().toUpperCase();
 }
 async function runJoin(action){
  captureJoin();
@@ -861,13 +861,13 @@ async function runJoin(action){
  const problems=validateStep(d,joinState.step,state.catalog.chains);
  if(problems.length){
    joinState.status="Please complete the required fields.";
-   const fields={name:"name",symbol:"symbol",slug:"slug",website:"website",
+   const fields={name:"name",symbol:"symbol",website:"website",
      "Short description (15–280 characters)":"shortDescription",
      "Full description (40–5000 characters)":"description",
      "CoinGecko coin ID":"coingeckoId","Contact email":"contactEmail","Relationship to token":"applicantRole",
      "ERC-20 contract address":"canonicalAddress",
      "Canonical chain":"canonicalChain",Decimals:"decimals",
-     "Logo URL or PNG":"logoUrl","Token URL slug":"slug","HTTPS website":"website",
+     "Logo URL or PNG":"logoUrl","HTTPS website":"website",
      "Project confirmation":"confirmed"};
    drawJoin();
    const errors=[];
