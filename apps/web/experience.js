@@ -604,7 +604,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   (showStatusButton?'<button type="button" class="ux-outline-button ux-transfer-status-trigger"'+
    ' id="xita-flow-reopen" aria-haspopup="dialog" aria-controls="xita-flow-dialog">'+
    '↗ View transfer status</button>':'')+
-  (progress.error&&!showStatusButton?\'<p class="ux-transfer-error" id="xita-transfer-form-error" role="alert">\'+esc(progress.error)+\'</p>\':"")+\n  '<p class="ux-transfer-action-hint">'+
+  (progress.error&&!showStatusButton?'<p class="ux-transfer-error" id="xita-transfer-form-error" role="alert">'+esc(progress.error)+'</p>':"")+
+  '<p class="ux-transfer-action-hint">'+
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
    selected?"Existing source transfer selected; the original lock will not be repeated.":
    busy?"Checking the selected transaction against the blockchain.":
