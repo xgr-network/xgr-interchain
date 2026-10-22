@@ -430,3 +430,53 @@ test("spoke-to-spoke live preflight accepts both routed destinations independent
   source:"base",destination:"arbitrum",fetcher}),true);
  assert.deepEqual(calls,["eth_chainId","eth_call","eth_chainId","eth_call"]);
 });
+
+test("ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum regression)",async()=>{
+ const c=threeChainCatalog(),arb=c.infrastructure.arbitrum.xitaV315,
+  hub=c.infrastructure.xgrchain.xitaV315;
+ const a=item("arbitrum",address("2")),h=item("xgrchain",address("2"));
+ arb.components.executionGateway=a;arb.receiptPaths.push(a.receiptPath);
+ hub.components.executionGateway=h;hub.receiptPaths.push(h.receiptPath);
+ const transfers=[],calls=[];
+ const amount=50n*10n**18n;
+ const provider={request:async({method,params=[]})=>{
+  if(method==="eth_chainId")return "0xa4b1";
+  if(method==="eth_accounts")return [account];
+  if(method==="eth_getTransactionCount")return "0x5";
+  if(method==="eth_call"){
+   const selectorHex=params[0]?.data?.slice(0,10);
+   if(selectorHex===selector("warpRouter()"))return word(BigInt(address("d")));
+   if(selectorHex===selector("warpToken()"))return word(BigInt(address("d")));
+   if(selectorHex===selector("routeId()"))return hash("d");
+   if(selectorHex===selector("destinationDomain()"))return word(1643);
+   if(selectorHex===selector("quoteILN(uint32,bytes32,uint256)"))
+    return word(1n)+word(0n).slice(2)+word(1n).slice(2)+word(amount).slice(2);
+   if(selectorHex===selector("balanceOf(address)"))return word(100n*10n**18n);
+   if(selectorHex===selector("allowance(address,address)"))return word(0n);
+  }
+  if(method==="eth_getBalance")return "0x"+(10n**18n).toString(16);
+  if(method==="eth_gasPrice")return "0x3b9aca00";
+  if(method==="eth_estimateGas")return "0x5208";
+  if(method==="eth_sendTransaction"){transfers.push(params[0]);return sourceTx;}
+  if(method==="eth_getTransactionReceipt")return {transactionHash:sourceTx,status:"0x1"};
+  throw Error("Unexpected mock wallet call "+method);
+ }};
+ const fetcher=async(url,options)=>{
+  if(url==="/api/xeta/v1/transfer/health")return {ok:true,json:async()=>({ok:true,proofBuilder:"installed"})};
+  const {method,params=[]}=JSON.parse(options.body);
+  calls.push(method);
+  if(method==="eth_chainId")return rpcResponse(url.includes("arb")?"0xa4b1":"0x66b");
+  if(method==="eth_call"){
+   if(params[0].data.startsWith(selector("verifyInboundRoute(uint64,uint32,address,bytes32)")))return rpcResponse(word(1));
+   if(params[0].data.startsWith(selector("allowance(address,address)")))return rpcResponse(word(0));
+  }
+  if(method==="eth_getBalance")return rpcResponse("0x"+(10n**18n).toString(16));
+  if(method==="eth_gasPrice")return rpcResponse("0x3b9aca00");
+  throw Error("Unexpected mock public call "+method);
+ };
+ await assert.rejects(()=>startTransfer({catalog:c,account,asset:"XGR",
+  source:"arbitrum",destination:"xgrchain",amount:"50",provider,fetcher,
+  commercial:false}),/Invalid token|Cannot|Source|Confirm|Token approval pending|Approval readback|Confirmed approval/);
+ assert.ok(calls.includes("eth_call"),"independent ABI allowance readback reached");
+ assert.equal(transfers.some(t=>t.data?.startsWith(selector("bridge(uint32,bytes32,uint256)"))),false);
+});
