@@ -159,7 +159,7 @@ export async function requestValidatorQuorum(route,messageId,sourceBlock,{
  rpcUrl=required("ATTESTATION_RPC_URL"),fetcher=globalThis.fetch
 }={}){
  const parsed=new URL(rpcUrl);
- assert(parsed.protocol==="http:"&&parsed.hostname==="127.0.0.1"&&/^\\d+$/.test(parsed.port),
+ assert(parsed.protocol==="http:"&&parsed.hostname==="127.0.0.1"&&/^[0-9]+$/.test(parsed.port),
    "Quorum RPC must be approved validator loopback");
  assert(/^iln_[0-9]+_[0-9]+_[a-f0-9]{64}$/.test(route),"Invalid validator route");
  assert(isHash(messageId)&&Number.isSafeInteger(sourceBlock)&&sourceBlock>0,
