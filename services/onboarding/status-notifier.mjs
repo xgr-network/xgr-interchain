@@ -37,7 +37,7 @@ async function jsonGet(url,headers={}){
 async function publicPR(number,env){
  if(!Number.isSafeInteger(number)||number<=0)throw Error("Invalid PR number");
  return jsonGet("https://api.github.com/repos/"+REPO+"/pulls/"+number,
-   env.XITA_JOIN_WRITER_TOKEN?{"Authorization":"Bearer "+env.XITA_JOIN_WRITER_TOKEN}:{});
+   (env.XITA_JOIN_WRITER_TOKEN||env.XITA_GITHUB_TOKEN)?{"Authorization":"Bearer "+(env.XITA_JOIN_WRITER_TOKEN||env.XITA_GITHUB_TOKEN)}:{});
 }
 async function visibilitySnapshot(){
  // Only read from the on-host, read-only XITA indexer; never trust the applicant or browser.
