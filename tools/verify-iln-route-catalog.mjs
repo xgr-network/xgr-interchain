@@ -5,11 +5,13 @@
 // constructs a signing payload, or bypasses canonical route validation.
 // Requires a stopped XGR validator for --apply; restart loads this hint and
 // checks the same canonical on-chain source Registry again.
-import {readFile,mkdir,writeFile,rename,stat,unlink} from "node:fs/promises";
+import {readFile,mkdir,writeFile,rename,unlink} from "node:fs/promises";
 import {resolve,join} from "node:path";
 import {randomBytes} from "node:crypto";
 import {fileURLToPath} from "node:url";
-import {JsonRpcProvider,Contract,Interface,getAddress} from "ethers";
+import {createRequire} from "node:module";
+const require=createRequire(new URL("../services/indexer/package.json",import.meta.url));
+const {JsonRpcProvider,Contract,Interface}=require("ethers");
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const ADDR=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const ILN=new Interface(["event RouteAdded(uint32 indexed destinationDomain,bytes32 indexed routeId,address indexed gateway,address sourceRouter,address destinationRouter,uint256 validatorFeeWei,uint64 nonce)","function getRoute(uint32,bytes32) view returns (uint64,uint32,address,address,address,address,address,uint256,bool)"]);
