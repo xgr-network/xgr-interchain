@@ -480,3 +480,13 @@ test("ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum reg
  assert.ok(calls.includes("eth_call"),"independent ABI allowance readback reached");
  assert.equal(transfers.some(t=>t.data?.startsWith(selector("bridge(uint32,bytes32,uint256)"))),false);
 });
+
+test("unregistered ILN route does not masquerade as RPC outage or sign anything",async()=>{
+ const query=new URLSearchParams({asset:"XGR",route:"arbitrum_to_xgr",messageId:hash("4")});
+ const result=await awaitUnsignedDeliveryProof({query,attempts:1,delayMs:0,
+  fetcher:async()=>({ok:false,status:503,json:async()=>({
+   reason:"PROOF_ROUTE_NOT_REGISTERED",stage:"request-validator-quorum"})})});
+ assert.equal(result.status,"waiting");
+ assert.equal(result.reason,"PROOF_ROUTE_NOT_REGISTERED");
+ assert.match(result.notice,/has not discovered or registered/);
+});
