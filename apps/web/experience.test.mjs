@@ -457,3 +457,39 @@ test("TVL 24h change requires a genuine nearby baseline and colors gain/loss",as
  assert.equal(tvlChange24h(noBaseline),null);
  assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",noBaseline),/24h —/);
 });
+
+test("TVL chart spreads actual short-window measurements across full plot",()=>{
+ const model=buildExperienceModel(catalog),asOf="2026-10-22T10:00:00Z";
+ const metrics={asOf,totals:{lockedUsd:null,movedUsd:null},history:{points:[
+  {asOf:"2026-10-22T09:55:00Z",lockedUsd:0.0115},
+  {asOf:"2026-10-22T09:57:00Z",lockedUsd:0.0116},
+  {asOf,lockedUsd:0.011503}
+ ]}};
+ const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(html,/M8\.00 /);
+ assert.match(html,/L292\.00 /);
+ assert.match(html,/Observed 5 min/);
+ assert.match(html,/Last verified:/);
+});
+test("24h delta uses final verified observations even if current snapshot unavailable",async()=>{
+ const {tvlChange24h}=await import("./experience.js");
+ const metrics={totals:{lockedUsd:null},history:{points:[
+  {asOf:"2026-10-21T10:00:00Z",lockedUsd:100},
+  {asOf:"2026-10-22T10:00:00Z",lockedUsd:105}
+ ]}};
+ assert.equal(tvlChange24h(metrics),5);
+ assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",metrics),/\+5\.00% · 24h/);
+ const short={totals:{lockedUsd:null},history:{points:[
+  {asOf:"2026-10-22T09:55:00Z",lockedUsd:100},
+  {asOf:"2026-10-22T10:00:00Z",lockedUsd:105}
+ ]}};
+ assert.equal(tvlChange24h(short),null);
+});
+test("last verified collateral remains explicitly historic in Locked TVL ranking",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const metrics={lastVerifiedAssets:{XGR:{lockedUsd:.011503,asOf:"2026-10-22T09:47:00Z"}}};
+ const html=renderDashboard(buildExperienceModel(c),{},"ready",metrics,c);
+ assert.match(html,/by Locked TVL/);
+ assert.match(html,/Last verified/);
+ assert.match(html,/\$0\.011503/);
+});
