@@ -43,6 +43,7 @@ async function refreshSponsorship(){
 
 let previewRevision=0,previewTimer=null;
 const feePreviewCache=new Map(); // UI only renders backend quotes; browser never contacts CoinGecko.
+const feePreviewPending=new Map(); // Deduplicate concurrent re-renders of one quote.
 function sourceFeeCoin(chain){return {xgrchain:"XGR",base:"ETH",arbitrum:"ETH",polygon:"POL"}[chain]||chain;}
 function formatWeiFee(wei){
  const n=BigInt(wei),scale=10n**18n;
@@ -79,16 +80,26 @@ async function refreshFeePreview(){
   if(cached&&Date.now()-cached.at<120000){
    value=cached.value;
   }else{
-   const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
-    credentials:"omit",headers:{"content-type":"application/json"},
-    signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
-   const type=res.headers?.get?.("content-type")||"";
-   if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
-    throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
-   try{value=await res.json()}
-   catch{throw Error("Invalid cost preview response (HTTP "+res.status+")")}
-   if(!res.ok||value?.status!=="UNSIGNED_FEE_PREVIEW")
-    throw Error(value?.error||"Quote service unavailable (HTTP "+res.status+")");
+   let pending=feePreviewPending.get(cacheKey);
+   if(!pending){
+    pending=(async()=>{
+     const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
+      credentials:"omit",headers:{"content-type":"application/json"},
+      signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
+     const type=res.headers?.get?.("content-type")||"";
+     if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
+      throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
+     let fetched;
+     try{fetched=await res.json()}
+     catch{throw Error("Invalid cost preview response (HTTP "+res.status+")")}
+     if(!res.ok||fetched?.status!=="UNSIGNED_FEE_PREVIEW")
+      throw Error(fetched?.error||"Quote service unavailable (HTTP "+res.status+")");
+     return fetched;
+    })();
+    feePreviewPending.set(cacheKey,pending);
+    void pending.finally(()=>{if(feePreviewPending.get(cacheKey)===pending)feePreviewPending.delete(cacheKey)}).catch(()=>{});
+   }
+   value=await pending;
    feePreviewCache.set(cacheKey,{at:Date.now(),value});
    if(feePreviewCache.size>40)feePreviewCache.delete(feePreviewCache.keys().next().value);
   }
