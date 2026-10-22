@@ -78,7 +78,7 @@ test("confirmation states always retain error or PR result on re-render",()=>{
  assert.doesNotMatch(failed,/id="ja-confirm-pr"/);
  const success=joinConfirmationMarkup({phase:"success",prNumber:250,prUrl:"https://github.com/xgr-network/xgr-interchain/pull/250"});
  assert.match(success,/GitHub Draft PR #250/);
- assert.match(success,/Your application is confirmed/);
+ assert.match(success,/Your email has been verified!/);
  assert.doesNotMatch(success,/Checking your private confirmation/);
  const hostile=joinConfirmationMarkup({phase:"failed",message:"<script>alert(1)</script>"});
  assert.doesNotMatch(hostile,/<script>/);
