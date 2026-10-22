@@ -68,6 +68,24 @@ const recoveryRequests=new Map();
 const MAX_RECOVERY_PROCESS=2;
 const MAX_RECOVERY_RECENT=60;
 const rateLimit=new Map();
+const rpcDiagnosticAt=new Map();
+function reportRpcReadFailure(error){
+ const code=/^RPC_[A-Z0-9_]{3,64}$/.test(error?.rpcReadCode||"")?
+  error.rpcReadCode:"RPC_INTERNAL_FAILURE";
+ const chainId=Number.isSafeInteger(error?.chainId)?error.chainId:null;
+ const attempts=Array.isArray(error?.attempts)?error.attempts.slice(0,8)
+  .filter(x=>Number.isSafeInteger(x.endpoint)&&x.endpoint>0&&
+   ["identity","read"].includes(x.phase)&&
+   /^RPC_[A-Z0-9_]{3,64}$/.test(x.code||"")):[];
+ const key=code+":"+chainId+":"+attempts.map(x=>x.code).join(",");
+ const now=Date.now();
+ if(now-(rpcDiagnosticAt.get(key)||0)>30000){
+  rpcDiagnosticAt.set(key,now);
+  console.warn("XITA_RPC_READ",JSON.stringify({code,chainId,attempts}));
+ }
+ if(rpcDiagnosticAt.size>100)rpcDiagnosticAt.clear();
+ return {code,chainId,attempts};
+}
 export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,sourceTxHash=null,now=Date.now(),runner=runRecoveryProcess}){
  const request=resolveRecoveryRoute(catalog,route,messageId,asset,sourceTxHash);
  const key=asset+":"+route+":"+request.messageId;
@@ -116,8 +134,9 @@ export async function handler(req,res){
    return send(200,{jsonrpc:"2.0",id:1,result});
   }catch(error){
    const invalid=error?.httpStatus===400;
-   return send(invalid?400:503,{ok:false,error:invalid?
-    String(error.message).slice(0,130):"Verified chain RPC unavailable"});
+   if(invalid)return send(400,{ok:false,error:String(error.message).slice(0,130)});
+   const info=reportRpcReadFailure(error);
+   return send(503,{ok:false,error:"Verified chain RPC unavailable",...info});
   }
  }
  if(req.method!=="GET"||!(pathname==="/api/xeta/v1/metrics/toplist"||pathname==="/api/xeta/v1/visibility"||pathname==="/health"||pathname.startsWith("/api/xeta/v1/systems/")||(pathname==="/api/xeta/v1/transfer/recovery"||pathname==="/api/xeta/v1/transfer/health"||pathname==="/api/xeta/v1/transfers/wallet"||pathname==="/api/xeta/v1/transfers/stats")))

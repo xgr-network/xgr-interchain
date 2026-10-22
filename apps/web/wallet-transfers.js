@@ -171,9 +171,25 @@ export async function publicRead(url,method,params,fetcher=globalThis.fetch,{
    throw Error(viaProxy?"XITA read-only RPC proxy unreachable; no wallet transaction sent":
     "Chain RPC request failed");
   }
-  if(!response?.ok)throw Error(viaProxy?
-   "XITA read-only RPC proxy unavailable (HTTP "+String(response?.status||"network")+
-    "); no wallet transaction sent":"Chain RPC unavailable");
+  if(!response?.ok){
+   let diagnostic="";
+   if(viaProxy){
+    try{
+     const body=await response.json();
+     if(/^RPC_[A-Z0-9_]{3,64}$/.test(body?.code||""))
+      diagnostic=" / "+body.code;
+     const attempts=Array.isArray(body?.attempts)?body.attempts:[];
+     if(attempts.length){
+      const reasons=attempts.slice(0,4).map(x=>x?.code)
+       .filter(x=>/^RPC_[A-Z0-9_]{3,64}$/.test(x||""));
+      if(reasons.length)diagnostic+=": "+reasons.join(", ");
+     }
+    }catch{/* Proxy can also be unavailable at the reverse-proxy layer. */}
+   }
+   throw Error(viaProxy?
+    "XITA read-only RPC proxy unavailable (HTTP "+String(response?.status||"network")+
+     diagnostic+"); no wallet transaction sent":"Chain RPC unavailable");
+  }
   const reply=await response.json();
   if(reply?.jsonrpc!=="2.0"||reply.id!==1||reply.error||
       !Object.hasOwn(reply,"result"))throw Error("Invalid chain RPC response");
