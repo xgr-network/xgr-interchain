@@ -1185,3 +1185,22 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-flow-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
 .ux-flow-actions button{min-height:39px;cursor:pointer}
 @media(max-width:540px){.ux-flow-dialog{max-height:95dvh;width:calc(100vw - 12px);border-radius:12px}.ux-flow-content{gap:15px;padding:16px}.ux-flow-step-state{display:none}.ux-flow-actions button{flex:1 1 42%}}
+
+/* Transfer modal isolation: unaffected by the site's sticky header/footer. */
+#xita-flow-dialog.ux-flow-dialog{position:fixed;inset:0;margin:auto;padding:0;width:min(670px,calc(100vw - 28px));height:auto;max-height:min(86dvh,800px);overflow-x:hidden;overflow-y:auto;color:#e9f3ff;color-scheme:dark}
+#xita-flow-dialog .ux-flow-content{display:flex;flex-direction:column;width:100%;min-width:0;gap:17px}
+#xita-flow-dialog .ux-flow-header{position:static;top:auto;z-index:auto;width:100%;display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;gap:20px;padding:0;background:transparent;border:0;backdrop-filter:none}
+#xita-flow-dialog .ux-flow-header strong{font-size:inherit;letter-spacing:normal}
+#xita-flow-dialog .ux-flow-header small{font-size:inherit;letter-spacing:normal}
+#xita-flow-dialog .ux-flow-footer{position:static;display:flex;flex-direction:column;width:100%;max-width:none;margin:0;padding:16px 0 0;align-items:stretch;border-top:1px solid #304c67;background:transparent;color:#a8bfd8}
+#xita-flow-dialog .ux-flow-banner{display:flex;min-height:78px}
+#xita-flow-dialog .ux-flow-banner strong{letter-spacing:normal;color:#f2f8ff;font-size:15px}
+#xita-flow-dialog .ux-flow-steps{display:flex;flex-direction:column;gap:0;width:100%}
+#xita-flow-dialog .ux-flow-step{display:flex;min-width:0;flex-direction:row;align-items:flex-start}
+#xita-flow-dialog .ux-flow-step strong{letter-spacing:normal;font-size:13px}
+#xita-flow-dialog .ux-flow-actions{display:flex;width:100%;justify-content:flex-end;flex-wrap:wrap}
+#xita-flow-dialog .ux-flow-actions button,#xita-flow-dialog .ux-flow-close{color:#e9f3ff;background:#142a42;border-color:#52728f}
+#xita-flow-dialog .ux-flow-actions .ux-button{background:#e8f2ff;color:#071122}
+@media(max-width:540px){#xita-flow-dialog.ux-flow-dialog{width:calc(100vw - 12px);max-height:92dvh}#xita-flow-dialog .ux-flow-content{padding:16px}}
+/* The detail view replaces the redundant progress panel, but not route fees. */
+.ux-plan-page .ux-transfer-side{display:grid;grid-template-columns:minmax(0,1fr)}
