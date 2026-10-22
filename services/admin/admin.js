@@ -870,7 +870,7 @@ async function refreshOperationsHealth(){
   const leafSummary=(r)=>healthValue(r.localLeaves)+" / "+healthValue(r.leaves);
   el("health-validators").innerHTML=validators.length?validators.map(v=>{
    const rows=expectedMerkleChains.map(chain=>{
-    const related=(v.routes||[]).filter(r=>r.source?.toLowerCase()===chain);
+    const related=(v.routes||[]).filter(r=>(r.source?.toLowerCase()==="xgr"?"xgrchain":r.source?.toLowerCase())===chain);
     const title=merkleLabels[chain];
     if(!related.length)return '<tr><td>'+esc(title)+'</td><td>—</td><td>—</td><td>—</td><td>—</td><td>'+healthPill("unavailable")+'</td></tr>';
     return related.map(r=>'<tr><td>'+esc(title)+'<small>'+esc(r.route||"")+'</small></td>'+
