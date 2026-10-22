@@ -1,5 +1,6 @@
 const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 import {suggestedTokenSlug} from "./token-slug.js";
+import {normalizeJoinDescription} from "./join-description.js";
 const url=s=>/^https:\/\/[^@\s/]+/.test(s||"");
 export function draft(chains){
  return {name:"",symbol:"",shortDescription:"",description:"",website:"",canonicalChain:"",canonicalAddress:"",decimals:18,categories:["DeFi"],tags:[],logoUrl:"",links:{},priceSource:"coingecko",coingeckoId:"",contactEmail:"",applicantRole:"",confirmed:false};
@@ -10,8 +11,8 @@ export function validateStep(d,step,chains){
   if(d.name.trim().length<2||d.name.length>80)missing.push("Project name");
   if(!/^[A-Z][A-Z0-9]{1,11}$/.test(d.symbol))missing.push("Token symbol");
   if(!url(d.website))missing.push("HTTPS website");
-  if(d.shortDescription.trim().length<15||d.shortDescription.length>280)missing.push("Short description (15–280 characters)");
-  if(d.description.trim().length<40||d.description.length>5000)missing.push("Full description (40–5000 characters)");
+  if(!normalizeJoinDescription(d.shortDescription,15,280))missing.push("Short description (15–280 characters)");
+  if(!normalizeJoinDescription(d.description,40,5000))missing.push("Full description (40–5000 characters)");
   if(!url(d.logoUrl)&&!d.logoPngBase64)missing.push("Logo URL or PNG");
  }else if(step===1){
   if(!d.canonicalChain||!["base","polygon","arbitrum"].includes(d.canonicalChain)||!Object.hasOwn(chains,d.canonicalChain))missing.push("Canonical chain");
