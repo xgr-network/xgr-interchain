@@ -206,6 +206,8 @@ function upsertTransfer(record){
   }
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
   t.txHash===record.txHash);
+ if(previous?.confirmed===true&&record.confirmed!==true)return;
+ if(previous?.status==="journey-delivered"&&record.status!=="journey-delivered")return;
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
  if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
   transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
@@ -286,11 +288,12 @@ async function scanWalletHistory(){
   transferActivity.report={source:"indexer",lookback:null,
    scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
   transferActivity.notice=complete?
-   "Indexer synchronized across all finalized deployed routes.":
+   "Wallet index synchronized. Source confirmations are checked separately.":
    "Finalized wallet index incomplete ("+(data.coverage?.indexedRoutes||0)+"/"+
      (data.coverage?.requiredRoutes||0)+" routes). Prior source locks remain on-chain. "+
      "XITA will refresh wallet history automatically. Never resend the source transfer.";
   refreshTransferLink();
+  updateFlowModal();
  }catch(error){
   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
   // Never interpret an unavailable indexer or schema migration as empty history.
@@ -307,6 +310,7 @@ async function scanWalletHistory(){
   if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.scanning=false;refreshTransferLink();
    if(path()==="/my-transfers"||path()==="/transfer")render();
+   updateFlowModal();
   }
  }
 }
@@ -333,6 +337,7 @@ async function lookupWalletTransfer(sourceChain,txHash){
   if(marker===transferRequest){
    transferActivity.scanning=false;
    if(path()==="/my-transfers"||path()==="/transfer")render();
+   updateFlowModal();
   }
  }
 }
@@ -534,6 +539,7 @@ async function performTransferAction(){
     // Preserve the canonical source hash in the URL immediately after
     // broadcast. A reload must not turn a pending source into a new CTA.
     transferActivity.selectedTxHash=txHash;
+    void updateWalletGas();
     history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset)+"&resume="+txHash);
     announceWalletSourceTx(origin,txHash,account);
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
@@ -552,13 +558,19 @@ async function performTransferAction(){
   else {
    // The source receipt is irreversible. Continue this SAME on-chain message,
    // never start another bridge. The destination still requires a wallet signature.
-   setFlowStage("first-proof-wait","Source confirmed. Preparing verified destination delivery…");
+   setFlowStage("source-pending","Source receipt mined. Verifying required source-chain finality…");
    if(path()==="/transfer")render();
    const record=await findWalletSourceTx({catalog:state.catalog,account,
     sourceChain:sent.sourceChain,txHash:sent.txHash});
    upsertTransfer(record);
+   updateFlowModal();
+   if(record.status==="confirming"){
+    transferActivity.notice="Source receipt confirmed by wallet. Waiting for required Arbitrum finality; do not resend.";
+    return;
+   }
    if(record.status==="awaiting-proof"){
     transferActivity.selectedTxHash=record.txHash;
+    setFlowStage("first-proof-wait","Source finalized. Waiting for validator proof and destination delivery…");
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
      provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
       setFlowStage("first-proof-wait");
