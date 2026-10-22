@@ -277,3 +277,24 @@ The metrics API returns unavailable evidence until the worker writes a valid
 file; the installer restarts the running metrics API after enabling the worker.
 Verified USD TVL still requires finalized route index coverage and valid
 CoinGecko pricing. No chain transactions are performed.
+
+
+## October 22, 2026: DB-backed 24h escrow gross volume (SQL 006)
+
+Before restarting xita-transfer-indexer and xita-tvl, apply
+`services/indexer/sql/006_transfer_flow_timestamps.sql` to the EXISTING XITA PostgreSQL
+DB with a schema-migration role. `./manage.sh update` intentionally does NOT
+run database migrations. Verify both columns exist on
+`xita_transfer_operations` before starting the updated worker. Both current
+worker roles continue to require their existing restricted privileges.
+
+The indexer records source-block timestamps from an already canonical-checked
+source block (no additional historical query). A delivery contributes a
+24-hour escrow outflow only when a previously observed *undelivered* operation
+transitions to confirmed delivery after a recent check. Its timestamp is the
+**first confirmed observation**, not a recovered historical destination block
+time. Already delivered or backfilled operations without an event timestamp do
+NOT get stamped with the time of import. Historical volume before activation
+cannot be reconstructed honestly from these two columns. Once deployed, run a
+new lock/unlock and inspect `/api/xeta/v1/metrics/toplist` to validate the
+freshly indexed values; existing balances and transfers are unaffected.
