@@ -229,3 +229,12 @@ test("Base destination failure cannot be retried on irrelevant source FeeVault s
   code:"PROOF_TIMEOUT",stage:"simulate-base-delivery"
  },conf),true);
 });
+
+test("unregistered discovered route and inactive validator worker are not generic RPC failures",()=>{
+ const wrapped=msg=>"XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({status:"RECOVERY_NOT_READY",stage:"request-validator-quorum",error:msg})+"\n";
+ const route=classifyRecoveryFailure(new Error("cli"),wrapped("route is not configured or discovered locally"));
+ assert.equal(route.code,"PROOF_ROUTE_NOT_REGISTERED");
+ assert.equal(route.stage,"request-validator-quorum");
+ const worker=classifyRecoveryFailure(new Error("cli"),wrapped("ILN worker not available"));
+ assert.equal(worker.code,"PROOF_VALIDATOR_WORKER_UNAVAILABLE");
+});
