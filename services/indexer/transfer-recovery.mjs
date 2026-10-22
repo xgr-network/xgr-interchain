@@ -114,10 +114,10 @@ export function classifyRecoveryFailure(err,stderr=""){
  const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
   rpcCode===-32601?"PROOF_RPC_METHOD_UNAVAILABLE":
   rpcCode===-32602?"PROOF_RPC_ARGUMENT_INVALID":
-  /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /route is not configured or discovered locally/.test(t)?"PROOF_ROUTE_NOT_REGISTERED":
   /iln worker not available/.test(t)?"PROOF_VALIDATOR_WORKER_UNAVAILABLE":
   /request exists with a different source block/.test(t)?"PROOF_QUORUM_REQUEST_CONFLICT":
+  /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /quorum|attestation|signature/.test(t)&&rpcCode!==-32603?"PROOF_QUORUM_UNAVAILABLE":
   rpcCode===-32603?"PROOF_VALIDATOR_RPC_REJECTED":
   /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
