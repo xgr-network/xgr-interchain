@@ -352,7 +352,7 @@ function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow
 function openFlowModal(){
  const selected=selectedRecovery(transferActivity.items,state.account,transferActivity.selectedTxHash);
  const record=selected||transferActivity.items.find(t=>t.txHash?.toLowerCase()===transferActivity.selectedTxHash?.toLowerCase());
- if(!flowView.journey||!flowView.open){
+ if(!flowView.journey){
   flowView.journey={origin:record?.sourceChain||state.experience.origin,
    destination:record?.finalDestinationChain||record?.destinationChain||state.experience.destination,
    asset:record?.asset||state.experience.asset};
@@ -868,6 +868,7 @@ function render(){
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
    notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
+   hasFlow:Boolean(flowView.journey)&&Boolean(state.account),
     sponsorship:{available:sponsorship.available,status:sponsorship.status,
       chains:sponsorship.chains}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
@@ -922,6 +923,7 @@ function render(){
   render();
  });
  document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
+ document.querySelector("#xita-flow-reopen")?.addEventListener("click",openFlowModal);
  document.querySelector("#ux-fee-info-trigger")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.showModal());
  document.querySelector("#ux-fee-info-close")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
  document.querySelector("[data-fee-info-close]")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
