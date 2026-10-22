@@ -16,6 +16,7 @@ const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
 const HOST=process.env.XITA_INDEXER_HOST||"127.0.0.1";
 const evidencePath=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
+const historyPath=process.env.XITA_TVL_HISTORY||"/var/lib/xita/verified-tvl-history.json";
 function readEvidence(){
  if(!existsSync(evidencePath))return null;
  const info=statSync(evidencePath);
@@ -207,7 +208,20 @@ export async function handler(req,res){
    const result=systemRanking(catalog,metrics,chain,{sort:url.searchParams.get("sort"),search:url.searchParams.get("q")||"",visibility});
    return result?send(200,result):send(404,{ok:false,error:"Unknown system"});
   }
-  return send(200,{...metrics,visibility});
+  let history=null;
+  try{
+   if(existsSync(historyPath)){
+    const stat=statSync(historyPath);
+    if(stat.isFile()&&stat.size<300000){
+     const value=JSON.parse(readFileSync(historyPath,"utf8"));
+     if(value.kind==="xita-tvl-history-v1"&&value.schemaVersion===1&&Array.isArray(value.points))
+      history={kind:value.kind,schemaVersion:1,points:value.points.filter(p=>
+       typeof p.asOf==="string"&&Number.isFinite(Date.parse(p.asOf))&&
+       typeof p.lockedUsd==="number"&&Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0).slice(-2160)};
+    }
+   }
+  }catch{/* No guessed chart points on invalid local history. */}
+  return send(200,{...metrics,visibility,history});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});
