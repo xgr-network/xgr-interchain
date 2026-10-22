@@ -309,7 +309,7 @@ function tvlHistoryChart(metrics,period="24h"){
  const tabs='<div class="ux-ns-tvl-periods" aria-label="TVL history period">'+
   ["24h","7d","30d"].map(p=>'<button type="button" data-tvl-period="'+p+'" class="'+(p===valid?"is-selected":"")+'" aria-pressed="'+(p===valid)+'">'+p+'</button>').join("")+'</div>';
  const axis='<div class="ux-ns-tvl-axis"><span>'+esc(new Date(start).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span><span>'+esc(new Date(end).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"}))+'</span></div>';
- if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>Not enough verified history for this period.</p>'+axis+'</div>';
+ if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected; not enough verified history for this period.</p>'+axis+'</div>';
  const low=Math.min(...points.map(p=>p.lockedUsd)),high=Math.max(...points.map(p=>p.lockedUsd)),spread=high-low;
  const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/(end-start),y:spread===0?36:62-51*(p.lockedUsd-low)/spread}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
@@ -341,8 +341,10 @@ function northstarCards(model,metrics=null,period="24h"){
    '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
-   '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
-   tvlHistoryChart(metrics)+
+   '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.lockedUsd))+'</strong>'+
+   '<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
+   (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span></div>'+
+   tvlHistoryChart(metrics,period)+
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
