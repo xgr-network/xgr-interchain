@@ -24,3 +24,12 @@ test("confirmed XGR transit delivery remains visibly unfinished until final jour
   ...onward,onwardRouteId:null
  }]}),0);
 });
+
+test("confirmed source with unknown destination remains visibly pending",()=>{
+ const unknown={...open,status:"delivery-unknown",delivered:null};
+ assert.equal(pendingDeliveryCount({account:wallet,items:[unknown]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[
+  {...unknown,status:"destination-not-deployed"}]}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[
+  {...unknown,confirmed:false}]}),0);
+});
