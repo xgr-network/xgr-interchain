@@ -10,7 +10,7 @@ const GW=new Interface([
  "function ilnRegistry() view returns (address)","function warpRouter() view returns (address)",
  "function warpToken() view returns (address)","function routeId() view returns (bytes32)",
  "function destinationDomain() view returns (uint32)","function feeVault() view returns (address)",
- "function mailbox() view returns (address)","function merkleTreeHook() view returns (address)",
+ "function mailbox() view returns (address)","function dispatchHook() view returns (address)",
  "function destinationRouter() view returns (address)",
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ]);
@@ -54,7 +54,7 @@ function scenario({canonical="xgrchain",invalidInbound=false,collateralAddress=n
  const comps={};
  for(const name of ["xgrchain","base"]){
   const records=Object.fromEntries(["factory","sourceRegistry","mailbox",
-    "merkleTreeHook","ism","validatorRegistry","executionGateway"].map((key,i)=>
+    "dispatchHook","ism","validatorRegistry","executionGateway"].map((key,i)=>
     [key,comp(name,"abcdef1"[i])]));
   comps[name]={present:true,chainId:name==="xgrchain"?1643:8453,
    xitaV315:{components:records,receiptPaths:Object.values(records).map(x=>x.receiptPath)}};
@@ -83,7 +83,7 @@ function scenario({canonical="xgrchain",invalidInbound=false,collateralAddress=n
  sg("warpRouter",sourceRouter);sg("warpToken",expectedToken);
  sg("routeId",route.routeId);sg("destinationDomain",d.domainId);
  sg("feeVault",vault);sg("mailbox",srcCore.mailbox.address);
- sg("merkleTreeHook",srcCore.merkleTreeHook.address);
+ sg("dispatchHook",srcCore.dispatchHook.address);
  sg("destinationRouter",destinationRouter);
  sg("quoteILN",[val,canonical==="xgrchain"?amount:0n,
   canonical==="xgrchain"?amount+val:val,canonical==="xgrchain"?0n:amount]);
@@ -98,7 +98,7 @@ function scenario({canonical="xgrchain",invalidInbound=false,collateralAddress=n
   ["recipientCount",3n],["recipientSetId",1n]])add(first,vault,VAULT,fn,v);
  add(first,srcCore.sourceRegistry.address,REG,"getRoute",[
   s.chainId,s.domainId,gateway,sourceRouter,srcCore.mailbox.address,
-  srcCore.merkleTreeHook.address,destinationRouter,val,true
+  srcCore.dispatchHook.address,destinationRouter,val,true
  ]);
  add(first,srcCore.sourceRegistry.address,REG,"assetRoute",[
   asset.metadata.assetId,d.chainId,expectedToken,ZERO
