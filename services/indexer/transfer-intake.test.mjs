@@ -3,7 +3,21 @@ import assert from "node:assert/strict";
 import {validateAnnouncement,storeAnnouncement,intakeHandler} from "./transfer-intake.mjs";
 import {readFileSync} from "node:fs";
 const wallet="0x"+"a".repeat(40),hash="0x"+"b".repeat(64);
+// Production Direct-BLS hard reset intentionally has zero deployed routes.
+// The intake security test models one subsequently receipt-verified route.
 const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+const directFixture={
+ sourceChain:"xgrchain",destinationChain:"base",routeName:"xgr_to_base",
+ routeId:"0x"+"b".repeat(64),
+ components:{gateway:{address:"0x"+"c".repeat(40)}}
+};
+catalog.assets.XGR.deployment.present=true;
+catalog.assets.XGR.deployment.routeDeployments=[directFixture];
+catalog.assets.XGR.deployment.representations=[{
+ chain:"xgrchain",address:"0x"+"d".repeat(40)
+}];
+catalog.infrastructure.xgrchain.xitaV315.components.mailbox={address:"0x"+"e".repeat(40)};
+
 test("intake accepts ONLY source wallet chain and 32-byte hash",()=>{
  const msg=validateAnnouncement({account:wallet.toUpperCase().replace("0X","0x"),
   sourceChain:"xgrchain",txHash:hash},catalog);
