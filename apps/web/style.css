@@ -775,7 +775,14 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
 .ux-dashboard-token-row:hover{background:#182f4ad1}
 .ux-dashboard-token-name{display:flex;align-items:center;gap:16px}
 .ux-dashboard-token-rank{width:23px;font-size:12px;color:#8ca5c2}
-.ux-dashboard-token-name .ux-token-sphere{flex-shrink:0;width:27px;height:27px}
+
+.ux-dashboard-token-logo{position:relative;overflow:hidden;display:grid;place-items:center;box-sizing:border-box;
+ width:27px;height:27px;flex:0 0 27px;border-radius:50%;background:#16304b;border:1px solid #4d7290}
+.ux-dashboard-token-fallback{font:700 9px/1 Arial,sans-serif;color:#cde5ff;letter-spacing:-.04em}
+.ux-dashboard-token-logo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+ background:#0b192b;border-radius:50%}
+.ux-dashboard-token-logo-img[hidden]{display:none}
+
 .ux-dashboard-token-name>span:last-child{display:flex;flex-direction:column;gap:3px}
 .ux-dashboard-token-name strong{font-size:13px}
 .ux-dashboard-token-name small{font-size:10px;color:#90a8c3}
@@ -1226,7 +1233,8 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-dashboard-rankings .ux-dashboard-token-row{padding:10px 8px;gap:5px}
 .ux-dashboard-rankings .ux-dashboard-token-name{gap:6px;min-width:0}
 .ux-dashboard-rankings .ux-dashboard-token-rank{width:16px;flex:0 0 16px}
-.ux-dashboard-rankings .ux-dashboard-token-name .ux-token-sphere{height:19px;width:19px}
+.ux-dashboard-rankings .ux-dashboard-token-logo{width:22px;height:22px;flex-basis:22px}
+.ux-dashboard-rankings .ux-dashboard-token-fallback{font-size:8px}
 .ux-dashboard-rankings .ux-dashboard-token-cap{font-size:13px;white-space:nowrap}
 .ux-dashboard-ranking-empty{font-size:12px;color:#94acc8;line-height:1.65;margin:26px 0}
 .ux-dashboard-ranking-link{font-size:11px;color:#b5d6fb;margin-top:auto;padding-top:16px}

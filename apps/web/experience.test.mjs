@@ -324,7 +324,11 @@ test("untrusted project URI is not rendered as executable link; conflicting synt
  assert.doesNotMatch(html,/Official project/);
  assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
  const conflict=structuredClone(model);
- conflict.deployments.push({...conflict.deployments.find(x=>x.source==="base"),sourceToken:"0x"+"f".repeat(40)});
+ // Build a real competing receipt-backed Base destination representation.
+ // The previous mock was not guaranteed to belong to XGR, so it proved nothing.
+ const realBase=conflict.deployments.find(x=>x.asset==="XGR"&&x.destination==="base");
+ assert.ok(realBase);
+ conflict.deployments.push({...realBase,destinationRouter:"0x"+"f".repeat(40)});
  const info=transferTokenIdentity(conflict,"XGR","base");
  assert.equal(info.address,null);
  assert.equal(info.evidence,"unavailable");
@@ -519,4 +523,28 @@ test("two-hop resume dropdown names the final Base destination, never the hub",(
   "ready",{account},{items:[row],selectedTxHash:tx});
  assert.match(html,/XGR · arbitrum → base · 0x99999999/);
  assert.doesNotMatch(html,/XGR · arbitrum → xgrchain · 0x99999999/);
+});
+
+test("Top Tokens rankings show real approved token logos instead of decorative planets",()=>{
+ const live=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const assets={};
+ for(const [id,entry] of Object.entries(live.assets)){
+  assets[id]={assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
+   marketCapUsd:id==="ARB"?200:100,priceUsd:1,circulating:100},
+   custody:{status:"unavailable"},movement:{status:"unavailable"}};
+ }
+ const html=renderDashboard(buildExperienceModel(live),{},"ready",
+  {schemaVersion:1,kind:"xita-asset-metrics-v1",assets},live);
+ assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
+ assert.doesNotMatch(html,/ux-token-sphere/);
+ assert.match(html,/class="ux-dashboard-token-logo-img"/);
+ assert.match(html,/xgr_logo200\.png/);
+ assert.match(html,/arb\.jpg/);
+ assert.match(html,/ux-dashboard-token-fallback/);
+ const broken=structuredClone(live);
+ broken.assets.XGR.profile.branding.logoUrl="javascript:alert(1)";
+ const invalid=renderDashboard(buildExperienceModel(broken),{},"ready",
+  {schemaVersion:1,kind:"xita-asset-metrics-v1",assets},broken);
+ assert.doesNotMatch(invalid,/src="javascript:/);
+ assert.match(invalid,/ux-dashboard-token-fallback/);
 });

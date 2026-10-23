@@ -410,6 +410,17 @@ export function dashboardRankingRows(catalog,metrics,key){
  }
  return rankAssets(rows.filter(row=>Number.isFinite(row[key])&&row[key]>=0),key,"desc").slice(0,5);
 }
+// Approved token logos replace decorative planets in the dashboard rankings.
+// A short ticker is still visible if an external image cannot load.
+function dashboardTokenLogo(row){
+ const logo=projectUrl(row.logo);
+ const ticker=String(row.id||"?").slice(0,4).toUpperCase();
+ return '<span class="ux-dashboard-token-logo" aria-hidden="true">'+
+  '<span class="ux-dashboard-token-fallback">'+esc(ticker)+'</span>'+
+  (logo?'<img class="ux-dashboard-token-logo-img" src="'+esc(logo)+
+    '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">':'')+
+  '</span>';
+}
 function dashboardTopTokens(catalog,metrics){
  const panels=[
   {key:"marketCapUsd",title:"by Market Cap",caption:"CoinGecko · asset-wide market cap",empty:"No verified market-cap data yet."},
@@ -425,7 +436,7 @@ function dashboardTopTokens(catalog,metrics){
     (rows.length?'<div class="ux-dashboard-token-table">'+rows.map((row,i)=>
      '<a data-nav class="ux-dashboard-token-row" href="/token/'+encodeURIComponent(row.slug)+'">'+
       '<span class="ux-dashboard-token-name"><span class="ux-dashboard-token-rank">'+(i+1)+'</span>'+
-      '<span class="ux-token-sphere" aria-hidden="true"></span>'+
+      dashboardTokenLogo(row)+
       '<span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
       '<span class="ux-dashboard-token-amount"><strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong>'+(row.historicalAsOf?'<small>Last verified</small>':'')+'</span></a>').join("")+'</div>':
       '<p class="ux-dashboard-ranking-empty">'+panel.empty+'</p>')+

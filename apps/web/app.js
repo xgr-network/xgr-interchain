@@ -1155,6 +1155,11 @@ document.addEventListener("click",async event=>{
  catch(error){button.textContent="Retry MetaMask";button.title=metaMaskFailure(error);}
  finally{metaMaskImportBusy=false;button.disabled=false;}
 });
+// A missing remote token image should reveal the ticker, never a broken icon.
+document.addEventListener("error",event=>{
+ const img=event.target;
+ if(img?.matches?.(".ux-dashboard-token-logo-img"))img.hidden=true;
+},true);
 window.addEventListener("popstate",render);
 // Exact-hash finality polling is separate from the finalized event index.
 // Read-only; an RPC outage never causes another source transaction.
