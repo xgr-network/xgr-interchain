@@ -1304,3 +1304,12 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 .ja-outcome-error{border-left:3px solid #cc8e68;padding:12px;background:#3b281e38;overflow-wrap:anywhere}
 .ja-outcome-link{display:inline-block;margin:14px 0;padding:11px 16px;border:1px solid #789abc;border-radius:9px;text-decoration:none}
 @media(max-width:550px){.ja-outcome-panel{padding:19px}}
+
+/* Join wizard: accessible touch target, visible checked state and clear Back button */
+.ja-consent{align-items:flex-start;gap:14px;cursor:pointer;padding:12px 0}
+.ja-consent input[type="checkbox"]{appearance:auto;width:21px;height:21px;min-width:21px;min-height:21px;flex:0 0 21px;margin:1px 0 0;accent-color:#91caff;cursor:pointer}
+.ja-consent span{flex:1;min-width:0;line-height:1.6}
+.ja-consent:focus-within{outline:2px solid #83bff4;outline-offset:4px;border-radius:4px}
+.ja-actions button[data-join-action="back"]{color:#e8f2ff;background:#142740;border:1px solid #7296bd;font-size:13px;font-weight:650;min-height:46px;min-width:112px}
+.ja-actions button[data-join-action="back"]:hover,.ja-actions button[data-join-action="back"]:focus-visible{background:#213b5b;border-color:#b7dbff;color:#fff}
+.ja-actions button[data-join-action="back"]:focus-visible{outline:2px solid #aedcff;outline-offset:3px}
