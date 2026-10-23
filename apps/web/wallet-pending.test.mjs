@@ -47,7 +47,7 @@ test("one verified two-hop journey is exactly one pending wallet operation",()=>
  const message="0x"+"e".repeat(64),tx="0x"+"f".repeat(64);
  const route="0x"+"9".repeat(64),account=wallet;
  const parent={...open,account,sourceChain:"arbitrum",destinationChain:"xgrchain",
-  messageId,txHash:open.txHash,onwardRouteId:route,asset:"XGR",amountRaw:"100",
+  messageId:message,txHash:open.txHash,onwardRouteId:route,asset:"XGR",amountRaw:"100",
   finalDestinationChain:"base",finalRecipient:account,status:"awaiting-final-proof",
   delivered:true,secondHopTxHash:tx,secondHopMessageId:"0x"+"8".repeat(64)};
  const child={...open,account,sourceChain:"xgrchain",destinationChain:"base",
