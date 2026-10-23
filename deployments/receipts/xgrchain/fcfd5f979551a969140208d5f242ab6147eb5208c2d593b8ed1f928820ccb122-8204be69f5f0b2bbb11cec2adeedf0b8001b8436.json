@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "a1e4b6a9d33835981d339e65230c9aafccbed19c"
+  },
+  "chain": "xgrchain",
+  "chainId": 1643,
+  "domainId": 1643,
+  "component": "syntheticRouter",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeName": null,
+  "address": "0x8204be69f5f0b2bbb11cec2adeedf0b8001b8436",
+  "runtimeCodeKeccak256": "0x168c6ea296d0e63198557c61f632c1df8f0aafef7e30251f6004c68879623da3",
+  "transactionHash": "0xfcfd5f979551a969140208d5f242ab6147eb5208c2d593b8ed1f928820ccb122",
+  "blockNumber": 12017110,
+  "blockHash": "0xaf43d5cb291084670ff9d936de6340b762b041cf133b5d4ecfa3d56d65c127ec",
+  "confirmations": 1,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-router",
+    "factory": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+    "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-23T14:29:50.142Z"
+}
