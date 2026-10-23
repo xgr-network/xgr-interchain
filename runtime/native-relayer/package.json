@@ -1,7 +1,7 @@
 {
-  "name": "@xgr-network/xeta-iln-relayer",
+  "name": "@xgr-network/xita-direct-bls-relayer",
   "private": true,
-  "version": "3.1.4",
+  "version": "4.0.0-dev",
   "type": "module",
   "dependencies": {
     "ethers": "6.13.4"
@@ -9,5 +9,5 @@
   "scripts": {
     "test": "node --test"
   },
-  "description": "Permissionless-recoverable XETA ILN v3.1.4 relay client"
+  "description": "Minimal Direct BLS Gateway event watcher and permissionless unsigned Mailbox recovery"
 }
