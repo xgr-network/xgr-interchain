@@ -858,11 +858,11 @@ async function refreshOperationsHealth(){
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
    ["Chain RPC erreichbar",healthValue(d.summary.chainsReachable)+"/"+healthValue(d.summary.chainsConfigured)],
    ["Indexer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
-   ["ILN Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
+   ["Überwachte ILN-Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
   const routes=d.indexer.routes||[];
   el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
-   '<tr><td>'+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
+   '<tr><td><strong>'+esc(r.asset||"Token unbekannt")+'</strong> · '+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
    '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
   const validators=d.validators||[];
   const expectedMerkleChains=["arbitrum","base","xgrchain"];
@@ -883,7 +883,7 @@ async function refreshOperationsHealth(){
     ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
     '<div class="health-table-wrap"><table class="health-table health-merkle-table">'+
     '<thead><tr><th>Source-Chain</th><th>Leaves lokal / Quelle</th><th>Checkpoint</th>'+
-    '<th>Rückstand</th><th>Peers ausstehend</th><th>Status</th></tr></thead><tbody>'+
+    '<th>Rückstand</th><th>Peer-Diagnose</th><th>Status</th></tr></thead><tbody>'+
     rows+'</tbody></table></div>'+(v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
   }).join(""):'<p class="health-merkle-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
    'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
