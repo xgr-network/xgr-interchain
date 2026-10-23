@@ -30,3 +30,8 @@ test("unknown, foreign and unverified index rows cannot enter canonical history"
  assert.deepEqual(canonicalWalletSnapshot({account:a,rows:[parent,{...staleChild,confirmed:false},bad]}),[parent]);
  assert.deepEqual(canonicalWalletSnapshot({account:null,rows:[parent]}),[]);
 });
+test("parent already indexed prevents active onward TX becoming a second selectable journey",()=>{
+ const result=canonicalWalletSnapshot({account:a,rows:[parent],previous:[staleChild],
+  activeSourceHash:staleChild.txHash});
+ assert.deepEqual(result,[parent]);
+});

@@ -15,7 +15,8 @@ export function canonicalWalletSnapshot({account,rows,previous=[],activeSourceHa
  const provisional=HASH.test(activeSourceHash||"")?
   previous.find(row=>row?.account?.toLowerCase()===owner&&
    row.txHash?.toLowerCase()===activeSourceHash.toLowerCase()):null;
- if(provisional&&!byKey.has(key(provisional)))
+ if(provisional&&!byKey.has(key(provisional))&&
+   !indexed.some(row=>row.secondHopTxHash?.toLowerCase()===provisional.txHash?.toLowerCase()))
   byKey.set(key(provisional),provisional);
  return [...byKey.values()];
 }
