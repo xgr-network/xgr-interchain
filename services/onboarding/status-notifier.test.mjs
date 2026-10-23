@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {nextPhase} from "./status-notifier.mjs";
+import {routeMilestones} from "./route-milestones.mjs";
 const record={assetId:"0x"+"a".repeat(64),input:{symbol:"EXMP"},pr:{number:123,url:"https://github.com/xgr-network/xgr-interchain/pull/123"},phase:"under-review"};
 const snap=(status,lockedUsd=0,deployment="deployed")=>({
  schemaVersion:1,kind:"xita-visibility-v1",assets:{EXMP:{assetId:record.assetId,status,lockedUsd,deployment}}
@@ -38,4 +39,41 @@ test("deployed/first-lock mail requires an executable route gate",()=>{
  const pr={state:"closed",merged_at:"2026-10-15T12:00:00Z"};
  assert.equal(nextPhase(record,pr,snap("accepted",10)),"approved");
  assert.equal(nextPhase(record,pr,snap("accepted",10),{readyToTransfer:true}),"first-lock");
+});
+
+test("route milestones require both directions of the canonical home route and ALL planned directions for completion",()=>{
+ const assetId="0x"+"a".repeat(64);
+ const spokes=["arbitrum","base","polygon"];
+ const routes=spokes.flatMap(chain=>[
+  {name:chain+"_to_xgr",sourceChain:chain,destinationChain:"xgrchain"},
+  {name:"xgr_to_"+chain,sourceChain:"xgrchain",destinationChain:chain}
+ ]);
+ const catalog={chains:Object.fromEntries(["xgrchain",...spokes].map(key=>[key,{name:key}])),
+  assets:{ARB:{metadata:{assetId,canonical:{chain:"arbitrum"},representations:
+   ["xgrchain",...spokes].map(chain=>({chain}))},deployment:{assetId},
+   routes:{routingHub:"xgrchain",protocol:"XITA-v3.1.5",routes}}}};
+ const ready=(subset)=>subset.map(row=>({asset:"ARB",assetId,source:row.sourceChain,destination:row.destinationChain}));
+ const home=routes.filter(r=>r.sourceChain==="arbitrum"||r.destinationChain==="arbitrum");
+ const base=routes.filter(r=>r.sourceChain==="base"||r.destinationChain==="base");
+ const none=routeMilestones(catalog,"ARB",assetId,[]);
+ assert.equal(none.firstRoute,null);
+ assert.equal(none.allComplete,false);
+ assert.equal(routeMilestones(catalog,"ARB",assetId,ready(home.slice(0,1))).firstRoute,null,"one-way never sends transfer mail");
+ assert.equal(routeMilestones(catalog,"ARB",assetId,ready(base)).firstRoute,null,"another pair cannot replace canonical home");
+ const initial=routeMilestones(catalog,"ARB",assetId,ready(home));
+ assert.deepEqual(initial.firstRoute,{source:"arbitrum",destination:"xgrchain",network:"arbitrum"});
+ assert.equal(initial.allComplete,false);
+ const complete=routeMilestones(catalog,"ARB",assetId,ready(routes));
+ assert.equal(complete.allComplete,true);
+ assert.deepEqual(complete.completedNetworks,spokes);
+ assert.deepEqual(complete.plannedNetworks,spokes);
+ assert.equal(routeMilestones(catalog,"ARB",assetId,ready(routes.slice(0,-1))).allComplete,false);
+ assert.equal(routeMilestones(catalog,"ARB","0x"+"b".repeat(64),ready(routes)).allComplete,false);
+ assert.equal(routeMilestones(catalog,"ARB",assetId,ready(routes).map(x=>({...x,asset:"FAKE"}))).firstRoute,null);
+ const missingReverse=structuredClone(catalog);
+ missingReverse.assets.ARB.routes.routes.pop();
+ assert.equal(routeMilestones(missingReverse,"ARB",assetId,ready(routes)).firstRoute,null);
+ const duplicate=structuredClone(catalog);
+ duplicate.assets.ARB.routes.routes.push(routes[0]);
+ assert.equal(routeMilestones(duplicate,"ARB",assetId,ready(routes)).firstRoute,null);
 });
