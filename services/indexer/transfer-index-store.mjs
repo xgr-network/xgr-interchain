@@ -74,6 +74,17 @@ const completedChildPredicate=`EXISTS (SELECT 1 FROM xita_transfer_operations c
  AND c.destination_chain=p.final_destination_chain
  AND c.final_recipient=p.final_recipient AND c.amount_raw=p.amount_raw
  AND c.execution_adapter IS NOT NULL AND c.delivered IS TRUE)`;
+// Exclude only a uniquely linked child from the wallet-facing journey count.
+// The child remains in the immutable ledger and linked parent details.
+const linkedChildPredicate=`p.parent_message_id IS NOT NULL AND p.source_chain='xgrchain'
+ AND p.execution_adapter IS NOT NULL AND (
+ SELECT COUNT(*) FROM xita_transfer_operations parent
+ WHERE parent.message_id=p.parent_message_id
+ AND parent.account=p.account AND parent.asset=p.asset
+ AND parent.delivered IS TRUE AND parent.onward_route_id=p.route_id
+ AND parent.final_destination_chain=p.destination_chain
+ AND parent.final_recipient=p.final_recipient
+ AND parent.amount_raw=p.amount_raw)=1`;
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
@@ -92,7 +103,7 @@ export async function readWalletTransferIndex(catalog,account,{
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
     final_destination_chain,final_recipient,onward_route_id,parent_message_id
     FROM xita_transfer_operations p
-    WHERE p.account=$1 AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
+    WHERE p.account=$1 AND NOT (${linkedChildPredicate}) AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
       OR (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
     -- Always surface unresolved work before older/newer completed transfers.
     -- A 100-row wallet page must not hide a pending bridge behind 100
@@ -108,7 +119,7 @@ export async function readWalletTransferIndex(catalog,account,{
      (p.delivered IS TRUE AND p.onward_route_id IS NOT NULL
       AND NOT ${completedChildPredicate}))::text AS open,
    COUNT(*) FILTER (WHERE p.delivered IS NULL)::text AS unknown
-   FROM xita_transfer_operations p WHERE p.account=$1`,
+   FROM xita_transfer_operations p WHERE p.account=$1 AND NOT (${linkedChildPredicate})`,
   values:[lowercase(account)]});
  const rawItems=rows.rows.map(indexedTransferRow);
  const parents=rawItems.filter(item=>item.onwardRouteId&&item.delivered===true)
