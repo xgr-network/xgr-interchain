@@ -129,5 +129,5 @@ test("ARB synthetic router on Base resolves canonical Arbitrum from full chain i
 
 test("asset operator supplies approved chain inventory for every synthetic router",()=>{
  const operator=readFileSync(new URL("./asset-operator.mjs",import.meta.url),"utf8");
- assert.match(operator,/representation,action:"deploy-router",chains:inventory\\.chains/);
+ assert.match(operator,/representation,action:"deploy-router",chains:inventory\.chains/);
 });
