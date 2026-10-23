@@ -44,7 +44,7 @@ export function joinMarkup(chains,d,step,status="",busy=false){
  '<div class="ja-layout"><section class="ux-panel ja-wizard"><div class="ja-progress">'+steps.map((s,i)=>'<div class="ja-step '+(i===step?"is-current":i<step?"is-done":"")+'"><span>'+String(i+1).padStart(2,"0")+'</span><small>'+s+'</small></div>').join("")+'</div>'+
  '<div class="ja-form-head"><div class="ux-kicker">Step '+(step+1)+' / 3</div><h2>'+steps[step]+'</h2></div>'+
  fieldSets[step]+'<div class="ja-status" id="ja-status" role="alert">'+escape(status)+'</div><div class="ja-actions">'+
- (step>0?'<button class="ux-outline-button" data-join-action="back">← Back</button>':'<span></span>')+
+ (step>0?'<button type="button" class="ux-outline-button" data-join-action="back">← Back</button>':'<span></span>')+
  '<button class="ux-button" data-join-action="'+(step===2?"submit":"next")+'" '+(busy?"disabled aria-busy=\"true\"":"")+'>'+(busy?"Checking application…":step===2?"Verify & submit application":"Continue →")+'</button></div>'+
  '<button class="ja-export" type="button" data-join-action="export">Export application draft</button></section>'+
  '<aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · CONNECTED UNIVERSE</div><h2 data-join-preview="name">'+escape(d.name||"Your Token")+'</h2>'+
