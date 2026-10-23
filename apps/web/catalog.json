@@ -218,6 +218,8 @@
         "sourceManifest": "config/assets/b9/ARB/asset.json",
         "receiptPaths": [
           "deployments/receipts/arbitrum/eb43dc8b99a2636e541544b6ad6d5ad91c39349711b2243a4faf6baa6587913f-041fd47808d1816824f65cefe29a420a33b07920.json",
+          "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-7728f72fdb259e337e4645b6771182a33e3e40da.json",
+          "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-794009d0a357f71a18af57a2c7805043d429aaa9.json",
           "deployments/receipts/base/e6fa6677494ee6e116528a6c260abb3c2064d3086b796983fa2764bae7657231-657a2b73deeecfe235859ee8734b224cfd510393.json",
           "deployments/receipts/xgrchain/5750af11eb2ddffc246ea5801f5ce3fbe4e7203be768f2527f5ca457487f5eb6-00e031600d35bc248b20428080f01acf14fa4772.json",
           "deployments/receipts/xgrchain/5750af11eb2ddffc246ea5801f5ce3fbe4e7203be768f2527f5ca457487f5eb6-8d5bdefa72feb4dbefd18577793ee0d766e918ab.json",
@@ -273,6 +275,32 @@
             "receiptPaths": [
               "deployments/receipts/xgrchain/cc4a55c68ced787c6e557ff325f89a6cb03d888736685cb2d53985e9ff87075c-529db4f43951a18173dfcb959b46594fd2d1f653.json",
               "deployments/receipts/xgrchain/cc4a55c68ced787c6e557ff325f89a6cb03d888736685cb2d53985e9ff87075c-64ec4103ba5783d9a14b98d6f3d614d7099f9a53.json"
+            ]
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "asset-route-deployment",
+            "asset": "ARB",
+            "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+            "routeId": "0x15dc3075c736dfe747a048511dbb48c31defa469b42e43b957e366a1bb3cbc25",
+            "routeName": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain",
+            "components": {
+              "gateway": {
+                "address": "0x7728f72fdb259e337e4645b6771182a33e3e40da",
+                "runtimeCodeKeccak256": "0xc29c9f0052d628bcd734c69364a0bd636e59ee6ea565dc9985ab816e7a812617",
+                "receiptPath": "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-7728f72fdb259e337e4645b6771182a33e3e40da.json"
+              },
+              "feeVault": {
+                "address": "0x794009d0a357f71a18af57a2c7805043d429aaa9",
+                "runtimeCodeKeccak256": "0x74e3947f07557df7e99e7a92dc6b39f6c62cd39a772d418b5f9914b3bb1c4c9c",
+                "receiptPath": "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-794009d0a357f71a18af57a2c7805043d429aaa9.json"
+              }
+            },
+            "receiptPaths": [
+              "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-7728f72fdb259e337e4645b6771182a33e3e40da.json",
+              "deployments/receipts/base/d3b9c3c47ec22fddcecc5c601d1896565e77aab301c32efbdc4b5fbdcf736589-794009d0a357f71a18af57a2c7805043d429aaa9.json"
             ]
           },
           {
