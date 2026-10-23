@@ -6,7 +6,7 @@ const routes=[
  {path:"/api/xita/join/status",method:"GET"},
  {path:"/api/xita/join/preview",method:"POST",maxBody:"480k"},
  {path:"/api/xita/join/submit",method:"POST",maxBody:"480k",rate:true},
- {path:"/api/xita/join/confirm",method:"POST",maxBody:"1k",rate:true}
+ {path:"/api/xita/join/confirm",method:"POST",maxBody:"1k",rate:true,timeout:"120s"}
 ];
 function existingLocation(config,item){
  const pattern=new RegExp("(?:^|\\n)\\s*location\\s*=\\s*"+item.path+"\\s*\\{","g");
@@ -50,7 +50,7 @@ export function patchXitaJoinNginx(config){
   (r.rate?"        limit_req zone=xita_join_submit burst=3 nodelay;\n":"")+
   "        proxy_pass "+upstream+";\n"+
   "        proxy_connect_timeout 2s;\n"+
-  "        proxy_read_timeout 15s;\n"+
+  "        proxy_read_timeout "+(r.timeout||"15s")+";\n"+
   "        proxy_set_header Host $host;\n"+
   "        add_header Cache-Control \"no-store\" always;\n"+
   "        add_header X-Content-Type-Options nosniff always;\n"+
