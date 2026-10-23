@@ -223,3 +223,11 @@ test("ambiguous competing onward hops remain visible instead of silently disappe
  assert.match(sql,/AND NOT \(\(/);
  assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations c/);
 });
+
+test("transfer health coverage always includes token identity for same-name multi-assets",()=>{
+ const routes=[{asset:"XGR",routeName:"base_to_xgr",sourceChain:"base",destinationChain:"xgrchain",routeId:"0x"+"a".repeat(64),gateway:"0x"+"1".repeat(40),deploymentBlock:10},
+ {asset:"ARB",routeName:"base_to_xgr",sourceChain:"base",destinationChain:"xgrchain",routeId:"0x"+"b".repeat(64),gateway:"0x"+"2".repeat(40),deploymentBlock:20}];
+ const coverage=routeIndexCoverage({},[],{routeList:routes});
+ assert.deepEqual(coverage.routes.map(x=>x.asset),["XGR","ARB"]);
+ assert.equal(coverage.requiredRoutes,2);
+});

@@ -35,7 +35,7 @@ export function routeIndexCoverage(catalog,cursors,{now=Date.now(),maxAgeMs=6000
   const head=match?Number(c.finalized_head):null;
   const freshness=match&&Number.isFinite(Date.parse(c.updated_at))&&
    Math.abs(now-Date.parse(c.updated_at))<=maxAgeMs;
-  return {source:r.sourceChain,destination:r.destinationChain,route:r.routeName,
+  return {asset:r.asset,source:r.sourceChain,destination:r.destinationChain,route:r.routeName,
    scannedTo:scanned,finalizedHead:head,updatedAt:match?iso(c.updated_at):null,
    complete:Boolean(match&&freshness&&head!==null&&head>=r.deploymentBlock&&scanned>=head)};
  });

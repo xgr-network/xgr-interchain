@@ -108,7 +108,7 @@ export function summarizeTransferIndex(stats,{now=Date.now(),staleMs=180000}={})
   else if(updatedAt&&ageMs>=-30000&&ageMs<=staleMs&&lagBlocks!==null)
    state=lagBlocks>0?"catching-up":"warning";
   else if(ageMs!==null&&ageMs>staleMs)state="stalled";
-  return {source:String(item.source||"").slice(0,45),
+  return {asset:String(item.asset||"").slice(0,48),source:String(item.source||"").slice(0,45),
    destination:String(item.destination||"").slice(0,45),
    route:String(item.route||"").slice(0,100),
    scannedTo,finalizedHead,lagBlocks,updatedAt,ageMs,state};
