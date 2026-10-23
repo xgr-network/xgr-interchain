@@ -73,11 +73,11 @@ const matchingChildCondition=`c.source_chain='xgrchain'
  AND c.destination_chain=p.final_destination_chain
  AND c.final_recipient=p.final_recipient AND c.amount_raw=p.amount_raw
  AND c.execution_adapter IS NOT NULL`;
-const completedChildPredicate=`(
+const completedChildPredicate=`((
  SELECT COUNT(*) FROM xita_transfer_operations c
  WHERE ${matchingChildCondition})=1
  AND EXISTS (SELECT 1 FROM xita_transfer_operations c
- WHERE ${matchingChildCondition} AND c.delivered IS TRUE)`;
+ WHERE ${matchingChildCondition} AND c.delivered IS TRUE))`;
 // Exclude only a uniquely linked child from the wallet-facing journey count.
 // The child remains in the immutable ledger and linked parent details.
 const linkedChildPredicate=`p.parent_message_id IS NOT NULL AND p.source_chain='xgrchain'
