@@ -12,7 +12,7 @@ const routeReceipt={transactionHash:hash,status:"onchain-deployment-verified",co
 const event={destinationDomain:1643,routeId:hash,gateway,sourceRouter:srcRouter,destinationRouter:dstRouter};
 const onchain={registryCodeHash:hash,gatewayCodeHash:hash,head:517200480,
  record:{sourceChainId:42161n,sourceDomain:42161n,gateway,sourceRouter:srcRouter,
- destinationRouter:dstRouter,mailbox,merkleTreeHook:hook,fee:1000000000000n,enabled:true}};
+ destinationRouter:dstRouter,mailbox,dispatchHook:hook,fee:1000000000000n,enabled:true}};
 const verify=(overrides={})=>checkedRoute({catalog,source:"arbitrum",route,registryReceipt,routeReceipt,
  chainID:42161,onchain,...overrides});
 test("Arbitrum L2 route is independently verified at the documented deployment without trusting L1 block.number",()=>{
