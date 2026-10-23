@@ -1,7 +1,9 @@
 // Prepare unsigned, wallet-owned Mailbox.process calldata from one canonical
 // fee-qualified source receipt and one current-set Direct BLS attestation.
 // No Merkle, relayer custody, source re-execution or historical eth_call.
-import {JsonRpcProvider,Contract,getAddress,getBytes,zeroPadValue,keccak256} from "ethers";
+import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256} from "ethers";
+import {fileURLToPath} from "node:url";
+import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
 import {encodeDirectBLSPayload,encodeDirectISMMetadata} from "./xita-direct-codec.mjs";
 
@@ -15,16 +17,17 @@ const equals=(label,a,b)=>{
 const check=(ok,msg)=>{if(!ok)throw Error(msg)};
 let stage="init";
 const mark=x=>{stage=x;console.error("XITA_RECOVERY_STAGE:"+x)};
-const id=String(process.argv[2]||"").toLowerCase();
+const cliMessageID=String(process.argv[2]||"").toLowerCase();
 let route="";
-async function main(){
+export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
+ const id=String(messageID||"").toLowerCase();
  check(hash.test(id)&&BigInt(id)>0n,"Invalid source Message ID");
  const srcChain=BigInt(number("ORIGIN_CHAIN_ID"));
  const srcDomain=number("ORIGIN_DOMAIN");
  const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
  const destDomain=number("DESTINATION_DOMAIN");
  const confirmations=number("ORIGIN_CONFIRMATIONS");
- const sourceTxHash=name("SOURCE_TX_HASH").toLowerCase();
+ const sourceTxHash=String(overrideSourceTxHash||name("SOURCE_TX_HASH")).toLowerCase();
  check(hash.test(sourceTxHash),"Original Source TX hash required");
  const routeId=name("ROUTE_ID").toLowerCase();
  check(hash.test(routeId)&&BigInt(routeId)>0n,"Invalid canonical route ID");
@@ -63,7 +66,7 @@ async function main(){
 
  mark("destination-delivery");
  if(await destMailbox.delivered(id)){
-  console.log(JSON.stringify({status:"ALREADY_DELIVERED",messageId:id}));return;
+  return {status:"ALREADY_DELIVERED",messageId:id};
  }
  equals("Current destination Mailbox ISM",await destMailbox.defaultIsm(),destISMAddress);
  const [setRegistry,ismDomain]=await Promise.all([ism.registry(),ism.destinationDomain()]);
@@ -130,9 +133,8 @@ async function main(){
  try{attestation=await xgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)])}
  catch{
   await xgr.send("xgr_requestILNQuorum",[route,id,sourceBlock]);
-  console.log(JSON.stringify({status:"PENDING",messageId:id,route,
-    sourceBlockNumber:sourceBlock,currentSetId:String(setId)}));
-  return;
+  return {status:"PENDING",messageId:id,route,
+    sourceBlockNumber:sourceBlock,currentSetId:String(setId)};
  }
 
  mark("validate-attestation");
@@ -179,17 +181,21 @@ async function main(){
  check(BigInt(await set.setId())===BigInt(setId),"Destination validator set rotated during preparation");
  check(!(await destMailbox.delivered(id)),"Already delivered during recovery");
 
- console.log(JSON.stringify({status:"READY_UNSIGNED_CALL",route,messageId:id,
+ return {status:"READY_UNSIGNED_CALL",route,messageId:id,
   setId:String(setId),sourceBlockNumber:sourceBlock,
   destinationChainId:String(destChain),to:destMailboxAddress,value:"0x0",
-  data:destMailbox.interface.encodeFunctionData("process",[metadata,message])}));
+  data:destMailbox.interface.encodeFunctionData("process",[metadata,message])};
 }
-main().catch(error=>{
- const code=error?.info?.error?.code||error?.code||null;
- console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
-  status:"RECOVERY_NOT_READY",messageId:id,route,stage,
-  rpcCode:Number.isInteger(code)?code:null,
-  error:String(error?.shortMessage||error?.message||"Unknown direct BLS failure").slice(0,1200)
- }));
- process.exitCode=1;
-});
+if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+ prepareDirectILN(cliMessageID).then(result=>{
+  console.log(JSON.stringify(result));
+ }).catch(error=>{
+  const code=error?.info?.error?.code||error?.code||null;
+  console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
+   status:"RECOVERY_NOT_READY",messageId:cliMessageID,route,stage,
+   rpcCode:Number.isInteger(code)?code:null,
+   error:String(error?.shortMessage||error?.message||"Unknown direct BLS failure").slice(0,1200)
+  }));
+  process.exitCode=1;
+ });
+}
