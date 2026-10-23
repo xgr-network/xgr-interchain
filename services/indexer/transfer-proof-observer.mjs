@@ -75,8 +75,15 @@ export async function observeProofJob({pool,catalog,job,runner=runRecoveryProces
   throw Error("Observer requires a finalized canonical source operation");
  let decision;
  try{
-  const configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
-   job.asset,job.source_tx_hash);
+  // Withdrawal or mismatch of a deployed route is an explicit configuration
+  // failure, never a missing validator signature.
+  let configured;
+  try{
+   configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
+    job.asset,job.source_tx_hash);
+  }catch(error){
+   throw Object.assign(error,{code:"PROOF_CONFIG_MISMATCH"});
+  }
   if(configured.route.source!==job.source_chain)
    throw Object.assign(Error("Route mismatch"),{code:"PROOF_CONFIG_MISMATCH"});
   const outcome=await runner(configured,{timeoutMs:35000});
