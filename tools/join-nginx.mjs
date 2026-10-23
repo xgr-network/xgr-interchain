@@ -42,7 +42,7 @@ export function patchXitaJoinNginx(config){
  const missing=routes.filter(r=>!existingLocation(config,r));
  // Upgrade only the already validated exact Join confirmation location.
  // Do not alter unrelated nginx location blocks or operator settings.
- const current=existingLocation(config,routes[3])?config.replace(/(location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout )15s;/, "$1120s;"):config;
+ const current=existingLocation(config,routes[3])?config.replace(/(location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout )15s;/, (_,prefix)=>prefix+"120s;"):config;
  if(!missing.length)return {config:current,changed:current!==config,added:[]};
  if(config.split(marker).length!==2)
   throw Error("Expected exactly one XITA fail-closed API fallback location");
