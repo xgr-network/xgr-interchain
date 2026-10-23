@@ -42,7 +42,7 @@ export function routeMilestones(catalog,symbol,assetId,readyRoutes=executableTra
    ready.has(pair(network,HUB))&&ready.has(pair(HUB,network))).sort();
  const firstNetwork=origin!==HUB?(complete.includes(origin)?origin:null):complete[0]||null;
  const firstRoute=firstNetwork?{
-  origin:origin===HUB?HUB:firstNetwork,
+  source:origin===HUB?HUB:firstNetwork,
   destination:origin===HUB?firstNetwork:HUB,
   network:firstNetwork
  }:null;
