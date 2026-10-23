@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {XITADirectBLSISM} from "../contracts/XITADirectBLSISM.sol";
 import {XITADirectProtocol} from "../contracts/XITADirectProtocol.sol";
+import {XITADirectTransport} from "../contracts/XITADirectTransport.sol";
 
 contract DirectRegistryMock {
     uint32 public immutable destinationDomain;
@@ -76,6 +77,14 @@ contract XITADirectBLSISMTest is Test {
 
     function _approve(XITADirectProtocol.Authorization memory a) internal {
         registry.authorize(ism.encodeAuthorization(a));
+    }
+
+    function testDirectTransportHasSingleZeroFeeHookNoMerkleTree() public {
+        XITADirectTransport transport=new XITADirectTransport(DEST,address(ism));
+        assertEq(address(transport.mailbox().defaultIsm()),address(ism));
+        assertEq(address(transport.mailbox().defaultHook()),address(transport.dispatchHook()));
+        assertEq(address(transport.mailbox().requiredHook()),address(transport.dispatchHook()));
+        assertEq(address(transport.mailbox().owner()),address(transport));
     }
 
     function testDirectMessageWithCurrentBLSSetPasses() public {
