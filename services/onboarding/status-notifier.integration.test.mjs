@@ -21,6 +21,7 @@ test("notify applicant only on verified phase changes, retry failures and preven
  const sent=[];
  const run=()=>notifyApplications({env,readPR:async()=>pr,readVisibility:async()=>visibility,
   readReadyAssets:()=>new Set(["ARB"]),
+  preferredRoute:()=>({source:"arbitrum",destination:"xgrchain"}),
   deliver:async(mail)=>{if(fail)throw Error("Mock SMTP unavailable");sent.push(mail);return true;}});
  const snapshot=(status,lockedUsd,deployment)=>({schemaVersion:1,kind:"xita-visibility-v1",
   assets:{ARB:{assetId,status,lockedUsd,deployment}}});
@@ -48,7 +49,7 @@ test("notify applicant only on verified phase changes, retry failures and preven
    "XITA listing visibility changed"]);
   assert.ok(sent.every(x=>x.to==="holder@example.org"&&x.html.includes("XITA")));
   assert.ok(sent[0].text.includes(proposal.url));
-  assert.ok(sent[1].text.includes("https://xita.xgr.network/transfer?token=ARB"));
+  assert.ok(sent[1].text.includes("https://xita.xgr.network/transfer?token=ARB&origin=arbitrum&destination=xgrchain"));
   assert.ok(sent.slice(2).every(x=>x.text.includes(proposal.url)));
   assert.equal(readPrivate(dir,id).phase,"delisted");
  }finally{rmSync(dir,{recursive:true,force:true});}
