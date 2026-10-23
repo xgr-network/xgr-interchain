@@ -83,7 +83,7 @@ export function previewRoute(model,source,destination,assetId){
   const hops=path.slice(1).map((to,i)=>model.routes.find(r=>r.assetId===assetId&&r.source===path[i]&&r.destination===to)||null);
   const configured=hops.every(Boolean);
   const active=configured&&hops.every(r=>r.active);
-  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet independently verified for delivery.":hops.length===2?"Two independent transfers are required; the second hop is not automated.":"A verified single-hop route is available.";
+  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet independently verified for delivery.":hops.length===2?"XITA monitors both hops and prepares their next steps. Each wallet transaction still requires MetaMask approval.":"A verified single-hop route is available.";
   return {path,hops,configured,active,reason};
 }
 
@@ -552,8 +552,13 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const showStatusButton=connected&&(progress.hasFlow===true||Boolean(selected)||Boolean(completedWork));
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
+ const proofCheck=selected?.status==="awaiting-final-proof"?
+   selected.finalProofObservation:selected?.proofObservation;
+ const backgroundChecking=selected&&
+   ["queued","checking","waiting"].includes(proofCheck?.state);
  const actionLabel=!connected?"Connect wallet to transfer":
   busy?"Preparing transaction…":
+  backgroundChecking?"Validator proof is being checked…":
   selected?.status==="awaiting-proof"?"Continue delivery":
   selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
   selected?.status==="awaiting-final-proof"?"Continue final delivery":
@@ -564,7 +569,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   !deployed?"Route unavailable":
   !isDirect?"Transfer "+assetId+" via XGRChain":
   "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
- const buttonDisabled=busy||recoveryUnresolved||Boolean(completedWork)||connected&&(!deployed&&!selected);
+ const buttonDisabled=busy||backgroundChecking||recoveryUnresolved||Boolean(completedWork)||connected&&(!deployed&&!selected);
  const progressValue=completedWork?2:selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
@@ -661,7 +666,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<p class="ux-transfer-error">The Interchain Fee · Execution Gateway is not verified on both chains. New XITA transfers are disabled. Previously locked transfers remain accessible through My Transfers.</p>':'')+
   (!deployed&&model.routes.some(r=>r.assetId==="XGR"&&r.source==="xgrchain"&&r.destination==="base")&&!model.deployments?.length?
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
-  (!isDirect&&deployed?'<p class="ux-small">A two-hop route is processed in two separate direct hops through XGRChain. No automatic onward transfer is assumed.</p>':'')+
+  (!isDirect&&deployed?'<p class="ux-small">XITA continuously checks both hops through XGRChain. Every required wallet transaction must still be confirmed in MetaMask.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
   '</section><div class="ux-transfer-side">'+feeCard+'</div></div>'+feeDialog+
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
@@ -686,7 +691,7 @@ const faqGroups=[
  ]},
  {label:"03 · TOKEN HOLDERS",title:"Explore and Move Tokens",items:[
   ["Can I move tokens between different worlds?","Yes, when the relevant routes have been deployed, verified and activated. Use the token page to inspect what is actually available. A chain drawn in the Universe does not mean that transfers are already live."],
-  ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. The second step is not automatically executed."],
+  ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. XITA continuously monitors both hops, but each wallet transaction must be confirmed by the user in MetaMask."],
   ["What is a wrapped token?","A wrapped or synthetic representation makes an asset usable on a second chain. It is not the original token on its home network; always check its canonical origin and verified contracts."],
   ["What happens if a relayer is unavailable?","A relayer can be replaced. An interrupted transfer may remain pending until delivery is resumed or recovered. Use the verified transaction and message status rather than assuming an automatic refund."],
   ["What does a transfer cost?","XITA route fees comprise the source-chain protocol fee and XITA Service Fee. Both are additional to the blockchain network gas paid separately for wallet transactions, source lock/burn and destination delivery on each hop. ERC-20 approval can require additional gas. Two-hop journeys include additional processing and gas transactions. Optional gas sponsorship covers only eligible gas steps when expressly confirmed; otherwise fund gas on every required chain. A fresh signed service quote is obtained before the source transaction."]
