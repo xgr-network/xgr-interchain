@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {projectMetrics} from "./server.mjs";
 import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
-const catalog={assets:{XGR:{profile:{name:"XGR"},routes:{routes:[]}},ABC:{profile:{name:"ABC"},routes:{routes:[]}}}};
+const catalog={assets:{XGR:deployedFixture("XGR","xgrchain"),ABC:deployedFixture("ABC","base")}};
 const verified=(id)=>({assetId:id,verified:true,
  market:{status:"verified",priceUsd:2,circulatingRaw:"100",decimals:0,marketCapUsd:200},
  custody:{status:"verified",complete:true,lockedUsd:20,vaults:[{verified:true,chain:"xgrchain",router:"0xaaa",netLockedRaw:"10",valueUsd:20}]},
