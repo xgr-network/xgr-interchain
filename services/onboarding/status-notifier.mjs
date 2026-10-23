@@ -78,6 +78,7 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
      record.phase=desired;
      const queue=record.notificationQueue||[];
      if(desired!=="under-review"&&desired!=="rejected"&&!((record.sent||[]).includes("approved"))&&!queue.includes("approved"))queue.push("approved");
+     if(["deployed","first-lock","listed"].includes(desired)&&!queue.includes("deployed")&&!(record.sent||[]).includes("deployed"))queue.push("deployed");
      if(STATUS[desired]&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
      record.notificationQueue=queue;
      if(["rejected","listed"].includes(desired))record.retainUntil=new Date(Date.now()+180*86400000).toISOString();
@@ -88,6 +89,7 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
    if(record.pendingNotification&&!queue.includes(record.pendingNotification))queue.push(record.pendingNotification);
    const pending=queue[0];
    if(!pending)return;
+   if(pending==="deployed"&&!readyAssets.has(record.input.symbol))return;
    const [subject,detail]=STATUS[pending]||
      (pending==="submitted"?["XITA application received","Your email-confirmed draft proposal has been submitted for XGR review."]:[]);
    if(!subject)return;
