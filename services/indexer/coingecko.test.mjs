@@ -18,7 +18,14 @@ test("Market caps require valid public provider record",async()=>{
 test("XGR CoinGecko id is configured in the canonical generated catalog",async()=>{
  const {readFileSync}=await import("node:fs");
  const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
- assert.deepEqual(configuredIds(catalog),["xgr"]);
+ const ids=configuredIds(catalog);
+ assert.equal(catalog.assets.XGR.profile.market.coingeckoId,"xgr");
+ assert.ok(ids.includes("xgr"),"XGR must remain a configured CoinGecko asset");
+ const expected=Object.values(catalog.assets)
+  .filter(asset=>asset.profile?.market?.priceSource==="coingecko")
+  .map(asset=>asset.profile.market.coingeckoId);
+ assert.deepEqual(new Set(ids),new Set(expected),
+  "Every listed CoinGecko asset must be included exactly once");
  assert.equal(catalog.assets.XGR.profile.market.priceSource,"coingecko");
  assert.equal(Object.hasOwn(catalog.assets.XGR,"listing"),false);
  assert.equal(catalog.publication.minimumLockedUsd,null);
