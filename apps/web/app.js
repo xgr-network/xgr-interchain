@@ -8,7 +8,7 @@ import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggrega
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
-import {selectedRecovery,openWalletTransfers} from "./wallet-transfer-selection.js";
+import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
@@ -461,6 +461,11 @@ async function performTransferAction(){
  if(!state.account){document.querySelector("#connect")?.click();return;}
  const account=state.account;
  const selected=selectedRecovery(transferActivity.items,account,transferActivity.selectedTxHash);
+ if(blocksUnverifiedSourceRepeat(transferActivity.selectedTxHash,selected)){
+  transferActivity.error="A previous source TX is selected but not independently verified for continuation. Never submit another source burn/lock. Refresh My Transfers instead.";
+  if(path()==="/transfer")render();
+  return;
+ }
  if(selected&&!flowView.open)openFlowModal();
  transferActivity.working=true;transferActivity.error="";
  setFlowStage(selected?.status==="awaiting-onward"?"onward-source-sign":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");

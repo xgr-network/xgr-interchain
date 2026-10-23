@@ -13,3 +13,9 @@ export function selectedRecovery(items,account,txHash){
  if(!HASH.test(txHash||""))return null;
  return openWalletTransfers(items,account).find(item=>item.txHash.toLowerCase()===txHash.toLowerCase())||null;
 }
+
+export function blocksUnverifiedSourceRepeat(selectedTxHash,verifiedRecord){
+ // A source hash in a resume URL is NEVER permission to start a fresh burn.
+ // Unknown and already completed resume intents must fail closed.
+ return HASH.test(selectedTxHash||"")&&!verifiedRecord;
+}
