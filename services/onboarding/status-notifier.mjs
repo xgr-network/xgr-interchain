@@ -4,12 +4,13 @@ import {privateLocation,listPrivate,savePrivate,lockedRecord} from "./private-st
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
-import {executableTransferRoutes} from "../../apps/web/route-availability.js";
+import {routeMilestones} from "./route-milestones.mjs";
 const REPO="xgr-network/xgr-interchain";
 const STATUS={
  "approved":["XITA proposal approved","Your proposal was merged into the approved XITA token inventory. This is not yet a live transfer or public listing."],
  "rejected":["XITA proposal closed","Your XITA proposal was closed without acceptance. You can contact XGR if further review is required."],
- "deployed":["XITA routes deployed","The publicly documented route deployment is now complete. Verify availability in the XITA transfer interface before sending."],
+ "first-route":["Your first XITA route is live!","Your original token chain and XGRChain now have a documented, executable route in both directions."],
+ "all-routes":["Your XITA network expansion is complete!","Every planned XITA route for your token is now documented and executable in both directions."],
  "first-lock":["First verified XITA collateral","XITA has independently verified locked collateral for your token. Its public listing is governed by the currently configured TVL threshold."],
  "listed":["Your token is now listed on XITA","Your token meets the currently verified public listing conditions and is discoverable in XITA."],
  "delisted":["XITA listing visibility changed","Your token no longer meets the currently verified public TVL listing conditions. Transfers and deployed contracts are not automatically disabled by this change."]
@@ -60,32 +61,43 @@ async function visibilitySnapshot(){
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
-  readCatalog=loadCatalog,readReadyAssets=()=>new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset)),
-  preferredRoute=(symbol)=>{
-   const catalog=readCatalog(),canonical=catalog.assets?.[symbol]?.metadata?.canonical?.chain;
-   return executableTransferRoutes(catalog).find(r=>r.asset===symbol&&r.source===canonical&&r.destination==="xgrchain")||null;
-  },deliver=sendMail}={}){
+  readMilestones=(record)=>routeMilestones(readCatalog(),record.input.symbol,record.assetId),
+  deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
  let visibility=null;
  try{visibility=await readVisibility();}catch{/* preserve prior state on unavailable independent proofs */}
- let readyAssets=new Set();
- try{readyAssets=readReadyAssets();}catch{/* no unverified transfer links */}
  const results=[];
  for(const item of records){
   if(!item.pr?.number)continue;
   await lockedRecord(dir,item.id,async record=>{
-   let desired=record.phase;
-   try{desired=nextPhase(record,await readPR(record.pr.number,env),visibility,{readyToTransfer:readyAssets.has(record.input.symbol)})||record.phase;}
-   catch{/* don't notify on unverifiable GitHub changes */}
+   let desired=record.phase,merged=false;
+   let milestones={firstRoute:null,allComplete:false,completedNetworks:[],plannedNetworks:[]};
+   try{
+     const pr=await readPR(record.pr.number,env);
+     merged=Boolean(pr?.merged_at);
+     if(merged)try{milestones=readMilestones(record);}catch{/* keep mail gated */}
+     desired=nextPhase(record,pr,visibility,{readyToTransfer:Boolean(milestones.firstRoute)})||record.phase;
+   }catch{/* no unverified GitHub changes or route claims */}
    if(desired!==record.phase){
      record.phase=desired;
      const queue=record.notificationQueue||[];
      if(desired!=="under-review"&&desired!=="rejected"&&!((record.sent||[]).includes("approved"))&&!queue.includes("approved"))queue.push("approved");
-     if(["deployed","first-lock","listed"].includes(desired)&&!queue.includes("deployed")&&!(record.sent||[]).includes("deployed"))queue.push("deployed");
+
      if(STATUS[desired]&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
      record.notificationQueue=queue;
      if(["rejected","listed"].includes(desired))record.retainUntil=new Date(Date.now()+180*86400000).toISOString();
+     savePrivate(dir,record);
+   }
+   // Route milestone notifications are independent of TVL phase changes.
+   // A rapid full deployment must not skip the first usable route.
+   if(merged&&milestones.firstRoute){
+     const queue=record.notificationQueue||[];
+     const sent=record.sent||[];
+     const firstKey="first-route";
+     if(!sent.includes(firstKey)&&!queue.includes(firstKey)&&!sent.includes("deployed"))queue.push(firstKey);
+     if(milestones.allComplete&&!sent.includes("all-routes")&&!queue.includes("all-routes"))queue.push("all-routes");
+     record.notificationQueue=queue;
      savePrivate(dir,record);
    }
    // Migrate existing records without dropping unsent notifications.
@@ -93,21 +105,25 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
    if(record.pendingNotification&&!queue.includes(record.pendingNotification))queue.push(record.pendingNotification);
    const pending=queue[0];
    if(!pending)return;
-   if(pending==="deployed"&&!readyAssets.has(record.input.symbol))return;
+   if(pending==="first-route"&&!milestones.firstRoute)return;
+   if(pending==="all-routes"&&!milestones.allComplete)return;
+   if(pending==="deployed"&&!milestones.firstRoute)return; // legacy queue
    const [subject,detail]=STATUS[pending]||
      (pending==="submitted"?["XITA application received","Your email-confirmed draft proposal has been submitted for XGR review."]:[]);
    if(!subject)return;
    try{
      const symbol=record.input.symbol;
      let route=null;
-     if(pending==="deployed")try{route=preferredRoute(symbol)}catch{/* catalog unavailable */}
+     if(["first-route","all-routes","deployed"].includes(pending))route=milestones.firstRoute;
      const transferUrl="https://xita.xgr.network/transfer?token="+encodeURIComponent(symbol)+
        (route?"&origin="+encodeURIComponent(route.source)+"&destination="+encodeURIComponent(route.destination):"");
-     const action=pending==="deployed"?{label:"Start your first transfer",url:transferUrl}:
+     const action=["first-route","all-routes","deployed"].includes(pending)?{label:"Start your first transfer",url:transferUrl}:
        {label:"View your GitHub proposal",url:record.pr.url};
      const mail=applicationMail({title:subject,subtitle:record.input.name+" ("+symbol+")",
        paragraphs:[detail,pending==="approved"?"XGR will fund and deploy the approved routes. You do not need to deploy any contracts yourself.":
-       pending==="deployed"?"Open Transfer Tokens to connect your wallet, select a documented route and make your first transfer. No wallet transaction starts automatically.":
+       pending==="first-route"?"Your home chain and XGRChain now support transfers both ways. Connect your own wallet to start; no transaction starts automatically.":
+       pending==="all-routes"?"All "+milestones.plannedNetworks.length+" planned XGRChain-connected networks have complete two-way routes: "+milestones.completedNetworks.join(", ")+". You can now select these networks in Transfer Tokens.":
+       pending==="deployed"?"A complete bidirectional home-chain route is ready. No wallet transaction starts automatically.":
        "Current status is based on independent XITA evidence."],action});
      await deliver({to:record.input.contactEmail,subject,...mail,
        idempotencyKey:record.id+":"+pending},{env});
