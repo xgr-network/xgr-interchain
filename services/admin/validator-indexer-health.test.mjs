@@ -50,3 +50,13 @@ test("Merkle health preserves pending peer count without claiming final delivery
  assert.equal(node.routes[0].checkpointBlock,517200480);
  assert.equal(node.routes[0].localLeaves,1);
 });
+
+test("XGRChain source alias is normalized at the RPC boundary, not mislabeled unreachable",()=>{
+ const now=1_800_000_000_000;
+ const status=summarizeILNValidatorStatus({version:1,updatedUnix:now/1000,
+  workerAlive:true,routes:[{route:"iln_1643_8453",source:"xgr",destination:"base",
+   state:"catching-up",leaves:3,localLeaves:0,lagLeaves:3}]},{now});
+ assert.equal(status.state,"catching-up");
+ assert.equal(status.routes[0].source,"xgrchain");
+ assert.equal(status.routes[0].lagLeaves,3);
+});
