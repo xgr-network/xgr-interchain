@@ -2,6 +2,9 @@
 // Run as a low-privilege timer with private contact directory permission; no public administration endpoint.
 import {privateLocation,listPrivate,savePrivate,lockedRecord} from "./private-store.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
+import {applicationMail} from "./mail-template.mjs";
+import {loadCatalog} from "../../tools/validate-manifests.mjs";
+import {executableTransferRoutes} from "../../apps/web/route-availability.js";
 const REPO="xgr-network/xgr-interchain";
 const STATUS={
  "approved":["XITA proposal approved","Your proposal was merged into the approved XITA token inventory. This is not yet a live transfer or public listing."],
@@ -11,7 +14,7 @@ const STATUS={
  "listed":["Your token is now listed on XITA","Your token meets the currently verified public listing conditions and is discoverable in XITA."],
  "delisted":["XITA listing visibility changed","Your token no longer meets the currently verified public TVL listing conditions. Transfers and deployed contracts are not automatically disabled by this change."]
 };
-export function nextPhase(record,pr,visibility){
+export function nextPhase(record,pr,visibility,{readyToTransfer=false}={}){
  if(!record?.pr?.number)return null;
  const merged=Boolean(pr?.merged_at);
  if(!merged&&pr?.state==="closed")return "rejected";
@@ -22,7 +25,7 @@ export function nextPhase(record,pr,visibility){
  const alreadyAdvanced=["deployed","first-lock","listed","delisted"].includes(phase);
  if(!v||v.assetId?.toLowerCase()!==record.assetId?.toLowerCase())
    return alreadyAdvanced?phase:"approved";
- const deployed=v.deployment==="deployed";
+ const deployed=v.deployment==="deployed"&&readyToTransfer;
  // Never interpret missing, invalid or non-finalized collateral as public visibility.
  const validValue=Number.isFinite(v.lockedUsd)&&v.lockedUsd>=0;
  if(deployed&&v.status==="public"&&validValue&&v.lockedUsd>0)
@@ -57,34 +60,50 @@ async function visibilitySnapshot(){
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
-  deliver=sendMail}={}){
+  readCatalog=loadCatalog,deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
  let visibility=null;
  try{visibility=await readVisibility();}catch{/* preserve prior state on unavailable independent proofs */}
+ let readyAssets=new Set();
+ try{readyAssets=new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset));}catch{/* no unverified transfer links */}
  const results=[];
  for(const item of records){
   if(!item.pr?.number)continue;
   await lockedRecord(dir,item.id,async record=>{
    let desired=record.phase;
-   try{desired=nextPhase(record,await readPR(record.pr.number,env),visibility)||record.phase;}
+   try{desired=nextPhase(record,await readPR(record.pr.number,env),visibility,{readyToTransfer:readyAssets.has(record.input.symbol)})||record.phase;}
    catch{/* don't notify on unverifiable GitHub changes */}
    if(desired!==record.phase){
      record.phase=desired;
-     record.pendingNotification=STATUS[desired]?desired:null;
+     const queue=record.notificationQueue||[];
+     if(desired!=="under-review"&&desired!=="rejected"&&!((record.sent||[]).includes("approved"))&&!queue.includes("approved"))queue.push("approved");
+     if(STATUS[desired]&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
+     record.notificationQueue=queue;
      if(["rejected","listed"].includes(desired))record.retainUntil=new Date(Date.now()+180*86400000).toISOString();
      savePrivate(dir,record);
    }
-   const pending=record.pendingNotification;
+   // Migrate existing records without dropping unsent notifications.
+   const queue=record.notificationQueue||[];
+   if(record.pendingNotification&&!queue.includes(record.pendingNotification))queue.push(record.pendingNotification);
+   const pending=queue[0];
    if(!pending)return;
    const [subject,detail]=STATUS[pending]||
      (pending==="submitted"?["XITA application received","Your email-confirmed draft proposal has been submitted for XGR review."]:[]);
    if(!subject)return;
    try{
-     await deliver({to:record.input.contactEmail,subject,text:detail+
-       "\n\nPublic proposal: "+record.pr.url+"\n\nThese emails concern only your XITA application, not marketing.",
+     const symbol=record.input.symbol;
+     const transferUrl="https://xita.xgr.network/transfer?token="+encodeURIComponent(symbol);
+     const action=pending==="deployed"?{label:"Start your first transfer",url:transferUrl}:
+       {label:"View your GitHub proposal",url:record.pr.url};
+     const mail=applicationMail({title:subject,subtitle:record.input.name+" ("+symbol+")",
+       paragraphs:[detail,pending==="approved"?"XGR will fund and deploy the approved routes. You do not need to deploy any contracts yourself.":
+       pending==="deployed"?"Open Transfer Tokens to connect your wallet, select a documented route and make your first transfer. No wallet transaction starts automatically.":
+       "Current status is based on independent XITA evidence."],action});
+     await deliver({to:record.input.contactEmail,subject,...mail,
        idempotencyKey:record.id+":"+pending},{env});
      record.sent=[...new Set([...(record.sent||[]),pending])];
+     queue.shift();record.notificationQueue=queue;
      delete record.pendingNotification;savePrivate(dir,record);
      results.push({id:record.id,status:pending,sent:true});
    }catch{results.push({id:record.id,status:pending,sent:false});}
