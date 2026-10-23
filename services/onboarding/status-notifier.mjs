@@ -60,13 +60,13 @@ async function visibilitySnapshot(){
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
-  readCatalog=loadCatalog,deliver=sendMail}={}){
+  readCatalog=loadCatalog,readReadyAssets=()=>new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset)),deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
  let visibility=null;
  try{visibility=await readVisibility();}catch{/* preserve prior state on unavailable independent proofs */}
  let readyAssets=new Set();
- try{readyAssets=new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset));}catch{/* no unverified transfer links */}
+ try{readyAssets=readReadyAssets();}catch{/* no unverified transfer links */}
  const results=[];
  for(const item of records){
   if(!item.pr?.number)continue;
