@@ -21,9 +21,20 @@ test("all six XGR routes remain attached to ONE asset and one deployment index",
 });
 test("cannot silently treat existing config as evidence of a deployment",()=>{
  const inv=approvedWorkInventory(root);
- assert.equal(inv.assets.XGR.deployedRoutes,inv.assets.XGR.routes.filter(r=>r.status==="deployed").length);
- assert.equal(inv.routes.length,6);
- assert.equal(inv.assets.XGR.routes.every(r=>r.status==="deployed"||r.status==="not-deployed"||r.status==="partial"),true);
+ const allAssets=Object.values(inv.assets);
+ assert.equal(inv.routes.length,allAssets.reduce((count,asset)=>count+asset.routeCount,0));
+ for(const asset of allAssets){
+  assert.equal(asset.routeCount,asset.routes.length,asset.key+" route count");
+  assert.equal(asset.deployedRoutes,asset.routes.filter(r=>r.status==="deployed").length,
+   asset.key+" deployment evidence");
+  assert.ok(asset.routes.every(r=>["deployed","not-deployed","partial"].includes(r.status)),
+   asset.key+" valid state");
+  // A newly accepted manifest is NEVER evidence that contracts already exist.
+  if(asset.receiptCount===0){
+   assert.equal(asset.deployedRoutes,0,asset.key+" has no deployment receipts");
+   assert.ok(asset.routes.every(r=>r.status==="not-deployed"));
+  }
+ }
 });
 
 test("global asset routers are reused across two independently registered route directions",()=>{
