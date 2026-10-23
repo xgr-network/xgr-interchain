@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
-  mkdtempSync, readFileSync, rmSync, existsSync, readdirSync,
+  mkdtempSync, readFileSync, rmSync, existsSync, readdirSync, statSync,
 } from "node:fs";
 import {
   AbiCoder, Interface, id, keccak256, toUtf8Bytes,
@@ -216,4 +216,25 @@ test("atomic verified bootstrap never overwrites a different snapshot without --
     assert.throws(()=>writeReplicaAtomic(path,{...two,leaves:[leaves[1],leaves[0]]},{replace:true}),/unverified Merkle root/);
     assert.deepEqual(JSON.parse(readFileSync(path,"utf8")),two);
   }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test("sudo snapshot replacement preserves validator data owner instead of root",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-merkle-owner-"));
+ const file=join(dir,"snapshot.json");
+ const previous={chainId:8453,hook,checkpointBlock:128,
+  root:(()=>{const tree=new ILNAccumulator();tree.insert(0,leaves[0]);return tree.root()})(),
+  leaves:[leaves[0]]};
+ const next={chainId:8453,hook,checkpointBlock:128,root,leaves};
+ const owner=statSync(dir);
+ try{
+  assert.equal(writeReplicaAtomic(file,previous,{fileOwner:{uid:owner.uid,gid:owner.gid}}),"initialized");
+  assert.equal(writeReplicaAtomic(file,next,{replace:true,fileOwner:{uid:owner.uid,gid:owner.gid}}),"initialized");
+  const after=statSync(file);
+  assert.equal(after.uid,owner.uid);
+  assert.equal(after.gid,owner.gid);
+  assert.deepEqual(JSON.parse(readFileSync(file,"utf8")),next);
+  assert.equal(readdirSync(dir).filter(x=>x.includes(".backup-")).length,1);
+  assert.throws(()=>writeReplicaAtomic(file,previous,{replace:true,fileOwner:{uid:-1,gid:0}}),/invalid validator data directory owner/);
+  assert.deepEqual(JSON.parse(readFileSync(file,"utf8")),next);
+ }finally{rmSync(dir,{recursive:true,force:true})}
 });

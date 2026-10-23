@@ -4,7 +4,8 @@
 // No private keys, transfers, blockchain transactions, or trust in peers.
 import {
   readFileSync, existsSync, mkdirSync, openSync, writeSync, fsyncSync,
-  closeSync, renameSync, copyFileSync, statSync, lstatSync, realpathSync, unlinkSync, constants,
+  closeSync, renameSync, copyFileSync, statSync, fstatSync, fchownSync,
+  lstatSync, realpathSync, unlinkSync, constants,
 } from "node:fs";
 import { resolve, isAbsolute, dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -340,8 +341,16 @@ function assertCanonicalReplica(replica) {
     "refusing to persist an unverified Merkle root");
 }
 
-function writeReplicaAtomic(path, replica, {replace = false, dryRun = false} = {}) {
+function writeReplicaAtomic(path, replica, {replace = false, dryRun = false, fileOwner = null} = {}) {
   assertCanonicalReplica(replica);
+  // The bootstrap is often invoked with sudo, while the validator runs as a
+  // non-root account. Atomic rename replaces the inode and does NOT preserve
+  // the original file owner. Derive uid/gid from the validator data directory,
+  // not from the sudo process or an already root-owned replica.
+  requireCondition(fileOwner === null || (fileOwner &&
+    Number.isSafeInteger(fileOwner.uid) && fileOwner.uid >= 0 &&
+    Number.isSafeInteger(fileOwner.gid) && fileOwner.gid >= 0),
+  "invalid validator data directory owner");
   const data = JSON.stringify(replica) + "\n";
   requireCondition(Buffer.byteLength(data) <= MAX_FILE_BYTES,
     "Go v3.2.0 validator refuses snapshots larger than 40 MiB");
@@ -363,6 +372,13 @@ function writeReplicaAtomic(path, replica, {replace = false, dryRun = false} = {
   try {
     fd = openSync(temporary, constants.O_CREAT | constants.O_EXCL |
       constants.O_WRONLY, 0o660);
+    // Assign the validator's uid/gid to the NEW inode before it can replace
+    // the verified snapshot. If this fails, the original stays untouched.
+    if (fileOwner) {
+      const current = fstatSync(fd);
+      if (current.uid !== fileOwner.uid || current.gid !== fileOwner.gid)
+        fchownSync(fd, fileOwner.uid, fileOwner.gid);
+    }
     writeSync(fd, data);
     fsyncSync(fd);
     closeSync(fd);
@@ -413,8 +429,9 @@ async function main() {
       throw new Error("validator worker appears active; stop this validator before writing its initial Merkle snapshot, or use --dry-run");
     }
   }
+  const {uid, gid} = statSync(args.dataDir);
   const outcome = writeReplicaAtomic(path, replica,
-    {replace: args.replace, dryRun: args.dryRun});
+    {replace: args.replace, dryRun: args.dryRun, fileOwner: {uid, gid}});
   console.log(JSON.stringify({
     status: outcome, chain: evidence.chain,
     checkpointBlock: replica.checkpointBlock,
