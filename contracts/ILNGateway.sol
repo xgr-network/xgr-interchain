@@ -131,9 +131,9 @@ contract ILNGateway {
     }
 
     /// @notice xgrchain gateway-binding getter.
-    function merkleTreeHook() external view returns (address) {
+    function dispatchHook() external view returns (address) {
         IXGRILNRegistry.RouteRecord memory route = _canonicalRoute();
-        return route.merkleTreeHook;
+        return route.dispatchHook;
     }
 
     function destinationRouter() external view returns (address) {
@@ -254,7 +254,7 @@ contract ILNGateway {
             route.gateway,
             route.sourceRouter,
             route.mailbox,
-            route.merkleTreeHook,
+            route.dispatchHook,
             route.destinationRouter,
             route.validatorFeeWei,
             route.enabled
@@ -268,7 +268,7 @@ contract ILNGateway {
             route.gateway != address(this) ||
             route.sourceRouter != warpRouter ||
             route.mailbox == address(0) ||
-            route.merkleTreeHook == address(0) ||
+            route.dispatchHook == address(0) ||
             route.destinationRouter == address(0) ||
             route.validatorFeeWei == 0
         ) revert InvalidRoute();

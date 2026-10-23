@@ -13,7 +13,7 @@ contract XETAGuardedSyntheticWarpRouter is HypERC20, XETARouterCore {
     constructor(
         address registry_,
         address mailbox_,
-        address merkleTreeHook_,
+        address dispatchHook_,
         address destinationIsm_,
         uint256 defaultDestinationGasLimit_,
         uint8 decimals_,
@@ -24,7 +24,7 @@ contract XETAGuardedSyntheticWarpRouter is HypERC20, XETARouterCore {
         XETARouterCore(registry_, defaultDestinationGasLimit_)
     {
         if (
-            merkleTreeHook_ == address(0) ||
+            dispatchHook_ == address(0) ||
             destinationIsm_ == address(0) ||
             bytes(name_).length == 0 ||
             bytes(symbol_).length == 0
@@ -36,7 +36,7 @@ contract XETAGuardedSyntheticWarpRouter is HypERC20, XETARouterCore {
             0,
             name_,
             symbol_,
-            merkleTreeHook_,
+            dispatchHook_,
             destinationIsm_,
             address(0)
         );

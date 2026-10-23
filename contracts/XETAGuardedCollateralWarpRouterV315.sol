@@ -21,7 +21,7 @@ contract XETAGuardedCollateralWarpRouterV315 is XETARouterCore {
         address token_,
         address registry_,
         address mailbox_,
-        address merkleTreeHook_,
+        address dispatchHook_,
         address destinationIsm_,
         uint256 defaultDestinationGasLimit_
     )
@@ -29,11 +29,11 @@ contract XETAGuardedCollateralWarpRouterV315 is XETARouterCore {
         XETARouterCore(registry_, defaultDestinationGasLimit_)
     {
         if (token_.code.length == 0 ||
-            merkleTreeHook_ == address(0) || destinationIsm_ == address(0))
+            dispatchHook_ == address(0) || destinationIsm_ == address(0))
             revert XETAInvalidConfiguration();
 
         underlying = IERC20(token_);
-        _initializeXETA(merkleTreeHook_, destinationIsm_);
+        _initializeXETA(dispatchHook_, destinationIsm_);
     }
 
     function _initializeXETA(address hook_, address ism_) private initializer {
