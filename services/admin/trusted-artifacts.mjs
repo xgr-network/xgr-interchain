@@ -23,7 +23,7 @@ export const SOURCE=Object.freeze({
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
- ism:"XGRILNInterchainISMV2",
+ ism:"XITADirectBLSISM",
  factory:"XETATokenFactoryV315",
  sourceRegistry:"XGRILNRegistryV315",
  executionGateway:"XITAExecutionGateway",
@@ -32,7 +32,7 @@ export const SOURCE=Object.freeze({
  collateralRouter:"XETAGuardedCollateralWarpRouterV315",
  gateway:"ILNGateway",
  feeVault:"XGRILNFeeVault",
- transportBundle:"XITAFreshTransportV315",mailbox:"Mailbox",merkleTreeHook:"MerkleTreeHook",requiredHook:"ProtocolFee"
+ transportBundle:"XITADirectTransport",mailbox:"Mailbox",dispatchHook:"ProtocolFee",requiredHook:"ProtocolFee"
 });
 const TYPES={
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
@@ -46,7 +46,7 @@ const TYPES={
  collateralRouter:["address","address","address","address","address","uint256"],
  gateway:["address","bytes32","uint32","address","bool"],
  feeVault:["address","address","bytes32","uint32"],
- transportBundle:["uint32","address"],mailbox:["uint32"],merkleTreeHook:["address"],requiredHook:["uint256","uint256","address","address"]
+ transportBundle:["uint32","address"],mailbox:["uint32"],dispatchHook:["uint256","uint256","address","address"],requiredHook:["uint256","uint256","address","address"]
 };
 export const trustedConstructorTypes=Object.freeze(TYPES);
 const digest=s=>createHash("sha256").update(s).digest("hex");

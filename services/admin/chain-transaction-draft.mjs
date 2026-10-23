@@ -19,7 +19,7 @@ const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
- ism:"XGRILNInterchainISMV2",transportBundle:"XITAFreshTransportV315",factory:"XETATokenFactoryV315",
+ ism:"XITADirectBLSISM",transportBundle:"XITADirectTransport",factory:"XETATokenFactoryV315",
  executionGateway:"XITAExecutionGateway"};
 const typesFor={
  blsVerifier:[],
@@ -102,11 +102,11 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   const p=deploymentParameters(component,parameters);
   const core=infrastructure.hyperlane||{};
   if(!deployed(infrastructure,"transportBundle"))throw Error("Fresh, receipt-verified XITA transport bundle missing");
-  if(!nonzero(core.mailbox)||!nonzero(core.merkleTreeHook))
+  if(!nonzero(core.mailbox)||!nonzero(core.dispatchHook))
    throw Error("Fresh XITA Mailbox/Hook not documented; Factory blocked");
   // Pinned 500k Hyperlane dispatch metadata is internal, not a transaction cap.
   values=[chain.chainId,chain.domainId,requirePresent(infrastructure,"validatorRegistry"),
-   core.mailbox,core.merkleTreeHook,requirePresent(infrastructure,"ism"),
+   core.mailbox,core.dispatchHook,requirePresent(infrastructure,"ism"),
    p.sourceFeeWei,
    requirePresent(infrastructure,"nativeRouterDeployer"),
    requirePresent(infrastructure,"syntheticRouterDeployer"),

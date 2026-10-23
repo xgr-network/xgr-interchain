@@ -95,7 +95,7 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("destinationIsm()",ism,"address");
   await check("initialSourceFeeWei()",bootstrap.proposedFeeWei);
   await check("mailbox()",infra.hyperlane.mailbox,"address");
-  await check("merkleTreeHook()",infra.hyperlane.merkleTreeHook,"address");
+  await check("dispatchHook()",infra.hyperlane.dispatchHook,"address");
   // Reject an otherwise matching Factory that points at unverified/deceptive
   // subdeployers. These immutable constructor bindings define token security.
   for(const [getterName,componentName] of [
@@ -141,8 +141,9 @@ export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifact
   return address;
  };
  const mailbox=await asChild("mailbox()","mailbox");
- const hook=await asChild("merkleTreeHook()","merkleTreeHook");
- const required=await asChild("requiredHook()","requiredHook");
+ const hook=await asChild("dispatchHook()","dispatchHook");
+ const required=hook;
+ addresses.requiredHook=addresses.dispatchHook;
  const check=async(target,signature,expected,kind="address")=>{
   const actual=await getter(rpc,url,target,signature);
   const value=kind==="address"?asAddr(actual):asWord(actual);
@@ -154,8 +155,6 @@ export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifact
  await check(mailbox,"defaultIsm()",ism);
  await check(mailbox,"defaultHook()",hook);
  await check(mailbox,"requiredHook()",required);
- await check(hook,"mailbox()",mailbox);
- await check(hook,"hookType()",3,"uint");
  await check(required,"hookType()",8,"uint");
  await check(required,"protocolFee()",0,"uint");
  await check(required,"MAX_PROTOCOL_FEE()",0,"uint");
