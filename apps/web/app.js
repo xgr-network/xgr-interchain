@@ -1,5 +1,5 @@
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
-import {deployedRoutes} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
