@@ -58,3 +58,11 @@ test("proof process failure persists only classified retry diagnostics and no si
  assert.equal(outcome.state,"unavailable");assert.equal(outcome.updated,true);
  assert.equal(called,true);
 });
+
+test("bounded queue skips previously observed old events to prevent new-transfer starvation",async()=>{
+ const pool={query:async q=>{
+  assert.match(q.text,/NOT EXISTS \(SELECT 1 FROM xita_transfer_proof_observations j/);
+  return {rowCount:0};
+ }};
+ assert.equal(await enqueueProofObservations(pool),0);
+});

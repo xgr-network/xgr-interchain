@@ -1220,18 +1220,38 @@ setInterval(async()=>{
  const hash=transferActivity.selectedTxHash;
  const entry=transferActivity.items.find(t=>t.txHash?.toLowerCase()===hash?.toLowerCase()&&
   t.account?.toLowerCase()===state.account.toLowerCase());
- if(!entry||!["pending-source","confirming"].includes(entry.status))return;
+ if(!entry||["delivered","journey-delivered"].includes(entry.status))return;
  directFinalityPoll=true;
  const account=state.account;
  try{
-  const record=await findWalletSourceTx({catalog:state.catalog,account,
-   sourceChain:entry.sourceChain,txHash:entry.txHash});
-  if(state.account?.toLowerCase()!==account.toLowerCase()||
-   transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
-  upsertTransfer(record);
-  if(record.confirmed)flowView.stage="first-proof-wait";
-  render();
- }catch{/* Unknown RPC status cannot downgrade previously observed evidence. */}
+  if(["pending-source","confirming"].includes(entry.status)){
+   const record=await findWalletSourceTx({catalog:state.catalog,account,
+    sourceChain:entry.sourceChain,txHash:entry.txHash});
+   if(state.account?.toLowerCase()!==account.toLowerCase()||
+    transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+   upsertTransfer(record);
+   if(record.confirmed)flowView.stage="first-proof-wait";
+  }else{
+   // Light polling reads ONLY durable SQL/validator observations, never
+   // starts proof subprocesses or any wallet transaction in the browser.
+   const reply=await fetch("/api/xeta/v1/transfers/wallet?"+
+    new URLSearchParams({account}),{cache:"no-store",credentials:"omit"});
+   if(!reply.ok)return;
+   const data=await reply.json();
+   if(data?.kind!=="xita-wallet-transfer-index-v1"||
+      data.wallet?.toLowerCase()!==account.toLowerCase()||
+      !Array.isArray(data.items))return;
+   if(state.account?.toLowerCase()!==account.toLowerCase()||
+     transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+   for(const row of data.items)if(row.account?.toLowerCase()===account.toLowerCase()&&
+      /^0x[0-9a-f]{64}$/i.test(row.txHash||"")&&
+      row.confirmed===true)upsertTransfer(row);
+   if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
+   refreshTransferLink();
+  }
+  if(path()==="/transfer")render();
+  updateFlowModal();
+ }catch{/* Unknown index/RPC status cannot downgrade canonical evidence. */}
  finally{directFinalityPoll=false}
 },12000);
 setInterval(()=>{

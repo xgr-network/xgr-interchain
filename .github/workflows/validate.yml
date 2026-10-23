@@ -87,7 +87,7 @@ jobs:
         run: npm install --prefix services/indexer --ignore-scripts --no-audit --no-fund --package-lock=false
 
       - name: Validate unsigned on-chain destination recovery
-        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
+        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-proof-observer.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
 
       - name: Validate indexed on-chain wallet worklist (generic route identities)
         run: node --test services/indexer/transfer-index-store.test.mjs

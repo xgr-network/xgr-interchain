@@ -138,7 +138,39 @@ export async function readWalletTransferIndex(catalog,account,{
    values:[lowercase(account),parents]});
   children=linked.rows.map(indexedTransferRow);
  }
- const linkedItems=linkIndexedJourneys(rawItems,children);
+ // Optional persistent proof-observer state: read-only diagnostic metadata
+ // for the already verified and account-scoped canonical source messages.
+ // No journal status (even ready) authorizes signing or marks delivery.
+ let linkedItems=linkIndexedJourneys(rawItems,children);
+ const observedIds=[...new Set([...rawItems,...children].filter(item=>
+   item.confirmed===true&&HASH.test(item.messageId||"")).map(item=>item.messageId))];
+ if(observedIds.length){
+  try{
+   const proof=await connected.query({text:`SELECT j.source_chain,j.message_id,
+    j.state,j.reason,j.stage,j.last_checked_at,j.updated_at
+    FROM xita_transfer_proof_observations j
+    JOIN xita_transfer_operations o USING(source_chain,message_id)
+    WHERE o.account=$1 AND o.delivered IS FALSE
+      AND j.message_id::text = ANY($2::text[])`,
+    values:[lowercase(account),observedIds]});
+   const byKey=new Map(proof.rows.map(row=>[row.source_chain+":"+lowercase(row.message_id),{
+    state:row.state,reason:row.reason||null,stage:row.stage||null,
+    checkedAt:iso(row.last_checked_at),updatedAt:iso(row.updated_at)
+   }]));
+   linkedItems=linkedItems.map(item=>{
+    const own=byKey.get(item.sourceChain+":"+lowercase(item.messageId));
+    const next=children.find(child=>item.secondHopTxHash&&
+      lowercase(child.txHash)===lowercase(item.secondHopTxHash)&&
+      lowercase(child.messageId)===lowercase(item.secondHopMessageId));
+    const final=next&&byKey.get(next.sourceChain+":"+lowercase(next.messageId));
+    return {...item,...(own?{proofObservation:own}:{}),
+      ...(final?{finalProofObservation:final}:{})};
+   });
+  }catch(error){
+   // Existing databases remain functional before SQL 008 is installed.
+   if(!["42P01","42501"].includes(error?.code))throw error;
+  }
+ }
  // The staging table is untrusted. Display ONLY observed source TXs for which
  // the separate RPC worker verified tx.from and the canonical Gateway target.
  // Reported-only wallet claims are NEVER exposed in another wallet's history.

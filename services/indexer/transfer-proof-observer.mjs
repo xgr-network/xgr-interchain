@@ -36,6 +36,8 @@ export async function enqueueProofObservations(pool,{limit=200}={}){
  const v=await pool.query({text:`INSERT INTO xita_transfer_proof_observations(source_chain,message_id)
  SELECT o.source_chain,o.message_id FROM xita_transfer_operations o
  WHERE o.delivered IS FALSE
+ AND NOT EXISTS (SELECT 1 FROM xita_transfer_proof_observations j
+   WHERE j.source_chain=o.source_chain AND j.message_id=o.message_id)
  ORDER BY o.source_indexed_at ASC LIMIT $1
  ON CONFLICT (source_chain,message_id) DO NOTHING`,values:[limit]});
  return v.rowCount??0;
@@ -95,11 +97,14 @@ export async function observeProofJob({pool,catalog,job,runner=runRecoveryProces
 }
 export async function tickProofObserver({pool,catalog,runner=runRecoveryProcess}){
  const enqueued=await enqueueProofObservations(pool);
- const job=await claimProofObservation(pool);
- if(!job)return {enqueued,observed:false};
- const result=await observeProofJob({pool,catalog,job,runner});
- return {enqueued,observed:true,sourceChain:job.source_chain,state:result.state,
-  reason:result.reason,updated:result.updated};
+ // At most two independent, leased read-only proof preparations concurrently.
+ // The shared DB can keep serving wallet reads; no destination TX is sent.
+ const jobs=await Promise.all([claimProofObservation(pool),claimProofObservation(pool)]);
+ const present=jobs.filter(Boolean);
+ const results=await Promise.all(present.map(job=>observeProofJob({pool,catalog,job,runner})));
+ return {enqueued,observed:present.length>0,
+  jobs:present.map((job,i)=>({sourceChain:job.source_chain,state:results[i].state,
+   reason:results[i].reason,updated:results[i].updated}))};
 }
 export async function runProofObserver({intervalMs=15000}={}){
  const pool=await transferWriterPool();
@@ -112,8 +117,8 @@ export async function runProofObserver({intervalMs=15000}={}){
    try{
     const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
     const outcome=await tickProofObserver({pool,catalog});
-    if(outcome.observed&&outcome.state==="unavailable")
-     console.warn("[xita-proof-observer]",outcome.sourceChain,outcome.reason);
+    for(const job of outcome.jobs||[])if(job.state==="unavailable")
+     console.warn("[xita-proof-observer]",job.sourceChain,job.reason);
    }catch(error){
     // Missing SQL migration or DB permission is an operational problem,
     // never an excuse to mark any transfer failed or delivered.

@@ -84,6 +84,7 @@ export function mergeWalletObservation(previous,incoming){
     conflict(previous.routeId,incoming.routeId)||
     conflict(previous.gateway,incoming.gateway))
   return {...previous,status:"journey-ambiguous"};
+ if(previous.status==="journey-ambiguous")return previous;
  if(previous.confirmed===true&&incoming.confirmed!==true)return previous;
  if(previous.delivered===true&&incoming.delivered!==true)return previous;
  const next={...previous,...incoming};

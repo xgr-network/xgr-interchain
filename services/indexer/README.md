@@ -331,3 +331,44 @@ XGRChain is handled by the native indexer, not Etherscan.
 The `xita_transfer_announcements` SQL 005 migration and intake service are
 **separate optional fast-path infrastructure**; Explorer discovery does not
 modify schema or eliminate historical canonical index maintenance.
+
+## Persisted continuous two-hop verification (PR #257)
+
+The source of truth stays canonical finalized Gateway and Mailbox evidence. The
+public web UI shows **one parent journey** for each cryptographically linked
+two-hop operation; a child hop remains independently recorded in SQL. The
+per-wallet pending count excludes uniquely linked child operations, not orphans.
+
+Install SQL migration `sql/008_transfer_proof_observations.sql` before starting
+`xita-transfer-proof-observer.service.example` as
+`xita-transfer-proof-observer.service`, on the machine already running the
+transfer indexer. Grant the transfer worker SELECT/INSERT/UPDATE on the derived
+proof observation table and SELECT on the indexed source operations. Grant the
+public indexer role SELECT only. No private key is required or permitted.
+
+The observer independently processes *only* finalized indexed messages with
+destination `delivered=false`, continuously prepares **unsigned** validator
+proofs, classifies RPC/quorum errors, and stores only diagnostics/timestamps.
+Rows are per `(source_chain,message_id)`, leased across process crashes
+and concurrent observer instances, with bounded backoff. Missing migration
+fails closed operationally while the older wallet API remains usable.
+
+The wallet history GET endpoint optionally joins these observations, scoped
+to an existing verified wallet's messages. A `ready` observation is only a
+status hint: the browser MUST independently re-fetch the original finalized
+Gateway receipt, verify unsigned calldata and independently query destination
+Mailbox and run `eth_call` before asking MetaMask for an explicit wallet TX.
+No observer ever signs, delivers, mints, burns, sends transactions, or treats
+proof readiness as successful delivery.
+
+After DB migration, install the separate service:
+```sh
+sudo cp services/indexer/xita-transfer-proof-observer.service.example /etc/systemd/system/xita-transfer-proof-observer.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now xita-transfer-proof-observer.service
+sudo systemctl status xita-transfer-proof-observer.service
+sudo journalctl -u xita-transfer-proof-observer.service -n 80 --no-pager
+```
+This deployment is **not** automatic on `main` merge. Apply the migration
+using approved database administrator credentials before enabling the service.
+A successful source confirmation is NOT proof of a delivered destination.
