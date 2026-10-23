@@ -69,3 +69,15 @@ test("mined but unfinalized Arbitrum parent stays at first step and shows count"
  assert.match(flow.message,/41 \/ 64 confirmations/);
  assert.doesNotMatch(flow.message,/Indexer synchronized/);
 });
+
+test("verified validator proof advances to MetaMask delivery before source receipt changes",()=>{
+ const record={...base,status:"awaiting-proof",delivered:false};
+ const signing=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-sign"});
+ assert.equal(signing.steps[1].state,"complete");
+ assert.equal(signing.steps[2].state,"current");
+ assert.equal(signing.verifiedWalletTx,1);
+ assert.equal(signing.heading,"MetaMask action required");
+ const pending=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-pending"});
+ assert.equal(pending.steps[2].state,"current");
+ assert.equal(pending.verifiedWalletTx,1);
+});
