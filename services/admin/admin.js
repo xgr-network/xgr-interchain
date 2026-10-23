@@ -875,7 +875,7 @@ async function refreshOperationsHealth(){
     if(!related.length)return '<tr><td>'+esc(title)+'</td><td>—</td><td>—</td><td>—</td><td>—</td><td>'+healthPill("unavailable")+'</td></tr>';
     return related.map(r=>'<tr><td>'+esc(title)+'<small>'+esc(r.route||"")+'</small></td>'+
      '<td>'+esc(leafSummary(r))+'</td><td>'+healthValue(r.checkpointBlock)+'</td>'+
-     '<td>'+healthValue(r.lagLeaves)+'</td><td>'+healthValue(r.pendingPeers)+'</td>'+
+     '<td>'+healthValue(r.lagLeaves)+'</td><td>—</td>'+
      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
    }).join("");
    return '<div class="health-merkle-validator"><div class="health-merkle-validator-head"><strong>'+esc(v.name)+'</strong>'+
@@ -883,7 +883,7 @@ async function refreshOperationsHealth(){
     ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
     '<div class="health-table-wrap"><table class="health-table health-merkle-table">'+
     '<thead><tr><th>Source-Chain</th><th>Leaves lokal / Quelle</th><th>Checkpoint</th>'+
-    '<th>Rückstand</th><th>Peer-Diagnose</th><th>Status</th></tr></thead><tbody>'+
+    '<th>Rückstand</th><th>Peer-Anfragen (nicht erfasst)</th><th>Status</th></tr></thead><tbody>'+
     rows+'</tbody></table></div>'+(v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
   }).join(""):'<p class="health-merkle-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
    'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
