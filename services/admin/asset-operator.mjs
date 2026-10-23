@@ -161,7 +161,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
    if(!representation||representation.action!=="deploy-once")throw Error("Router already deployed");
    const d=factoryRouteDraft({asset,source,destination,
     sourceInfrastructure:chainInfra,destinationInfrastructure:destInfra,
-    representation,action:"deploy-router"});
+    representation,action:"deploy-router",chains:inventory.chains});
    transaction=d.transaction;
   }else{
    if(!r?.routeId||!liveAddr(r.router)||!liveAddr(r.remoteRouter)||r.gateway)
