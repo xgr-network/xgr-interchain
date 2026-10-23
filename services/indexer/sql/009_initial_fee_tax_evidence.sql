@@ -1,6 +1,9 @@
 -- XITA commercial service fee evidence. One taxable event per INITIAL
 -- InterchainFeeCharged, independent of how many hops follow.
 -- Apply after 002_transfer_operations.sql and 003_interchain_journey.sql.
+-- Quote evidence is TRANSIENT: automatically prune unbooked quote rows
+-- no later than 72 h after quote expiry while the index worker is healthy.
+-- Tax accounting export uses ONLY successful canonical on-chain fee events.
 ALTER TABLE xita_transfer_operations
  ADD COLUMN IF NOT EXISTS quote_nonce NUMERIC(78,0);
 
@@ -50,7 +53,13 @@ CREATE TABLE IF NOT EXISTS xita_tax_charged_fees (
  evidence_status TEXT NOT NULL CHECK(evidence_status IN ('matched','missing_quote')),
  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  PRIMARY KEY(source_chain,message_id),
+ -- The contract consumes nonce once per payer+adapter. Never account twice.
+ UNIQUE(source_chain,execution_adapter,payer,quote_nonce),
  CHECK(quote_nonce>0 AND service_fee_wei>0),
+ CHECK ((evidence_status='matched' AND client_ip IS NOT NULL
+          AND native_eur_price IS NOT NULL AND gross_fee_eur IS NOT NULL)
+     OR (evidence_status='missing_quote' AND client_ip IS NULL
+          AND native_eur_price IS NULL AND gross_fee_eur IS NULL)),
  CHECK(ip_country_code IS NULL OR ip_country_code ~ '^[A-Z]{2}$')
 );
 -- Only currently canonical operations enter the accounting feed. If the
