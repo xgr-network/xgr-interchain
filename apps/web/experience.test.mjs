@@ -251,12 +251,14 @@ test("old awaiting-proof operations never replace the new XGR/Base transfer",()=
   status:"awaiting-proof",confirmed:true,delivered:false};
  const fresh=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:null,scanning:true});
- assert.match(fresh,/Transfer XGR → Base/);
+ assert.match(fresh,/>Start Transfer<\/button>/);
+ assert.doesNotMatch(fresh,/Transfer XGR → Base/);
  assert.doesNotMatch(fresh,/Interchain Fee gateway not deployed/);
  assert.doesNotMatch(fresh,/Checking on-chain transfers/);
  assert.match(fresh,/Previous transfers awaiting delivery/);
  assert.match(fresh,/<option value="" selected>New transfer/);
- assert.match(fresh,/Transfer XGR → Base/);
+ assert.match(fresh,/>Start Transfer<\/button>/);
+ assert.doesNotMatch(fresh,/Transfer XGR → Base/);
  const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
   {account},{items:[item],selectedTxHash:txHash,scanning:true});
  assert.match(selected,/Continue delivery/);
@@ -547,4 +549,14 @@ test("Top Tokens rankings show real approved token logos instead of decorative p
   {schemaVersion:1,kind:"xita-asset-metrics-v1",assets},broken);
  assert.doesNotMatch(invalid,/src="javascript:/);
  assert.match(invalid,/ux-dashboard-token-fallback/);
+});
+
+test("new direct and two-hop transfers use neutral CTA; recovery remains specific",()=>{
+ const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const model=buildExperienceModel(c),wallet={account:"0x"+"1".repeat(40)};
+ for(const [origin,destination,asset] of [["xgrchain","base","XGR"],["arbitrum","base","XGR"],["xgrchain","base","ARB"]]){
+  const html=renderPlanRoute(model,{origin,destination,asset,amount:"1"},"ready",wallet,{});
+  assert.match(html,/>Start Transfer<\/button>/);
+  assert.doesNotMatch(html,/Transfer (XGR|ARB) → Base|Transfer XGR via XGRChain/);
+ }
 });

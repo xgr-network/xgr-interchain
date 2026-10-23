@@ -580,8 +580,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   recoveryUnresolved?"Locating previous transfer…":
   !routes.length?"Interchain Fee gateway not deployed":
   !deployed?"Route unavailable":
-  !isDirect?"Transfer "+assetId+" via XGRChain":
-  "Transfer "+assetId+" → "+(model.chains.find(c=>c.key===destination)?.label||destination);
+  "Start Transfer";
  const buttonDisabled=busy||backgroundChecking||recoveryUnresolved||Boolean(completedWork)||connected&&(!deployed&&!selected);
  const progressValue=completedWork?2:selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
