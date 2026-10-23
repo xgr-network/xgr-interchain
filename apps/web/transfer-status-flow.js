@@ -75,12 +75,14 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    canRefresh?"Transfer not yet complete":"Preparing transfer";
  if(status==="pending-source")heading="Source transaction pending";
  if(status==="confirming")heading="Source finality pending";
- if(status==="awaiting-onward"&&!working&&!error)heading="XGRChain delivery confirmed";
- if(status==="awaiting-final-proof"&&!working&&!error)heading="Second hop confirmed";
+ if(status==="awaiting-onward"&&!working&&!error)heading="Action required · Continue second hop";
+ if(status==="awaiting-final-proof"&&!working&&!error)heading="Action required · Check final proof";
  if(delivered)heading="Transfer complete";
  let message=delivered?"Both destination Mailbox deliveries are confirmed. No further wallet action is required.":
    error?String(error):
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
+   canContinue&&status==="awaiting-final-proof"?"The second hop is confirmed. Click the button below to check the latest validator proof. MetaMask opens ONLY after proof verification; otherwise XITA will show a waiting status.":
+   canContinue&&status==="awaiting-onward"?"XGRChain delivery is confirmed. Click below to authorize the onward transaction in MetaMask. Never repeat the original Arbitrum burn.":
    notice?String(notice):
    status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
