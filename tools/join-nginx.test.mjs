@@ -14,6 +14,7 @@ test("install only exact Join methods and rate-limited write paths",()=>{
  assert.equal((p.config.match(/limit_req zone=xita_join_submit burst=3 nodelay;/g)||[]).length,2);
  assert.match(p.config,/location = \/api\/xita\/join\/status \{\n\s+limit_except GET/);
  assert.match(p.config,/location = \/api\/xita\/join\/confirm \{\n\s+limit_except POST \{ deny all; \}\n\s+client_max_body_size 1k/);
+ assert.match(p.config,/location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout 120s;/);
  assert.deepEqual(patchXitaJoinNginx(p.config),{config:p.config,changed:false,added:[]});
 });
 test("keep safe existing read-only preview, add three missing endpoints",()=>{
