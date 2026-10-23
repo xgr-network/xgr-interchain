@@ -9,6 +9,7 @@ import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
+import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG_PATH=resolve(root,"apps/web/catalog.json");
@@ -248,7 +249,13 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
+   const clientIP=preview?null:verifiedClientIP(req);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
+   if(!preview){
+    const [prices,country]=await Promise.all([getSnapshot(),lookupIpCountry(clientIP)]);
+    const evidence=quoteEvidence(reply,prices,clientIP,country);
+    await saveQuoteEvidence(evidence);
+   }
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);
