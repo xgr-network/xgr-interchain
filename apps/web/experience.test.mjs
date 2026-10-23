@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity} from "./experience.js";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
+import {executableTransferRoutes} from "./route-availability.js";
 
 
 
@@ -389,11 +390,24 @@ test("dashboard derives active transfers from deployed catalog receipts, not mut
  const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  const model=buildExperienceModel(c,()=>false);
  const html=renderDashboard(model,{},"ready",null,c);
- assert.equal(model.transferRoutes.length,4);
- assert.match(html,/4<\/strong><span>Active directions<\/span>/);
- assert.match(html,/data-xita-system="base".*?is-active">Active/);
- assert.match(html,/data-xita-system="arbitrum".*?is-active">Active/);
- assert.match(html,/data-xita-system="polygon".*?In preparation/);
+ const expected=executableTransferRoutes(c);
+ const routeKeys=rows=>rows.map(r=>r.asset+":"+r.name+":"+r.source+":"+r.destination).sort();
+ assert.ok(expected.length>0,"deployed catalog must contain verified execution-ready directions");
+ assert.deepEqual(routeKeys(model.transferRoutes),routeKeys(expected),
+  "every active dashboard direction must have independently documented execution adapters");
+ assert.match(html,new RegExp("<strong>"+expected.length+"</strong><span>Active directions</span>"));
+ const liveChains=new Set(expected.flatMap(r=>[r.source,r.destination]));
+ for(const chain of Object.keys(c.chains)){
+  const row=html.match(new RegExp('data-xita-system="'+chain+'"[\\s\\S]*?</button>'))?.[0];
+  assert.ok(row,"missing configured chain "+chain);
+  const expectedStatus=chain==="xgrchain"?"Hub":liveChains.has(chain)?"Active":"In preparation";
+  assert.ok(row.includes(">"+expectedStatus+"</span>"),
+   chain+" status must follow verified route receipts, not activation flags");
+ }
+ // Even malicious/stale editable activation flags cannot enable missing routes.
+ for(const asset of Object.values(c.assets))
+  for(const route of asset.routes?.routes||[])route.active=true;
+ assert.deepEqual(routeKeys(buildExperienceModel(c,()=>true).transferRoutes),routeKeys(expected));
  assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
 });
 
