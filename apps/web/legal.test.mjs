@@ -16,7 +16,7 @@ test("XITA legal documents are local and linked from permanent footer",()=>{
  assert.match(privacy,/Join applications and status emails/);
  assert.match(privacy,/Zoho Mail/);
  assert.match(privacy,/planned service/);
- assert.match(terms,/public smart-contract escrows/);
+ assert.match(terms,/locked in deployed public smart contracts/);
  assert.match(terms,/mandatory consumer/);
  assert.match(terms,/independent transfer documentation/);
  assert.match(privacy,/not included in public GitHub PRs/);
