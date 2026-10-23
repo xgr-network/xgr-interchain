@@ -2,7 +2,6 @@ import {createServer} from "node:http";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {randomUUID} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
@@ -32,7 +31,8 @@ async function github(path,method="GET",body,token=joinGithubToken()){
  if(!response.ok)throw Error("GitHub rejected request ("+response.status+")");
  return response.json();
 }
-export async function publishDraft(bundle,{expectedMain,githubCall=github}={}){
+export async function publishDraft(bundle,{expectedMain,applicationId,githubCall=github}={}){
+ if(!/^[0-9a-f-]{36}$/.test(applicationId||""))throw Error("Invalid application ID");
  if(!/^[0-9a-f]{40}$/.test(expectedMain||""))throw Error("Invalid Git revision");
  const head=await githubCall("/git/ref/heads/main");
  if(head.object?.sha!==expectedMain)throw Error("Main changed; request new preview");
@@ -56,10 +56,33 @@ export async function publishDraft(bundle,{expectedMain,githubCall=github}={}){
   const blob=await githubCall("/git/blobs","POST",{content:bundle.logo.base64,encoding:"base64"});
   entries.push({path:bundle.logo.path,mode:"100644",type:"blob",sha:blob.sha});
  }
- const branch="alliance/"+bundle.key.toLowerCase()+"-"+randomUUID().slice(0,8);
+ const branch="alliance/"+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
  const tree=await githubCall("/git/trees","POST",{base_tree:base.tree.sha,tree:entries});
- const commit=await githubCall("/git/commits","POST",{message:"onboard: propose "+bundle.key,tree:tree.sha,parents:[expectedMain]});
- await githubCall("/git/refs","POST",{ref:"refs/heads/"+branch,sha:commit.sha});
+ // This branch name is unique to the private confirmed application, not each
+ // HTTP request. A lost proxy response or partial GitHub write can be resumed.
+ const prior=await githubCall("/git/ref/heads/"+branch).catch(error=>{
+  if(error.message.includes("(404)"))return null;
+  throw error;
+ });
+ if(prior){
+  const commit=await githubCall("/git/commits/"+prior.object.sha);
+  if(commit.tree?.sha!==tree.sha||commit.parents?.length!==1||
+     commit.parents[0]?.sha!==expectedMain)
+   throw Error("Existing application branch differs from validated manifest");
+ }else{
+  const commit=await githubCall("/git/commits","POST",{message:"onboard: propose "+bundle.key,tree:tree.sha,parents:[expectedMain]});
+  await githubCall("/git/refs","POST",{ref:"refs/heads/"+branch,sha:commit.sha});
+ }
+ const current=await githubCall("/pulls?state=all&head="+encodeURIComponent("xgr-network:"+branch));
+ if(!Array.isArray(current))throw Error("Unable to verify existing application PR");
+ if(current.length>1)throw Error("More than one proposal for application branch");
+ const priorPR=current[0];
+ if(priorPR){
+  if(priorPR.head?.ref!==branch||priorPR.base?.ref!=="main"||
+     priorPR.draft!==true||priorPR.state!=="open")
+   throw Error("Existing application PR requires operator review");
+  return {number:priorPR.number,url:priorPR.html_url,status:"draft"};
+ }
  const pr=await githubCall("/pulls","POST",{title:"Join XITA: "+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
   body:"Public directory proposal — applicant role: "+bundle.summary.applicantRole+
     ". CoinGecko original-chain contract verified before submission; required CI repeats the check. No approval, deployment or live transfer is implied. Review token representations before merging. No applicant email is present."});
@@ -113,15 +136,22 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       return reply(res,422,{ok:false,error:"Invalid confirmation token"});
     const dir=preparePrivateDir(privateLocation(env));
     const result=await lockedRecord(dir,id,async record=>{
-      if(record.phase!=="pending-email")throw Error("Application already confirmed or completed");
+      if(record.phase!=="pending-email"){
+        // Repeated confirmation links are read-only after success; never
+        // create a second PR, but return the recorded result safely.
+        if(record.pr&&matchesToken(record.receiptHash,token))
+          return {ok:true,status:"under-review",prNumber:record.pr.number,prUrl:record.pr.url};
+        throw Error("Application already confirmed or completed");
+      }
       if(Date.parse(record.confirmBefore)<clock()||!matchesToken(record.tokenHash,token))
         throw Error("Expired or invalid confirmation token");
       // Rebuild against current checkout; block a stale or displaced main revision.
       const bundle=buildManifestBundle(record.input,sourceCatalog());
       const identity=await verify(record.input);
       const expectedMain=await getMainSha();
-      const pr=await publisher(bundle,{expectedMain});
-      record.phase="under-review";record.pr=pr;record.tokenHash=null;
+      const pr=await publisher(bundle,{expectedMain,applicationId:record.id});
+      record.phase="under-review";record.pr=pr;
+      record.receiptHash=record.tokenHash;record.tokenHash=null;
       record.coinGeckoVerifiedAt=identity.checkedAt;
       savePrivate(dir,record);
       // A notification failure must not undo an already-created GitHub PR.
