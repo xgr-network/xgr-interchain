@@ -8,7 +8,7 @@ import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggrega
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
-import {selectedRecovery} from "./wallet-transfer-selection.js";
+import {selectedRecovery,openWalletTransfers} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
@@ -1257,7 +1257,11 @@ setInterval(async()=>{
 setInterval(()=>{
  if(!state.account||!state.catalog||transferActivity.scanning||
     transferActivity.working||document.visibilityState==="hidden")return;
- if(path()==="/my-transfers"||path()==="/transfer")
+ // A pending transfer continues updating even if the user navigates to
+ // Tokens or the Universe. Hidden tabs can rely on the server-side observer.
+ if(path()==="/my-transfers"||path()==="/transfer"||
+    transferActivity.indexOpenCount>0||
+    openWalletTransfers(transferActivity.items,state.account).length>0)
   void scanWalletHistory();
 },45000);
 refreshTransferLink();
