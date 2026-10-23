@@ -9,6 +9,7 @@ const REPO="xgr-network/xgr-interchain";
 const STATUS={
  "approved":["XITA proposal approved","Your proposal was merged into the approved XITA token inventory. This is not yet a live transfer or public listing."],
  "rejected":["XITA proposal closed","Your XITA proposal was closed without acceptance. You can contact XGR if further review is required."],
+ "deployed":["Your first XITA route is live!","Your original token chain and XGRChain now have a documented, executable route in both directions."], // legacy queued milestone
  "first-route":["Your first XITA route is live!","Your original token chain and XGRChain now have a documented, executable route in both directions."],
  "all-routes":["Your XITA network expansion is complete!","Every planned XITA route for your token is now documented and executable in both directions."],
  "first-lock":["First verified XITA collateral","XITA has independently verified locked collateral for your token. Its public listing is governed by the currently configured TVL threshold."],
@@ -61,7 +62,7 @@ async function visibilitySnapshot(){
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
-  readMilestones=(record)=>routeMilestones(readCatalog(),record.input.symbol,record.assetId),
+  readCatalog=loadCatalog,readMilestones=(record)=>routeMilestones(readCatalog(),record.input.symbol,record.assetId),
   deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
@@ -84,7 +85,7 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
      const queue=record.notificationQueue||[];
      if(desired!=="under-review"&&desired!=="rejected"&&!((record.sent||[]).includes("approved"))&&!queue.includes("approved"))queue.push("approved");
 
-     if(STATUS[desired]&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
+     if(STATUS[desired]&&desired!=="deployed"&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
      record.notificationQueue=queue;
      if(["rejected","listed"].includes(desired))record.retainUntil=new Date(Date.now()+180*86400000).toISOString();
      savePrivate(dir,record);
