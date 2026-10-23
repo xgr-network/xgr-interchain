@@ -210,6 +210,8 @@ function upsertTransfer(record){
  if(previous?.confirmed===true&&record.confirmed!==true)return;
  if(previous?.status==="confirming"&&record.status==="pending-source")return;
  if(previous?.status==="journey-delivered"&&record.status!=="journey-delivered")return;
+ // A lagging index must not regress the verified first-hop handoff.
+ if(previous?.status==="awaiting-onward"&&record.status==="awaiting-proof"&&record.delivered!==true)return;
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
  if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
   transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
@@ -552,10 +554,13 @@ async function performTransferAction(){
     return;
    }
    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
-    provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+    provider:globalThis.ethereum,waitForProof:true,
+    onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
+    onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
     },onBroadcast:({txHash})=>{
      broadcastKnown=true;
+     setFlowStage("first-delivery-pending");
      transferActivity.notice="Destination TX "+txHash+
       " submitted. Original source transfer is NEVER repeated.";
     }});
@@ -630,11 +635,14 @@ async function performTransferAction(){
     transferActivity.selectedTxHash=record.txHash;
     setFlowStage("first-proof-wait","Source finalized. Waiting for validator proof and destination delivery…");
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
-     provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+     provider:globalThis.ethereum,waitForProof:true,
+     onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
+     onStatus:notice=>{
       setFlowStage("first-proof-wait");
       transferActivity.notice=notice;if(path()==="/transfer")render();
      },onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      setFlowStage("first-delivery-pending");
       transferActivity.notice="Destination TX "+txHash+" submitted. Checking delivery…";
       if(path()==="/transfer")render();
      }});
