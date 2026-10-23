@@ -14,7 +14,7 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
  if(ageMs< -30000||ageMs>120000||raw.workerAlive!==true)
   return {name,state:"stalled",workerAlive:false,ageMs,routes:[],reason:"Validator worker not reporting fresh progress"};
  const routes=raw.routes.slice(0,100).map(r=>({
-  route:String(r.route||"").slice(0,130),source:String(r.source||"").slice(0,55),
+  route:String(r.route||"").slice(0,130),source:String(r.source||"").replace(/^xgr$/i,"xgrchain").slice(0,55),
   destination:String(r.destination||"").slice(0,55),
   state:["ok","catching-up","unavailable"].includes(r.state)?r.state:"unavailable",
   sourceHead:Number.isSafeInteger(r.sourceHead)?r.sourceHead:null,
