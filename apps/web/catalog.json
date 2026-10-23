@@ -82,304 +82,6 @@
       "observedInfrastructure": "deployments/chains/xgrchain.json"
     }
   },
-  "infrastructure": {
-    "arbitrum": {
-      "schemaVersion": 1,
-      "kind": "infrastructure-deployment",
-      "network": "mainnet",
-      "chain": "arbitrum",
-      "chainId": 42161,
-      "domainId": 42161,
-      "xitaV315": {
-        "schemaVersion": 1,
-        "components": {
-          "blsVerifier": {
-            "address": "0x202c10bdecf3b796ea4b4025c81952c4f2dd9f93",
-            "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
-            "receiptPath": "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
-          },
-          "validatorRegistry": {
-            "address": "0x70f5752326735b31641f21d174ba035e904db93c",
-            "runtimeCodeKeccak256": "0x0781529af7e0f980e4fb3a4d0933920fae5f966e0e1f02f344a3dd055e28a39c",
-            "receiptPath": "deployments/receipts/arbitrum/66f3efc4743f034258e53e19f4d67bca990efe9994971fccc9662df92ed6c9db-70f5752326735b31641f21d174ba035e904db93c.json"
-          },
-          "ism": {
-            "address": "0x3d2add3a7dacb82c11338b6731b22d2afed4e1cc",
-            "runtimeCodeKeccak256": "0x0b83ca1758c0e4688e76f793fc208f63aae2b2519573d9f90e92dec2c53a95b7",
-            "receiptPath": "deployments/receipts/arbitrum/0a4760760dece5c16dd7019620b88292c870688b981950d1af1a131691a08298-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json"
-          },
-          "transportBundle": {
-            "address": "0x119f5533d40889b23769b3c2d507cdfc90fff8ca",
-            "runtimeCodeKeccak256": "0x893d9566e5ebbb90b8cf02049493f4c260bed29c74bc3ee20135de86f5faf231",
-            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-119f5533d40889b23769b3c2d507cdfc90fff8ca.json"
-          },
-          "mailbox": {
-            "address": "0x9465471e6dbadac4759f5950bc0e8d8ee6e81c83",
-            "runtimeCodeKeccak256": "0x191415471f8ae24be17fa5f6d82c7358c1d97bca7b61d5ceff8b754dcd4acd93",
-            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json"
-          },
-          "merkleTreeHook": {
-            "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
-            "runtimeCodeKeccak256": "0x3bbfeccd86fe0a3ce2cf81c49633f5d482399dbe738962672f56e6382de534ee",
-            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json"
-          },
-          "requiredHook": {
-            "address": "0x61799183b5e9ee2a1fd1345317e6e201d70713ce",
-            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
-            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-61799183b5e9ee2a1fd1345317e6e201d70713ce.json"
-          },
-          "nativeRouterDeployer": {
-            "address": "0xe4baed23f8b9262eb71ade74a26322288e6a0cb3",
-            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
-            "receiptPath": "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json"
-          },
-          "syntheticRouterDeployer": {
-            "address": "0x62567be722f5ef9df0dac5eefe6965b007be155d",
-            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
-            "receiptPath": "deployments/receipts/arbitrum/ab909a862eb9ecd5db3a52f210f3506645e408492f35d74f174f42f6fc1f9284-62567be722f5ef9df0dac5eefe6965b007be155d.json"
-          },
-          "collateralRouterDeployer": {
-            "address": "0x013f2f2f7db897f941b19c4ab71c5395a48a0292",
-            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
-            "receiptPath": "deployments/receipts/arbitrum/6a4472fd72731c2359cde7ae3682798305416ecabe732b5bdd6b9cfae5150bc8-013f2f2f7db897f941b19c4ab71c5395a48a0292.json"
-          },
-          "factory": {
-            "address": "0x3b83687d77170d42feddfe221629cc21e771e021",
-            "runtimeCodeKeccak256": "0x265e1ce08ee96a52136b413485a5838cf5dacb63f416501107a5664fadf5ea07",
-            "receiptPath": "deployments/receipts/arbitrum/d62f216de9b7e0d75e6a21aa01c722aca5c9672858f7b9a17d68c2f0bed881ad-3b83687d77170d42feddfe221629cc21e771e021.json"
-          },
-          "sourceRegistry": {
-            "address": "0x14d5d33a65a39f96665ed631b04fecf357bcb576",
-            "runtimeCodeKeccak256": "0xbbbdc37306007a6a59aa76280c1b99f2d5d1fb6a6170f9ef9bf2b72be1382bb8",
-            "receiptPath": "deployments/receipts/arbitrum/f02ceb03ff4619a3efcce6dc7ce6cf6e6e1f0522eda95a678acbad9ea353589e-14d5d33a65a39f96665ed631b04fecf357bcb576.json"
-          },
-          "executionGateway": {
-            "address": "0x0334b4c9b1307fce68f25e72b65ab32dcc83343b",
-            "runtimeCodeKeccak256": "0xf7da4200ef8edb5c938f255faf5d359a9b6f7b2b12b2ee283e8f5a030bc4ab36",
-            "receiptPath": "deployments/receipts/arbitrum/f57065929b5e5083fdfd04a42b7da1d6b5d0acef3a3e280b5be574011cf0c778-0334b4c9b1307fce68f25e72b65ab32dcc83343b.json"
-          }
-        },
-        "receiptPaths": [
-          "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
-          "deployments/receipts/arbitrum/0a4760760dece5c16dd7019620b88292c870688b981950d1af1a131691a08298-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
-          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
-          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
-          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-61799183b5e9ee2a1fd1345317e6e201d70713ce.json",
-          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json",
-          "deployments/receipts/arbitrum/66f3efc4743f034258e53e19f4d67bca990efe9994971fccc9662df92ed6c9db-70f5752326735b31641f21d174ba035e904db93c.json",
-          "deployments/receipts/arbitrum/6a4472fd72731c2359cde7ae3682798305416ecabe732b5bdd6b9cfae5150bc8-013f2f2f7db897f941b19c4ab71c5395a48a0292.json",
-          "deployments/receipts/arbitrum/ab909a862eb9ecd5db3a52f210f3506645e408492f35d74f174f42f6fc1f9284-62567be722f5ef9df0dac5eefe6965b007be155d.json",
-          "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json",
-          "deployments/receipts/arbitrum/d62f216de9b7e0d75e6a21aa01c722aca5c9672858f7b9a17d68c2f0bed881ad-3b83687d77170d42feddfe221629cc21e771e021.json",
-          "deployments/receipts/arbitrum/f02ceb03ff4619a3efcce6dc7ce6cf6e6e1f0522eda95a678acbad9ea353589e-14d5d33a65a39f96665ed631b04fecf357bcb576.json",
-          "deployments/receipts/arbitrum/f57065929b5e5083fdfd04a42b7da1d6b5d0acef3a3e280b5be574011cf0c778-0334b4c9b1307fce68f25e72b65ab32dcc83343b.json"
-        ]
-      },
-      "present": true
-    },
-    "base": {
-      "schemaVersion": 1,
-      "kind": "infrastructure-deployment",
-      "network": "mainnet",
-      "chain": "base",
-      "chainId": 8453,
-      "domainId": 8453,
-      "xitaV315": {
-        "schemaVersion": 1,
-        "components": {
-          "blsVerifier": {
-            "address": "0x1a6610cc7dd0d0f42e22c3608e025d891065814c",
-            "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
-            "receiptPath": "deployments/receipts/base/47e984a9c05ceb6a16964b32d61f54c2132f85e81b6c43dbe1c1de6994794cfb-1a6610cc7dd0d0f42e22c3608e025d891065814c.json"
-          },
-          "validatorRegistry": {
-            "address": "0xcf7e1a877d919c1c8dba48b42a832bdb1042101f",
-            "runtimeCodeKeccak256": "0x3db85329319eedb7290260bbd01faf8a24981d6ec927577d851b1428a08f575c",
-            "receiptPath": "deployments/receipts/base/06d5ae54895dae24f7051a272eb4eee4db46f182ba2b8ed328d1449125c6d392-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json"
-          },
-          "ism": {
-            "address": "0x402d1eabd5b11e517688231a641d027376c6ed10",
-            "runtimeCodeKeccak256": "0xbcc6c1a0696c2c44f7863a0375be467a50e45a4d15a225272618acf8d9e575f9",
-            "receiptPath": "deployments/receipts/base/20784b967f6af4ec0d184de7d465e717943d941362b9d13e68a86efbb158333b-402d1eabd5b11e517688231a641d027376c6ed10.json"
-          },
-          "transportBundle": {
-            "address": "0x2c7a18747fda9b8a3d98e8603ddab24a5248dcce",
-            "runtimeCodeKeccak256": "0x07b4d7907bc3a22c896f30d61eb0d37cd9814a306962de50110b65479a005eac",
-            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2c7a18747fda9b8a3d98e8603ddab24a5248dcce.json"
-          },
-          "mailbox": {
-            "address": "0xd3389684b69f80f7a281569b64a2e47872f74add",
-            "runtimeCodeKeccak256": "0x3579770012cc3221e4999a8346fbd36dc7c8049506da5a02643d08ff90626592",
-            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-d3389684b69f80f7a281569b64a2e47872f74add.json"
-          },
-          "merkleTreeHook": {
-            "address": "0xa831991450e2a150951da8c2f3344f940603c714",
-            "runtimeCodeKeccak256": "0x0dd639393293d317f0b3876262f74d23df1dd0f7071e1298019618b0a4ab6f01",
-            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-a831991450e2a150951da8c2f3344f940603c714.json"
-          },
-          "requiredHook": {
-            "address": "0x2a7ccc17b5df62ef8052f10a39ce46c04285a867",
-            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
-            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2a7ccc17b5df62ef8052f10a39ce46c04285a867.json"
-          },
-          "nativeRouterDeployer": {
-            "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
-            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
-            "receiptPath": "deployments/receipts/base/1d39b45134f6b574c618eec12164ca2912dd99fe2d434a954c1405ed030cf7f7-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
-          },
-          "syntheticRouterDeployer": {
-            "address": "0xa91b1e7179a50f0d798d284676d3ba9ff705fe82",
-            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
-            "receiptPath": "deployments/receipts/base/32c7102252ff4a8c67d744802ab9a8c8d54a616464e08cae20d9e63dfb31122f-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json"
-          },
-          "collateralRouterDeployer": {
-            "address": "0xa27eadcaf70631e29009019d390e48410a830e64",
-            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
-            "receiptPath": "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json"
-          },
-          "factory": {
-            "address": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370",
-            "runtimeCodeKeccak256": "0xa72f14259b579c5b8e87d4f92bfe5fff94c56c961dca1518f5021bf874596513",
-            "receiptPath": "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json"
-          },
-          "sourceRegistry": {
-            "address": "0xbd87ceebbac310186b0caf2ec4ed6c50f7d767c3",
-            "runtimeCodeKeccak256": "0x4d0b24018a02adc0f16478ed0954f291b286227c2e018028c889bef58cf05269",
-            "receiptPath": "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json"
-          },
-          "executionGateway": {
-            "address": "0x9b6b92ef1745611f402341965f7fc649cbe0da8c",
-            "runtimeCodeKeccak256": "0xb4a21b0648ad22789c17a0426bad54235406eb2d8b9355995b59aa441ae626ab",
-            "receiptPath": "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
-          }
-        },
-        "receiptPaths": [
-          "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json",
-          "deployments/receipts/base/06d5ae54895dae24f7051a272eb4eee4db46f182ba2b8ed328d1449125c6d392-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json",
-          "deployments/receipts/base/1d39b45134f6b574c618eec12164ca2912dd99fe2d434a954c1405ed030cf7f7-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
-          "deployments/receipts/base/20784b967f6af4ec0d184de7d465e717943d941362b9d13e68a86efbb158333b-402d1eabd5b11e517688231a641d027376c6ed10.json",
-          "deployments/receipts/base/32c7102252ff4a8c67d744802ab9a8c8d54a616464e08cae20d9e63dfb31122f-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json",
-          "deployments/receipts/base/47e984a9c05ceb6a16964b32d61f54c2132f85e81b6c43dbe1c1de6994794cfb-1a6610cc7dd0d0f42e22c3608e025d891065814c.json",
-          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2a7ccc17b5df62ef8052f10a39ce46c04285a867.json",
-          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2c7a18747fda9b8a3d98e8603ddab24a5248dcce.json",
-          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-a831991450e2a150951da8c2f3344f940603c714.json",
-          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-d3389684b69f80f7a281569b64a2e47872f74add.json",
-          "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json",
-          "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json",
-          "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
-        ]
-      },
-      "present": true
-    },
-    "polygon": {
-      "schemaVersion": 1,
-      "kind": "infrastructure-deployment",
-      "network": "mainnet",
-      "chain": "polygon",
-      "chainId": 137,
-      "domainId": 137,
-      "xitaV315": {
-        "schemaVersion": 1,
-        "components": {},
-        "receiptPaths": []
-      },
-      "present": false
-    },
-    "xgrchain": {
-      "schemaVersion": 1,
-      "kind": "infrastructure-deployment",
-      "network": "mainnet",
-      "chain": "xgrchain",
-      "chainId": 1643,
-      "domainId": 1643,
-      "xitaV315": {
-        "schemaVersion": 1,
-        "components": {
-          "validatorRegistry": {
-            "address": "0x65a9473b0a7c5ec27127125c05fb4efc29efdba6",
-            "runtimeCodeKeccak256": "0xc23060c0226260f29e7a11f79145fe990febd0f2b21fdb5efe22b860c5c8591f",
-            "receiptPath": "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
-          },
-          "ism": {
-            "address": "0x8c4585952a5960fe1238414eba409288aa4bb47a",
-            "runtimeCodeKeccak256": "0xd1959777e904d98a30ad65ba0adf6da36bf0280e97402db932a37a100a77015c",
-            "receiptPath": "deployments/receipts/xgrchain/8509ad9b09108496cfc386ff333470ba7f94a43dc5522daaa9776ecf18ad50ba-8c4585952a5960fe1238414eba409288aa4bb47a.json"
-          },
-          "nativeRouterDeployer": {
-            "address": "0x88e5f2aba4bfae19a266a83140a4079f69157c7c",
-            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
-            "receiptPath": "deployments/receipts/xgrchain/112a0c4365362bce68c50641b5537b3a40c351a6299e22c5e9335e5f57b67d85-88e5f2aba4bfae19a266a83140a4079f69157c7c.json"
-          },
-          "transportBundle": {
-            "address": "0xe848fac0da4b78ea828ffde791cca352e2297383",
-            "runtimeCodeKeccak256": "0xf1b5c031df4e5fb145e2018d12fe5f3d070bd9ac6d450cb65beab18f80956928",
-            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-e848fac0da4b78ea828ffde791cca352e2297383.json"
-          },
-          "mailbox": {
-            "address": "0xf77ae8f922ebf001638dc78a06d8d1e28589f519",
-            "runtimeCodeKeccak256": "0x360f5d5baf88294a8cad28fe9470d8681f8ab9e2e53e2ee5791de3689343c88b",
-            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-f77ae8f922ebf001638dc78a06d8d1e28589f519.json"
-          },
-          "merkleTreeHook": {
-            "address": "0x44a8374cf1ff674a92a6876832af245b805e2161",
-            "runtimeCodeKeccak256": "0xa45d35878783297c6682994e31a01d9c605b455844eb8dcf08d4002589b6c68b",
-            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-44a8374cf1ff674a92a6876832af245b805e2161.json"
-          },
-          "requiredHook": {
-            "address": "0x3ea58a78931afbab565c912a2ab4054bf16c044b",
-            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
-            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-3ea58a78931afbab565c912a2ab4054bf16c044b.json"
-          },
-          "syntheticRouterDeployer": {
-            "address": "0xe86d6cd451b2f78b6fb3aa9a4723f166134e10f4",
-            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
-            "receiptPath": "deployments/receipts/xgrchain/40a00402ffb52ec625701cbcc72c053ed1e998a7c80ea77006b1f7cd93e4ca89-e86d6cd451b2f78b6fb3aa9a4723f166134e10f4.json"
-          },
-          "collateralRouterDeployer": {
-            "address": "0xb3ef09105bb4e3b21f29f3064bba2c46cb415a35",
-            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
-            "receiptPath": "deployments/receipts/xgrchain/97e838da2bd2de2aea3ba812c49dcb91e5c9792ec668048f94cf7f927722b5ff-b3ef09105bb4e3b21f29f3064bba2c46cb415a35.json"
-          },
-          "factory": {
-            "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
-            "runtimeCodeKeccak256": "0x4bdf70f0c95dc3e8b2f22c773a2d089c25990ba17a240e3680b8b27f714ca484",
-            "receiptPath": "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json"
-          },
-          "sourceRegistry": {
-            "address": "0x590d9d35276661f250e2cdf83d32a0e1cbebac38",
-            "runtimeCodeKeccak256": "0x80f3de0a2a687dd513968607fc38bec5a38053ee68c04b0653716b7332ce2fc4",
-            "receiptPath": "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json"
-          },
-          "executionGateway": {
-            "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
-            "runtimeCodeKeccak256": "0x7d002332b4c5ef2811f2f440b22546d3fb71be8d30195aef069745e1b24a9ca9",
-            "receiptPath": "deployments/receipts/xgrchain/9f5650a9582d254e1a05c05aa6f6915889ed59eb4636ad3beb01043fc2688e68-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
-          }
-        },
-        "receiptPaths": [
-          "deployments/receipts/xgrchain/112a0c4365362bce68c50641b5537b3a40c351a6299e22c5e9335e5f57b67d85-88e5f2aba4bfae19a266a83140a4079f69157c7c.json",
-          "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json",
-          "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json",
-          "deployments/receipts/xgrchain/40a00402ffb52ec625701cbcc72c053ed1e998a7c80ea77006b1f7cd93e4ca89-e86d6cd451b2f78b6fb3aa9a4723f166134e10f4.json",
-          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-3ea58a78931afbab565c912a2ab4054bf16c044b.json",
-          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-44a8374cf1ff674a92a6876832af245b805e2161.json",
-          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-e848fac0da4b78ea828ffde791cca352e2297383.json",
-          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-f77ae8f922ebf001638dc78a06d8d1e28589f519.json",
-          "deployments/receipts/xgrchain/8509ad9b09108496cfc386ff333470ba7f94a43dc5522daaa9776ecf18ad50ba-8c4585952a5960fe1238414eba409288aa4bb47a.json",
-          "deployments/receipts/xgrchain/97e838da2bd2de2aea3ba812c49dcb91e5c9792ec668048f94cf7f927722b5ff-b3ef09105bb4e3b21f29f3064bba2c46cb415a35.json",
-          "deployments/receipts/xgrchain/9f5650a9582d254e1a05c05aa6f6915889ed59eb4636ad3beb01043fc2688e68-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
-          "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
-        ]
-      },
-      "present": true
-    }
-  },
-  "publication": {
-    "schemaVersion": 1,
-    "kind": "xita-publication-policy",
-    "minimumLockedUsd": null,
-    "maxEvidenceAgeSeconds": 900
-  },
   "assets": {
     "XGR": {
       "metadata": {
@@ -804,5 +506,303 @@
         "present": false
       }
     }
+  },
+  "infrastructure": {
+    "arbitrum": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "arbitrum",
+      "chainId": 42161,
+      "domainId": 42161,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {
+          "blsVerifier": {
+            "address": "0x202c10bdecf3b796ea4b4025c81952c4f2dd9f93",
+            "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+            "receiptPath": "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
+          },
+          "validatorRegistry": {
+            "address": "0x70f5752326735b31641f21d174ba035e904db93c",
+            "runtimeCodeKeccak256": "0x0781529af7e0f980e4fb3a4d0933920fae5f966e0e1f02f344a3dd055e28a39c",
+            "receiptPath": "deployments/receipts/arbitrum/66f3efc4743f034258e53e19f4d67bca990efe9994971fccc9662df92ed6c9db-70f5752326735b31641f21d174ba035e904db93c.json"
+          },
+          "ism": {
+            "address": "0x3d2add3a7dacb82c11338b6731b22d2afed4e1cc",
+            "runtimeCodeKeccak256": "0x0b83ca1758c0e4688e76f793fc208f63aae2b2519573d9f90e92dec2c53a95b7",
+            "receiptPath": "deployments/receipts/arbitrum/0a4760760dece5c16dd7019620b88292c870688b981950d1af1a131691a08298-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json"
+          },
+          "transportBundle": {
+            "address": "0x119f5533d40889b23769b3c2d507cdfc90fff8ca",
+            "runtimeCodeKeccak256": "0x893d9566e5ebbb90b8cf02049493f4c260bed29c74bc3ee20135de86f5faf231",
+            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-119f5533d40889b23769b3c2d507cdfc90fff8ca.json"
+          },
+          "mailbox": {
+            "address": "0x9465471e6dbadac4759f5950bc0e8d8ee6e81c83",
+            "runtimeCodeKeccak256": "0x191415471f8ae24be17fa5f6d82c7358c1d97bca7b61d5ceff8b754dcd4acd93",
+            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json"
+          },
+          "merkleTreeHook": {
+            "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
+            "runtimeCodeKeccak256": "0x3bbfeccd86fe0a3ce2cf81c49633f5d482399dbe738962672f56e6382de534ee",
+            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json"
+          },
+          "requiredHook": {
+            "address": "0x61799183b5e9ee2a1fd1345317e6e201d70713ce",
+            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+            "receiptPath": "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-61799183b5e9ee2a1fd1345317e6e201d70713ce.json"
+          },
+          "nativeRouterDeployer": {
+            "address": "0xe4baed23f8b9262eb71ade74a26322288e6a0cb3",
+            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
+            "receiptPath": "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json"
+          },
+          "syntheticRouterDeployer": {
+            "address": "0x62567be722f5ef9df0dac5eefe6965b007be155d",
+            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
+            "receiptPath": "deployments/receipts/arbitrum/ab909a862eb9ecd5db3a52f210f3506645e408492f35d74f174f42f6fc1f9284-62567be722f5ef9df0dac5eefe6965b007be155d.json"
+          },
+          "collateralRouterDeployer": {
+            "address": "0x013f2f2f7db897f941b19c4ab71c5395a48a0292",
+            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
+            "receiptPath": "deployments/receipts/arbitrum/6a4472fd72731c2359cde7ae3682798305416ecabe732b5bdd6b9cfae5150bc8-013f2f2f7db897f941b19c4ab71c5395a48a0292.json"
+          },
+          "factory": {
+            "address": "0x3b83687d77170d42feddfe221629cc21e771e021",
+            "runtimeCodeKeccak256": "0x265e1ce08ee96a52136b413485a5838cf5dacb63f416501107a5664fadf5ea07",
+            "receiptPath": "deployments/receipts/arbitrum/d62f216de9b7e0d75e6a21aa01c722aca5c9672858f7b9a17d68c2f0bed881ad-3b83687d77170d42feddfe221629cc21e771e021.json"
+          },
+          "sourceRegistry": {
+            "address": "0x14d5d33a65a39f96665ed631b04fecf357bcb576",
+            "runtimeCodeKeccak256": "0xbbbdc37306007a6a59aa76280c1b99f2d5d1fb6a6170f9ef9bf2b72be1382bb8",
+            "receiptPath": "deployments/receipts/arbitrum/f02ceb03ff4619a3efcce6dc7ce6cf6e6e1f0522eda95a678acbad9ea353589e-14d5d33a65a39f96665ed631b04fecf357bcb576.json"
+          },
+          "executionGateway": {
+            "address": "0x0334b4c9b1307fce68f25e72b65ab32dcc83343b",
+            "runtimeCodeKeccak256": "0xf7da4200ef8edb5c938f255faf5d359a9b6f7b2b12b2ee283e8f5a030bc4ab36",
+            "receiptPath": "deployments/receipts/arbitrum/f57065929b5e5083fdfd04a42b7da1d6b5d0acef3a3e280b5be574011cf0c778-0334b4c9b1307fce68f25e72b65ab32dcc83343b.json"
+          }
+        },
+        "receiptPaths": [
+          "deployments/receipts/arbitrum/0a3fba71d05c0f017d5731ab10886e00f41cc9a49a7516071e00b10e5f46c5b7-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
+          "deployments/receipts/arbitrum/0a4760760dece5c16dd7019620b88292c870688b981950d1af1a131691a08298-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
+          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
+          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
+          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-61799183b5e9ee2a1fd1345317e6e201d70713ce.json",
+          "deployments/receipts/arbitrum/4eb9ebc13f163e89db58d20dd98a1e46aad85bf7452465b56c13b6d6126d2936-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json",
+          "deployments/receipts/arbitrum/66f3efc4743f034258e53e19f4d67bca990efe9994971fccc9662df92ed6c9db-70f5752326735b31641f21d174ba035e904db93c.json",
+          "deployments/receipts/arbitrum/6a4472fd72731c2359cde7ae3682798305416ecabe732b5bdd6b9cfae5150bc8-013f2f2f7db897f941b19c4ab71c5395a48a0292.json",
+          "deployments/receipts/arbitrum/ab909a862eb9ecd5db3a52f210f3506645e408492f35d74f174f42f6fc1f9284-62567be722f5ef9df0dac5eefe6965b007be155d.json",
+          "deployments/receipts/arbitrum/c5e29a25245940fd6bce7cb7e44c0c0800a0a2bbb0f3e5f45a979607794b99ef-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json",
+          "deployments/receipts/arbitrum/d62f216de9b7e0d75e6a21aa01c722aca5c9672858f7b9a17d68c2f0bed881ad-3b83687d77170d42feddfe221629cc21e771e021.json",
+          "deployments/receipts/arbitrum/f02ceb03ff4619a3efcce6dc7ce6cf6e6e1f0522eda95a678acbad9ea353589e-14d5d33a65a39f96665ed631b04fecf357bcb576.json",
+          "deployments/receipts/arbitrum/f57065929b5e5083fdfd04a42b7da1d6b5d0acef3a3e280b5be574011cf0c778-0334b4c9b1307fce68f25e72b65ab32dcc83343b.json"
+        ]
+      },
+      "present": true
+    },
+    "base": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "base",
+      "chainId": 8453,
+      "domainId": 8453,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {
+          "blsVerifier": {
+            "address": "0x1a6610cc7dd0d0f42e22c3608e025d891065814c",
+            "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+            "receiptPath": "deployments/receipts/base/47e984a9c05ceb6a16964b32d61f54c2132f85e81b6c43dbe1c1de6994794cfb-1a6610cc7dd0d0f42e22c3608e025d891065814c.json"
+          },
+          "validatorRegistry": {
+            "address": "0xcf7e1a877d919c1c8dba48b42a832bdb1042101f",
+            "runtimeCodeKeccak256": "0x3db85329319eedb7290260bbd01faf8a24981d6ec927577d851b1428a08f575c",
+            "receiptPath": "deployments/receipts/base/06d5ae54895dae24f7051a272eb4eee4db46f182ba2b8ed328d1449125c6d392-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json"
+          },
+          "ism": {
+            "address": "0x402d1eabd5b11e517688231a641d027376c6ed10",
+            "runtimeCodeKeccak256": "0xbcc6c1a0696c2c44f7863a0375be467a50e45a4d15a225272618acf8d9e575f9",
+            "receiptPath": "deployments/receipts/base/20784b967f6af4ec0d184de7d465e717943d941362b9d13e68a86efbb158333b-402d1eabd5b11e517688231a641d027376c6ed10.json"
+          },
+          "transportBundle": {
+            "address": "0x2c7a18747fda9b8a3d98e8603ddab24a5248dcce",
+            "runtimeCodeKeccak256": "0x07b4d7907bc3a22c896f30d61eb0d37cd9814a306962de50110b65479a005eac",
+            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2c7a18747fda9b8a3d98e8603ddab24a5248dcce.json"
+          },
+          "mailbox": {
+            "address": "0xd3389684b69f80f7a281569b64a2e47872f74add",
+            "runtimeCodeKeccak256": "0x3579770012cc3221e4999a8346fbd36dc7c8049506da5a02643d08ff90626592",
+            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-d3389684b69f80f7a281569b64a2e47872f74add.json"
+          },
+          "merkleTreeHook": {
+            "address": "0xa831991450e2a150951da8c2f3344f940603c714",
+            "runtimeCodeKeccak256": "0x0dd639393293d317f0b3876262f74d23df1dd0f7071e1298019618b0a4ab6f01",
+            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-a831991450e2a150951da8c2f3344f940603c714.json"
+          },
+          "requiredHook": {
+            "address": "0x2a7ccc17b5df62ef8052f10a39ce46c04285a867",
+            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+            "receiptPath": "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2a7ccc17b5df62ef8052f10a39ce46c04285a867.json"
+          },
+          "nativeRouterDeployer": {
+            "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
+            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
+            "receiptPath": "deployments/receipts/base/1d39b45134f6b574c618eec12164ca2912dd99fe2d434a954c1405ed030cf7f7-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
+          },
+          "syntheticRouterDeployer": {
+            "address": "0xa91b1e7179a50f0d798d284676d3ba9ff705fe82",
+            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
+            "receiptPath": "deployments/receipts/base/32c7102252ff4a8c67d744802ab9a8c8d54a616464e08cae20d9e63dfb31122f-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json"
+          },
+          "collateralRouterDeployer": {
+            "address": "0xa27eadcaf70631e29009019d390e48410a830e64",
+            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
+            "receiptPath": "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json"
+          },
+          "factory": {
+            "address": "0xa3018e0560113fe3206aadeb1ee9553fd1e76370",
+            "runtimeCodeKeccak256": "0xa72f14259b579c5b8e87d4f92bfe5fff94c56c961dca1518f5021bf874596513",
+            "receiptPath": "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json"
+          },
+          "sourceRegistry": {
+            "address": "0xbd87ceebbac310186b0caf2ec4ed6c50f7d767c3",
+            "runtimeCodeKeccak256": "0x4d0b24018a02adc0f16478ed0954f291b286227c2e018028c889bef58cf05269",
+            "receiptPath": "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json"
+          },
+          "executionGateway": {
+            "address": "0x9b6b92ef1745611f402341965f7fc649cbe0da8c",
+            "runtimeCodeKeccak256": "0xb4a21b0648ad22789c17a0426bad54235406eb2d8b9355995b59aa441ae626ab",
+            "receiptPath": "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
+          }
+        },
+        "receiptPaths": [
+          "deployments/receipts/base/04a48af0f864b0bc0a06b1f26ef3e83eff374c646d429dbd30cd09837b48c98b-a3018e0560113fe3206aadeb1ee9553fd1e76370.json",
+          "deployments/receipts/base/06d5ae54895dae24f7051a272eb4eee4db46f182ba2b8ed328d1449125c6d392-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json",
+          "deployments/receipts/base/1d39b45134f6b574c618eec12164ca2912dd99fe2d434a954c1405ed030cf7f7-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
+          "deployments/receipts/base/20784b967f6af4ec0d184de7d465e717943d941362b9d13e68a86efbb158333b-402d1eabd5b11e517688231a641d027376c6ed10.json",
+          "deployments/receipts/base/32c7102252ff4a8c67d744802ab9a8c8d54a616464e08cae20d9e63dfb31122f-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json",
+          "deployments/receipts/base/47e984a9c05ceb6a16964b32d61f54c2132f85e81b6c43dbe1c1de6994794cfb-1a6610cc7dd0d0f42e22c3608e025d891065814c.json",
+          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2a7ccc17b5df62ef8052f10a39ce46c04285a867.json",
+          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-2c7a18747fda9b8a3d98e8603ddab24a5248dcce.json",
+          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-a831991450e2a150951da8c2f3344f940603c714.json",
+          "deployments/receipts/base/769f83d0824eb6dc66edeea750284be6570cf6527dc90fa71016e2a1ffdfa9d9-d3389684b69f80f7a281569b64a2e47872f74add.json",
+          "deployments/receipts/base/a7dad7a9f70784175d93ff78842127badb06bdddb3e3c5685e9640a49b18bf23-a27eadcaf70631e29009019d390e48410a830e64.json",
+          "deployments/receipts/base/c3670ea6eaf0d9d3a91b6e443a9fbb425d7b470619b5a607e921f1558c16a832-bd87ceebbac310186b0caf2ec4ed6c50f7d767c3.json",
+          "deployments/receipts/base/e062c5afa9910191da91184c4225537f42c2eda642a1da2facdf154a9c652d9d-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
+        ]
+      },
+      "present": true
+    },
+    "polygon": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "polygon",
+      "chainId": 137,
+      "domainId": 137,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {},
+        "receiptPaths": []
+      },
+      "present": false
+    },
+    "xgrchain": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "xgrchain",
+      "chainId": 1643,
+      "domainId": 1643,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {
+          "validatorRegistry": {
+            "address": "0x65a9473b0a7c5ec27127125c05fb4efc29efdba6",
+            "runtimeCodeKeccak256": "0xc23060c0226260f29e7a11f79145fe990febd0f2b21fdb5efe22b860c5c8591f",
+            "receiptPath": "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
+          },
+          "ism": {
+            "address": "0x8c4585952a5960fe1238414eba409288aa4bb47a",
+            "runtimeCodeKeccak256": "0xd1959777e904d98a30ad65ba0adf6da36bf0280e97402db932a37a100a77015c",
+            "receiptPath": "deployments/receipts/xgrchain/8509ad9b09108496cfc386ff333470ba7f94a43dc5522daaa9776ecf18ad50ba-8c4585952a5960fe1238414eba409288aa4bb47a.json"
+          },
+          "nativeRouterDeployer": {
+            "address": "0x88e5f2aba4bfae19a266a83140a4079f69157c7c",
+            "runtimeCodeKeccak256": "0x2cb0841cfe51e75dd12a20fc6eb1a0e822391bcb9fc78d1218118afa1718ea20",
+            "receiptPath": "deployments/receipts/xgrchain/112a0c4365362bce68c50641b5537b3a40c351a6299e22c5e9335e5f57b67d85-88e5f2aba4bfae19a266a83140a4079f69157c7c.json"
+          },
+          "transportBundle": {
+            "address": "0xe848fac0da4b78ea828ffde791cca352e2297383",
+            "runtimeCodeKeccak256": "0xf1b5c031df4e5fb145e2018d12fe5f3d070bd9ac6d450cb65beab18f80956928",
+            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-e848fac0da4b78ea828ffde791cca352e2297383.json"
+          },
+          "mailbox": {
+            "address": "0xf77ae8f922ebf001638dc78a06d8d1e28589f519",
+            "runtimeCodeKeccak256": "0x360f5d5baf88294a8cad28fe9470d8681f8ab9e2e53e2ee5791de3689343c88b",
+            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-f77ae8f922ebf001638dc78a06d8d1e28589f519.json"
+          },
+          "merkleTreeHook": {
+            "address": "0x44a8374cf1ff674a92a6876832af245b805e2161",
+            "runtimeCodeKeccak256": "0xa45d35878783297c6682994e31a01d9c605b455844eb8dcf08d4002589b6c68b",
+            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-44a8374cf1ff674a92a6876832af245b805e2161.json"
+          },
+          "requiredHook": {
+            "address": "0x3ea58a78931afbab565c912a2ab4054bf16c044b",
+            "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+            "receiptPath": "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-3ea58a78931afbab565c912a2ab4054bf16c044b.json"
+          },
+          "syntheticRouterDeployer": {
+            "address": "0xe86d6cd451b2f78b6fb3aa9a4723f166134e10f4",
+            "runtimeCodeKeccak256": "0xbdd8b594661a5bd896763b2eedec7a8f5251b360405bd2ff05fca6c2e5ca54a3",
+            "receiptPath": "deployments/receipts/xgrchain/40a00402ffb52ec625701cbcc72c053ed1e998a7c80ea77006b1f7cd93e4ca89-e86d6cd451b2f78b6fb3aa9a4723f166134e10f4.json"
+          },
+          "collateralRouterDeployer": {
+            "address": "0xb3ef09105bb4e3b21f29f3064bba2c46cb415a35",
+            "runtimeCodeKeccak256": "0xe3aacabd41d9aae2fb5544c93b19419b556d5d4f9ee8906b4cb5b6eac04d8182",
+            "receiptPath": "deployments/receipts/xgrchain/97e838da2bd2de2aea3ba812c49dcb91e5c9792ec668048f94cf7f927722b5ff-b3ef09105bb4e3b21f29f3064bba2c46cb415a35.json"
+          },
+          "factory": {
+            "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+            "runtimeCodeKeccak256": "0x4bdf70f0c95dc3e8b2f22c773a2d089c25990ba17a240e3680b8b27f714ca484",
+            "receiptPath": "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json"
+          },
+          "sourceRegistry": {
+            "address": "0x590d9d35276661f250e2cdf83d32a0e1cbebac38",
+            "runtimeCodeKeccak256": "0x80f3de0a2a687dd513968607fc38bec5a38053ee68c04b0653716b7332ce2fc4",
+            "receiptPath": "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json"
+          },
+          "executionGateway": {
+            "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
+            "runtimeCodeKeccak256": "0x7d002332b4c5ef2811f2f440b22546d3fb71be8d30195aef069745e1b24a9ca9",
+            "receiptPath": "deployments/receipts/xgrchain/9f5650a9582d254e1a05c05aa6f6915889ed59eb4636ad3beb01043fc2688e68-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
+          }
+        },
+        "receiptPaths": [
+          "deployments/receipts/xgrchain/112a0c4365362bce68c50641b5537b3a40c351a6299e22c5e9335e5f57b67d85-88e5f2aba4bfae19a266a83140a4079f69157c7c.json",
+          "deployments/receipts/xgrchain/1cf74b3c025f9706cf0cd2c6d6786ced2c4b5d4fe0221dcffbbb902b4750aada-590d9d35276661f250e2cdf83d32a0e1cbebac38.json",
+          "deployments/receipts/xgrchain/2815e5b3ead50479d6d2fa26d1650c0e60ffddd470474ac1701ad20166a4ccdf-504f241c1c177d811021f6412a0c2474d410ec99.json",
+          "deployments/receipts/xgrchain/40a00402ffb52ec625701cbcc72c053ed1e998a7c80ea77006b1f7cd93e4ca89-e86d6cd451b2f78b6fb3aa9a4723f166134e10f4.json",
+          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-3ea58a78931afbab565c912a2ab4054bf16c044b.json",
+          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-44a8374cf1ff674a92a6876832af245b805e2161.json",
+          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-e848fac0da4b78ea828ffde791cca352e2297383.json",
+          "deployments/receipts/xgrchain/47376207cecdeb534fdbb72e8f1ab30ddb86dbe701da584bd87d6576c2485420-f77ae8f922ebf001638dc78a06d8d1e28589f519.json",
+          "deployments/receipts/xgrchain/8509ad9b09108496cfc386ff333470ba7f94a43dc5522daaa9776ecf18ad50ba-8c4585952a5960fe1238414eba409288aa4bb47a.json",
+          "deployments/receipts/xgrchain/97e838da2bd2de2aea3ba812c49dcb91e5c9792ec668048f94cf7f927722b5ff-b3ef09105bb4e3b21f29f3064bba2c46cb415a35.json",
+          "deployments/receipts/xgrchain/9f5650a9582d254e1a05c05aa6f6915889ed59eb4636ad3beb01043fc2688e68-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
+          "deployments/receipts/xgrchain/d7dd7ef6d18036032b32ba95f33bade90670d5cdf48a7b531d27c32dd2978404-65a9473b0a7c5ec27127125c05fb4efc29efdba6.json"
+        ]
+      },
+      "present": true
+    }
+  },
+  "publication": {
+    "schemaVersion": 1,
+    "kind": "xita-publication-policy",
+    "minimumLockedUsd": null,
+    "maxEvidenceAgeSeconds": 900
   }
 }
