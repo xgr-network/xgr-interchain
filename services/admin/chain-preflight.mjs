@@ -49,7 +49,7 @@ export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall})
   ]);
   result.head=BigInt(block).toString();result.gasPriceWei=BigInt(price).toString();
   result.standardTransferGasFloorWei=(BigInt(price)*21000n).toString();
-  result.mailboxCode=false;result.merkleTreeHookCode=false;
+  result.mailboxCode=false;result.dispatchHookCode=false;
   result.transportReady=false;
   if(chain.blsVerifierFormat==="compressed"){
    if(!/^0x[a-f0-9]{40}$/i.test(bootstrap.verifierAddress||""))

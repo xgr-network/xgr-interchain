@@ -39,7 +39,7 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
   ORIGIN_CHAIN_ID:String(src.chainId),
   ORIGIN_DOMAIN:String(src.domainId),
   ORIGIN_MAILBOX:srcCore.mailbox?.address,
-  ORIGIN_MERKLE_TREE_HOOK:srcCore.merkleTreeHook?.address,
+  ORIGIN_MERKLE_TREE_HOOK:srcCore.dispatchHook?.address,
   ORIGIN_ILN_REGISTRY:srcCore.sourceRegistry?.address,
   ORIGIN_ILN_GATEWAY:route.gateway,
   ORIGIN_WARP_ROUTER:route.sourceRouter,

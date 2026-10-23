@@ -16,7 +16,7 @@ const GATEWAY=new Interface([
  "function destinationDomain() view returns (uint32)",
  "function feeVault() view returns (address)",
  "function mailbox() view returns (address)",
- "function merkleTreeHook() view returns (address)",
+ "function dispatchHook() view returns (address)",
  "function destinationRouter() view returns (address)",
  "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
 ]);
@@ -149,7 +149,7 @@ export async function inspectRouteReadiness({catalog,asset,source,destination,
   for(const [chain,contract,label] of [
    [source,srcCore.sourceRegistry,"source-registry"],
    [source,srcCore.mailbox,"source-mailbox"],
-   [source,srcCore.merkleTreeHook,"source-hook"],
+   [source,srcCore.dispatchHook,"source-hook"],
    [source,srcCore.executionGateway,"source-execution-gateway"],
    [source,sourceGatewayRecord,"source-gateway"],
    [source,sourceVaultRecord,"source-vault"],
@@ -186,7 +186,7 @@ export async function inspectRouteReadiness({catalog,asset,source,destination,
   await property(source,sg,GATEWAY,"destinationDomain",dst.domainId,"gateway-domain");
   await property(source,sg,GATEWAY,"feeVault",fv,"gateway-fee-vault");
   await property(source,sg,GATEWAY,"mailbox",srcCore.mailbox.address,"gateway-mailbox");
-  await property(source,sg,GATEWAY,"merkleTreeHook",srcCore.merkleTreeHook.address,"gateway-merkle-hook");
+  await property(source,sg,GATEWAY,"dispatchHook",srcCore.dispatchHook.address,"gateway-merkle-hook");
   await property(source,sg,GATEWAY,"destinationRouter",dr,"gateway-destination-router");
   await property(source,fv,VAULT,"gateway",sg,"vault-gateway");
   await property(source,fv,VAULT,"routeId",route.routeId,"vault-route-id");
@@ -214,7 +214,7 @@ export async function inspectRouteReadiness({catalog,asset,source,destination,
   const reg=(await call(source,sr,REGISTRY,"getRoute",[dst.domainId,route.routeId]));
   checked("canonical-source-route",BigInt(reg[0])===BigInt(src.chainId)&&
    BigInt(reg[1])===BigInt(src.domainId)&&eq(reg[2],sg)&&eq(reg[3],srouter)&&
-   eq(reg[4],srcCore.mailbox.address)&&eq(reg[5],srcCore.merkleTreeHook.address)&&
+   eq(reg[4],srcCore.mailbox.address)&&eq(reg[5],srcCore.dispatchHook.address)&&
    eq(reg[6],dr)&&reg[7]>0n&&reg[8]===true,
    "SourceRegistry route inactive or misbound");
   const provenance=(await call(source,sr,REGISTRY,"assetRoute",[dst.domainId,route.routeId]));
