@@ -38,6 +38,11 @@ async function withTransaction(pool,fn){
 }
 export async function resetIndexedRoute({pool,route}){
  await withTransaction(pool,async db=>{
+  await db.query({text:`DELETE FROM xita_tax_charged_fees p
+    USING xita_transfer_operations o
+    WHERE o.source_chain=$1 AND o.route_id=$2
+      AND p.source_chain=o.source_chain AND p.message_id=o.message_id`,
+   values:[route.sourceChain,route.routeId]});
   await db.query({text:"DELETE FROM xita_transfer_operations WHERE source_chain=$1 AND route_id=$2",
    values:[route.sourceChain,route.routeId]});
   await db.query({text:"DELETE FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_id=$2",
@@ -438,6 +443,10 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
     continue;
    }
    await withTransaction(pool,async db=>{
+    await db.query({text:`DELETE FROM xita_tax_charged_fees
+      WHERE source_chain=$1 AND source_tx_hash=$2 AND message_id=$3
+      AND source_block_hash=$4`,values:[row.source_chain,row.source_tx_hash,
+      row.verified_message_id,row.verified_block_hash]});
     await db.query({text:`DELETE FROM xita_transfer_operations
       WHERE source_chain=$1 AND source_tx_hash=$2 AND message_id=$3
       AND source_block_hash=$4`,values:[row.source_chain,row.source_tx_hash,
@@ -507,6 +516,15 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
  }
  const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
  await pruneTransferAnnouncements({pool}).catch(()=>{});
+ // Only temporary quote evidence is pruned. A genuine charged fee retains its
+ // permanent tax receipt and IP/country evidence. After a generous grace period,
+ // an expired/unpaid quote is not retained indefinitely.
+ await pool.query({text:`DELETE FROM xita_tax_quote_evidence q
+   WHERE q.quote_expires_at < NOW()-INTERVAL '72 hours'
+     AND NOT EXISTS (SELECT 1 FROM xita_tax_charged_fees p
+       WHERE p.source_chain=q.source_chain
+         AND p.execution_adapter=q.execution_adapter
+         AND p.payer=q.payer AND p.quote_nonce=q.quote_nonce)`}).catch(()=>{});
  return {routes:progress,destinations,accelerated,hintsRechecked};
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
