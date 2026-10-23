@@ -6,6 +6,7 @@ import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
+import {metaMaskTokenSpec,injectedMetaMask,requestMetaMaskToken,metaMaskFailure} from "./metamask-token.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
 import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
@@ -1139,6 +1140,20 @@ document.addEventListener("click",e=>{
  e.preventDefault();
  if(!navigator.clipboard?.writeText){copy.textContent="Copy unavailable";return;}
  void navigator.clipboard.writeText(address).then(()=>{copy.textContent="Copied";}).catch(()=>{copy.textContent="Copy unavailable";});
+});
+let metaMaskImportBusy=false;
+document.addEventListener("click",async event=>{
+ const button=event.target.closest("button[data-xita-add-metamask]");
+ if(!button||metaMaskImportBusy||!state.catalog)return;
+ event.preventDefault();
+ const spec=metaMaskTokenSpec(buildExperienceModel(state.catalog,()=>false),button.dataset.asset,button.dataset.chain);
+ if(!spec){button.textContent="Token unavailable";return;}
+ const provider=injectedMetaMask(globalThis.ethereum);
+ if(!provider){button.textContent="MetaMask required";return;}
+ metaMaskImportBusy=true;button.disabled=true;button.textContent="Open MetaMask…";
+ try{button.textContent=await requestMetaMaskToken(provider,spec)?"Added to MetaMask":"Not added";}
+ catch(error){button.textContent="Retry MetaMask";button.title=metaMaskFailure(error);}
+ finally{metaMaskImportBusy=false;button.disabled=false;}
 });
 window.addEventListener("popstate",render);
 // Exact-hash finality polling is separate from the finalized event index.
