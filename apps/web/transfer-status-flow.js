@@ -109,7 +109,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    scanning?"Checking verified wallet history…":
    "Keep this window open for updates, or close it and resume from My Transfers.";
  if(twoHop&&delivered)message="Both XGRChain and "+name(destination)+" Mailbox deliveries are independently confirmed. No further transaction is required.";
- if(!delivered&&!error&&working&&["first-proof-wait","final-proof-wait"].includes(stage))
+ if(!delivered&&!error&&working&&
+   (stage==="first-proof-wait"&&firstSource||stage==="final-proof-wait"&&onwardSource))
    message=notice||"Waiting for validator signatures. No MetaMask action is needed yet.";
  if(!delivered&&!working&&!record&&!notice&&HASH.test(journey.sourceTxHash||""))
    message="Original wallet transaction was broadcast. Checking the chain index; do not submit another source transaction.";
