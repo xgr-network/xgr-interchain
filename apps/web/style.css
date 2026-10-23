@@ -1313,3 +1313,6 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 .ja-actions button[data-join-action="back"]{color:#e8f2ff;background:#142740;border:1px solid #7296bd;font-size:13px;font-weight:650;min-height:46px;min-width:112px}
 .ja-actions button[data-join-action="back"]:hover,.ja-actions button[data-join-action="back"]:focus-visible{background:#213b5b;border-color:#b7dbff;color:#fff}
 .ja-actions button[data-join-action="back"]:focus-visible{outline:2px solid #aedcff;outline-offset:3px}
+
+.ux-contract-line .ux-mm-import{background:#183b56;border-color:#77aacf;color:#eff8ff;font-weight:700}
+.ux-contract-line .ux-mm-import:hover,.ux-contract-line .ux-mm-import:focus-visible{background:#285879;border-color:#b4dcff}
