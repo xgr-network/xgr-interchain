@@ -66,18 +66,25 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   record?.finalProofObservation:record?.proofObservation;
  const observing=Boolean(proofObservation&&
    ["queued","checking","waiting","unavailable"].includes(proofObservation.state));
+ const observationAt=Date.parse(proofObservation?.updatedAt||"");
+ const observationStale=Boolean(proofObservation&&Number.isFinite(observationAt)&&
+  Date.now()-observationAt>300000);
  const proofReady=proofObservation?.state==="ready"&&
    Number.isFinite(Date.parse(proofObservation.checkedAt))&&
    Date.now()-Date.parse(proofObservation.checkedAt)<180000;
- const proofWaiting=observing&&proofObservation.state!=="unavailable";
+ // A crashed/stopped worker must not freeze the UI in "checking" forever.
+ // Manual recovery still revalidates the complete canonical proof on demand.
+ const proofWaiting=observing&&!observationStale&&proofObservation.state!=="unavailable";
  const continueLabel=status==="awaiting-onward"?"Continue onward from XGRChain":
    status==="awaiting-final-proof"?"Continue final delivery":
    proofReady?"Continue destination delivery":"Check validators and continue delivery";
  const canContinue=!working&&!error&&Boolean(record?.confirmed)&&
    pendingWallet.includes(status)&&!delivered&&!proofWaiting;
  const canRefresh=!working&&!delivered&&(Boolean(record)||HASH.test(journey.sourceTxHash||""));
- const needsAttention=Boolean(error)||["delivery-unknown","final-delivery-unknown",
-   "journey-ambiguous","destination-not-deployed"].includes(status);
+ const needsAttention=Boolean(error)||observationStale||
+   proofObservation?.state==="unavailable"||
+   ["delivery-unknown","final-delivery-unknown",
+    "journey-ambiguous","destination-not-deployed"].includes(status);
  const awaitingWallet=working&&["source-approval","source-sign","first-delivery-sign",
    "onward-approval","onward-source-sign","final-delivery-sign"].includes(stage);
  let heading=delivered?"Transfer delivered":
@@ -95,6 +102,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  let message=delivered?"Both destination Mailbox deliveries are confirmed. No further wallet action is required.":
    error?String(error):
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
+   observationStale?"The background verification has not updated recently. Refresh your wallet status or retry the unsigned proof check; your original transfer remains recorded. No source lock/burn is repeated.":
    proofWaiting?"XITA is checking validator signatures in the background. No wallet action is necessary. The status survives reloads and reconnects.":
    proofObservation?.state==="unavailable"?"Background proof verification is temporarily unavailable ("+String(proofObservation.reason||"PROOF_NOT_READY")+"). The source remains confirmed. XITA will retry automatically.":
    proofReady?"Unsigned validator proof was prepared. Continue when ready; XITA re-verifies source, proof and destination Mailbox before MetaMask opens.":

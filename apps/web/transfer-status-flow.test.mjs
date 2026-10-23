@@ -105,3 +105,13 @@ test("unavailable proof never says Base was delivered",()=>{
  assert.equal(flow.delivered,false);
  assert.match(flow.message,/PROOF_RPC_UNAVAILABLE/);
 });
+
+test("stale server observer does not permanently disable independent manual recovery",()=>{
+ const record={...base,status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"checking",updatedAt:"2026-01-01T00:00:00Z"}};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.canContinue,true);
+ assert.equal(flow.needsAttention,true);
+ assert.match(flow.message,/not updated recently/);
+ assert.equal(flow.verifiedWalletTx,1);
+});
