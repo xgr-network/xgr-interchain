@@ -13,10 +13,11 @@ import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
-import {listSourceTxHints,rememberSourceTxHint} from "./source-tx-hints.js";
+import {rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
+import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -259,74 +260,17 @@ async function scanWalletHistory(){
     data.wallet?.toLowerCase()!==account.toLowerCase()||
     !["complete","partial"].includes(data.status)||!Array.isArray(data.items))
    throw Error("Invalid indexer wallet response");
-  for(const item of data.items.filter(t=>
-    t.account?.toLowerCase()===account.toLowerCase()&&
-    /^0x[0-9a-f]{64}$/i.test(t.txHash||"")&&
-    ["pending-source","awaiting-proof","awaiting-onward","awaiting-final-proof",
-      "final-delivery-unknown","journey-delivered","journey-ambiguous",
-      "delivery-unknown","delivered"].includes(t.status)))
-    upsertTransfer(item);
+  // Canonical SQL wallet projection REPLACES the previous browser read model.
+  // Only the exact transaction being broadcast in this wallet session may
+  // remain provisional until the index catches up. No Explorer/hint history.
+  transferActivity.items=canonicalWalletSnapshot({
+   account,rows:data.items,previous:transferActivity.items,
+   activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()&&
+     flowView.open?flowView.sourceTxHash:null
+  });
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
   transferActivity.indexCoverage=data.coverage||null;
-  // A complete route cursor is not proof that a specific older wallet TX is
-  // present in the SQL worklist. A user-supplied resume hash is only a locator;
-  // verify source tx.from and canonical Gateway+Dispatch receipt independently.
-  const requested=transferActivity.selectedTxHash;
-  const probeKey=account.toLowerCase()+":"+requested;
-  if(/^0x[0-9a-f]{64}$/i.test(requested||"")&&
-      !transferActivity.items.some(t=>t.txHash?.toLowerCase()===requested.toLowerCase())&&
-      Date.now()-(resumeProbed.get(probeKey)||0)>=45000){
-   resumeProbed.set(probeKey,Date.now());
-   for(const chain of new Set(configuredGatewayRoutes(state.catalog).map(route=>route.sourceChain))){
-    try{
-     const record=await findWalletSourceTx({catalog:state.catalog,account,
-      sourceChain:chain,txHash:requested});
-     if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-     upsertTransfer(record);
-     break;
-    }catch{
-     // The other source chain may contain the original canonical operation.
-    }
-   }
-  }
-  // Optional official explorer discovery is independent of archive RPC logs.
-  // Explorer-only hits remain unverified and cannot enable "Continue".
-  try{
-   const reply=await fetch("/api/xeta/v1/transfers/discovery?"+
-    new URLSearchParams({account}),{cache:"no-store",credentials:"omit",
-    headers:{accept:"application/json"},signal:controller.signal});
-   if(reply.ok){
-    const found=await reply.json();
-    if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-    if(found?.kind==="xita-explorer-wallet-discovery-v1"&&
-     found.wallet?.toLowerCase()===account.toLowerCase()&&Array.isArray(found.items)){
-     for(const item of found.items.slice(0,24)){
-      if(item?.unverified||item?.status==="explorer-discovered")continue;
-      if(item?.account?.toLowerCase()===account.toLowerCase()&&
-       /^0x[0-9a-f]{64}$/i.test(item.txHash||""))upsertTransfer(item);
-     }
-    }
-   }
-  }catch{/* Explorer access is optional and never downgrades chain evidence. */}
-  // A missing SQL cursor must not erase a broadcast source TX after a reload.
-  // Hints are never displayed or executable until fresh wallet/receipt
-  // verification succeeds. Bound attempts to protect the browser/RPC.
-  const hints=listSourceTxHints(account).filter(h=>
-    !transferActivity.items.some(t=>t.sourceChain===h.sourceChain&&
-     t.txHash?.toLowerCase()===h.txHash));
-  for(const hint of hints.slice(0,4)){
-   if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-   const key=account.toLowerCase()+":"+hint.sourceChain+":"+hint.txHash;
-   if(Date.now()-(resumeProbed.get(key)||0)<45000)continue;
-   resumeProbed.set(key,Date.now());
-   try{
-    const observed=await findWalletSourceTx({catalog:state.catalog,account,
-     sourceChain:hint.sourceChain,txHash:hint.txHash});
-    if(marker!==transferRequest||state.account?.toLowerCase()!==account.toLowerCase())return;
-    upsertTransfer(observed);
-   }catch{/* Unverified local hints never become wallet history. */}
-  }
   const complete=data.status==="complete"&&data.coverage?.complete===true&&data.truncated!==true;
   transferActivity.report={source:"indexer",lookback:null,
    scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
@@ -348,24 +292,6 @@ async function scanWalletHistory(){
    "while the wallet is connected. The indexer may need repair; never rebroadcast "+
    "the original source transfer.";
   transferActivity.error="";
-  // If PostgreSQL is unavailable, official explorer discovery remains an
-  // independent read-only wallet recovery path; never imply empty history.
-  try{
-   const response=await fetch("/api/xeta/v1/transfers/discovery?"+
-    new URLSearchParams({account}),{credentials:"omit",cache:"no-store",
-    headers:{accept:"application/json"},signal:controller.signal});
-   if(response.ok){
-    const discovered=await response.json();
-    if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()&&
-     discovered?.wallet?.toLowerCase()===account.toLowerCase()&&
-     discovered.kind==="xita-explorer-wallet-discovery-v1"&&Array.isArray(discovered.items)){
-     for(const record of discovered.items.slice(0,24)){
-      if(record?.confirmed===true&&record?.unverified!==true&&
-       record.account?.toLowerCase()===account.toLowerCase())upsertTransfer(record);
-     }
-    }
-   }
-  }catch{/* Both sources unavailable: keep existing cached verified wallet rows. */}
  }finally{
   clearTimeout(timeout);
   if(marker===transferRequest&&state.account?.toLowerCase()===account.toLowerCase()){
@@ -1248,9 +1174,11 @@ setInterval(async()=>{
       !Array.isArray(data.items))return;
    if(state.account?.toLowerCase()!==account.toLowerCase()||
      transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
-   for(const row of data.items)if(row.account?.toLowerCase()===account.toLowerCase()&&
-      /^0x[0-9a-f]{64}$/i.test(row.txHash||"")&&
-      row.confirmed===true)upsertTransfer(row);
+   transferActivity.items=canonicalWalletSnapshot({
+    account,rows:data.items,previous:transferActivity.items,
+    activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()&&
+      flowView.open?flowView.sourceTxHash:null
+   });
    if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
    refreshTransferLink();
   }
