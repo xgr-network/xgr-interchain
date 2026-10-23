@@ -85,6 +85,7 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
      const queue=record.notificationQueue||[];
      if(desired!=="under-review"&&desired!=="rejected"&&!((record.sent||[]).includes("approved"))&&!queue.includes("approved"))queue.push("approved");
 
+     if(merged&&milestones.firstRoute&&!(record.sent||[]).includes("first-route")&&!(record.sent||[]).includes("deployed")&&!queue.includes("first-route"))queue.push("first-route");
      if(STATUS[desired]&&desired!=="deployed"&&!queue.includes(desired)&&!(record.sent||[]).includes(desired))queue.push(desired);
      record.notificationQueue=queue;
      if(["rejected","listed"].includes(desired))record.retainUntil=new Date(Date.now()+180*86400000).toISOString();
