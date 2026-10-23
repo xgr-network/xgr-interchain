@@ -30,8 +30,10 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    firstDelivered.has(status)&&record?.delivered===true:delivered;
  const onwardSource=twoHop&&secondConfirmed.has(status)&&
    HASH.test(record?.secondHopTxHash||"")&&HASH.test(record?.secondHopMessageId||"");
- const firstProof=firstDestination||(working&&["first-delivery-sign","first-delivery-pending"].includes(stage));
- const finalProof=delivered||(working&&["final-delivery-sign","final-delivery-pending"].includes(stage));
+ const firstProof=firstDestination||(firstSource&&working&&
+   ["first-delivery-sign","first-delivery-pending"].includes(stage));
+ const finalProof=delivered||(onwardSource&&working&&
+   ["final-delivery-sign","final-delivery-pending"].includes(stage));
  const completed=twoHop?
    [firstSource,firstProof,firstDestination,onwardSource,finalProof,delivered]:
    [firstSource,firstProof,delivered];
@@ -52,35 +54,61 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  if(working&&Object.hasOwn(activeStages,stage)){
    const staged=activeStages[stage];
    // The actual recorded state always wins over a stale asynchronous UI hint.
-   if(staged>=index&&staged<steps.length)index=staged;
+   // A transient UI stage cannot skip unresolved chain finality.
+   if(staged>=index&&staged<steps.length&&
+     (staged<1||firstSource)&&
+     (staged<4||!twoHop||onwardSource))index=staged;
  }
  if(index>=steps.length)index=-1;
  const pendingWallet=twoHop?["awaiting-proof","awaiting-onward","awaiting-final-proof"]:
    ["awaiting-proof"];
+ const proofObservation=status==="awaiting-final-proof"?
+  record?.finalProofObservation:
+  status==="awaiting-proof"?record?.proofObservation:null;
+ const observing=Boolean(proofObservation&&
+   ["queued","checking","waiting","unavailable"].includes(proofObservation.state));
+ const observationAt=Date.parse(proofObservation?.updatedAt||"");
+ const observationStale=Boolean(proofObservation&&Number.isFinite(observationAt)&&
+  Date.now()-observationAt>300000);
+ const proofReady=proofObservation?.state==="ready"&&
+   Number.isFinite(Date.parse(proofObservation.checkedAt))&&
+   Date.now()-Date.parse(proofObservation.checkedAt)<180000;
+ // A crashed/stopped worker must not freeze the UI in "checking" forever.
+ // Manual recovery still revalidates the complete canonical proof on demand.
+ const proofWaiting=observing&&!observationStale&&proofObservation.state!=="unavailable";
  const continueLabel=status==="awaiting-onward"?"Continue onward from XGRChain":
    status==="awaiting-final-proof"?"Continue final delivery":
-   "Check validators and continue delivery";
+   proofReady?"Continue destination delivery":"Check validators and continue delivery";
  const canContinue=!working&&!error&&Boolean(record?.confirmed)&&
-   pendingWallet.includes(status)&&!delivered;
+   pendingWallet.includes(status)&&!delivered&&!proofWaiting;
  const canRefresh=!working&&!delivered&&(Boolean(record)||HASH.test(journey.sourceTxHash||""));
- const needsAttention=Boolean(error)||["delivery-unknown","final-delivery-unknown",
-   "journey-ambiguous","destination-not-deployed"].includes(status);
+ const needsAttention=Boolean(error)||observationStale||
+   proofObservation?.state==="unavailable"||
+   ["delivery-unknown","final-delivery-unknown",
+    "journey-ambiguous","destination-not-deployed"].includes(status);
  const awaitingWallet=working&&["source-approval","source-sign","first-delivery-sign",
    "onward-approval","onward-source-sign","final-delivery-sign"].includes(stage);
  let heading=delivered?"Transfer delivered":
    needsAttention?"Verification needs attention":
    awaitingWallet?"MetaMask action required":
    working?"Checking transfer — please wait":
+   proofWaiting?"Checking validator proof automatically":
    canContinue?"Ready for the next verified step":
    canRefresh?"Transfer not yet complete":"Preparing transfer";
  if(status==="pending-source")heading="Source transaction pending";
  if(status==="confirming")heading="Source finality pending";
- if(status==="awaiting-onward"&&!working&&!error)heading="XGRChain delivery confirmed";
- if(status==="awaiting-final-proof"&&!working&&!error)heading="Second hop confirmed";
+ if(status==="awaiting-onward"&&!working&&!error)heading="Action required · Continue second hop";
+ if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Action required · Continue final delivery";
  if(delivered)heading="Transfer complete";
  let message=delivered?"Both destination Mailbox deliveries are confirmed. No further wallet action is required.":
    error?String(error):
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
+   observationStale?"The background verification has not updated recently. Refresh your wallet status or retry the unsigned proof check; your original transfer remains recorded. No source lock/burn is repeated.":
+   proofWaiting?"XITA is checking validator signatures in the background. No wallet action is necessary. The status survives reloads and reconnects.":
+   proofObservation?.state==="unavailable"?"Background proof verification is temporarily unavailable ("+String(proofObservation.reason||"PROOF_NOT_READY")+"). The source remains confirmed. XITA will retry automatically.":
+   proofReady?"Unsigned validator proof was prepared. Continue when ready; XITA re-verifies source, proof and destination Mailbox before MetaMask opens.":
+   canContinue&&status==="awaiting-final-proof"?"The second hop is confirmed. Continue to verify the latest validator proof before any final MetaMask delivery.":
+   canContinue&&status==="awaiting-onward"?"XGRChain delivery is confirmed. Click below to authorize the onward transaction in MetaMask. Never repeat the original Arbitrum burn.":
    notice?String(notice):
    status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
@@ -90,9 +118,10 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    scanning?"Checking verified wallet history…":
    "Keep this window open for updates, or close it and resume from My Transfers.";
  if(twoHop&&delivered)message="Both XGRChain and "+name(destination)+" Mailbox deliveries are independently confirmed. No further transaction is required.";
- if(!delivered&&!error&&working&&["first-proof-wait","final-proof-wait"].includes(stage))
+ if(!delivered&&!error&&working&&
+   (stage==="first-proof-wait"&&firstSource||stage==="final-proof-wait"&&onwardSource))
    message=notice||"Waiting for validator signatures. No MetaMask action is needed yet.";
- if(!delivered&&!working&&!record&&HASH.test(journey.sourceTxHash||""))
+ if(!delivered&&!working&&!record&&!notice&&HASH.test(journey.sourceTxHash||""))
    message="Original wallet transaction was broadcast. Checking the chain index; do not submit another source transaction.";
  const verifiedWalletTx=twoHop?
    Number(firstSource)+Number(firstDestination)+Number(onwardSource)+Number(delivered):

@@ -8,7 +8,7 @@ import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggrega
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
-import {selectedRecovery} from "./wallet-transfer-selection.js";
+import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
@@ -16,6 +16,7 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 import {listSourceTxHints,rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
+import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -200,22 +201,24 @@ function setConnectedAccount(next){
  if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
-  if(flowView.journey&&record?.account?.toLowerCase()===state.account?.toLowerCase()&&
-    (record.txHash?.toLowerCase()===flowView.sourceTxHash?.toLowerCase()||
-     record.parentMessageId&&transferActivity.items.some(t=>t.txHash===flowView.sourceTxHash&&t.messageId===record.parentMessageId))){
-     if(!flowView.sourceTxHash)flowView.sourceTxHash=record.txHash;
-  }
+ if(!record||record.account?.toLowerCase()!==state.account?.toLowerCase())return;
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
-  t.txHash===record.txHash);
- if(previous?.confirmed===true&&record.confirmed!==true)return;
- if(previous?.status==="confirming"&&record.status==="pending-source")return;
- if(previous?.status==="journey-delivered"&&record.status!=="journey-delivered")return;
- if(previous?.status==="delivered"&&record.status!=="delivered")return;
- if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
-  transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
- transferActivity.items=[record,...transferActivity.items.filter(t=>
-  !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
+  t.txHash?.toLowerCase()===record.txHash?.toLowerCase());
+ // Canonical-source evidence is monotonic across a delayed SQL index, direct
+ // finality lookups, multiple RPC providers and background refreshes.
+ // A conflicting immutable identity never authorizes new wallet activity.
+ const observed=mergeWalletObservation(previous,record);
+ const current=[observed,...transferActivity.items.filter(t=>
+  !(t.sourceChain===record.sourceChain&&
+    t.txHash?.toLowerCase()===record.txHash?.toLowerCase()))];
+ // One journey, not two pending operations. Link only independently verified
+ // child Gateway+Dispatch provenance to the original parentMessageId.
+ transferActivity.items=linkIndexedJourneys(current,current);
+ if(observed.confirmed===true&&/^0x[0-9a-f]{64}$/i.test(observed.txHash||"")&&
+    state.catalog?.chains?.[observed.sourceChain])
+  rememberSourceTxHint({account:state.account,sourceChain:observed.sourceChain,txHash:observed.txHash});
  refreshTransferLink();
+ updateFlowModal();
 }
 // Non-blocking, untrusted staging hint after MetaMask broadcasts. No UI
 // action, funds, recovery, or transfer history depends on this POST succeeding.
@@ -458,10 +461,16 @@ async function performTransferAction(){
  if(!state.account){document.querySelector("#connect")?.click();return;}
  const account=state.account;
  const selected=selectedRecovery(transferActivity.items,account,transferActivity.selectedTxHash);
+ if(blocksUnverifiedSourceRepeat(transferActivity.selectedTxHash,selected)){
+  transferActivity.error="A previous source TX is selected but not independently verified for continuation. Never submit another source burn/lock. Refresh My Transfers instead.";
+  if(path()==="/transfer")render();
+  return;
+ }
  if(selected&&!flowView.open)openFlowModal();
  transferActivity.working=true;transferActivity.error="";
  setFlowStage(selected?.status==="awaiting-onward"?"onward-source-sign":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
  let broadcastKnown=false;
+ let autoContinueParent=null;
  transferActivity.notice=selected?"Rechecking original source and destination chains…":
   "Checking recovery readiness, wallet nonce and source route…";
  render();
@@ -482,9 +491,11 @@ async function performTransferAction(){
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:true,
-     onStatus:msg=>{transferActivity.notice=msg;if(path()==="/transfer")render();},
+     onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
+     onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      setFlowStage("final-delivery-pending");
       transferActivity.notice="Final destination TX "+txHash+" submitted.";
       if(path()==="/transfer")render();
      }
@@ -526,14 +537,16 @@ async function performTransferAction(){
      sourceChain:"xgrchain",txHash:sent.txHash});
     upsertTransfer(onward);
     if(onward.status==="awaiting-proof"){
-     transferActivity.selectedTxHash=onward.txHash;
+     // The modal and selection remain anchored to the ORIGINAL Arbitrum parent.
      setFlowStage("final-proof-wait");
      transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
      if(path()==="/transfer")render();
      const processed=await resumeDelivery({catalog:state.catalog,account,
       record:onward,provider:globalThis.ethereum,waitForProof:true,
-      onStatus:notice=>{transferActivity.notice=notice;if(path()==="/transfer")render();},
+      onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
+      onStatus:notice=>{setFlowStage("final-proof-wait",notice);if(path()==="/transfer")render();},
       onBroadcast:({txHash})=>{
+       setFlowStage("final-delivery-pending");
        transferActivity.notice="Final destination TX "+txHash+" submitted.";
        if(path()==="/transfer")render();
       }
@@ -552,10 +565,13 @@ async function performTransferAction(){
     return;
    }
    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
-    provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+    provider:globalThis.ethereum,waitForProof:true,
+    onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
+    onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
     },onBroadcast:({txHash})=>{
      broadcastKnown=true;
+     setFlowStage("first-delivery-pending");
      transferActivity.notice="Destination TX "+txHash+
       " submitted. Original source transfer is NEVER repeated.";
     }});
@@ -572,6 +588,9 @@ async function performTransferAction(){
     return;
    }
    await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+   if(result.status==="delivered"&&selected.destinationChain==="xgrchain"&&selected.finalDestinationChain&&
+      selected.onwardRouteId&&flowView.open&&flowView.sourceTxHash?.toLowerCase()===selected.txHash.toLowerCase())
+    autoContinueParent=selected.txHash.toLowerCase();
    return;
   }
   const model=buildExperienceModel(state.catalog,()=>false);
@@ -630,11 +649,14 @@ async function performTransferAction(){
     transferActivity.selectedTxHash=record.txHash;
     setFlowStage("first-proof-wait","Source finalized. Waiting for validator proof and destination delivery…");
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
-     provider:globalThis.ethereum,waitForProof:true,onStatus:notice=>{
+     provider:globalThis.ethereum,waitForProof:true,
+     onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
+     onStatus:notice=>{
       setFlowStage("first-proof-wait");
       transferActivity.notice=notice;if(path()==="/transfer")render();
      },onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      setFlowStage("first-delivery-pending");
       transferActivity.notice="Destination TX "+txHash+" submitted. Checking delivery…";
       if(path()==="/transfer")render();
      }});
@@ -660,6 +682,15 @@ async function performTransferAction(){
    transferActivity.working=false;
    if(path()==="/transfer")render();
    updateFlowModal();
+   // Auto-continue only this explicitly active, verified two-hop journey.
+   // The hub adapter checks the on-chain once-per-parent guard before TX3.
+   if(autoContinueParent&&state.account?.toLowerCase()===account.toLowerCase()&&
+      transferActivity.selectedTxHash?.toLowerCase()===autoContinueParent&&flowView.open){
+    const parent=transferActivity.items.find(t=>t.txHash?.toLowerCase()===autoContinueParent&&
+      t.account?.toLowerCase()===account.toLowerCase());
+    if(parent?.status==="awaiting-onward"&&parent.delivered===true)
+     void performTransferAction();
+   }
   }
  }
 }
@@ -1194,24 +1225,48 @@ setInterval(async()=>{
  const hash=transferActivity.selectedTxHash;
  const entry=transferActivity.items.find(t=>t.txHash?.toLowerCase()===hash?.toLowerCase()&&
   t.account?.toLowerCase()===state.account.toLowerCase());
- if(!entry||!["pending-source","confirming"].includes(entry.status))return;
+ if(!entry||["delivered","journey-delivered"].includes(entry.status))return;
  directFinalityPoll=true;
  const account=state.account;
  try{
-  const record=await findWalletSourceTx({catalog:state.catalog,account,
-   sourceChain:entry.sourceChain,txHash:entry.txHash});
-  if(state.account?.toLowerCase()!==account.toLowerCase()||
-   transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
-  upsertTransfer(record);
-  if(record.confirmed)flowView.stage="first-proof-wait";
-  render();
- }catch{/* Unknown RPC status cannot downgrade previously observed evidence. */}
+  if(["pending-source","confirming"].includes(entry.status)){
+   const record=await findWalletSourceTx({catalog:state.catalog,account,
+    sourceChain:entry.sourceChain,txHash:entry.txHash});
+   if(state.account?.toLowerCase()!==account.toLowerCase()||
+    transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+   upsertTransfer(record);
+   if(record.confirmed)flowView.stage="first-proof-wait";
+  }else{
+   // Light polling reads ONLY durable SQL/validator observations, never
+   // starts proof subprocesses or any wallet transaction in the browser.
+   const reply=await fetch("/api/xeta/v1/transfers/wallet?"+
+    new URLSearchParams({account}),{cache:"no-store",credentials:"omit"});
+   if(!reply.ok)return;
+   const data=await reply.json();
+   if(data?.kind!=="xita-wallet-transfer-index-v1"||
+      data.wallet?.toLowerCase()!==account.toLowerCase()||
+      !Array.isArray(data.items))return;
+   if(state.account?.toLowerCase()!==account.toLowerCase()||
+     transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+   for(const row of data.items)if(row.account?.toLowerCase()===account.toLowerCase()&&
+      /^0x[0-9a-f]{64}$/i.test(row.txHash||"")&&
+      row.confirmed===true)upsertTransfer(row);
+   if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
+   refreshTransferLink();
+  }
+  if(path()==="/transfer")render();
+  updateFlowModal();
+ }catch{/* Unknown index/RPC status cannot downgrade canonical evidence. */}
  finally{directFinalityPoll=false}
 },12000);
 setInterval(()=>{
  if(!state.account||!state.catalog||transferActivity.scanning||
     transferActivity.working||document.visibilityState==="hidden")return;
- if(path()==="/my-transfers"||path()==="/transfer")
+ // A pending transfer continues updating even if the user navigates to
+ // Tokens or the Universe. Hidden tabs can rely on the server-side observer.
+ if(path()==="/my-transfers"||path()==="/transfer"||
+    transferActivity.indexOpenCount>0||
+    openWalletTransfers(transferActivity.items,state.account).length>0)
   void scanWalletHistory();
 },45000);
 refreshTransferLink();

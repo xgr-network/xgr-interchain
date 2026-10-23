@@ -74,3 +74,37 @@ test("every unresolved transfer links to its own verified wallet recovery intent
   account,txHash:tx,status:"awaiting-proof",asset:"XGR"}]});
  assert.doesNotMatch(alien,/&amp;resume=/);
 });
+
+test("verified linked two-hop Arbitrum to Base renders ONE wallet operation",()=>{
+ const parent={account,asset:"XGR",sourceChain:"arbitrum",
+  destinationChain:"xgrchain",finalDestinationChain:"base",
+  finalRecipient:account,routeId:h("1"),onwardRouteId:h("2"),
+  txHash:h("c"),messageId:h("d"),amountRaw:"100",
+  confirmed:true,delivered:true,status:"awaiting-final-proof",
+  secondHopTxHash:h("e"),secondHopMessageId:h("f")};
+ const child={account,asset:"XGR",sourceChain:"xgrchain",
+  destinationChain:"base",finalRecipient:account,routeId:h("2"),
+  parentMessageId:h("d"),txHash:h("e"),messageId:h("f"),
+  amountRaw:"100",executionAdapter:"0x"+"1".repeat(40),
+  confirmed:true,delivered:false,status:"awaiting-proof"};
+ const html=renderMyTransfers({account,catalog:{...cat,
+  chains:{...cat.chains,arbitrum:{name:"Arbitrum"}}},
+  items:[parent,child]});
+ assert.equal((html.match(/class="ux-transfer-card"/g)||[]).length,1);
+ assert.match(html,/Arbitrum → Base/);
+ assert.match(html,/Second hop TX/);
+ assert.doesNotMatch(html,/xita-transfer-card.*xita-transfer-card/s);
+ const finished={...parent,status:"journey-delivered",finalDelivered:true};
+ const complete=renderMyTransfers({account,catalog:cat,
+  items:[finished,{...child,delivered:true,status:"delivered"}]});
+ assert.equal((complete.match(/class="ux-transfer-card"/g)||[]).length,1);
+ assert.match(complete,/Journey delivered/);
+});
+test("orphan second hop is not silently discarded as another person's journey",()=>{
+ const lone={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",
+  parentMessageId:h("a"),routeId:h("b"),txHash:h("c"),messageId:h("d"),
+  finalRecipient:account,amountRaw:"100",executionAdapter:"0x"+"1".repeat(40),
+  confirmed:true,delivered:false,status:"awaiting-proof"};
+ const html=renderMyTransfers({account,catalog:cat,items:[lone]});
+ assert.equal((html.match(/class="ux-transfer-card"/g)||[]).length,1);
+});

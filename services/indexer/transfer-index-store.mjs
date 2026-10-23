@@ -1,6 +1,8 @@
 // PostgreSQL read model for finalized XITA Gateway messages. No private keys,
 // no custody, no inferred mint/unlock and no USD TVL derived from event counts.
 import {indexedRoutes} from "./transfer-index.mjs";
+export {linkIndexedJourneys} from "../../apps/web/verified-journey.js";
+import {linkIndexedJourneys} from "../../apps/web/verified-journey.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i, HASH=/^0x[0-9a-f]{64}$/i;
 const lowercase=x=>String(x||"").toLowerCase();
 let readerPool=null;
@@ -63,43 +65,40 @@ export function indexedTransferRow(row){
 // A source's destination delivery is NOT proof that a two-hop journey
 // reached the final chain. Link only the uniquely confirmed second-hop
 // adapter event (parentMessageId) and independently checked Mailbox result.
-export function linkIndexedJourneys(items,children){
- const byParent=new Map;
- for(const child of children||[]){
-  if(!HASH.test(child.parentMessageId||"")||child.sourceChain!=="xgrchain"||
-     !HASH.test(child.messageId||""))continue;
-  const key=child.parentMessageId;
-  byParent.set(key,[...(byParent.get(key)||[]),child]);
- }
- return (items||[]).map(item=>{
-  if(!item.onwardRouteId||item.delivered!==true)return item;
-  const matches=(byParent.get(item.messageId)||[]).filter(child=>
-    lowercase(child.account)===lowercase(item.account)&&
-    child.asset===item.asset&&
-    lowercase(child.routeId)===lowercase(item.onwardRouteId)&&
-    child.destinationChain===item.finalDestinationChain&&
-    lowercase(child.finalRecipient)===lowercase(item.finalRecipient)&&
-    child.amountRaw===item.amountRaw&&
-    child.executionAdapter!=null);
-  if(matches.length>1)return {...item,status:"journey-ambiguous"};
-  if(!matches.length)return {...item,status:"awaiting-onward"};
-  const next=matches[0];
-  return {...item,
-   secondHopTxHash:next.txHash,secondHopMessageId:next.messageId,
-   status:next.delivered===true?"journey-delivered":
-    next.delivered===false?"awaiting-final-proof":"final-delivery-unknown",
-   finalDelivered:next.delivered};
- });
-}
 // Correlate only a FINALIZED completed second hop to a paid parent.
 // The same predicate is used by the pending worklist and complete counts.
-const completedChildPredicate=`EXISTS (SELECT 1 FROM xita_transfer_operations c
- WHERE c.source_chain='xgrchain'
+const matchingChildCondition=`c.source_chain='xgrchain'
  AND c.parent_message_id=p.message_id AND c.account=p.account
  AND c.asset=p.asset AND c.route_id=p.onward_route_id
  AND c.destination_chain=p.final_destination_chain
  AND c.final_recipient=p.final_recipient AND c.amount_raw=p.amount_raw
- AND c.execution_adapter IS NOT NULL AND c.delivered IS TRUE)`;
+ AND c.execution_adapter IS NOT NULL`;
+const completedChildPredicate=`((
+ SELECT COUNT(*) FROM xita_transfer_operations c
+ WHERE ${matchingChildCondition})=1
+ AND EXISTS (SELECT 1 FROM xita_transfer_operations c
+ WHERE ${matchingChildCondition} AND c.delivered IS TRUE))`;
+// Exclude only a uniquely linked child from the wallet-facing journey count.
+// The child remains in the immutable ledger and linked parent details.
+const linkedChildPredicate=`p.parent_message_id IS NOT NULL AND p.source_chain='xgrchain'
+ AND p.execution_adapter IS NOT NULL AND (
+ SELECT COUNT(*) FROM xita_transfer_operations parent
+ WHERE parent.message_id=p.parent_message_id
+ AND parent.account=p.account AND parent.asset=p.asset
+ AND parent.delivered IS TRUE AND parent.onward_route_id=p.route_id
+ AND parent.final_destination_chain=p.destination_chain
+ AND parent.final_recipient=p.final_recipient
+ AND parent.amount_raw=p.amount_raw)=1
+ AND (
+ SELECT COUNT(*) FROM xita_transfer_operations sibling
+ WHERE sibling.source_chain='xgrchain'
+ AND sibling.parent_message_id=p.parent_message_id
+ AND sibling.account=p.account AND sibling.asset=p.asset
+ AND sibling.route_id=p.route_id
+ AND sibling.destination_chain=p.destination_chain
+ AND sibling.final_recipient=p.final_recipient
+ AND sibling.amount_raw=p.amount_raw
+ AND sibling.execution_adapter IS NOT NULL)=1`;
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
@@ -118,7 +117,7 @@ export async function readWalletTransferIndex(catalog,account,{
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
     final_destination_chain,final_recipient,onward_route_id,parent_message_id
     FROM xita_transfer_operations p
-    WHERE p.account=$1 AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
+    WHERE p.account=$1 AND NOT (${linkedChildPredicate}) AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
       OR (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
     -- Always surface unresolved work before older/newer completed transfers.
     -- A 100-row wallet page must not hide a pending bridge behind 100
@@ -134,7 +133,7 @@ export async function readWalletTransferIndex(catalog,account,{
      (p.delivered IS TRUE AND p.onward_route_id IS NOT NULL
       AND NOT ${completedChildPredicate}))::text AS open,
    COUNT(*) FILTER (WHERE p.delivered IS NULL)::text AS unknown
-   FROM xita_transfer_operations p WHERE p.account=$1`,
+   FROM xita_transfer_operations p WHERE p.account=$1 AND NOT (${linkedChildPredicate})`,
   values:[lowercase(account)]});
  const rawItems=rows.rows.map(indexedTransferRow);
  const parents=rawItems.filter(item=>item.onwardRouteId&&item.delivered===true)
@@ -153,7 +152,39 @@ export async function readWalletTransferIndex(catalog,account,{
    values:[lowercase(account),parents]});
   children=linked.rows.map(indexedTransferRow);
  }
- const linkedItems=linkIndexedJourneys(rawItems,children);
+ // Optional persistent proof-observer state: read-only diagnostic metadata
+ // for the already verified and account-scoped canonical source messages.
+ // No journal status (even ready) authorizes signing or marks delivery.
+ let linkedItems=linkIndexedJourneys(rawItems,children);
+ const observedIds=[...new Set([...rawItems,...children].filter(item=>
+   item.confirmed===true&&HASH.test(item.messageId||"")).map(item=>item.messageId))];
+ if(observedIds.length){
+  try{
+   const proof=await connected.query({text:`SELECT j.source_chain,j.message_id,
+    j.state,j.reason,j.stage,j.last_checked_at,j.updated_at
+    FROM xita_transfer_proof_observations j
+    JOIN xita_transfer_operations o USING(source_chain,message_id)
+    WHERE o.account=$1 AND o.delivered IS FALSE
+      AND j.message_id::text = ANY($2::text[])`,
+    values:[lowercase(account),observedIds]});
+   const byKey=new Map(proof.rows.map(row=>[row.source_chain+":"+lowercase(row.message_id),{
+    state:row.state,reason:row.reason||null,stage:row.stage||null,
+    checkedAt:iso(row.last_checked_at),updatedAt:iso(row.updated_at)
+   }]));
+   linkedItems=linkedItems.map(item=>{
+    const own=byKey.get(item.sourceChain+":"+lowercase(item.messageId));
+    const next=children.find(child=>item.secondHopTxHash&&
+      lowercase(child.txHash)===lowercase(item.secondHopTxHash)&&
+      lowercase(child.messageId)===lowercase(item.secondHopMessageId));
+    const final=next&&byKey.get(next.sourceChain+":"+lowercase(next.messageId));
+    return {...item,...(own?{proofObservation:own}:{}),
+      ...(final?{finalProofObservation:final}:{})};
+   });
+  }catch(error){
+   // Existing databases remain functional before SQL 008 is installed.
+   if(!["42P01","42501"].includes(error?.code))throw error;
+  }
+ }
  // The staging table is untrusted. Display ONLY observed source TXs for which
  // the separate RPC worker verified tx.from and the canonical Gateway target.
  // Reported-only wallet claims are NEVER exposed in another wallet's history.
@@ -201,8 +232,27 @@ export async function readTransferIndexStats(catalog,{pool=null,now=Date.now(),r
  const sum=await connected.query(`SELECT asset,delivered,COUNT(*)::text AS count,
     SUM(amount_raw)::text AS amount_raw
     FROM xita_transfer_operations GROUP BY asset,delivered ORDER BY asset,delivered`);
+ // Aggregate route diagnostics only: never expose accounts, tx/message hashes,
+ // proof calldata, or interpret quorum/readiness as destination delivery.
+ let proofObserver={status:"not-provisioned",routes:[]};
+ try{
+  const checks=await connected.query(`SELECT o.source_chain,o.destination_chain,
+    o.route_name,j.state,j.reason,COUNT(*)::text AS count,
+    MAX(j.last_checked_at) AS last_checked_at
+    FROM xita_transfer_proof_observations j
+    JOIN xita_transfer_operations o USING(source_chain,message_id)
+    WHERE o.delivered IS FALSE
+    GROUP BY o.source_chain,o.destination_chain,o.route_name,j.state,j.reason
+    ORDER BY o.source_chain,o.destination_chain,o.route_name,j.state,j.reason`);
+  proofObserver={status:"available",routes:checks.rows.map(row=>({
+   source:row.source_chain,destination:row.destination_chain,route:row.route_name,
+   state:row.state,reason:row.reason||null,count:Number(row.count),
+   checkedAt:iso(row.last_checked_at)}))};
+ }catch(error){
+  if(!["42P01","42501"].includes(error?.code))throw error;
+ }
  return {kind:"xita-transfer-index-stats-v1",status:coverage.complete?"complete":"partial",
-  coverage,hopEvents:sum.rows.map(row=>({asset:row.asset,
+  coverage,proofObserver,hopEvents:sum.rows.map(row=>({asset:row.asset,
    state:row.delivered===true?"delivered":row.delivered===false?"pending":"unknown",
    count:Number(row.count),amountRaw:row.amount_raw})),
   note:"Hop event counts and raw source amounts; NOT distinct journeys, TVL, or USD movement."};

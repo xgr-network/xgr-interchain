@@ -42,3 +42,18 @@ test("second-hop uncertain after XGR hub delivery is still pending",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-ambiguous"}]}),1);
  assert.equal(pendingDeliveryCount({account:wallet,items:[{...parent,status:"journey-delivered"}]}),0);
 });
+
+test("one verified two-hop journey is exactly one pending wallet operation",()=>{
+ const message="0x"+"e".repeat(64),tx="0x"+"f".repeat(64);
+ const route="0x"+"9".repeat(64),account=wallet;
+ const parent={...open,account,sourceChain:"arbitrum",destinationChain:"xgrchain",
+  messageId:message,txHash:open.txHash,onwardRouteId:route,asset:"XGR",amountRaw:"100",
+  finalDestinationChain:"base",finalRecipient:account,status:"awaiting-final-proof",
+  delivered:true,secondHopTxHash:tx,secondHopMessageId:"0x"+"8".repeat(64)};
+ const child={...open,account,sourceChain:"xgrchain",destinationChain:"base",
+  txHash:tx,messageId:parent.secondHopMessageId,parentMessageId:message,
+  routeId:route,asset:"XGR",amountRaw:"100",finalRecipient:account,
+  executionAdapter:"0x"+"1".repeat(40),status:"awaiting-proof",delivered:false};
+ assert.equal(pendingDeliveryCount({account,items:[parent,child]}),1);
+ assert.equal(pendingDeliveryCount({account,items:[parent,child],indexedOpenCount:1}),1);
+});

@@ -69,3 +69,49 @@ test("mined but unfinalized Arbitrum parent stays at first step and shows count"
  assert.match(flow.message,/41 \/ 64 confirmations/);
  assert.doesNotMatch(flow.message,/Indexer synchronized/);
 });
+
+test("verified validator proof advances to MetaMask delivery before source receipt changes",()=>{
+ const record={...base,status:"awaiting-proof",delivered:false};
+ const signing=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-sign"});
+ assert.equal(signing.steps[1].state,"complete");
+ assert.equal(signing.steps[2].state,"current");
+ assert.equal(signing.verifiedWalletTx,1);
+ assert.equal(signing.heading,"MetaMask action required");
+ const pending=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-pending"});
+ assert.equal(pending.steps[2].state,"current");
+ assert.equal(pending.verifiedWalletTx,1);
+});
+
+test("persistent background proof observation waits without asking for wallet signature",()=>{
+ const record={...base,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
+  finalProofObservation:{state:"waiting",reason:"PROOF_PENDING"}};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.canContinue,false);
+ assert.match(flow.heading,/automatically/);
+ assert.match(flow.message,/background/);
+ assert.equal(flow.steps[5].state,"pending");
+ const ready=deriveTransferFlow({journey,record:{...record,
+  finalProofObservation:{state:"ready",checkedAt:new Date().toISOString()}}});
+ assert.equal(ready.canContinue,true);
+ assert.match(ready.continueLabel,/final delivery/);
+ assert.equal(ready.verifiedWalletTx,3);
+});
+test("unavailable proof never says Base was delivered",()=>{
+ const record={...base,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
+  finalProofObservation:{state:"unavailable",reason:"PROOF_RPC_UNAVAILABLE"}};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.delivered,false);
+ assert.match(flow.message,/PROOF_RPC_UNAVAILABLE/);
+});
+
+test("stale server observer does not permanently disable independent manual recovery",()=>{
+ const record={...base,status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"checking",updatedAt:"2026-01-01T00:00:00Z"}};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.canContinue,true);
+ assert.equal(flow.needsAttention,true);
+ assert.match(flow.message,/not updated recently/);
+ assert.equal(flow.verifiedWalletTx,1);
+});

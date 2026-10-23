@@ -56,10 +56,10 @@ test("only the exact canonical onward parent message and route completes a two-h
  const parent={account:payer,asset:"XGR",routeId:hash("1"),messageId:firstId,
   assetId:hash("f"),sourceChain:"base",destinationChain:"xgrchain",
   finalDestinationChain:"polygon",finalRecipient:payer,
-  onwardRouteId:hash("2"),amountRaw:"100",delivered:true,status:"awaiting-onward"};
+  onwardRouteId:hash("2"),amountRaw:"100",confirmed:true,delivered:true,status:"awaiting-onward"};
  const child={...parent,messageId:nextId,txHash:hash("c"),sourceChain:"xgrchain",
   destinationChain:"polygon",parentMessageId:firstId,routeId:parent.onwardRouteId,
-  onwardRouteId:null,executionAdapter:addr("d"),delivered:true};
+  onwardRouteId:null,executionAdapter:addr("d"),confirmed:true,delivered:true};
  let linked=linkIndexedJourneys([parent],[child])[0];
  assert.equal(linked.status,"journey-delivered");
  assert.equal(linked.secondHopTxHash,hash("c"));
@@ -123,4 +123,103 @@ test("wallet history prioritizes older unfinished transfers before newer complet
  assert.match(sql,/p.delivered IS DISTINCT FROM TRUE/);
  assert.match(sql,/p.onward_route_id IS NOT NULL AND NOT/);
  assert.match(sql,/p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT/);
+});
+
+test("wallet joins optional durable proof status only for its canonical indexed messages",async()=>{
+ const wallet=addr("a"),message=hash("b"),tx=hash("c");
+ const base={account:wallet,asset:"XGR",source_chain:"xgrchain",
+  destination_chain:"base",route_name:"xgr_to_base",route_id:hash("f"),
+  gateway:addr("1"),source_tx_hash:tx,message_id:message,
+  source_block_number:50,amount_raw:"100",validator_fee_wei:"1",delivered:false};
+ const calls=[];
+ const pool={query:async arg=>{
+  const q=typeof arg==="string"?{text:arg}:arg;
+  calls.push(q);
+  if(q.text.includes("FROM xita_transfer_index_cursors"))return {rows:[]};
+  if(q.text.includes("COUNT(*) FILTER"))return {rows:[{open:"1",unknown:"0"}]};
+  if(q.text.includes("FROM xita_transfer_announcements"))return {rows:[]};
+  if(q.text.includes("FROM xita_transfer_proof_observations j"))
+   return {rows:[{source_chain:"xgrchain",message_id:message,state:"waiting",
+    reason:"PROOF_QUORUM_UNAVAILABLE",stage:"quorum",
+    updated_at:"2026-10-23T10:00:00Z",last_checked_at:"2026-10-23T10:00:00Z"}]};
+  if(q.text.includes("FROM xita_transfer_operations p"))return {rows:[base]};
+  return {rows:[]};
+ }};
+ const result=await readWalletTransferIndex({},wallet,{pool,routeList:[]});
+ assert.equal(result.items.length,1);
+ assert.equal(result.items[0].proofObservation.reason,"PROOF_QUORUM_UNAVAILABLE");
+ const proofCall=calls.find(c=>c.text.includes("FROM xita_transfer_proof_observations j"));
+ assert.deepEqual(proofCall.values,[wallet,[message]]);
+ assert.match(proofCall.text,/o.account=\$1/);
+ assert.match(proofCall.text,/o.delivered IS FALSE/);
+});
+test("wallet API remains available when optional proof migration is missing",async()=>{
+ const wallet=addr("a"),message=hash("c");
+ const row={account:wallet,asset:"XGR",source_chain:"xgrchain",
+  destination_chain:"base",route_name:"xgr_to_base",route_id:hash("f"),
+  gateway:addr("1"),source_tx_hash:hash("d"),message_id:message,
+  source_block_number:70,amount_raw:"100",validator_fee_wei:"1",delivered:false};
+ const pool={query:async arg=>{
+  const q=typeof arg==="string"?arg:arg.text;
+  if(q.includes("FROM xita_transfer_proof_observations j"))throw Object.assign(Error("missing"),{code:"42P01"});
+  if(q.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(q.includes("COUNT(*) FILTER"))return {rows:[{open:"1",unknown:"0"}]};
+  if(q.includes("FROM xita_transfer_announcements"))return {rows:[]};
+  if(q.includes("FROM xita_transfer_operations p"))return {rows:[row]};
+  return {rows:[]};
+ }};
+ const got=await readWalletTransferIndex({},wallet,{pool,routeList:[]});
+ assert.equal(got.items.length,1);
+ assert.equal(got.items[0].proofObservation,undefined);
+});
+test("aggregate route health reveals no addresses or signing calldata",async()=>{
+ const wallet=addr("a"),seen=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;seen.push(sql);
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("FROM xita_transfer_proof_observations j"))
+   return {rows:[{source_chain:"arbitrum",destination_chain:"xgrchain",
+    route_name:"arb_to_xgr",state:"unavailable",reason:"PROOF_RPC_UNAVAILABLE",
+    count:"2",last_checked_at:"2026-10-23T10:00:00Z"}]};
+  return {rows:[]};
+ }};
+ const {readTransferIndexStats}=await import("./transfer-index-store.mjs");
+ const stats=await readTransferIndexStats({}, {pool,routeList:[]});
+ assert.deepEqual(stats.proofObserver.routes.map(x=>[x.route,x.reason,x.count]),
+  [["arb_to_xgr","PROOF_RPC_UNAVAILABLE",2]]);
+ assert.doesNotMatch(JSON.stringify(stats.proofObserver),new RegExp(wallet,"i"));
+ assert.match(seen.find(q=>q.includes("FROM xita_transfer_proof_observations j")),/GROUP BY/);
+});
+
+test("ambiguous competing onward hops remain visible instead of silently disappearing",async()=>{
+ const wallet=addr("a"),parentMessage=hash("b");
+ const parent={account:wallet,asset:"XGR",source_chain:"arbitrum",
+  destination_chain:"xgrchain",route_name:"arb_to_xgr",route_id:hash("1"),
+  gateway:addr("1"),source_tx_hash:hash("a"),message_id:parentMessage,
+  source_block_number:100,amount_raw:"100",validator_fee_wei:"1",delivered:true,
+  onward_route_id:hash("2"),final_destination_chain:"base",
+  final_recipient:wallet,execution_adapter:addr("e")};
+ const next={...parent,source_chain:"xgrchain",destination_chain:"base",
+  route_name:"xgr_to_base",route_id:hash("2"),source_tx_hash:hash("c"),
+  message_id:hash("d"),parent_message_id:parentMessage,delivered:false,
+  onward_route_id:null,execution_adapter:addr("e")};
+ const collision={...next,source_tx_hash:hash("e"),message_id:hash("f")};
+ const calls=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;calls.push(sql);
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"3",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_operations p"))return {rows:[parent,next,collision]};
+  if(sql.includes("FROM xita_transfer_operations\n"))return {rows:[next,collision]};
+  return {rows:[]};
+ }};
+ const result=await readWalletTransferIndex({},wallet,{pool,routeList:[]});
+ assert.equal(result.items.length,3);
+ assert.equal(result.items[0].status,"journey-ambiguous");
+ assert.equal(result.openCount,3);
+ const sql=calls.find(x=>x.includes("FROM xita_transfer_operations p")&&x.includes("ORDER BY"));
+ assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations sibling/);
+ assert.match(sql,/sibling.parent_message_id=p.parent_message_id/);
+ assert.match(sql,/AND NOT \(\(/);
+ assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations c/);
 });

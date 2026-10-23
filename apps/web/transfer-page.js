@@ -1,3 +1,4 @@
+import {walletJourneys} from "./verified-journey.js";
 // Wallet-bound recovery view: never show activity before account authorization.
 import {configuredGatewayRoutes} from "./wallet-transfers.js";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -25,7 +26,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
  const chains=catalog?.chains||{};
  const options=available.map(key=>'<option value="'+esc(key)+'">'+esc(chains[key]?.name||key)+'</option>').join("");
- const cards=items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
+ const cards=walletJourneys(items).filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
   const canRecover=HASH.test(t.txHash||"")&&[
