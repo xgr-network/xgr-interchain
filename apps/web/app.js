@@ -843,7 +843,7 @@ function join(){
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
  return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status,joinState.busy);
 }
-function drawJoin(){if(path()==="/join")render();}
+function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
  const d=joinState.data;
  document.querySelectorAll("[data-join]").forEach(el=>{
