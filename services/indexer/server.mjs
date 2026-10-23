@@ -7,6 +7,7 @@ import {readFileSync,statSync,existsSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-data.js";
+import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
@@ -32,6 +33,10 @@ function readEvidence(){
 }
 export function projectMetrics(catalog,evidence,marketSnapshot=null){
  const keys=Object.keys(catalog.assets||{});
+ // Accepted Join proposals and partially documented deployments are not
+ // physical escrows. Their absence of TVL/24h evidence must not erase the
+ // independently verified totals of already deployed assets.
+ const activeKeys=keys.filter(key=>isDeployedAsset(catalog.assets[key],catalog));
  const assets={};
  for(const key of keys){
   const original=evidence?.assets?.[key];
@@ -52,15 +57,17 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
  }
  // Keep unknown aggregate unknown; never sum a partial selection as network TVL.
  const facts=buildLeaderboardRows(catalog,{kind:"xita-asset-metrics-v1",schemaVersion:1,assets},{includeUnlisted:true});
- const completeTVL=keys.length>0&&facts.every(f=>f.lockedUsd!==null);
- const completeMoved=keys.length>0&&facts.every(f=>f.movedUsd!==null);
+ const activeFacts=facts.filter(f=>activeKeys.includes(f.id));
+ const completeTVL=activeFacts.length>0&&activeFacts.every(f=>f.lockedUsd!==null);
+ const completeMoved=activeFacts.length>0&&activeFacts.every(f=>f.movedUsd!==null);
  const totals={
-  lockedUsd:completeTVL?facts.reduce((s,x)=>s+x.lockedUsd,0):null,
-  movedUsd:completeMoved?facts.reduce((s,x)=>s+x.movedUsd,0):null
+  lockedUsd:completeTVL?activeFacts.reduce((s,x)=>s+x.lockedUsd,0):null,
+  movedUsd:completeMoved?activeFacts.reduce((s,x)=>s+x.movedUsd,0):null
  };
  return {schemaVersion:1,kind:"xita-asset-metrics-v1",assets,totals,
   status:completeTVL&&completeMoved?"verified":"incomplete",
-  metadata:{configuredAssets:keys.length,verifiedAssets:facts.filter(f=>f.lockedUsd!==null&&f.movedUsd!==null).length,
+  metadata:{configuredAssets:keys.length,deployedAssets:activeKeys.length,
+   verifiedAssets:activeFacts.filter(f=>f.lockedUsd!==null&&f.movedUsd!==null).length,
    source:evidence?"trusted-evidence-file":"no-finalized-chain-evidence"}};
 }
 let cache={until:0,snapshot:null};

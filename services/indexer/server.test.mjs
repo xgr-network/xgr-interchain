@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {projectMetrics} from "./server.mjs";
-const catalog={assets:{XGR:{profile:{name:"XGR"},routes:{routes:[]}},ABC:{profile:{name:"ABC"},routes:{routes:[]}}}};
+import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
+const catalog={assets:{XGR:deployedFixture("XGR","xgrchain"),ABC:deployedFixture("ABC","base")}};
 const verified=(id)=>({assetId:id,verified:true,
  market:{status:"verified",priceUsd:2,circulatingRaw:"100",decimals:0,marketCapUsd:200},
  custody:{status:"verified",complete:true,lockedUsd:20,vaults:[{verified:true,chain:"xgrchain",router:"0xaaa",netLockedRaw:"10",valueUsd:20}]},
@@ -31,4 +32,21 @@ test("CoinGecko public market data does not fabricate locked collateral",()=>{
  const rows=projectMetrics(c,null,m);
  assert.equal(rows.assets.ABC.market.marketCapUsd,2000);
  assert.equal(rows.assets.ABC.verified,false);assert.deepEqual(rows.totals,{lockedUsd:null,movedUsd:null});
+});
+
+test("newly accepted asset with partial receipts does not zero valid XGR 24h turnover",()=>{
+ const xgr=deployedFixture("XGR","xgrchain");
+ const arb=deployedFixture("ARB","arbitrum");
+ arb.deployment.routeDeployments=[]; // e.g. registration complete, no route
+ const full={assets:{XGR:xgr,ARB:arb}};
+ const result=projectMetrics(full,{schemaVersion:1,kind:"xita-asset-metrics-v1",
+  assets:{XGR:verified("XGR")}});
+ assert.deepEqual(result.totals,{lockedUsd:20,movedUsd:8});
+ assert.equal(result.metadata.configuredAssets,2);
+ assert.equal(result.metadata.deployedAssets,1);
+ assert.equal(result.assets.ARB.verified,false);
+ // Once ARB is independently deployed, missing ARB evidence must fail closed.
+ const ready=projectMetrics({assets:{XGR:xgr,ARB:deployedFixture("ARB","arbitrum")}},
+  {schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:verified("XGR")}});
+ assert.deepEqual(ready.totals,{lockedUsd:null,movedUsd:null});
 });

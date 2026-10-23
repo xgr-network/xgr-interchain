@@ -1,6 +1,7 @@
 // Append-only verified TVL observations. No historical RPC and no interpolation.
 import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync} from "node:fs";
 import {verifiedMetrics} from "../../apps/web/leaderboard-data.js";
+import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}={}){
  // Maintain high resolution for 48h, one real observed sample per hour
  // thereafter, up to 90 days. Never synthesize or interpolate snapshots.
@@ -15,7 +16,9 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}
   return [...byHour.values(),...retained].sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf)).slice(-limit);
  };
  const previous=Array.isArray(oldHistory?.points)?oldHistory.points.filter(p=>Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&Number.isFinite(Date.parse(p?.asOf))):[];
- const assets=Object.keys(catalog?.assets||{}).filter(k=>catalog.assets[k]?.deployment?.present===true);
+ // In-progress multi-step deployments can set present=true before any usable
+ // route exists. Apply the same verified-route gate as the evidence producer.
+ const assets=Object.keys(catalog?.assets||{}).filter(k=>isDeployedAsset(catalog.assets[k],catalog));
  const facts=assets.map(id=>verifiedMetrics(snapshot,id));
  if(!assets.length||facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
  const at=Date.parse(snapshot?.asOf);
