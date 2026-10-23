@@ -1,4 +1,9 @@
-# XGR Interchain — XITA v3.1.5
+# XGR Interchain / XITA — current v3.2.3 validator runtime + v3.1.5 contracts
+
+**Current protocol:** Solidity contract family v3.1.5 and `xgr-node v3.2.3` verifier/runtime. These are independently versioned. Mainnet-facing public XITA release is separately controlled. The superseded predecessor repository is not an active deployment authority.
+
+**Documentation entry points:** [complete protocol architecture](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.2.3_Reference.md), [direct permissionless transfers](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.2.3_Operations.md), [node operator CLI/RPC/Merkle manual](https://github.com/xgr-network/xgr-node/blob/XGR3.0/docs/ILN_V323_OPERATOR_REFERENCE.md), [local deployment and runtime guide](docs/operations.md), [contract model](docs/architecture.md).
+
 
 A new, publicly accessible multichain bridge protocol with XGRChain as the
 mandatory hub. The source project is a **development version**; no new
