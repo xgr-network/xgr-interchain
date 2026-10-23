@@ -16,6 +16,7 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 import {listSourceTxHints,rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
+import {linkIndexedJourneys} from "./verified-journey.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -215,8 +216,11 @@ function upsertTransfer(record){
  if(previous?.status==="delivered"&&record.status!=="delivered")return;
  if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
   transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
- transferActivity.items=[record,...transferActivity.items.filter(t=>
+ const current=[record,...transferActivity.items.filter(t=>
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
+ // Recover the parent journey immediately from its verified child receipt.
+ // Do not wait for a second SQL index cycle to rediscover the linked hop.
+ transferActivity.items=linkIndexedJourneys(current,current);
  // Public wallet-bound source hash is a discovery hint, never transfer authority.
  // Retain the ORIGINAL parent across browser navigation/indexer restarts.
  if(record.confirmed===true&&record.account?.toLowerCase()===state.account?.toLowerCase()&&
@@ -490,9 +494,11 @@ async function performTransferAction(){
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:true,
-     onStatus:msg=>{transferActivity.notice=msg;if(path()==="/transfer")render();},
+     onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
+     onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
+      setFlowStage("final-delivery-pending");
       transferActivity.notice="Final destination TX "+txHash+" submitted.";
       if(path()==="/transfer")render();
      }
@@ -534,14 +540,16 @@ async function performTransferAction(){
      sourceChain:"xgrchain",txHash:sent.txHash});
     upsertTransfer(onward);
     if(onward.status==="awaiting-proof"){
-     transferActivity.selectedTxHash=onward.txHash;
+     // The modal and selection remain anchored to the ORIGINAL Arbitrum parent.
      setFlowStage("final-proof-wait");
      transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
      if(path()==="/transfer")render();
      const processed=await resumeDelivery({catalog:state.catalog,account,
       record:onward,provider:globalThis.ethereum,waitForProof:true,
-      onStatus:notice=>{transferActivity.notice=notice;if(path()==="/transfer")render();},
+      onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
+      onStatus:notice=>{setFlowStage("final-proof-wait",notice);if(path()==="/transfer")render();},
       onBroadcast:({txHash})=>{
+       setFlowStage("final-delivery-pending");
        transferActivity.notice="Final destination TX "+txHash+" submitted.";
        if(path()==="/transfer")render();
       }
