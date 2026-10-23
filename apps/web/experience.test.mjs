@@ -31,7 +31,7 @@ test("spoke-to-spoke paths are exactly two directed operations",()=>{
   assert.deepEqual(plan.path,["base","xgrchain","polygon"]);
   assert.equal(plan.hops.length,2);
   assert.equal(plan.active,true);
-  assert.match(plan.reason,/not automated/);
+  assert.match(plan.reason,/MetaMask approval/);
 });
 test("unknown or unverified routes never become executable",()=>{
   const model=buildExperienceModel(catalog,()=>{throw Error("Missing deployment evidence")});

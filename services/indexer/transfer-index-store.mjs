@@ -218,8 +218,27 @@ export async function readTransferIndexStats(catalog,{pool=null,now=Date.now(),r
  const sum=await connected.query(`SELECT asset,delivered,COUNT(*)::text AS count,
     SUM(amount_raw)::text AS amount_raw
     FROM xita_transfer_operations GROUP BY asset,delivered ORDER BY asset,delivered`);
+ // Aggregate route diagnostics only: never expose accounts, tx/message hashes,
+ // proof calldata, or interpret quorum/readiness as destination delivery.
+ let proofObserver={status:"not-provisioned",routes:[]};
+ try{
+  const checks=await connected.query(`SELECT o.source_chain,o.destination_chain,
+    o.route_name,j.state,j.reason,COUNT(*)::text AS count,
+    MAX(j.last_checked_at) AS last_checked_at
+    FROM xita_transfer_proof_observations j
+    JOIN xita_transfer_operations o USING(source_chain,message_id)
+    WHERE o.delivered IS FALSE
+    GROUP BY o.source_chain,o.destination_chain,o.route_name,j.state,j.reason
+    ORDER BY o.source_chain,o.destination_chain,o.route_name,j.state,j.reason`);
+  proofObserver={status:"available",routes:checks.rows.map(row=>({
+   source:row.source_chain,destination:row.destination_chain,route:row.route_name,
+   state:row.state,reason:row.reason||null,count:Number(row.count),
+   checkedAt:iso(row.last_checked_at)}))};
+ }catch(error){
+  if(!["42P01","42501"].includes(error?.code))throw error;
+ }
  return {kind:"xita-transfer-index-stats-v1",status:coverage.complete?"complete":"partial",
-  coverage,hopEvents:sum.rows.map(row=>({asset:row.asset,
+  coverage,proofObserver,hopEvents:sum.rows.map(row=>({asset:row.asset,
    state:row.delivered===true?"delivered":row.delivered===false?"pending":"unknown",
    count:Number(row.count),amountRaw:row.amount_raw})),
   note:"Hop event counts and raw source amounts; NOT distinct journeys, TVL, or USD movement."};
