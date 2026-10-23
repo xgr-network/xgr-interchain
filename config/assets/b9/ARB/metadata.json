@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "xeta-token-profile",
+  "asset": "ARB",
+  "slug": "arbitrum",
+  "name": "Arbitrum",
+  "shortDescription": "ARB is the governance token of the Arbitrum DAO, enabling community participation in the governance of the Arbitrum ecosystem.",
+  "description": "Arbitrum is an Ethereum scaling ecosystem designed to support efficient and lower-cost blockchain transactions. ARB serves as the governance token of the Arbitrum DAO, allowing token holders to participate in decentralized governance.\n\nThis XITA application is submitted independently by a token holder to propose additional cross-chain accessibility and visibility for ARB. It does not represent an official application or endorsement by the Arbitrum Foundation or DAO.",
+  "categories": [
+    "DeFi"
+  ],
+  "tags": [],
+  "branding": {
+    "logoUrl": "https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg?1721358242",
+    "bannerUrl": null
+  },
+  "links": {
+    "website": "https://arbitrum.foundation/",
+    "explorer": null,
+    "github": null,
+    "docs": null,
+    "whitepaper": null,
+    "x": null,
+    "linkedin": null,
+    "telegram": null,
+    "discord": null
+  },
+  "market": {
+    "coingeckoId": "arbitrum",
+    "coinmarketcapId": null,
+    "priceSource": "coingecko"
+  },
+  "supply": {
+    "circulating": null,
+    "total": null,
+    "max": null
+  },
+  "verification": {
+    "status": "project-maintained",
+    "proof": null
+  }
+}

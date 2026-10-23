@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-config",
+  "asset": "ARB",
+  "name": "Arbitrum",
+  "symbol": "ARB",
+  "decimals": 18,
+  "canonical": {
+    "chain": "arbitrum",
+    "representation": "collateral",
+    "symbol": "ARB",
+    "tokenAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+  },
+  "representations": [
+    {
+      "chain": "arbitrum",
+      "representation": "collateral",
+      "symbol": "ARB",
+      "assetAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+    },
+    {
+      "chain": "xgrchain",
+      "representation": "synthetic",
+      "symbol": "wARB",
+      "assetAddress": null
+    },
+    {
+      "chain": "base",
+      "representation": "synthetic",
+      "symbol": "wARB",
+      "assetAddress": null
+    },
+    {
+      "chain": "polygon",
+      "representation": "synthetic",
+      "symbol": "wARB",
+      "assetAddress": null
+    }
+  ],
+  "bridgeModel": "lock-mint-burn-unlock",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "notes": "Public directory application; no route or deployment is active without independent safety verification."
+}

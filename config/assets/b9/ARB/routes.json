@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-routes",
+  "asset": "ARB",
+  "network": "mainnet",
+  "protocol": "XITA-v3.1.5",
+  "routingHub": "xgrchain",
+  "routes": [
+    {
+      "name": "arbitrum_to_xgr",
+      "sourceChain": "arbitrum",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_arbitrum",
+      "sourceChain": "xgrchain",
+      "destinationChain": "arbitrum"
+    },
+    {
+      "name": "base_to_xgr",
+      "sourceChain": "base",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_base",
+      "sourceChain": "xgrchain",
+      "destinationChain": "base"
+    },
+    {
+      "name": "polygon_to_xgr",
+      "sourceChain": "polygon",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_polygon",
+      "sourceChain": "xgrchain",
+      "destinationChain": "polygon"
+    }
+  ]
+}
