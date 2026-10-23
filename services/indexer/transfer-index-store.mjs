@@ -1,6 +1,8 @@
 // PostgreSQL read model for finalized XITA Gateway messages. No private keys,
 // no custody, no inferred mint/unlock and no USD TVL derived from event counts.
 import {indexedRoutes} from "./transfer-index.mjs";
+export {linkIndexedJourneys} from "../../apps/web/verified-journey.js";
+import {linkIndexedJourneys} from "../../apps/web/verified-journey.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i, HASH=/^0x[0-9a-f]{64}$/i;
 const lowercase=x=>String(x||"").toLowerCase();
 let readerPool=null;
@@ -63,34 +65,6 @@ export function indexedTransferRow(row){
 // A source's destination delivery is NOT proof that a two-hop journey
 // reached the final chain. Link only the uniquely confirmed second-hop
 // adapter event (parentMessageId) and independently checked Mailbox result.
-export function linkIndexedJourneys(items,children){
- const byParent=new Map;
- for(const child of children||[]){
-  if(!HASH.test(child.parentMessageId||"")||child.sourceChain!=="xgrchain"||
-     !HASH.test(child.messageId||""))continue;
-  const key=child.parentMessageId;
-  byParent.set(key,[...(byParent.get(key)||[]),child]);
- }
- return (items||[]).map(item=>{
-  if(!item.onwardRouteId||item.delivered!==true)return item;
-  const matches=(byParent.get(item.messageId)||[]).filter(child=>
-    lowercase(child.account)===lowercase(item.account)&&
-    child.asset===item.asset&&
-    lowercase(child.routeId)===lowercase(item.onwardRouteId)&&
-    child.destinationChain===item.finalDestinationChain&&
-    lowercase(child.finalRecipient)===lowercase(item.finalRecipient)&&
-    child.amountRaw===item.amountRaw&&
-    child.executionAdapter!=null);
-  if(matches.length>1)return {...item,status:"journey-ambiguous"};
-  if(!matches.length)return {...item,status:"awaiting-onward"};
-  const next=matches[0];
-  return {...item,
-   secondHopTxHash:next.txHash,secondHopMessageId:next.messageId,
-   status:next.delivered===true?"journey-delivered":
-    next.delivered===false?"awaiting-final-proof":"final-delivery-unknown",
-   finalDelivered:next.delivered};
- });
-}
 // Correlate only a FINALIZED completed second hop to a paid parent.
 // The same predicate is used by the pending worklist and complete counts.
 const completedChildPredicate=`EXISTS (SELECT 1 FROM xita_transfer_operations c
