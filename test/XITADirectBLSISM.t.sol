@@ -87,6 +87,26 @@ contract XITADirectBLSISMTest is Test {
         assertEq(address(transport.mailbox().owner()),address(transport));
     }
 
+    function testWireMatchesGoCanonicalDirectVector() public pure {
+        XITADirectProtocol.Authorization memory a=XITADirectProtocol.Authorization({
+            sourceChainId:42161,sourceDomain:42161,destinationDomain:1643,
+            routeId:0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+            setId:9,sourceBlockNumber:517578687,
+            sourceRegistry:0x1111111111111111111111111111111111111111,
+            gateway:0x2222222222222222222222222222222222222222,
+            sourceRouter:0x3333333333333333333333333333333333333333,
+            sourceMailbox:0x4444444444444444444444444444444444444444,
+            destinationRouter:0x5555555555555555555555555555555555555555,
+            validatorFeeWei:1000,
+            messageId:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        });
+        bytes memory actual=XITADirectProtocol.encode(a,
+            0x6666666666666666666666666666666666666666,
+            0x7777777777777777777777777777777777777777);
+        bytes memory expected=hex"584954415f4449524543545f4d4553534147455f5631000000000000a4b10000a4b10000066baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0000000000000009000000001ed99fbf1111111111111111111111111111111111111111222222222222222222222222222222222222222233333333333333333333333333333333333333334444444444444444444444444444444444444444555555555555555555555555555555555555555500000000000000000000000000000000000000000000000000000000000003e8bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb66666666666666666666666666666666666666667777777777777777777777777777777777777777";
+        assertEq(actual,expected);
+    }
+
     function testDirectMessageWithCurrentBLSSetPasses() public {
         bytes memory m=_message();
         XITADirectProtocol.Authorization memory a=_authorization(m);
