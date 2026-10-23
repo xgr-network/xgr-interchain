@@ -43,8 +43,17 @@ export function walletJourneys(items=[]){
  const hidden=new Set();
  for(const child of items){
   if(child?.confirmed!==true||child.sourceChain!=="xgrchain"||
-   !HASH.test(child.parentMessageId||"")||!HASH.test(child.messageId||""))continue;
-  const parents=(parentIds.get(lower(child.parentMessageId))||[]).filter(parent=>
+   !HASH.test(child.messageId||""))continue;
+  // An authoritative indexed parent can already contain the verified onward
+  // TX hash while an older browser-side child lacks parentMessageId. Use that
+  // exact canonical reference; never guess from matching token amounts.
+  const candidates=HASH.test(child.parentMessageId||"")?
+   parentIds.get(lower(child.parentMessageId))||[]:
+   items.filter(parent=>parent?.confirmed===true&&parent.delivered===true&&
+    HASH.test(parent.messageId||"")&&
+    HASH.test(parent.secondHopTxHash||"")&&
+    lower(parent.secondHopTxHash)===lower(child.txHash));
+  const parents=candidates.filter(parent=>
     lower(parent.account)===lower(child.account)&&parent.asset===child.asset&&
     lower(parent.onwardRouteId)===lower(child.routeId)&&
     parent.finalDestinationChain===child.destinationChain&&
@@ -53,7 +62,11 @@ export function walletJourneys(items=[]){
   if(parents.length!==1)continue;
   const linked=linkIndexedJourneys([parents[0]],items)[0];
   if(linked.status!=="journey-ambiguous"&&
-     lower(linked.secondHopTxHash)===lower(child.txHash))hidden.add(child);
+     lower(linked.secondHopTxHash)===lower(child.txHash)||
+     !child.parentMessageId&&
+     lower(parents[0].secondHopTxHash)===lower(child.txHash)&&
+     lower(parents[0].secondHopMessageId)===lower(child.messageId)&&
+     parents[0].status!=="journey-ambiguous")hidden.add(child);
  }
  return items.filter(item=>!hidden.has(item));
 }
