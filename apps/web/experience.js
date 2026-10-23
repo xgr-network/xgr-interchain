@@ -597,7 +597,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const activeLabel=selected?'<span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span>':'';
  const options=pending.map(r=>'<option value="'+esc(r.txHash)+'"'+
   (selected?.txHash===r.txHash?' selected':'')+'>'+
-   esc((r.asset||"Token")+' · '+r.sourceChain+' → '+r.destinationChain+' · '+r.txHash.slice(0,10)+'…')+
+   esc((r.asset||"Token")+' · '+r.sourceChain+' → '+(r.finalDestinationChain||r.destinationChain)+' · '+r.txHash.slice(0,10)+'…')+
   '</option>').join("");
  const destinationLabel=model.chains.find(c=>c.key===destination)?.label||destination;
  const feeCard=
