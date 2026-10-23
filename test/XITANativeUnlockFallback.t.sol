@@ -37,7 +37,7 @@ contract XITANativeUnlockFallbackTest is Test {
         XETAMockGatewayBinding gw=new XETAMockGatewayBinding(address(reg),bytes32(uint256(1)),BASE,address(router));
         reg.setRoute(BASE,bytes32(uint256(1)),IXGRILNRegistry.RouteRecord({
             sourceChainId:HUB,sourceDomain:HUB,gateway:address(gw),sourceRouter:address(router),
-            mailbox:address(mailbox),merkleTreeHook:address(mailbox),destinationRouter:address(0x1234),
+            mailbox:address(mailbox),dispatchHook:address(mailbox),destinationRouter:address(0x1234),
             validatorFeeWei:7,enabled:true
         }));
         router.bootstrapXETARoute(BASE,bytes32(uint256(1)));
