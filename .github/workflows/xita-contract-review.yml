@@ -8,18 +8,21 @@ permissions:
   contents: read
 
 jobs:
-  retained-contract-compatibility:
+  fresh-direct-contract-invariants:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Verify retained mainnet deployments and unchanged Solidity
-        run: node tools/assert-xita-v320-compatible-deploy.mjs
-      - name: Verify no-regression deployment guard
-        run: node --test tools/assert-xita-v320-compatible-deploy.test.mjs
-      - name: Validate active chain and asset inventories
-        run: node tools/validate-manifests.mjs
+      - name: New direct BLS only; old transport cannot be deployed
+        run: |
+          set -euo pipefail
+          test -f contracts/XITADirectBLSISM.sol
+          test -f contracts/XITADirectTransport.sol
+          test ! -e contracts/XGRILNInterchainISMV2.sol
+          test ! -e contracts/XITAFreshTransportV315.sol
+          test ! -e deployments/chains/base.json
+          test ! -e deployments/chains/xgrchain.json
+          ! grep -q '"XGRILNInterchainISMV2"' services/admin/sealed-artifacts.mjs
+          ! grep -q '"MerkleTreeHook"' services/admin/sealed-artifacts.mjs
 
   admin:
     runs-on: ubuntu-latest
