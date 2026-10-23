@@ -270,7 +270,7 @@ export function createChainOperator({
     contractAddress:child.address,txHash:entry.txHash,
     expectedRuntimeKeccak256:child.runtimeKeccak,expectedDeployer:entry.wallet,
     provenance:{kind:component==="mailbox"?"transport-mailbox":
-      component==="merkleTreeHook"?"transport-merkle-hook":"transport-required-hook",
+      component==="dispatchHook"?"transport-merkle-hook":"transport-required-hook",
       factory:result.contractAddress}
    });
   }
