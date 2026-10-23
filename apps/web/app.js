@@ -469,6 +469,7 @@ async function performTransferAction(){
  transferActivity.working=true;transferActivity.error="";
  setFlowStage(selected?.status==="awaiting-onward"?"onward-source-sign":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
  let broadcastKnown=false;
+ let autoContinueParent=null;
  transferActivity.notice=selected?"Rechecking original source and destination chains…":
   "Checking recovery readiness, wallet nonce and source route…";
  render();
@@ -582,6 +583,9 @@ async function performTransferAction(){
     return;
    }
    await lookupWalletTransfer(selected.sourceChain,selected.txHash);
+   if(result.status==="delivered"&&selected.destinationChain==="xgrchain"&&selected.finalDestinationChain&&
+      selected.onwardRouteId&&flowView.open&&flowView.sourceTxHash?.toLowerCase()===selected.txHash.toLowerCase())
+    autoContinueParent=selected.txHash.toLowerCase();
    return;
   }
   const model=buildExperienceModel(state.catalog,()=>false);
@@ -673,6 +677,15 @@ async function performTransferAction(){
    transferActivity.working=false;
    if(path()==="/transfer")render();
    updateFlowModal();
+   // Auto-continue only this explicitly active, verified two-hop journey.
+   // The hub adapter checks the on-chain once-per-parent guard before TX3.
+   if(autoContinueParent&&state.account?.toLowerCase()===account.toLowerCase()&&
+      transferActivity.selectedTxHash?.toLowerCase()===autoContinueParent&&flowView.open){
+    const parent=transferActivity.items.find(t=>t.txHash?.toLowerCase()===autoContinueParent&&
+      t.account?.toLowerCase()===account.toLowerCase());
+    if(parent?.status==="awaiting-onward"&&parent.delivered===true)
+     void performTransferAction();
+   }
   }
  }
 }
