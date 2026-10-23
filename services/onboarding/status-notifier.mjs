@@ -60,7 +60,11 @@ async function visibilitySnapshot(){
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
-  readCatalog=loadCatalog,readReadyAssets=()=>new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset)),deliver=sendMail}={}){
+  readCatalog=loadCatalog,readReadyAssets=()=>new Set(executableTransferRoutes(readCatalog()).map(r=>r.asset)),
+  preferredRoute=(symbol)=>{
+   const catalog=readCatalog(),canonical=catalog.assets?.[symbol]?.metadata?.canonical?.chain;
+   return executableTransferRoutes(catalog).find(r=>r.asset===symbol&&r.source===canonical&&r.destination==="xgrchain")||null;
+  },deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
  let visibility=null;
@@ -95,7 +99,10 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
    if(!subject)return;
    try{
      const symbol=record.input.symbol;
-     const transferUrl="https://xita.xgr.network/transfer?token="+encodeURIComponent(symbol);
+     let route=null;
+     if(pending==="deployed")try{route=preferredRoute(symbol)}catch{/* catalog unavailable */}
+     const transferUrl="https://xita.xgr.network/transfer?token="+encodeURIComponent(symbol)+
+       (route?"&origin="+encodeURIComponent(route.source)+"&destination="+encodeURIComponent(route.destination):"");
      const action=pending==="deployed"?{label:"Start your first transfer",url:transferUrl}:
        {label:"View your GitHub proposal",url:record.pr.url};
      const mail=applicationMail({title:subject,subtitle:record.input.name+" ("+symbol+")",
