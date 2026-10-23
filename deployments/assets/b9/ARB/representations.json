@@ -12,6 +12,13 @@
       "receiptPath": "deployments/receipts/arbitrum/eb43dc8b99a2636e541544b6ad6d5ad91c39349711b2243a4faf6baa6587913f-041fd47808d1816824f65cefe29a420a33b07920.json"
     },
     {
+      "chain": "base",
+      "component": "syntheticRouter",
+      "address": "0x657a2b73deeecfe235859ee8734b224cfd510393",
+      "runtimeCodeKeccak256": "0x545f214ba844e535e93cf160d9f5f362e3639fb5851a18afc5941ce1acd2c189",
+      "receiptPath": "deployments/receipts/base/e6fa6677494ee6e116528a6c260abb3c2064d3086b796983fa2764bae7657231-657a2b73deeecfe235859ee8734b224cfd510393.json"
+    },
+    {
       "chain": "xgrchain",
       "component": "syntheticRouter",
       "address": "0x8204be69f5f0b2bbb11cec2adeedf0b8001b8436",
