@@ -26,10 +26,11 @@ export function smtpSettings(env=process.env){
 export function mailConfigured(env=process.env){
  return Boolean(smtpSettings(env))||httpMailConfigured(env);
 }
-export async function sendMail({to,subject,text,idempotencyKey},{env=process.env,fetcher=fetch,createTransport}={}){
+export async function sendMail({to,subject,text,html,idempotencyKey},{env=process.env,fetcher=fetch,createTransport}={}){
  if(!EMAIL.test(String(to||""))||String(to).length>254)throw Error("Invalid mail recipient");
  if(typeof subject!=="string"||subject.length>180||/[\r\n\x00-\x1f]/.test(subject))throw Error("Invalid email subject");
  if(typeof text!=="string"||text.length>10000)throw Error("Invalid email body");
+ if(html!==undefined&&(typeof html!=="string"||html.length>30000))throw Error("Invalid HTML email body");
  const deliveryKey=String(idempotencyKey||"xita-notification");
  if(!/^[a-z0-9:-]{1,130}$/i.test(deliveryKey))throw Error("Invalid delivery identifier");
  const smtp=smtpSettings(env);
@@ -40,7 +41,7 @@ export async function sendMail({to,subject,text,idempotencyKey},{env=process.env
   try{
    const messageId="<"+createHash("sha256").update(deliveryKey).digest("hex")+"@xita.xgr.network>";
    const result=await client.sendMail({
-    from:String(env.SMTP_FROM||env.SMTP_USER),to,subject,text,messageId,
+    from:String(env.SMTP_FROM||env.SMTP_USER),to,subject,text,...(html?{html}:{}),messageId,
     headers:{"X-XITA-Notification":"application-status"},attachments:[]
    });
    if(!Array.isArray(result?.accepted)||!result.accepted.some(a=>String(a).toLowerCase()===to.toLowerCase()))
@@ -53,7 +54,7 @@ export async function sendMail({to,subject,text,idempotencyKey},{env=process.env
    method:"POST",redirect:"error",signal:AbortSignal.timeout(12000),
    headers:{"Authorization":"Bearer "+env.XITA_JOIN_MAIL_API_TOKEN,"Content-Type":"application/json",
     "Idempotency-Key":deliveryKey,"Cache-Control":"no-store"},
-   body:JSON.stringify({from:env.XITA_JOIN_MAIL_FROM,to,subject,text})
+   body:JSON.stringify({from:env.XITA_JOIN_MAIL_FROM,to,subject,text,...(html?{html}:{})})
  });
  if(!response.ok)throw Error("Transactional mail delivery failed ("+response.status+")");
  return true;
