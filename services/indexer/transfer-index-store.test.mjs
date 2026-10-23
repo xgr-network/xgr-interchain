@@ -190,3 +190,35 @@ test("aggregate route health reveals no addresses or signing calldata",async()=>
  assert.doesNotMatch(JSON.stringify(stats.proofObserver),new RegExp(wallet,"i"));
  assert.match(seen.find(q=>q.includes("FROM xita_transfer_proof_observations j")),/GROUP BY/);
 });
+
+test("ambiguous competing onward hops remain visible instead of silently disappearing",async()=>{
+ const wallet=addr("a"),parentMessage=hash("b");
+ const parent={account:wallet,asset:"XGR",source_chain:"arbitrum",
+  destination_chain:"xgrchain",route_name:"arb_to_xgr",route_id:hash("1"),
+  gateway:addr("1"),source_tx_hash:hash("a"),message_id:parentMessage,
+  source_block_number:100,amount_raw:"100",validator_fee_wei:"1",delivered:true,
+  onward_route_id:hash("2"),final_destination_chain:"base",
+  final_recipient:wallet,execution_adapter:addr("e")};
+ const next={...parent,source_chain:"xgrchain",destination_chain:"base",
+  route_name:"xgr_to_base",route_id:hash("2"),source_tx_hash:hash("c"),
+  message_id:hash("d"),parent_message_id:parentMessage,delivered:false,
+  onward_route_id:null,execution_adapter:addr("e")};
+ const collision={...next,source_tx_hash:hash("e"),message_id:hash("f")};
+ const calls=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;calls.push(sql);
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"3",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_operations p"))return {rows:[parent,next,collision]};
+  if(sql.includes("FROM xita_transfer_operations\n"))return {rows:[next,collision]};
+  return {rows:[]};
+ }};
+ const result=await readWalletTransferIndex({},wallet,{pool,routeList:[]});
+ assert.equal(result.items.length,3);
+ assert.equal(result.items[0].status,"journey-ambiguous");
+ assert.equal(result.openCount,3);
+ const sql=calls.find(x=>x.includes("FROM xita_transfer_operations p")&&x.includes("ORDER BY"));
+ assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations sibling/);
+ assert.match(sql,/sibling.parent_message_id=p.parent_message_id/);
+ assert.match(sql,/COUNT\\(\\*\\) FROM xita_transfer_operations c/);
+});
