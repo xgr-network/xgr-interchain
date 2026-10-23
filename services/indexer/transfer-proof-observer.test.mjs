@@ -66,3 +66,14 @@ test("bounded queue skips previously observed old events to prevent new-transfer
  }};
  assert.equal(await enqueueProofObservations(pool),0);
 });
+
+test("provisional destination delivery does not suppress future finalized-state checks",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const schema=readFileSync(new URL("./sql/008_transfer_proof_observations.sql",import.meta.url),"utf8");
+ assert.doesNotMatch(schema,/WHERE state <> 'delivery-observed'/);
+ let text="";
+ const pool={query:async statement=>{text=statement.text;return {rows:[]};}};
+ assert.equal(await claimProofObservation(pool),null);
+ assert.match(text,/o.delivered IS FALSE/);
+ assert.doesNotMatch(text,/j.state <> 'delivery-observed'/);
+});
