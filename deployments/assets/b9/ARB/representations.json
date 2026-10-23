@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-representations",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "representations": [
+    {
+      "chain": "arbitrum",
+      "component": "collateralRouter",
+      "address": "0x041fd47808d1816824f65cefe29a420a33b07920",
+      "runtimeCodeKeccak256": "0xb18c13d4fe1afa78890da271866aa918730afb23fd25b1be67f8274c8c8ea31d",
+      "receiptPath": "deployments/receipts/arbitrum/eb43dc8b99a2636e541544b6ad6d5ad91c39349711b2243a4faf6baa6587913f-041fd47808d1816824f65cefe29a420a33b07920.json"
+    }
+  ]
+}

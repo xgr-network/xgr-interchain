@@ -83,6 +83,155 @@
     }
   },
   "assets": {
+    "ARB": {
+      "metadata": {
+        "schemaVersion": 1,
+        "kind": "asset-config",
+        "asset": "ARB",
+        "name": "Arbitrum",
+        "symbol": "ARB",
+        "decimals": 18,
+        "canonical": {
+          "chain": "arbitrum",
+          "representation": "collateral",
+          "symbol": "ARB",
+          "tokenAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+        },
+        "representations": [
+          {
+            "chain": "arbitrum",
+            "representation": "collateral",
+            "symbol": "ARB",
+            "assetAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
+          },
+          {
+            "chain": "xgrchain",
+            "representation": "synthetic",
+            "symbol": "wARB",
+            "assetAddress": null
+          },
+          {
+            "chain": "base",
+            "representation": "synthetic",
+            "symbol": "wARB",
+            "assetAddress": null
+          },
+          {
+            "chain": "polygon",
+            "representation": "synthetic",
+            "symbol": "wARB",
+            "assetAddress": null
+          }
+        ],
+        "bridgeModel": "lock-mint-burn-unlock",
+        "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+        "notes": "Public directory application; no route or deployment is active without independent safety verification."
+      },
+      "profile": {
+        "schemaVersion": 1,
+        "kind": "xeta-token-profile",
+        "asset": "ARB",
+        "slug": "arbitrum",
+        "name": "Arbitrum",
+        "shortDescription": "ARB is the governance token of the Arbitrum DAO, enabling community participation in the governance of the Arbitrum ecosystem.",
+        "description": "Arbitrum is an Ethereum scaling ecosystem designed to support efficient and lower-cost blockchain transactions. ARB serves as the governance token of the Arbitrum DAO, allowing token holders to participate in decentralized governance.\n\nThis XITA application is submitted independently by a token holder to propose additional cross-chain accessibility and visibility for ARB. It does not represent an official application or endorsement by the Arbitrum Foundation or DAO.",
+        "categories": [
+          "DeFi"
+        ],
+        "tags": [],
+        "branding": {
+          "logoUrl": "https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg?1721358242",
+          "bannerUrl": null
+        },
+        "links": {
+          "website": "https://arbitrum.foundation/",
+          "explorer": null,
+          "github": null,
+          "docs": null,
+          "whitepaper": null,
+          "x": null,
+          "linkedin": null,
+          "telegram": null,
+          "discord": null
+        },
+        "market": {
+          "coingeckoId": "arbitrum",
+          "coinmarketcapId": null,
+          "priceSource": "coingecko"
+        },
+        "supply": {
+          "circulating": null,
+          "total": null,
+          "max": null
+        },
+        "verification": {
+          "status": "project-maintained",
+          "proof": null
+        }
+      },
+      "routes": {
+        "schemaVersion": 1,
+        "kind": "asset-routes",
+        "asset": "ARB",
+        "network": "mainnet",
+        "protocol": "XITA-v3.1.5",
+        "routingHub": "xgrchain",
+        "routes": [
+          {
+            "name": "arbitrum_to_xgr",
+            "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_arbitrum",
+            "sourceChain": "xgrchain",
+            "destinationChain": "arbitrum"
+          },
+          {
+            "name": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_base",
+            "sourceChain": "xgrchain",
+            "destinationChain": "base"
+          },
+          {
+            "name": "polygon_to_xgr",
+            "sourceChain": "polygon",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_polygon",
+            "sourceChain": "xgrchain",
+            "destinationChain": "polygon"
+          }
+        ]
+      },
+      "deployment": {
+        "schemaVersion": 3,
+        "kind": "asset-deployment",
+        "network": "mainnet",
+        "asset": "ARB",
+        "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+        "sourceManifest": "config/assets/b9/ARB/asset.json",
+        "receiptPaths": [
+          "deployments/receipts/arbitrum/eb43dc8b99a2636e541544b6ad6d5ad91c39349711b2243a4faf6baa6587913f-041fd47808d1816824f65cefe29a420a33b07920.json"
+        ],
+        "representations": [
+          {
+            "chain": "arbitrum",
+            "component": "collateralRouter",
+            "address": "0x041fd47808d1816824f65cefe29a420a33b07920",
+            "runtimeCodeKeccak256": "0xb18c13d4fe1afa78890da271866aa918730afb23fd25b1be67f8274c8c8ea31d",
+            "receiptPath": "deployments/receipts/arbitrum/eb43dc8b99a2636e541544b6ad6d5ad91c39349711b2243a4faf6baa6587913f-041fd47808d1816824f65cefe29a420a33b07920.json"
+          }
+        ],
+        "routeDeployments": [],
+        "present": true
+      }
+    },
     "XGR": {
       "metadata": {
         "schemaVersion": 1,
@@ -365,145 +514,6 @@
           }
         ],
         "present": true
-      }
-    },
-    "ARB": {
-      "metadata": {
-        "schemaVersion": 1,
-        "kind": "asset-config",
-        "asset": "ARB",
-        "name": "Arbitrum",
-        "symbol": "ARB",
-        "decimals": 18,
-        "canonical": {
-          "chain": "arbitrum",
-          "representation": "collateral",
-          "symbol": "ARB",
-          "tokenAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
-        },
-        "representations": [
-          {
-            "chain": "arbitrum",
-            "representation": "collateral",
-            "symbol": "ARB",
-            "assetAddress": "0x912ce59144191c1204e64559fe8253a0e49e6548"
-          },
-          {
-            "chain": "xgrchain",
-            "representation": "synthetic",
-            "symbol": "wARB",
-            "assetAddress": null
-          },
-          {
-            "chain": "base",
-            "representation": "synthetic",
-            "symbol": "wARB",
-            "assetAddress": null
-          },
-          {
-            "chain": "polygon",
-            "representation": "synthetic",
-            "symbol": "wARB",
-            "assetAddress": null
-          }
-        ],
-        "bridgeModel": "lock-mint-burn-unlock",
-        "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
-        "notes": "Public directory application; no route or deployment is active without independent safety verification."
-      },
-      "profile": {
-        "schemaVersion": 1,
-        "kind": "xeta-token-profile",
-        "asset": "ARB",
-        "slug": "arbitrum",
-        "name": "Arbitrum",
-        "shortDescription": "ARB is the governance token of the Arbitrum DAO, enabling community participation in the governance of the Arbitrum ecosystem.",
-        "description": "Arbitrum is an Ethereum scaling ecosystem designed to support efficient and lower-cost blockchain transactions. ARB serves as the governance token of the Arbitrum DAO, allowing token holders to participate in decentralized governance.\n\nThis XITA application is submitted independently by a token holder to propose additional cross-chain accessibility and visibility for ARB. It does not represent an official application or endorsement by the Arbitrum Foundation or DAO.",
-        "categories": [
-          "DeFi"
-        ],
-        "tags": [],
-        "branding": {
-          "logoUrl": "https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg?1721358242",
-          "bannerUrl": null
-        },
-        "links": {
-          "website": "https://arbitrum.foundation/",
-          "explorer": null,
-          "github": null,
-          "docs": null,
-          "whitepaper": null,
-          "x": null,
-          "linkedin": null,
-          "telegram": null,
-          "discord": null
-        },
-        "market": {
-          "coingeckoId": "arbitrum",
-          "coinmarketcapId": null,
-          "priceSource": "coingecko"
-        },
-        "supply": {
-          "circulating": null,
-          "total": null,
-          "max": null
-        },
-        "verification": {
-          "status": "project-maintained",
-          "proof": null
-        }
-      },
-      "routes": {
-        "schemaVersion": 1,
-        "kind": "asset-routes",
-        "asset": "ARB",
-        "network": "mainnet",
-        "protocol": "XITA-v3.1.5",
-        "routingHub": "xgrchain",
-        "routes": [
-          {
-            "name": "arbitrum_to_xgr",
-            "sourceChain": "arbitrum",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_arbitrum",
-            "sourceChain": "xgrchain",
-            "destinationChain": "arbitrum"
-          },
-          {
-            "name": "base_to_xgr",
-            "sourceChain": "base",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_base",
-            "sourceChain": "xgrchain",
-            "destinationChain": "base"
-          },
-          {
-            "name": "polygon_to_xgr",
-            "sourceChain": "polygon",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_polygon",
-            "sourceChain": "xgrchain",
-            "destinationChain": "polygon"
-          }
-        ]
-      },
-      "deployment": {
-        "schemaVersion": 3,
-        "kind": "asset-deployment",
-        "network": "mainnet",
-        "asset": "ARB",
-        "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
-        "sourceManifest": "config/assets/b9/ARB/asset.json",
-        "receiptPaths": [],
-        "representations": [],
-        "routeDeployments": [],
-        "present": false
       }
     }
   },
