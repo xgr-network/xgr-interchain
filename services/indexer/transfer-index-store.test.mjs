@@ -220,5 +220,5 @@ test("ambiguous competing onward hops remain visible instead of silently disappe
  const sql=calls.find(x=>x.includes("FROM xita_transfer_operations p")&&x.includes("ORDER BY"));
  assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations sibling/);
  assert.match(sql,/sibling.parent_message_id=p.parent_message_id/);
- assert.match(sql,/COUNT\\(\\*\\) FROM xita_transfer_operations c/);
+ assert.match(sql,/COUNT\(\*\) FROM xita_transfer_operations c/);
 });
