@@ -570,7 +570,7 @@ export async function awaitUnsignedDeliveryProof({query,fetcher=globalThis.fetch
   notice:lastNotice+" You may leave XITA and reconnect later; the original source transaction must not be repeated."};
 }
 export async function resumeDelivery({catalog,account,record,provider,
- fetcher=globalThis.fetch,onBroadcast,waitForProof=false,onStatus,signal}){
+ fetcher=globalThis.fetch,onBroadcast,onWalletReady,waitForProof=false,onStatus,signal}){
  if(!ADDRESS.test(account||"")||!record||!eq(record.account,account)||
   !HASH.test(record.txHash||"")||!HASH.test(record.messageId||""))
   throw Error("No wallet-owned confirmed transfer to continue");
@@ -612,6 +612,8 @@ export async function resumeDelivery({catalog,account,record,provider,
  await validateWalletAccount(provider,account);
  await rpcChain(provider,dst);
  await ensureNoPendingWalletTransaction({provider,account,chain:dst,fetcher});
+ // A fully simulated, source-bound destination call is now ready for this wallet.
+ onWalletReady?.({destinationChain:current.destinationChain,messageId:current.messageId});
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("No destination transaction hash returned");
  onBroadcast?.({txHash,sourceChain:current.sourceChain});
