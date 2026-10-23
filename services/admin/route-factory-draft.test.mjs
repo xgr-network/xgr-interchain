@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {factoryRouteDraft,routeSalt,nextAssetRouteTasks,chainReadyForAssetRoutes} from "./route-factory-draft.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const assetId="0x"+"a".repeat(64);
@@ -106,4 +107,27 @@ test("only complete GitHub-documented chain pairs offer routers and gateways",()
  plan=nextAssetRouteTasks(inv,[build(hub,false),full[1],full[2]]);
  assert.equal(plan.tasks.length,0);
  assert.equal(plan.eligibleRoutes.length,0);
+});
+
+// Regression: ARB originates on Arbitrum, but wARB router creation happens on Base.
+// A Base-to-XGR counterpart alone cannot provide the canonical origin chain ID.
+test("ARB synthetic router on Base resolves canonical Arbitrum from full chain inventory",()=>{
+ const arbitrum={name:"arbitrum",chainId:42161,domainId:42161};
+ const token="0x912ce59144191c1204e64559fe8253a0e49e6548";
+ const arb={asset:"ARB",assetId,canonicalChain:"arbitrum",canonicalToken:token,
+  metadata:{name:"Arbitrum",symbol:"ARB",decimals:18}};
+ const draft=factoryRouteDraft({asset:arb,source:base,destination:hub,
+  sourceInfrastructure:infra(base),destinationInfrastructure:infra(hub),
+  representation:representation("base","syntheticRouter",null),action:"deploy-router",
+  chains:[hub,base,arbitrum]});
+ assert.equal(draft.chain,"base");
+ assert.equal(draft.component,"syntheticRouter");
+ // ABI contains originChainId=42161 and original ARB contract, not Base/XGR token identity.
+ assert.ok(draft.transaction.data.toLowerCase().includes((42161).toString(16).padStart(64,"0")));
+ assert.ok(draft.transaction.data.toLowerCase().includes(token.slice(2).toLowerCase().padStart(64,"0")));
+});
+
+test("asset operator supplies approved chain inventory for every synthetic router",()=>{
+ const operator=readFileSync(new URL("./asset-operator.mjs",import.meta.url),"utf8");
+ assert.match(operator,/representation,action:"deploy-router",chains:inventory\.chains/);
 });
