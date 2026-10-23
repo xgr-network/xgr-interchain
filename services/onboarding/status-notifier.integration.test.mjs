@@ -18,10 +18,10 @@ test("notify applicant only on verified phase changes, retry failures and preven
   XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
   XITA_JOIN_MAIL_API_TOKEN:"test-only",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
  let pr={state:"open",merged_at:null},visibility=null,fail=false;
+ let milestones={firstRoute:null,allComplete:false,completedNetworks:[],plannedNetworks:["arbitrum","base","polygon"]};
  const sent=[];
  const run=()=>notifyApplications({env,readPR:async()=>pr,readVisibility:async()=>visibility,
-  readReadyAssets:()=>new Set(["ARB"]),
-  preferredRoute:()=>({source:"arbitrum",destination:"xgrchain"}),
+  readMilestones:()=>milestones,
   deliver:async(mail)=>{if(fail)throw Error("Mock SMTP unavailable");sent.push(mail);return true;}});
  const snapshot=(status,lockedUsd,deployment)=>({schemaVersion:1,kind:"xita-visibility-v1",
   assets:{ARB:{assetId,status,lockedUsd,deployment}}});
@@ -34,8 +34,11 @@ test("notify applicant only on verified phase changes, retry failures and preven
   fail=false;
   assert.deepEqual(await run(),[{id,status:"approved",sent:true}]);
   assert.deepEqual(await run(),[]);
+  milestones={...milestones,firstRoute:{source:"arbitrum",destination:"xgrchain"}};
   visibility=snapshot("accepted",0,"deployed");
-  assert.deepEqual(await run(),[{id,status:"deployed",sent:true}]);
+  assert.deepEqual(await run(),[{id,status:"first-route",sent:true}]);
+  milestones={...milestones,allComplete:true,completedNetworks:["arbitrum","base","polygon"]};
+  assert.deepEqual(await run(),[{id,status:"all-routes",sent:true}]);
   visibility=snapshot("accepted",100,"deployed");
   assert.deepEqual(await run(),[{id,status:"first-lock",sent:true}]);
   visibility=snapshot("public",100,"deployed");
@@ -44,13 +47,13 @@ test("notify applicant only on verified phase changes, retry failures and preven
   assert.deepEqual(await run(),[{id,status:"delisted",sent:true}]);
   assert.deepEqual(await run(),[]);
   assert.deepEqual(sent.map(x=>x.subject),[
-   "XITA proposal approved","XITA routes deployed",
+   "XITA proposal approved","Your first XITA route is live!","Your XITA network expansion is complete!",
    "First verified XITA collateral","Your token is now listed on XITA",
    "XITA listing visibility changed"]);
   assert.ok(sent.every(x=>x.to==="holder@example.org"&&x.html.includes("XITA")));
   assert.ok(sent[0].text.includes(proposal.url));
   assert.ok(sent[1].text.includes("https://xita.xgr.network/transfer?token=ARB&origin=arbitrum&destination=xgrchain"));
-  assert.ok(sent.slice(2).every(x=>x.text.includes(proposal.url)));
+  assert.ok(sent.slice(3).every(x=>x.text.includes(proposal.url)));
   assert.equal(readPrivate(dir,id).phase,"delisted");
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
