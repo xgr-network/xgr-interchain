@@ -57,3 +57,48 @@ export function walletJourneys(items=[]){
  }
  return items.filter(item=>!hidden.has(item));
 }
+
+/**
+ * Reconcile independently verified observations of the SAME on-chain source
+ * operation. A delayed indexer row must not take an already completed two-hop
+ * journey backwards or erase the cryptographically linked onward operation.
+ * This is a UI projection only, NEVER a signing or custody authorization.
+ */
+const PROGRESS=Object.freeze({
+ "pending-source":0,"confirming":1,
+ "awaiting-proof":2,"delivery-unknown":2,"destination-not-deployed":2,
+ "delivered":3,"awaiting-onward":4,
+ "awaiting-final-proof":5,"final-delivery-unknown":5,
+ "journey-ambiguous":6,"journey-delivered":7
+});
+export function mergeWalletObservation(previous,incoming){
+ if(!previous)return incoming;
+ if(!incoming)return previous;
+ if(lower(previous.account)!==lower(incoming.account)||
+    previous.sourceChain!==incoming.sourceChain||
+    lower(previous.txHash)!==lower(incoming.txHash))return previous;
+ // The canonical message ID and route identity are immutable. If two backends
+ // disagree, retain evidence and block continuation pending investigation.
+ const conflict=(a,b)=>a&&b&&lower(a)!==lower(b);
+ if(conflict(previous.messageId,incoming.messageId)||
+    conflict(previous.routeId,incoming.routeId)||
+    conflict(previous.gateway,incoming.gateway))
+  return {...previous,status:"journey-ambiguous"};
+ if(previous.confirmed===true&&incoming.confirmed!==true)return previous;
+ if(previous.delivered===true&&incoming.delivered!==true)return previous;
+ const next={...previous,...incoming};
+ if((PROGRESS[previous.status]??-1)>(PROGRESS[incoming.status]??-1)){
+  next.status=previous.status;
+  next.delivered=previous.delivered;
+ }
+ for(const key of ["secondHopTxHash","secondHopMessageId","finalDelivered"]){
+  if(previous[key]!==undefined&&incoming[key]==null)next[key]=previous[key];
+ }
+ if(conflict(previous.secondHopMessageId,incoming.secondHopMessageId)||
+    conflict(previous.secondHopTxHash,incoming.secondHopTxHash))
+  return {...next,status:"journey-ambiguous"};
+ // A later read-only observation may recover a previously unknown delivery,
+ // but never turn a known Mailbox TRUE into FALSE or NULL.
+ if(previous.delivered===true)next.delivered=true;
+ return next;
+}

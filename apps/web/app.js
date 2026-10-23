@@ -16,7 +16,7 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 import {listSourceTxHints,rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
-import {linkIndexedJourneys} from "./verified-journey.js";
+import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
@@ -201,32 +201,24 @@ function setConnectedAccount(next){
  if(changed&&account&&state.catalog)void scanWalletHistory();
 }
 function upsertTransfer(record){
-  if(flowView.journey&&record?.account?.toLowerCase()===state.account?.toLowerCase()&&
-    (record.txHash?.toLowerCase()===flowView.sourceTxHash?.toLowerCase()||
-     record.parentMessageId&&transferActivity.items.some(t=>t.txHash===flowView.sourceTxHash&&t.messageId===record.parentMessageId))){
-     if(!flowView.sourceTxHash)flowView.sourceTxHash=record.txHash;
-  }
+ if(!record||record.account?.toLowerCase()!==state.account?.toLowerCase())return;
  const previous=transferActivity.items.find(t=>t.sourceChain===record.sourceChain&&
-  t.txHash===record.txHash);
- if(previous?.confirmed===true&&record.confirmed!==true)return;
- if(previous?.status==="confirming"&&record.status==="pending-source")return;
- if(previous?.status==="journey-delivered"&&record.status!=="journey-delivered")return;
- // A lagging index must not regress the verified first-hop handoff.
- if(previous?.status==="awaiting-onward"&&record.status==="awaiting-proof"&&record.delivered!==true)return;
- if(previous?.status==="delivered"&&record.status!=="delivered")return;
- if(previous?.status==="awaiting-proof"&&record.status==="delivered"&&
-  transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
- const current=[record,...transferActivity.items.filter(t=>
-  !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
- // Recover the parent journey immediately from its verified child receipt.
- // Do not wait for a second SQL index cycle to rediscover the linked hop.
+  t.txHash?.toLowerCase()===record.txHash?.toLowerCase());
+ // Canonical-source evidence is monotonic across a delayed SQL index, direct
+ // finality lookups, multiple RPC providers and background refreshes.
+ // A conflicting immutable identity never authorizes new wallet activity.
+ const observed=mergeWalletObservation(previous,record);
+ const current=[observed,...transferActivity.items.filter(t=>
+  !(t.sourceChain===record.sourceChain&&
+    t.txHash?.toLowerCase()===record.txHash?.toLowerCase()))];
+ // One journey, not two pending operations. Link only independently verified
+ // child Gateway+Dispatch provenance to the original parentMessageId.
  transferActivity.items=linkIndexedJourneys(current,current);
- // Public wallet-bound source hash is a discovery hint, never transfer authority.
- // Retain the ORIGINAL parent across browser navigation/indexer restarts.
- if(record.confirmed===true&&record.account?.toLowerCase()===state.account?.toLowerCase()&&
-    /^0x[0-9a-f]{64}$/i.test(record.txHash||"")&&state.catalog?.chains?.[record.sourceChain])
-  rememberSourceTxHint({account:state.account,sourceChain:record.sourceChain,txHash:record.txHash});
+ if(observed.confirmed===true&&/^0x[0-9a-f]{64}$/i.test(observed.txHash||"")&&
+    state.catalog?.chains?.[observed.sourceChain])
+  rememberSourceTxHint({account:state.account,sourceChain:observed.sourceChain,txHash:observed.txHash});
  refreshTransferLink();
+ updateFlowModal();
 }
 // Non-blocking, untrusted staging hint after MetaMask broadcasts. No UI
 // action, funds, recovery, or transfer history depends on this POST succeeding.

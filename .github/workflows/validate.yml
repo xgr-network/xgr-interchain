@@ -111,7 +111,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --test apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/wallet-core.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/source-tx-hints.test.mjs apps/web/wallet-transfer-selection.test.mjs apps/web/transfer-flow-binding.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
+          node --test apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/wallet-core.test.mjs apps/web/wallet-gas.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/source-tx-hints.test.mjs apps/web/wallet-transfer-selection.test.mjs apps/web/transfer-flow-binding.test.mjs apps/web/verified-journey.test.mjs apps/web/transfer-status-flow.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/experience.test.mjs apps/web/universe-orbits.test.mjs apps/web/universe-token-layout.test.mjs apps/web/system-rankings.test.mjs apps/web/universe-scene.test.mjs apps/web/token-representation.test.mjs apps/web/leaderboard-data.test.mjs apps/web/listing-visibility.test.mjs
 
       - name: Validate shell and JavaScript syntax
         shell: bash
