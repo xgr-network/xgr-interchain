@@ -1,6 +1,7 @@
 import {AbiCoder,solidityPacked,keccak256,getBytes} from "ethers";
 
 export const DIRECT_BLS_DOMAIN="XITA_DIRECT_MESSAGE_V1";
+export const ILN_OPERATION_EVENT="event ILNOperation(bytes32 indexed routeId,bytes32 indexed messageId,uint32 indexed destinationDomain,uint256 validatorFeeWei)";
 export const DIRECT_BLS_AUTHORIZATION_TYPE=
   "tuple(uint64 sourceChainId,uint32 sourceDomain,uint32 destinationDomain,bytes32 routeId,uint64 setId,uint64 sourceBlockNumber,address sourceRegistry,address gateway,address sourceRouter,address sourceMailbox,address destinationRouter,uint256 validatorFeeWei,bytes32 messageId)";
 
@@ -38,8 +39,8 @@ export function encodeDirectBLSPayload(a){
 
 export function encodeDirectISMMetadata({authorization,signerBitmap,aggregateSignature}){
   if(!authorization||!/^0x(?:[0-9a-f]{2})+$/i.test(signerBitmap||"")||
-     !/^0x[0-9a-f]{512}$/i.test(aggregateSignature||""))
-    throw Error("Direct BLS ISM requires bitmap and uncompressed EIP-2537 aggregate signature");
+     !/^0x(?:[0-9a-f]{192}|[0-9a-f]{512})$/i.test(aggregateSignature||""))
+    throw Error("Direct BLS ISM requires bitmap and 96/256-byte aggregate signature");
   const a=authorization;
   const fields=signedFieldNames.slice(0,-2);
   const values=fields.map(key=>{
