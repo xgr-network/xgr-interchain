@@ -85,3 +85,16 @@ test("multiline project descriptions are safe and normalized before publication"
   assert.throws(()=>buildManifestBundle({...application,description:invalid},catalog),/descriptions/);
  }
 });
+
+test("Join proposal preserves catalog order and every existing asset unchanged",()=>{
+ const bundle=buildManifestBundle(application,catalog);
+ const generated=JSON.parse(bundle.files["apps/web/catalog.json"]);
+ assert.deepEqual(Object.keys(generated),
+  ["schemaVersion","chains","assets","infrastructure","publication"]);
+ const {EXMP,...existingAssets}=generated.assets;
+ assert.deepEqual(existingAssets,catalog.assets);
+ assert.deepEqual(generated.chains,catalog.chains);
+ assert.deepEqual(generated.infrastructure,catalog.infrastructure);
+ assert.deepEqual(generated.publication,catalog.publication);
+ assert.equal(EXMP.profile.slug,"example-protocol");
+});
