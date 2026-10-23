@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS xita_transfer_proof_observations (
   REFERENCES xita_transfer_operations (source_chain,message_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS xita_transfer_proof_due_idx
- ON xita_transfer_proof_observations (next_check_at,lease_until)
- WHERE state <> 'delivery-observed';
+ ON xita_transfer_proof_observations (next_check_at,lease_until);
+-- Provisional delivery checks are retried until separately finalized Mailbox evidence.
 -- The HTTP reader needs SELECT only; the independent observer writes only
 -- this rebuildable table and reads the finalized operation table.
 -- GRANT SELECT ON xita_transfer_proof_observations TO xita_indexer_reader;
