@@ -217,6 +217,11 @@ function upsertTransfer(record){
   transferActivity.indexOpenCount>0)transferActivity.indexOpenCount--;
  transferActivity.items=[record,...transferActivity.items.filter(t=>
   !(t.sourceChain===record.sourceChain&&t.txHash===record.txHash))];
+ // Public wallet-bound source hash is a discovery hint, never transfer authority.
+ // Retain the ORIGINAL parent across browser navigation/indexer restarts.
+ if(record.confirmed===true&&record.account?.toLowerCase()===state.account?.toLowerCase()&&
+    /^0x[0-9a-f]{64}$/i.test(record.txHash||"")&&state.catalog?.chains?.[record.sourceChain])
+  rememberSourceTxHint({account:state.account,sourceChain:record.sourceChain,txHash:record.txHash});
  refreshTransferLink();
 }
 // Non-blocking, untrusted staging hint after MetaMask broadcasts. No UI
