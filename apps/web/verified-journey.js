@@ -29,3 +29,31 @@ export function linkIndexedJourneys(items,children){
    finalDelivered:next.delivered};
  });
 }
+
+// Only an unambiguous, independently linked child belongs to the same
+// wallet-facing journey. Never hide an orphaned or ambiguous second hop.
+export function walletJourneys(items=[]){
+ const parentIds=new Map();
+ for(const parent of items){
+  if(parent?.confirmed!==true||parent.delivered!==true||
+    !HASH.test(parent.messageId||"")||!HASH.test(parent.onwardRouteId||""))continue;
+  const key=lower(parent.messageId);
+  parentIds.set(key,[...(parentIds.get(key)||[]),parent]);
+ }
+ const hidden=new Set();
+ for(const child of items){
+  if(child?.confirmed!==true||child.sourceChain!=="xgrchain"||
+   !HASH.test(child.parentMessageId||"")||!HASH.test(child.messageId||""))continue;
+  const parents=(parentIds.get(lower(child.parentMessageId))||[]).filter(parent=>
+    lower(parent.account)===lower(child.account)&&parent.asset===child.asset&&
+    lower(parent.onwardRouteId)===lower(child.routeId)&&
+    parent.finalDestinationChain===child.destinationChain&&
+    lower(parent.finalRecipient)===lower(child.finalRecipient)&&
+    parent.amountRaw===child.amountRaw&&child.executionAdapter!=null);
+  if(parents.length!==1)continue;
+  const linked=linkIndexedJourneys([parents[0]],items)[0];
+  if(linked.status!=="journey-ambiguous"&&
+     lower(linked.secondHopTxHash)===lower(child.txHash))hidden.add(child);
+ }
+ return items.filter(item=>!hidden.has(item));
+}
