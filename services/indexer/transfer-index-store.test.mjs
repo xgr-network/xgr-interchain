@@ -56,10 +56,10 @@ test("only the exact canonical onward parent message and route completes a two-h
  const parent={account:payer,asset:"XGR",routeId:hash("1"),messageId:firstId,
   assetId:hash("f"),sourceChain:"base",destinationChain:"xgrchain",
   finalDestinationChain:"polygon",finalRecipient:payer,
-  onwardRouteId:hash("2"),amountRaw:"100",delivered:true,status:"awaiting-onward"};
+  onwardRouteId:hash("2"),amountRaw:"100",confirmed:true,delivered:true,status:"awaiting-onward"};
  const child={...parent,messageId:nextId,txHash:hash("c"),sourceChain:"xgrchain",
   destinationChain:"polygon",parentMessageId:firstId,routeId:parent.onwardRouteId,
-  onwardRouteId:null,executionAdapter:addr("d"),delivered:true};
+  onwardRouteId:null,executionAdapter:addr("d"),confirmed:true,delivered:true};
  let linked=linkIndexedJourneys([parent],[child])[0];
  assert.equal(linked.status,"journey-delivered");
  assert.equal(linked.secondHopTxHash,hash("c"));
