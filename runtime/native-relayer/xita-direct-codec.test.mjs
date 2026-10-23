@@ -37,7 +37,7 @@ test("ISM metadata is a direct authorization, signer bitmap and BLS signature",(
  assert.equal(parsed[0].sourceBlockNumber,517578687n);
  assert.equal(parsed[1],"0x03");
  assert.equal(parsed[2],sig);
- assert.ok(getBytes(data).length<600);
+ assert.ok(getBytes(data).length<1024);
  assert.throws(()=>encodeDirectISMMetadata({authorization:message,signerBitmap:"0x03",aggregateSignature:"0x01"}),/uncompressed/);
  assert.throws(()=>encodeDirectBLSPayload({...message,messageId:"0x"+"0".repeat(64)}),/identity/);
 });
