@@ -6,6 +6,7 @@ import {execFileSync} from "node:child_process";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
+import {applicationMail} from "./mail-template.mjs";
 import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
@@ -157,8 +158,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       // A notification failure must not undo an already-created GitHub PR.
       try{
         await deliver({to:record.input.contactEmail,subject:"XITA application received for review",
-          text:"Your email is confirmed. XITA draft application #"+pr.number+
-            " is awaiting XGR review. The public proposal contains no email address. Review: "+pr.url,
+          ...applicationMail({title:"Your email is confirmed",subtitle:"Your token proposal is under review",paragraphs:["Your XITA application for "+record.input.name+" ("+record.input.symbol+") has been verified and created as GitHub Draft PR #"+pr.number+".","No token route has been approved or deployed yet."],action:{label:"View your proposal",url:pr.url}}),
           idempotencyKey:record.id+":submitted"},{env});
         record.sent.push("submitted");savePrivate(dir,record);
       }catch{record.pendingNotification="submitted";savePrivate(dir,record);}
@@ -183,8 +183,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   // No email, token, or role holder contact is ever written to GitHub here.
   try{
     await deliver({to:input.contactEmail,subject:"Confirm your XITA Network application",
-      text:"Please confirm that you submitted a token application to XITA by opening this link within 24 hours:\n\n"+
-         publicConfirmUrl(id,token,env)+"\n\nIf this was not you, ignore this email. No public proposal is created until confirmation.",
+      ...applicationMail({title:"Confirm your XITA application",subtitle:"One more step to submit your project",paragraphs:["Thank you for submitting "+input.name+" ("+input.symbol+") to XITA.","Confirm your email within 24 hours to begin the independent XGR review.","If you did not submit this application, ignore this email. No GitHub proposal has been created yet."],action:{label:"Confirm your email",url:publicConfirmUrl(id,token,env)}}),
       idempotencyKey:id+":confirm"},{env});
   }catch{
     // A failed delivery is not an application: delete its private record.
