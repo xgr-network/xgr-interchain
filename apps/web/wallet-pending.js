@@ -1,3 +1,4 @@
+import {walletJourneys} from "./verified-journey.js";
 // Header badge for canonical wallet-owned unfinished transfer messages.
 // Delivery UNKNOWN must remain visible but NEVER be described as delivered.
 const ACCOUNT=/^0x[0-9a-f]{40}$/i;
@@ -7,7 +8,7 @@ const ONWARD=new Set(["awaiting-onward","awaiting-final-proof",
 export function pendingDeliveryCount({account,items=[],indexedOpenCount=0}={}){
  if(!ACCOUNT.test(account||"")||!Array.isArray(items))return 0;
  const seen=new Set;
- for(const item of items){
+ for(const item of walletJourneys(items)){
   if(item?.confirmed!==true||item.account?.toLowerCase()!==account.toLowerCase()||
     !HASH.test(item.messageId||"")||!HASH.test(item.txHash||""))continue;
   const firstPending=(item.status==="awaiting-proof"&&item.delivered===false)||
