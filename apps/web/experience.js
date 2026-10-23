@@ -125,6 +125,8 @@ export function renderRepresentationInventory(model,assetId,chainKey,wallet={}){
  const address=verifiedSyntheticContract(model.deployments,assetId,rep);
  const contract=native?'<span class="ux-small">Native currency · no ERC-20 contract</span>':
   address?'<div class="ux-contract-line"><code>'+esc(address)+'</code><button type="button" data-xita-copy-address="'+esc(address)+'" aria-label="Copy '+esc(rep.symbol||assetId)+' contract address">Copy</button>'+
+   (rep.representation==="synthetic"&&Number.isSafeInteger(system?.chainId)&&Number.isInteger(model.tokenDecimals?.[assetId])?
+    '<button type="button" class="ux-mm-import" data-xita-add-metamask data-asset="'+esc(assetId)+'" data-chain="'+esc(chainKey)+'" aria-label="Add '+esc(rep.symbol||assetId)+' on '+esc(system?.label||chainKey)+' to MetaMask">+ MetaMask</button>':'')+
    (tokenExplorerUrl(chainKey,address)?'<a target="_blank" rel="noopener noreferrer" href="'+esc(tokenExplorerUrl(chainKey,address))+'">Explorer ↗</a>':'')+'</div>':
   '<span class="ux-small">Contract not independently verified</span>';
  const result=walletRepresentationBalance(wallet,assetId,rep,{
