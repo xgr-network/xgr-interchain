@@ -41,3 +41,22 @@ test("an unverified child cannot collapse a pending card",()=>{
  assert.equal(listed[0].status,"awaiting-onward");
  assert.equal(walletJourneys(listed).length,2);
 });
+
+test("indexed parent absorbs same independently verified onward TX from stale browser state",()=>{
+ const indexed=linkIndexedJourneys([parent],[child])[0];
+ const browserChild={...child,parentMessageId:null};
+ assert.equal(indexed.secondHopTxHash,child.txHash);
+ assert.deepEqual(walletJourneys([indexed,browserChild]),[indexed]);
+});
+test("an unrelated, unconfirmed, mismatched or ambiguous child is never hidden",()=>{
+ const indexed=linkIndexedJourneys([parent],[child])[0];
+ for(const wrong of [
+  {...child,parentMessageId:null,txHash:hash("e")},
+  {...child,parentMessageId:null,routeId:hash("f")},
+  {...child,parentMessageId:null,confirmed:false},
+  {...child,parentMessageId:null,amountRaw:"51"}
+ ]){
+  assert.equal(walletJourneys([indexed,wrong]).length,2);
+ }
+ assert.equal(walletJourneys([{...indexed,status:"journey-ambiguous"},{...child,parentMessageId:null}]).length,2);
+});
