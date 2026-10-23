@@ -37,7 +37,8 @@ test("email confirmation is private, single-use and required before public GitHu
  const handler={env,deliver,sourceCatalog:()=>catalog,
   verify:async()=>({platform:"base",address:input.canonicalAddress,checkedAt:new Date().toISOString()}),
   getMainSha:async()=>"a".repeat(40),
-  publisher:async(bundle,{expectedMain})=>{
+  publisher:async(bundle,{expectedMain,applicationId})=>{
+   assert.match(applicationId,/^[0-9a-f-]{36}$/);
    proposals++;assert.equal(expectedMain,"a".repeat(40));
    assert.equal(bundle.summary.applicantRole,"holder");
    assert.equal(bundle.summary.routeCount,
@@ -81,11 +82,13 @@ test("email confirmation is private, single-use and required before public GitHu
   assert.equal(proposals,1);
   assert.equal(mail.length,2);
   const repeated=await post("/api/xita/join/confirm",token);
-  assert.equal(repeated.status,422);
+  assert.equal(repeated.status,200);
+  assert.equal(repeated.body.prNumber,271);
   assert.equal(proposals,1);
   const stored=listPrivate(dir);
   assert.equal(stored[0].phase,"under-review");
   assert.equal(stored[0].pr.number,271);
   assert.equal(stored[0].tokenHash,null);
+  assert.match(stored[0].receiptHash,/^[0-9a-f]{64}$/);
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});}
 });
