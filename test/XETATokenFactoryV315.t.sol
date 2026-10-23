@@ -16,6 +16,8 @@ contract XITAMailboxV315Mock {
     address public registry;
     function setRegistry(address value) external { registry = value; }
     function mailbox() external view returns (address) { return address(this); }
+    function defaultHook() external view returns (address) { return address(this); }
+    function requiredHook() external view returns (address) { return address(this); }
     function destinationDomain() external view returns (uint32) { return localDomain; }
 
     uint32 public immutable localDomain;

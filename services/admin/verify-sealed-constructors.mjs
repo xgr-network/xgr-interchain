@@ -12,7 +12,7 @@ const commit=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"})
 const {seal,raws}=readSealedArtifacts(root,commit);
 const keys=Object.entries(SOURCE);
 const names=new Set(keys.map(([,name])=>name));
-if(keys.length!==NAMES.length||NAMES.some(name=>!names.has(name)))
+if(names.size!==NAMES.length||NAMES.some(name=>!names.has(name)))
  throw Error("Trusted component inventory is inconsistent with sealed production artifacts");
 for(const [component,types] of Object.entries(chainDraftConstructorTypes)){
  if(types.join(",")!==trustedConstructorTypes[component]?.join(","))

@@ -32,6 +32,8 @@ contract XITATwoHopMailboxStub {
     constructor(uint32 domain_) { localDomain = domain_; }
     function setRegistry(address value) external { registry = value; }
     function mailbox() external view returns (address) { return address(this); }
+    function defaultHook() external view returns(address){return address(this);}
+    function requiredHook() external view returns(address){return address(this);}
     function destinationDomain() external view returns (uint32) { return localDomain; }
     function quoteDispatch(uint32, bytes32, bytes calldata, bytes calldata, address)
         external pure returns (uint256) { return 0; }
