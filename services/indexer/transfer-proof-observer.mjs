@@ -49,7 +49,7 @@ export async function claimProofObservation(pool,{token=randomUUID()}={}){
  const leased=await pool.query({text:`WITH due AS (
  SELECT j.source_chain,j.message_id FROM xita_transfer_proof_observations j
  JOIN xita_transfer_operations o USING(source_chain,message_id)
- WHERE o.delivered IS FALSE AND j.state <> 'delivery-observed'
+ WHERE o.delivered IS FALSE
  AND j.next_check_at<=NOW()
  AND (j.lease_until IS NULL OR j.lease_until<NOW())
  ORDER BY j.next_check_at ASC,j.updated_at ASC
