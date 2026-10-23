@@ -324,7 +324,11 @@ test("untrusted project URI is not rendered as executable link; conflicting synt
  assert.doesNotMatch(html,/Official project/);
  assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
  const conflict=structuredClone(model);
- conflict.deployments.push({...conflict.deployments.find(x=>x.source==="base"),sourceToken:"0x"+"f".repeat(40)});
+ // Build a real competing receipt-backed Base destination representation.
+ // The previous mock was not guaranteed to belong to XGR, so it proved nothing.
+ const realBase=conflict.deployments.find(x=>x.asset==="XGR"&&x.destination==="base");
+ assert.ok(realBase);
+ conflict.deployments.push({...realBase,destinationRouter:"0x"+"f".repeat(40)});
  const info=transferTokenIdentity(conflict,"XGR","base");
  assert.equal(info.address,null);
  assert.equal(info.evidence,"unavailable");
