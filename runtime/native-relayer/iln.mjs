@@ -462,14 +462,14 @@ function expectedPayload(id, attestation, operation) {
     destinationDomain: DESTINATION_DOMAIN,
     routeId: ROUTE_ID,
     setId: BigInt(attestation.setId),
-    sourceBlockNumber: BigInt(operation.sourceBlockNumber),
+    sourceBlockNumber: BigInt(Number(attestation.index)+1),
     registry: ORIGIN_ILN_REGISTRY,
     gateway: ORIGIN_ILN_GATEWAY,
     sourceRouter: ORIGIN_WARP_ROUTER,
     mailbox: ORIGIN_MAILBOX,
     merkleTreeHook: ORIGIN_MERKLE_TREE_HOOK,
     destinationRouter: DESTINATION_WARP_ROUTER,
-    validatorFeeWei: BigInt(operation.validatorFeeWei),
+    validatorFeeWei: BigInt(attestation.validatorFeeWei),
     authorizedMessageId: id,
     root: attestation.root,
     index: Number(attestation.index),
@@ -537,14 +537,14 @@ async function getAttestation(id, operation) {
     throw new Error("ILN attestation authorized message mismatch");
   }
   if (
-    BigInt(attestation.validatorFeeWei) !==
-    BigInt(operation.validatorFeeWei)
+    BigInt(attestation.validatorFeeWei) <= 0n ||
+    BigInt(operation.validatorFeeWei) <= 0n
   ) {
     throw new Error("ILN attestation validator fee mismatch");
   }
   if (
     Number(attestation.sourceBlockNumber) !==
-    Number(operation.sourceBlockNumber)
+    Number(attestation.index)+1
   ) {
     throw new Error("ILN attestation source block mismatch");
   }
@@ -599,14 +599,14 @@ function buildMetadata(state, id, operation, attestation) {
     destinationDomain: DESTINATION_DOMAIN,
     routeId: ROUTE_ID,
     setId: BigInt(attestation.setId),
-    sourceBlockNumber: BigInt(operation.sourceBlockNumber),
+    sourceBlockNumber: BigInt(Number(attestation.index)+1),
     registry: ORIGIN_ILN_REGISTRY,
     gateway: ORIGIN_ILN_GATEWAY,
     sourceRouter: ORIGIN_WARP_ROUTER,
     mailbox: ORIGIN_MAILBOX,
     merkleTreeHook: ORIGIN_MERKLE_TREE_HOOK,
     destinationRouter: DESTINATION_WARP_ROUTER,
-    validatorFeeWei: BigInt(operation.validatorFeeWei),
+    validatorFeeWei: BigInt(attestation.validatorFeeWei),
     authorizedMessageId: id,
     root: attestation.root,
     checkpointIndex,

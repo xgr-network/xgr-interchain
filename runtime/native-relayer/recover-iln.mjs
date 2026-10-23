@@ -246,10 +246,10 @@ async function main() {
     "invalid signed confirmed Hook checkpoint block");
   assert(Number.isSafeInteger(checkpointIndex) && checkpointIndex >= 0, "invalid checkpoint index");
   const latestSource = await origin.getBlockNumber();
-  assert(checkpointBlock <= latestSource - confirmationDepth,
-    "source Hook checkpoint not sufficiently confirmed");
-  if(sourceEvidence)assert(sourceEvidence.blockNumber<=checkpointBlock,
-    "original source transaction occurred after signed Hook checkpoint");
+  assert(checkpointBlock === checkpointIndex + 1,
+    "signed ISM field must equal deterministic Merkle insertion sequence");
+  assert(latestSource >= confirmationDepth,
+    "source chain has insufficient confirmation history");
 
   // Validator-native proof; V315 route bindings are append-only,
   // while their global fee can change; the original fee is authenticated by the
@@ -276,8 +276,8 @@ async function main() {
   let operationFeeWei,message;
   const operationBlock=sourceEvidence?.blockNumber ||
     originalOperationBlock || await findOriginalOperationBlock();
-  assert(operationBlock<=checkpointBlock,
-    "source Gateway operation occurred after signed Hook checkpoint");
+  assert(operationBlock <= latestSource - confirmationDepth,
+    "original Gateway operation is not sufficiently confirmed");
   if(sourceEvidence){
     // Receipt verifies BOTH events in the very same successful source tx.
     // Do not rescan this historical Gateway/Mailbox block via eth_getLogs.
