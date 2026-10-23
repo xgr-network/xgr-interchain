@@ -42,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find config deployments -name "*.json" -print0 | xargs -0 -n1 jq empty
+          find config deployments -name "*.json" -print0 | xargs -0 -r -n1 jq empty
           jq empty runtime/native-relayer/package.json
 
       - name: Validate repository manifests and catalog snapshot
