@@ -63,7 +63,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  const pendingWallet=twoHop?["awaiting-proof","awaiting-onward","awaiting-final-proof"]:
    ["awaiting-proof"];
  const proofObservation=status==="awaiting-final-proof"?
-  record?.finalProofObservation:record?.proofObservation;
+  record?.finalProofObservation:
+  status==="awaiting-proof"?record?.proofObservation:null;
  const observing=Boolean(proofObservation&&
    ["queued","checking","waiting","unavailable"].includes(proofObservation.state));
  const observationAt=Date.parse(proofObservation?.updatedAt||"");
