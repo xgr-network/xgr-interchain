@@ -67,13 +67,17 @@ export function indexedTransferRow(row){
 // adapter event (parentMessageId) and independently checked Mailbox result.
 // Correlate only a FINALIZED completed second hop to a paid parent.
 // The same predicate is used by the pending worklist and complete counts.
-const completedChildPredicate=`EXISTS (SELECT 1 FROM xita_transfer_operations c
- WHERE c.source_chain='xgrchain'
+const matchingChildCondition=`c.source_chain='xgrchain'
  AND c.parent_message_id=p.message_id AND c.account=p.account
  AND c.asset=p.asset AND c.route_id=p.onward_route_id
  AND c.destination_chain=p.final_destination_chain
  AND c.final_recipient=p.final_recipient AND c.amount_raw=p.amount_raw
- AND c.execution_adapter IS NOT NULL AND c.delivered IS TRUE)`;
+ AND c.execution_adapter IS NOT NULL`;
+const completedChildPredicate=`(
+ SELECT COUNT(*) FROM xita_transfer_operations c
+ WHERE ${matchingChildCondition})=1
+ AND EXISTS (SELECT 1 FROM xita_transfer_operations c
+ WHERE ${matchingChildCondition} AND c.delivered IS TRUE)`;
 // Exclude only a uniquely linked child from the wallet-facing journey count.
 // The child remains in the immutable ledger and linked parent details.
 const linkedChildPredicate=`p.parent_message_id IS NOT NULL AND p.source_chain='xgrchain'
@@ -84,7 +88,17 @@ const linkedChildPredicate=`p.parent_message_id IS NOT NULL AND p.source_chain='
  AND parent.delivered IS TRUE AND parent.onward_route_id=p.route_id
  AND parent.final_destination_chain=p.destination_chain
  AND parent.final_recipient=p.final_recipient
- AND parent.amount_raw=p.amount_raw)=1`;
+ AND parent.amount_raw=p.amount_raw)=1
+ AND (
+ SELECT COUNT(*) FROM xita_transfer_operations sibling
+ WHERE sibling.source_chain='xgrchain'
+ AND sibling.parent_message_id=p.parent_message_id
+ AND sibling.account=p.account AND sibling.asset=p.asset
+ AND sibling.route_id=p.route_id
+ AND sibling.destination_chain=p.destination_chain
+ AND sibling.final_recipient=p.final_recipient
+ AND sibling.amount_raw=p.amount_raw
+ AND sibling.execution_adapter IS NOT NULL)=1`;
 export async function readWalletTransferIndex(catalog,account,{
  pool=null,limit=100,onlyPending=false,now=Date.now(),routeList=null}={}){
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
