@@ -493,3 +493,16 @@ test("last verified collateral remains explicitly historic in Locked TVL ranking
  assert.match(html,/Last verified/);
  assert.match(html,/\$0\.011503/);
 });
+
+test("two-hop resume dropdown names the final Base destination, never the hub",()=>{
+ const model=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+ const account="0x"+"a".repeat(40),tx="0x"+"9".repeat(64);
+ const row={account,txHash:tx,asset:"XGR",sourceChain:"arbitrum",
+  destinationChain:"xgrchain",finalDestinationChain:"base",
+  confirmed:true,delivered:true,onwardRouteId:"0x"+"2".repeat(64),
+  status:"awaiting-final-proof"};
+ const html=renderPlanRoute(model,{origin:"arbitrum",destination:"base",asset:"XGR"},
+  "ready",{account},{items:[row],selectedTxHash:tx});
+ assert.match(html,/XGR · arbitrum → base · 0x99999999/);
+ assert.doesNotMatch(html,/XGR · arbitrum → xgrchain · 0x99999999/);
+});
