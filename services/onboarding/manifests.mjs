@@ -144,9 +144,14 @@ export function buildManifestBundle(raw,catalog){
   protocol:"XITA-v3.1.5",routingHub:"xgrchain",routes};
  const deployment={schemaVersion:3,kind:"asset-deployment",network:"mainnet",asset:key,assetId,
   sourceManifest:base+"/asset.json",receiptPaths:[],representations:[],routeDeployments:[],present:false};
+ // Keep the canonical published catalog key order. Changing the position of
+ // infrastructure and assets would make a one-token proposal appear to rewrite
+ // hundreds of unrelated deployment lines in the GitHub review.
  const proposedCatalog={
-  chains:catalog.chains,infrastructure:catalog.infrastructure,publication:catalog.publication,
-  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,deployment}}
+  chains:catalog.chains,
+  assets:{...catalog.assets,[key]:{metadata,profile,routes:routeConfig,deployment}},
+  infrastructure:catalog.infrastructure,
+  publication:catalog.publication
  };
  // No personal contact information may ever be embedded, even in free-text descriptions.
  const publicJson=JSON.stringify({metadata,profile,routeConfig});
