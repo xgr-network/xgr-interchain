@@ -16,7 +16,7 @@ const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
 const COMPONENTS=new Set([
- "blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
+ "blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
  "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault","executionGateway"
 ]);
 const EVENTS={
@@ -24,9 +24,8 @@ const EVENTS={
  "factory-gateway":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
  "factory-feevault":{sig:"RouteRegistered(bytes32,address,address)",topicIndex:3},
  "factory-registry":{sig:"RegistryDeployed(address)",topicIndex:1},
- "transport-mailbox":{sig:"TransportDeployed(address,address,address)",topicIndex:1},
- "transport-merkle-hook":{sig:"TransportDeployed(address,address,address)",topicIndex:2},
- "transport-required-hook":{sig:"TransportDeployed(address,address,address)",topicIndex:3}
+ "transport-mailbox":{sig:"TransportDeployed(address,address)",topicIndex:1},
+ "transport-dispatch-hook":{sig:"TransportDeployed(address,address)",topicIndex:2},
 };
 const equal=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const address=x=>ADDR.test(x||"")&&!/^0x0{40}$/i.test(x);
@@ -357,6 +356,14 @@ export async function publishDeploymentBatch(root,inputs,{
     address:r.address,runtimeCodeKeccak256:r.runtimeCodeKeccak256,receiptPath
    };
    value.xitaV315.receiptPaths.push(receiptPath);
+  }
+  // Mailbox requires the same ProtocolFee as default and required hook.
+  // A single immutable receipt backs both component index entries.
+  if(records.some(r=>r.component==="dispatchHook")){
+   const child=value.xitaV315.components;
+   if(!child.transportBundle||!child.mailbox||!child.dispatchHook||child.requiredHook)
+    throw Error("Invalid Direct-BLS transport alias state");
+   child.requiredHook={...child.dispatchHook};
   }
   value.xitaV315.receiptPaths.sort();
   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(value)});

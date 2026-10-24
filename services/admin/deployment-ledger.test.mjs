@@ -86,3 +86,15 @@ test("receipt proof NEVER requests archived contract state; immutable runtime re
  assert.equal(r.status,"onchain-deployment-verified");
  assert.deepEqual(queried,["latest"]);
 });
+
+test("Direct-BLS transport uses actual two-address event and one aliased ProtocolFee receipt",()=>{
+ const ledger=readFileSync(new URL("./deployment-ledger.mjs",import.meta.url),"utf8");
+ const transport=readFileSync(new URL("../../contracts/XITADirectTransport.sol",import.meta.url),"utf8");
+ const operator=readFileSync(new URL("./chain-operator.mjs",import.meta.url),"utf8");
+ assert.match(transport,/event TransportDeployed\(address indexed mailbox, address indexed dispatchHook\)/);
+ assert.match(ledger,/"transport-mailbox":\{sig:"TransportDeployed\(address,address\)",topicIndex:1\}/);
+ assert.match(ledger,/"transport-dispatch-hook":\{sig:"TransportDeployed\(address,address\)",topicIndex:2\}/);
+ assert.doesNotMatch(ledger,/transport-required-hook|transport-merkle-hook/);
+ assert.match(ledger,/child.requiredHook=\{\.\.\.child.dispatchHook\}/);
+ assert.match(operator,/transport-dispatch-hook/);
+});
