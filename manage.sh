@@ -71,7 +71,7 @@ check() {
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
     node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/source-tx-hints.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs tools/validate-join-pr.test.mjs
-    node --test tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/verify-iln-route-catalog.test.mjs tools/transfer-recovery-nginx.test.mjs tools/interchain-fee-nginx.test.mjs
+    node --test tools/stamp-xita-web-style.test.mjs tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/verify-iln-route-catalog.test.mjs tools/transfer-recovery-nginx.test.mjs tools/interchain-fee-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
