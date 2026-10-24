@@ -17,9 +17,13 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
   route:String(r.route||"").slice(0,130),source:String(r.source||"").replace(/^xgr$/i,"xgrchain").slice(0,55),
   destination:String(r.destination||"").slice(0,55),
   state:["ok","catching-up","unavailable"].includes(r.state)?r.state:"unavailable",
-  sourceHead:Number.isSafeInteger(r.sourceHead)?r.sourceHead:null,
-  scanCursor:Number.isSafeInteger(r.scanCursor)?r.scanCursor:null,
-  blockLag:Number.isSafeInteger(r.blockLag)?r.blockLag:null,
+  sourceHead:(r.sourceHeadKnown===true||r.sourceHeadKnown===undefined&&r.sourceHead>0)&&Number.isSafeInteger(r.sourceHead)?r.sourceHead:null,
+  scanCursor:(r.scanCursorKnown===true||r.scanCursorKnown===undefined&&r.scanCursor>0)&&Number.isSafeInteger(r.scanCursor)?r.scanCursor:null,
+  blockLag:(r.sourceHeadKnown===true&&r.scanCursorKnown===true||r.sourceHeadKnown===undefined&&r.scanCursorKnown===undefined&&r.sourceHead>0)&&
+   Number.isSafeInteger(r.blockLag)?r.blockLag:null,
+  sourceHeadKnown:r.sourceHeadKnown===true,
+  scanCursorKnown:r.scanCursorKnown===true,
+  lastSuccessfulScanUnix:Number.isSafeInteger(r.lastSuccessfulScanUnix)&&r.lastSuccessfulScanUnix>0?r.lastSuccessfulScanUnix:null,
   error:String(r.error||"").slice(0,200)
  }));
  return {name,workerAlive:true,ageMs,routes,
@@ -42,4 +46,28 @@ export async function probeILNValidators({urls=validatorRPCUrls(),fetcher=global
    return summarizeILNValidatorStatus(answer.result,{now,name});
   }catch(e){return {name,state:"unavailable",workerAlive:false,routes:[],reason:String(e.message||e).slice(0,180)}}
  }));
+}
+
+/** External XITA data is diagnostic only, never a validator finality proof. */
+export function attachXitaReferenceLag(validators,indexer,{now=Date.now(),maxAgeMs=180000}={}){
+ const sourceHeads=new Map();
+ for(const route of indexer?.routes||[]){
+  const chain=String(route.source||"").toLowerCase();
+  const t=Date.parse(route.updatedAt||"");
+  if(!Number.isFinite(t)||now-t<0||now-t>maxAgeMs||
+     !Number.isSafeInteger(route.finalizedHead)||route.finalizedHead<=0||
+     !["ok","catching-up"].includes(route.state))continue;
+  const previous=sourceHeads.get(chain);
+  if(previous===undefined||route.finalizedHead>previous)
+   sourceHeads.set(chain,route.finalizedHead);
+ }
+ return validators.map(validator=>({...validator,routes:(validator.routes||[]).map(route=>{
+  const referenceHead=sourceHeads.get(route.source);
+  const cursor=route.scanCursor;
+  const valid=Number.isSafeInteger(referenceHead)&&Number.isSafeInteger(cursor)&&cursor>0;
+  return {...route,
+   xitaReferenceHead:valid?referenceHead:null,
+   xitaReferenceLag:valid?Math.max(0,referenceHead-cursor):null,
+   xitaReferenceOnly:true};
+ })}));
 }
