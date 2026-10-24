@@ -217,7 +217,8 @@
         "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
         "sourceManifest": "config/assets/b9/ARB/asset.json",
         "receiptPaths": [
-          "deployments/receipts/arbitrum/5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f-76f5d761ae41116ba5fa2ecb358e5fad15e0d992.json"
+          "deployments/receipts/arbitrum/5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f-76f5d761ae41116ba5fa2ecb358e5fad15e0d992.json",
+          "deployments/receipts/xgrchain/97a3cfbea2351277f4464f87eaa500ca4ed04f86c94f84ea52da3c451c9db5d6-96940e83d3096eb868541adf29aa8da44a783e85.json"
         ],
         "representations": [
           {
@@ -226,6 +227,13 @@
             "address": "0x76f5d761ae41116ba5fa2ecb358e5fad15e0d992",
             "runtimeCodeKeccak256": "0xc45c9ba8f4ed9e9b62d1f5c570545c42e8bcda40a6f25c82adcf227f6c95e88b",
             "receiptPath": "deployments/receipts/arbitrum/5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f-76f5d761ae41116ba5fa2ecb358e5fad15e0d992.json"
+          },
+          {
+            "chain": "xgrchain",
+            "component": "syntheticRouter",
+            "address": "0x96940e83d3096eb868541adf29aa8da44a783e85",
+            "runtimeCodeKeccak256": "0x5841ffe451fd871f06d2a995ef1b976eaf39d56c8489d991e37e436164d62600",
+            "receiptPath": "deployments/receipts/xgrchain/97a3cfbea2351277f4464f87eaa500ca4ed04f86c94f84ea52da3c451c9db5d6-96940e83d3096eb868541adf29aa8da44a783e85.json"
           }
         ],
         "routeDeployments": [],
