@@ -50,3 +50,13 @@ test("newly accepted asset with partial receipts does not zero valid XGR 24h tur
   {schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:verified("XGR")}});
  assert.deepEqual(ready.totals,{lockedUsd:null,movedUsd:null});
 });
+
+test("undeployed post-reset asset cannot inherit verified TVL or movement",()=>{
+ const c={assets:{XGR:{...deployedFixture("XGR","xgrchain"),
+  deployment:{present:false,representations:[],routeDeployments:[],receiptPaths:[]}}}};
+ const old={schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:verified("XGR")}};
+ const got=projectMetrics(c,old);
+ assert.equal(got.assets.XGR.verified,false);
+ assert.equal(got.assets.XGR.custody.status,"unavailable");
+ assert.deepEqual(got.totals,{lockedUsd:null,movedUsd:null});
+});

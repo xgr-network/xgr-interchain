@@ -231,3 +231,15 @@ test("transfer health coverage always includes token identity for same-name mult
  assert.deepEqual(coverage.routes.map(x=>x.asset),["XGR","ARB"]);
  assert.equal(coverage.requiredRoutes,2);
 });
+
+test("empty deployment catalog never exposes orphaned pending SQL operations",async()=>{
+ const pool={query:()=>{throw Error("Old XITA SQL rows must not be queried without deployments");}};
+ const {readTransferIndexStats}=await import("./transfer-index-store.mjs");
+ const history=await readWalletTransferIndex({assets:{}},addr("a"),{pool});
+ const stats=await readTransferIndexStats({assets:{}},{pool});
+ assert.deepEqual(history.items,[]);
+ assert.equal(history.openCount,0);
+ assert.equal(history.coverage.requiredRoutes,0);
+ assert.deepEqual(stats.hopEvents,[]);
+ assert.deepEqual(stats.proofObserver.routes,[]);
+});

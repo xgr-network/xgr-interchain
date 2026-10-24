@@ -24,6 +24,7 @@ Usage: ./manage.sh <command>
   check-routes  Read-only live contract/fee/router audit for catalog routes (optional --asset --source --destination)
   publish-web   Publish static apps/web and restart the admin
   update        Pull GitHub main, validate, publish web, restart admin
+  hard-reset-dev  Destructive XITA-only development reset (services must be stopped)
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-join  Install private Join API and status mail timer (no chain changes)
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
@@ -727,6 +728,7 @@ case "${1:-help}" in
     publish_web
     ;;
   update) update ;;
+  hard-reset-dev) exec bash "$ROOT/runtime/hard-reset-dev-state.sh" --apply-hard-reset ;;
   install-sync) install_sync ;;
   install-join) install_join ;;
   repair-transfer-db) repair_transfer_db ;;

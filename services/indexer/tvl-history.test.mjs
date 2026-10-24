@@ -20,3 +20,10 @@ test("planned or partial deployment does not block verified XGR history",()=>{
  const all=verifiedTvlHistory(snapshot,{assets:{XGR:a,ARB:deployedFixture("ARB","arbitrum")}});
  assert.equal(all.points.length,0,"a fully deployed asset missing evidence blocks complete history");
 });
+
+test("hard reset with zero deployed routes removes all retained TVL history",()=>{
+ const previous={kind:"xita-tvl-history-v1",schemaVersion:1,points:[
+  {lockedUsd:20,asOf:"2026-10-23T12:00:00Z",assets:{XGR:20}}
+ ]};
+ assert.deepEqual(verifiedTvlHistory(snapshot,{assets:{XGR:{deployment:{present:false}}}},previous).points,[]);
+});

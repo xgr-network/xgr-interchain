@@ -20,7 +20,9 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}
  // route exists. Apply the same verified-route gate as the evidence producer.
  const assets=Object.keys(catalog?.assets||{}).filter(k=>isDeployedAsset(catalog.assets[k],catalog));
  const facts=assets.map(id=>verifiedMetrics(snapshot,id));
- if(!assets.length||facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
+ // No deployed routes: historical collateral belongs to the retired generation.
+ if(!assets.length)return {kind:"xita-tvl-history-v1",schemaVersion:1,points:[]};
+ if(facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
  const at=Date.parse(snapshot?.asOf);
  if(!Number.isFinite(at))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const amount=facts.reduce((n,f)=>n+f.lockedUsd,0);

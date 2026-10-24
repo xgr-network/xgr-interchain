@@ -644,7 +644,7 @@ function tokenCard(id){
  const p=profile(id);
  return '<div class="card token-link">'+projectLogo(id)+'<div><h3>'+x(p.name)+' ('+x(id)+')</h3>'+
   '<p class="muted">'+x(p.shortDescription)+'</p>'+
-  '<small class="muted">'+activeFor(id)+' of '+state.catalog.assets[id].routes.routes.length+' routes active</small><br>'+
+  '<small class="muted">'+activeFor(id)+' deployed routes</small><br>'+
   btn(tokenUrl(id),"Open token & bridge")+'</div></div>';
 }
 function metric(label,value,noteText){
@@ -755,16 +755,16 @@ function token(){
  '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
  '<div class="pair"><span>Documented ILN routes</span><b>'+
-  (a.deployment?.routeDeployments?.length||0)+' / '+routes().length+'</b></div>'+
+  (a.deployment?.routeDeployments?.length||0)+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
  '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
  '<section class="section"><h2>Network representations</h2><p class="ux-small">Contract addresses from documented deployment receipts.</p><div class="routes">'+(a.metadata.representations||[]).map(rep=>
  renderRepresentationInventory(model,id,rep.chain,walletGasView())).join("")+'</div></section>'+
- '<section class="section"><h2>Configured interchain routes</h2><div class="routes">'+routes().map(rt=>
- '<div class="route"><strong>'+x(routeName(rt))+'</strong><div class="ux-small">'+
-   (a.deployment?.routeDeployments?.some(r=>r.routeName===rt.name)?
-    'Deployed · Gateway '+x(a.deployment.routeDeployments.find(r=>r.routeName===rt.name).components.gateway.address):
-    'Prospect · configured only')+'</div></div>').join("")+'</div></section>'+
+ '<section class="section"><h2>Deployed interchain routes</h2><div class="routes">'+
+ (deployedRoutes(state.catalog).filter(r=>r.asset===id).map(rt=>
+  '<div class="route"><strong>'+x(routeName({sourceChain:rt.source,destinationChain:rt.destination}))+
+  '</strong><div class="ux-small">Deployed · Gateway '+x(rt.gateway)+'</div></div>').join("")||
+  '<p class="ux-small">No routes deployed yet.</p>')+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,step:0,status:"",busy:false,accepted:false};
