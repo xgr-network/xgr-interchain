@@ -102,7 +102,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
        THEN xita_transfer_operations.delivery_checked_at ELSE NOW() END,
       execution_adapter=EXCLUDED.execution_adapter,
       interchain_fee_wei=EXCLUDED.interchain_fee_wei,
-      quote_nonce=EXCLUDED.quote_nonce,
+      quote_nonce=COALESCE(xita_transfer_operations.quote_nonce,EXCLUDED.quote_nonce),
       final_destination_chain=EXCLUDED.final_destination_chain,
       final_recipient=EXCLUDED.final_recipient,
       onward_route_id=EXCLUDED.onward_route_id,
@@ -112,7 +112,8 @@ async function storeVerifiedOperation(db,{route,event,record}){
     WHERE xita_transfer_operations.parent_message_id IS NOT DISTINCT FROM EXCLUDED.parent_message_id
       AND xita_transfer_operations.execution_adapter IS NOT DISTINCT FROM EXCLUDED.execution_adapter
       AND xita_transfer_operations.interchain_fee_wei IS NOT DISTINCT FROM EXCLUDED.interchain_fee_wei
-      AND xita_transfer_operations.quote_nonce IS NOT DISTINCT FROM EXCLUDED.quote_nonce
+      AND (xita_transfer_operations.quote_nonce IS NULL OR
+           xita_transfer_operations.quote_nonce IS NOT DISTINCT FROM EXCLUDED.quote_nonce)
       AND xita_transfer_operations.final_destination_chain IS NOT DISTINCT FROM EXCLUDED.final_destination_chain
       AND xita_transfer_operations.final_recipient IS NOT DISTINCT FROM EXCLUDED.final_recipient
       AND xita_transfer_operations.onward_route_id IS NOT DISTINCT FROM EXCLUDED.onward_route_id
