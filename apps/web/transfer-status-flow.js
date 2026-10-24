@@ -24,7 +24,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  const delivered=twoHop?status==="journey-delivered"&&record?.delivered===true:
    status==="delivered"&&record?.delivered===true;
  const firstSource=Boolean(record?.confirmed)&&sourceConfirmed.has(status);
- const confirmationText=status==="confirming"&&Number.isInteger(record?.confirmationsObserved)&&Number.isInteger(record?.requiredConfirmations)?
+ const confirmationText=["confirming","confirming-native-finality","finality-unavailable"].includes(status)&&Number.isInteger(record?.confirmationsObserved)&&Number.isInteger(record?.requiredConfirmations)?
   "Source mined · "+record.confirmationsObserved+" / "+record.requiredConfirmations+" confirmations":null;
  const firstDestination=twoHop?
    firstDelivered.has(status)&&record?.delivered===true:delivered;
@@ -82,7 +82,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  const canContinue=!working&&!error&&Boolean(record?.confirmed)&&
    pendingWallet.includes(status)&&!delivered&&!proofWaiting;
  const canRefresh=!working&&!delivered&&(Boolean(record)||HASH.test(journey.sourceTxHash||""));
- const needsAttention=Boolean(error)||observationStale||
+ const needsAttention=Boolean(error)||status==="finality-unavailable"||observationStale||
    proofObservation?.state==="unavailable"||
    ["delivery-unknown","final-delivery-unknown",
     "journey-ambiguous","destination-not-deployed"].includes(status);
@@ -97,11 +97,20 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    canRefresh?"Transfer not yet complete":"Preparing transfer";
  if(status==="pending-source")heading="Source transaction pending";
  if(status==="confirming")heading="Source finality pending";
+ if(status==="confirming-native-finality")heading="Waiting for "+name(origin)+" safe finality";
+ if(status==="finality-unavailable")heading="Source finality RPC unavailable";
  if(status==="awaiting-onward"&&!working&&!error)heading="Action required · Continue second hop";
  if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Action required · Continue final delivery";
  if(delivered)heading="Transfer complete";
+ const nativeFinalityMessage=status==="confirming-native-finality"?
+   (confirmationText||"Source mined")+". "+name(origin)+" has not marked the source block safe yet"+
+   (Number.isSafeInteger(record?.sourceSafeHeadBlock)?" (safe head #"+record.sourceSafeHeadBlock+")":"")+
+   ". XITA keeps checking; do not submit another transaction.":
+   status==="finality-unavailable"?(confirmationText||"Source mined")+
+   ". The native safe head is unavailable through approved RPC providers. XITA will retry; do not submit another transaction.":null;
  let message=delivered?"Both destination Mailbox deliveries are confirmed. No further wallet action is required.":
    error?String(error):
+   nativeFinalityMessage?nativeFinalityMessage:
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
    observationStale?"The background verification has not updated recently. Refresh your wallet status or retry the unsigned proof check; your original transfer remains recorded. No source lock/burn is repeated.":
    proofWaiting?"XITA is checking validator signatures in the background. No wallet action is necessary. The status survives reloads and reconnects.":

@@ -388,10 +388,11 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
  try{
   safe=await verifyNativeFinalityReceipt(
    (method,args)=>reader.read(method,args),route.sourceConfig.chainId,receipt);
- }catch(error){
+ }catch{
   return {...base,...finality,...(evidence||{}),status:"finality-unavailable"};
  }
- if(!safe.verified)return {...base,...finality,...(evidence||{}),status:"confirming-native-finality"};
+ if(!safe.verified)return {...base,...finality,...(evidence||{}),
+  sourceSafeHeadBlock:safe.head.number,status:"confirming-native-finality"};
  const found={...base,...finality,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};

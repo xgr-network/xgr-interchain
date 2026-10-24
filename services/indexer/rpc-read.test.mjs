@@ -128,3 +128,15 @@ test("a failed read invalidates the identity cache and independently checks fall
  assert.equal(result,"0x50");
  assert.equal(calls,1);
 });
+
+test("native safe block and pinned mailbox finality reads are permitted, but signing is forbidden",()=>{
+ const rpcUrl="https://mainnet.base.org",to="0x"+"a".repeat(40);
+ const call=(method,params)=>resolveCatalogRpcRead(cat,{rpcUrl,method,params});
+ assert.equal(call("eth_getBlockByNumber",["safe",false]).chainId,8453);
+ assert.equal(call("eth_getBlockByNumber",["0x123",false]).chainId,8453);
+ assert.equal(call("eth_call",[{to,data:"0x12345678"},"0x123"]).chainId,8453);
+ for(const params of [["pending",false],["safe",true],["0x123",true]])
+  assert.throws(()=>call("eth_getBlockByNumber",params),/canonical block-header/);
+ assert.throws(()=>call("eth_call",[{to,data:"0x"},"safe"]),/bounded latest or block-pinned/);
+ assert.throws(()=>call("eth_sendTransaction",[]),/not permitted/);
+});

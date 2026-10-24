@@ -21,3 +21,10 @@ test("resume URL cannot accidentally start a new lock while source is unverified
  assert.equal(blocksUnverifiedSourceRepeat(null,null),false);
  assert.equal(blocksUnverifiedSourceRepeat(hash,{confirmed:true,status:"awaiting-proof"}),false);
 });
+
+test("safe-head or RPC-unavailable wallet transfers remain resumable by original hash",()=>{
+ for(const status of ["confirming-native-finality","finality-unavailable"]){
+  const item={...pending,status,confirmed:false};
+  assert.deepEqual(selectedRecovery([item],owner,tx),item);
+ }
+});
