@@ -128,7 +128,7 @@ test("wrapped wallet target is accepted only with matching fee adapter evidence"
  const tx={...transaction,to:wrapper},rcpt={...receipt,to:wrapper};
  const success=await inspectAnnouncedTx({catalog:{},routes:[configured],hint,pool:db(),
   rpc:mock({tx,rcpt}),verify:async()=>({...await validProof(),
-   executionAdapter:feeAdapter,interchainFeeWei:"20"})});
+   executionAdapter:feeAdapter,interchainFeeWei:"20",quoteNonce:"43"})});
  assert.equal(success.status,"indexed");
  const failure=await inspectAnnouncedTx({catalog:{},routes:[configured],hint,pool:db(),
   rpc:mock({tx,rcpt}),verify:validProof});
