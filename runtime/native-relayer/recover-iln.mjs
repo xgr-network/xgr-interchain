@@ -173,6 +173,29 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
   authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
  });
 
+ // Distinguish a valid aggregated signature from an executable recipient route.
+ // All checks are read-only and use the identical signed payload and metadata.
+ mark("verify-destination-router");
+ const inbound=new Contract(destRouter,[
+  "function verifyInboundRoute(uint64,uint32,address,bytes32) view returns(bool)"
+ ],dest);
+ check(await inbound.verifyInboundRoute(Number(srcChain),srcDomain,srcRouter,routeId),
+  "Destination router rejects canonical inbound route");
+
+ mark("verify-destination-quorum");
+ const quorumRegistry=new Contract(setRegistry,[
+  "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
+ ],dest);
+ check(await quorumRegistry.verifyQuorum(setId,raw,attestation.signerBitmap,signature),
+  "Destination registry rejects aggregate BLS quorum");
+
+ mark("verify-destination-ism");
+ const directISM=new Contract(destISMAddress,[
+  "function verify(bytes,bytes) view returns(bool)"
+ ],dest);
+ check(await directISM.verify(metadata,message),
+  "Destination ISM rejects signed message or canonical routing");
+
  mark("simulate-destination-delivery");
  await destMailbox.process.staticCall(metadata,message);
  check(BigInt(await set.setId())===BigInt(setId),"Destination validator set rotated during preparation");
