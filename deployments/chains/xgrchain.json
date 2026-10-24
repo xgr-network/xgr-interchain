@@ -52,6 +52,11 @@
         "address": "0x6e886a9c17bea13190a2dc26a4c61e1a258d608e",
         "runtimeCodeKeccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
         "receiptPath": "deployments/receipts/xgrchain/d2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb-6e886a9c17bea13190a2dc26a4c61e1a258d608e.json"
+      },
+      "factory": {
+        "address": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+        "runtimeCodeKeccak256": "0x3d25f44fc1e88146ab243ecf2f7eeecfd8c580e80cb50819002039aef740cc1f",
+        "receiptPath": "deployments/receipts/xgrchain/f5f0c153f64e94425c036701227b9309312005dd2904be69b0901d6f2286e2df-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json"
       }
     },
     "receiptPaths": [
@@ -62,7 +67,8 @@
       "deployments/receipts/xgrchain/9ef0e0413751d06896b32fbdea22dd233b8f2831a7ee57baac3468ffa6937a44-62a9fb2f0df77aa0297dbc567079813ccf7c4ea1.json",
       "deployments/receipts/xgrchain/c9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0-1bd47599e8e7436948e596a0e055f2c7ec02cc30.json",
       "deployments/receipts/xgrchain/d2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb-6e886a9c17bea13190a2dc26a4c61e1a258d608e.json",
-      "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
+      "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json",
+      "deployments/receipts/xgrchain/f5f0c153f64e94425c036701227b9309312005dd2904be69b0901d6f2286e2df-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json"
     ]
   }
 }
