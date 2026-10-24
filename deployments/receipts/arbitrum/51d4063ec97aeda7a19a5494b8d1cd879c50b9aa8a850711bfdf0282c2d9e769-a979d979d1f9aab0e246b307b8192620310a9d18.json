@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "e0d0165e9125f0598f13eba01cecf369bf2f6796"
+  },
+  "chain": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "component": "gateway",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeName": "arbitrum_to_xgr",
+  "address": "0xa979d979d1f9aab0e246b307b8192620310a9d18",
+  "runtimeCodeKeccak256": "0x1cc10d29e51ea6ebd13dd4477ee8eff19ff6e244cf11a530ff201e0f295931a5",
+  "transactionHash": "0x51d4063ec97aeda7a19a5494b8d1cd879c50b9aa8a850711bfdf0282c2d9e769",
+  "blockNumber": 517840879,
+  "blockHash": "0x1d890941cd4a793cfbe7a6a1bfef67bc6cc43209ebce3459db591ab690b3d214",
+  "confirmations": 73,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-gateway",
+    "factory": "0xa27eadcaf70631e29009019d390e48410a830e64",
+    "routeId": "0x49f483f6b1014e24a60955d33ce662104ca70b2cf142527f969b72517b578f40"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:44:21.796Z"
+}
