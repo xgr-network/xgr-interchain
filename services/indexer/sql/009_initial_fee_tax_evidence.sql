@@ -88,7 +88,8 @@ REVOKE ALL ON xita_tax_accounting_export FROM PUBLIC;
 -- health/status read-only role. Do NOT expose the grant table to the public.
 DO $$
 BEGIN
- IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_status_reader') THEN
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_status_reader') AND
+    to_regclass('public.xita_sponsor_grants') IS NOT NULL THEN
   GRANT SELECT ON public.xita_transfer_operations,public.xita_sponsor_grants
    TO xita_sponsor_status_reader;
  END IF;
