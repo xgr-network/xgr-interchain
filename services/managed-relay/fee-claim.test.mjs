@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {freshDeployedCatalog} from "./test-deployments.mjs";
 import {Wallet,keccak256} from "ethers";
 import {runClaimMonitor,claimAccruedFees,runConfiguredFeeClaims,documentedFeeClaimAdapters} from "./fee-claim.mjs";
 
@@ -30,12 +30,11 @@ test("invalid claim threshold cannot incur a live transaction",async()=>{
  assert.equal(touched,false);
 });
 
-const catalog=()=>JSON.parse(readFileSync(
- new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+const catalog=()=>freshDeployedCatalog({names:["base","xgrchain"]});
 const walletKey="0x"+"11".repeat(32);
 const walletAddress=new Wallet(walletKey).address;
 test("canonical catalog discovers deployed fee gateways and checks actual receipt files",()=>{
- const targets=documentedFeeClaimAdapters(catalog());
+ const fixture=catalog(),targets=documentedFeeClaimAdapters(fixture.catalog,{readReceipt:fixture.readReceipt});
  assert.ok(targets.some(x=>x.name==="base"));
  assert.ok(targets.some(x=>x.name==="xgrchain"));
  for(const row of targets){
@@ -45,7 +44,7 @@ test("canonical catalog discovers deployed fee gateways and checks actual receip
  }
 });
 test("ENV cannot replace the receipt-backed claim adapter and all thresholds validate before any claim",async()=>{
- const c=catalog(),targets=documentedFeeClaimAdapters(c),seen=[];
+ const fixture=catalog(),c=fixture.catalog,targets=documentedFeeClaimAdapters(c,{readReceipt:fixture.readReceipt}),seen=[];
  const env={
   XITA_INTERCHAIN_CLAIM_ENABLED:"true",
   XITA_INTERCHAIN_FEE_PRIVATE_KEY:walletKey,
@@ -53,7 +52,7 @@ test("ENV cannot replace the receipt-backed claim adapter and all thresholds val
   XITA_INTERCHAIN_BASE_ADAPTER:"0x"+"f".repeat(40)
  };
  for(const t of targets)env["XITA_INTERCHAIN_"+t.name.toUpperCase()+"_MIN_CLAIM_WEI"]="1000";
- const result=await runConfiguredFeeClaims({env,catalog:c,
+ const result=await runConfiguredFeeClaims({env,catalog:c,readReceipt:fixture.readReceipt,
   providerForChain:chain=>({chainId:chain.chainId}),
   claim:async opts=>{
    seen.push(opts);
@@ -70,13 +69,13 @@ test("ENV cannot replace the receipt-backed claim adapter and all thresholds val
   env.XITA_INTERCHAIN_BASE_ADAPTER);
  delete env["XITA_INTERCHAIN_"+targets.at(-1).name.toUpperCase()+"_MIN_CLAIM_WEI"];
  let executed=0;
- await assert.rejects(()=>runConfiguredFeeClaims({env,catalog:c,
+ await assert.rejects(()=>runConfiguredFeeClaims({env,catalog:c,readReceipt:fixture.readReceipt,
   claim:async()=>{executed++}
  }),/Missing XITA_INTERCHAIN_/);
  assert.equal(executed,0,"no earlier chain may claim before thresholds for all chains are checked");
 });
 test("tampered address, hash, receipt path or receipt body abort all automatic claims",async()=>{
- const original=catalog();
+ const fixture=catalog(),original=fixture.catalog;
  for(const change of [
   item=>{item.address="0x"+"f".repeat(40)},
   item=>{item.runtimeCodeKeccak256="0x"+"f".repeat(64)},
@@ -85,7 +84,7 @@ test("tampered address, hash, receipt path or receipt body abort all automatic c
  ]){
   const c=structuredClone(original);
   change(c.infrastructure.base.xitaV315.components.executionGateway);
-  assert.throws(()=>documentedFeeClaimAdapters(c),/deployment receipt|receipt mismatch/);
+  assert.throws(()=>documentedFeeClaimAdapters(c,{readReceipt:fixture.readReceipt}),/deployment receipt|receipt mismatch/);
  }
  const env={
   XITA_INTERCHAIN_CLAIM_ENABLED:"true",
@@ -110,7 +109,7 @@ test("tampered address, hash, receipt path or receipt body abort all automatic c
 });
 test("deactivated claims do not require a private key, thresholds or RPC",async()=>{
  let calls=0;
- const c=catalog();
+ const c=catalog().catalog;
  assert.deepEqual(await runConfiguredFeeClaims({
   env:{XITA_INTERCHAIN_CLAIM_ENABLED:"false"},catalog:c,
   providerForChain:()=>{calls++;throw Error("unexpected RPC")},
