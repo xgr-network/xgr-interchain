@@ -14,16 +14,17 @@
     "notes": "Initial Interchain validators are manually selected in genesisValidatorManifest. Public destination BLS proofs are automatically checked; no PoS snapshot required"
   },
   "reserve": {
-    "minimumWei": null,
-    "maxExecutorReimbursementWei": null,
-    "perValidatorWei": null
+    "minimumWei": "750000000000000000",
+    "maxExecutorReimbursementWei": "500000000000000000",
+    "perValidatorWei": "1000000000000000000",
+    "notes": "XGRChain initial ValidatorRegistry V3 policy (2026-10-24): mainnet eth_gasPrice = 1000000000000 wei; existing generic bootstrap policy budgets 750000 gas (0.75 XGR) minimum, 500000 gas (0.5 XGR) max exit-executor reimbursement, 1000000 gas (1 XGR) per validator. Exactly three pinned validators = 3 XGR constructor reserve, plus wallet gas. Network gas prices may change; immutable wei amounts are checked in MetaMask before signing."
   },
   "sourceFee": {
-    "targetWei": null,
+    "targetWei": "100000000000000",
     "governance": "validator-bls-quorum",
     "ttlSeconds": 300,
     "initialization": "factory-constructor-no-quorum",
-    "notes": "The initial positive fee is a constructor-bound factory parameter. Nonce starts at 0. Only changes after deployment need BLS validator quorum."
+    "notes": "XGRChain initial positive validator source fee: 100 gas-price units at the recorded 1000000000000 wei/gas = 100000000000000 wei (0.0001 XGR) per source operation. Nominal launch fee, not relayer gas coverage. Immutable initial Factory constructor/SourceRegistry nonce 0; later changes require source-chain BLS quorum."
   },
   "notes": "Native compressed BLS precompile requires positive and negative verification vectors; no Solidity verifier deployment. Compressed possession proofs must match the native verifier.",
   "genesisValidatorManifest": "config/validators/initial.json"
