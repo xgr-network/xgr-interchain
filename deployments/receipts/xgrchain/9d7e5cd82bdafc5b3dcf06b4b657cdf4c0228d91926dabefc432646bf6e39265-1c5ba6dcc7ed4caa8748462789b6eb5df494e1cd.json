@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "ce0f877ea6a139a30dadfe764a5989c160ffdb55"
+  },
+  "chain": "xgrchain",
+  "chainId": 1643,
+  "domainId": 1643,
+  "component": "feeVault",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeName": "xgr_to_base",
+  "address": "0x1c5ba6dcc7ed4caa8748462789b6eb5df494e1cd",
+  "runtimeCodeKeccak256": "0x2f918cf4cc314a3bb1f00eed8a27c336a0b48eed2adb0d390318cf2bb5999975",
+  "transactionHash": "0x9d7e5cd82bdafc5b3dcf06b4b657cdf4c0228d91926dabefc432646bf6e39265",
+  "blockNumber": 12057078,
+  "blockHash": "0xfdca503303d37ac7a230f3cffcbe2fea85ebf940bd208eb6fe2b6660610b1901",
+  "confirmations": 2,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-feevault",
+    "factory": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+    "routeId": "0x32fbba0d007fcdae2e5cef59701691dd8b00e40144c5ffa3199c393b34176312",
+    "gateway": "0x6084f3136d6d9563f19acd41a8afb3020cd2859f"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:46:39.727Z"
+}
