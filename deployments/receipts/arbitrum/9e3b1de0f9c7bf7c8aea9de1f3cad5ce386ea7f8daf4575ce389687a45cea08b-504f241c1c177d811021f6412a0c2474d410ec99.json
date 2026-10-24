@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "585a3ec7477b578d7fd18349a5596edeb4240ded"
+  },
+  "chain": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "component": "blsVerifier",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+  "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+  "transactionHash": "0x9e3b1de0f9c7bf7c8aea9de1f3cad5ce386ea7f8daf4575ce389687a45cea08b",
+  "blockNumber": 517835200,
+  "blockHash": "0x3656bad86d881df3ae9ac619830692005763d603b5f31f06a1483ed742384148",
+  "confirmations": 76,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "create"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:18:14.079Z"
+}

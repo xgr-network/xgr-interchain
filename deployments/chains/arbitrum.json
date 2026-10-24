@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "xitaV315": {
+    "schemaVersion": 1,
+    "components": {
+      "blsVerifier": {
+        "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+        "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+        "receiptPath": "deployments/receipts/arbitrum/9e3b1de0f9c7bf7c8aea9de1f3cad5ce386ea7f8daf4575ce389687a45cea08b-504f241c1c177d811021f6412a0c2474d410ec99.json"
+      }
+    },
+    "receiptPaths": [
+      "deployments/receipts/arbitrum/9e3b1de0f9c7bf7c8aea9de1f3cad5ce386ea7f8daf4575ce389687a45cea08b-504f241c1c177d811021f6412a0c2474d410ec99.json"
+    ]
+  }
+}
