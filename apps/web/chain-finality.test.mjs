@@ -49,3 +49,17 @@ test("Mailbox delivery is read at pinned safe height, not latest; stale or reorg
  const q=rpc(8453,{headUnavailable:true});
  await assert.rejects(()=>verifiedNativeMailboxState(q.call,8453,ADDRESS,"0x1234"),/Safe tag unsupported/);
 });
+
+test("native-safe delivery reorg during eth_call is rejected and not persisted",async()=>{
+ let reads=0;
+ const p=async(method,args)=>{
+  if(method==="eth_chainId")return "0x2105";
+  if(method==="eth_getBlockByNumber"){
+   if(args[0]==="safe")return {number:"0x64",hash:H};
+   return {number:args[0],hash:++reads>1?BAD:H};
+  }
+  if(method==="eth_call")return "0x"+("1").padStart(64,"0");
+  throw Error(method);
+ };
+ await assert.rejects(()=>verifiedNativeMailboxState(p,8453,ADDRESS,"0x1234"),/reorganized/);
+});
