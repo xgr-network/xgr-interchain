@@ -5,6 +5,7 @@ import {mkdtempSync,readFileSync,writeFileSync,rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
+import {freshDeployedCatalog} from "./test-deployments.mjs";
 
 // This must remain executable even if a badly configured private key happens
 // to exist in the parent process. The isolated preview worker must IGNORE it.
@@ -45,7 +46,7 @@ test("unsigned preview endpoint is explicitly routed but requires a valid reques
 });
 
 test("new receipt-backed Arbitrum route and adapter become visible without restarting preview service",async()=>{
- const original=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ const {catalog:original}=freshDeployedCatalog({names:["xgrchain","arbitrum"],routeDestination:"arbitrum"});
  const route=deployedRoutes(original).find(r=>
   r.asset==="XGR"&&r.source==="xgrchain"&&r.destination==="arbitrum");
  assert.ok(route,"current catalog must document XGR to Arbitrum");
