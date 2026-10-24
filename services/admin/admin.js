@@ -705,6 +705,21 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
    }
    let prepared=null,txHash=null;
    try{
+    if(core){
+     // Reconcile an existing Factory/SourceRegistry receipt before any new
+     // wallet prompt. An unfinished confirmation is never a deploy failure.
+     const previous=await postJSON("/admin/api/deploy/advance",{type:"chain",target:chain.name});
+     if(previous.result?.stage==="pending"){
+      const status=previous.result;
+      presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+
+       " · vorhandene TX "+(status.txHash||"")+" wartet auf Bestätigungen; keine neue Wallet-Signatur.","warn");
+      break;
+     }
+     if(previous.result?.stage==="documented"){
+      await waitForDeploymentSync(previous.result);
+      continue;
+     }
+    }
     presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Vertragsdaten und Gas geprüft; MetaMask-Bestätigung …");
     prepared=core?
      await postJSON("/admin/api/chain-deploy/prepare",{
