@@ -139,6 +139,30 @@ async function refreshFeePreview(){
     row.append(name,amount);return row;
    };
    detail.replaceChildren(main,feeRow("Protocol fee",native),feeRow("XITA Service Fee",fee));
+    // Sponsorship offsets wallet gas only, NEVER the mandatory paid route quote.
+    const stages=Array.isArray(value.pricing?.journeyCostStages)?value.pricing.journeyCostStages:[];
+    if(sponsorship.enabled){
+     const estimates=new Map();
+     for(const step of stages){
+      const units=BigInt(step.gasUnits||0),price=BigInt(step.gasPriceWei||0);
+      if(units<=0n||price<=0n)continue;
+      estimates.set(step.chain,(estimates.get(step.chain)||0n)+units*price);
+     }
+     for(const [chain,gas] of estimates){
+      const coinName=sourceFeeCoin(chain);
+      const makeLine=(title,sign)=>{
+       const row=document.createElement("div");row.className="ux-fee-row";
+       const label=document.createElement("span");label.textContent=title+" · "+(names[chain]||chain);
+       const amount=document.createElement("strong");amount.textContent=sign+" "+formatWeiFee(gas)+" "+coinName;
+       row.append(label,amount);detail.append(row);
+      };
+      makeLine("Estimated wallet gas","+");
+      if(sponsorship.chains[chain]===true)makeLine("Potential XITA gas sponsorship","−");
+     }
+     const note=document.createElement("p");note.className="ux-fee-fineprint";
+     note.textContent="Gas sponsorship is enabled. Credits are estimates, depend on wallet eligibility and sponsor reserves, and are only confirmed after the initial paid transaction. The XITA Service Fee and protocol fee are always payable.";
+     detail.append(note);
+    }
    if(onward>0n){
     const note=document.createElement("p");note.className="ux-fee-fineprint";
     note.textContent="XGR onward protocol processing is included in the service quote.";
