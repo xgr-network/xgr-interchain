@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,writeFile,rm} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
-import {verifiedClientIP,lookupIpCountry,eurValue} from "./tax-evidence.mjs";
+import {verifiedClientIP,lookupIpCountry,eurValue,quoteEvidence} from "./tax-evidence.mjs";
 
 test("trusted quote IP cannot be spoofed by forwarded headers",()=>{
  const req={socket:{remoteAddress:"127.0.0.1"},headers:{
@@ -26,4 +26,14 @@ test("OTC-style local CIDR lookup returns ISO country and provenance",async()=>{
 test("native source fee fixed to eight-decimal EUR value",()=>{
  assert.equal(eurValue("10000000000000000","2200"),"22.00000000");
  assert.equal(eurValue("1000000000000000000","0.0001"),"0.00010000");
+});
+
+test("unknown customer country or EUR rate cannot cancel a signed fee",()=>{
+ const now=Math.floor(Date.now()/1000),reply={
+  status:"SIGNED_INTERCHAIN_FEE_QUOTE",source:"xgrchain",
+  executionAddress:"0x"+"a".repeat(40),expiresAt:now+90,
+  quote:{payer:"0x"+"b".repeat(40),nonce:"42",interchainFeeWei:"1000000000000000000",issuedAt:now}};
+ const row=quoteEvidence(reply,{},"8.8.8.8",{code:null,source:"no-match"});
+ assert.equal(row.country,null);assert.equal(row.euro,null);
+ assert.equal(row.fee,"1000000000000000000");
 });
