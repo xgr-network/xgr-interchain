@@ -165,7 +165,7 @@ function chainAgnosticScenario(source,chainId){
  const mined={from:user,to:outerExecutor,transactionHash:txHash,
   status:"0x1",blockNumber:"0x10",logs:[op,dispatch,fee]};
  const tx={from:user,to:outerExecutor,hash:txHash,input:"0x12345678"};
- const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method)=>{
+ const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method,args)=>{
   if(method==="eth_chainId")return url.endsWith("/"+source)?
    "0x"+BigInt(chainId).toString(16):"0x66b";
   if(method==="eth_getTransactionByHash")return transaction;
