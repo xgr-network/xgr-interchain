@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "5d88070c0ecc955ce9e58fd42dbd3a92a2be3a69"
+  },
+  "chain": "xgrchain",
+  "chainId": 1643,
+  "domainId": 1643,
+  "component": "nativeRouter",
+  "asset": "XGR",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+  "routeName": null,
+  "address": "0x7d9354baab0bf308d17e90ee3895609680e355ed",
+  "runtimeCodeKeccak256": "0x62338a97f45ccccb54b0fdeaebb0e93b9f58ded0c7a58c359e14fa6cd491da96",
+  "transactionHash": "0xb56c020cec2fd1e7d6c0e64859afc4c87f91dee5768a88dcc3f8d4de06ed0b54",
+  "blockNumber": 12057121,
+  "blockHash": "0x27e74ee0cfbd4bb972610c085ed2f96137881405635ca4be9fe4d236e8cac31f",
+  "confirmations": 1,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-router",
+    "factory": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+    "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:48:04.183Z"
+}
