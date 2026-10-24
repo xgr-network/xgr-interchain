@@ -1,3 +1,4 @@
+import {verifyNativeFinalityReceipt,verifiedNativeMailboxState} from "./chain-finality.js";
 // XITA wallet activity: reconstruct transfer identity only from confirmed,
 // canonical Gateway and Mailbox logs. No write, custody, private storage,
 // assumed delivery or reliance on a privileged relayer.
