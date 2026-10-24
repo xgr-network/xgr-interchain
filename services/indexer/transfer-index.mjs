@@ -1,3 +1,4 @@
+import {verifiedNativeMailboxState,readNativeFinalityHead} from "../../apps/web/chain-finality.js";
 // Persistent XITA transfer event index: only canonical chain observations.
 // PostgreSQL contains a rebuildable, non-authoritative query accelerator. This
 // module NEVER signs, mints, unlocks, computes custody TVL or sets activation.
@@ -65,15 +66,10 @@ export async function checkedDelivery({route,messageId,rpc}){
  const id=await rpc(route.destinationConfig,"eth_chainId",[]);
  if(!HEX.test(id||"")||BigInt(id)!==BigInt(route.destinationConfig.chainId))
   throw Error("Destination RPC chain mismatch");
- const head=number(await rpc(route.destinationConfig,"eth_blockNumber",[]));
- const depth=Math.max(1,Number(route.destinationConfig.confirmations||1));
- if(head<depth)return {delivered:null,reason:"finality-not-reached"};
- const finalizedHead=head-depth;
- const raw=await rpc(route.destinationConfig,"eth_call",[{
-  to:route.destinationMailbox,data:DELIVERED_SELECTOR+messageId.slice(2)},"latest"]);
- if(!/^0x[0-9a-f]{64}$/i.test(raw||"")||![0n,1n].includes(BigInt(raw)))
-  throw Error("Invalid finalized destination Mailbox.delivery result");
- return {delivered:BigInt(raw)===1n,finalizedHead};
+ return verifiedNativeMailboxState(
+  (method,args)=>rpc(route.destinationConfig,method,args),
+  route.destinationConfig.chainId,route.destinationMailbox,
+  DELIVERED_SELECTOR+messageId.slice(2));
 }
 // Browser recovery may retry any configured source/destination RPC URL.
 // A source backup must never silently be treated as the destination.
@@ -218,9 +214,9 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
  const id=await rpc(route.sourceConfig,"eth_chainId",[]);
  if(!HEX.test(id||"")||BigInt(id)!==BigInt(route.sourceConfig.chainId))
   throw Error("Source RPC chain mismatch");
- const head=number(await rpc(route.sourceConfig,"eth_blockNumber",[]));
- const depth=Math.max(1,Number(route.sourceConfig.confirmations||1));
- const finalizedHead=Math.max(-1,head-depth);
+ const finality=await readNativeFinalityHead(
+  (method,args)=>rpc(route.sourceConfig,method,args),route.sourceConfig.chainId);
+ const finalizedHead=finality.number;
  const from=(cursor?.scannedTo??(route.deploymentBlock-1))+1;
  if(cursor?.scannedHash){
   const previous=await rpc(route.sourceConfig,"eth_getBlockByNumber",[

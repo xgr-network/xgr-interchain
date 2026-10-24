@@ -5,7 +5,7 @@ import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,
  checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
-import {commitWindow,catchUpRoute} from "./transfer-index-worker.mjs";
+import {commitWindow,catchUpRoute,refreshPendingDeliveries} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const hex=n=>"0x"+BigInt(n).toString(16);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -13,8 +13,8 @@ const SOURCE="sample-source",DEST="sample-destination";
 const route={sourceChain:SOURCE,routeName:"source_to_dest",name:"source_to_dest",
  destinationChain:DEST,gateway:address("a"),routeId:hash("1"),
  deploymentBlock:100,asset:"T",assetId:hash("9"),destinationMailbox:address("b"),
- sourceConfig:{chainId:123,confirmations:2,rpcUrls:["https://rpc.invalid/src"]},
- destinationConfig:{chainId:456,domainId:456,confirmations:12,rpcUrls:["https://rpc.invalid/dst"]}};
+ sourceConfig:{chainId:1643,confirmations:2,rpcUrls:["https://rpc.invalid/src"]},
+ destinationConfig:{chainId:8453,domainId:456,confirmations:12,rpcUrls:["https://rpc.invalid/dst"]}};
 function rpc(methodMap){
  return async (chain,method,args)=>{
   const fn=methodMap[method];
@@ -39,10 +39,10 @@ test("a finalized source scan only accepts canonical Gateway operation logs",asy
  const log={address:route.gateway,topics:[OPERATION_TOPIC,route.routeId,topic,hash("2")],
   transactionHash:hash("d"),blockHash:hash("e"),blockNumber:hex(101),logIndex:"0x0",data:word(2)};
  const reader=rpc({
-  eth_chainId:()=>hex(123),
+  eth_chainId:()=>hex(1643),
   eth_blockNumber:()=>hex(110),
   eth_getLogs:()=>[log],
-  eth_getBlockByNumber:(_,[height])=>({number:height,hash:hash("e")})
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(108):height,hash:hash("e")})
  });
  const result=await readRouteWindow({route,cursor:null,rpc:reader,limit:4});
  assert.equal(result.from,100);
@@ -55,26 +55,26 @@ test("a finalized source scan only accepts canonical Gateway operation logs",asy
 });
 test("known endpoint block hash mismatch forces reindex, not silent cursor advance",async()=>{
  const reader=rpc({
-  eth_chainId:()=>hex(123),
+  eth_chainId:()=>hex(1643),
   eth_blockNumber:()=>hex(110),
-  eth_getBlockByNumber:(_,[height])=>({number:height,hash:hash("f")})
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(108):height,hash:hash("f")})
  });
  const result=await readRouteWindow({route,cursor:{scannedTo:106,scannedHash:hash("e")},
   rpc:reader});
  assert.equal(result.reorg,true);
  assert.equal(result.from,100);
 });
-test("destination delivery uses latest monotonic state without requiring archive RPC",async()=>{
+test("destination delivery uses pinned Base safe block, not latest",async()=>{
  let at=null;
  const reader=rpc({
-  eth_chainId:()=>hex(456),
-  eth_blockNumber:()=>hex(212),
+  eth_chainId:()=>hex(8453),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="safe"?hex(200):height,hash:hash("e")}),
   eth_call:(_,[call,block])=>{at=block;assert.equal(call.to,route.destinationMailbox);return "0x"+word(1);}
  });
  const result=await checkedDelivery({route,messageId:hash("d"),rpc:reader});
  assert.equal(result.delivered,true);
  assert.equal(result.finalizedHead,200);
- assert.equal(at,"latest");
+ assert.equal(at,hex(200));
  await assert.rejects(()=>checkedDelivery({route,messageId:hash("d"),
   rpc:rpc({eth_chainId:()=>hex(999)})}),/mismatch/);
 });
@@ -228,8 +228,9 @@ test("Arbitrum indexer converts safe block timestamp without fractional BigInt",
  const log={address:route.gateway,topics:[OPERATION_TOPIC,route.routeId,hash("c"),hash("2")],
   transactionHash:hash("d"),blockHash:hash("e"),blockNumber:hex(101),logIndex:"0x0",data:"0x"+word(2)};
  const reader=rpc({
-  eth_chainId:()=>hex(123),eth_blockNumber:()=>hex(110),eth_getLogs:()=>[log],
-  eth_getBlockByNumber:(_,[height])=>({number:height,hash:hash("e"),timestamp:hex(1792667400)})
+  eth_chainId:()=>hex(1643),eth_blockNumber:()=>hex(110),
+   eth_getBlockByNumber:(_,[tag])=>({number:tag==="latest"?hex(108):tag,hash:hash("e")}),eth_getLogs:()=>[log],
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(108):height,hash:hash("e"),timestamp:hex(1792667400)})
  });
  const result=await readRouteWindow({route,cursor:null,rpc:reader,limit:4});
  assert.equal(result.events.length,1);
@@ -265,4 +266,27 @@ test("successful finalized initial adapter fee is recorded once, without assumin
  assert.equal(queries.filter(q=>q.includes("INSERT INTO xita_tax_charged_fees")).length,1);
  assert.equal(queries.at(-1),"COMMIT");
  assert.match(queries.find(q=>q.includes("INSERT INTO xita_tax_charged_fees")),/ON CONFLICT\(source_chain,message_id\) DO NOTHING/);
+});
+
+test("M-02: finality-qualified false reopens a previously completed delivery",async()=>{
+ const queries=[],pool={query:async q=>{
+  queries.push(q);
+  if(q.text.startsWith("SELECT source_chain,route_id,message_id"))return {
+   rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
+  return {rows:[],rowCount:1};
+ }};
+ const reader=rpc({
+  eth_chainId:()=>hex(8453),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="safe"?hex(200):height,hash:hash("e")}),
+  eth_call:()=> "0x"+word(0)
+ });
+ const result=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
+ assert.equal(result.checked,1);
+ assert.equal(result.delivered,0);
+ assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+ORDER BY/);
+ const update=queries.find(q=>q.text.includes("destination_checked_block=$4"));
+ assert.ok(update);
+ assert.equal(update.values[2],false);
+ assert.equal(update.values[3],200);
+ assert.equal(update.values[4],hash("e"));
 });

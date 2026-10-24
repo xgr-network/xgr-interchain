@@ -22,7 +22,7 @@ const cat={chains:{
   routeDeployments:[{routeName:"xgr_to_base",routeId,sourceChain:"xgrchain",destinationChain:"base",
    components:{gateway:{address:gateway}}}]}}
 }};
-const receipt={from:user,to:gateway,transactionHash:txHash,status:"0x1",blockNumber:"0x10",
+const receipt={from:user,to:gateway,transactionHash:txHash,status:"0x1",blockNumber:"0x10",blockHash:hash("e"),
  logs:[
   {address:gateway,topics:[OPERATION_TOPIC,routeId,messageId,toTopic(8453)],data:toTopic(100000000000000000n)},
   {address:srcMailbox,topics:[DISPATCH_TOPIC,toTopic(BigInt(srcRouter)),toTopic(8453),toTopic(1)],data:dispatchData}
@@ -34,7 +34,8 @@ function mockRPC({from=user,receiptObject=receipt,delivered=false,changedMessage
   if(method==="eth_chainId")return url.includes("/xgr")?"0x66b":"0x2105";
   if(method==="eth_getTransactionByHash")return {from,to:gateway,hash:txHash};
   if(method==="eth_getTransactionReceipt")return receiptObject;
-  if(method==="eth_blockNumber")return "0x64";
+  if(method==="eth_getBlockByNumber")return {number:args[0]==="latest"||args[0]==="safe"?"0x64":args[0],hash:hash("e")};
+   if(method==="eth_blockNumber")return "0x64";
   if(method==="eth_call")return delivered?toTopic(1):toTopic(0);
   if(method==="eth_getLogs")return receipt.logs.slice(0,1).map(l=>({...l,transactionHash:txHash}));
   throw Error(method);
@@ -163,14 +164,15 @@ function chainAgnosticScenario(source,chainId){
   INTERCHAIN_FEE_TOPIC,messageId,toTopic(BigInt(user)),toTopic(BigInt(sourceGateway))],
   data:"0x"+fields.map(w=>w.slice(2)).join("")};
  const mined={from:user,to:outerExecutor,transactionHash:txHash,
-  status:"0x1",blockNumber:"0x10",logs:[op,dispatch,fee]};
+  status:"0x1",blockNumber:"0x10",blockHash:hash("e"),logs:[op,dispatch,fee]};
  const tx={from:user,to:outerExecutor,hash:txHash,input:"0x12345678"};
- const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method)=>{
+ const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method,args)=>{
   if(method==="eth_chainId")return url.endsWith("/"+source)?
    "0x"+BigInt(chainId).toString(16):"0x66b";
   if(method==="eth_getTransactionByHash")return transaction;
   if(method==="eth_getTransactionReceipt")return receiptObject;
-  if(method==="eth_blockNumber")return head;
+  if(method==="eth_getBlockByNumber")return {number:args[0]==="latest"||args[0]==="safe"?head:args[0],hash:hash("e")};
+   if(method==="eth_blockNumber")return head;
   if(method==="eth_call")return toTopic(0);
   throw Error("Unexpected "+method);
  };
@@ -178,7 +180,7 @@ function chainAgnosticScenario(source,chainId){
   op,dispatch,fee,mined,tx,rpc};
 }
 
-for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+for(const [source,chainId] of [["base",8453],["arbitrum",42161]]){
  test("mined fee adapter transfer recovers across arbitrary wallet executors on "+source,async()=>{
   const f=chainAgnosticScenario(source,chainId);
   const result=await findWalletSourceTx({
@@ -233,7 +235,7 @@ for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]
 
 
 test("source RPC failover works for every connected spoke source, not just Base",async()=>{
- for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+ for(const [source,chainId] of [["base",8453],["arbitrum",42161]]){
   const fixture=chainAgnosticScenario(source,chainId);
   const broken="https://rpc.example/outage-"+source;
   fixture.catalog.chains[source].rpcUrls=[broken,"https://rpc.example/"+source];

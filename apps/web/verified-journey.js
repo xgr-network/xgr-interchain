@@ -99,9 +99,10 @@ export function mergeWalletObservation(previous,incoming){
   return {...previous,status:"journey-ambiguous"};
  if(previous.status==="journey-ambiguous")return previous;
  if(previous.confirmed===true&&incoming.confirmed!==true)return previous;
- if(previous.delivered===true&&incoming.delivered!==true)return previous;
+ if(previous.delivered===true&&incoming.delivered!==true&&incoming.finalityVerified!==true)return previous;
  const next={...previous,...incoming};
- if((PROGRESS[previous.status]??-1)>(PROGRESS[incoming.status]??-1)){
+ if(incoming.finalityVerified!==true&&
+    (PROGRESS[previous.status]??-1)>(PROGRESS[incoming.status]??-1)){
   next.status=previous.status;
   next.delivered=previous.delivered;
  }
@@ -113,6 +114,6 @@ export function mergeWalletObservation(previous,incoming){
   return {...next,status:"journey-ambiguous"};
  // A later read-only observation may recover a previously unknown delivery,
  // but never turn a known Mailbox TRUE into FALSE or NULL.
- if(previous.delivered===true)next.delivered=true;
+ if(previous.delivered===true&&incoming.finalityVerified!==true)next.delivered=true;
  return next;
 }

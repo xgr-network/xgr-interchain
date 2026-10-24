@@ -50,6 +50,9 @@ export function indexedTransferRow(row){
   routeName:row.route_name,routeId:lowercase(row.route_id),
   gateway:lowercase(row.gateway),txHash:lowercase(row.source_tx_hash),
   messageId:lowercase(row.message_id),confirmed:true,delivered,
+   finalityVerified:row.destination_checked_block!=null&&/^0x[0-9a-f]{64}$/i.test(row.destination_checked_hash||""),
+   destinationFinalityBlock:row.destination_checked_block==null?null:Number(row.destination_checked_block),
+   destinationFinalityHash:row.destination_checked_hash?lowercase(row.destination_checked_hash):null,
   status:delivered===true?(row.onward_route_id?"awaiting-onward":"delivered"):
    delivered===false?"awaiting-proof":"delivery-unknown",
   sourceBlockNumber:Number(row.source_block_number),
@@ -120,6 +123,7 @@ export async function readWalletTransferIndex(catalog,account,{
   text:`SELECT account,asset,source_chain,destination_chain,route_name,route_id,gateway,
     source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
     validator_fee_wei::text AS validator_fee_wei,delivered,
+    destination_checked_block,destination_checked_hash,
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
     final_destination_chain,final_recipient,onward_route_id,parent_message_id
     FROM xita_transfer_operations p
@@ -149,7 +153,8 @@ export async function readWalletTransferIndex(catalog,account,{
   const linked=await connected.query({text:`SELECT account,asset,
    source_chain,destination_chain,route_name,route_id,gateway,
    source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
-   validator_fee_wei::text AS validator_fee_wei,delivered,execution_adapter,
+   validator_fee_wei::text AS validator_fee_wei,delivered,
+    destination_checked_block,destination_checked_hash,execution_adapter,
    interchain_fee_wei::text AS interchain_fee_wei,
    final_destination_chain,final_recipient,onward_route_id,parent_message_id
    FROM xita_transfer_operations

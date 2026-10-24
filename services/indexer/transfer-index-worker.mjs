@@ -81,7 +81,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
     event.blockHash,event.logIndex,record.account,record.asset,record.assetId,
     record.routeName,record.routeId,record.gateway,record.destinationChain,
     record.destinationMailbox,record.amountRaw,record.validatorFeeWei,
-    record.delivered,record.executionAdapter??null,record.interchainFeeWei??null,
+    null,record.executionAdapter??null,record.interchainFeeWei??null,
     record.finalDestinationChain??null,record.finalRecipient??null,
     record.onwardRouteId??null,record.parentMessageId??null,
     event.sourceBlockAt??null,record.quoteNonce??null
@@ -96,8 +96,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
       $18,$19,$20,$21,$22,$23,$24,
       NULL,$25)
     ON CONFLICT(source_chain,message_id) DO UPDATE SET
-      delivered=CASE WHEN xita_transfer_operations.delivered IS TRUE THEN TRUE
-       ELSE EXCLUDED.delivered END,
+      delivered=xita_transfer_operations.delivered,
       delivery_checked_at=CASE WHEN EXCLUDED.delivered IS NULL
        THEN xita_transfer_operations.delivery_checked_at ELSE NOW() END,
       execution_adapter=EXCLUDED.execution_adapter,
@@ -198,7 +197,7 @@ export async function scanIndexedRoute({catalog,route,pool,rpc,limit=150}){
 export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
  const pending=await pool.query({text:`SELECT source_chain,route_id,message_id FROM
- xita_transfer_operations WHERE delivered IS DISTINCT FROM TRUE
+ xita_transfer_operations
  ORDER BY delivery_attempted_at ASC NULLS FIRST,source_indexed_at ASC LIMIT $1`,values:[limit]});
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
@@ -208,17 +207,18 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
    const result=await checkedDelivery({route,messageId:row.message_id,rpc});
    if(result.delivered===null){unknown++;continue;}
    await pool.query({text:`UPDATE xita_transfer_operations SET
-    delivered=$3,delivery_checked_at=NOW()
-    WHERE source_chain=$1 AND message_id=$2
-      AND delivered IS DISTINCT FROM TRUE`,
-    values:[row.source_chain,row.message_id,result.delivered]});
+    delivered=$3,delivery_checked_at=NOW(),
+    destination_checked_block=$4,destination_checked_hash=$5
+    WHERE source_chain=$1 AND message_id=$2`,
+    values:[row.source_chain,row.message_id,result.delivered,
+      result.finalizedHead,result.finalizedHash]});
    checked++;if(result.delivered)delivered++;
   }catch{unknown++;}
   finally{
    // Scheduling metadata only: an RPC timeout does NOT assert delivery status.
    await pool.query({text:`UPDATE xita_transfer_operations SET
     delivery_attempted_at=NOW()
-    WHERE source_chain=$1 AND message_id=$2 AND delivered IS DISTINCT FROM TRUE`,
+    WHERE source_chain=$1 AND message_id=$2`,
     values:[row.source_chain,row.message_id]}).catch(()=>{});
   }
  }

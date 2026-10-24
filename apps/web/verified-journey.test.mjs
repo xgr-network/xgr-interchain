@@ -60,3 +60,18 @@ test("an unrelated, unconfirmed, mismatched or ambiguous child is never hidden",
  }
  assert.equal(walletJourneys([{...indexed,status:"journey-ambiguous"},{...child,parentMessageId:null}]).length,2);
 });
+
+test("M-02: a fresh native-finality observation reverses a formerly delivered journey",()=>{
+ const item={account:"0x"+"a".repeat(40),sourceChain:"base",txHash:"0x"+"b".repeat(64),
+  routeId:"0x"+"c".repeat(64),messageId:"0x"+"d".repeat(64),
+  confirmed:true,delivered:true,status:"delivered"};
+ const changed=mergeWalletObservation(item,{...item,delivered:false,status:"awaiting-proof",
+  finalityVerified:true,destinationFinalityBlock:200,
+  destinationFinalityHash:"0x"+"e".repeat(64)});
+ assert.equal(changed.delivered,false);
+ assert.equal(changed.status,"awaiting-proof");
+ assert.equal(changed.destinationFinalityBlock,200);
+ const uncertain=mergeWalletObservation(item,{...item,delivered:false,status:"awaiting-proof",
+  finalityVerified:false});
+ assert.equal(uncertain.delivered,true);
+});
