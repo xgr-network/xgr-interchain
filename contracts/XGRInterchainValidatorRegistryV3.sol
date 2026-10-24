@@ -415,6 +415,16 @@ contract XGRInterchainValidatorRegistryV3 {
         }
     }
 
+    /// @dev PRE-S03 decision (2026-10-24): accepted residual cross-registry replay risk.
+    ///      This membership payload intentionally does NOT bind address(this).
+    ///      With matching chain/domain, setId and signer set, the same valid 2/3
+    ///      quorum signature may be usable at two separate Registry deployments.
+    ///      This is an acknowledged risk, not a cryptographic replay fix.
+    ///      XITA's operating invariant is exactly ONE ACTIVE ValidatorRegistry
+    ///      per chain. ISM and admin deployment receipts must reference that
+    ///      selected Registry; old deployments must never be configured as
+    ///      simultaneously active. Revisit if this invariant changes.
+    ///      No impact on permissionless route/token admission.
     function encodeMembershipPayload(
         uint64 originChainId_,
         uint32 destinationDomain_,
