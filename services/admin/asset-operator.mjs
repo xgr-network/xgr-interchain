@@ -278,7 +278,10 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   async function append(component,contractAddress,provenance){
    const a=built.artifacts[component];
    if(!a)throw Error("Missing pinned artifact: "+component);
-   const code=await rpc(url,"eth_getCode",[contractAddress,"0x"+BigInt(receipt.blockNumber).toString(16)]);
+   // Latest state only: public RPCs are not required to expose archived state.
+    // The canonical receipt, factory event and immutable runtime template are
+    // authenticated separately; deployment time is a receipt datum.
+    const code=await rpc(url,"eth_getCode",[contractAddress,"latest"]);
    const runtime=verifyRuntimeTemplate(a,code);
    inputs.push({sourceCommit:main,chain:chain.name,asset:entry.asset,
     routeName:gateway?entry.routeName:null,component,contractAddress,

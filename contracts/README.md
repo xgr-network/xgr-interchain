@@ -9,7 +9,7 @@ There is one public, permissionless route-registration architecture.
   state, factual remote counterpart BLS attestation, shared source-native fee
   with validator quorum. No route-specific governance or route deletion.
 - `XGRILNProtocol.sol`: deterministic original Asset ID, ONE directed
-  Router-pair Route ID format, source fee and signed checkpoint payload.
+  Router-pair Route ID format, source fee and deterministic route identity.
 - `XETARouterCore.sol`: gateway-only transfer dispatch, immutable route
   enrollment, Hyperlane inbound message handling.
 - `XETAGuardedNativeWarpRouter.sol`: native XGR collateral adapter.
@@ -19,7 +19,7 @@ There is one public, permissionless route-registration architecture.
 - `ILNGateway.sol` and `XGRILNFeeVault.sol`: per-directed-route gateway,
   native fee collection and validator pull-based settlement.
 - `XGRInterchainValidatorRegistryV2.sol` and `XGRILNInterchainISMV2.sol`:
-  validator BLS membership and authenticated checkpoint transfer security.
+  validator BLS membership and direct per-message BLS transfer security.
   Their V2 suffix identifies the cryptographic wire format, not an old route
   registry or an alternative application protocol.
 
