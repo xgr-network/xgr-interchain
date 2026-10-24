@@ -5,7 +5,7 @@ import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,
  checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
-import {commitWindow,catchUpRoute} from "./transfer-index-worker.mjs";
+import {commitWindow,catchUpRoute,refreshPendingDeliveries} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const hex=n=>"0x"+BigInt(n).toString(16);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -266,4 +266,27 @@ test("successful finalized initial adapter fee is recorded once, without assumin
  assert.equal(queries.filter(q=>q.includes("INSERT INTO xita_tax_charged_fees")).length,1);
  assert.equal(queries.at(-1),"COMMIT");
  assert.match(queries.find(q=>q.includes("INSERT INTO xita_tax_charged_fees")),/ON CONFLICT\(source_chain,message_id\) DO NOTHING/);
+});
+
+test("M-02: finality-qualified false reopens a previously completed delivery",async()=>{
+ const queries=[],pool={query:async q=>{
+  queries.push(q);
+  if(q.text.startsWith("SELECT source_chain,route_id,message_id"))return {
+   rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
+  return {rows:[],rowCount:1};
+ }};
+ const reader=rpc({
+  eth_chainId:()=>hex(8453),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="safe"?hex(200):height,hash:hash("e")}),
+  eth_call:()=> "0x"+word(0)
+ });
+ const result=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
+ assert.equal(result.checked,1);
+ assert.equal(result.delivered,0);
+ assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+ORDER BY/);
+ const update=queries.find(q=>q.text.includes("destination_checked_block=$4"));
+ assert.ok(update);
+ assert.equal(update.values[2],false);
+ assert.equal(update.values[3],200);
+ assert.equal(update.values[4],hash("e"));
 });
