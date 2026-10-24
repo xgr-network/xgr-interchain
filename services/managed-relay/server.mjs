@@ -286,7 +286,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    const clientIP=preview?null:verifiedClientIP(req);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
    if(!preview){
-    const [prices,country]=await Promise.all([getSnapshot(),lookupIpCountry(clientIP)]);
+    const prices=await getSnapshot();
+     const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
     const evidence=quoteEvidence(reply,prices,clientIP,country);
     await saveQuoteEvidence(evidence);
    }
