@@ -67,3 +67,40 @@ test("fee timers distinguish disabled, stopped and actually failed",()=>{
  assert.match(active.nextTrigger,/2026-10-19/);
  assert.equal(UNITS.find(x=>x.id==="quote").unit,"xita-interchain-fee-quote.service");
 });
+
+test("Join health separates service readiness, missing configuration and missing installation",async()=>{
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]}}};
+ const base={catalog,now,
+  checkChain:async()=>({name:"xgrchain",chainId:1643,head:20,attempted:1,configuredEndpoints:1,state:"ok"}),
+  checkValidators:async()=>[],
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1})};
+ const run=async(joinInstalled,available)=>{
+  const readUnit=async name=>UNITS.find(u=>u.unit===name)?.optional&&
+    !["xita-join.service","xita-join-notifier.timer"].includes(name)?
+    "LoadState=not-found\nActiveState=inactive\n":
+    joinInstalled===false&&name.startsWith("xita-join")?
+    "LoadState=not-found\nActiveState=inactive\n":
+    "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
+  const readHTTP=async target=>{
+   if(target.id==="join-api"){
+    if(!joinInstalled)throw Error("not installed");
+    return {ok:true,available};
+   }
+   if(target.optional)throw Error("not installed");
+   if(target.id==="transfer-stats")return stats([cursor("2026-10-19T11:59:30Z")]);
+   return {ok:true};
+  };
+  return collectOperationsHealth({...base,readUnit,readHTTP});
+ };
+ const good=await run(true,true);
+ assert.equal(good.services.find(x=>x.id==="join").state,"ok");
+ assert.equal(good.checks.find(x=>x.id==="join-api").submissionsConfigured,true);
+ assert.equal(good.services.find(x=>x.id==="join-notifier").state,"ok");
+ const noMail=await run(true,false);
+ assert.equal(noMail.services.find(x=>x.id==="join").state,"warning");
+ assert.equal(noMail.checks.find(x=>x.id==="join-api").state,"warning");
+ assert.equal(noMail.checks.find(x=>x.id==="join-api").submissionsConfigured,false);
+ const missing=await run(false,false);
+ assert.equal(missing.services.find(x=>x.id==="join").state,"not-installed");
+ assert.equal(missing.checks.find(x=>x.id==="join-api").state,"not-installed");
+});
