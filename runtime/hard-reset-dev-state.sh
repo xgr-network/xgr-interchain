@@ -73,6 +73,6 @@ for file in /var/lib/xita/verified-tvl.json /var/lib/xita/verified-tvl-history.j
 done
 relay="$ROOT/runtime/runtime-state"
 if [[ -d "$relay" && ! -L "$relay" ]]; then
- find "$relay" -maxdepth 1 -type f \\( -name 'direct-*.json' -o -name 'xita-direct-relayer.json' -o -name '*iln*state*.json' \\) -delete
+ find "$relay" -maxdepth 1 -type f \( -name 'direct-*.json' -o -name 'xita-direct-relayer.json' -o -name '*iln*state*.json' \) -delete
 fi
 echo "XITA development DB rows, journal and TVL history cleared. Publish fresh catalog via ./manage.sh update."
