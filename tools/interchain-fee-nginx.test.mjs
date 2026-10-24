@@ -8,16 +8,32 @@ const vhost=["server {",
 test("add exact fee quote and status, not a broad public signer proxy",()=>{
  const a=patchInterchainFeeNginx(vhost);
  assert.deepEqual(a.added,[
-  "/api/xita/v1/managed/health","/api/xita/v1/managed/quote","/api/xita/v1/managed/preview"]);
+  "/api/xita/v1/managed/health","/api/xita/v1/managed/sponsorship","/api/xita/v1/managed/quote","/api/xita/v1/managed/preview"]);
  assert.match(a.config,/location = \/api\/xita\/v1\/managed\/quote/);
  assert.match(a.config,/location = \/api\/xita\/v1\/managed\/preview/);
  assert.match(a.config,/limit_except POST \{ deny all; \}/);
  assert.match(a.config,/client_max_body_size 4k/);
  assert.match(a.config,/location = \/api\/xita\/v1\/managed\/health/);
  assert.match(a.config,/limit_except GET \{ deny all; \}/);
+ assert.match(a.config,/location = \/api\/xita\/v1\/managed\/sponsorship/);
+ assert.match(a.config,/proxy_set_header X-Real-IP \$remote_addr;/);
+ assert.match(a.config,/proxy_set_header X-Forwarded-For "";/);
  const again=patchInterchainFeeNginx(a.config);
  assert.equal(again.changed,false);
  assert.deepEqual(again.added,[]);
+});
+test("upgrade existing signer location with trusted client IP, reject spoofable headers",()=>{
+ let old=patchFeePreviewNginx(vhost).config;
+ old=old.replace("location ^~ /api/xeta/ {",
+  "location = /api/xita/v1/managed/quote {\n"+
+  "limit_except POST { deny all; }\nproxy_pass http://127.0.0.1:4092;\n}\n"+
+  "location ^~ /api/xeta/ {");
+ const updated=patchInterchainFeeNginx(old);
+ assert.match(updated.config,/proxy_set_header X-Real-IP \$remote_addr;/);
+ assert.equal(patchInterchainFeeNginx(updated.config).changed,false);
+ assert.throws(()=>patchInterchainFeeNginx(updated.config.replace(
+  'proxy_set_header X-Real-IP $remote_addr;',
+  'proxy_set_header X-Real-IP $http_x_forwarded_for;')),/Unsafe accounting proxy header/);
 });
 test("reject unsafe existing quote route or duplicate and wrong host",()=>{
  assert.throws(()=>patchInterchainFeeNginx(vhost.replace(
@@ -62,7 +78,7 @@ test("keyless preview installs only POST /preview on isolated 4093, not signer o
 test("later fee signer route setup keeps preview isolated and existing signer proxy",()=>{
  const first=patchFeePreviewNginx(vhost).config;
  const full=patchInterchainFeeNginx(first);
- assert.deepEqual(full.added,["/api/xita/v1/managed/health","/api/xita/v1/managed/quote"]);
+ assert.deepEqual(full.added,["/api/xita/v1/managed/health","/api/xita/v1/managed/sponsorship","/api/xita/v1/managed/quote"]);
  assert.ok(full.config.includes("location = /api/xita/v1/managed/quote {"));
  assert.ok(full.config.includes("location = /api/xita/v1/managed/preview {"));
  assert.ok(full.config.includes("proxy_pass http://127.0.0.1:4092;"));
