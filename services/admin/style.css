@@ -88,11 +88,76 @@
 
 .health-failed,.health-stopped{color:#f3a4a8;border-color:#9f5258}.health-not-enabled,.health-inactive{color:#aab8c8;border-color:#5a687a}
 
-/* One explicitly visible Merkle replica matrix per configured validator. */
-.health-validator-validator{border:1px solid var(--line);border-radius:12px;background:#111e2d;padding:15px;min-width:0;margin-bottom:14px}
-.health-validator-validator-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.health-validator-validator-head strong{font-size:14px}
-.health-validator-validator-head small{color:var(--muted);font-size:11px}
-.health-validator-table{min-width:640px}
-.health-validator-empty{background:#231f1b;border:1px solid #9a7646;border-radius:10px;padding:15px;line-height:1.7;color:#f1d8ae}
+/* One full-width, independently verified Direct-BLS source scan table per validator.
+   Keep other service/API tiles in their existing compact .health-grid layout. */
+#health-validators.health-validator-list{
+ display:grid;
+ grid-template-columns:minmax(0,1fr);
+ gap:16px;
+ width:100%;
+ min-width:0;
+}
+.health-validator-card{
+ min-width:0;
+ width:100%;
+ padding:18px;
+ border:1px solid var(--line);
+ border-radius:12px;
+ background:#111e2d;
+}
+.health-validator-card-head{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:10px 14px;
+ margin-bottom:14px;
+}
+.health-validator-card-head strong{font-size:14px}
+.health-validator-card-head small{color:var(--muted);font-size:11px}
+.health-validator-card .health-table-wrap{width:100%;min-width:0;overflow-x:auto}
+.health-validator-table{
+ width:100%;
+ min-width:900px;
+ table-layout:fixed;
+ font-variant-numeric:tabular-nums;
+}
+.health-validator-table th:nth-child(1){width:34%}
+.health-validator-table th:nth-child(2){width:15%}
+.health-validator-table th:nth-child(3){width:15%}
+.health-validator-table th:nth-child(4){width:11%}
+.health-validator-table th:nth-child(5){width:25%}
+.health-validator-table th,.health-validator-table td{
+ white-space:normal;
+ vertical-align:top;
+ line-height:1.5;
+}
+.health-validator-table th:nth-child(n+2):nth-child(-n+4),
+.health-validator-table td:nth-child(n+2):nth-child(-n+4){white-space:nowrap}
+.health-validator-table td:first-child small{
+ display:block;
+ margin-top:5px;
+ font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+ font-size:10px;
+ line-height:1.6;
+ overflow-wrap:anywhere;
+ word-break:break-word;
+}
+.health-validator-table td:last-child small{
+ display:block;
+ margin-top:7px;
+ line-height:1.55;
+ overflow-wrap:anywhere;
+}
+.health-validator-empty{
+ background:#231f1b;
+ border:1px solid #9a7646;
+ border-radius:10px;
+ padding:15px;
+ line-height:1.7;
+ color:#f1d8ae;
+}
 .health-validator-empty strong{display:block}
+@media(max-width:700px){
+ .health-validator-card{padding:12px}
+ .health-validator-card-head{align-items:flex-start}
+}
