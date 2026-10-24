@@ -5,6 +5,7 @@ import {readFile} from "node:fs/promises";
 import {resolve,extname,sep} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawn,spawnSync} from "node:child_process";
+import {isDeployedAsset,isPublicAsset} from "./listing-visibility.js";
 
 const root=fileURLToPath(new URL(".",import.meta.url));
 const types={".html":"text/html; charset=utf-8",".js":"application/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".json":"application/json; charset=utf-8"};
@@ -38,6 +39,12 @@ function visit(browser,url){
 
 test("real browser renders all XITA pages from local JSON, not an endless splash", {timeout:70000},async()=>{
  assert.ok(executable,"Headless Chrome or Chromium required for UI startup smoke test");
+ const localCatalog=JSON.parse(await readFile(resolve(root,"catalog.json"),"utf8"));
+ const xgr=localCatalog.assets?.XGR;
+ // A configured token may be pending, deployed but private, or publicly listed.
+ // Derive the expected page from the same receipt/publication policy as the UI.
+ const tokenPage=isPublicAsset("XGR",xgr,null,localCatalog)?"Project overview":
+  isDeployedAsset(xgr,localCatalog)?"Token not publicly listed":"Token deployment pending";
  const requests=[];
  const server=createServer(async(request,response)=>{
   const pathname=new URL(request.url,"http://127.0.0.1").pathname;
@@ -87,7 +94,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
  try{
   const origin="http://127.0.0.1:"+server.address().port;
-  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/transfer","Transfer Tokens"],["/faq","Understand XITA."],["/token/xgr","Project overview"],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"],["/my-transfers","XGR Interchain"]]){
+  for(const [path,expected] of [["/","XGR Interchain"],["/universe","Explore the Universe."],["/transfer","Transfer Tokens"],["/faq","Understand XITA."],["/token/xgr",tokenPage],["/markets","Explore Tokens"],["/join","Bring your token into the Universe"],["/my-transfers","XGR Interchain"]]){
    const html=await visit(executable,origin+path);
    assert.match(html,/data-ready="1"/,path+" did not initialize from catalog.json");
    assert.ok(html.replace(/<[^>]*>/g," ").replace(/\s+/g," ").includes(expected.replace(/\s+/g," ")),path+" missing expected page "+expected);
