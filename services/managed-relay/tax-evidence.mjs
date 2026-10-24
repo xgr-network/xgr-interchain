@@ -54,6 +54,8 @@ export function quoteEvidence(reply,prices,ip,location){
  const q=reply?.quote;
  if(reply?.status!=="SIGNED_INTERCHAIN_FEE_QUOTE"||!q||!isIP(ip))
   throw Error("Invalid paid quote evidence");
+ if(!/^[A-Z]{2}$/.test(location?.code||""))
+  throw Error("Verified customer country unavailable; no signed fee quote issued");
  const coin=COINGECKO_GAS_COIN_IDS[reply.source],entry=prices?.[coin];
  const timestamp=Number(entry?.last_updated_at);
  const eur=Number(entry?.eur);
