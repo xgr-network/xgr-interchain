@@ -423,6 +423,11 @@
             "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
             "runtimeCodeKeccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
             "receiptPath": "deployments/receipts/arbitrum/c9fbe83e0c9e5f8be2a1cd0ca62c6af8e15feaf9efaeba925ea0297dfddf80ea-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
+          },
+          "collateralRouterDeployer": {
+            "address": "0xa91b1e7179a50f0d798d284676d3ba9ff705fe82",
+            "runtimeCodeKeccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+            "receiptPath": "deployments/receipts/arbitrum/f72af354dbd5b67db03b415b61f9221ec0ff97f0a97bad16b1f25fc5be28899a-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json"
           }
         },
         "receiptPaths": [
@@ -433,7 +438,8 @@
           "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-402d1eabd5b11e517688231a641d027376c6ed10.json",
           "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-b58225ac533243b03bde6d38720310c24b1dd37a.json",
           "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-d4c7665f3c984bfbbeca9e67e593a5bab3881fe3.json",
-          "deployments/receipts/arbitrum/c9fbe83e0c9e5f8be2a1cd0ca62c6af8e15feaf9efaeba925ea0297dfddf80ea-495eeac5e0ae1eba54fb30de31483929d847a5db.json"
+          "deployments/receipts/arbitrum/c9fbe83e0c9e5f8be2a1cd0ca62c6af8e15feaf9efaeba925ea0297dfddf80ea-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
+          "deployments/receipts/arbitrum/f72af354dbd5b67db03b415b61f9221ec0ff97f0a97bad16b1f25fc5be28899a-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json"
         ]
       },
       "present": true
