@@ -183,7 +183,7 @@ test("if source is confirmed but proof is pending, retry never sends a source or
   if(method==="eth_chainId")result=url.includes("xgr")?"0x66b":"0x2105";
   else if(method==="eth_getTransactionByHash")result={hash:sourceTx,from:account,to:gateway};
   else if(method==="eth_getTransactionReceipt")result={
-   transactionHash:sourceTx,from:account,to:gateway,status:"0x1",blockNumber:"0x10",logs};
+   transactionHash:sourceTx,from:account,to:gateway,status:"0x1",blockNumber:"0x10",blockHash:hash("e"),logs};
   else if(method==="eth_blockNumber")result="0x64";
   else if(method==="eth_call")result=word(0);
   else throw Error(method);
