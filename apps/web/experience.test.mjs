@@ -421,7 +421,7 @@ test("dashboard derives active directions from generated receipts, never mutable
 });
 
 test("TVL chart draws observed snapshots but never invents missing history",()=>{
- const model=buildExperienceModel(catalog);
+ const model=buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}});
  const pending=renderDashboard(model);
  assert.match(pending,/TVL history is being collected/);
  const metrics={totals:{lockedUsd:5,movedUsd:null},history:{points:[
@@ -468,21 +468,21 @@ test("TVL 24h change requires a genuine nearby baseline and colors gain/loss",as
  const baseline="2026-10-21T11:00:00.000Z";
  const data={asOf,totals:{lockedUsd:120},history:{points:[{asOf:baseline,lockedUsd:100},{asOf,lockedUsd:120}]}};
  assert.equal(tvlChange24h(data),20);
- const positive=renderDashboard(buildExperienceModel(catalog),{tvlPeriod:"24h"},"ready",data);
+ const positive=renderDashboard(buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}}),{tvlPeriod:"24h"},"ready",data);
  assert.match(positive,/\+20\.00% · 24h/);
  assert.match(positive,/is-positive/);
  assert.match(positive,/ux-ns-tvl-axis/);
  assert.match(positive,/data-tvl-period="30d"/);
  const neg={...data,totals:{lockedUsd:80}};
  assert.equal(tvlChange24h(neg),-20);
- assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",neg),/is-negative/);
+ assert.match(renderDashboard(buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}}),{},"ready",neg),/is-negative/);
  const noBaseline={...data,history:{points:[{asOf:"2026-10-21T07:00:00.000Z",lockedUsd:100},{asOf,lockedUsd:120}]}};
  assert.equal(tvlChange24h(noBaseline),null);
- assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",noBaseline),/24h —/);
+ assert.match(renderDashboard(buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}}),{},"ready",noBaseline),/24h —/);
 });
 
 test("TVL chart spreads actual short-window measurements across full plot",()=>{
- const model=buildExperienceModel(catalog),asOf="2026-10-22T10:00:00Z";
+ const model=buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}}),asOf="2026-10-22T10:00:00Z";
  const metrics={asOf,totals:{lockedUsd:null,movedUsd:null},history:{points:[
   {asOf:"2026-10-22T09:55:00Z",lockedUsd:0.0115},
   {asOf:"2026-10-22T09:57:00Z",lockedUsd:0.0116},
@@ -501,7 +501,7 @@ test("24h delta uses final verified observations even if current snapshot unavai
   {asOf:"2026-10-22T10:00:00Z",lockedUsd:105}
  ]}};
  assert.equal(tvlChange24h(metrics),5);
- assert.match(renderDashboard(buildExperienceModel(catalog),{},"ready",metrics),/\+5\.00% · 24h/);
+ assert.match(renderDashboard(buildExperienceModel({assets:{XGR:deployedFixture("XGR","xgrchain")}}),{},"ready",metrics),/\+5\.00% · 24h/);
  const short={totals:{lockedUsd:null},history:{points:[
   {asOf:"2026-10-22T09:55:00Z",lockedUsd:100},
   {asOf:"2026-10-22T10:00:00Z",lockedUsd:105}
