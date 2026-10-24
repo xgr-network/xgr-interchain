@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "8a95b0fbc5850d4cf181b59b5a90e74a5415dca1"
+  },
+  "chain": "base",
+  "chainId": 8453,
+  "domainId": 8453,
+  "component": "gateway",
+  "asset": "XGR",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+  "routeName": "base_to_xgr",
+  "address": "0xeeb21da92aaeca479009346c8f27f2fd4d3571f3",
+  "runtimeCodeKeccak256": "0xaaa3d3f8fe9d28cc530043de26533784d34fdd24e0c2363c6df10d58f9b3024e",
+  "transactionHash": "0x1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e",
+  "blockNumber": 53028476,
+  "blockHash": "0x51d8a0b3041990bca2deda145fe56730f53822fc8ec9655240792cd733f871ef",
+  "confirmations": 13,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-gateway",
+    "factory": "0x01ddcbbda44b2a7d72b6c5801b88cd36319cec94",
+    "routeId": "0x7c10670b7cc28d27d88805d8eef081ef2ec50f5a7e69ca50864c057b16d94e0a"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:52:03.733Z"
+}
