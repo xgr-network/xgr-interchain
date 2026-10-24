@@ -228,3 +228,33 @@ test("Base destination failure cannot be retried on irrelevant source FeeVault s
   code:"PROOF_TIMEOUT",stage:"simulate-base-delivery"
  },conf),true);
 });
+
+test("Direct-BLS destination failures retain their precise failing contract",()=>{
+ const diagnostic=(stage,error)=>"XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
+  status:"RECOVERY_NOT_READY",stage,error
+ })+"\n";
+ assert.equal(classifyRecoveryFailure(new Error("script failed"),
+  diagnostic("verify-destination-quorum","Destination registry rejects aggregate BLS quorum")).code,
+  "PROOF_DESTINATION_QUORUM_REJECTED");
+ assert.equal(classifyRecoveryFailure(new Error("script failed"),
+  diagnostic("verify-destination-router","Destination router rejects canonical inbound route")).code,
+  "PROOF_DESTINATION_ROUTE_REJECTED");
+ assert.equal(classifyRecoveryFailure(new Error("script failed"),
+  diagnostic("verify-destination-ism","Destination ISM rejects signed message or canonical routing")).code,
+  "PROOF_DESTINATION_ISM_REJECTED");
+ assert.equal(classifyRecoveryFailure(new Error("script failed"),
+  diagnostic("simulate-destination-delivery","execution reverted (CALL_EXCEPTION)")).code,
+  "PROOF_DESTINATION_REVERT");
+});
+test("only retry transient Base RPC failures at new Direct-BLS simulation stage",()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("a"),"ABC");
+ assert.equal(canRetryBaseRecovery({
+  code:"PROOF_TIMEOUT",stage:"simulate-destination-delivery"
+ },conf),true);
+ assert.equal(canRetryBaseRecovery({
+  code:"PROOF_DESTINATION_REVERT",stage:"simulate-destination-delivery"
+ },conf),false);
+ assert.equal(canRetryBaseRecovery({
+  code:"PROOF_DESTINATION_QUORUM_REJECTED",stage:"verify-destination-quorum"
+ },conf),false);
+});
