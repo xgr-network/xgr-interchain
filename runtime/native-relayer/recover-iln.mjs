@@ -5,6 +5,7 @@ import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256} from "ethers";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
+import {verifySourceFinalityReceipt} from "./source-finality.mjs";
 import {encodeDirectBLSPayload,encodeDirectISMMetadata} from "./xita-direct-codec.mjs";
 
 const hash=/^0x[0-9a-f]{64}$/i;
@@ -26,7 +27,6 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcDomain=number("ORIGIN_DOMAIN");
  const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
  const destDomain=number("DESTINATION_DOMAIN");
- const confirmations=number("ORIGIN_CONFIRMATIONS");
  const sourceTxHash=String(overrideSourceTxHash||name("SOURCE_TX_HASH")).toLowerCase();
  check(hash.test(sourceTxHash),"Original Source TX hash required");
  const routeId=name("ROUTE_ID").toLowerCase();
@@ -78,13 +78,10 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const [setId,signatureFormat]=await Promise.all([set.setId(),set.verifierKeyFormat()]);
 
  mark("source-receipt");
- const [receipt,head]=await Promise.all([src.getTransactionReceipt(sourceTxHash),src.getBlockNumber()]);
- check(receipt&&receipt.status===1&&head-receipt.blockNumber>=confirmations,
-  "Original fee-qualified source transaction has not been confirmed");
- check(receipt.hash?.toLowerCase()===sourceTxHash,"Original transaction receipt identity mismatch");
- const block=await src.getBlock(receipt.blockNumber);
- check(block&&String(block.hash).toLowerCase()===String(receipt.blockHash).toLowerCase(),
-  "Original source receipt is not on the canonical source block");
+ const receipt=await src.getTransactionReceipt(sourceTxHash);
+  check(receipt&&receipt.status===1,"Original source receipt unsuccessful");
+  check(receipt.hash?.toLowerCase()===sourceTxHash,"Original source receipt identity mismatch");
+  await verifySourceFinalityReceipt(src,Number(srcChain),receipt);
  const evidence=verifiedSourceReceiptEvidence({
   receipt,sourceTxHash,routeId,messageId:id,destinationDomain:destDomain,
   gateway:gatewayAddress,sourceRouter:srcRouter,sourceMailbox:srcMailbox,
