@@ -12,6 +12,20 @@ import {join} from "node:path";
 import {isDeepStrictEqual} from "node:util";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 
+// Too few canonical deployment confirmations is a retryable state, not a
+// failed contract or permission to sign/broadcast a replacement transaction.
+// Keep receipt verification fail-closed; only the caller decides when to poll.
+export class DeploymentConfirmationsPendingError extends Error {
+ constructor(txHash,observed,required){
+  super("Deployment not sufficiently confirmed");
+  this.name="DeploymentConfirmationsPendingError";
+  this.code="DEPLOYMENT_CONFIRMATIONS_PENDING";
+  this.txHash=txHash;
+  this.observed=Number(observed);
+  this.required=Number(required);
+ }
+}
+
 const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
@@ -123,7 +137,8 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  const blockNumber=asUint(receipt.blockNumber,"receipt block");
  const currentHead=asUint(head,"head");
  const confirmations=currentHead>=blockNumber?currentHead-blockNumber+1n:0n;
- if(confirmations<BigInt(c.confirmations))throw Error("Deployment not sufficiently confirmed");
+ if(confirmations<BigInt(c.confirmations))
+  throw new DeploymentConfirmationsPendingError(txHash,confirmations,BigInt(c.confirmations));
  if(!h32(receipt.blockHash))throw Error("No canonical receipt block hash");
  const blockTag="0x"+blockNumber.toString(16);
  // Historical block headers and canonical receipts are available without
