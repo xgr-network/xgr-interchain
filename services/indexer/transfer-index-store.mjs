@@ -104,6 +104,12 @@ export async function readWalletTransferIndex(catalog,account,{
  if(!ADDRESS.test(account||"")||!Number.isSafeInteger(limit)||limit<1||limit>100)
   throw Error("Invalid account or transfer index limit");
  const connected=pool||await transferReaderPool();
+ // No active deployed routes: never surface an earlier generation's SQL rows.
+ if(routeList===null&&!indexedRoutes(catalog).length)return {
+  kind:"xita-wallet-transfer-index-v1",status:"partial",wallet:lowercase(account),
+  items:[],coverage:routeIndexCoverage(catalog,[],{now,routeList:[]}),
+  openCount:0,unknownCount:0,truncated:false
+ };
  if(!connected)return {kind:"xita-wallet-transfer-index-v1",status:"unavailable",
   wallet:lowercase(account),items:[],coverage:{complete:false,requiredRoutes:0,indexedRoutes:0,routes:[]}};
  const cursors=await connected.query(
@@ -225,6 +231,12 @@ export async function readWalletTransferIndex(catalog,account,{
 }
 export async function readTransferIndexStats(catalog,{pool=null,now=Date.now(),routeList=null}={}){
  const connected=pool||await transferReaderPool();
+ if(routeList===null&&!indexedRoutes(catalog).length)return {
+  kind:"xita-transfer-index-stats-v1",status:"partial",
+  coverage:routeIndexCoverage(catalog,[],{now,routeList:[]}),
+  proofObserver:{status:"available",routes:[]},hopEvents:[],
+  note:"No deployed routes in the current receipt-backed catalog."
+ };
  if(!connected)return {kind:"xita-transfer-index-stats-v1",
   status:"unavailable",coverage:{complete:false},hopEvents:null};
  const c=await connected.query("SELECT source_chain,route_name,gateway,route_id,deployment_block,scanned_to,finalized_head,updated_at FROM xita_transfer_index_cursors");

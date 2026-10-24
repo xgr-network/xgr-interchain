@@ -42,7 +42,7 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
   const original=evidence?.assets?.[key];
   // The current web model accepts only verified, internally self-consistent
   // evidence; no arbitrary /POST metrics API ever bypasses provenance review.
-  assets[key]=verifiedMetrics(evidence,key)?structuredClone(original):{
+  assets[key]=isDeployedAsset(catalog.assets[key],catalog)&&verifiedMetrics(evidence,key)?structuredClone(original):{
    assetId:key,verified:false,market:{status:"unavailable"},
    custody:{status:"unavailable"},movement:{status:"unavailable"}
   };
@@ -232,7 +232,8 @@ export async function handler(req,res){
   }
   let history=null;
   try{
-   if(existsSync(historyPath)){
+   // No receipt-backed routes means no valid historical collateral generation.
+    if(Object.values(catalog.assets||{}).some(a=>isDeployedAsset(a,catalog))&&existsSync(historyPath)){
     const stat=statSync(historyPath);
     if(stat.isFile()&&stat.size<1200000){
      const value=JSON.parse(readFileSync(historyPath,"utf8"));
@@ -252,6 +253,7 @@ export async function handler(req,res){
     const single=Object.keys(catalog.assets||{}).length===1;
     metrics.lastVerifiedAssets={};
     for(const id of Object.keys(catalog.assets||{})){
+     if(!isDeployedAsset(catalog.assets[id],catalog))continue;
      const amount=point.assets?.[id]??(single?point.lockedUsd:null);
      if(typeof amount==="number"&&Number.isFinite(amount)&&amount>=0&&
        (point.assets?.[id]!==undefined||single))
