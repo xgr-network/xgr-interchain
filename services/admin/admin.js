@@ -895,7 +895,7 @@ async function refreshOperationsHealth(){
      '<td>'+healthValue(r.scanCursor)+'</td>'+
      '<td>'+healthValue(r.blockLag)+'</td>'+
      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
-    return '<div class="health-validator-validator"><div class="health-validator-validator-head"><strong>'+esc(v.name)+'</strong>'+
+    return '<div class="health-validator-card"><div class="health-validator-card-head"><strong>'+esc(v.name)+'</strong>'+
       healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
       ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
       (routes.length?'<div class="health-table-wrap"><table class="health-table health-validator-table">'+
