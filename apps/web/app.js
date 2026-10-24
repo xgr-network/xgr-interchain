@@ -898,7 +898,7 @@ async function runJoin(action){
      "CoinGecko coin ID":"coingeckoId","Contact email":"contactEmail","Relationship to token":"applicantRole",
      "ERC-20 contract address":"canonicalAddress",
      "Canonical chain":"canonicalChain",Decimals:"decimals",
-     "Logo URL or PNG":"logoUrl","HTTPS website":"website",
+     "HTTPS logo URL":"logoUrl","HTTPS website":"website",
      "Project confirmation":"confirmed"};
    drawJoin();
    const errors=[];
@@ -1175,19 +1175,6 @@ el.addEventListener("input",event=>{
 el.addEventListener("change",event=>{
  if(path()!=="/join"||!joinState.data)return;
  const field=event.target;
- if(field.matches("#ja-logo")){
-  const file=field.files?.[0];if(!file)return;
-  if(file.type!=="image/png"||file.size>300000){
-   joinState.status="Please upload a PNG of at most 300 KB.";drawJoin();return;
-  }
-  const reader=new FileReader();
-  reader.onload=()=>{
-   joinState.data.logoPngBase64=String(reader.result).split(",")[1];
-   joinState.status="PNG loaded and included in the local application draft.";drawJoin();
-  };
-  reader.onerror=()=>{joinState.status="Could not read the PNG.";drawJoin();};
-  reader.readAsDataURL(file);return;
- }
  if(field.matches('[data-join="canonicalChain"],[data-join="priceSource"]')){
   captureJoin();drawJoin();
  }
