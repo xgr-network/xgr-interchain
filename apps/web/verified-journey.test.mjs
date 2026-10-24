@@ -75,3 +75,14 @@ test("M-02: a fresh native-finality observation reverses a formerly delivered jo
   finalityVerified:false});
  assert.equal(uncertain.delivered,true);
 });
+
+test("native-safe finality remains an unconfirmed status and is not replaced by stale 12/12",()=>{
+ const pending={account:addr("a"),sourceChain:"base",txHash:hash("1"),
+  confirmed:false,status:"confirming",confirmationsObserved:12,requiredConfirmations:12};
+ const newer={...pending,status:"finality-unavailable"};
+ assert.equal(mergeWalletObservation(pending,newer).status,"finality-unavailable");
+ const safePending={...pending,status:"confirming-native-finality",sourceSafeHeadBlock:123};
+ assert.equal(mergeWalletObservation(newer,safePending).status,"confirming-native-finality");
+ assert.equal(mergeWalletObservation(safePending,{...pending,confirmed:true,
+  status:"awaiting-proof",messageId:hash("2")}).confirmed,true);
+});
