@@ -59,3 +59,22 @@ test("the original Interchain Genesis signer set stays pinned even before public
  assert.equal(manifest.validatorSnapshot.blockNumber,null);
  // No origin PoS snapshot is required to pin and plan initial membership.
 });
+
+test("XGRChain Registry and Factory batch never receive empty constructor economics",()=>{
+ const inventory=approvedWorkInventory(root);
+ const chain=inventory.chains.find(c=>c.chainId===1643);
+ assert.ok(chain);
+ const plan=bootstrapPlan(root,chain);
+ const cfg=config("config/chains/xgrchain/bootstrap.json");
+ assert.equal(plan.ready,true,"XGRChain must be configured before batch start");
+ assert.deepEqual(plan.missing,[]);
+ const {minimumWei,maxExecutorReimbursementWei,perValidatorWei}=cfg.reserve;
+ const sourceFeeWei=cfg.sourceFee.targetWei;
+ for(const v of [minimumWei,maxExecutorReimbursementWei,perValidatorWei,sourceFeeWei]){
+  assert.match(v,/^[1-9][0-9]*$/,"No null/zero/float Wei values");
+ }
+ assert.ok(BigInt(perValidatorWei)>=BigInt(minimumWei));
+ assert.ok(BigInt(minimumWei)>=BigInt(maxExecutorReimbursementWei));
+ assert.equal(plan.proposedFeeWei,sourceFeeWei);
+ assert.deepEqual(plan.initialValidators,config("config/validators/initial.json").validators);
+});
