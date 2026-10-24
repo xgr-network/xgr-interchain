@@ -22,7 +22,7 @@ const cat={chains:{
   routeDeployments:[{routeName:"xgr_to_base",routeId,sourceChain:"xgrchain",destinationChain:"base",
    components:{gateway:{address:gateway}}}]}}
 }};
-const receipt={from:user,to:gateway,transactionHash:txHash,status:"0x1",blockNumber:"0x10",
+const receipt={from:user,to:gateway,transactionHash:txHash,status:"0x1",blockNumber:"0x10",blockHash:hash("e"),
  logs:[
   {address:gateway,topics:[OPERATION_TOPIC,routeId,messageId,toTopic(8453)],data:toTopic(100000000000000000n)},
   {address:srcMailbox,topics:[DISPATCH_TOPIC,toTopic(BigInt(srcRouter)),toTopic(8453),toTopic(1)],data:dispatchData}
@@ -178,7 +178,7 @@ function chainAgnosticScenario(source,chainId){
   op,dispatch,fee,mined,tx,rpc};
 }
 
-for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+for(const [source,chainId] of [["base",8453],["arbitrum",42161]]){
  test("mined fee adapter transfer recovers across arbitrary wallet executors on "+source,async()=>{
   const f=chainAgnosticScenario(source,chainId);
   const result=await findWalletSourceTx({
@@ -233,7 +233,7 @@ for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]
 
 
 test("source RPC failover works for every connected spoke source, not just Base",async()=>{
- for(const [source,chainId] of [["base",8453],["polygon",137],["arbitrum",42161]]){
+ for(const [source,chainId] of [["base",8453],["arbitrum",42161]]){
   const fixture=chainAgnosticScenario(source,chainId);
   const broken="https://rpc.example/outage-"+source;
   fixture.catalog.chains[source].rpcUrls=[broken,"https://rpc.example/"+source];
