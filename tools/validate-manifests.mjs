@@ -63,6 +63,14 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
       v315.receiptPaths.includes(item.receiptPath),p+": invalid component deployment binding "+component);
    }
   }
+  // Alias is a reference to exactly the same verified deployment receipt.
+  if(v315?.components?.requiredHook){
+   const hook=v315.components.dispatchHook,alias=v315.components.requiredHook;
+   check(!!hook&&hook.address?.toLowerCase()===alias.address?.toLowerCase()&&
+    hook.runtimeCodeKeccak256?.toLowerCase()===alias.runtimeCodeKeccak256?.toLowerCase()&&
+    hook.receiptPath===alias.receiptPath,
+    p+": requiredHook must alias dispatchHook using the same receipt");
+  }
   // No pre-XITA Mailbox, Hook, ISM or ValidatorAnnounce address is a
   // deployment proof. Fresh transport must be introduced explicitly
   // and independently verified before any Factory deployment.

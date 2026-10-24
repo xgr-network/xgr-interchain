@@ -143,7 +143,7 @@ export async function verifyTransportChildren({rpc,url,bundle,chain,ism,artifact
  const mailbox=await asChild("mailbox()","mailbox");
  const hook=await asChild("dispatchHook()","dispatchHook");
  const required=hook;
- addresses.requiredHook=addresses.dispatchHook;
+ // requiredHook is independently verified from Mailbox, and aliases dispatchHook.
  const check=async(target,signature,expected,kind="address")=>{
   const actual=await getter(rpc,url,target,signature);
   const value=kind==="address"?asAddr(actual):asWord(actual);
