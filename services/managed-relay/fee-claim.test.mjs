@@ -94,7 +94,7 @@ test("tampered address, hash, receipt path or receipt body abort all automatic c
  let claims=0;
  const c=structuredClone(original);
  c.infrastructure.xgrchain.xitaV315.components.executionGateway.runtimeCodeKeccak256="0x"+"f".repeat(64);
- await assert.rejects(()=>runConfiguredFeeClaims({env,catalog:c,
+ await assert.rejects(()=>runConfiguredFeeClaims({env,catalog:c,readReceipt:fixture.readReceipt,
   claim:async()=>{claims++}
  }),/receipt mismatch/);
  assert.equal(claims,0);
