@@ -232,7 +232,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    return send(200,{ok:true,service:"xita-source-native-fee-quote",
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
-    sponsorship:await readSponsorAvailability(catalog)});
+    sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+     ...await readSponsorAvailability(catalog)}});
   }catch(e){return send(503,{ok:false,error:publicError(e)})}
  }
  if(req.method==="GET"&&req.url?.startsWith("/api/xita/v1/managed/sponsorship?")){
@@ -254,7 +255,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    // Public status is bound to the verified parent wallet. Never expose
    // reservations, sponsor nonces, payout values or unrelated customer grants.
    const q=await sponsorPool.query({text:
-    "SELECT g.grant_key,g.status FROM xita_transfer_operations p "+
+    "SELECT g.grant_key,g.status,p.delivered FROM xita_transfer_operations p "+
     "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
     "WHERE p.account=$1 AND p.source_chain=$2 AND p.message_id=$3 "+
     "AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0 "+
@@ -265,7 +266,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     stage:r.grant_key.split(":").at(-1),
     status:["reserved","submitted","confirmed","needs-review"].includes(r.status)?r.status:"unknown"
    }));
-   return send(200,{ok:true,status:grants.length?"tracked":"pending",grants});
+   return send(200,{ok:true,status:grants.length?"tracked":q.rows[0].delivered===true?"not-required":"pending",grants});
   }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
