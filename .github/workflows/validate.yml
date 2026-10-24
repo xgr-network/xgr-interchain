@@ -127,14 +127,40 @@ jobs:
           find runtime/native-relayer -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
           find apps/web -maxdepth 1 \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 -n1 node --check
 
-      - name: Install Chrome for real browser startup and screenshot tests
-        id: chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
-      - name: Expose installed browser to XITA smoke tests
+      - name: Validate operator admin
         shell: bash
-        run: echo "XITA_BROWSER=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check services/onboarding/server.mjs
+          node --check services/onboarding/manifests.mjs
+          node --check services/admin/admin.js
+          node --check services/admin/wallet.js
+          grep -q 'type="module" src="/admin/admin.js"' services/admin/index.html
+          node --test services/admin/*.test.mjs
+
+      - name: Native relayer tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/native-relayer
+          npm install --no-audit --no-fund
+          npm test
+
+      - name: Use preinstalled runner Chromium for smoke and screenshot tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for browser in google-chrome chromium chromium-browser google-chrome-stable; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              resolved="$(command -v "$browser")"
+              "$resolved" --version
+              echo "XITA_BROWSER=$resolved" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "GitHub runner has no Chrome/Chromium; browser checks cannot run" >&2
+          exit 1
 
       - name: Browser startup smoke test
         shell: bash
@@ -155,22 +181,3 @@ jobs:
           path: artifacts/universe.png
           if-no-files-found: error
 
-      - name: Validate operator admin
-        shell: bash
-        run: |
-          set -euo pipefail
-          find services/admin -maxdepth 1 -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          node --check services/onboarding/server.mjs
-          node --check services/onboarding/manifests.mjs
-          node --check services/admin/admin.js
-          node --check services/admin/wallet.js
-          grep -q 'type="module" src="/admin/admin.js"' services/admin/index.html
-          node --test services/admin/*.test.mjs
-
-      - name: Native relayer tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd runtime/native-relayer
-          npm install --no-audit --no-fund
-          npm test
