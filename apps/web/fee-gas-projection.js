@@ -32,3 +32,15 @@ export function downstreamGasProjection(stages,sponsor={enabled:false,chains:{}}
    conditionalNetWei:item.gasWithBufferWei-potentialSponsorWei};
  });
 }
+
+/** Display native-wei amounts without trailing decimal points or silently rounding tiny positive gas to zero. */
+export function formatWeiFee(wei){
+ const n=BigInt(wei),scale=10n**18n;
+ if(n<0n)throw Error("Invalid native wei amount");
+ if(n===0n)return "0";
+ const whole=(n/scale).toString();
+ const decimal=(n%scale).toString().padStart(18,"0").slice(0,9).replace(/0+$/,"");
+ if(decimal)return whole+"."+decimal;
+ if(n%scale!==0n)return "< 0.000000001";
+ return whole;
+}
