@@ -1,4 +1,5 @@
 import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway} from "./route-availability.js";
+import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
 import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
@@ -139,8 +140,8 @@ export function renderRepresentationInventory(model,assetId,chainKey,wallet={}){
 function systemDetails(model,selected,metrics=null,wallet={}){
   const system=model.chains.find(c=>c.key===selected)||model.hub||model.chains[0];
   if(!system)return '<p class="ux-muted">No configured chains found.</p>';
-  const associated=model.routes.filter(r=>r.source===system.key||r.destination===system.key);
-  const active=associated.filter(r=>r.active).length;
+  const associated=(model.deployments||[]).filter(r=>r.source===system.key||r.destination===system.key);
+  const active=(model.transferRoutes||[]).filter(r=>r.source===system.key||r.destination===system.key).length;
   const list=system.tokens.slice(0,5).map(t=>{const rep=representationFor(t,system.key);return '<a class="ux-asset" data-nav href="'+esc(tokenLink(t))+'"><span class="ux-dot"></span><span>'+esc(rep.symbol)+'</span><span class="ux-small">'+esc(rep.label)+'</span><span class="ux-arrow">↗</span></a>';}).join("");
   const marketRows=system.tokens.map(token=>{
    const facts=verifiedMetrics(metrics,token.id);
@@ -160,7 +161,7 @@ function systemDetails(model,selected,metrics=null,wallet={}){
     "This chain connects to the XGRChain hub through individually registered directed routes.")+'</p>'+
     '<div class="ux-keyvals"><div><span>Chain ID</span><strong>'+esc(valueOrDash(system.chainId))+'</strong></div>'+
     '<div><span>Native gas asset</span><strong>'+esc(system.nativeCurrency)+'</strong></div>'+
-    '<div><span>Configured directed routes</span><strong>'+associated.length+'</strong></div>'+
+    '<div><span>Deployed directed routes</span><strong>'+associated.length+'</strong></div>'+
     '<div><span>Verified active routes</span><strong>'+active+'</strong></div></div>'+
     (marketRows?'<h4>Market data</h4>'+marketRows:'')+
     '<h4>Tokens on this system</h4>'+(list||'<p class="ux-muted">No listed token representations yet.</p>')+
@@ -330,11 +331,13 @@ function tvlHistoryChart(metrics,period="24h"){
 }
 
 function northstarCards(model,metrics=null,period="24h"){
- const recent=validTvlPoints(metrics).at(-1)||null;
- const liveTVL=metrics?.totals?.lockedUsd;
+ // A fully reset network must not resurrect metrics from any older API cache.
+ const safeMetrics=(model.deployments?.length||0)>0?metrics:null;
+ const recent=validTvlPoints(safeMetrics).at(-1)||null;
+ const liveTVL=safeMetrics?.totals?.lockedUsd;
  const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
  const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
- const tvlChange=tvlChange24h(metrics);
+ const tvlChange=tvlChange24h(safeMetrics);
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
  const activeChains=new Set((model.transferRoutes||[]).flatMap(r=>[r.source,r.destination]));
@@ -349,7 +352,7 @@ function northstarCards(model,metrics=null,period="24h"){
      '<span class="ux-ns-system-tag'+(ready?' is-active':'')+'">'+status+'</span></button>';
    }).join("")+'</div></article>'+
   '<article class="ux-ns-card ux-ns-network-card"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">↗</span><h2>Interchain network</h2><span class="ux-ns-pill">XGR HUB</span></div>'+
-   '<div class="ux-ns-network-numbers"><div><strong>'+model.routes.length+'</strong><span>Configured directions</span></div><div><strong>'+active+'</strong><span>Active directions</span></div></div>'+
+   '<div class="ux-ns-network-numbers"><div><strong>'+(model.deployments?.length||0)+'</strong><span>Deployed directions</span></div><div><strong>'+active+'</strong><span>Active directions</span></div></div>'+
    '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
@@ -357,13 +360,13 @@ function northstarCards(model,metrics=null,period="24h"){
    '<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
    (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span></div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
-   tvlHistoryChart(metrics,period)+
+   tvlHistoryChart(safeMetrics,period)+
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
-   '<span class="ux-ns-evidence">'+(metrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
+   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
-   '<strong class="ux-ns-value">'+esc(formatUsd(metrics?.totals?.movedUsd))+'</strong>'+
+   '<strong class="ux-ns-value">'+esc(formatUsd(safeMetrics?.totals?.movedUsd))+'</strong>'+
    '<p class="ux-small">Gross confirmed lock/unlock activity observed by the finalized indexer over 24h, priced in USD. Backfills are observations, not historical block times.</p>'+
-   '<span class="ux-ns-evidence">'+(metrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
+   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
 }
 
 function allianceIntro(){
@@ -402,7 +405,7 @@ export function dashboardRankingRows(catalog,metrics,key){
  const rows=buildLeaderboardRows(catalog,metrics);
  if(key==="lockedUsd")for(const row of rows){
   if(row.lockedUsd===null){
-   const historic=metrics?.lastVerifiedAssets?.[row.id];
+   const historic=isDeployedAsset(catalog?.assets?.[row.id],catalog)?metrics?.lastVerifiedAssets?.[row.id]:null;
    if(typeof historic?.lockedUsd==="number"&&Number.isFinite(historic.lockedUsd)&&historic.lockedUsd>=0){
     row.lockedUsd=historic.lockedUsd;row.historicalAsOf=historic.asOf;
    }
