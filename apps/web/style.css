@@ -1324,3 +1324,7 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 
 .ux-contract-line .ux-mm-import{background:#183b56;border-color:#77aacf;color:#eff8ff;font-weight:700}
 .ux-contract-line .ux-mm-import:hover,.ux-contract-line .ux-mm-import:focus-visible{background:#285879;border-color:#b4dcff}
+
+/* Explicit separation between paid route fees and non-additive network gas. */
+.ux-fee-section-heading{padding:15px 14px 10px;border-top:2px solid #4e7194;color:#d9e9fb;font-size:12px;font-weight:750;letter-spacing:.045em}
+.ux-fee-breakdown>.ux-fee-fineprint{padding:9px 14px 12px;margin:0;color:#a9bfdd;font-size:12px;line-height:1.5}

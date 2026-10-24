@@ -5,6 +5,8 @@ import {readFileSync} from "node:fs";
 import {Wallet,JsonRpcProvider,Contract,zeroPadValue} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
+import {readCachedGasPrices} from "./price-cache.mjs";
+import {sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -314,17 +316,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   throw Error("Sponsor wallet key/address mismatch");
  const catalog=JSON.parse(readFileSync(
   new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
- const policy={};
- for(const chain of Object.keys(catalog.chains)){
-  const name=chain.toUpperCase().replace(/-/g,"_");
-  const prefix="XITA_SPONSOR_"+name+"_";
-  const keys=["MAX_GRANT_WEI","DAILY_MAX_WEI","MIN_RESERVE_WEI","GAS_UNITS"];
-  if(keys.some(k=>env[prefix+k]))
-   policy[chain]=Object.fromEntries(keys.map(k=>[{
-    MAX_GRANT_WEI:"maxGrantWei",DAILY_MAX_WEI:"dailyMaxWei",
-    MIN_RESERVE_WEI:"minReserveWei",GAS_UNITS:"gasUnits"
-   }[k],required(prefix+k)]));
- }
+ const policy=sponsorPoliciesForCatalog({catalog,env,prices:await readCachedGasPrices()});
  const {Pool}=await import("pg");
  const pool=new Pool({connectionString:required("XITA_SPONSOR_DATABASE_URL"),
   max:2,connectionTimeoutMillis:3000,statement_timeout:15000});

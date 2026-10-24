@@ -25,19 +25,6 @@ const safeUrl=(value)=>{
  }catch{return null;}
 };
 const note=(s)=>{throw new Error(s);};
-function logoBytes(base64){
- if(base64===null||base64===undefined||base64==="")return null;
- if(typeof base64!=="string"||base64.length>410000||
-    !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))note("Invalid logo upload");
- const bytes=Buffer.from(base64,"base64");
- if(bytes.length<33||bytes.length>300000||bytes.toString("base64")!==base64)
-  note("Logo exceeds 300 KB or is malformed");
- if(bytes.subarray(0,8).toString("hex")!=="89504e470d0a1a0a"||
-    bytes.toString("ascii",12,16)!=="IHDR")note("Only sanitized PNG logos are supported");
- const w=bytes.readUInt32BE(16),h=bytes.readUInt32BE(20);
- if(w<1||w>512||h<1||h>512)note("Logo dimensions must be 1-512 pixels");
- return bytes;
-}
 function normalizeLinks(value){
  if(value===null||value===undefined)value={};
  if(typeof value!=="object"||Array.isArray(value))note("Invalid project links");
@@ -87,9 +74,9 @@ export function normalizeApplication(raw,inventory){
  const tags=raw.tags||[];
  if(!Array.isArray(tags)||tags.length>16||!tags.every(s=>validText(s,1,60))||
    new Set(tags).size!==tags.length)note("Invalid project tags");
- const binary=logoBytes(raw.logoPngBase64);
- const logoUrl=binary?"https://xita.xgr.network/pictures/tokens/"+slug+".png":safeUrl(raw.logoUrl);
- if(!logoUrl)note("Provide a HTTPS logo URL or upload a PNG");
+ if(raw.logoPngBase64!==undefined)note("Logo uploads are not accepted; use a HTTPS URL");
+ const logoUrl=safeUrl(raw.logoUrl);
+ if(!logoUrl)note("Provide a valid HTTPS logo URL");
  if(raw.confirmed!==true)note("Applicant acknowledgement required");
  if(!EMAIL.test(String(raw.contactEmail||""))||String(raw.contactEmail).length>254)note("Valid private contact email required");
  if(!ROLES.has(raw.applicantRole))note("Applicant relationship required");
@@ -104,10 +91,10 @@ export function normalizeApplication(raw,inventory){
   canonicalChain,canonicalAddress:address,decimals:raw.decimals,
   targets:[...chosen].sort(),categories,tags,
   logoUrl,links:linkMap,priceSource,coingeckoId,confirmed:true};
- return {normalized,binary};
+ return {normalized};
 }
 export function buildManifestBundle(raw,catalog){
- const {normalized:a,binary}=normalizeApplication(raw,catalog);
+ const {normalized:a}=normalizeApplication(raw,catalog);
  const key=a.symbol;
  const candidate={asset:key,canonical:{chain:a.canonicalChain,representation:"collateral",tokenAddress:a.canonicalAddress}};
  const assetId=canonicalAssetId(candidate,catalog.chains);
@@ -168,7 +155,6 @@ export function buildManifestBundle(raw,catalog){
   ["apps/web/catalog.json"]:json({schemaVersion:1,...proposedCatalog})
  };
  return {key,slug:a.slug,assetId,files,
-  ...(binary?{logo:{path:"apps/web/pictures/tokens/"+a.slug+".png",base64:binary.toString("base64")}}:{}),
   summary:{name:a.name,symbol:a.symbol,canonicalChain:a.canonicalChain,
    chains,routeCount:routes.length,applicantRole:raw.applicantRole,verified:false}};
 }

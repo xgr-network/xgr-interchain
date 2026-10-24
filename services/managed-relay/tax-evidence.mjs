@@ -27,7 +27,7 @@ export async function lookupIpCountry(ip,{path=process.env.XITA_TAX_COUNTRY_CIDR
   for(const line of lines){
    if(!line||line.startsWith("#"))continue;
    const [cidr,rawCountry]=line.trim().split(/[\t,]/);
-   if(!/^[A-Za-z]{2}$/.test(rawCountry||""))continue;
+   if(!/^[A-Za-z]{2}$/.test(rawCountry||"")||rawCountry.toUpperCase()==="ZZ")continue;
    const [address,prefix]=String(cidr||"").split("/");
    const type=isIP(address),n=Number(prefix);
    if(!type||!Number.isInteger(n)||n<0||n>(type===4?32:128))continue;

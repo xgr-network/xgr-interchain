@@ -15,7 +15,7 @@ const reply=(res,status,data)=>{res.writeHead(status,{"Content-Type":"applicatio
 async function readBody(req){
  if(!req.headers["content-type"]?.startsWith("application/json"))throw Error("JSON required");
  let bytes=0,body="";
- for await(const block of req){bytes+=block.length;if(bytes>480000)throw Error("Payload too large");body+=block.toString("utf8");}
+ for await(const block of req){bytes+=block.length;if(bytes>32000)throw Error("Payload too large");body+=block.toString("utf8");}
  return JSON.parse(body);
 }
 export function joinGithubToken(env=process.env){
@@ -52,10 +52,6 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
    if(file)throw Error("Asset manifest already exists");
   }
   entries.push({path,mode:"100644",type:"blob",content});
- }
- if(bundle.logo){
-  const blob=await githubCall("/git/blobs","POST",{content:bundle.logo.base64,encoding:"base64"});
-  entries.push({path:bundle.logo.path,mode:"100644",type:"blob",sha:blob.sha});
  }
  const branch="alliance/"+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
  const tree=await githubCall("/git/trees","POST",{base_tree:base.tree.sha,tree:entries});

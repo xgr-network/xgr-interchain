@@ -91,3 +91,11 @@ test("confirmation page distinguishes email verification from receipt",()=>{
  const fresh=joinPendingMarkup(null);
  assert.doesNotMatch(fresh,/APPLICATION RECEIVED|We have sent an email/);
 });
+
+test("Join accepts only HTTPS logo URLs, not uploaded images",()=>{
+ const d=valid();
+ assert.deepEqual(validateStep({...d,logoUrl:"",logoPngBase64:"abc"},0,chains),["HTTPS logo URL"]);
+ const html=joinMarkup(chains,d,0);
+ assert.match(html,/data-join="logoUrl"/);
+ assert.doesNotMatch(html,/ja-logo|type="file"|upload a PNG/i);
+});

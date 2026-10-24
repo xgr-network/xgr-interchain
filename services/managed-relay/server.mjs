@@ -9,6 +9,7 @@ import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
+import {globallySponsoredChains} from "./sponsor-policy.mjs";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -213,7 +214,8 @@ async function readSponsorAvailability(catalog){
      row.gas_ready===true&&Number.isFinite(last)&&
      last<=Date.now()&&Date.now()-last<600000;
   }
-  const available=Object.values(chains).some(Boolean);
+  const active=globallySponsoredChains(catalog);
+  const available=active.length>0&&active.every(chain=>chains[chain]===true);
   return {available,chains,reason:available?"native-grants-operator-ready":
     "sponsor-reserves-or-worker-not-ready"};
  }catch{
