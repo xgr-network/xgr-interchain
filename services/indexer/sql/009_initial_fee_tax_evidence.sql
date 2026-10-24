@@ -82,6 +82,22 @@ CREATE OR REPLACE VIEW xita_tax_accounting_export AS
   AND o.quote_nonce=p.quote_nonce;
 REVOKE ALL ON xita_tax_quote_evidence,xita_tax_charged_fees FROM PUBLIC;
 REVOKE ALL ON xita_tax_accounting_export FROM PUBLIC;
+-- Restrict each runtime service to its own table privileges, without
+-- exposing private accounting data through the public indexer reader.
+DO $
+BEGIN
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
+  GRANT SELECT ON public.xita_tax_quote_evidence TO xita_transfer_worker;
+  GRANT SELECT, INSERT, DELETE ON public.xita_tax_charged_fees TO xita_transfer_worker;
+ ELSE
+  RAISE NOTICE 'Missing xita_transfer_worker: provision scoped grants before enabling the fee indexer';
+ END IF;
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_tax_quote_writer') THEN
+  GRANT INSERT ON public.xita_tax_quote_evidence TO xita_tax_quote_writer;
+ ELSE
+  RAISE NOTICE 'Missing xita_tax_quote_writer: provision insert-only signer role before enabling paid quotes';
+ END IF;
+END $;
 -- Provision a narrow INSERT-only quote signer, an event-indexing DB writer,
 -- and an accounting reader with access ONLY to xita_tax_accounting_export.
 -- The public wallet-index API must never SELECT client_ip.
