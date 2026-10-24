@@ -340,7 +340,7 @@ export function createChainOperator({
    ?{...c,sourceRegistryFactory:{address:factory.address,blockNumber:deploymentBlock}}
    :c);
   return resumeInterruptedDeployments({
-   journal:journals(all.chains),chains:scopedChains,rpc,reconcile,
+   journal:journals(all.chains),chains:scopedChains,rpc,reconcile,root,
    include:entry=>!entry.asset&&entry.id.startsWith(chainName+":")&&
     (component===null||entry.id===chainName+":"+component)&&
     !documented.has(entry.id.split(":")[1])
