@@ -211,7 +211,8 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
     delivered=$3,delivery_checked_at=NOW()
     WHERE source_chain=$1 AND message_id=$2
       AND delivered IS DISTINCT FROM TRUE`,
-    values:[row.source_chain,row.message_id,result.delivered]});
+    values:[row.source_chain,row.message_id,result.delivered,
+      result.finalizedHead,result.finalizedHash]});
    checked++;if(result.delivered)delivered++;
   }catch{unknown++;}
   finally{
