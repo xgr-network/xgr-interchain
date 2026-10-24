@@ -442,12 +442,18 @@
             "address": "0x719e08364b4a1f04f6364dd81df0ca6456676c9c",
             "runtimeCodeKeccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
             "receiptPath": "deployments/receipts/base/47091c4b867bd6e97ab765bfab0d4b37455b9d72bfc6a15db422791d23fa1c8b-719e08364b4a1f04f6364dd81df0ca6456676c9c.json"
+          },
+          "factory": {
+            "address": "0x01ddcbbda44b2a7d72b6c5801b88cd36319cec94",
+            "runtimeCodeKeccak256": "0xcb86ae9ad5207b5f4b1d3442b9658326977825fff51b4a212c91373fc5904db1",
+            "receiptPath": "deployments/receipts/base/1f259f1d894b77305d1a03ae29b2989d18d5ab470cc4c3532f81ea4af272130b-01ddcbbda44b2a7d72b6c5801b88cd36319cec94.json"
           }
         },
         "receiptPaths": [
           "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-7bc756993559a26bac564fdf4abc5a5dabbf4849.json",
           "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-a77c34aa23d190c71a1d0b9d4ac469b0fb01b363.json",
           "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-e83d5ad3014c4d31584b87fd892f51969c385172.json",
+          "deployments/receipts/base/1f259f1d894b77305d1a03ae29b2989d18d5ab470cc4c3532f81ea4af272130b-01ddcbbda44b2a7d72b6c5801b88cd36319cec94.json",
           "deployments/receipts/base/348f1902420b3c9af4fe00e761890bdeee6be64dd5819b5e6315fd4e9ec7d220-3617775089b94591a60316f63b200a5963b442ea.json",
           "deployments/receipts/base/418f8efcb6dcc2ebdbcf16316a5251922e30cd5722c6e5913b51186bc71ee80a-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json",
           "deployments/receipts/base/47091c4b867bd6e97ab765bfab0d4b37455b9d72bfc6a15db422791d23fa1c8b-719e08364b4a1f04f6364dd81df0ca6456676c9c.json",
