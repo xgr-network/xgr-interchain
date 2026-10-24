@@ -1328,3 +1328,36 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 /* Explicit separation between paid route fees and non-additive network gas. */
 .ux-fee-section-heading{padding:15px 14px 10px;border-top:2px solid #4e7194;color:#d9e9fb;font-size:12px;font-weight:750;letter-spacing:.045em}
 .ux-fee-breakdown>.ux-fee-fineprint{padding:9px 14px 12px;margin:0;color:#a9bfdd;font-size:12px;line-height:1.5}
+
+/* Compact transfer costs: strict card insets and opt-in detailed accounting. */
+.ux-fee-breakdown{display:block;min-width:0;overflow:hidden}
+.ux-fee-summary{display:grid;gap:0;min-width:0}
+.ux-fee-summary-part{display:grid;min-width:0;gap:6px;padding:16px 18px}
+.ux-fee-summary-part+.ux-fee-summary-part{border-top:1px solid #36516a}
+.ux-fee-summary-label{color:#cadcf2;font-size:12px;font-weight:650;letter-spacing:.02em}
+.ux-fee-summary-value{font-size:clamp(17px,2vw,23px);line-height:1.25;color:#f1f7ff;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.ux-fee-summary-hint{color:#93afcb;font-size:11px;line-height:1.5;overflow-wrap:anywhere}
+.ux-fee-summary-gas-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,max-content);align-items:baseline;gap:8px;min-width:0}
+.ux-fee-summary-gas-line span{font-size:12px;color:#a9c0db}
+.ux-fee-summary-gas-line strong{font-size:14px;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.ux-fee-details{min-width:0;border-top:1px solid #36516a}
+.ux-fee-details summary{cursor:pointer;padding:14px 18px;color:#b8d5f4;font-size:12px;font-weight:650;list-style-position:inside}
+.ux-fee-details summary:hover,.ux-fee-details summary:focus-visible{background:#18324b;outline-offset:-2px}
+.ux-fee-details[open] summary{border-bottom:1px solid #36516a}
+.ux-fee-details-content{display:grid;gap:0;padding:9px 18px 17px;min-width:0}
+.ux-fee-details-caption{font-size:11px;font-weight:700;letter-spacing:.03em;color:#a7c6e5;margin:12px 0 5px}
+.ux-fee-detail-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid #2a4057;min-width:0}
+.ux-fee-detail-row span{font-size:12px;color:#bdcfe4;line-height:1.4;overflow-wrap:anywhere}
+.ux-fee-detail-row strong{font-size:12px;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.ux-fee-detail-row.ux-fee-cost strong{color:#eda09d}
+.ux-fee-detail-row.ux-fee-credit strong{color:#8fdda9}
+.ux-fee-details-note{font-size:11px;line-height:1.55;color:#94abc4;margin:10px 0 0;overflow-wrap:anywhere}
+@media(max-width:490px){
+ .ux-fee-summary-part{padding:14px 12px}
+ .ux-fee-details summary{padding:12px}
+ .ux-fee-details-content{padding:8px 12px 14px}
+ .ux-fee-summary-gas-line{grid-template-columns:minmax(0,1fr)}
+ .ux-fee-summary-gas-line strong{text-align:left}
+ .ux-fee-detail-row{grid-template-columns:minmax(0,1fr)}
+ .ux-fee-detail-row strong{text-align:left}
+}
