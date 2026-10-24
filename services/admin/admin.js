@@ -877,7 +877,7 @@ async function refreshOperationsHealth(){
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
    ["Chain RPC erreichbar",healthValue(d.summary.chainsReachable)+"/"+healthValue(d.summary.chainsConfigured)],
-   ["Indexer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
+   ["XITA Transfer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
    ["Überwachte ILN-Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
   const routes=d.indexer.routes||[];
@@ -895,15 +895,15 @@ async function refreshOperationsHealth(){
      '<td>'+healthValue(r.scanCursor)+'</td>'+
      '<td>'+healthValue(r.blockLag)+'</td>'+
      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
-    return '<div class="health-merkle-validator"><div class="health-merkle-validator-head"><strong>'+esc(v.name)+'</strong>'+
+    return '<div class="health-validator-validator"><div class="health-validator-validator-head"><strong>'+esc(v.name)+'</strong>'+
       healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
       ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
-      (routes.length?'<div class="health-table-wrap"><table class="health-table health-merkle-table">'+
+      (routes.length?'<div class="health-table-wrap"><table class="health-table health-validator-table">'+
        '<thead><tr><th>Source-Chain / Route</th><th>Bestätigter Source-Head</th>'+
        '<th>Gateway-Scan-Cursor</th><th>Blockrückstand</th><th>Status</th></tr></thead><tbody>'+
        rows+'</tbody></table></div>':'<p class="tiny">Keine Direct-BLS-Routen registriert.</p>')+
       (v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
-   }).join(""):'<p class="health-merkle-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
+   }).join(""):'<p class="health-validator-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
     'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
     'RPC-Endpunkten der Validatoren. Ohne diese wird kein Live-Scan-Status angezeigt.</p>';
    el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
