@@ -135,7 +135,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
       SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,q.client_ip,
        q.ip_country_code,q.ip_country_source,q.ip_country_db_revision,
        q.native_coin_id,q.native_eur_price,q.gross_fee_eur,q.eur_price_source,
-       q.eur_price_at,CASE WHEN q.quote_nonce IS NULL THEN 'missing_quote' ELSE 'matched' END
+       q.eur_price_at,CASE WHEN q.quote_nonce IS NULL THEN 'missing_quote' WHEN q.ip_country_code IS NULL OR q.native_eur_price IS NULL OR q.gross_fee_eur IS NULL THEN 'partial' ELSE 'matched' END
       FROM (SELECT 1) x LEFT JOIN xita_tax_quote_evidence q
        ON q.source_chain=$1 AND q.execution_adapter=$7 AND q.payer=$6
          AND q.quote_nonce=$8 AND q.quoted_fee_wei=$9
