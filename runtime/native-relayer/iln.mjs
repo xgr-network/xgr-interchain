@@ -6,6 +6,7 @@ import {readFileSync,existsSync,mkdirSync,writeFileSync,renameSync} from "node:f
 import {dirname,resolve} from "node:path";
 import {prepareDirectILN} from "./recover-iln.mjs";
 import {ILN_OPERATION_EVENT} from "./xita-direct-codec.mjs";
+import {sourceFinalityHead} from "./source-finality.mjs";
 
 const required=k=>{if(!process.env[k])throw Error("Missing "+k);return process.env[k]};
 const integer=(k,fallback,min=1,max=86400)=>{
@@ -19,7 +20,7 @@ const destination=new JsonRpcProvider(required("DESTINATION_RPC_URL"));
 const gateway=getAddress(required("ORIGIN_ILN_GATEWAY"));
 const routeId=required("ROUTE_ID").toLowerCase();
 const destDomain=integer("DESTINATION_DOMAIN",0,1,4294967295);
-const confirmations=integer("ORIGIN_CONFIRMATIONS",1,1,100000);
+const originChainId=integer("ORIGIN_CHAIN_ID",0,1,Number.MAX_SAFE_INTEGER);
 const chunk=integer("ORIGIN_LOG_CHUNK",10,1,10);
 const poll=integer("POLL_INTERVAL_MS",5000,1000,60000);
 const startBlock=integer("ORIGIN_START_BLOCK",0,0,Number.MAX_SAFE_INTEGER);
@@ -55,9 +56,8 @@ async function cycle(){
  if(busy)return;
  busy=true;
  try{
-  const head=await source.getBlockNumber();
-  const confirmed=head-confirmations;
-  if(confirmed<=0)return;
+  const confirmed=await sourceFinalityHead(source,originChainId);
+   if(confirmed<=0)return;
   if(state.cursor===null){
    // Unknown old messages are recoverable from their original Source TX;
    // automatic discovery starts only within short available RPC history.

@@ -12,6 +12,7 @@ const relay=get("runtime/native-relayer/iln.mjs");
 if(relay.includes("xgr_getILNInterchainAttestation"))errs.push("legacy attestation RPC");
 if(!relay.includes('prepareDirectILN'))errs.push("Direct BLS recovery missing");
 if(relay.includes("MerkleTreeHook")||relay.includes("merkleProof"))errs.push("legacy Merkle code in direct relayer");
+if(relay.includes("ORIGIN_CONFIRMATIONS")||get("runtime/native-relayer/recover-iln.mjs").includes("ORIGIN_CONFIRMATIONS"))errs.push("old confirmation ENV in relayer");
 
 const forbiddenFiles=[
   "README.md","SECURITY.md","docs/XITA_SPEC_V315.md",

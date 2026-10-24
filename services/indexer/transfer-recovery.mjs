@@ -42,7 +42,7 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
   ORIGIN_ILN_REGISTRY:srcCore.sourceRegistry?.address,
   ORIGIN_ILN_GATEWAY:route.gateway,
   ORIGIN_WARP_ROUTER:route.sourceRouter,
-  ORIGIN_CONFIRMATIONS:String(Math.max(1,src.confirmations||1)),
+
   ORIGIN_LOG_CHUNK:"750",
   ...(sourceTxHash?{SOURCE_TX_HASH:sourceTxHash.toLowerCase()}:{}),
   ATTESTATION_RPC_URL:catalog.chains.xgrchain.rpcUrls?.[0],
