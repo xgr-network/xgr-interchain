@@ -19,6 +19,8 @@ export const UNITS=Object.freeze([
  {id:"managed-relayer",title:"Managed Relay Worker",group:"Managed Services",unit:"xita-managed-relayer.service",optional:true},
  {id:"gas-sponsor",title:"Gas Sponsoring Timer",group:"Managed Services",unit:"xita-gas-sponsor.timer",optional:true},
  {id:"fee-claim",title:"Fee Claim Timer",group:"Managed Services",unit:"xita-interchain-fee-claim.timer",optional:true},
+ {id:"join",title:"Join Application API",group:"Onboarding",unit:"xita-join.service",optional:true},
+ {id:"join-notifier",title:"Join Status Notification Timer",group:"Onboarding",unit:"xita-join-notifier.timer",optional:true},
  {id:"deployment-sync",title:"GitHub Receipt Sync Watcher",group:"Operations",unit:"xita-deployment-sync.path",optional:true},
  {id:"deployment-poll",title:"Deployment Sync Retry Timer",group:"Operations",unit:"xita-deployment-sync-poll.timer",optional:true}
 ]);
@@ -29,7 +31,8 @@ const HTTP_TARGETS=Object.freeze([
  {id:"transfer-stats",title:"Transfer Index / Database",port:4088,path:"/api/xeta/v1/transfers/stats",group:"Indexer"},
  {id:"transfer-intake-api",title:"TX Announcement Intake",port:4089,path:"/health",group:"Indexer",optional:true},
  {id:"quote-api",title:"Fee Quote API",port:4092,path:"/api/xita/v1/managed/health",group:"Managed Services",optional:true},
- {id:"preview-api",title:"Fee Preview API",port:4093,path:"/api/xita/v1/managed/health",group:"Managed Services",optional:true}
+ {id:"preview-api",title:"Fee Preview API",port:4093,path:"/api/xita/v1/managed/health",group:"Managed Services",optional:true},
+ {id:"join-api",title:"Join Application Readiness",port:4090,path:"/api/xita/join/status",group:"Onboarding",optional:true}
 ]);
 const safeNumber=x=>x===null||x===undefined||x===""?null:
  Number.isSafeInteger(Number(x))&&Number(x)>=0?Number(x):null;
@@ -222,12 +225,15 @@ export async function collectOperationsHealth({
  // Preserve the probe state if the endpoint responds despite missing systemd.
  const optionalServiceByProbe={
   "transfer-intake-api":"transfer-intake",
-  "quote-api":"quote","preview-api":"preview"
+  "quote-api":"quote","preview-api":"preview","join-api":"join"
  };
  const observedProbes=probes.map(p=>{
   const unit=units.find(s=>s.id===optionalServiceByProbe[p.id]);
   if(p.optional&&unit?.state==="not-installed"&&p.state==="unavailable")
    return {...p,state:"not-installed"};
+  // HTTP 200 with available:false means confirmed submissions are disabled.
+  if(p.id==="join-api"&&p.state==="ok")
+   return {...p,state:p.data?.available===true?"ok":"warning"};
   return p;
  });
  const api=observedProbes.find(p=>p.id==="indexer-api");
@@ -236,7 +242,8 @@ export async function collectOperationsHealth({
  const evidence=summarizeEvidence({evidence:readEvidence(process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json",{now})});
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
-   "transfer-intake":["transfer-intake-api"],quote:["quote-api"],preview:["preview-api"]}[unit.id]||[];
+   "transfer-intake":["transfer-intake-api"],quote:["quote-api"],preview:["preview-api"],
+   join:["join-api"]}[unit.id]||[];
   const observed=observedProbes.filter(p=>linked.includes(p.id));
   let state=unit.state;
   if(unit.state==="ok"&&observed.some(p=>p.state!=="ok"))
@@ -251,6 +258,7 @@ export async function collectOperationsHealth({
   id:p.id,title:p.title,group:p.group,optional:Boolean(p.optional),
   state:p.state,
   ...(p.id==="proof-builder"&&p.data?{installationOnly:true}:{}),
+  ...(p.id==="join-api"?{submissionsConfigured:p.state==="ok"&&p.data?.available===true}:{}),
   ...(p.id==="quote-api"&&p.data?{enabledChains:Array.isArray(p.data.enabledChains)?
    p.data.enabledChains.filter(x=>/^[a-z0-9-]+$/.test(x)).slice(0,20):[]}:{}),
  }));
