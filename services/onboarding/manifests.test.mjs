@@ -59,7 +59,7 @@ test("profile URL is generated server-side, not from applicant input",()=>{
 test("reject unsafe public metadata",()=>{
  assert.throws(()=>buildManifestBundle({...application,name:"<script>alert(1)</script>"},catalog),/Invalid project/);
  assert.throws(()=>buildManifestBundle({...application,website:"http://localhost:3000"},catalog),/HTTPS/);
- assert.throws(()=>buildManifestBundle({...application,logoPngBase64:"R0lGODlh",logoUrl:""},catalog),/Logo/);
+ assert.throws(()=>buildManifestBundle({...application,logoPngBase64:"R0lGODlh"},catalog),/Logo uploads are not accepted/);
 });
 test("never leak private contact information into generated public files",()=>{
  const b=buildManifestBundle({...application,contact:"private@example.org"},catalog);
@@ -97,4 +97,11 @@ test("Join proposal preserves catalog order and every existing asset unchanged",
  assert.deepEqual(generated.infrastructure,catalog.infrastructure);
  assert.deepEqual(generated.publication,catalog.publication);
  assert.equal(EXMP.profile.slug,"example-protocol");
+});
+
+test("uploaded logo is rejected even when an HTTPS URL is provided",()=>{
+ assert.throws(()=>buildManifestBundle({...application,logoPngBase64:"a"},catalog),/Logo uploads are not accepted/);
+ const bundle=buildManifestBundle(application,catalog);
+ assert.equal(bundle.logo,undefined);
+ assert.equal(JSON.stringify(bundle.files).includes("pictures/tokens/"),false);
 });
