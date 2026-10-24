@@ -16,6 +16,7 @@ import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 import {rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
+import {downstreamGasProjection} from "./fee-gas-projection.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
@@ -125,61 +126,59 @@ async function refreshFeePreview(){
   const detail=document.getElementById("ux-fee-preview-details");
   updatePreviewState("", "");
   if(detail){
-   detail.hidden=false;
-   const main=document.createElement("div");
-   main.className="ux-fee-total";
-   const title=document.createElement("span");title.textContent="Estimated route fees";
-   const cost=document.createElement("strong");cost.textContent=formatWeiFee(total)+" "+coin;
-   const usd=document.createElement("small");usd.textContent="~ $"+value.estimatedRouteFeeUsd+" USD";
-   main.append(title,cost,usd);
-   const feeRow=(label,wei)=>{
-    const row=document.createElement("div");row.className="ux-fee-row";
-    const name=document.createElement("span");name.textContent=label;
-    const amount=document.createElement("strong");amount.textContent=formatWeiFee(wei)+" "+coin;
-    row.append(name,amount);return row;
+   const rows=downstreamGasProjection(value.pricing?.journeyCostStages||[],sponsorship);
+   const make=(tag,cls,label)=>{
+    const node=document.createElement(tag);if(cls)node.className=cls;
+    if(label!==undefined)node.textContent=label;return node;
    };
-   detail.replaceChildren(main,feeRow("Protocol fee",native),feeRow("XITA Service Fee",fee));
-    // The sum above contains ONLY charged source-chain route fees.
-    // Wallet gas on other networks is not part of that sum and cannot be
-    // added numerically across ETH, XGR and POL.
-    const stages=Array.isArray(value.pricing?.journeyCostStages)?value.pricing.journeyCostStages:[];
-    const estimatedGas=new Map();
-    for(const step of stages){
-     const units=BigInt(step.gasUnits||0),gasPrice=BigInt(step.gasPriceWei||0);
-     if(units<=0n||gasPrice<=0n)continue;
-     estimatedGas.set(step.chain,(estimatedGas.get(step.chain)||0n)+units*gasPrice);
+   const rrows=rows.map(r=>({...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain}));
+   detail.hidden=false;
+   const section=make("div","ux-fee-summary");
+   const initial=make("div","ux-fee-summary-part");
+   initial.append(make("span","ux-fee-summary-label","Initial Service Fees"),
+    make("strong","ux-fee-summary-value",formatWeiFee(total)+" "+coin),
+    make("small","ux-fee-summary-hint","Protocol + XITA Service Fee · ~ $"+value.estimatedRouteFeeUsd+" USD"));
+   const gas=make("div","ux-fee-summary-part");
+   gas.append(make("span","ux-fee-summary-label","Transfer Gas Fees"));
+   if(rrows.length){
+    for(const r of rrows){
+     const line=make("div","ux-fee-summary-gas-line");
+     line.append(make("span","",r.label),
+      make("strong","",formatWeiFee(r.conditionalNetWei)+" "+r.coin));
+     gas.append(line);
     }
-    const heading=document.createElement("div");heading.className="ux-fee-section-heading";
-    heading.textContent="Additional wallet gas · not included above";
-    detail.append(heading);
-    if(!estimatedGas.size){
-     const notice=document.createElement("p");notice.className="ux-fee-fineprint";
-     notice.textContent="No downstream wallet gas estimate available.";detail.append(notice);
+    gas.append(make("small","ux-fee-summary-hint",
+     sponsorship.enabled?"After potential XITA sponsorship · estimates":"Estimated additional downstream network gas"));
+   }else gas.append(make("strong","ux-fee-summary-value","Unavailable"));
+   section.append(initial,gas);
+   const breakdown=make("details","ux-fee-details");
+   breakdown.append(make("summary","","View fee breakdown"));
+   const content=make("div","ux-fee-details-content");
+   const detailRow=(label,amount,type)=>{
+    const line=make("div","ux-fee-detail-row"+(type?" ux-fee-"+type:""));
+    line.append(make("span","",label),make("strong","",amount));return line;
+   };
+   content.append(make("p","ux-fee-details-caption","Initial payment · "+coin),
+    detailRow("Protocol fee",formatWeiFee(native)+" "+coin,"cost"),
+    detailRow("XITA Service Fee",formatWeiFee(fee)+" "+coin,"cost"));
+   if(rrows.length){
+    content.append(make("p","ux-fee-details-caption","Additional gas · 30% safety buffer"));
+    for(const r of rrows){
+     content.append(detailRow("Network gas · "+r.label,
+      "+ "+formatWeiFee(r.rawWei)+" "+r.coin,"cost"));
+     content.append(detailRow("Gas buffer · "+r.label,
+      "+ "+formatWeiFee(r.gasWithBufferWei-r.rawWei)+" "+r.coin,"cost"));
+     if(r.eligible)
+      content.append(detailRow("Potential XITA sponsorship · "+r.label,
+       "− "+formatWeiFee(r.potentialSponsorWei)+" "+r.coin,"credit"));
+     else if(sponsorship.enabled)
+      content.append(make("p","ux-fee-details-note","Sponsorship on "+r.label+" is unavailable; the wallet may need to fund gas."));
     }
-    for(const [chain,gas] of estimatedGas){
-     const coinName=sourceFeeCoin(chain);
-     const makeLine=(label,amount)=>{
-      const row=document.createElement("div");row.className="ux-fee-row";
-      const name=document.createElement("span");name.textContent=label+" · "+(names[chain]||chain);
-      const cost=document.createElement("strong");cost.textContent=amount;
-      row.append(name,cost);detail.append(row);
-     };
-     makeLine("Estimated wallet gas","+ "+formatWeiFee(gas)+" "+coinName);
-     if(sponsorship.enabled){
-      if(sponsorship.chains[chain]===true){
-       makeLine("Potential XITA gas sponsorship","− "+formatWeiFee(gas)+" "+coinName);
-       makeLine("Estimated additional wallet gas after sponsorship","≈ 0 "+coinName);
-      }else makeLine("Sponsorship not currently available","Wallet pays gas");
-     }
-    }
-    const note=document.createElement("p");note.className="ux-fee-fineprint";
-    note.textContent="The amount at the top is paid with the initial source transaction. The separate network gas amounts are estimates, not part of that amount. Gas grants depend on verified availability and wallet eligibility after the first paid transaction. Source wallet gas and any ERC-20 approval may add costs.";
-    detail.append(note);
-    if(onward>0n){
-    const note=document.createElement("p");note.className="ux-fee-fineprint";
-    note.textContent="XGR onward protocol processing is included in the service quote.";
-    detail.append(note);
    }
+   content.append(make("p","ux-fee-details-note","Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
+   if(onward>0n)content.append(make("p","ux-fee-details-note","XGR onward protocol processing is already priced into the XITA Service Fee."));
+   breakdown.append(content);
+   detail.replaceChildren(section,breakdown);
   }
  }catch(error){
   if(marker===previewRevision&&path()==="/transfer")
