@@ -4,9 +4,10 @@
 // unused, failed, replaced or mined-but-untraceable nonce gets a fresh wallet
 // request. Every fresh request still requires an explicit MetaMask signature.
 import {classifyInterruptedDeployment} from "./deployment-auto-recovery.mjs";
+import {isPreResetIntent} from "./deployment-generation.mjs";
 
 export async function resumeInterruptedDeployments({
- journal,chains,rpc,reconcile,include
+ journal,chains,rpc,reconcile,include,root=null
 }){
  if(!journal||!Array.isArray(chains)||typeof rpc!=="function"||
     typeof reconcile!=="function"||typeof include!=="function")
@@ -20,6 +21,12 @@ export async function resumeInterruptedDeployments({
   if(!current)continue;
   const chain=chains.find(c=>c.chainId===current.chainId);
   if(!chain)throw Error("Interrupted deployment chain not configured");
+  // Exactly provable pre-hard-reset WAL entries are outside this Direct-BLS
+  // generation. Never confuse them with confirmations for a fresh deployment.
+  if(root&&isPreResetIntent(root,current)){
+   retiredPrevious=journal.discardPreResetIntent({id:current.id,createdAt:current.createdAt,root});
+   continue;
+  }
   const verdict=await classifyInterruptedDeployment({entry:current,chain,rpc});
   if(verdict.action==="pending")
    return {stage:"pending",id:current.id,chain:chain.name,
