@@ -1,5 +1,5 @@
-// Test-only future deployment catalog. The real production catalog remains empty
-// after the Direct-BLS hard reset; no fake on-chain deployment is published.
+// Test-only synthetic deployment catalog. Never inherit real deployment receipts
+// from a moving mainnet catalog; no fake on-chain deployment is published.
 import {readFileSync} from "node:fs";
 const hex=(n,width)=>"0x"+BigInt(n).toString(16).padStart(width,"0");
 const receiptHash="0x"+"e".repeat(64);
@@ -9,6 +9,21 @@ export function freshDeployedCatalog({
   names=["xgrchain","base"],routeDestination=null,reverseRoute=false
 }={}){
  const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ // Reset ONLY deployment evidence, retaining the real asset/chain plans.
+ // Mainnet deployments evolve independently of these isolated synthetic receipts.
+ for(const infra of Object.values(catalog.infrastructure||{})){
+  if(!infra?.xitaV315)continue;
+  infra.present=false;
+  infra.xitaV315.components={};
+  infra.xitaV315.receiptPaths=[];
+ }
+ for(const asset of Object.values(catalog.assets||{})){
+  if(!asset?.deployment)continue;
+  asset.deployment.present=false;
+  asset.deployment.representations=[];
+  asset.deployment.routeDeployments=[];
+  asset.deployment.receiptPaths=[];
+ }
  const receipts=new Map();
  let next=100;
  const record=(chain,component)=>{
