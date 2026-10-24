@@ -133,16 +133,35 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   sourceTxHash:HASH.test(record?.txHash||"")?record.txHash:
    HASH.test(journey.sourceTxHash||"")?journey.sourceTxHash:null};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
+ // Sponsorship is an optional independent funded-wallet operation AFTER
+ // the initial paid source TX, not an extra MetaMask action or proof of delivery.
+ const sponsorEnabled=sponsorship?.enabled===true;
+ const sponsorStage=sponsorship?.status==="confirmed"?"complete":
+  sponsorship?.status==="needs-review"?"attention":
+  sponsorship?.status==="not-required"?"complete":"pending";
+ const sponsorNote=sponsorship?.status==="confirmed"?"Native gas grant confirmed on chain":
+  sponsorship?.status==="needs-review"?"Gas grant requires operator review":
+  sponsorship?.status==="submitted"?"Gas grant submitted; awaiting confirmation":
+  sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
+  sponsorship?.status==="not-required"?"Wallet already has sufficient native gas":
+  sponsorship?.status==="pending"?"Checking gas requirement after verified fee payment":
+  "Gas sponsor status unavailable; wallet gas may still be required";
+ const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
+   '<span class="ux-flow-step-indicator" aria-hidden="true">'+(sponsorStage==="complete"?"✓":"⌛")+'</span>'+
+   '<div class="ux-flow-step-text"><strong>Optional gas sponsorship</strong><small>'+esc(sponsorNote)+'</small></div>'+
+   '<span class="ux-flow-step-state">'+(sponsorStage==="complete"?"Verified":
+   sponsorStage==="attention"?"Attention":"Checking")+'</span></li>';
  const rows=flow.steps.map((step,i)=>
    '<li class="ux-flow-step is-'+step.state+'" data-flow-step="'+(i+1)+'">'+
     '<span class="ux-flow-step-indicator" aria-hidden="true">'+
       (step.state==="complete"?"✓":step.state==="current"?"⌛":String(i+1))+'</span>'+
     '<div class="ux-flow-step-text"><strong>'+esc(step.label)+'</strong><small>'+esc(step.detail)+'</small></div>'+
     '<span class="ux-flow-step-state">'+(step.state==="complete"?"Verified":
-      step.state==="current"?"Current":"Pending")+'</span></li>').join("");
+      step.state==="current"?"Current":"Pending")+'</span></li>'+
+    (i===0&&sponsorEnabled&&record?.confirmed===true?sponsorRow:"")).join("");
  return '<div class="ux-flow-content"><div class="ux-flow-header">'+
    '<div><span class="ux-kicker">XITA · VERIFIED TRANSFER</span><h2 id="xita-flow-title">Transfer status</h2>'+
    '<p class="ux-flow-route">'+esc(flow.asset)+' · '+esc(sequence)+'</p></div>'+
