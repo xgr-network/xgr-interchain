@@ -9,7 +9,7 @@ Validate manifests, Forge tests and JS relayer tests; verify actual on-chain env
 3. Verify quoteILN and exact native/ERC20 adapter behavior, current set and nonzero source fee.
 4. Configure destination ISM and validated destination router and mailbox.
 5. Obtain current quorum through xgrchain governance CLI; execute source ROUTE_ADD.
-6. Test both directions with tiny real token amounts; confirm fee-vault claims, merkle proof, delivery and recovery.
+6. Test both directions with tiny real token amounts; confirm fee-vault claims, Direct-BLS message attestation, delivery and recovery.
 7. Update on-chain observed inventory and only then publish route as available.
 
 ## Runtime

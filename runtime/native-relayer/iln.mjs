@@ -26,15 +26,23 @@ const startBlock=integer("ORIGIN_START_BLOCK",0,0,Number.MAX_SAFE_INTEGER);
 if(!hash.test(routeId)||BigInt(routeId)===0n)throw Error("Invalid direct-BLS route");
 const enableSubmission=(process.env.RELAYER_SUBMIT||"false").toLowerCase()==="true";
 const wallet=enableSubmission?new Wallet(required("RELAYER_PRIVATE_KEY"),destination):null;
+// The legacy RELAYER_STATE_PATH is deliberately NOT reused: it contains
+// incompatible Merkle-era state. The file is unique per chain/gateway/route.
+const routeStateKey=[String(process.env.ORIGIN_CHAIN_ID),gateway.toLowerCase(),routeId,
+ String(process.env.DESTINATION_CHAIN_ID)].join("-");
 const file=resolve(process.env.RELAYER_STATE_FILE||
- process.env.ILN_STATE_PATH||"./runtime/runtime-state/xita-direct-relayer.json");
+ process.env.ILN_STATE_PATH||"./runtime/runtime-state/direct-"+routeStateKey+".json");
 const iface=new Interface([ILN_OPERATION_EVENT]);
 const topic=iface.getEvent("ILNOperation").topicHash;
-const initial=()=>({version:1,cursor:null,pending:{}});
+const identity={sourceChainId:String(process.env.ORIGIN_CHAIN_ID),gateway:gateway.toLowerCase(),
+ routeId,destinationChainId:String(process.env.DESTINATION_CHAIN_ID)};
+const initial=()=>({version:2,identity,cursor:null,pending:{}});
 const state=existsSync(file)?JSON.parse(readFileSync(file,"utf8")):initial();
-if(state.version!==1||typeof state.pending!=="object"||Array.isArray(state.pending)||
-  (state.cursor!==null&&(!Number.isSafeInteger(state.cursor)||state.cursor<0)))
- throw Error("Invalid direct-BLS relayer state");
+if(state.version!==2||!state.identity||
+ Object.keys(identity).some(key=>String(state.identity[key]).toLowerCase()!==String(identity[key]).toLowerCase())||
+ typeof state.pending!=="object"||state.pending===null||Array.isArray(state.pending)||
+ (state.cursor!==null&&(!Number.isSafeInteger(state.cursor)||state.cursor<0)))
+ throw Error("Stale, shared or invalid relayer state; explicit hard reset required");
 const save=()=>{
  mkdirSync(dirname(file),{recursive:true,mode:0o770});
  const temp=file+"."+process.pid+".tmp";
