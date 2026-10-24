@@ -158,6 +158,12 @@ async function refreshFeePreview(){
       };
       makeLine("Estimated wallet gas","+");
       if(sponsorship.chains[chain]===true)makeLine("Potential XITA gas sponsorship","−");
+       else {
+        const unavailable=document.createElement("p");unavailable.className="ux-fee-fineprint";
+        unavailable.textContent="Sponsorship for "+(names[chain]||chain)+
+         " is globally enabled but not currently funded or ready; wallet gas may be required.";
+        detail.append(unavailable);
+       }
      }
      const note=document.createElement("p");note.className="ux-fee-fineprint";
      note.textContent="Gas sponsorship is enabled. Credits are estimates, depend on wallet eligibility and sponsor reserves, and are only confirmed after the initial paid transaction. The XITA Service Fee and protocol fee are always payable.";
