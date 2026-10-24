@@ -160,6 +160,8 @@ publish_web() {
   echo "Publishing XITA website from main: ${sha:0:12}"
   privileged install -d -m 755 "$SITE_DIR/releases" "$release"
   privileged cp -a "$ROOT/apps/web/." "$release/"
+  # Stamp the release HTML against the exact CSS file before it goes live.
+  privileged node "$ROOT/tools/stamp-xita-web-style.mjs" "$release"
   privileged chmod -R a+rX "$release"
   prepare_catalog_store
   privileged rm -f "$release/catalog.json"
