@@ -4,7 +4,7 @@ import {keccak256} from "../../apps/web/keccak.mjs";
 import {verifyDeploymentReceipt,deploymentReceiptPath,publishDeploymentBatch,updatedDeploymentWebCatalog} from "./deployment-ledger.mjs";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
-const loadFixtureInfrastructure=()=>JSON.parse(readFileSync(join(process.cwd(),"deployments/chains/xgrchain.json"),"utf8"));
+const loadFixtureInfrastructure=()=>structuredClone(JSON.parse(updatedDeploymentWebCatalog(process.cwd())).infrastructure.xgrchain);
 const SHA="a".repeat(40), TX="0x"+"b".repeat(64), BLOCK="0x"+"c".repeat(64);
 const ADDRESS="0x"+"1".repeat(40),WALLET="0x"+"2".repeat(40);
 const BYTECODE="0x6001600055", HASH=keccak256(Uint8Array.from(Buffer.from(BYTECODE.slice(2),"hex")));

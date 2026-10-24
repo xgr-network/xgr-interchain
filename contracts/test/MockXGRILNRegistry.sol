@@ -39,7 +39,7 @@ contract MockXGRILNRegistry is IXGRILNRegistry {
             address gateway,
             address sourceRouter,
             address mailbox,
-            address merkleTreeHook,
+            address dispatchHook,
             address destinationRouter,
             uint256 validatorFeeWei,
             bool enabled
@@ -52,7 +52,7 @@ contract MockXGRILNRegistry is IXGRILNRegistry {
             route.gateway,
             route.sourceRouter,
             route.mailbox,
-            route.merkleTreeHook,
+            route.dispatchHook,
             route.destinationRouter,
             route.validatorFeeWei,
             route.enabled

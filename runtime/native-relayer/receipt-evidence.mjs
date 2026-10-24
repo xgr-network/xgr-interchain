@@ -1,7 +1,7 @@
 // Pure receipt validation: gateway fee and mailbox message must come from
 // one successful canonical source transaction, never from caller-supplied data.
 import {Interface,keccak256,zeroPadValue} from "ethers";
-import {ILN_OPERATION_EVENT} from "./iln-codec.mjs";
+import {ILN_OPERATION_EVENT} from "./xita-direct-codec.mjs";
 const gatewayInterface=new Interface([ILN_OPERATION_EVENT]);
 const mailboxInterface=new Interface([
  "event Dispatch(address indexed sender,uint32 indexed destination,bytes32 indexed recipient,bytes message)"

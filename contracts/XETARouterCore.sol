@@ -169,7 +169,7 @@ abstract contract XETARouterCore is TokenRouter {
             route.gateway,
             route.sourceRouter,
             route.mailbox,
-            route.merkleTreeHook,
+            route.dispatchHook,
             route.destinationRouter,
             route.validatorFeeWei,
             route.enabled
@@ -182,7 +182,7 @@ abstract contract XETARouterCore is TokenRouter {
             route.gateway == address(0) ||
             route.sourceRouter != address(this) ||
             route.mailbox != address(mailbox) ||
-            route.merkleTreeHook != address(hook) ||
+            route.dispatchHook != address(hook) ||
             route.destinationRouter == address(0) ||
             route.validatorFeeWei == 0
         ) revert XETAInvalidRoute();

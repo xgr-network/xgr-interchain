@@ -10,7 +10,8 @@ if(!runner.includes("configured_routes()"))errs.push("missing generic route disc
 if(runner.includes("forward, reverse"))errs.push("legacy routes in manager");
 const relay=get("runtime/native-relayer/iln.mjs");
 if(relay.includes("xgr_getILNInterchainAttestation"))errs.push("legacy attestation RPC");
-if(!relay.includes('env("DESTINATION_ILN_ISM")'))errs.push("ISM is optional");
+if(!relay.includes('prepareDirectILN'))errs.push("Direct BLS recovery missing");
+if(relay.includes("MerkleTreeHook")||relay.includes("merkleProof"))errs.push("legacy Merkle code in direct relayer");
 
 const forbiddenFiles=[
   "README.md","SECURITY.md","docs/XITA_SPEC_V315.md",

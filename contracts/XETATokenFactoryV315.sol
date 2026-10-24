@@ -23,7 +23,7 @@ contract XETATokenFactoryV315 {
     uint32 public immutable localDomain;
     address public immutable validatorRegistry;
     address public immutable mailbox;
-    address public immutable merkleTreeHook;
+    address public immutable dispatchHook;
     address public immutable destinationIsm;
     // Hyperlane GasRouter metadata hint, NOT a destination execution gas cap.
     // This internal constant preserves the already-deployed router-deployer ABI.
@@ -71,20 +71,24 @@ contract XETATokenFactoryV315 {
         if (validators.destinationDomain() != domain_ ||
             validators.verifier() == address(0)) revert InvalidConfiguration();
         // All transport references must identify the SAME local transport.
-        // An unrelated Merkle hook or a foreign-domain Mailbox would make
-        // dispatch proofs unverifiable on the destination chain.
+        // An unrelated dispatch hook or a foreign-domain Mailbox would make
+        // message attestations unverifiable on the destination chain.
         (bool mailboxOk, bytes memory mailboxDomain) =
             mailbox_.staticcall(abi.encodeWithSignature("localDomain()"));
-        (bool hookOk, bytes memory hookMailbox) =
-            hook_.staticcall(abi.encodeWithSignature("mailbox()"));
+        (bool hookOk, bytes memory mailboxDefaultHook) =
+            mailbox_.staticcall(abi.encodeWithSignature("defaultHook()"));
+        (bool requiredOk, bytes memory mailboxRequiredHook) =
+            mailbox_.staticcall(abi.encodeWithSignature("requiredHook()"));
         (bool ismOk, bytes memory ismDomain) =
             ism_.staticcall(abi.encodeWithSignature("destinationDomain()"));
         (bool ismRegistryOk, bytes memory ismRegistry) =
             ism_.staticcall(abi.encodeWithSignature("registry()"));
         if (!mailboxOk || mailboxDomain.length != 32 ||
             abi.decode(mailboxDomain,(uint32)) != domain_ ||
-            !hookOk || hookMailbox.length != 32 ||
-            abi.decode(hookMailbox,(address)) != mailbox_ ||
+            !hookOk || mailboxDefaultHook.length != 32 ||
+            abi.decode(mailboxDefaultHook,(address)) != hook_ ||
+            !requiredOk || mailboxRequiredHook.length != 32 ||
+            abi.decode(mailboxRequiredHook,(address)) != hook_ ||
             !ismOk || ismDomain.length != 32 ||
             abi.decode(ismDomain,(uint32)) != domain_ ||
             !ismRegistryOk || ismRegistry.length != 32 ||
@@ -94,7 +98,7 @@ contract XETATokenFactoryV315 {
         localDomain = domain_;
         validatorRegistry = validatorRegistry_;
         mailbox = mailbox_;
-        merkleTreeHook = hook_;
+        dispatchHook = hook_;
         destinationIsm = ism_;
         initialSourceFeeWei = initialSourceFeeWei_;
         nativeDeployer = XETANativeRouterDeployer(nativeDeployer_);
@@ -138,7 +142,7 @@ contract XETATokenFactoryV315 {
         if (assetId == bytes32(0))
             assetId = XGRILNProtocol.assetIdV315(localChainId, originalToken, 1);
         bytes32 salt = keccak256(abi.encode("XITA_COLLATERAL_V315", msg.sender, salt_, assetId, originalToken));
-        router = collateralDeployer.deploy(originalToken, address(registry), mailbox, merkleTreeHook,
+        router = collateralDeployer.deploy(originalToken, address(registry), mailbox, dispatchHook,
             destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, salt);
         _remember(assetId, router, false);
     }
@@ -159,7 +163,7 @@ contract XETATokenFactoryV315 {
             "XITA_SYNTHETIC_V315", msg.sender, salt_, assetId, decimals_,
             keccak256(bytes(name_)), keccak256(bytes(symbol_))
         ));
-        router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+        router = syntheticDeployer.deploy(address(registry), mailbox, dispatchHook,
             destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, decimals_, name_, symbol_, salt);
         _remember(assetId, router, true);
     }
@@ -168,7 +172,7 @@ contract XETATokenFactoryV315 {
         if (localChainId != 1643 || localDomain != 1643) revert WrongChain();
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_NATIVE_XGR_V315", msg.sender, salt_));
-        router = nativeDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+        router = nativeDeployer.deploy(address(registry), mailbox, dispatchHook,
             destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, salt);
         _remember(xgrAssetId(), router, false);
     }
@@ -177,7 +181,7 @@ contract XETATokenFactoryV315 {
         if (localChainId == 1643 || localDomain == 1643) revert WrongChain();
         _requireRegistry();
         bytes32 salt = keccak256(abi.encode("XITA_WRAPPED_XGR_V315", msg.sender, salt_));
-        router = syntheticDeployer.deploy(address(registry), mailbox, merkleTreeHook,
+        router = syntheticDeployer.deploy(address(registry), mailbox, dispatchHook,
             destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, 18, "Wrapped XGR", "wXGR", salt);
         _remember(xgrAssetId(), router, true);
     }
@@ -216,7 +220,7 @@ contract XETATokenFactoryV315 {
         bytes32 registered = registry.registerRouteInstance(
             assetId, destinationChainId, destinationDomain,
             sourceToken, destinationToken,
-            gateway, sourceRouter, mailbox, merkleTreeHook, destinationRouter
+            gateway, sourceRouter, mailbox, dispatchHook, destinationRouter
         );
         if (registered != routeId) revert InvalidRouteRegistration();
         // The source Gateway, FeeVault and enrolled remote router are atomic.

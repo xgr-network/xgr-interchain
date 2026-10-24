@@ -8,7 +8,7 @@ interface IXGRILNRegistry {
         address gateway;
         address sourceRouter;
         address mailbox;
-        address merkleTreeHook;
+        address dispatchHook;
         address destinationRouter;
         uint256 validatorFeeWei;
         bool enabled;
@@ -23,7 +23,7 @@ interface IXGRILNRegistry {
             address gateway,
             address sourceRouter,
             address mailbox,
-            address merkleTreeHook,
+            address dispatchHook,
             address destinationRouter,
             uint256 validatorFeeWei,
             bool enabled

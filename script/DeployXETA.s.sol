@@ -7,7 +7,7 @@ import {XETATokenFactoryV315} from "../contracts/XETATokenFactoryV315.sol";
 import {XETACollateralRouterDeployer} from "../contracts/XETACollateralRouterDeployer.sol";
 import {XETASyntheticRouterDeployer} from "../contracts/XETASyntheticRouterDeployer.sol";
 import {XETANativeRouterDeployer} from "../contracts/XETANativeRouterDeployer.sol";
-import {XGRILNInterchainISMV2} from "../contracts/XGRILNInterchainISMV2.sol";
+import {XITADirectBLSISM} from "../contracts/XITADirectBLSISM.sol";
 import {XGRInterchainBLSVerifier} from "../contracts/XGRInterchainBLSVerifier.sol";
 import {XGRInterchainValidatorRegistryV3} from "../contracts/XGRInterchainValidatorRegistryV3.sol";
 
@@ -21,7 +21,7 @@ import {XGRInterchainValidatorRegistryV3} from "../contracts/XGRInterchainValida
 /// BLS_VERIFIER_FORMAT, MINIMUM_DEACTIVATION_RESERVE_WEI,
 /// MAX_EXECUTOR_REIMBURSEMENT_WEI, INITIAL_RESERVE_WEI, VALIDATOR_COUNT,
 /// VALIDATOR_<N>_ADDRESS, _BLS_COMPRESSED, _BLS_EIP2537, _POSSESSION_PROOF.
-/// Factory: LOCAL_REGISTRY_V2, MAILBOX, MERKLE_TREE_HOOK, DESTINATION_ISM,
+/// Factory: LOCAL_REGISTRY_V2, MAILBOX, DISPATCH_HOOK, DESTINATION_ISM,
 /// INITIAL_SOURCE_FEE_WEI. Destination metadata gas hint is internal.
 ///
 /// WARNING: always validate both chain counterparts and signer/BLS
@@ -188,7 +188,7 @@ contract DeployXETARegistryV3 is DeployXETABase {
 contract DeployXETAISM is DeployXETABase {
     function run()
         external
-        returns (XGRILNInterchainISMV2 ism)
+        returns (XITADirectBLSISM ism)
     {
         _localChainId();
         _localDomain();
@@ -199,7 +199,7 @@ contract DeployXETAISM is DeployXETABase {
         if (localRegistryV2 == address(0)) revert InvalidEnv();
 
         vm.startBroadcast();
-        ism = new XGRILNInterchainISMV2(localRegistryV2);
+        ism = new XITADirectBLSISM(localRegistryV2);
         vm.stopBroadcast();
     }
 }
@@ -211,7 +211,7 @@ contract DeployXETAFactoryV315 is DeployXETABase {
         uint32 domain = _localDomain();
         address validators = vm.envAddress("LOCAL_REGISTRY_V2");
         address mailbox_ = vm.envAddress("MAILBOX");
-        address hook_ = vm.envAddress("MERKLE_TREE_HOOK");
+        address hook_ = vm.envAddress("DISPATCH_HOOK");
         address ism_ = vm.envAddress("DESTINATION_ISM");
         uint256 initialFeeWei = vm.envUint("INITIAL_SOURCE_FEE_WEI");
         if (validators == address(0) || mailbox_ == address(0) ||

@@ -47,7 +47,7 @@ contract ILNGatewayTest is Test {
                 gateway: address(gateway),
                 sourceRouter: address(router),
                 mailbox: MAILBOX,
-                merkleTreeHook: HOOK,
+                dispatchHook: HOOK,
                 destinationRouter: DEST_ROUTER,
                 validatorFeeWei: 1,
                 enabled: true
@@ -63,7 +63,7 @@ contract ILNGatewayTest is Test {
         assertEq(address(gateway.ilnRegistry()), address(registry));
         assertEq(gateway.routeId(), ROUTE_ID);
         assertEq(gateway.mailbox(), MAILBOX);
-        assertEq(gateway.merkleTreeHook(), HOOK);
+        assertEq(gateway.dispatchHook(), HOOK);
         assertEq(gateway.destinationRouter(), DEST_ROUTER);
         assertEq(gateway.validatorFeeWei(), 1);
     }
@@ -140,7 +140,7 @@ contract ILNGatewayTest is Test {
                 gateway: address(gateway),
                 sourceRouter: address(router),
                 mailbox: MAILBOX,
-                merkleTreeHook: HOOK,
+                dispatchHook: HOOK,
                 destinationRouter: DEST_ROUTER,
                 validatorFeeWei: 1,
                 enabled: false
@@ -165,7 +165,7 @@ contract ILNGatewayTest is Test {
                 gateway: address(0x9999),
                 sourceRouter: address(router),
                 mailbox: MAILBOX,
-                merkleTreeHook: HOOK,
+                dispatchHook: HOOK,
                 destinationRouter: DEST_ROUTER,
                 validatorFeeWei: 1,
                 enabled: true

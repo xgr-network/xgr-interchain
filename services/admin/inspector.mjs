@@ -87,18 +87,18 @@ export async function probeChain(catalog,chainName,rpc=rpcCall){
  if(!chain||!infra)throw Error("Missing supported chain");
  const url=chain.rpcUrls?.[0];
  const status={chain:chainName,chainId:chain.chainId,domainId:chain.domainId,
-  ok:false,rpc:false,mailbox:false,merkleTreeHook:false,head:null,checkedAt:new Date().toISOString()};
+  ok:false,rpc:false,mailbox:false,dispatchHook:false,head:null,checkedAt:new Date().toISOString()};
  try{
   const [id,head]=await Promise.all([rpc(url,"eth_chainId"),rpc(url,"eth_blockNumber")]);
   if(BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain ID mismatch");
   status.rpc=true;status.head=Number(BigInt(head));
   const [mailbox,hook]=await Promise.all([
    rpc(url,"eth_getCode",[infra.hyperlaneCore?.mailbox||"0x"+"0".repeat(40),"latest"]),
-   rpc(url,"eth_getCode",[infra.hyperlaneCore?.merkleTreeHook||"0x"+"0".repeat(40),"latest"])
+   rpc(url,"eth_getCode",[infra.hyperlaneCore?.dispatchHook||"0x"+"0".repeat(40),"latest"])
   ]);
   status.mailbox=typeof mailbox==="string"&&/^0x[0-9a-f]+$/i.test(mailbox)&&mailbox.length>2;
-  status.merkleTreeHook=typeof hook==="string"&&/^0x[0-9a-f]+$/i.test(hook)&&hook.length>2;
-  status.ok=status.mailbox&&status.merkleTreeHook;
+  status.dispatchHook=typeof hook==="string"&&/^0x[0-9a-f]+$/i.test(hook)&&hook.length>2;
+  status.ok=status.mailbox&&status.dispatchHook;
  }catch(e){status.error=String(e.message).slice(0,160)}
  return status;
 }
@@ -145,7 +145,7 @@ export async function inspectContract({catalog,step,address,txHash=null,known={}
   await getter("Validator registry","registry()","address",configuredExpected(known,"registry_"+(step.chain==="base"?"base":"xgr")));
  }else if(kind==="router"){
   await getter("Hyperlane Mailbox","mailbox()","address",clean(infra.hyperlaneCore?.mailbox||"0x"+"0".repeat(40)));
-  await getter("MerkleTreeHook","hook()","address",clean(infra.hyperlaneCore?.merkleTreeHook||"0x"+"0".repeat(40)));
+  await getter("DispatchHook","hook()","address",clean(infra.hyperlaneCore?.dispatchHook||"0x"+"0".repeat(40)));
   await getter("ILN source registry","xetaRegistry()","address",configuredExpected(known,"iln_"+(step.chain==="base"?"base":"xgr")));
  }else if(kind==="gateway"){
   const other=step.chain==="base"?"xgrchain":"base";

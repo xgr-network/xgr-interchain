@@ -4,7 +4,7 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
  const items=[];
  const planByChain=new Map(bootstrap.map(p=>[p.chain,p]));
  for(const chain of infrastructure){
-  const core=Boolean(chain.hyperlane.mailbox&&chain.hyperlane.merkleTreeHook);
+  const core=Boolean(chain.hyperlane.mailbox&&chain.hyperlane.dispatchHook);
   for(const part of chain.components){
    if(part.status==="documented")continue;
    const blockers=[];

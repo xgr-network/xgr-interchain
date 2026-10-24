@@ -45,7 +45,7 @@ contract ILNGatewayNativeTest is Test {
                 gateway: address(gateway),
                 sourceRouter: address(router),
                 mailbox: MAILBOX,
-                merkleTreeHook: HOOK,
+                dispatchHook: HOOK,
                 destinationRouter: DEST_ROUTER,
                 validatorFeeWei: 1,
                 enabled: true

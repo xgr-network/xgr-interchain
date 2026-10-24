@@ -104,7 +104,7 @@ export async function runConfiguredFeeClaims({
  env=process.env,catalog=JSON.parse(readFileSync(
   new URL("../../apps/web/catalog.json",import.meta.url),"utf8")),
  providerForChain=chain=>new JsonRpcProvider(chain.rpcUrls[0],chain.chainId),
- claim=claimAccruedFees
+ claim=claimAccruedFees,readReceipt
 }={}){
  // Separate claims from transfers and sponsorship; opt-in after deployment.
  if(env.XITA_INTERCHAIN_CLAIM_ENABLED!=="true")return {status:"disabled"};
@@ -112,7 +112,7 @@ export async function runConfiguredFeeClaims({
  const wallet=new Wallet(value("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
  if(!eq(wallet.address,value("XITA_INTERCHAIN_FEE_ADDRESS")))
   throw Error("Fee wallet private key and configured public address differ");
- const documented=documentedFeeClaimAdapters(catalog);
+ const documented=documentedFeeClaimAdapters(catalog,readReceipt?{readReceipt}:{});
  if(!documented.length)throw Error("No deployed fee adapters configured");
  // Validate EVERY configured chain before considering an on-chain claim.
  // Only explicit native-wei claim thresholds remain in the operator ENV.

@@ -66,7 +66,7 @@ contract XETARouterIntegrationTest is Test {
         reg.setRoute(dest,id,IXGRILNRegistry.RouteRecord({
             sourceChainId:uint64(block.chainid),sourceDomain:mailbox.localDomain(),
             gateway:address(gateway),sourceRouter:router,mailbox:address(mailbox),
-            merkleTreeHook:address(mailbox),destinationRouter:remote,
+            dispatchHook:address(mailbox),destinationRouter:remote,
             validatorFeeWei:7,enabled:true
         }));
     }
@@ -103,7 +103,7 @@ contract XETARouterIntegrationTest is Test {
         reg.setRoute(BASE,bytes32(uint256(1)),IXGRILNRegistry.RouteRecord({
             sourceChainId:uint64(block.chainid),sourceDomain:HUB,
             gateway:address(0xBEEF),sourceRouter:address(nativeRouter),
-            mailbox:address(mailbox),merkleTreeHook:address(mailbox),
+            mailbox:address(mailbox),dispatchHook:address(mailbox),
             destinationRouter:address(0x1111),validatorFeeWei:7,enabled:true
         }));
         vm.expectRevert(XETARouterCore.XETAInvalidGatewayBinding.selector);
@@ -123,7 +123,7 @@ contract XETARouterIntegrationTest is Test {
         reg.setRoute(HUB,bytes32(uint256(3)),IXGRILNRegistry.RouteRecord({
             sourceChainId:uint64(block.chainid),sourceDomain:BASE,
             gateway:address(gateway),sourceRouter:address(token),mailbox:address(spokeMailbox),
-            merkleTreeHook:address(spokeMailbox),destinationRouter:address(0x1236),
+            dispatchHook:address(spokeMailbox),destinationRouter:address(0x1236),
             validatorFeeWei:7,enabled:true
         }));
         token.bootstrapXETARoute(HUB,bytes32(uint256(3)));

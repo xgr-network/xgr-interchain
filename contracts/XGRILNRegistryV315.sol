@@ -98,7 +98,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address gateway,
         address sourceRouter,
         address mailbox,
-        address merkleTreeHook,
+        address dispatchHook,
         address destinationRouter
     ) external returns (bytes32 routeId) {
         if (msg.sender != factory) revert UnauthorizedRegistrar();
@@ -109,7 +109,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         _register(
             routeId, assetId, destinationChainId, destinationDomain,
             sourceToken, destinationToken, gateway, sourceRouter,
-            mailbox, merkleTreeHook, destinationRouter
+            mailbox, dispatchHook, destinationRouter
         );
     }
 
@@ -123,12 +123,12 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         address gateway,
         address sourceRouter,
         address mailbox,
-        address merkleTreeHook,
+        address dispatchHook,
         address destinationRouter
     ) private {
         if (validatorFeeWei == 0 || assetId == bytes32(0) ||
             gateway == address(0) || sourceRouter == address(0) ||
-            mailbox == address(0) || merkleTreeHook == address(0) ||
+            mailbox == address(0) || dispatchHook == address(0) ||
             destinationRouter == address(0) || gateway.code.length == 0 ||
             sourceRouter.code.length == 0) revert InvalidRoute();
         if (routeExists[destinationDomain][routeId]) revert RouteAlreadyExists();
@@ -138,7 +138,7 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
             gateway: gateway,
             sourceRouter: sourceRouter,
             mailbox: mailbox,
-            merkleTreeHook: merkleTreeHook,
+            dispatchHook: dispatchHook,
             destinationRouter: destinationRouter,
             validatorFeeWei: 0, // Always read from the source-chain singleton.
             enabled: true // No separate signature-gated route activation.
@@ -158,14 +158,14 @@ contract XGRILNRegistryV315 is IXGRILNRegistry {
         external view returns (
             uint64 routeSourceChainId, uint32 routeSourceDomain,
             address gateway, address sourceRouter, address mailbox,
-            address merkleTreeHook, address destinationRouter,
+            address dispatchHook, address destinationRouter,
             uint256 fee, bool enabled
         )
     {
         RouteRecord storage route = routes[destinationDomain][routeId];
         return (
             route.sourceChainId, route.sourceDomain, route.gateway, route.sourceRouter,
-            route.mailbox, route.merkleTreeHook, route.destinationRouter,
+            route.mailbox, route.dispatchHook, route.destinationRouter,
             route.enabled ? validatorFeeWei : 0,
             route.enabled
         );

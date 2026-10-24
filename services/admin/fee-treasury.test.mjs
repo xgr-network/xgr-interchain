@@ -5,7 +5,10 @@ import {keccak256,selector} from "../../apps/web/keccak.mjs";
 import {inspectFeeTreasury} from "./fee-treasury.mjs";
 const root=new URL("../..",import.meta.url).pathname;
 const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
-const gateway=catalog.infrastructure.base.xitaV315.components.executionGateway;
+const gateway={
+ address:"0x"+"b".repeat(40),
+ receiptPath:"deployments/receipts/base/"+"c".repeat(64)+"-"+"b".repeat(40)+".json",
+};
 const addr="0x"+"a".repeat(40);
 const word=v=>"0x"+BigInt(v).toString(16).padStart(64,"0");
 const addressWord=address=>"0x"+address.slice(2).padStart(64,"0");
@@ -15,8 +18,9 @@ const makeCatalog=()=>{
  for(const name of ["xgrchain","polygon","arbitrum"]){
   c.infrastructure[name].xitaV315={components:{}};
  }
- c.infrastructure.base.xitaV315.components.executionGateway.runtimeCodeKeccak256=keccak256(
-  Uint8Array.from(Buffer.from(code.slice(2),"hex")));
+ c.infrastructure.base.xitaV315.components.executionGateway={
+  ...gateway,runtimeCodeKeccak256:keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex")))
+ };
  return c;
 };
 function calls(override={}){
@@ -37,9 +41,12 @@ function calls(override={}){
  return async(url,method,params)=>handlers[method](params);
 }
 function receipt(path){
- const result=JSON.parse(readFileSync(new URL("../../"+path,import.meta.url),"utf8"));
- result.runtimeCodeKeccak256=keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex")));
- return result;
+ if(path!==gateway.receiptPath)throw Error("Unexpected deployment receipt request: "+path);
+ return {kind:"xita-v315-deployment-receipt",status:"onchain-deployment-verified",
+  network:"mainnet",component:"executionGateway",chain:"base",chainId:8453,
+  transactionHash:"0x"+"c".repeat(64),address:gateway.address,
+  runtimeCodeKeccak256:keccak256(Uint8Array.from(Buffer.from(code.slice(2),"hex")))
+ };
 }
 test("fee treasury shows exact raw wallet & claimable balances without signing or env",async()=>{
  const res=await inspectFeeTreasury({root,catalog:makeCatalog(),rpc:calls(),readReceipt:receipt});

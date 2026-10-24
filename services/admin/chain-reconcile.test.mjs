@@ -5,14 +5,14 @@ import {selector} from "../../apps/web/keccak.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const word=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
 const chain={name:"polygon",chainId:137,domainId:137,blsVerifierFormat:"eip2537",defaultDestinationGasLimit:250000};
-const infra={hyperlane:{mailbox:addr(1),merkleTreeHook:addr(2)},
+const infra={hyperlane:{mailbox:addr(1),dispatchHook:addr(2)},
  components:[{key:"validatorRegistry",address:addr(3)},{key:"ism",address:addr(4)}, {key:"nativeRouterDeployer",address:addr(6)},{key:"syntheticRouterDeployer",address:addr(7)}, {key:"collateralRouterDeployer",address:addr(8)},{key:"factory",address:addr(5)}]};
 const bootstrap={proposedFeeWei:"100000000000"};
 const values={
  "localChainId()":word(137),"localDomain()":word(137),
  "validatorRegistry()":word(3),"destinationIsm()":word(4),
  "initialSourceFeeWei()":word(100000000000n),
- "mailbox()":word(1),"merkleTreeHook()":word(2),
+ "mailbox()":word(1),"dispatchHook()":word(2),
  "nativeDeployer()":word(6),"syntheticDeployer()":word(7),"collateralDeployer()":word(8)
 };
 const signatures=new Map(Object.entries(values).map(([s,v])=>[selector(s),v]));

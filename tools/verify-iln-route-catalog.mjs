@@ -69,8 +69,8 @@ export function checkedRoute({catalog,source,route,registryReceipt,routeReceipt,
   "route destinationRouter mismatch");
  assert(ADDRESS.test(record.mailbox||"")&&!/^0x0{40}$/i.test(record.mailbox||""),
   "route Mailbox missing");
- assert(ADDRESS.test(record.merkleTreeHook||"")&&
-  !/^0x0{40}$/i.test(record.merkleTreeHook||""),"route MerkleTreeHook missing");
+ assert(ADDRESS.test(record.dispatchHook||"")&&
+  !/^0x0{40}$/i.test(record.dispatchHook||""),"route DispatchHook missing");
  assert(positive(record.fee),"route validator fee not positive");
  return {
   sourceNetwork:source,
@@ -125,7 +125,7 @@ async function main(){
   catch(error){throw Error("Unable to read current Registry route "+route.name+": "+
     String(error?.shortMessage||error?.message||error).slice(0,240))}
   const record={sourceChainId:raw[0],sourceDomain:raw[1],gateway:raw[2],
-   sourceRouter:raw[3],mailbox:raw[4],merkleTreeHook:raw[5],
+   sourceRouter:raw[3],mailbox:raw[4],dispatchHook:raw[5],
    destinationRouter:raw[6],fee:raw[7],enabled:raw[8]};
   const hint=checkedRoute({catalog,source,route,registryReceipt,routeReceipt,
    chainID:actualChainId,onchain:{head,registryCodeHash,gatewayCodeHash,record}});

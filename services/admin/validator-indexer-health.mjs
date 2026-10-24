@@ -8,7 +8,7 @@ export function validatorRPCUrls(env=process.env){
 }
 export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"}={}){
  const fail=reason=>({name,state:"unavailable",workerAlive:false,routes:[],reason});
- if(!raw||raw.version!==1||!Array.isArray(raw.routes)||!Number.isSafeInteger(raw.updatedUnix))
+ if(!raw||raw.version!==2||!Array.isArray(raw.routes)||!Number.isSafeInteger(raw.updatedUnix))
   return fail("Invalid validator health schema");
  const ageMs=now-raw.updatedUnix*1000;
  if(ageMs< -30000||ageMs>120000||raw.workerAlive!==true)
@@ -18,17 +18,14 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
   destination:String(r.destination||"").slice(0,55),
   state:["ok","catching-up","unavailable"].includes(r.state)?r.state:"unavailable",
   sourceHead:Number.isSafeInteger(r.sourceHead)?r.sourceHead:null,
-  checkpointBlock:Number.isSafeInteger(r.checkpointBlock)?r.checkpointBlock:null,
-  leaves:Number.isSafeInteger(r.leaves)?r.leaves:null,
-  localLeaves:Number.isSafeInteger(r.localLeaves)?r.localLeaves:null,
-  lagLeaves:Number.isSafeInteger(r.lagLeaves)?r.lagLeaves:null,
-  pendingPeers:Number.isSafeInteger(r.pendingPeers)?r.pendingPeers:null,
+  scanCursor:Number.isSafeInteger(r.scanCursor)?r.scanCursor:null,
+  blockLag:Number.isSafeInteger(r.blockLag)?r.blockLag:null,
   error:String(r.error||"").slice(0,200)
  }));
  return {name,workerAlive:true,ageMs,routes,
   state:routes.some(r=>r.state==="unavailable")?"degraded":
    routes.some(r=>r.state!=="ok")?"catching-up":routes.length?"ok":"warning",
-  reason:routes.length?"":"No validator replica routes"};
+  reason:routes.length?"":"No registered Direct-BLS Gateway routes"};
 }
 export async function probeILNValidators({urls=validatorRPCUrls(),fetcher=globalThis.fetch,now=Date.now(),timeoutMs=4000}={}){
  return await Promise.all(urls.map(async (url,index)=>{

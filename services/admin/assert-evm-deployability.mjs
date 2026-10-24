@@ -2,7 +2,7 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 const root=process.argv[2]||".";
-const names=["XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XGRILNInterchainISMV2",
+const names=["XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XITADirectBLSISM",
  "XETATokenFactoryV315","XETANativeRouterDeployer","XETASyntheticRouterDeployer",
  "XETACollateralRouterDeployer","XGRILNRegistryV315","XETAGuardedNativeWarpRouter",
  "XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315",

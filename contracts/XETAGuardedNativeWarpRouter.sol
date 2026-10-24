@@ -40,17 +40,17 @@ contract XETAGuardedNativeWarpRouter is XETARouterCore {
     constructor(
         address registry_,
         address mailbox_,
-        address merkleTreeHook_,
+        address dispatchHook_,
         address destinationIsm_,
         uint256 defaultDestinationGasLimit_
     )
         TokenRouter(1, 1, mailbox_)
         XETARouterCore(registry_, defaultDestinationGasLimit_)
     {
-        if (merkleTreeHook_ == address(0) || destinationIsm_ == address(0)) {
+        if (dispatchHook_ == address(0) || destinationIsm_ == address(0)) {
             revert XETAInvalidConfiguration();
         }
-        _initializeXETA(merkleTreeHook_, destinationIsm_);
+        _initializeXETA(dispatchHook_, destinationIsm_);
     }
 
     function _initializeXETA(address hook_, address ism_) private initializer {

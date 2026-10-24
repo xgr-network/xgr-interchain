@@ -11,7 +11,6 @@ const paths=[
  "services/managed-relay/worker.mjs",
  "services/managed-relay/managed-indexer.mjs",
  "runtime/native-relayer/iln.mjs",
- "runtime/native-relayer/init-iln-merkle.mjs",
  "tools/verify-base-bls-receipt.mjs",
  "tools/probe-base-rpc.mjs"
 ];

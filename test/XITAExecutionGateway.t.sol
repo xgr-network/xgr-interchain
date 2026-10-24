@@ -48,7 +48,7 @@ contract XITAExecutionGatewayTest is Test {
             gateway: registeredGateway,
             sourceRouter: registeredRouter,
             mailbox: address(0x1111),
-            merkleTreeHook: address(0x2222),
+            dispatchHook: address(0x2222),
             destinationRouter: address(0x3333),
             validatorFeeWei: 1,
             enabled: true

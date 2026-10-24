@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {Interface,keccak256,zeroPadValue} from "ethers";
-import {ILN_OPERATION_EVENT} from "./iln-codec.mjs";
+import {ILN_OPERATION_EVENT} from "./xita-direct-codec.mjs";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
 const txHash="0x"+"99".repeat(32),routeId="0x"+"11".repeat(32);

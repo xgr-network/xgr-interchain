@@ -39,7 +39,6 @@ export function resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxH
   ORIGIN_CHAIN_ID:String(src.chainId),
   ORIGIN_DOMAIN:String(src.domainId),
   ORIGIN_MAILBOX:srcCore.mailbox?.address,
-  ORIGIN_MERKLE_TREE_HOOK:srcCore.merkleTreeHook?.address,
   ORIGIN_ILN_REGISTRY:srcCore.sourceRegistry?.address,
   ORIGIN_ILN_GATEWAY:route.gateway,
   ORIGIN_WARP_ROUTER:route.sourceRouter,
@@ -117,7 +116,7 @@ export function classifyRecoveryFailure(err,stderr=""){
   /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
   /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
-  /snapshot|merkle|checkpoint|proof/.test(t)?"PROOF_RECONSTRUCTION_UNAVAILABLE":"PROOF_NOT_READY";
+  /receipt|dispatch|source route|fee allocation|fee vault/.test(t)?"PROOF_SOURCE_EVIDENCE_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
 const recoveryBaseDefaultUrls=()=>process.env.XITA_RECOVERY_BASE_RPC_URLS||
@@ -144,7 +143,7 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
     throw Error("Original source receipt unavailable");
    const block=receipt.blockNumber;
    if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
-   // The original receipt is only a locator. Full Gateway/Dispatch/Merkle
+   // The original receipt is only a locator. Complete Gateway/Dispatch
    // verification is performed by the recovery CLI, never skipped.
    // Avoid redundant archive-sensitive eth_getLogs preflight.
   }else if(!sourceIsBase){
@@ -163,7 +162,7 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
 }
 const sourceBaseStages=new Set([
  "verify-chain-ids","source-receipt","validate-attestation",
- "confirmed-fee-vault-allocation","base-archive"
+ "confirmed-fee-vault-allocation","source-route"
 ]);
 const destinationBaseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",

@@ -865,31 +865,28 @@ async function refreshOperationsHealth(){
    '<tr><td><strong>'+esc(r.asset||"Token unbekannt")+'</strong> · '+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
    '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
   const validators=d.validators||[];
-  const expectedMerkleChains=["arbitrum","base","xgrchain"];
-  const merkleLabels={arbitrum:"Arbitrum",base:"Base",xgrchain:"XGRChain"};
-  const leafSummary=(r)=>healthValue(r.localLeaves)+" / "+healthValue(r.leaves);
   el("health-validators").innerHTML=validators.length?validators.map(v=>{
-   const rows=expectedMerkleChains.map(chain=>{
-    const related=(v.routes||[]).filter(r=>r.source?.toLowerCase()===chain);
-    const title=merkleLabels[chain];
-    if(!related.length)return '<tr><td>'+esc(title)+'</td><td>—</td><td>—</td><td>—</td><td>—</td><td>'+healthPill("unavailable")+'</td></tr>';
-    return related.map(r=>'<tr><td>'+esc(title)+'<small>'+esc(r.route||"")+'</small></td>'+
-     '<td>'+esc(leafSummary(r))+'</td><td>'+healthValue(r.checkpointBlock)+'</td>'+
-     '<td>'+healthValue(r.lagLeaves)+'</td><td>—</td>'+
+    const routes=v.routes||[];
+    const rows=routes.map(r=>'<tr><td>'+esc(({
+      arbitrum:"Arbitrum",base:"Base",xgrchain:"XGRChain"
+     })[r.source?.toLowerCase()]||r.source||"Unbekannt")+
+     '<small>'+esc(r.route||"")+'</small></td>'+
+     '<td>'+healthValue(r.sourceHead)+'</td>'+
+     '<td>'+healthValue(r.scanCursor)+'</td>'+
+     '<td>'+healthValue(r.blockLag)+'</td>'+
      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
-   }).join("");
-   return '<div class="health-merkle-validator"><div class="health-merkle-validator-head"><strong>'+esc(v.name)+'</strong>'+
-    healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
-    ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
-    '<div class="health-table-wrap"><table class="health-table health-merkle-table">'+
-    '<thead><tr><th>Source-Chain</th><th>Leaves lokal / Quelle</th><th>Checkpoint</th>'+
-    '<th>Rückstand</th><th>Peer-Anfragen (nicht erfasst)</th><th>Status</th></tr></thead><tbody>'+
-    rows+'</tbody></table></div>'+(v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
-  }).join(""):'<p class="health-merkle-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
-   'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
-   'RPC-Endpunkten der Validatoren. Ein initialisierter Merkle-Snapshot wird sonst nicht abgefragt. '+
-   'Es wird nicht behauptet, dass die Replikas fehlen.</p>';
-  el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
+    return '<div class="health-merkle-validator"><div class="health-merkle-validator-head"><strong>'+esc(v.name)+'</strong>'+
+      healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
+      ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
+      (routes.length?'<div class="health-table-wrap"><table class="health-table health-merkle-table">'+
+       '<thead><tr><th>Source-Chain / Route</th><th>Bestätigter Source-Head</th>'+
+       '<th>Gateway-Scan-Cursor</th><th>Blockrückstand</th><th>Status</th></tr></thead><tbody>'+
+       rows+'</tbody></table></div>':'<p class="tiny">Keine Direct-BLS-Routen registriert.</p>')+
+      (v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
+   }).join(""):'<p class="health-merkle-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
+    'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
+    'RPC-Endpunkten der Validatoren. Ohne diese wird kein Live-Scan-Status angezeigt.</p>';
+   el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
   el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
    c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
    c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");

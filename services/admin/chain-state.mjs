@@ -19,9 +19,9 @@ export function infrastructureInventory(root,chains) {
   const valid=key=>{const item=verified[key];return Boolean(item&&ADDRESS.test(item.address||"")&&
      /^0x[a-f0-9]{64}$/i.test(item.runtimeCodeKeccak256||"")&&
      typeof item.receiptPath==="string"&&item.receiptPath.startsWith("deployments/receipts/"+c.name+"/"));};
-  const freshTransport=["transportBundle","mailbox","merkleTreeHook","requiredHook"].every(valid);
+  const freshTransport=["transportBundle","mailbox","dispatchHook","requiredHook"].every(valid);
   // No historical mailbox/hook or config-supplied address counts as deployment proof.
-  const core=freshTransport?{mailbox:verified.mailbox.address,merkleTreeHook:verified.merkleTreeHook.address,
+  const core=freshTransport?{mailbox:verified.mailbox.address,dispatchHook:verified.dispatchHook.address,
    requiredHook:verified.requiredHook.address,transportBundle:verified.transportBundle.address}:{};
   if(!["compressed","eip2537"].includes(c.blsVerifierFormat))
    throw Error("Unsupported configured verifier format: "+c.name);
@@ -36,7 +36,7 @@ export function infrastructureInventory(root,chains) {
    nativeCurrency:c.nativeCurrency,rpcUrls:c.rpcUrls,explorer:c.explorer||null,
    status:count===requiredParts.length?"documented":count?"partial":"not-deployed",
    documented:count,required:requiredParts.length,components,
-   hyperlane:{mailbox:core.mailbox||null,merkleTreeHook:core.merkleTreeHook||null,
+   hyperlane:{mailbox:core.mailbox||null,dispatchHook:core.dispatchHook||null,
     requiredHook:core.requiredHook||null,transportBundle:core.transportBundle||null}};
  });
 }
@@ -55,8 +55,8 @@ export async function verifyChainInfrastructure(chains,{rpc=rpcCall}={}){
     result.components.push({...part,live:CODE.test(code||"")});
    }
    const core=c.hyperlane;
-   if(core.mailbox&&core.merkleTreeHook&&core.requiredHook){
-    const values=await Promise.all([core.mailbox,core.merkleTreeHook,core.requiredHook].map(addr=>rpc(url,"eth_getCode",[addr,"latest"])));
+   if(core.mailbox&&core.dispatchHook&&core.requiredHook){
+    const values=await Promise.all([core.mailbox,core.dispatchHook,core.requiredHook].map(addr=>rpc(url,"eth_getCode",[addr,"latest"])));
     result.core=values.every(code=>CODE.test(code||""));
    }
    const documented=result.components.filter(x=>!x.optional&&x.status==="documented");

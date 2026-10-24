@@ -82,7 +82,7 @@ start_one() {
     . "$ef"
     set +a
 
-    if [ -z "${RELAYER_PRIVATE_KEY:-}" ]; then
+    if [[ "${RELAYER_SUBMIT:-false}" == "true" && -z "${RELAYER_PRIVATE_KEY:-}" ]]; then
       if [ -z "${RELAYER_KEY_ACCOUNT:-}" ]; then
         echo "missing RELAYER_PRIVATE_KEY or RELAYER_KEY_ACCOUNT in $ef" >&2
         exit 1
