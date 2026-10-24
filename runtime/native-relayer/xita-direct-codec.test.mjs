@@ -31,7 +31,7 @@ test("Direct BLS bytes bind exactly one message and deployment; no Merkle metada
 test("ISM metadata is a direct authorization, signer bitmap and BLS signature",()=>{
  const sig="0x"+"22".repeat(256);
  const data=encodeDirectISMMetadata({authorization:message,signerBitmap:"0x03",aggregateSignature:sig});
- const parsed=AbiCoder.defaultAbiCoder().decode([DIRECT_BLS_AUTHORIZATION_TYPE,"bytes","bytes"],data);
+ const parsed=AbiCoder.defaultAbiCoder().decode(["tuple("+DIRECT_BLS_AUTHORIZATION_TYPE+",bytes,bytes)"],data)[0];
  assert.equal(parsed[0].routeId.toLowerCase(),message.routeId.toLowerCase());
  assert.equal(parsed[0].messageId.toLowerCase(),message.messageId.toLowerCase());
  assert.equal(parsed[0].sourceBlockNumber,517578687n);
@@ -39,7 +39,7 @@ test("ISM metadata is a direct authorization, signer bitmap and BLS signature",(
  assert.equal(parsed[2],sig);
  assert.ok(getBytes(data).length<1024);
  assert.throws(()=>encodeDirectISMMetadata({authorization:message,signerBitmap:"0x03",aggregateSignature:"0x01"}),/96\/256-byte/);
- assert.equal(AbiCoder.defaultAbiCoder().decode([DIRECT_BLS_AUTHORIZATION_TYPE,"bytes","bytes"],encodeDirectISMMetadata({authorization:message,signerBitmap:"0x03",aggregateSignature:"0x"+"22".repeat(96)}))[2].length,2+96*2);
+ assert.equal(AbiCoder.defaultAbiCoder().decode(["tuple("+DIRECT_BLS_AUTHORIZATION_TYPE+",bytes,bytes)"],encodeDirectISMMetadata({authorization:message,signerBitmap:"0x03",aggregateSignature:"0x"+"22".repeat(96)}))[0][2].length,2+96*2);
  assert.throws(()=>encodeDirectBLSPayload({...message,messageId:"0x"+"0".repeat(64)}),/identity/);
 });
 
@@ -58,4 +58,19 @@ test("canonical Direct-BLS bytes exactly match independently pinned Go/Solidity 
   ["11","22","33","44","55"].map(n=>n.repeat(20)).join("")+
   "0".repeat(61)+"3e8"+"bb".repeat(32)+"66".repeat(20)+"77".repeat(20);
  assert.equal(encodeDirectBLSPayload(source),vector);
+});
+
+test("ISM ABI matches Solidity abi.decode(metadata,(Metadata)) and rejects flattened legacy encoding",()=>{
+ const signature="0x"+"22".repeat(96),bitmap="0x03";
+ const correct=encodeDirectISMMetadata({authorization:message,signerBitmap:bitmap,aggregateSignature:signature});
+ const fields=[message.sourceChainId,message.sourceDomain,message.destinationDomain,message.routeId,
+  message.setId,message.sourceBlockNumber,message.sourceRegistry,message.gateway,message.sourceRouter,
+  message.sourceMailbox,message.destinationRouter,message.validatorFeeWei,message.messageId];
+ const flattened=AbiCoder.defaultAbiCoder().encode([DIRECT_BLS_AUTHORIZATION_TYPE,"bytes","bytes"],[fields,bitmap,signature]);
+ assert.notEqual(correct,flattened);
+ assert.equal(BigInt("0x"+correct.slice(2,66)),32n,"first word points to a single dynamic Metadata struct");
+ const metadata=AbiCoder.defaultAbiCoder().decode(["tuple("+DIRECT_BLS_AUTHORIZATION_TYPE+",bytes,bytes)"],correct)[0];
+ assert.equal(metadata[0].messageId.toLowerCase(),message.messageId.toLowerCase());
+ assert.equal(metadata[1],bitmap);
+ assert.equal(metadata[2],signature);
 });
