@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {keccak256} from "../../apps/web/keccak.mjs";
-import {verifyDeploymentReceipt,deploymentReceiptPath,publishDeploymentBatch,updatedDeploymentWebCatalog} from "./deployment-ledger.mjs";
+import {verifyDeploymentReceipt,DeploymentConfirmationsPendingError,deploymentReceiptPath,publishDeploymentBatch,updatedDeploymentWebCatalog} from "./deployment-ledger.mjs";
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
 const loadFixtureInfrastructure=()=>structuredClone(JSON.parse(updatedDeploymentWebCatalog(process.cwd())).infrastructure.xgrchain);
@@ -97,4 +97,17 @@ test("Direct-BLS transport uses actual two-address event and one aliased Protoco
  assert.doesNotMatch(ledger,/transport-required-hook|transport-merkle-hook/);
  assert.match(ledger,/child.requiredHook=\{\.\.\.child.dispatchHook\}/);
  assert.match(operator,/transport-dispatch-hook/);
+});
+
+test("Base receipt waits for 12 confirmations without accepting an unconfirmed deployment",async()=>{
+ const rpc=async(url,method,args)=>{
+  if(method==="eth_blockNumber")return "0x69"; // block 105 - receipt block 96 + 1 = 10
+  return rpcWith()(url,method,args);
+ };
+ await assert.rejects(
+  ()=>verifyDeploymentReceipt(process.cwd(),params,{rpc}),
+  e=>e instanceof DeploymentConfirmationsPendingError&&
+    e.code==="DEPLOYMENT_CONFIRMATIONS_PENDING"&&
+    e.txHash===TX&&e.observed===10&&e.required===12
+ );
 });
