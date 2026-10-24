@@ -83,3 +83,13 @@ REVOKE ALL ON xita_tax_accounting_export FROM PUBLIC;
 -- Provision a narrow INSERT-only quote signer, an event-indexing DB writer,
 -- and an accounting reader with access ONLY to xita_tax_accounting_export.
 -- The public wallet-index API must never SELECT client_ip.
+
+-- Verified sponsor-grant status can be read by the existing managed fee
+-- health/status read-only role. Do NOT expose the grant table to the public.
+DO $$
+BEGIN
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_status_reader') THEN
+  GRANT SELECT ON public.xita_transfer_operations,public.xita_sponsor_grants
+   TO xita_sponsor_status_reader;
+ END IF;
+END $$;
