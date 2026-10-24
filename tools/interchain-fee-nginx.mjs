@@ -3,6 +3,7 @@
 const MARKER="location ^~ /api/xeta/ {";
 const PATHS=Object.freeze([
  {path:"/api/xita/v1/managed/health",method:"GET",timeout:4,port:4092},
+ {path:"/api/xita/v1/managed/sponsorship",method:"GET",timeout:4,port:4092},
  {path:"/api/xita/v1/managed/quote",method:"POST",timeout:15,port:4092},
  {path:"/api/xita/v1/managed/preview",method:"POST",timeout:15,port:4093}
 ]);
@@ -31,6 +32,25 @@ function patchFeeRoutes(config,paths){
    if(!block.includes(upstream)||
      !block.includes("limit_except "+method+" { deny all; }"))
     throw Error("Unapproved Interchain Fee API proxy or HTTP methods: "+path);
+   if(path==="/api/xita/v1/managed/quote"){
+    // Validate and harden EXISTING signer proxy blocks during upgrades as
+    // well as newly installed ones. Never accept a visitor-supplied IP.
+    const required=[
+     "proxy_set_header X-Real-IP $remote_addr;",
+     'proxy_set_header X-Forwarded-For "";',
+     'proxy_set_header CF-IPCountry "";',
+     'proxy_set_header X-Country-Code "";'
+    ];
+    let hardened=block;
+    for(const directive of required){
+     const key=directive.split(" ")[1];
+     const expressions=[...hardened.matchAll(new RegExp("proxy_set_header\\s+"+key+"\\s+[^;]+;","gi"))];
+     if(expressions.length>1||expressions.length===1&&expressions[0][0]!==directive)
+      throw Error("Unsafe accounting proxy header: "+key);
+     if(!expressions.length)hardened=hardened.slice(0,-1)+"    "+directive+"\n}";
+    }
+    if(hardened!==block)next=next.slice(0,from)+hardened+next.slice(end+1);
+   }
    continue;
   }
   if(next.split(MARKER).length!==2)
@@ -43,6 +63,12 @@ function patchFeeRoutes(config,paths){
    "    proxy_connect_timeout 2s;",
    "    proxy_read_timeout "+timeout+"s;",
    "    proxy_set_header Host $host;",
+   ...(path==="/api/xita/v1/managed/quote"?[
+    "    proxy_set_header X-Real-IP $remote_addr;",
+    '    proxy_set_header X-Forwarded-For "";',
+    '    proxy_set_header CF-IPCountry "";',
+    '    proxy_set_header X-Country-Code "";'
+   ]:[]),
    '    add_header Cache-Control "no-store" always;',
    '    add_header X-Content-Type-Options nosniff always;',
    "}",
