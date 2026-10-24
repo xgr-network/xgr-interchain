@@ -78,7 +78,10 @@ export function walletJourneys(items=[]){
  * This is a UI projection only, NEVER a signing or custody authorization.
  */
 const PROGRESS=Object.freeze({
+ // These are all unverified SOURCE stages. They must replace one another,
+ // rather than preserving a stale "confirming 12/12" from before safe-head checks.
  "pending-source":0,"confirming":1,
+ "confirming-native-finality":1,"finality-unavailable":1,
  "awaiting-proof":2,"delivery-unknown":2,"destination-not-deployed":2,
  "delivered":3,"awaiting-onward":4,
  "awaiting-final-proof":5,"final-delivery-unknown":5,
