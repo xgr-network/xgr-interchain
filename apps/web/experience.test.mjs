@@ -2,7 +2,8 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity} from "./experience.js";
-import {deployedFixture} from "./deployed-test-fixture.mjs";
+import {deployedFixture,visibilityFixture} from "./deployed-test-fixture.mjs";
+import {freshDeployedCatalog} from "../../services/managed-relay/test-deployments.mjs";
 import {executableTransferRoutes} from "./route-availability.js";
 
 
@@ -243,27 +244,25 @@ test("Transfer CTA follows structured route fees without old gas diagnostics",()
  assert.match(noWallet,/id="xita-transfer-primary"/);
 });
 
-test("old awaiting-proof operations never replace the new XGR/Base transfer",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const m=buildExperienceModel(c);
- const account="0x"+"1".repeat(40),txHash="0x"+"a".repeat(64);
- const item={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",txHash,
-  status:"awaiting-proof",confirmed:true,delivered:false};
- const fresh=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
-  {account},{items:[item],selectedTxHash:null,scanning:true});
- assert.match(fresh,/>Start Transfer<\/button>/);
- assert.doesNotMatch(fresh,/Transfer XGR → Base/);
- assert.doesNotMatch(fresh,/Interchain Fee gateway not deployed/);
- assert.doesNotMatch(fresh,/Checking on-chain transfers/);
- assert.match(fresh,/Previous transfers awaiting delivery/);
- assert.match(fresh,/<option value="" selected>New transfer/);
- assert.match(fresh,/>Start Transfer<\/button>/);
- assert.doesNotMatch(fresh,/Transfer XGR → Base/);
- const selected=renderPlanRoute(m,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"},"ready",
-  {account},{items:[item],selectedTxHash:txHash,scanning:true});
- assert.match(selected,/Continue delivery/);
- assert.match(selected,/Existing source transfer selected/);
- assert.doesNotMatch(fresh,/One transfer page/);
+test("old awaiting-proof operations never replace a new verified XGR/Base transfer",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base"});
+  const m=buildExperienceModel(deployed);
+  assert.ok(executableTransferRoutes(deployed).some(r=>r.asset==="XGR"&&r.source==="xgrchain"&&r.destination==="base"));
+  const account="0x"+"1".repeat(40),txHash="0x"+"a".repeat(64);
+  const item={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",txHash,
+    status:"awaiting-proof",confirmed:true,delivered:false};
+  const selection={origin:"xgrchain",destination:"base",asset:"XGR",amount:"0.1"};
+  const fresh=renderPlanRoute(m,selection,"ready",{account},
+    {items:[item],selectedTxHash:null,scanning:true});
+  assert.match(fresh,/>Start Transfer<\/button>/);
+  assert.doesNotMatch(fresh,/Transfer XGR → Base|Checking on-chain transfers/);
+  assert.match(fresh,/Previous transfers awaiting delivery/);
+  assert.match(fresh,/<option value="" selected>New transfer/);
+  const selected=renderPlanRoute(m,selection,"ready",{account},
+    {items:[item],selectedTxHash:txHash,scanning:true});
+  assert.match(selected,/Continue delivery/);
+  assert.match(selected,/Existing source transfer selected/);
+  assert.doesNotMatch(fresh,/One transfer page/);
 });
 
 test("transfer screen has only route fees, status is exclusively modal",()=>{
@@ -278,17 +277,18 @@ test("transfer screen has only route fees, status is exclusively modal",()=>{
  assert.match(html,/id="xita-transfer-form-error"[^>]*>RPC unavailable<\/p>/);
 });
 
-test("Dashboard never displays XGR wallet inventory or contract-address panels",async ()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const m=buildExperienceModel(c),wallet={account:"0x"+"1".repeat(40)};
- const html=renderDashboard(m,{},"ready",null,c,wallet);
- assert.match(html,/ux-ns-stage/);
- assert.match(html,/Locked TVL/);
- assert.doesNotMatch(html,/Your XGR across chains|XGR · NETWORK REPRESENTATIONS|ux-wallet-inventory|ux-representation-entry|Native currency · no ERC-20 contract/);
- // Contract and wallet information still belongs on the XGR token detail view.
- const {renderRepresentationInventory}=await import("./experience.js");
- assert.match(renderRepresentationInventory(m,"XGR","xgrchain",wallet),/Native currency · no ERC-20 contract/);
- assert.match(renderRepresentationInventory(m,"XGR","base",wallet),/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
+test("Dashboard hides wallet contracts; token inventory derives verified addresses from generated receipts",async()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base"});
+  const m=buildExperienceModel(deployed),wallet={account:"0x"+"1".repeat(40)};
+  const html=renderDashboard(m,{},"ready",null,deployed,wallet);
+  assert.match(html,/ux-ns-stage/);
+  assert.match(html,/Locked TVL/);
+  assert.doesNotMatch(html,/Your XGR across chains|XGR · NETWORK REPRESENTATIONS|ux-wallet-inventory|ux-representation-entry|Native currency · no ERC-20 contract/);
+  const {renderRepresentationInventory}=await import("./experience.js");
+  assert.match(renderRepresentationInventory(m,"XGR","xgrchain",wallet),/Native currency · no ERC-20 contract/);
+  const address=transferTokenIdentity(m,"XGR","base").address;
+  assert.ok(address,"a test-deployed Base synthetic router must be verifiable");
+  assert.match(renderRepresentationInventory(m,"XGR","base",wallet),new RegExp(address,"i"));
 });
 
 test("customer-facing transfers never label the route quote as GmbH fee",()=>{
@@ -300,51 +300,57 @@ test("customer-facing transfers never label the route quote as GmbH fee",()=>{
  assert.match(renderFAQ(),/XITA Service Fee/);
 });
 
-test("transfer displays documented wXGR token contract, native XGR and official website",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const model=buildExperienceModel(c),acct="0x"+"1".repeat(40);
- const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready",{account:acct});
- assert.match(html,/Official project/);
- assert.match(html,/https:\/\/xgr\.network/);
- assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
- assert.match(html,/Native coin · no token contract/);
- assert.match(html,/XITA Execution Gateway/);
- assert.match(html,/0x9b6b92ef1745611f402341965f7fc649cbe0da8c/i);
- assert.match(html,/Approval alone does not bridge or burn tokens/);
- assert.match(html,/basescan\.org\/token/);
- assert.match(html,/data-xita-copy-address/);
- assert.equal(transferTokenIdentity(model,"XGR","xgrchain").address,null);
- assert.equal(transferTokenIdentity(model,"XGR","base").evidence,"deployment");
+test("transfer derives wXGR and fee spender from in-memory deployment receipts",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+  const model=buildExperienceModel(deployed),acct="0x"+"1".repeat(40);
+  const token=transferTokenIdentity(model,"XGR","base");
+  const spender=model.feeAdapters.base;
+  assert.equal(token.evidence,"deployment");
+  assert.ok(token.address&&spender,"fixture must furnish two independently receipt-backed addresses");
+  const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready",{account:acct});
+  assert.match(html,/Official project/);
+  assert.match(html,/https:\/\/xgr\.network/);
+  assert.match(html,new RegExp(token.address,"i"));
+  assert.match(html,/Native coin · no token contract/);
+  assert.match(html,/XITA Execution Gateway/);
+  assert.match(html,new RegExp(spender,"i"));
+  assert.match(html,/Approval alone does not bridge or burn tokens/);
+  assert.match(html,/basescan\.org\/token/);
+  assert.match(html,/data-xita-copy-address/);
+  assert.equal(transferTokenIdentity(model,"XGR","xgrchain").address,null);
 });
-test("untrusted project URI is not rendered as executable link; conflicting synthetic is not verified",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- c.assets.XGR.profile.links.website="javascript:alert(1)";
- c.assets.XGR.metadata.representations.find(x=>x.chain==="base").assetAddress="0x"+"f".repeat(40);
- const model=buildExperienceModel(c);
- const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready");
- assert.doesNotMatch(html,/javascript:alert/);
- assert.doesNotMatch(html,/Official project/);
- assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
- const conflict=structuredClone(model);
- // Build a real competing receipt-backed Base destination representation.
- // The previous mock was not guaranteed to belong to XGR, so it proved nothing.
- const realBase=conflict.deployments.find(x=>x.asset==="XGR"&&x.destination==="base");
- assert.ok(realBase);
- conflict.deployments.push({...realBase,destinationRouter:"0x"+"f".repeat(40)});
- const info=transferTokenIdentity(conflict,"XGR","base");
- assert.equal(info.address,null);
- assert.equal(info.evidence,"unavailable");
+test("untrusted project URL and conflicting receipt-backed routers fail closed",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+  deployed.assets.XGR.profile.links.website="javascript:alert(1)";
+  deployed.assets.XGR.metadata.representations.find(r=>r.chain==="base").assetAddress="0x"+"f".repeat(40);
+  const model=buildExperienceModel(deployed);
+  const tokenAddress=transferTokenIdentity(model,"XGR","base").address;
+  assert.ok(tokenAddress);
+  const html=renderPlanRoute(model,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready");
+  assert.doesNotMatch(html,/javascript:alert|Official project/);
+  assert.match(html,new RegExp(tokenAddress,"i"));
+  const conflict=structuredClone(model);
+  const realBase=conflict.deployments.find(r=>r.asset==="XGR"&&r.destination==="base");
+  assert.ok(realBase);
+  const conflictingAddress=tokenAddress.slice(0,-1)+(tokenAddress.endsWith("0")?"1":"0");
+  assert.notEqual(conflictingAddress.toLowerCase(),tokenAddress.toLowerCase());
+  conflict.deployments.push({...realBase,destinationRouter:conflictingAddress});
+  const info=transferTokenIdentity(conflict,"XGR","base");
+  assert.equal(info.address,null);
+  assert.equal(info.evidence,"unavailable");
 });
 
-test("token identity is collapsed by default while full contract data stays accessible",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const m=buildExperienceModel(c);
- const html=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready");
- assert.match(html,/<details class="ux-route-identity"/);
- assert.doesNotMatch(html,/<details class="ux-route-identity"[^>]* open/);
- assert.match(html,/Contract details/);
- assert.match(html,/0x2ca97eff807744f81f13c59a75a8eb0add1c715d/i);
- assert.match(html,/Official project/);
+test("verified test-route identity is collapsed but its derived contract remains inspectable",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+  const m=buildExperienceModel(deployed);
+  const address=transferTokenIdentity(m,"XGR","base").address;
+  assert.ok(address);
+  const html=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR",amount:"0.5"},"ready");
+  assert.match(html,/<details class="ux-route-identity"/);
+  assert.doesNotMatch(html,/<details class="ux-route-identity"[^>]* open/);
+  assert.match(html,/Contract details/);
+  assert.match(html,new RegExp(address,"i"));
+  assert.match(html,/Official project/);
 });
 
 test("resume query intent never becomes a new source transaction when index unavailable",()=>{
@@ -392,29 +398,26 @@ test("completed Base to XGR delivery is success, never unresolved or repeat-sign
  assert.match(foreign,/id="xita-transfer-primary" disabled/);
 });
 
-test("dashboard derives active transfers from deployed catalog receipts, not mutable activation flags",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const model=buildExperienceModel(c,()=>false);
- const html=renderDashboard(model,{},"ready",null,c);
- const expected=executableTransferRoutes(c);
- const routeKeys=rows=>rows.map(r=>r.asset+":"+r.name+":"+r.source+":"+r.destination).sort();
- assert.ok(expected.length>0,"deployed catalog must contain verified execution-ready directions");
- assert.deepEqual(routeKeys(model.transferRoutes),routeKeys(expected),
-  "every active dashboard direction must have independently documented execution adapters");
- assert.match(html,new RegExp("<strong>"+expected.length+"</strong><span>Active directions</span>"));
- const liveChains=new Set(expected.flatMap(r=>[r.source,r.destination]));
- for(const chain of Object.keys(c.chains)){
-  const row=html.match(new RegExp('data-xita-system="'+chain+'"[\\s\\S]*?</button>'))?.[0];
-  assert.ok(row,"missing configured chain "+chain);
-  const expectedStatus=chain==="xgrchain"?"Hub":liveChains.has(chain)?"Active":"In preparation";
-  assert.ok(row.includes(">"+expectedStatus+"</span>"),
-   chain+" status must follow verified route receipts, not activation flags");
- }
- // Even malicious/stale editable activation flags cannot enable missing routes.
- for(const asset of Object.values(c.assets))
-  for(const route of asset.routes?.routes||[])route.active=true;
- assert.deepEqual(routeKeys(buildExperienceModel(c,()=>true).transferRoutes),routeKeys(expected));
- assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
+test("dashboard derives active directions from generated receipts, never mutable activation flags",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base"});
+  const model=buildExperienceModel(deployed,()=>false);
+  const html=renderDashboard(model,{},"ready",null,deployed);
+  const expected=executableTransferRoutes(deployed);
+  const routeKeys=rows=>rows.map(r=>r.asset+":"+r.name+":"+r.source+":"+r.destination).sort();
+  assert.ok(expected.length>0,"generated verified deployment must expose the tested direction");
+  assert.deepEqual(routeKeys(model.transferRoutes),routeKeys(expected));
+  assert.match(html,new RegExp("<strong>"+expected.length+"</strong><span>Active directions</span>"));
+  const liveChains=new Set(expected.flatMap(r=>[r.source,r.destination]));
+  for(const chain of Object.keys(deployed.chains)){
+    const row=html.match(new RegExp('data-xita-system="'+chain+'"[\\s\\S]*?</button>'))?.[0];
+    assert.ok(row,"missing configured chain "+chain);
+    const status=chain==="xgrchain"?"Hub":liveChains.has(chain)?"Active":"In preparation";
+    assert.ok(row.includes(">"+status+"</span>"),"unsupported active status: "+chain);
+  }
+  for(const asset of Object.values(deployed.assets))
+    for(const route of asset.routes?.routes||[])route.active=true;
+  assert.deepEqual(routeKeys(buildExperienceModel(deployed,()=>true).transferRoutes),routeKeys(expected));
+  assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
 });
 
 test("TVL chart draws observed snapshots but never invents missing history",()=>{
@@ -505,13 +508,14 @@ test("24h delta uses final verified observations even if current snapshot unavai
  ]}};
  assert.equal(tvlChange24h(short),null);
 });
-test("last verified collateral remains explicitly historic in Locked TVL ranking",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const metrics={lastVerifiedAssets:{XGR:{lockedUsd:.011503,asOf:"2026-10-22T09:47:00Z"}}};
- const html=renderDashboard(buildExperienceModel(c),{},"ready",metrics,c);
- assert.match(html,/by Locked TVL/);
- assert.match(html,/Last verified/);
- assert.match(html,/\$0\.011503/);
+test("last verified collateral is marked historic for a fixture-public asset",()=>{
+  const c={assets:{XGR:deployedFixture("XGR","xgrchain")}};
+  const metrics={visibility:visibilityFixture({XGR:"public"}),
+    lastVerifiedAssets:{XGR:{lockedUsd:.011503,asOf:"2026-10-22T09:47:00Z"}}};
+  const html=renderDashboard(buildExperienceModel(c),{},"ready",metrics,c);
+  assert.match(html,/by Locked TVL/);
+  assert.match(html,/Last verified/);
+  assert.match(html,/\$0\.011503/);
 });
 
 test("two-hop resume dropdown names the final Base destination, never the hub",()=>{
@@ -527,36 +531,45 @@ test("two-hop resume dropdown names the final Base destination, never the hub",(
  assert.doesNotMatch(html,/XGR · arbitrum → xgrchain · 0x99999999/);
 });
 
-test("Top Tokens rankings show real approved token logos instead of decorative planets",()=>{
- const live=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const assets={};
- for(const [id,entry] of Object.entries(live.assets)){
-  assets[id]={assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
-   marketCapUsd:id==="ARB"?200:100,priceUsd:1,circulating:100},
-   custody:{status:"unavailable"},movement:{status:"unavailable"}};
- }
- const html=renderDashboard(buildExperienceModel(live),{},"ready",
-  {schemaVersion:1,kind:"xita-asset-metrics-v1",assets},live);
- assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
- assert.doesNotMatch(html,/ux-token-sphere/);
- assert.match(html,/class="ux-dashboard-token-logo-img"/);
- assert.match(html,/xgr_logo200\.png/);
- assert.match(html,/arb\.jpg/);
- assert.match(html,/ux-dashboard-token-fallback/);
- const broken=structuredClone(live);
- broken.assets.XGR.profile.branding.logoUrl="javascript:alert(1)";
- const invalid=renderDashboard(buildExperienceModel(broken),{},"ready",
-  {schemaVersion:1,kind:"xita-asset-metrics-v1",assets},broken);
- assert.doesNotMatch(invalid,/src="javascript:/);
- assert.match(invalid,/ux-dashboard-token-fallback/);
+test("Top Tokens shows approved profile logos only for receipt-backed public fixture assets",()=>{
+  const configured=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+  const deployed={assets:Object.fromEntries(Object.entries(configured.assets).map(([id,entry])=>[
+    id,{...deployedFixture(id,entry.metadata.canonical.chain),profile:structuredClone(entry.profile)}
+  ]))};
+  const assets=Object.fromEntries(Object.keys(deployed.assets).map(id=>[id,{
+    assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
+      marketCapUsd:id==="ARB"?200:100,priceUsd:1,circulating:100},
+    custody:{status:"unavailable"},movement:{status:"unavailable"}
+  }]));
+  const snapshot={schemaVersion:1,kind:"xita-asset-metrics-v1",assets,
+    visibility:visibilityFixture(Object.fromEntries(Object.keys(assets).map(id=>[id,"public"])))};
+  const html=renderDashboard(buildExperienceModel(deployed),{},"ready",snapshot,deployed);
+  assert.equal((html.match(/class="ux-dashboard-ranking"/g)||[]).length,3);
+  assert.doesNotMatch(html,/ux-token-sphere/);
+  assert.match(html,/class="ux-dashboard-token-logo-img"/);
+  assert.match(html,/xgr_logo200\.png/);
+  assert.match(html,/arb\.jpg/);
+  assert.match(html,/ux-dashboard-token-fallback/);
+  const broken=structuredClone(deployed);
+  broken.assets.XGR.profile.branding.logoUrl="javascript:alert(1)";
+  const invalid=renderDashboard(buildExperienceModel(broken),{},"ready",snapshot,broken);
+  assert.doesNotMatch(invalid,/src="javascript:/);
+  assert.match(invalid,/ux-dashboard-token-fallback/);
 });
 
-test("new direct and two-hop transfers use neutral CTA; recovery remains specific",()=>{
- const c=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
- const model=buildExperienceModel(c),wallet={account:"0x"+"1".repeat(40)};
- for(const [origin,destination,asset] of [["xgrchain","base","XGR"],["arbitrum","base","XGR"],["xgrchain","base","ARB"]]){
-  const html=renderPlanRoute(model,{origin,destination,asset,amount:"1"},"ready",wallet,{});
-  assert.match(html,/>Start Transfer<\/button>/);
-  assert.doesNotMatch(html,/Transfer (XGR|ARB) → Base|Transfer XGR via XGRChain/);
- }
+test("verified direct routes have neutral CTA; undeployed direct and two-hop routes never become signable",()=>{
+  const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+  const model=buildExperienceModel(deployed),wallet={account:"0x"+"1".repeat(40)};
+  for(const [origin,destination] of [["xgrchain","base"],["base","xgrchain"]]){
+    const html=renderPlanRoute(model,{origin,destination,asset:"XGR",amount:"1"},"ready",wallet,{});
+    assert.match(html,/>Start Transfer<\/button>/);
+    assert.doesNotMatch(html,/Transfer XGR → Base|Transfer XGR via XGRChain/);
+  }
+  const without=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+  for(const [origin,destination,asset] of [["xgrchain","base","XGR"],["arbitrum","base","XGR"],["xgrchain","base","ARB"]]){
+    const html=renderPlanRoute(without,{origin,destination,asset,amount:"1"},"ready",wallet,{});
+    assert.match(html,/id="xita-transfer-primary" disabled/);
+    assert.match(html,/Interchain Fee gateway not deployed/);
+    assert.doesNotMatch(html,/Start Transfer<\/button>/);
+  }
 });

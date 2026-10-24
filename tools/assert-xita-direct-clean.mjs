@@ -18,13 +18,8 @@ const transport=src("contracts/XITADirectTransport.sol");
 if(!transport.includes("new Mailbox")||!transport.includes("new ProtocolFee"))
  throw Error("New transport missing immutable dispatch prerequisites");
 const catalog=loadCatalog(ROOT);
-for(const [name,c] of Object.entries(catalog.infrastructure))
- if(c.present||Object.keys(c.xitaV315.components).length||c.xitaV315.receiptPaths.length)
-  throw Error("Old deployment address present in fresh catalog: "+name);
-for(const [asset,a] of Object.entries(catalog.assets))
- if(a.deployment.present||a.deployment.receiptPaths.length||
-    a.deployment.representations.length||a.deployment.routeDeployments.length)
-  throw Error("Old asset/router deployment present: "+asset);
+// A new deployment is allowed only through the regular manifest/receipt validators.
+// A clean development reset MUST NOT permanently forbid legitimate future deploys.
 const errors=validateCatalog(catalog);
 if(errors.length)throw Error("Invalid zero-deployment catalog: "+errors.join("; "));
-console.log("PASS: Direct-BLS core only, full security bindings, no Merkle Solidity, no inherited deployments.");
+console.log("PASS: Direct-BLS core only, full security bindings, no Merkle Solidity; catalog validated without assuming a deployment count.");

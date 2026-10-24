@@ -6,7 +6,7 @@ const receiptHash="0x"+"e".repeat(64);
 const roleKeys=["factory","sourceRegistry","mailbox","ism","validatorRegistry"];
 
 export function freshDeployedCatalog({
-  names=["xgrchain","base"],routeDestination=null
+  names=["xgrchain","base"],routeDestination=null,reverseRoute=false
 }={}){
  const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
  const receipts=new Map();
@@ -57,6 +57,15 @@ export function freshDeployedCatalog({
    destinationChain:target,routeId:hex(++next,64),
    components:{gateway,feeVault}}];
   deployed.receiptPaths=[sr.receiptPath,dr.receiptPath,gateway.receiptPath,feeVault.receiptPath];
+  if(reverseRoute){
+   const reverse=xgr.routes.routes.find(r=>r.sourceChain===target&&r.destinationChain===source);
+   if(!reverse)throw Error("Reverse test route missing from canonical route plan");
+   const reverseGateway=record(target,"gateway"),reverseFeeVault=record(target,"feeVault");
+   deployed.routeDeployments.push({routeName:reverse.name,sourceChain:target,
+    destinationChain:source,routeId:hex(++next,64),
+    components:{gateway:reverseGateway,feeVault:reverseFeeVault}});
+   deployed.receiptPaths.push(reverseGateway.receiptPath,reverseFeeVault.receiptPath);
+  }
  }
  return {catalog,readReceipt,receipts};
 }
