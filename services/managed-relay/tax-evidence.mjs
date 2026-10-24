@@ -54,20 +54,17 @@ export function quoteEvidence(reply,prices,ip,location){
  const q=reply?.quote;
  if(reply?.status!=="SIGNED_INTERCHAIN_FEE_QUOTE"||!q||!isIP(ip))
   throw Error("Invalid paid quote evidence");
- if(!/^[A-Z]{2}$/.test(location?.code||""))
-  throw Error("Verified customer country unavailable; no signed fee quote issued");
+ const country=/^[A-Z]{2}$/.test(location?.code||"")?location.code:null;
  const coin=COINGECKO_GAS_COIN_IDS[reply.source],entry=prices?.[coin];
  const timestamp=Number(entry?.last_updated_at);
  const eur=Number(entry?.eur);
- if(!Number.isFinite(eur)||eur<=0||!Number.isSafeInteger(timestamp)||
-    Math.abs(Date.now()/1000-timestamp)>900)
-  throw Error("EUR quote snapshot missing or expired");
+ const validEur=Number.isFinite(eur)&&eur>0&&Number.isSafeInteger(timestamp)&&Math.abs(Date.now()/1000-timestamp)<=900;
  return {source:reply.source,adapter:reply.executionAddress.toLowerCase(),
   payer:q.payer.toLowerCase(),nonce:String(q.nonce),fee:String(q.interchainFeeWei),
-  ip,country:location.code,sourceCountry:location.source,
-  revision:location.revision,coin,eurRate:eur.toString(),
-  euro:eurValue(q.interchainFeeWei,eur),
-  priceAt:new Date(timestamp*1000).toISOString(),
+  ip,country,sourceCountry:location?.source||"unavailable",
+  revision:location?.revision||null,coin,eurRate:validEur?eur.toString():null,
+  euro:validEur?eurValue(q.interchainFeeWei,eur):null,
+  priceAt:validEur?new Date(timestamp*1000).toISOString():null,
   issuedAt:new Date(Number(q.issuedAt)*1000).toISOString(),
   expiresAt:new Date(reply.expiresAt*1000).toISOString()};
 }
