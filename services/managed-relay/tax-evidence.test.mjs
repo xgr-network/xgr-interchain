@@ -42,7 +42,7 @@ test("ZZ synthetic CIDR cannot override country match",async()=>{
  const root=await mkdtemp(join(tmpdir(),"xita-tax-zz-"));
  const path=join(root,"countries.csv");
  try{
-  await writeFile(path,"0.0.0.0/0,ZZ\\n8.8.8.0/24,US\\n");
+  await writeFile(path,"0.0.0.0/0,ZZ\n8.8.8.0/24,US\n");
   const matched=await lookupIpCountry("8.8.8.8",{path});
   assert.equal(matched.code,"US");
  }finally{await rm(root,{recursive:true,force:true});}
