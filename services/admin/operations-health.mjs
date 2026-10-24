@@ -3,7 +3,7 @@
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {readFileSync,statSync} from "node:fs";
-import {probeILNValidators} from "./validator-indexer-health.mjs";
+import {probeILNValidators,attachXitaReferenceLag} from "./validator-indexer-health.mjs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
