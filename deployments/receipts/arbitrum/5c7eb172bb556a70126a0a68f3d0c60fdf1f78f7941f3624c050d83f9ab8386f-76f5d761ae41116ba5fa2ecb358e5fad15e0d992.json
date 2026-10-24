@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "8b4b078fda4edf5592b6f83510d14c0ef9a88830"
+  },
+  "chain": "arbitrum",
+  "chainId": 42161,
+  "domainId": 42161,
+  "component": "collateralRouter",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeName": null,
+  "address": "0x76f5d761ae41116ba5fa2ecb358e5fad15e0d992",
+  "runtimeCodeKeccak256": "0xc45c9ba8f4ed9e9b62d1f5c570545c42e8bcda40a6f25c82adcf227f6c95e88b",
+  "transactionHash": "0x5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f",
+  "blockNumber": 517840191,
+  "blockHash": "0xdea0907626af09fc9ba3d8099e586d3b7b0ffafedcaa662b0b71d0678d42a996",
+  "confirmations": 71,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-router",
+    "factory": "0xa27eadcaf70631e29009019d390e48410a830e64",
+    "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-24T12:41:15.616Z"
+}
