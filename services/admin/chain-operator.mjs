@@ -18,7 +18,7 @@ import {verifyPrepared} from "./prepared-override.mjs";
 import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
 import {verifyExistingSourceRegistry} from "./source-registry-recovery.mjs";
 import {recoverBeforeWalletSignature} from "./deployment-retry.mjs";
-import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
+import {publishDeploymentBatch,deploymentReceiptPath,DeploymentConfirmationsPendingError} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
 import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
@@ -179,10 +179,18 @@ export function createChainOperator({
      !Number.isSafeInteger(factoryReceipt.blockNumber))
    throw Error("Factory deployment receipt does not match approved Factory");
   const compiled=await build(root,commit);
-  const recovered=await verifyExistingSourceRegistry({
-   root,chain,infrastructure,bootstrap,artifact:compiled.artifacts.sourceRegistry,
-   sourceCommit:commit,factoryDeploymentBlock:factoryReceipt.blockNumber,rpc
-  });
+  let recovered;
+  try{
+   recovered=await verifyExistingSourceRegistry({
+    root,chain,infrastructure,bootstrap,artifact:compiled.artifacts.sourceRegistry,
+    sourceCommit:commit,factoryDeploymentBlock:factoryReceipt.blockNumber,rpc
+   });
+  }catch(error){
+   if(error instanceof DeploymentConfirmationsPendingError)
+    return {stage:"pending",reason:"confirmations",txHash:error.txHash,
+     observedConfirmations:error.observed,requiredConfirmations:error.required};
+   throw error;
+  }
   if(!recovered)return null;
   const published=await publish(root,[recovered.input],{rpc});
   if(!/^[a-f0-9]{40}$/i.test(published.commit||""))
