@@ -47,6 +47,11 @@
         "address": "0x511ebf6ce53781c279e88ecf7681f0ea59cc4cad",
         "runtimeCodeKeccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
         "receiptPath": "deployments/receipts/xgrchain/3dd79d903bf31912e6a7d81dcfc960e5e2d2bcd7b1d392c740551bcb7a4cb06e-511ebf6ce53781c279e88ecf7681f0ea59cc4cad.json"
+      },
+      "collateralRouterDeployer": {
+        "address": "0x6e886a9c17bea13190a2dc26a4c61e1a258d608e",
+        "runtimeCodeKeccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+        "receiptPath": "deployments/receipts/xgrchain/d2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb-6e886a9c17bea13190a2dc26a4c61e1a258d608e.json"
       }
     },
     "receiptPaths": [
@@ -56,6 +61,7 @@
       "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-eeb50ae5ade22969a5ec3b9da0878ab57211d606.json",
       "deployments/receipts/xgrchain/9ef0e0413751d06896b32fbdea22dd233b8f2831a7ee57baac3468ffa6937a44-62a9fb2f0df77aa0297dbc567079813ccf7c4ea1.json",
       "deployments/receipts/xgrchain/c9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0-1bd47599e8e7436948e596a0e055f2c7ec02cc30.json",
+      "deployments/receipts/xgrchain/d2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb-6e886a9c17bea13190a2dc26a4c61e1a258d608e.json",
       "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
     ]
   }
