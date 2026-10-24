@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {Wallet,verifyTypedData,Interface} from "ethers";
 import {executeQuoteCalldata} from "../../apps/web/transfer-actions.js";
-import {readFileSync} from "node:fs";
+import {freshDeployedCatalog} from "./test-deployments.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 const address=n=>"0x"+n.toString(16).padStart(40,"0");
@@ -229,8 +229,7 @@ test("signer refuses stale or invalid source block rather than issuing unsafe qu
 });
 
 test("unsigned fee pricing automatically discovers the receipt-backed XGR to Arbitrum route",async()=>{
- const catalog=JSON.parse(readFileSync(
-  new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ const {catalog}=freshDeployedCatalog({names:["xgrchain","arbitrum"],routeDestination:"arbitrum"});
  const route=deployedRoutes(catalog).find(r=>
   r.asset==="XGR"&&r.source==="xgrchain"&&r.destination==="arbitrum");
  assert.ok(route,"canonical deployed route is discovered dynamically");
