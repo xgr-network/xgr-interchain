@@ -17,9 +17,32 @@
         "address": "0x1bd47599e8e7436948e596a0e055f2c7ec02cc30",
         "runtimeCodeKeccak256": "0x4be13e8a70bd20aa698858c885d9b2b51456aceb891b145c7675fa4e29e32142",
         "receiptPath": "deployments/receipts/xgrchain/c9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0-1bd47599e8e7436948e596a0e055f2c7ec02cc30.json"
+      },
+      "transportBundle": {
+        "address": "0xeeb50ae5ade22969a5ec3b9da0878ab57211d606",
+        "runtimeCodeKeccak256": "0xcfc67c32b97b9559fdae5b5a8918e11bf74fe57fad63df32c172da66e40b8641",
+        "receiptPath": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-eeb50ae5ade22969a5ec3b9da0878ab57211d606.json"
+      },
+      "mailbox": {
+        "address": "0x37a8c5f601adf3cbbe70ea66df2f964321c0e02a",
+        "runtimeCodeKeccak256": "0xc74c51fe81b5daab41948f000d99b86c84fbd9026ae8027476bffc5b9f1236dd",
+        "receiptPath": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-37a8c5f601adf3cbbe70ea66df2f964321c0e02a.json"
+      },
+      "dispatchHook": {
+        "address": "0x0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd",
+        "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+        "receiptPath": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd.json"
+      },
+      "requiredHook": {
+        "address": "0x0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd",
+        "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+        "receiptPath": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd.json"
       }
     },
     "receiptPaths": [
+      "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd.json",
+      "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-37a8c5f601adf3cbbe70ea66df2f964321c0e02a.json",
+      "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-eeb50ae5ade22969a5ec3b9da0878ab57211d606.json",
       "deployments/receipts/xgrchain/c9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0-1bd47599e8e7436948e596a0e055f2c7ec02cc30.json",
       "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
     ]
