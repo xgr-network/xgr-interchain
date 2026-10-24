@@ -3,7 +3,7 @@ import {walletJourneys} from "./verified-journey.js";
 // Never silently switch the primary action to an older wallet operation.
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
-const OPEN=new Set(["awaiting-proof","awaiting-onward","awaiting-final-proof","final-delivery-unknown","journey-ambiguous","delivery-unknown","confirming","pending-source","destination-not-deployed"]);
+const OPEN=new Set(["awaiting-proof","awaiting-onward","awaiting-final-proof","final-delivery-unknown","journey-ambiguous","delivery-unknown","confirming","confirming-native-finality","finality-unavailable","pending-source","destination-not-deployed"]);
 export function openWalletTransfers(items,account){
  if(!ADDRESS.test(account||"")||!Array.isArray(items))return [];
  return walletJourneys(items).filter(item=>item?.account?.toLowerCase()===account.toLowerCase()&&
