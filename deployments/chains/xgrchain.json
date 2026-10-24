@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "xgrchain",
+  "chainId": 1643,
+  "domainId": 1643,
+  "xitaV315": {
+    "schemaVersion": 1,
+    "components": {
+      "validatorRegistry": {
+        "address": "0x9b6b92ef1745611f402341965f7fc649cbe0da8c",
+        "runtimeCodeKeccak256": "0xff3c068e9f7111b415713b7376a282bac9f35c631b3ee90f48b52ea2ce2f4cbe",
+        "receiptPath": "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
+      }
+    },
+    "receiptPaths": [
+      "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json"
+    ]
+  }
+}
