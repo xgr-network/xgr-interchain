@@ -488,6 +488,41 @@ export async function pruneTransferAnnouncements({pool,limit=100}){
   AND a.account=e.account`,values:[limit]});
  return {pruned:result.rowCount??0};
 }
+// Canonical backfill of pre-migration paid transfers. Never invent historical
+// EUR/IP evidence: a valid old InterchainFeeCharged event is booked missing_quote
+// if the old quote was not saved. No source transaction is sent or replayed.
+export async function backfillPaidFeeTax({catalog,pool,routes,rpc,limit=5}){
+ const existing=await pool.query({text:`SELECT source_chain,message_id,source_tx_hash,
+  source_block_number,source_block_hash,source_log_index,source_block_at,
+  route_id FROM xita_transfer_operations
+  WHERE execution_adapter IS NOT NULL AND interchain_fee_wei>0
+   AND quote_nonce IS NULL
+  ORDER BY source_block_number ASC LIMIT $1`,values:[limit]});
+ let verified=0,held=0;
+ for(const row of existing.rows){
+  const route=routes.find(r=>r.sourceChain===row.source_chain&&
+   normalize(r.routeId)===normalize(row.route_id));
+  if(!route){held++;continue;}
+  try{
+   const block=await rpc(route.sourceConfig,"eth_getBlockByNumber",[
+    "0x"+BigInt(row.source_block_number).toString(16),false]);
+   if(normalize(block?.hash)!==normalize(row.source_block_hash)){
+    held++;continue;
+   }
+   const record=await verifiedTransfer({catalog,route,
+    transactionHash:row.source_tx_hash,rpc});
+   if(normalize(record.messageId)!==normalize(row.message_id)||
+    !/^[1-9][0-9]*$/.test(String(record.quoteNonce||"")))
+    throw Error("Unverified historical paid fee receipt");
+   await withTransaction(pool,db=>storeVerifiedOperation(db,{route,
+    event:{blockNumber:Number(row.source_block_number),blockHash:row.source_block_hash,
+     logIndex:Number(row.source_log_index),sourceBlockAt:row.source_block_at||null},
+    record}));
+   verified++;
+  }catch{held++;}
+ }
+ return {verified,held};
+}
 // Durable bounded backfill: each small window commits its own cursor.
 export async function catchUpRoute({route,scan,batches=4}){
  if(!Number.isSafeInteger(batches)||batches<1||batches>8)throw Error("Unsafe catch-up budget");
@@ -515,6 +550,8 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
    scan:()=>scanIndexedRoute({catalog,route,pool,rpc,limit})}));}
   catch(error){progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
+ const taxBackfill=await backfillPaidFeeTax({catalog,pool,routes,rpc})
+  .catch(error=>({error:String(error.message||error).slice(0,160)}));
  const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
  await pruneTransferAnnouncements({pool}).catch(()=>{});
  // Only temporary quote evidence is pruned. A genuine charged fee retains its
@@ -526,7 +563,7 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
        WHERE p.source_chain=q.source_chain
          AND p.execution_adapter=q.execution_adapter
          AND p.payer=q.payer AND p.quote_nonce=q.quote_nonce)`}).catch(()=>{});
- return {routes:progress,destinations,accelerated,hintsRechecked};
+ return {routes:progress,destinations,accelerated,hintsRechecked,taxBackfill};
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
  const pool=await transferWriterPool();
