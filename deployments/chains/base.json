@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "base",
+  "chainId": 8453,
+  "domainId": 8453,
+  "xitaV315": {
+    "schemaVersion": 1,
+    "components": {
+      "blsVerifier": {
+        "address": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+        "runtimeCodeKeccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+        "receiptPath": "deployments/receipts/base/418f8efcb6dcc2ebdbcf16316a5251922e30cd5722c6e5913b51186bc71ee80a-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json"
+      }
+    },
+    "receiptPaths": [
+      "deployments/receipts/base/418f8efcb6dcc2ebdbcf16316a5251922e30cd5722c6e5913b51186bc71ee80a-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json"
+    ]
+  }
+}
