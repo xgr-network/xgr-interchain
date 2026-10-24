@@ -711,8 +711,13 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
      const previous=await postJSON("/admin/api/deploy/advance",{type:"chain",target:chain.name});
      if(previous.result?.stage==="pending"){
       const status=previous.result;
+      const reason=status.reason==="confirmations"?
+       "wartet auf "+(status.requiredConfirmations||"erforderliche")+" Blockbestätigungen":
+       "muss anhand des ursprünglichen Wallet-Journals geprüft werden ("+
+         (status.reason||"unknown")+")";
       presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+
-       " · vorhandene TX "+(status.txHash||"")+" wartet auf Bestätigungen; keine neue Wallet-Signatur.","warn");
+       " · alter/ungeklärter Vorgang "+(status.txHash||"")+
+       " "+reason+"; keine neue Wallet-Signatur.","warn");
       break;
      }
      if(previous.result?.stage==="documented"){
