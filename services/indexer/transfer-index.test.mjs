@@ -41,9 +41,8 @@ test("a finalized source scan only accepts canonical Gateway operation logs",asy
  const reader=rpc({
   eth_chainId:()=>hex(1643),
   eth_blockNumber:()=>hex(110),
-   eth_getBlockByNumber:(_,[tag])=>({number:tag==="latest"?hex(108):tag,hash:hash("e")}),
   eth_getLogs:()=>[log],
-  eth_getBlockByNumber:(_,[height])=>({number:height,hash:hash("e")})
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(108):height,hash:hash("e")})
  });
  const result=await readRouteWindow({route,cursor:null,rpc:reader,limit:4});
  assert.equal(result.from,100);
@@ -58,7 +57,6 @@ test("known endpoint block hash mismatch forces reindex, not silent cursor advan
  const reader=rpc({
   eth_chainId:()=>hex(1643),
   eth_blockNumber:()=>hex(110),
-   eth_getBlockByNumber:(_,[tag])=>({number:tag==="latest"?hex(108):tag,hash:hash("e")}),
   eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(108):height,hash:hash("f")})
  });
  const result=await readRouteWindow({route,cursor:{scannedTo:106,scannedHash:hash("e")},
@@ -70,7 +68,7 @@ test("destination delivery uses pinned Base safe block, not latest",async()=>{
  let at=null;
  const reader=rpc({
   eth_chainId:()=>hex(8453),
-  eth_blockNumber:()=>hex(212),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="safe"?hex(200):height,hash:hash("e")}),
   eth_call:(_,[call,block])=>{at=block;assert.equal(call.to,route.destinationMailbox);return "0x"+word(1);}
  });
  const result=await checkedDelivery({route,messageId:hash("d"),rpc:reader});
