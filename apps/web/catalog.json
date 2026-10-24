@@ -502,6 +502,8 @@
         "sourceManifest": "config/assets/a7/XGR/asset.json",
         "receiptPaths": [
           "deployments/receipts/arbitrum/c49aefb248efe523f37d0d204aa1c728b1b4bfe7b496d01f502311ac12fb914e-5a31a62bb6441b499718df8fb767b6286267c74b.json",
+          "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-834291e15b9db12b599bfc201ad5516490776d7f.json",
+          "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-88da20e5ae14c2ec48c3b3069f0d88a33f5849db.json",
           "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-df4289e8037c736955127af53371e1002677b35f.json",
           "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-eeb21da92aaeca479009346c8f27f2fd4d3571f3.json",
           "deployments/receipts/base/9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a-d7443427ca21ae0907d2aa55446470307c990092.json",
@@ -585,6 +587,32 @@
             "receiptPaths": [
               "deployments/receipts/xgrchain/b76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e-44a479f722cb146ccb1dffa46e297879ab76268d.json",
               "deployments/receipts/xgrchain/b76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e-c2fd91639964d91e069225f2a08e70f1c0228eed.json"
+            ]
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "asset-route-deployment",
+            "asset": "XGR",
+            "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+            "routeId": "0x6b8b2d38524393eea76cda62f54300d169d4834bd8e8eb18644f2e1f7f2c105a",
+            "routeName": "arbitrum_to_xgr",
+            "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain",
+            "components": {
+              "gateway": {
+                "address": "0x88da20e5ae14c2ec48c3b3069f0d88a33f5849db",
+                "runtimeCodeKeccak256": "0x0b3047f73c29521a07c80cb515222628ab35605c2ebb433ef37b44ab0e03c63c",
+                "receiptPath": "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-88da20e5ae14c2ec48c3b3069f0d88a33f5849db.json"
+              },
+              "feeVault": {
+                "address": "0x834291e15b9db12b599bfc201ad5516490776d7f",
+                "runtimeCodeKeccak256": "0xc1d491d111c448551c0a6169aa201b5ef66e23da6169c67dd76859ab21a5c12c",
+                "receiptPath": "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-834291e15b9db12b599bfc201ad5516490776d7f.json"
+              }
+            },
+            "receiptPaths": [
+              "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-834291e15b9db12b599bfc201ad5516490776d7f.json",
+              "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-88da20e5ae14c2ec48c3b3069f0d88a33f5849db.json"
             ]
           },
           {
