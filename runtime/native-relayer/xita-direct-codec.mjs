@@ -48,8 +48,8 @@ export function encodeDirectISMMetadata({authorization,signerBitmap,aggregateSig
     return a[key];
   });
   return AbiCoder.defaultAbiCoder().encode(
-    [DIRECT_BLS_AUTHORIZATION_TYPE,"bytes","bytes"],
-    [values,signerBitmap,aggregateSignature]
+    ["tuple("+DIRECT_BLS_AUTHORIZATION_TYPE+",bytes,bytes)"],
+    [[values,signerBitmap,aggregateSignature]]
   );
 }
 
