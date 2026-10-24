@@ -111,9 +111,13 @@ export function classifyRecoveryFailure(err,stderr=""){
  const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
  const t=detail.toLowerCase();
  const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
+  (stage==="verify-destination-quorum"&&/rejects aggregate BLS quorum/i.test(detail))?"PROOF_DESTINATION_QUORUM_REJECTED":
+  (stage==="verify-destination-router"&&/rejects canonical inbound route/i.test(detail))?"PROOF_DESTINATION_ROUTE_REJECTED":
+  (stage==="verify-destination-ism"&&/rejects signed message/i.test(detail))?"PROOF_DESTINATION_ISM_REJECTED":
   rpcCode===-32601?"PROOF_RPC_METHOD_UNAVAILABLE":
   rpcCode===-32602?"PROOF_RPC_ARGUMENT_INVALID":
-  /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
+  stage==="simulate-destination-delivery"&&/execution reverted|missing revert data|call_exception|transaction execution reverted/i.test(detail)?"PROOF_DESTINATION_REVERT":
+   /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
   /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
   /receipt|dispatch|source route|fee allocation|fee vault/.test(t)?"PROOF_SOURCE_EVIDENCE_UNAVAILABLE":"PROOF_NOT_READY";
@@ -166,7 +170,7 @@ const sourceBaseStages=new Set([
 ]);
 const destinationBaseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",
- "simulate-base-delivery","base-archive"
+ "simulate-base-delivery","simulate-destination-delivery","base-archive"
 ]);
 // Only source/destination Base RPC failures can switch providers. Immutable
 // route failures, invalid fees, Merkle proofs and BLS verification never do.
