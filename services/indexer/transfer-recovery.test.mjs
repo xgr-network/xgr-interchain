@@ -9,7 +9,7 @@ function entry(chain,i){const address=addr(i);
   "deployments/receipts/"+chain+"/"+("a".repeat(64))+"-"+address.slice(2)+".json"};
 }
 const core=chain=>{
- const components=Object.fromEntries(["factory","sourceRegistry","mailbox","ism","validatorRegistry","merkleTreeHook"].map((key,i)=>
+ const components=Object.fromEntries(["factory","sourceRegistry","mailbox","ism","validatorRegistry","dispatchHook"].map((key,i)=>
   [key,entry(chain,(i+1).toString(16))]));
  return {present:true,chainId:chain==="base"?8453:1643,xitaV315:{
   components,receiptPaths:Object.values(components).map(c=>c.receiptPath)}};
@@ -84,7 +84,7 @@ test("transfer recovery handler passes source receipt hints without accepting th
 test("proof CLI failures are categorized without putting raw internals in HTTP responses",()=>{
  assert.equal(classifyRecoveryFailure({killed:true},"").code,"PROOF_TIMEOUT");
  assert.equal(classifyRecoveryFailure(new Error("RPC request failed"),"").code,"PROOF_RPC_UNAVAILABLE");
- assert.equal(classifyRecoveryFailure(null,JSON.stringify({status:"RECOVERY_NOT_READY",error:"Merkle proof unavailable"})).code,"PROOF_RECONSTRUCTION_UNAVAILABLE");
+ assert.equal(classifyRecoveryFailure(null,JSON.stringify({status:"RECOVERY_NOT_READY",error:"source receipt unavailable"})).code,"PROOF_SOURCE_EVIDENCE_UNAVAILABLE");
 });
 
 test("structured JSON-RPC error diagnostics retain nested quotes and exact RPC code",()=>{
@@ -140,7 +140,6 @@ test("actual Base source TX qualifies while unrelated historical archive probes 
  const conf=resolveRecoveryRoute(c,"xgr_to_base",message,"ABC",tx);
  const calls=[];
  conf.env.ORIGIN_CHAIN_ID="8453";
- conf.env.ORIGIN_MERKLE_TREE_HOOK=addr("6");
  const result=await probeRouteSourceRpc("https://rpc.example/base",conf,{
   readRpc:null,
   fetcher:async(url,{body})=>{
