@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {downstreamGasProjection,GAS_SAFETY_BPS} from "./fee-gas-projection.js";
+import {downstreamGasProjection,GAS_SAFETY_BPS,formatWeiFee} from "./fee-gas-projection.js";
 const stages=[
  {chain:"xgrchain",kind:"first-delivery",gasUnits:"1200000",gasPriceWei:"1000000000000"},
  {chain:"xgrchain",kind:"onward-bridge-gas",gasUnits:"1200000",gasPriceWei:"1000000000000"},
@@ -32,4 +32,12 @@ test("negative, excessive or unpriced gas stages fail visibly and native protoco
   assert.throws(()=>downstreamGasProjection([cost]),/Invalid downstream gas stage/);
  }
  assert.deepEqual(downstreamGasProjection([{chain:"xgrchain",gasUnits:"0",gasPriceWei:"0",protocolNativeFeeWei:"123"}]),[]);
+});
+
+test("native gas formatting handles sponsored zero and whole or tiny fractional amounts",()=>{
+ assert.equal(formatWeiFee(0n),"0");
+ assert.equal(formatWeiFee(10n**18n),"1");
+ assert.equal(formatWeiFee(48000000000000n),"0.000048");
+ assert.equal(formatWeiFee(1n),"< 0.000000001");
+ assert.throws(()=>formatWeiFee(-1n),/Invalid native wei amount/);
 });
