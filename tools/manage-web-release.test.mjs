@@ -111,3 +111,14 @@ test("DB repair uses idempotent additive migrations and plain SQL checks without
  assert.match(part,/GRANT SELECT, UPDATE, DELETE/);
  assert.match(part,/systemctl restart xita-transfer-indexer\.service/);
 });
+
+test("update restores only explicitly enabled fee services after development reset",()=>{
+ const completion=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(completion);
+ assert.match(completion,/systemctl is-enabled --quiet xita-fee-preview\.service/);
+ assert.match(completion,/systemctl is-enabled --quiet xita-interchain-fee-quote\.service/);
+ assert.match(completion,/wait_enabled_fee_api xita-fee-preview\.service 4093/);
+ assert.match(completion,/wait_enabled_fee_api xita-interchain-fee-quote\.service 4092/);
+ assert.doesNotMatch(completion,/systemctl enable --now xita-(?:fee-preview|interchain-fee-quote)\.service/);
+ assert.doesNotMatch(completion,/systemctl (?:start|enable|restart) xita-(?:gas-sponsor|interchain-fee-claim)/);
+});
