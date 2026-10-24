@@ -60,14 +60,6 @@ Die Direct-BLS-Nachricht bindet Ziel-ISM und Ziel-Registry explizit. Dagegen umf
 
 Quellen: [Registry V3](https://github.com/xgr-network/xgr-interchain/blob/85e9dbbc03122c1c2ecf8014fee0e2e511a15492/contracts/XGRInterchainValidatorRegistryV3.sol#L376-L451), [Node protocol.go](https://github.com/xgr-network/xgr-node/blob/e6fecf8de08e7261afb24014b3d2d56ccbc8eb40/consensus/ibft/interchain/protocol.go#L103-L146).
 
-### PRE-O04 – HIGH, Migrations-/Recovery-Gate – Altes Mainnet-Escrow ist nach Hard Reset nicht weg
-
-Aktuell enthält der GitHub-`deployments/`-Ordner auf `main` nur `.gitkeep`. Das ist als neuer Direct-BLS-Deployment-Startpunkt konsistent, aber die **alten Smart Contracts und gebundenen XGR/Token existieren weiterhin auf den Chains**. Der bisher belegte 1-XGR→1-wXGR-Transfer und alte noch offene Burn/Unlock-Operationen dürfen nicht durch fehlende Listen-/Recovery-Einträge unsichtbar oder unerreichbar werden.
-
-**Maßnahme:** Immutable Archiv der Legacy-Receipts, aller betroffenen Escrow-/Representation-Adressen und offenen `messageId`-Fälle; klare Altvertrag-Exit-/Recovery-Richtlinie, die auch bei fehlendem neuen XITA-Katalog funktioniert. Es ist ausdrücklich **keine automatische Löschung oder Migration von Nutzerwerten** zulässig.
-
-Quellen: [GitHub-Audit PR #131](https://github.com/xgr-network/xgr-interchain/pull/131), [vorheriger Transfernachweis](https://github.com/xgr-network/xgr-interchain/blob/docs/xita-audit-register-20261016/audits/2026-10-16-xita-v3.1.5-gpt-6-pro/evidence/mainnet-xgr-to-base-0x67ef6033.md).
-
 ### PRE-A05 – MEDIUM, Journey-Provenienz – `continueJourney` vertraut einem nicht verifizierten Parent
 
 `XITAExecutionGateway.continueJourney` validiert die Onward-Gateway-/Route-/Fee-Bindings und den echten Wallet-Sender, jedoch **nicht on-chain**, dass `parentMessageId` tatsächlich ein dem Wallet gehörender zugestellter erster Hop mit identischer Asset-/Amount-/Recipient-Identität ist. Der Contract verhindert nur pro Wallet/Parent eine Wiederholung und emittiert `OnwardJourneyDispatched`.
@@ -109,7 +101,6 @@ Der Node validiert Nachrichten-Version `3`, Hash und Größenlimit. Der Contract
 - [ ] **Noch offen:** Ein echter Transfer in beide Richtungen sowie Zwei-Hop Base→XGRChain→Arbitrum, einer ohne GmbH-Relayer oder Service-Gebühr, vor/ nach Validator-Set-Rotation, Wiederholung bereits zugestellter Nachricht.
 - [ ] **Noch offen:** Base/Arbitrum-Finalität gegen realen RPC prüfen, Reorg-Szenario als negative Sicherheitsannahme simulieren.
 - [ ] **Noch offen:** Admin Transport-Bundle nachweisbar ausrollen, seine **eine** ProtocolFee-Adresse korrekt dokumentieren und nach Unterbrechung ohne zweite MetaMask-TX fortsetzen.
-- [ ] **Noch offen:** Historische Escrow-/Representation-/Pending-TX vor dem Hard Reset dokumentieren; keine Nutzerfonds aufgrund der Repo-Bereinigung verlieren.
 - [ ] **Noch offen:** Live-Receipt-/Runtime-Codehash/Owner-/Registry-/Mailbox-/Hook-/Gateway-Bindings für jeden neuen Chain-Deployment-Schritt nachweisen.
 
 ## Erste Deploy-Reihenfolge – ausschließlich nach Freigabe
@@ -123,6 +114,8 @@ Der Node validiert Nachrichten-Version `3`, Hash und Größenlimit. Der Contract
 7. Erst nach Source- und Destination-Deployment mit echten Quorums erste Routes/Transaktionen freischalten.
 
 ## Verbindliche Einordnung
+
+**Geltungsbereich:** XITA befindet sich noch in der aktiven Entwicklung. Vorherige Testdeployments werden verworfen; eine Migration älterer Testbestände ist ausdrücklich **nicht Gegenstand dieser Sicherheitsprüfung**. Es wird ausschließlich die neue Direct-BLS-Struktur und deren Erstdeployment auditiert.
 
 **Voraudit-Urteil:** Die neue Direct-BLS-Signatur-/Receipt-Architektur ist gegenüber dem vorherigen Merkle-Ansatz qualitativ einfacher und besser überprüfbar. Es wurde bislang **keine unmittelbare beliebige Mint-Befugnis ohne 2/3 Quorum** festgestellt. Gleichwohl besteht **keine Freigabe für einen kompletten neuen Mainnet-Deploy-/Asset-Transfer-Betrieb**: PRE-D01 ist ein bestätigter operativer Deploy-Fehler, PRE-S02 und PRE-S03 sind vor irreversiblen Sicherheitsdeployments zu klären, und echte kryptografische Cross-Chain-E2E-Sicherheit ist noch nicht nachgewiesen.
 
