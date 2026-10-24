@@ -29,7 +29,7 @@ function assertCache(cache,now){
  const prices={},nowSec=seconds(now);
  for(const id of requiredIds()){
   const entry=cache.prices[id];
-  if(validPrice(entry,nowSec))prices[id]={usd:entry.usd,last_updated_at:entry.last_updated_at};
+  if(validPrice(entry,nowSec))prices[id]={usd:entry.usd,last_updated_at:entry.last_updated_at,...(Number.isFinite(entry.eur)&&entry.eur>0?{eur:entry.eur}:{})};
  }
  if(!Object.keys(prices).length)
   throw Error("Interchain pricing cache has no valid market prices");
@@ -53,7 +53,7 @@ export async function refreshGasPriceCache({
  // Independently refreshed server-side. One batched request, never one per route,
  // amount, user, quote or browser render.
  const url="https://api.coingecko.com/api/v3/simple/price?ids="+
-  encodeURIComponent(ids.join(","))+"&vs_currencies=usd&include_last_updated_at=true";
+  encodeURIComponent(ids.join(","))+"&vs_currencies=usd%2Ceur&include_last_updated_at=true";
  const headers={accept:"application/json"};
  if(apiKey)headers["x-cg-demo-api-key"]=apiKey;
  const response=await fetcher(url,{headers,signal:AbortSignal.timeout(9000)});
@@ -65,7 +65,7 @@ export async function refreshGasPriceCache({
  for(const id of ids){
   const value=body[id];
   if(validPrice({usd:value?.usd,last_updated_at:value?.last_updated_at},nowSec))
-   entries[id]={usd:value.usd,last_updated_at:value.last_updated_at};
+   entries[id]={usd:value.usd,last_updated_at:value.last_updated_at,...(Number.isFinite(value.eur)&&value.eur>0?{eur:value.eur}:{})};
  }
  if(!Object.keys(entries).length)throw Error("CoinGecko has no valid gas-coin prices");
  // A partial provider response must not erase other still-valid cached assets.

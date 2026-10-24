@@ -33,6 +33,7 @@ Usage: ./manage.sh <command>
   install-tvl  Install read-only generic escrow TVL and gross 24h evidence worker (preconfigured credentials required)
   install-fee-preview  Install read-only unsigned transfer fee preview (no keys, no sponsor timers)
   install-interchain-fee  Install verified quote service, five-minute claim/sponsor timers, and HTTPS API routes
+  install-fee-tax-ledger  Apply append-only verified initial-fee tax ledger migration (no backdated evidence)
   deploy        Backward-compatible alias for publish-web (WEB ONLY)
   help          Show this help
 
@@ -468,6 +469,24 @@ install_price_cache() (
     echo "WARNING: CoinGecko temporarily unavailable. Cached rates remain usable until their verified expiry." >&2
 )
 
+# Operator-only additive tax migration: no synthetic prices, countries or receipts.
+# Does not claim fees, enable sponsorship or restart blockchain services.
+install_fee_tax_ledger() (
+  require_clean_main
+  local db="${XITA_TRANSFER_DB_NAME:-xita}"
+  [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || { echo "Invalid database name" >&2; return 1; }
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/009_initial_fee_tax_evidence.sql" || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
+   SELECT CASE WHEN to_regclass('public.xita_tax_quote_evidence') IS NOT NULL
+      AND to_regclass('public.xita_tax_charged_fees') IS NOT NULL
+      AND to_regclass('public.xita_tax_accounting_export') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM information_schema.columns
+        WHERE table_name='xita_transfer_operations' AND column_name='quote_nonce')
+    THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS || return 1
+  echo "Tax ledger schema installed; verify signer/worker database grants before live paid quotes."
+)
+
 install_interchain_fee() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -740,6 +759,7 @@ case "${1:-help}" in
   install-fee-preview) install_fee_preview ;;
   install-price-cache) install_price_cache ;;
   install-interchain-fee) install_interchain_fee ;;
+  install-fee-tax-ledger) install_fee_tax_ledger ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

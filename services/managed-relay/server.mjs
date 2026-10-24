@@ -9,6 +9,7 @@ import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
+import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const CATALOG_PATH=resolve(root,"apps/web/catalog.json");
@@ -231,8 +232,42 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    return send(200,{ok:true,service:"xita-source-native-fee-quote",
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
-    sponsorship:await readSponsorAvailability(catalog)});
+    sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+     ...await readSponsorAvailability(catalog)}});
   }catch(e){return send(503,{ok:false,error:publicError(e)})}
+ }
+ if(req.method==="GET"&&req.url?.startsWith("/api/xita/v1/managed/sponsorship?")){
+  try{
+   const u=new URL(req.url,"http://127.0.0.1");
+   const account=String(u.searchParams.get("account")||"").toLowerCase();
+   const source=String(u.searchParams.get("source")||"");
+   const messageId=String(u.searchParams.get("messageId")||"").toLowerCase();
+   if(!/^0x[0-9a-f]{40}$/.test(account)||!/^0x[0-9a-f]{64}$/.test(messageId)||
+    !/^[a-z][a-z0-9-]{1,39}$/.test(source))
+    return send(400,{ok:false,error:"Invalid transfer identity"});
+   if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")
+    return send(200,{ok:true,status:"disabled"});
+   if(!sponsorPool){
+    const {Pool}=await import("pg");
+    sponsorPool=new Pool({connectionString:process.env.XITA_SPONSOR_STATUS_DATABASE_URL,
+     max:2,connectionTimeoutMillis:1800,statement_timeout:2000});
+   }
+   // Public status is bound to the verified parent wallet. Never expose
+   // reservations, sponsor nonces, payout values or unrelated customer grants.
+   const q=await sponsorPool.query({text:
+    "SELECT g.grant_key,g.status,p.delivered FROM xita_transfer_operations p "+
+    "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
+    "WHERE p.account=$1 AND p.source_chain=$2 AND p.message_id=$3 "+
+    "AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0 "+
+    "ORDER BY g.created_at DESC LIMIT 3",
+    values:[account,source,messageId]});
+   if(!q.rows.length)return send(200,{ok:true,status:"unavailable"});
+   const grants=q.rows.filter(r=>r.grant_key).map(r=>({
+    stage:r.grant_key.split(":").at(-1),
+    status:["reserved","submitted","confirmed","needs-review"].includes(r.status)?r.status:"unknown"
+   }));
+   return send(200,{ok:true,status:grants.length?"tracked":q.rows[0].delivered===true?"not-required":"pending",grants});
+  }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
  if(req.method!=="POST"||(!preview&&req.url!=="/api/xita/v1/managed/quote"))
@@ -248,7 +283,14 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
   if(!parsed||typeof parsed!=="object"||Array.isArray(parsed)||
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
+   const clientIP=preview?null:verifiedClientIP(req);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
+   if(!preview){
+    const prices=await getSnapshot();
+     const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
+    const evidence=quoteEvidence(reply,prices,clientIP,country);
+    await saveQuoteEvidence(evidence);
+   }
   return send(200,{ok:true,...reply});
  }catch(e){
   const message=publicError(e);

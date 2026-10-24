@@ -115,3 +115,25 @@ test("stale server observer does not permanently disable independent manual reco
  assert.match(flow.message,/not updated recently/);
  assert.equal(flow.verifiedWalletTx,1);
 });
+
+test("optional sponsorship appears strictly after confirmed initial fee payment",()=>{
+ const journey={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const record={...base,sourceChain:"xgrchain",destinationChain:"base",
+  status:"awaiting-proof",delivered:false,executionAdapter:"0x"+"3".repeat(40),
+  interchainFeeWei:"100",confirmed:true};
+ const html=renderTransferFlow({journey,record,sponsorship:{enabled:true,status:"submitted"}});
+ const source=html.indexOf("Source transaction"),sponsor=html.indexOf("Optional gas sponsorship"),
+  quorum=html.indexOf("Validator verification");
+ assert.ok(source>=0&&source<sponsor&&sponsor<quorum);
+ assert.match(html,/Gas grant submitted; awaiting confirmation/);
+ assert.doesNotMatch(html,/Native gas grant confirmed on chain/);
+ assert.doesNotMatch(renderTransferFlow({journey,record,sponsorship:{enabled:false,status:"submitted"}}),
+  /Optional gas sponsorship/);
+ assert.doesNotMatch(renderTransferFlow({journey,record:{...record,confirmed:false},
+  sponsorship:{enabled:true,status:"pending"}}),/Optional gas sponsorship/);
+ const paid=renderTransferFlow({journey,record,
+  sponsorship:{enabled:true,status:"confirmed"}});
+ assert.match(paid,/Native gas grant confirmed on chain/);
+ assert.match(renderTransferFlow({journey,record,
+  sponsorship:{enabled:true,status:"not-required"}}),/Wallet already has sufficient native gas/);
+});

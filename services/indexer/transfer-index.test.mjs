@@ -235,3 +235,34 @@ test("Arbitrum indexer converts safe block timestamp without fractional BigInt",
  assert.equal(result.events.length,1);
  assert.equal(result.events[0].sourceBlockAt,new Date(1792667400000).toISOString());
 });
+
+// Tax evidence is committed only with the canonical initial paid operation.
+test("direct transfers never write a commercial tax fee",async()=>{
+ const queries=[],client={query:async arg=>{const q=typeof arg==="string"?arg:arg.text;queries.push(q);
+  if(q.includes("FOR UPDATE"))return {rows:[]};
+  if(q.includes("INSERT INTO xita_transfer_operations"))return {rows:[{message_id:hash("4")}]};
+  return {rows:[]};},release:()=>{}};
+ const operation={sourceChain:SOURCE,destinationChain:DEST,routeName:route.name,
+  routeId:route.routeId,gateway:route.gateway,asset:"T",assetId:hash("9"),
+  account:address("d"),destinationMailbox:route.destinationMailbox,
+  sourceTxHash:hash("3"),messageId:hash("4"),amountRaw:"1",validatorFeeWei:"1",delivered:false};
+ const event={txHash:hash("3"),messageId:hash("4"),blockHash:hash("7"),logIndex:0,blockNumber:100};
+ await commitWindow({pool:{connect:async()=>client},route,window:{from:100,to:100,events:[event],hash:hash("7"),finalizedHead:100},records:[operation]});
+ assert.ok(!queries.some(q=>q.includes("INSERT INTO xita_tax_charged_fees")));
+});
+test("successful finalized initial adapter fee is recorded once, without assuming delivery",async()=>{
+ const queries=[],client={query:async arg=>{const q=typeof arg==="string"?arg:arg.text;queries.push(q);
+  if(q.includes("FOR UPDATE"))return {rows:[]};
+  if(q.includes("INSERT INTO xita_transfer_operations"))return {rows:[{message_id:hash("4")}]};
+  return {rows:[],rowCount:0};},release:()=>{}};
+ const paid={sourceChain:SOURCE,destinationChain:DEST,routeName:route.name,
+  routeId:route.routeId,gateway:route.gateway,asset:"T",assetId:hash("9"),
+  account:address("d"),destinationMailbox:route.destinationMailbox,
+  sourceTxHash:hash("3"),messageId:hash("4"),amountRaw:"1",validatorFeeWei:"1",
+  executionAdapter:address("e"),interchainFeeWei:"42",quoteNonce:"100",delivered:null};
+ const event={txHash:hash("3"),messageId:hash("4"),blockHash:hash("7"),logIndex:0,blockNumber:100};
+ await commitWindow({pool:{connect:async()=>client},route,window:{from:100,to:100,events:[event],hash:hash("7"),finalizedHead:100},records:[paid]});
+ assert.equal(queries.filter(q=>q.includes("INSERT INTO xita_tax_charged_fees")).length,1);
+ assert.equal(queries.at(-1),"COMMIT");
+ assert.match(queries.find(q=>q.includes("INSERT INTO xita_tax_charged_fees")),/ON CONFLICT\(source_chain,message_id\) DO NOTHING/);
+});

@@ -5,9 +5,9 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {PRICE_CACHE_KIND,readCachedGasPrices,refreshGasPriceCache} from "./price-cache.mjs";
 const now=Date.UTC(2026,9,22,7,30),sec=Math.floor(now/1000);
-const body=(age=0)=>({ethereum:{usd:2500,last_updated_at:sec-age},
- xgr:{usd:0.0001,last_updated_at:sec-age},
- "polygon-ecosystem-token":{usd:0.35,last_updated_at:sec-age}});
+const body=(age=0)=>({ethereum:{usd:2500,eur:2200,last_updated_at:sec-age},
+ xgr:{usd:0.0001,eur:0.00009,last_updated_at:sec-age},
+ "polygon-ecosystem-token":{usd:0.35,eur:0.31,last_updated_at:sec-age}});
 test("one backend refresh persists one shared quote-safe snapshot",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"xita-price-")),path=join(dir,"prices.json");
  try{
@@ -19,7 +19,9 @@ test("one backend refresh persists one shared quote-safe snapshot",async()=>{
   assert.equal(updated.coins.length,3);
   const saved=JSON.parse(await readFile(path,"utf8"));
   assert.equal(saved.kind,PRICE_CACHE_KIND);
+  assert.equal(saved.prices.ethereum.eur,2200);
   assert.equal((await readCachedGasPrices({path,now:now+5*60000})).ethereum.usd,2500);
+  assert.equal((await readCachedGasPrices({path,now:now+5*60000})).ethereum.eur,2200);
   await assert.rejects(()=>readCachedGasPrices({path,now:now+16*60000}),/stale/);
  }finally{await rm(dir,{recursive:true,force:true})}
 });

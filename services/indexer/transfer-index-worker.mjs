@@ -38,6 +38,11 @@ async function withTransaction(pool,fn){
 }
 export async function resetIndexedRoute({pool,route}){
  await withTransaction(pool,async db=>{
+  await db.query({text:`DELETE FROM xita_tax_charged_fees p
+    USING xita_transfer_operations o
+    WHERE o.source_chain=$1 AND o.route_id=$2
+      AND p.source_chain=o.source_chain AND p.message_id=o.message_id`,
+   values:[route.sourceChain,route.routeId]});
   await db.query({text:"DELETE FROM xita_transfer_operations WHERE source_chain=$1 AND route_id=$2",
    values:[route.sourceChain,route.routeId]});
   await db.query({text:"DELETE FROM xita_transfer_index_cursors WHERE source_chain=$1 AND route_id=$2",
@@ -79,17 +84,17 @@ async function storeVerifiedOperation(db,{route,event,record}){
     record.delivered,record.executionAdapter??null,record.interchainFeeWei??null,
     record.finalDestinationChain??null,record.finalRecipient??null,
     record.onwardRouteId??null,record.parentMessageId??null,
-    event.sourceBlockAt??null
+    event.sourceBlockAt??null,record.quoteNonce??null
    ];
    const row=await db.query({text:`INSERT INTO xita_transfer_operations(
     source_chain,message_id,source_tx_hash,source_block_number,source_block_hash,source_log_index,
     account,asset,asset_id,route_name,route_id,gateway,destination_chain,
     destination_mailbox,amount_raw,validator_fee_wei,delivered,delivery_checked_at,
-    execution_adapter,interchain_fee_wei,final_destination_chain,final_recipient,onward_route_id,parent_message_id,source_block_at,escrow_outflow_observed_at)
+    execution_adapter,interchain_fee_wei,final_destination_chain,final_recipient,onward_route_id,parent_message_id,source_block_at,escrow_outflow_observed_at,quote_nonce)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,
       CASE WHEN $17::boolean IS NULL THEN NULL ELSE NOW() END,
       $18,$19,$20,$21,$22,$23,$24,
-      NULL)
+      NULL,$25)
     ON CONFLICT(source_chain,message_id) DO UPDATE SET
       delivered=CASE WHEN xita_transfer_operations.delivered IS TRUE THEN TRUE
        ELSE EXCLUDED.delivered END,
@@ -97,6 +102,7 @@ async function storeVerifiedOperation(db,{route,event,record}){
        THEN xita_transfer_operations.delivery_checked_at ELSE NOW() END,
       execution_adapter=EXCLUDED.execution_adapter,
       interchain_fee_wei=EXCLUDED.interchain_fee_wei,
+      quote_nonce=COALESCE(xita_transfer_operations.quote_nonce,EXCLUDED.quote_nonce),
       final_destination_chain=EXCLUDED.final_destination_chain,
       final_recipient=EXCLUDED.final_recipient,
       onward_route_id=EXCLUDED.onward_route_id,
@@ -106,6 +112,8 @@ async function storeVerifiedOperation(db,{route,event,record}){
     WHERE xita_transfer_operations.parent_message_id IS NOT DISTINCT FROM EXCLUDED.parent_message_id
       AND xita_transfer_operations.execution_adapter IS NOT DISTINCT FROM EXCLUDED.execution_adapter
       AND xita_transfer_operations.interchain_fee_wei IS NOT DISTINCT FROM EXCLUDED.interchain_fee_wei
+      AND (xita_transfer_operations.quote_nonce IS NULL OR
+           xita_transfer_operations.quote_nonce IS NOT DISTINCT FROM EXCLUDED.quote_nonce)
       AND xita_transfer_operations.final_destination_chain IS NOT DISTINCT FROM EXCLUDED.final_destination_chain
       AND xita_transfer_operations.final_recipient IS NOT DISTINCT FROM EXCLUDED.final_recipient
       AND xita_transfer_operations.onward_route_id IS NOT DISTINCT FROM EXCLUDED.onward_route_id
@@ -116,6 +124,26 @@ async function storeVerifiedOperation(db,{route,event,record}){
       xita_transfer_operations.asset_id=EXCLUDED.asset_id
     RETURNING message_id`,values:params});
    if(row.rows.length!==1)throw Error("Conflicting immutable message provenance");
+   if(record.interchainFeeWei!==null&&record.interchainFeeWei!==undefined){
+    if(!/^[1-9][0-9]*$/.test(String(record.quoteNonce||"")))
+     throw Error("Verified initial paid event missing quote nonce");
+    await db.query({text:`INSERT INTO xita_tax_charged_fees (
+      source_chain,message_id,source_tx_hash,source_block_number,source_block_hash,
+      payer,execution_adapter,quote_nonce,service_fee_wei,client_ip,
+      ip_country_code,ip_country_source,ip_country_db_revision,
+      native_coin_id,native_eur_price,gross_fee_eur,eur_price_source,eur_price_at,evidence_status)
+      SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,q.client_ip,
+       q.ip_country_code,q.ip_country_source,q.ip_country_db_revision,
+       q.native_coin_id,q.native_eur_price,q.gross_fee_eur,q.eur_price_source,
+       q.eur_price_at,CASE WHEN q.quote_nonce IS NULL THEN 'missing_quote' WHEN q.ip_country_code IS NULL OR q.native_eur_price IS NULL OR q.gross_fee_eur IS NULL THEN 'partial' ELSE 'matched' END
+      FROM (SELECT 1) x LEFT JOIN xita_tax_quote_evidence q
+       ON q.source_chain=$1 AND q.execution_adapter=$7 AND q.payer=$6
+         AND q.quote_nonce=$8 AND q.quoted_fee_wei=$9
+      ON CONFLICT(source_chain,message_id) DO NOTHING`,values:[
+      record.sourceChain,record.messageId,record.sourceTxHash,event.blockNumber,
+      event.blockHash,record.account,record.executionAdapter,record.quoteNonce,
+      record.interchainFeeWei]});
+   }
 }
 export async function commitWindow({pool,route,window,records}){
  if(!Array.isArray(records)||records.length!==window.events.length||
@@ -416,6 +444,10 @@ export async function reconcileAnnouncedBlocks({pool,routes,rpc,limit=12}){
     continue;
    }
    await withTransaction(pool,async db=>{
+    await db.query({text:`DELETE FROM xita_tax_charged_fees
+      WHERE source_chain=$1 AND source_tx_hash=$2 AND message_id=$3
+      AND source_block_hash=$4`,values:[row.source_chain,row.source_tx_hash,
+      row.verified_message_id,row.verified_block_hash]});
     await db.query({text:`DELETE FROM xita_transfer_operations
       WHERE source_chain=$1 AND source_tx_hash=$2 AND message_id=$3
       AND source_block_hash=$4`,values:[row.source_chain,row.source_tx_hash,
@@ -456,6 +488,41 @@ export async function pruneTransferAnnouncements({pool,limit=100}){
   AND a.account=e.account`,values:[limit]});
  return {pruned:result.rowCount??0};
 }
+// Canonical backfill of pre-migration paid transfers. Never invent historical
+// EUR/IP evidence: a valid old InterchainFeeCharged event is booked missing_quote
+// if the old quote was not saved. No source transaction is sent or replayed.
+export async function backfillPaidFeeTax({catalog,pool,routes,rpc,limit=5}){
+ const existing=await pool.query({text:`SELECT source_chain,message_id,source_tx_hash,
+  source_block_number,source_block_hash,source_log_index,source_block_at,
+  route_id FROM xita_transfer_operations
+  WHERE execution_adapter IS NOT NULL AND interchain_fee_wei>0
+   AND quote_nonce IS NULL
+  ORDER BY source_block_number ASC LIMIT $1`,values:[limit]});
+ let verified=0,held=0;
+ for(const row of existing.rows){
+  const route=routes.find(r=>r.sourceChain===row.source_chain&&
+   normalize(r.routeId)===normalize(row.route_id));
+  if(!route){held++;continue;}
+  try{
+   const block=await rpc(route.sourceConfig,"eth_getBlockByNumber",[
+    "0x"+BigInt(row.source_block_number).toString(16),false]);
+   if(normalize(block?.hash)!==normalize(row.source_block_hash)){
+    held++;continue;
+   }
+   const record=await verifiedTransfer({catalog,route,
+    transactionHash:row.source_tx_hash,rpc});
+   if(normalize(record.messageId)!==normalize(row.message_id)||
+    !/^[1-9][0-9]*$/.test(String(record.quoteNonce||"")))
+    throw Error("Unverified historical paid fee receipt");
+   await withTransaction(pool,db=>storeVerifiedOperation(db,{route,
+    event:{blockNumber:Number(row.source_block_number),blockHash:row.source_block_hash,
+     logIndex:Number(row.source_log_index),sourceBlockAt:row.source_block_at||null},
+    record}));
+   verified++;
+  }catch{held++;}
+ }
+ return {verified,held};
+}
 // Durable bounded backfill: each small window commits its own cursor.
 export async function catchUpRoute({route,scan,batches=4}){
  if(!Number.isSafeInteger(batches)||batches<1||batches>8)throw Error("Unsafe catch-up budget");
@@ -483,9 +550,20 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
    scan:()=>scanIndexedRoute({catalog,route,pool,rpc,limit})}));}
   catch(error){progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
+ const taxBackfill=await backfillPaidFeeTax({catalog,pool,routes,rpc})
+  .catch(error=>({error:String(error.message||error).slice(0,160)}));
  const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
  await pruneTransferAnnouncements({pool}).catch(()=>{});
- return {routes:progress,destinations,accelerated,hintsRechecked};
+ // Only temporary quote evidence is pruned. A genuine charged fee retains its
+ // permanent tax receipt and IP/country evidence. After a generous grace period,
+ // an expired/unpaid quote is not retained indefinitely.
+ await pool.query({text:`DELETE FROM xita_tax_quote_evidence q
+   WHERE q.quote_expires_at < NOW()-INTERVAL '72 hours'
+     AND NOT EXISTS (SELECT 1 FROM xita_tax_charged_fees p
+       WHERE p.source_chain=q.source_chain
+         AND p.execution_adapter=q.execution_adapter
+         AND p.payer=q.payer AND p.quote_nonce=q.quote_nonce)`}).catch(()=>{});
+ return {routes:progress,destinations,accelerated,hintsRechecked,taxBackfill};
 }
 export async function runTransferIndexWorker({intervalMs=12000}={}){
  const pool=await transferWriterPool();

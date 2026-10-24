@@ -22,7 +22,8 @@ import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
-const sponsorship={available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
+const sponsorship={enabled:false,available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
+const sponsorTransfer={key:"",status:"unavailable",grants:[],checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
  sponsorship.loading=true;sponsorship.checkedAt=Date.now();
@@ -34,12 +35,13 @@ async function refreshSponsorship(){
   const data=await response.json();
   if(data?.ok!==true||!data.sponsorship)
    throw Error("No verified sponsor status");
+  sponsorship.enabled=data.sponsorship.enabled===true;
   sponsorship.available=data.sponsorship.available===true;
   sponsorship.chains=data.sponsorship.chains&&typeof data.sponsorship.chains==="object"?
    data.sponsorship.chains:{};
   sponsorship.status=sponsorship.available?"available":"unavailable";
  }catch{
-  sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
+  sponsorship.enabled=false;sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
  }finally{
   sponsorship.loading=false;
   if(path()==="/transfer"&&state.catalog)render();
@@ -137,6 +139,30 @@ async function refreshFeePreview(){
     row.append(name,amount);return row;
    };
    detail.replaceChildren(main,feeRow("Protocol fee",native),feeRow("XITA Service Fee",fee));
+    // Sponsorship offsets wallet gas only, NEVER the mandatory paid route quote.
+    const stages=Array.isArray(value.pricing?.journeyCostStages)?value.pricing.journeyCostStages:[];
+    if(sponsorship.enabled){
+     const estimates=new Map();
+     for(const step of stages){
+      const units=BigInt(step.gasUnits||0),price=BigInt(step.gasPriceWei||0);
+      if(units<=0n||price<=0n)continue;
+      estimates.set(step.chain,(estimates.get(step.chain)||0n)+units*price);
+     }
+     for(const [chain,gas] of estimates){
+      const coinName=sourceFeeCoin(chain);
+      const makeLine=(title,sign)=>{
+       const row=document.createElement("div");row.className="ux-fee-row";
+       const label=document.createElement("span");label.textContent=title+" · "+(names[chain]||chain);
+       const amount=document.createElement("strong");amount.textContent=sign+" "+formatWeiFee(gas)+" "+coinName;
+       row.append(label,amount);detail.append(row);
+      };
+      makeLine("Estimated wallet gas","+");
+      if(sponsorship.chains[chain]===true)makeLine("Potential XITA gas sponsorship","−");
+     }
+     const note=document.createElement("p");note.className="ux-fee-fineprint";
+     note.textContent="Gas sponsorship is enabled. Credits are estimates, depend on wallet eligibility and sponsor reserves, and are only confirmed after the initial paid transaction. The XITA Service Fee and protocol fee are always payable.";
+     detail.append(note);
+    }
    if(onward>0n){
     const note=document.createElement("p");note.className="ux-fee-fineprint";
     note.textContent="XGR onward protocol processing is included in the service quote.";
@@ -343,6 +369,33 @@ function resetFlowView(){
  flowView.account=null;flowView.stage="";
  document.getElementById("xita-flow-dialog")?.close();
 }
+async function refreshTransferSponsorship(binding){
+ const record=binding?.record;
+ if(!record?.confirmed||!record.messageId||!sponsorship.enabled)return;
+ const key=record.sourceChain+":"+record.messageId.toLowerCase()+":"+binding.account.toLowerCase();
+ if(sponsorTransfer.loading||(sponsorTransfer.key===key&&Date.now()-sponsorTransfer.checkedAt<15000))return;
+ sponsorTransfer.loading=true;sponsorTransfer.key=key;sponsorTransfer.checkedAt=Date.now();
+ try{
+  const query=new URLSearchParams({source:record.sourceChain,messageId:record.messageId,account:binding.account});
+  const response=await fetch("/api/xita/v1/managed/sponsorship?"+query,{
+   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}});
+  if(!response.ok)throw Error("Sponsor status unavailable");
+  const data=await response.json();
+  if(sponsorTransfer.key!==key)return;
+  sponsorTransfer.grants=Array.isArray(data.grants)?data.grants:[];
+  sponsorTransfer.status=data.status==="tracked"?
+   (sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
+    sponsorTransfer.grants.some(x=>x.status==="confirmed")?"confirmed":
+    sponsorTransfer.grants.some(x=>x.status==="submitted")?"submitted":"reserved"):
+   data.status==="pending"?"pending":data.status==="not-required"?"not-required":
+   data.status==="disabled"?"disabled":"unavailable";
+ }catch{
+  if(sponsorTransfer.key===key)sponsorTransfer.status="unavailable";
+ }finally{
+  sponsorTransfer.loading=false;
+  if(sponsorTransfer.key===key&&flowView.open)updateFlowModal();
+ }
+}
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
  if(!dialog||!flowView.open)return;
@@ -350,11 +403,17 @@ function updateFlowModal(){
  if(!binding){resetFlowView();return}
  // Rebuild from the current selected source transaction, NEVER from stale
  // global journey state or the most recent child hop.
+ if(sponsorship.enabled&&binding.record?.confirmed)void refreshTransferSponsorship(binding);
+ const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
+ const sponsorEnabled=sponsorship.enabled&&binding.record?.executionAdapter&&
+   BigInt(binding.record?.interchainFeeWei||0)>0n;
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",
   working:transferActivity.working,scanning:transferActivity.scanning,
   notice:binding.sameSession?transferActivity.notice:"",
-  error:binding.sameSession?transferActivity.error:""});
+  error:binding.sameSession?transferActivity.error:"",
+  sponsorship:{enabled:sponsorEnabled,
+   status:sponsorTransfer.key===sponsorKey?sponsorTransfer.status:"pending"}});
  const scroll=dialog.scrollTop;
  dialog.innerHTML=html;dialog.scrollTop=scroll;
  if(!dialog.open)dialog.showModal();
