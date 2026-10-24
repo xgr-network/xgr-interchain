@@ -16,7 +16,7 @@ import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 import {rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
-import {downstreamGasProjection} from "./fee-gas-projection.js";
+import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
@@ -53,10 +53,7 @@ let previewRevision=0,previewTimer=null;
 const feePreviewCache=new Map(); // UI only renders backend quotes; browser never contacts CoinGecko.
 const feePreviewPending=new Map(); // Deduplicate concurrent re-renders of one quote.
 function sourceFeeCoin(chain){return {xgrchain:"XGR",base:"ETH",arbitrum:"ETH",polygon:"POL"}[chain]||chain;}
-function formatWeiFee(wei){
- const n=BigInt(wei),scale=10n**18n;
- return (n/scale).toString()+"."+(n%scale).toString().padStart(18,"0").slice(0,9).replace(/0+$/,"");
-}
+
 function updatePreviewState(status,details=""){
  const element=document.getElementById("ux-fee-preview-status");
  const output=document.getElementById("ux-fee-preview-details");
