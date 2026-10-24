@@ -34,7 +34,8 @@ function mockRPC({from=user,receiptObject=receipt,delivered=false,changedMessage
   if(method==="eth_chainId")return url.includes("/xgr")?"0x66b":"0x2105";
   if(method==="eth_getTransactionByHash")return {from,to:gateway,hash:txHash};
   if(method==="eth_getTransactionReceipt")return receiptObject;
-  if(method==="eth_blockNumber")return "0x64";
+  if(method==="eth_getBlockByNumber")return {number:args[0]==="latest"||args[0]==="safe"?"0x64":args[0],hash:hash("e")};
+   if(method==="eth_blockNumber")return "0x64";
   if(method==="eth_call")return delivered?toTopic(1):toTopic(0);
   if(method==="eth_getLogs")return receipt.logs.slice(0,1).map(l=>({...l,transactionHash:txHash}));
   throw Error(method);
@@ -163,14 +164,15 @@ function chainAgnosticScenario(source,chainId){
   INTERCHAIN_FEE_TOPIC,messageId,toTopic(BigInt(user)),toTopic(BigInt(sourceGateway))],
   data:"0x"+fields.map(w=>w.slice(2)).join("")};
  const mined={from:user,to:outerExecutor,transactionHash:txHash,
-  status:"0x1",blockNumber:"0x10",logs:[op,dispatch,fee]};
+  status:"0x1",blockNumber:"0x10",blockHash:hash("e"),logs:[op,dispatch,fee]};
  const tx={from:user,to:outerExecutor,hash:txHash,input:"0x12345678"};
  const rpc=({transaction=tx,receiptObject=mined,head="0x64"}={})=>async(url,method,args)=>{
   if(method==="eth_chainId")return url.endsWith("/"+source)?
    "0x"+BigInt(chainId).toString(16):"0x66b";
   if(method==="eth_getTransactionByHash")return transaction;
   if(method==="eth_getTransactionReceipt")return receiptObject;
-  if(method==="eth_blockNumber")return head;
+  if(method==="eth_getBlockByNumber")return {number:args[0]==="latest"||args[0]==="safe"?head:args[0],hash:hash("e")};
+   if(method==="eth_blockNumber")return head;
   if(method==="eth_call")return toTopic(0);
   throw Error("Unexpected "+method);
  };
