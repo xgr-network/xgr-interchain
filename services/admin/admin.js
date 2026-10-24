@@ -891,9 +891,9 @@ async function refreshOperationsHealth(){
       arbitrum:"Arbitrum",base:"Base",xgrchain:"XGRChain"
      })[r.source?.toLowerCase()]||r.source||"Unbekannt")+
      '<small>'+esc(r.route||"")+'</small></td>'+
-     '<td>'+healthValue(r.sourceHead)+'</td>'+
-     '<td>'+healthValue(r.scanCursor)+'</td>'+
-     '<td>'+healthValue(r.blockLag)+'</td>'+
+     '<td>'+healthValue(r.sourceHead)+(r.sourceHead===null?'<small>Validator-Head unbekannt</small>':"")+'</td>'+
+     '<td>'+healthValue(r.scanCursor)+(r.scanCursorKnown?'<small>Gespeicherter Cursor</small>':"")+'</td>'+
+     '<td>'+healthValue(r.blockLag)+(r.xitaReferenceLag!==null&&r.xitaReferenceLag!==undefined?'<small>≈ '+healthValue(r.xitaReferenceLag)+' (XITA-Referenz)</small>':"")+'</td>'+
      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
     return '<div class="health-validator-card"><div class="health-validator-card-head"><strong>'+esc(v.name)+'</strong>'+
       healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
