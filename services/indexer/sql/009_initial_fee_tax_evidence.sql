@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS xita_tax_quote_evidence (
  ip_country_source TEXT NOT NULL,
  ip_country_db_revision TEXT,
  native_coin_id TEXT NOT NULL,
- native_eur_price NUMERIC(30,12) NOT NULL,
- gross_fee_eur NUMERIC(30,8) NOT NULL,
- eur_price_source TEXT NOT NULL,
- eur_price_at TIMESTAMPTZ NOT NULL,
+ native_eur_price NUMERIC(30,12),
+ gross_fee_eur NUMERIC(30,8),
+ eur_price_source TEXT,
+ eur_price_at TIMESTAMPTZ,
  quote_issued_at TIMESTAMPTZ NOT NULL,
  quote_expires_at TIMESTAMPTZ NOT NULL,
  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -50,14 +50,16 @@ CREATE TABLE IF NOT EXISTS xita_tax_charged_fees (
  gross_fee_eur NUMERIC(30,8),
  eur_price_source TEXT,
  eur_price_at TIMESTAMPTZ,
- evidence_status TEXT NOT NULL CHECK(evidence_status IN ('matched','missing_quote')),
+ evidence_status TEXT NOT NULL CHECK(evidence_status IN ('matched','partial','missing_quote')),
  verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  PRIMARY KEY(source_chain,message_id),
  -- The contract consumes nonce once per payer+adapter. Never account twice.
  UNIQUE(source_chain,execution_adapter,payer,quote_nonce),
  CHECK(quote_nonce>0 AND service_fee_wei>0),
  CHECK ((evidence_status='matched' AND client_ip IS NOT NULL
-          AND native_eur_price IS NOT NULL AND gross_fee_eur IS NOT NULL)
+          AND ip_country_code IS NOT NULL AND native_eur_price IS NOT NULL AND gross_fee_eur IS NOT NULL)
+     OR (evidence_status='partial' AND client_ip IS NOT NULL
+          AND (ip_country_code IS NULL OR native_eur_price IS NULL OR gross_fee_eur IS NULL))
      OR (evidence_status='missing_quote' AND client_ip IS NULL
           AND native_eur_price IS NULL AND gross_fee_eur IS NULL)),
  CHECK(ip_country_code IS NULL OR ip_country_code ~ '^[A-Z]{2}$')
