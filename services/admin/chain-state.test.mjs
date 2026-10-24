@@ -43,9 +43,12 @@ test("Base observes only documented XITA contracts, not undeployed legacy core",
  };
  const [observed]=await verifyChainInfrastructure([base],{rpc});
  assert.equal(observed.rpc,true);
- // A new receipt can legitimately move Base from not-deployed to partial.
- // Never assume the verified BLS verifier or future deployments do not exist.
- const trustedCore=Boolean(base.hyperlane.mailbox&&base.hyperlane.merkleTreeHook&&base.hyperlane.requiredHook);
+ // Read the Direct-BLS transport deployed under verified GitHub receipts.
+ // The old 'merkleTreeHook' property belongs to the removed architecture;
+ // here the fresh transport binds mailbox, dispatchHook and requiredHook.
+ // Never infer deployment or live core from an unverified legacy address.
+ const trustedCore=Boolean(base.hyperlane.mailbox&&base.hyperlane.dispatchHook&&
+  base.hyperlane.requiredHook&&base.hyperlane.transportBundle);
  assert.equal(observed.core,trustedCore);
  const documented=base.components.filter(c=>!c.optional&&c.status==="documented");
  assert.equal(observed.components.filter(c=>c.live).length,
@@ -57,7 +60,7 @@ test("Base observes only documented XITA contracts, not undeployed legacy core",
  // when an RPC would return code for arbitrary historical Hyperlane addresses.
  const unverified={...base,documented:0,
   components:base.components.map(c=>({...c,address:null,status:"not-deployed"})),
-  hyperlane:{mailbox:null,merkleTreeHook:null,requiredHook:null,transportBundle:null}};
+  hyperlane:{mailbox:null,dispatchHook:null,requiredHook:null,transportBundle:null}};
  const [legacy]=await verifyChainInfrastructure([unverified],{rpc});
  assert.equal(legacy.status,"not-deployed");
  assert.equal(legacy.core,false);
