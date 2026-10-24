@@ -384,18 +384,27 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   confirmationsObserved,requiredConfirmations:confirmations};
  if(depth<BigInt(confirmations))
   return {...base,...finality,...(evidence||{}),status:"confirming"};
+ let safe;
+ try{
+  safe=await verifyNativeFinalityReceipt(
+   (method,args)=>reader.read(method,args),route.sourceConfig.chainId,receipt);
+ }catch(error){
+  return {...base,...finality,...(evidence||{}),status:"finality-unavailable"};
+ }
+ if(!safe.verified)return {...base,...finality,...(evidence||{}),status:"confirming-native-finality"};
  const found={...base,...finality,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
   const dest=createReader(route.destinationConfig,fetcher,rpc);
   await dest.verify();
-  const response=await dest.read("eth_call",[{to:route.destinationMailbox,
-   data:deliveredSelector+messageId.slice(2)},"latest"]);
-  if(!/^0x[0-9a-f]{64}$/i.test(response||"")||
-      ![0n,1n].includes(BigInt(response)))throw Error("Invalid destination delivery state");
-  const delivered=BigInt(response)===1n;
-  return {...found,delivered,status:delivered?
+  const observation=await verifiedNativeMailboxState(
+   (method,args)=>dest.read(method,args),route.destinationConfig.chainId,
+   route.destinationMailbox,deliveredSelector+messageId.slice(2));
+  const delivered=observation.delivered;
+  return {...found,delivered,finalityVerified:true,
+   destinationFinalityBlock:observation.finalizedHead,
+   destinationFinalityHash:observation.finalizedHash,status:delivered?
    (evidence?.onwardRouteId?"awaiting-onward":"delivered"):"awaiting-proof"};
  }catch{
   return {...found,status:"delivery-unknown"};
