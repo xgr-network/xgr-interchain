@@ -81,7 +81,7 @@ export async function saveQuoteEvidence(row,{
     native_coin_id,native_eur_price,gross_fee_eur,eur_price_source,
     eur_price_at,quote_issued_at,quote_expires_at)
    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'coingecko', $13,$14,$15)
-   ON CONFLICT DO NOTHING RETURNING quote_nonce`,
+   ON CONFLICT DO NOTHING`,
    [row.source,row.adapter,row.payer,row.nonce,row.fee,row.ip,row.country,
     row.sourceCountry,row.revision,row.coin,row.eurRate,row.euro,row.priceAt,
     row.issuedAt,row.expiresAt]);
