@@ -531,6 +531,17 @@ export async function awaitUnsignedDeliveryProof({query,fetcher=globalThis.fetch
     lastReason="FRESH_QUORUM_REQUIRED";
     lastNotice="The validator set has changed; fresh signatures for this original message are required.";
    }else throw Error("Unexpected proof-builder result; destination signing blocked.");
+  }else if(["PROOF_DESTINATION_QUORUM_REJECTED",
+    "PROOF_DESTINATION_ROUTE_REJECTED","PROOF_DESTINATION_ISM_REJECTED",
+    "PROOF_DESTINATION_REVERT"].includes(proof?.reason)){
+   const explanation={
+    PROOF_DESTINATION_QUORUM_REJECTED:"Base ValidatorRegistry rejected the BLS aggregate",
+    PROOF_DESTINATION_ROUTE_REJECTED:"Base token router rejected the inbound route",
+    PROOF_DESTINATION_ISM_REJECTED:"Base ISM rejected the attested message",
+    PROOF_DESTINATION_REVERT:"Base Mailbox.process simulation reverted"
+   }[proof.reason];
+   throw Error(explanation+where+
+    ". The confirmed source transfer must be recovered, never submitted again.");
   }else if(proof?.reason==="PROOF_CONFIG_MISMATCH"){
    throw Error("Proof service configuration mismatch"+where+
     "; contact XITA support. The original source transaction remains confirmed.");
