@@ -565,7 +565,9 @@ test("verified direct routes have neutral CTA; undeployed direct and two-hop rou
     assert.match(html,/>Start Transfer<\/button>/);
     assert.doesNotMatch(html,/Transfer XGR → Base|Transfer XGR via XGRChain/);
   }
-  const without=buildExperienceModel(JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8")));
+  const missingFee=freshDeployedCatalog({routeDestination:"base",reverseRoute:true}).catalog;
+  for(const chain of ["xgrchain","base"])delete missingFee.infrastructure[chain].xitaV315.components.executionGateway;
+  const without=buildExperienceModel(missingFee);
   for(const [origin,destination,asset] of [["xgrchain","base","XGR"],["arbitrum","base","XGR"],["xgrchain","base","ARB"]]){
     const html=renderPlanRoute(without,{origin,destination,asset,amount:"1"},"ready",wallet,{});
     assert.match(html,/id="xita-transfer-primary" disabled/);
