@@ -13,3 +13,10 @@ test("only journalled stage-specific grants are reported",()=>{
  assert.equal(r.status,"tracked");assert.deepEqual(r.grants,[
   {stage:"first-delivery",status:"confirmed"},{stage:"final-delivery",status:"submitted"}]);
 });
+
+test("only a matching immutable wallet-aware quote may prove no sponsor needed",()=>{
+ assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:true}]),
+  {ok:true,status:"not-required",grants:[]});
+ assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:false}]),
+  {ok:true,status:"pending",grants:[]});
+});
