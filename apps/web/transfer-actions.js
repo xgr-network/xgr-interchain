@@ -223,7 +223,7 @@ export async function waitForWalletReceipt(provider,hash,{attempts=25,delayMs=30
 }
 export async function startTransfer({catalog,account,asset,source,destination,amount,
  provider,onBroadcast,fetcher=globalThis.fetch,commercial=null,
- onwardParentMessageId=null}){
+ onwardParentMessageId=null,onwardSponsorSourceChain=null}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
  const firstDestination=source!=="xgrchain"&&destination!=="xgrchain"?
   "xgrchain":destination;
@@ -294,6 +294,19 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   // commercial estimator, or a current stage-specific sponsor reserve.
   const nativeGasFloor=BigInt(price)*1200000n*13n/10n;
   if(BigInt(bal)<nativeGasFloor){
+   if(onwardParentMessageId&&key===destination&&
+       /^[a-z][a-z0-9-]{1,39}$/.test(onwardSponsorSourceChain||"")){
+    // TX3 creates the child message which later triggers the promised TX4 gas gift.
+    const query=new URLSearchParams({account,source:onwardSponsorSourceChain,
+     messageId:onwardParentMessageId});
+    const response=await fetcher("/api/xita/v1/managed/sponsorship?"+query,{
+     cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+    }).catch(()=>null);
+    const status=response?.ok?await response.json().catch(()=>null):null;
+    if(status?.ok===true&&status.status!=="needs-review"&&
+       status.promisedStages?.includes("final-delivery"))continue;
+    throw Error("Paid final-delivery gas grant not independently committed; do not send TX3");
+   }
    if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
    if(!sponsor){
     const response=await fetcher("/api/xita/v1/managed/health",{
@@ -488,7 +501,8 @@ export async function startVerifiedOnwardHop({
  // wallet nonce, proof readiness and the destination native balance.
  return startTransfer({catalog,account,asset:first.asset,source:"xgrchain",
   destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast,
-  commercial:false,onwardParentMessageId:first.messageId});
+  commercial:false,onwardParentMessageId:first.messageId,
+  onwardSponsorSourceChain:first.sourceChain});
 }
 // Poll only the immutable message ID from a confirmed source receipt.
 // Never sends a wallet transaction; caller handles destination signing separately.
