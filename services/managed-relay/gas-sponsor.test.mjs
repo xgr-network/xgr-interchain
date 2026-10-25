@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -69,4 +69,37 @@ test("durable reserve is committed before any possible payout; duplicate key den
  assert.equal(await db.reserveGrant(args),false);
  assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_grants")));
  await assert.rejects(()=>db.recordSubmitted(args.key,"not-a-hash"),/Invalid/);
+});
+
+test("tampering with nonce, route, amount, beneficiary or quoted fee never unlocks sponsorship",()=>{
+ const row={...first,route_id:hash("6"),quote_nonce:"42",
+  final_recipient:first.account},firstProof={
+  messageId:row.message_id,routeId:row.route_id,
+  executionAdapter:row.execution_adapter,quoteNonce:row.quote_nonce,
+  interchainFeeWei:row.interchain_fee_wei};
+ const quote={promised_wei:"999",quote_fee_wei:row.interchain_fee_wei,
+  route_id:row.route_id,amount_raw:row.amount_raw,asset:row.asset,
+  final_recipient:row.account,first_destination_chain:row.destination_chain,
+  final_destination_chain:row.final_destination_chain,
+  onward_route_id:row.onward_route_id};
+ assert.equal(verifiedCommittedGrant({row,first:firstProof,quote}),999n);
+ for(const [field,other] of [["quote_nonce","43"],["route_id",hash("7")],
+  ["amount_raw","123"],["account",addr("b")],["interchain_fee_wei","99999"]]){
+  assert.throws(()=>verifiedCommittedGrant({row:{...row,[field]:other},
+   first:firstProof,quote}),/mismatch/,field);
+ }
+ assert.throws(()=>verifiedCommittedGrant({row,first:firstProof,
+  quote:{...quote,promised_wei:"0"}}),/mismatch/);
+});
+test("quote lookup requires exact nonce and restricts beneficiary in SQL",async()=>{
+ let sql="",values=[];
+ const pool={query:async q=>{sql=q.text;values=q.values;return {rows:[]}}};
+ const row={...first,quote_nonce:"42"};
+ const result=await sponsorDatabase(pool).readQuoteCommitment({row,
+  stage:"first-delivery",chain:"xgrchain"});
+ assert.equal(result,null);
+ assert.match(sql,/p.quote_nonce=i.quote_nonce/);
+ assert.match(sql,/p.interchain_fee_wei=i.quote_fee_wei/);
+ assert.match(sql,/p.message_id=\$5/);
+ assert.equal(values[2],first.account);
 });
