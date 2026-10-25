@@ -28,8 +28,8 @@ The initial source fee is never refunded and must not be charged twice.
 
 ## Worker
 The worker reads ONLY activated immutable promises.
-Before each one-shot grant, check original verified fee receipt, current
-transfer stage, wallet identity, native principal exclusion, beneficiary,
+For every one-shot grant after finalized TX1 and before TX2, check the original
+verified fee receipt, immutable quote stage, wallet identity, native principal exclusion, beneficiary,
 per-chain reserve and daily cap, and exact signed commitment.
 Reserve a unique grant key BEFORE broadcasting. Never recompute the promised
 amount from current wallet balances. Reconcile against native chain receipts.
@@ -106,3 +106,17 @@ completion when gas spikes beyond 30%, when native token principal is missing,
 or when the customer spends native funds after quote time. Never auto-pay an
 unquoted top-up or take custody of locked tokens. Exceeding a risk budget
 blocks new quotes or creates a visible held-for-review transfer.
+
+## Upfront sponsorship barrier (2026-10-25)
+
+TX1 is the source-chain XITAExecutionGateway.execute transaction (atomic
+Gateway lock/burn plus service fee). Once the independently verified TX1 fee
+receipt is indexed, the worker pays **all** positive, immutable quote-locked
+native gas grants on the respective chains, whether or not the second-hop
+Gateway or final Mailbox has executed. Each grant retains the unique original
+parent + stage key, wallet nonce reservation, and final receipt reconciliation.
+No second sponsorship computation or grant is initiated after TX2 or TX3.
+The wallet modal waits for the complete grant set to be journal-confirmed
+before allowing any destination Mailbox wallet TX. If sponsorship is absent
+from the original quote, no grant is required. Missing/unknown status fails
+closed and can be resumed from the original source transaction.
