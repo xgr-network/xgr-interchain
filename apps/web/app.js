@@ -26,7 +26,7 @@ const el=document.querySelector("#app"),connect=document.querySelector("#connect
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
-const sponsorTransfer={key:"",status:"unavailable",grants:[],checkedAt:0,loading:false};
+const sponsorTransfer={key:"",status:"unavailable",grants:[],upfrontRequired:null,checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
  sponsorship.loading=true;sponsorship.checkedAt=Date.now();
@@ -233,6 +233,12 @@ function scheduleAutomaticWalletStep(){
  const step=nextVerifiedWalletStep(binding?.record);
  const key=walletStepKey(binding,step);
  if(!key||attemptedWalletSteps.has(key))return;
+ if(binding.record?.executionAdapter&&BigInt(binding.record?.interchainFeeWei||"0")>0n){
+  const id=binding.record.sourceChain+":"+binding.record.messageId.toLowerCase()+
+   ":"+binding.account.toLowerCase();
+  if(sponsorTransfer.key!==id||sponsorTransfer.upfrontRequired===null||
+    (sponsorTransfer.upfrontRequired&&sponsorTransfer.status!=="confirmed"))return;
+ }
  automaticWalletQueued=true;
  queueMicrotask(()=>{
   automaticWalletQueued=false;
@@ -444,6 +450,8 @@ async function refreshTransferSponsorship(binding){
   if(!response.ok)throw Error("Sponsor status unavailable");
   const data=await response.json();
   if(sponsorTransfer.key!==key)return;
+  sponsorTransfer.upfrontRequired=data.ok===true&&typeof data.upfrontRequired==="boolean"?
+   data.upfrontRequired:null;
   sponsorTransfer.grants=Array.isArray(data.grants)?data.grants:[];
   // Only the backend may declare ALL committed stages complete.
   // A single confirmed grant is never evidence that the full journey's
@@ -456,7 +464,9 @@ async function refreshTransferSponsorship(binding){
      sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
      "pending"):"unavailable";
  }catch{
-  if(sponsorTransfer.key===key)sponsorTransfer.status="unavailable";
+  if(sponsorTransfer.key===key){
+   sponsorTransfer.status="unavailable";sponsorTransfer.upfrontRequired=null;
+  }
  }finally{
   sponsorTransfer.loading=false;
   if(sponsorTransfer.key===key&&flowView.open)updateFlowModal();
