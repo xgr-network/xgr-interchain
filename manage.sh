@@ -642,11 +642,33 @@ repair_transfer_db() (
   echo "SUCCESS: XITA transfer DB schema repaired. Worker progress still requires observing fresh indexer cursors."
 )
 
+# After a development reset both already-installed fee workers may be stopped.
+# HTTP readiness is independent from systemctl Type=simple and is checked on
+# the individual loopback ports. Never install, enable, or fund a new signer.
+wait_enabled_fee_api() {
+  local unit="$1" port="$2" i
+  for ((i=1; i<=10; i++)); do
+    if curl -fsS --connect-timeout 1 --max-time 2 \
+        "http://127.0.0.1:$port/api/xita/v1/managed/health" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: $unit did not restore its local fee health endpoint on port $port." >&2
+  privileged systemctl status "$unit" --no-pager --lines=15 >&2 || true
+  privileged journalctl -u "$unit" -n 35 --no-pager >&2 || true
+  return 1
+}
+
 complete_update() {
   require_clean_main
   publish_web
   install_sync
-  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
+  # A hard reset requires services to stop. Previously enabled services
+  # must still get price-refresh installed even while temporarily inactive.
+  if systemctl is-enabled --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-enabled --quiet xita-interchain-fee-quote.service 2>/dev/null || \
      systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
     install_price_cache
   fi
@@ -685,11 +707,18 @@ complete_update() {
   if systemctl is-active --quiet xita-transfer-intake.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-intake.service
   fi
-  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
-    privileged systemctl restart xita-interchain-fee-quote.service
+  # Restart only services already enabled by their explicit installer.
+  # This restores them after hard-reset-dev without activating optional
+  # gas sponsorship, claiming, or any previously disabled fee signer.
+  if systemctl is-enabled --quiet xita-interchain-fee-quote.service 2>/dev/null || \
+     systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    privileged systemctl restart xita-interchain-fee-quote.service || return 1
+    wait_enabled_fee_api xita-interchain-fee-quote.service 4092 || return 1
   fi
-  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
-    privileged systemctl restart xita-fee-preview.service
+  if systemctl is-enabled --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
+    privileged systemctl restart xita-fee-preview.service || return 1
+    wait_enabled_fee_api xita-fee-preview.service 4093 || return 1
   fi
 }
 
