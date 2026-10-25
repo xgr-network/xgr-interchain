@@ -157,9 +157,11 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   sourceTxHash:HASH.test(record?.txHash||"")?record.txHash:
    HASH.test(journey.sourceTxHash||"")?journey.sourceTxHash:null};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
+ const walletStep=record?.status==="awaiting-onward"?"TX3":
+  record?.status==="awaiting-final-proof"?"TX4":"TX2";
  // Sponsorship is an optional independent funded-wallet operation AFTER
  // the initial paid source TX, not an extra MetaMask action or proof of delivery.
  const sponsorEnabled=sponsorship?.enabled===true;
@@ -197,7 +199,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   '</div>'+
   '<div class="ux-flow-banner'+(flow.needsAttention?" is-attention":flow.delivered?" is-done":"")+'" role="status" aria-live="polite">'+
    '<span class="ux-flow-spinner" aria-hidden="true">'+(flow.delivered?"✓":flow.needsAttention?"!":"⌛")+'</span>'+
-   '<div><strong>'+esc(flow.heading)+'</strong><p>'+esc(flow.message)+'</p></div></div>'+
+   '<div><strong>'+esc(walletReady&&!working?'Wallet confirmation coming up':flow.heading)+'</strong><p>'+esc(walletReady&&!working?'The next verified step is '+walletStep+'. Keep this window open: XITA is preparing MetaMask for your confirmation. You can hide this view and resume signing later.':flow.message)+'</p></div></div>'+
   '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
    '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
    ' wallet transactions verified</small></div>'+
