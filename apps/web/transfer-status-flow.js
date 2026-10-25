@@ -132,7 +132,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    proofUnobserved?"The confirmed source has no backend validator-proof observation yet. This step is not ready. No wallet action is required; check the Proof Observer in System Health if it persists.":
    proofReady?"Backend proof ready. XITA will revalidate the canonical chain state before asking MetaMask to sign.":
    canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
-   canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
+   canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. TX3 of 4 is available. Open this transfer and keep the window open: MetaMask will request your confirmation once preflight succeeds. Never repeat the original source transaction.":
    status==="awaiting-onward"?"XGRChain delivery confirmed. XITA is preparing TX3 of 4. Keep this window open; MetaMask will request your confirmation when preflight succeeds.":
    notice?String(notice):
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
