@@ -331,7 +331,7 @@ export function publicSponsorshipView(rows){
   grants.length===promised&&grants.every(g=>g.status==="confirmed")?"confirmed":
   grants.some(g=>g.status==="submitted")?"submitted":
   grants.some(g=>g.status==="reserved")?"reserved":"pending":
-  grants.length?"tracked":"pending";
+  grants.length?"tracked":"not-required";
  return {ok:true,status,grants,upfrontRequired:aware&&promised>0,
   ...(aware?{expectedGrants:promised,
   ...(promisedStages!==null?{promisedStages}: {})}: {})};
