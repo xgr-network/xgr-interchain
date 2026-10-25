@@ -243,3 +243,22 @@ test("empty deployment catalog never exposes orphaned pending SQL operations",as
  assert.deepEqual(stats.hopEvents,[]);
  assert.deepEqual(stats.proofObserver.routes,[]);
 });
+
+test("active deployment routes get priority over retired route backlog (N-11)",async()=>{
+ const wallet=addr("a"),active={sourceChain:"base",routeId:hash("b")};
+ let query="",parameters=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;
+  if(sql.includes("xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"0",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_operations p")&&sql.includes("ORDER BY")){
+   query=sql;parameters=arg.values;return {rows:[]};
+  }
+  return {rows:[]};
+ }};
+ await readWalletTransferIndex({},wallet,{pool,routeList:[active],limit:5});
+ assert.match(query,/p\.source_chain \|\| ':' \|\| trim\(p\.route_id\)/);
+ assert.match(query,/ANY\(\$4::text\[\]\)/);
+ assert.equal(parameters[2],5);
+ assert.deepEqual(parameters[3],["base:"+hash("b")]);
+});
