@@ -462,6 +462,19 @@ async function refreshTransferSponsorship(binding){
   if(sponsorTransfer.key===key&&flowView.open)updateFlowModal();
  }
 }
+async function requireUpfrontSponsorship(record,account){
+ if(!record?.confirmed||!record.executionAdapter||
+    BigInt(record.interchainFeeWei||"0")<=0n)return;
+ const query=new URLSearchParams({source:record.sourceChain,
+  messageId:record.messageId,account});
+ const response=await fetch("/api/xita/v1/managed/sponsorship?"+query,{
+  cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+ }).catch(()=>null);
+ const evidence=response?.ok?await response.json().catch(()=>null):null;
+ if(evidence?.ok!==true||evidence.upfrontRequired!==false&&
+   evidence.status!=="confirmed"&&evidence.status!=="not-required")
+  throw Error("Waiting for ALL quote-locked gas grants to be confirmed before TX2. No wallet transaction was sent.");
+}
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
  if(!dialog||!flowView.open)return;
@@ -534,6 +547,7 @@ async function performTransferAction(){
        next.amountRaw!==selected.amountRaw||
        next.status!=="awaiting-proof")
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
+    await requireUpfrontSponsorship(selected,account);
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:false,
      onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
@@ -555,6 +569,7 @@ async function performTransferAction(){
     setFlowStage("onward-source-sign");
     // The first on-chain message is already delivered to XGRChain. NEVER
     // replay its source Gateway, even if an RPC or UI later fails.
+    await requireUpfrontSponsorship(selected,account);
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
      onBroadcast:({txHash})=>{
