@@ -77,7 +77,8 @@ async function refreshFeePreview(){
  let raw;
  try{raw=amountToUnits(amount,catalog.assets[asset].metadata.decimals).toString();}
  catch{updatePreviewState("Enter a positive token amount to estimate costs.");return;}
- const cacheKey=[asset,source,destination,raw].join(":");
+ const wallet=state.account?.toLowerCase()||"";
+ const cacheKey=[asset,source,destination,raw,wallet].join(":");
  const cached=feePreviewCache.get(cacheKey);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),13000);
  updatePreviewState("Calculating verified protocol and Interchain Fee costs…");
@@ -91,7 +92,8 @@ async function refreshFeePreview(){
     pending=(async()=>{
      const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
       credentials:"omit",headers:{"content-type":"application/json"},
-      signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
+      signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw,
+       ...(wallet?{payer:wallet,recipient:wallet}:{})})});
      const type=res.headers?.get?.("content-type")||"";
      if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
       throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
