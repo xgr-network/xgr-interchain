@@ -106,8 +106,9 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
     !same(first.messageId,row.message_id)||!same(first.routeId,row.route_id)||
     !same(first.executionAdapter,row.execution_adapter)||
     !same(first.recipient,row.account)||!same(first.finalRecipient,row.account)||
-    !same(first.onwardRouteId,row.onward_route_id||"0x"+"0".repeat(64))||
-    first.finalDestinationChain!==(row.final_destination_chain||row.destination_chain)||
+    !same(first.onwardRouteId,row.onward_route_id)||
+    (first.finalDestinationChain||first.destinationChain)!==
+      (row.final_destination_chain||row.destination_chain)||
     first.destinationChain!==row.destination_chain||
     first.asset!==row.asset||first.amountRaw!==String(row.amount_raw)||
     !positive(first.interchainFeeWei)||
