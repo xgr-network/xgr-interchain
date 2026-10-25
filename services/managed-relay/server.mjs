@@ -306,6 +306,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
     sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+     walletAware:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true"&&
+      process.env.XITA_WALLET_AWARE_SPONSORING==="true",
      ...await readSponsorAvailability(catalog)}});
   }catch(e){return send(503,{ok:false,error:publicError(e)})}
  }
