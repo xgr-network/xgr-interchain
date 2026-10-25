@@ -15,8 +15,26 @@ test("only journalled stage-specific grants are reported",()=>{
 });
 
 test("only a matching immutable wallet-aware quote may prove no sponsor needed",()=>{
- assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:true}]),
-  {ok:true,status:"not-required",grants:[]});
+ assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:true,expected_grants:0}]),
+  {ok:true,status:"not-required",grants:[],expectedGrants:0});
  assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:false}]),
   {ok:true,status:"pending",grants:[]});
+});
+
+test("wallet-aware aggregate stays pending until ALL signed stages confirmed",()=>{
+ const base={wallet_aware:true,expected_grants:2};
+ const partial=publicSponsorshipView([
+  {...base,grant_key:message+":first-delivery",status:"confirmed"},
+  {...base,grant_key:message+":final-delivery",status:"reserved"}]);
+ assert.equal(partial.status,"reserved");
+ assert.equal(partial.expectedGrants,2);
+ const complete=publicSponsorshipView([
+  {...base,grant_key:message+":first-delivery",status:"confirmed"},
+  {...base,grant_key:message+":final-delivery",status:"confirmed"}]);
+ assert.equal(complete.status,"confirmed");
+ const absent=publicSponsorshipView([{...base,grant_key:null}]);
+ assert.equal(absent.status,"pending");
+ const review=publicSponsorshipView([{...base,grant_key:message+":first-delivery",
+  status:"needs-review"}]);
+ assert.equal(review.status,"needs-review");
 });
