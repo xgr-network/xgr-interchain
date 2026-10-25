@@ -28,6 +28,16 @@ export function usdPrice12(value){
  if(n<=0n||n>1000000000n*10n**12n)throw Error("CoinGecko USD price invalid");
  return n;
 }
+// Small, fixed commercial participation fee for a transfer that needs no
+// sponsored native gas. Denominated in USD to avoid penalising low-priced XGR
+// relative to ETH; NOT derived from third-party network gas or token amount.
+// The 10% margin and uniform 27% VAT price reserve remain in the existing
+// priceInterchainCostWei policy. No new environment switches or contracts.
+export const XITA_BASE_SERVICE_FEE_USD="0.00001";
+export function fixedBaseServiceFeeSourceWei(sourceNativeUsd){
+ return ceilDiv(usdPrice12(XITA_BASE_SERVICE_FEE_USD)*10n**18n,
+  usdPrice12(sourceNativeUsd));
+}
 export const DEFAULT_INTERCHAIN_MARKUP_BPS=1000n; // 10% nominal net margin over estimated cost.
 export const GERMAN_STANDARD_VAT_BPS=1900n;
 export const EU_STANDARD_VAT_PRICE_CAP_BPS=2700n; // 2026 EU max: Hungary (not global maximum).

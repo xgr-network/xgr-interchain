@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {COINGECKO_GAS_COIN_IDS,usdPrice12,costInSourceWei,verifiedCoinGeckoPrices,ceilDiv,GERMAN_STANDARD_VAT_BPS,priceInterchainCostWei}
+import {COINGECKO_GAS_COIN_IDS,usdPrice12,costInSourceWei,verifiedCoinGeckoPrices,ceilDiv,GERMAN_STANDARD_VAT_BPS,priceInterchainCostWei,fixedBaseServiceFeeSourceWei,XITA_BASE_SERVICE_FEE_USD}
  from "./fee-quote.mjs";
 test("native source fee price maps XGR to CoinGecko xgr and Base gas to ETH",()=>{
  assert.equal(COINGECKO_GAS_COIN_IDS.xgrchain,"xgr");
@@ -67,4 +67,11 @@ test("integer ceil division never rounds under cost",()=>{
  assert.equal(ceilDiv(101n,10n),11n);
  assert.equal(ceilDiv(100n,10n),10n);
  assert.throws(()=>ceilDiv(1n,0n),/Invalid/);
+});
+
+test("platform base fee is USD-fixed and independent of destination native gas",()=>{
+ assert.equal(XITA_BASE_SERVICE_FEE_USD,"0.00001");
+ assert.equal(fixedBaseServiceFeeSourceWei(0.0001),100000000000000000n);
+ assert.equal(fixedBaseServiceFeeSourceWei(2500),4000000000n);
+ assert.throws(()=>fixedBaseServiceFeeSourceWei(0),/invalid/i);
 });
