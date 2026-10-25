@@ -122,7 +122,7 @@ test("wallet API filters by normalized address and counts open events beyond pag
  assert.equal(out.unknownCount,2);
  assert.equal(out.items[0].status,"awaiting-proof");
  assert.equal(out.truncated,true);
- assert.equal(seen.find(x=>typeof x==="object"&&x.values?.length===3).values[0],wallet);
+ assert.equal(seen.find(x=>typeof x==="object"&&x.values?.length===4).values[0],wallet);
 });
 test("atomically persist verified canonical event and cursor, roll back on mismatched message",async()=>{
  const calls=[];
