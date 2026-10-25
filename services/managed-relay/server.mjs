@@ -257,7 +257,8 @@ export function publicSponsorshipView(rows){
   status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
    row.status:"unknown"
  }));
- return {ok:true,status:grants.length?"tracked":"pending",grants};
+ return {ok:true,status:grants.length?"tracked":
+   rows.some(r=>r.wallet_aware===true)?"not-required":"pending",grants};
 }
 async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
@@ -293,9 +294,16 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    }
    // Public status is bound to the verified parent wallet. Never expose
    // reservations, sponsor nonces, payout values or unrelated customer grants.
+   const quoteAware=process.env.XITA_WALLET_AWARE_SPONSORING==="true";
    const q=await sponsorPool.query({text:
-    "SELECT g.grant_key,g.status,p.delivered FROM xita_transfer_operations p "+
+    "SELECT g.grant_key,g.status,p.delivered,"+
+    (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware ":" FALSE AS wallet_aware ")+
+    "FROM xita_transfer_operations p "+
     "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
+    (quoteAware?"LEFT JOIN xita_sponsor_quote_intents i ON"+
+      " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+      " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+      " AND i.quote_fee_wei=p.interchain_fee_wei ":"")+
     "WHERE p.account=$1 AND p.source_chain=$2 AND p.message_id=$3 "+
     "AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0 "+
     "ORDER BY g.created_at DESC LIMIT 3",
