@@ -123,7 +123,8 @@ async function refreshFeePreview(){
    principal=BigInt(value.sourceTokenPrincipalWei||0),
    bridge=BigInt(value.sourceBridgeNativeWei);
   const onward=BigInt(value.pricing?.onwardProtocolFeeWei||0);
-  if(bridge<principal+validator||fee<=0n)throw Error("Inconsistent protocol quote");
+  if(bridge<principal+validator||fee<0n||
+   (fee===0n&&value.directGatewayEligible!==true))throw Error("Inconsistent protocol quote");
   const native=bridge-principal;
   const total=native+fee;
   if(String(value.estimatedRouteFeeWei)!==total.toString()||
