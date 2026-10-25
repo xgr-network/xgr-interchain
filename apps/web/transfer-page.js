@@ -36,7 +36,7 @@ export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],sc
   '<span class="ux-transfer-status is-pending-source">Unverified source TX</span></div>'+
   '<p class="ux-small">Wallet broadcast recorded on this device. Awaiting independent transaction and receipt checks. This is not evidence of a successful lock or delivery. Do not send TX1 again.</p>'+
   '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(h.txHash)+'</code></div>'+
-  '<a class="ux-button" data-nav href="/transfer?resume='+encodeURIComponent(h.txHash)+'">Inspect original TX →</a>'+
+  '<button class="ux-button" type="button" data-xita-inspect-broadcast="'+esc(h.txHash)+'" data-xita-broadcast-chain="'+esc(h.sourceChain)+'">Verify source TX</button>'+
   '</article>').join("");
  const cards=walletJourneys(items).filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
