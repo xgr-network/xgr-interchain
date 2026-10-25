@@ -3,7 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
-import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
+import {ceilDiv,usdPrice12,priceInterchainCostWei,fixedBaseServiceFeeSourceWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {COINGECKO_GAS_COIN_IDS,quotedJourneyCostWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
 
@@ -159,12 +159,9 @@ export async function buildManagedQuote({
    total+ceilDiv(BigInt(grant.amountWei)*
     usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
     usdPrice12(oracle.sourceUsd)),0n);
-  // Fixed economic margin is derived from the original full journey cost,
-  // so sufficient wallet gas still pays the platform for its service.
-  const fullWei=BigInt(quotedJourneyCostWei({source,stages,
-   coinGeckoSnapshot:priceData,now}).estimatedCostSourceWei);
-  const baseWei=ceilDiv(fullWei*1000n,10000n);
-  if(baseWei<=0n)throw Error("Derived service margin is unavailable");
+  // Fixed micro base fee: gas prices and third-party validator fees MUST
+  // NOT increase the platform minimum when the wallet needs no sponsor.
+  const baseWei=fixedBaseServiceFeeSourceWei(oracle.sourceUsd);
   const priced=priceInterchainCostWei({estimatedCostSourceWei:cost+baseWei,vatBps:0n});
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
