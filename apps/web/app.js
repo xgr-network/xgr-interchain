@@ -235,15 +235,9 @@ function scheduleAutomaticWalletStep(){
  const step=nextVerifiedWalletStep(binding?.record);
  const key=walletStepKey(binding,step);
  if(!key||attemptedWalletSteps.has(key))return;
- // Gas sponsorship is a TX1 -> TX2 dependency ONLY, not a TX3/TX4 gate.
- if(step.kind==="first-delivery"&&binding.record?.executionAdapter&&
-    BigInt(binding.record?.interchainFeeWei||"0")>0n){
-  const id=binding.record.sourceChain+":"+binding.record.messageId.toLowerCase()+
-   ":"+binding.account.toLowerCase();
-  if(sponsorTransfer.key!==id||
-     !sponsorAllowsContinuation({ok:true,status:sponsorTransfer.status,
-      upfrontRequired:sponsorTransfer.upfrontRequired}))return;
- }
+ // Fee payment alone never constitutes a sponsor commitment.
+ // Always attempt read-only preflight; requireUpfrontSponsorship enforces
+ // matching quote commitments before asking the wallet to sign TX2.
  automaticWalletQueued=true;
  queueMicrotask(()=>{
   automaticWalletQueued=false;
