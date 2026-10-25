@@ -125,15 +125,15 @@ test("optional sponsorship appears strictly after confirmed initial fee payment"
  const source=html.indexOf("Source transaction"),sponsor=html.indexOf("Optional gas sponsorship"),
   quorum=html.indexOf("Validator verification");
  assert.ok(source>=0&&source<sponsor&&sponsor<quorum);
- assert.match(html,/Gas grant submitted; awaiting confirmation/);
- assert.doesNotMatch(html,/Native gas grant confirmed on chain/);
+ assert.match(html,/Upfront gas grants submitted; awaiting confirmations/);
+ assert.doesNotMatch(html,/All upfront native gas grants confirmed on chain/);
  assert.doesNotMatch(renderTransferFlow({journey,record,sponsorship:{enabled:false,status:"submitted"}}),
   /Optional gas sponsorship/);
  assert.doesNotMatch(renderTransferFlow({journey,record:{...record,confirmed:false},
   sponsorship:{enabled:true,status:"pending"}}),/Optional gas sponsorship/);
  const paid=renderTransferFlow({journey,record,
   sponsorship:{enabled:true,status:"confirmed"}});
- assert.match(paid,/Native gas grant confirmed on chain/);
+ assert.match(paid,/All upfront native gas grants confirmed on chain/);
  assert.match(renderTransferFlow({journey,record,
   sponsorship:{enabled:true,status:"not-required"}}),/No sponsor grant required for a verified stage/);
 });
@@ -162,7 +162,7 @@ test("pending gas sponsorship is not rendered as actively checking forever",()=>
   interchainFeeWei:"100",executionAdapter:"0x"+"3".repeat(40)};
  const html=renderTransferFlow({journey:j,record,
   sponsorship:{enabled:true,status:"pending"}});
- assert.match(html,/Gas sponsorship decision pending/);
+ assert.match(html,/Waiting for all upfront gas grants before destination delivery/);
  assert.match(html,/ux-flow-step-state">Pending/);
 });
 
@@ -171,7 +171,7 @@ test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
   executionAdapter:"0x"+"3".repeat(40),interchainFeeWei:"100"};
  const html=renderTransferFlow({journey,record,
   sponsorship:{enabled:true,status:"pending"}});
- assert.match(html,/Gas sponsorship decision pending/);
+ assert.match(html,/Waiting for all upfront gas grants before destination delivery/);
  assert.doesNotMatch(html,/Wallet already has sufficient native gas/);
 });
 

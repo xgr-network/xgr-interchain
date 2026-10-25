@@ -7,25 +7,21 @@ const first={account:addr("a"),asset:"XGR",source_chain:"base",
  amount_raw:"1000000000000000000",execution_adapter:addr("3"),
  interchain_fee_wei:"10000",delivered:false,final_destination_chain:"polygon",
  onward_route_id:hash("4"),child_message_id:null,child_source_tx_hash:null};
-test("native gas sponsor selects only verified immutable journey stages",()=>{
- assert.deepEqual(sponsorStage(first),{stage:"first-delivery",chain:"xgrchain",
-  keyChain:"base",parentMessageId:first.message_id,sourceTxHash:first.source_tx_hash});
- assert.equal(sponsorStage({...first,execution_adapter:null}),null);
- assert.equal(sponsorStage({...first,interchain_fee_wei:"0"}),null);
- assert.equal(sponsorStage({...first,delivered:null}),null);
- const hub=sponsorStage({...first,delivered:true});
- assert.equal(hub.stage,"hub-onward");
- assert.equal(hub.chain,"xgrchain");
- const final=sponsorStage({...first,delivered:true,child_message_id:hash("5"),
-  child_delivered:false,child_destination_chain:"polygon",
-  child_source_tx_hash:hash("6")});
- assert.equal(final.stage,"final-delivery");
- assert.equal(final.chain,"polygon");
- assert.equal(sponsorStage({...first,delivered:true,child_message_id:hash("5"),
-  child_delivered:true}),null);
- assert.equal(sponsorGrantKey(first,"first-delivery"),
-  "base:"+hash("1")+":first-delivery");
- assert.throws(()=>sponsorGrantKey(first,"bad"),/Invalid/);
+test("all quoted stages are independently eligible after TX1 and never after TX2",()=>{
+ const stages=[["first-delivery","xgrchain"],["hub-onward","xgrchain"],
+  ["final-delivery","polygon"]];
+ for(const [stage,chain] of stages){
+  const grant=sponsorStage(first,stage,chain);
+  assert.equal(grant?.stage,stage);
+  assert.equal(grant?.chain,chain);
+  assert.equal(sponsorStage({...first,delivered:true},stage,chain),null);
+ }
+ assert.equal(sponsorStage(first,"final-delivery","base"),null);
+ assert.equal(sponsorStage(first,"unquoted","polygon"),null);
+ assert.equal(sponsorStage({...first,execution_adapter:null},"first-delivery","xgrchain"),null);
+ assert.equal(sponsorStage({...first,interchain_fee_wei:"0"},"first-delivery","xgrchain"),null);
+ assert.equal(sponsorStage({...first,delivered:null},"hub-onward","xgrchain"),null);
+ assert.equal(sponsorGrantKey(first,"first-delivery"),"base:"+hash("1")+":first-delivery");
 });
 test("gas grants may cover gas and validator fee, NEVER a native token principal",()=>{
  const gas=sponsorGrantNeed({stage:"first-delivery",balanceWei:0n,

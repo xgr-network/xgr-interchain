@@ -2,7 +2,7 @@
 // Mailbox transaction. Everything is rechecked against finalized on-chain
 // source evidence, with a durable one-shot reservation BEFORE signing.
 import {readFileSync} from "node:fs";
-import {Wallet,JsonRpcProvider,Contract,zeroPadValue} from "ethers";
+import {Wallet,JsonRpcProvider,Contract} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
 import {readCachedGasPrices} from "./price-cache.mjs";
@@ -18,29 +18,26 @@ const ABI_FEE=["function interchainFeeRecipient() view returns (address)"];
 const ABI_HUB=[
  "function onwardParentUsed(address,bytes32) view returns (bool)"
 ];
-const ABI_GATEWAY=[
- "function quoteILN(uint32,bytes32,uint256) view returns (uint256,uint256,uint256,uint256)"
-];
 
 export const SPONSOR_STAGES=Object.freeze([
  "first-delivery","hub-onward","final-delivery"
 ]);
-export function sponsorStage(row){
+// Every stage comes from an immutable signed quote. Never choose a grant
+// according to whether TX2/TX3 already happened: all are prepaid after TX1.
+export function sponsorStage(row,stage,chain){
  if(!row||!ADDR.test(row.account||"")||!HASH.test(row.message_id||"")||
-    !ADDR.test(row.execution_adapter||"")||!positive(row.interchain_fee_wei)||
-    !positive(row.amount_raw))return null;
- if(row.delivered===false)return {stage:"first-delivery",
-  chain:row.destination_chain,keyChain:row.source_chain,
+    !HASH.test(row.source_tx_hash||"")||!ADDR.test(row.execution_adapter||"")||
+    !positive(row.interchain_fee_wei)||!positive(row.amount_raw)||
+    row.delivered!==false||!SPONSOR_STAGES.includes(stage))return null;
+ const twoHop=row.destination_chain==="xgrchain"&&
+  HASH.test(row.onward_route_id||"")&&
+  row.final_destination_chain&&row.final_destination_chain!=="xgrchain";
+ const expected=stage==="first-delivery"?row.destination_chain:
+  twoHop&&stage==="hub-onward"?"xgrchain":
+  twoHop&&stage==="final-delivery"?row.final_destination_chain:null;
+ if(!expected||chain!==expected)return null;
+ return {stage,chain,keyChain:row.source_chain,
   parentMessageId:row.message_id,sourceTxHash:row.source_tx_hash};
- if(row.delivered!==true||!row.onward_route_id)return null;
- if(!row.child_message_id)return {stage:"hub-onward",chain:"xgrchain",
-  keyChain:row.source_chain,parentMessageId:row.message_id,
-  sourceTxHash:row.source_tx_hash};
- if(row.child_delivered===false)return {stage:"final-delivery",
-  chain:row.child_destination_chain,keyChain:row.source_chain,
-  parentMessageId:row.message_id,sourceTxHash:row.source_tx_hash,
-  childTxHash:row.child_source_tx_hash,childMessageId:row.child_message_id};
- return null;
 }
 export function sponsorGrantNeed({stage,balanceWei,gasUnits,gasPriceWei,
  nativeBridgeValueWei=0n,nativePrincipalWei=0n}){
@@ -101,65 +98,49 @@ async function getProvider(catalog,name,map){
  return map.get(name);
 }
 async function checkCandidate({catalog,row,stage,providers,fetcher}){
- // An indexed row by itself is not sufficient to send money. Recheck the
- // original source receipt and the independent destination Mailbox state.
+ // Independently authenticate the finalized TX1 fee receipt and wallet.
+ // No sponsorship is authorized once TX2 has already been delivered.
  const first=await findWalletSourceTx({catalog,account:row.account,
   sourceChain:row.source_chain,txHash:row.source_tx_hash,fetcher});
- if(!first.confirmed||!same(first.messageId,row.message_id)||
-   !same(first.executionAdapter,row.execution_adapter)||
-   !same(first.recipient,row.account)||
-   !same(first.finalRecipient,row.account)||
-   first.asset!==row.asset||first.amountRaw!==String(row.amount_raw)||
-   !positive(first.interchainFeeWei))throw Error("Unverified sponsored first-hop source");
- if(stage==="first-delivery"){
-  if(first.delivered!==false||first.destinationChain!==row.destination_chain)
-   throw Error("First delivery state changed");
-  return {first};
- }
- if(first.status!=="awaiting-onward"||first.destinationChain!=="xgrchain"||
+ if(!first.confirmed||first.status!=="awaiting-proof"||first.delivered!==false||
+    !same(first.messageId,row.message_id)||!same(first.routeId,row.route_id)||
+    !same(first.executionAdapter,row.execution_adapter)||
+    !same(first.recipient,row.account)||!same(first.finalRecipient,row.account)||
+    !same(first.onwardRouteId,row.onward_route_id)||
+    (first.finalDestinationChain||first.destinationChain)!==
+      (row.final_destination_chain||row.destination_chain)||
+    first.destinationChain!==row.destination_chain||
+    first.asset!==row.asset||first.amountRaw!==String(row.amount_raw)||
+    !positive(first.interchainFeeWei)||
+    String(first.quoteNonce||"")!==String(row.quote_nonce))
+  throw Error("TX1 Gateway fee receipt or native finality not verified");
+ if(stage==="first-delivery")return {first};
+ if(first.destinationChain!=="xgrchain"||
+    !HASH.test(row.onward_route_id||"")||
     !same(first.onwardRouteId,row.onward_route_id)||
     first.finalDestinationChain!==row.final_destination_chain)
-  throw Error("Hub continuation does not match signed first-hop intent");
- if(stage==="hub-onward"){
-  const hubRoute=deployedRoutes(catalog).filter(r=>r.asset===row.asset&&
-   r.source==="xgrchain"&&r.destination===row.final_destination_chain&&
-   same(r.routeId,row.onward_route_id));
-  if(hubRoute.length!==1)throw Error("No unique signed XGR continuation route");
-  const hubAdapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
-  if(!ADDR.test(hubAdapter?.address||""))throw Error("XGR continuation adapter not deployed");
-  const provider=await getProvider(catalog,"xgrchain",providers);
-  const seen=await new Contract(hubAdapter.address,ABI_HUB,provider)
-   .onwardParentUsed(row.account,row.message_id);
-  if(seen)throw Error("Onward parent already consumed on chain");
-  return {first,route:hubRoute[0]};
- }
- if(stage==="final-delivery"){
-  if(!HASH.test(row.child_message_id||"")||
-     !HASH.test(row.child_source_tx_hash||""))
-   throw Error("Unverified second-hop receipt");
-  const next=await findWalletSourceTx({catalog,account:row.account,
-   sourceChain:"xgrchain",txHash:row.child_source_tx_hash,fetcher});
-  if(!next.confirmed||next.delivered!==false||
-    !same(next.messageId,row.child_message_id)||
-    !same(next.parentMessageId,row.message_id)||
-    !same(next.routeId,row.onward_route_id)||
-    next.destinationChain!==row.final_destination_chain||
-    next.amountRaw!==first.amountRaw||
-    !same(next.recipient,first.finalRecipient))
-   throw Error("Second-hop parent binding or destination is invalid");
-  return {first,next};
- }
- throw Error("Invalid sponsor step");
+  throw Error("Unsigned or invalid two-hop continuation");
+ const routes=deployedRoutes(catalog).filter(r=>r.asset===row.asset&&
+  r.source==="xgrchain"&&r.destination===row.final_destination_chain&&
+  same(r.routeId,row.onward_route_id));
+ if(routes.length!==1)throw Error("No unique documented second-hop route");
+ const hubAdapter=catalog.infrastructure?.xgrchain?.xitaV315?.components?.executionGateway;
+ if(!ADDR.test(hubAdapter?.address||""))
+  throw Error("Verified XGR onward adapter unavailable");
+ const hubProvider=await getProvider(catalog,"xgrchain",providers);
+ if(await new Contract(hubAdapter.address,ABI_HUB,hubProvider)
+  .onwardParentUsed(row.account,row.message_id))
+  throw Error("Original parent already used for second hop");
+ return {first,route:routes[0]};
 }
 // The worker never accepts an unauthenticated public request, destination
 // address or grant amount. Both come from verified read-only chain evidence.
 export async function sponsorOneCandidate({
  catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
- nativePolicy,walletAware=true,afterReserve=null
+ nativePolicy,stage,chain,afterReserve=null
 }){
- const stageInfo=sponsorStage(row);
+ const stageInfo=sponsorStage(row,stage,chain);
  if(!stageInfo)return {status:"ineligible"};
- const {stage,chain}=stageInfo;
  const cfg=nativePolicy?.[chain];
  if(!cfg||!positive(cfg.maxGrantWei)||!positive(cfg.dailyMaxWei)||
     !positive(cfg.minReserveWei)||!positive(cfg.gasUnits))
@@ -175,34 +156,11 @@ export async function sponsorOneCandidate({
  const fee=await provider.getFeeData();
  const gasPrice=fee.maxFeePerGas||fee.gasPrice;
  if(!gasPrice||gasPrice<=0n)throw Error("Destination gas price unavailable");
- let bridge=0n,principal=0n;
- if(stage==="hub-onward"){
-  const route=proof.route,sourceToken=route.sourceToken;
-  const quote=await new Contract(route.gateway,ABI_GATEWAY,provider)
-   .quoteILN(catalog.chains[route.destination].domainId,
-    zeroPadValue(row.account,32),BigInt(row.amount_raw));
-  if(BigInt(quote[0])<=0n)throw Error("Onward validator fee unavailable");
-  bridge=BigInt(quote[2]);
-  principal=sourceToken===null?BigInt(row.amount_raw):0n;
-  if(bridge<principal+BigInt(quote[0]))
-   throw Error("Invalid sponsored native bridge quote");
- }
- let value;
- if(walletAware){
-  // Immutable, database-joined commitment; independently verified source
-  // contract receipt is checked below. Never recompute a grant from current
-  // wallet balance after its fee has been signed and paid.
-  const quote=await db.readQuoteCommitment({row,stage,chain});
-  if(!quote)return {status:"no-matching-quote-promise",chain,stage};
-  value=verifiedCommittedGrant({row,first:proof.first,quote});
- }else{
-  const accountBalance=await provider.getBalance(row.account);
-  const needed=sponsorGrantNeed({stage,balanceWei:accountBalance,
-   gasUnits:BigInt(cfg.gasUnits),gasPriceWei:gasPrice,
-   nativeBridgeValueWei:bridge,nativePrincipalWei:principal});
-  if(needed.status!=="needed")return {status:needed.status,chain,stage};
-  value=BigInt(needed.amountWei);
- }
+ // The amount is the original atomic signed quote commitment. Never
+ // recompute from a later balance or wait for an unminted hub principal.
+ const quote=await db.readQuoteCommitment({row,stage,chain});
+ if(!quote)return {status:"no-matching-quote-promise",chain,stage};
+ const value=verifiedCommittedGrant({row,first:proof.first,quote});
  if(value<=0n)throw Error("Invalid immutable sponsor grant amount");
  if(value>BigInt(cfg.maxGrantWei))
   return {status:"over-grant-cap",chain,stage,requiredWei:value.toString()};
@@ -239,6 +197,23 @@ export async function sponsorOneCandidate({
    to:row.account,value,nonce:noncePending,gasLimit
   });
   await db.recordSubmitted(key,tx.hash);
+  // A single wallet may need two XGRChain grants. Confirm each grant before
+  // attempting the next nonce rather than postponing it until a timer tick.
+  // A timeout NEVER authorizes a duplicate transaction.
+  let receipt=null;
+  try{receipt=await tx.wait(1,30000)}catch{}
+  if(receipt){
+   if(receipt.hash?.toLowerCase()!==tx.hash.toLowerCase()||
+      !same(tx.from,wallet.address)||!same(tx.to,row.account)||
+      BigInt(tx.value)!==value||Number(tx.nonce)!==Number(noncePending))
+    throw Error("Sponsor receipt mismatch; operator reconciliation required");
+   if(receipt.status===1){
+    await db.recordConfirmed(key,tx.hash);
+    return {status:"confirmed",chain,stage,txHash:tx.hash,amountWei:value.toString()};
+   }
+   await db.recordFailed(key,tx.hash);
+   return {status:"needs-review",chain,stage,txHash:tx.hash};
+  }
   return {status:"submitted",chain,stage,txHash:tx.hash,amountWei:value.toString()};
  }catch(error){
   await db.recordNeedsReview(key,tiny(error?.message||error));
@@ -313,6 +288,21 @@ export function sponsorDatabase(pool){
    });
    if(r.rows.length!==1)throw Error("Sponsorship reservation changed after broadcast");
   },
+  async recordConfirmed(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
+   const result=await pool.query({text:
+    "UPDATE xita_sponsor_grants SET status='confirmed',updated_at=NOW()"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted' RETURNING grant_key",
+    values:[key,txHash.toLowerCase()]});
+   if(result.rows.length!==1)throw Error("Sponsor confirmation journal changed");
+  },
+  async recordFailed(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
+   await pool.query({text:
+    "UPDATE xita_sponsor_grants SET status='needs-review',updated_at=NOW()"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    values:[key,txHash.toLowerCase()]});
+  },
   async recordNeedsReview(key,message){
    await pool.query({text:"UPDATE xita_sponsor_grants SET status='needs-review',"+
     " last_error=$2,updated_at=NOW() WHERE grant_key=$1 AND status='reserved'",
@@ -354,7 +344,7 @@ export async function reportSponsorReserves({pool,catalog,wallet,policy,provider
     (await p.getFeeData()).gasPrice||0n;
    const balance=await p.getBalance(wallet.address);
    const ready=gasPrice>0n&&balance>=BigInt(cfg.minReserveWei)+
-    BigInt(cfg.maxGrantWei)+gasPrice*42000n;
+    BigInt(cfg.maxGrantWei)+gasPrice*120000n;
    await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
      "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
      " VALUES($1,$2,$3,$4,NOW())"+
@@ -395,32 +385,32 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
    " p.quote_nonce::text AS quote_nonce,p.route_id,"+
-   " c.message_id AS child_message_id,c.source_tx_hash AS child_source_tx_hash,"+
-   " c.destination_chain AS child_destination_chain,c.delivered AS child_delivered"+
-   " FROM xita_transfer_operations p LEFT JOIN LATERAL ("+
-   " SELECT message_id,source_tx_hash,destination_chain,delivered FROM xita_transfer_operations c"+
-   " WHERE c.parent_message_id=p.message_id AND c.source_chain='xgrchain'"+
-   " AND c.account=p.account AND c.asset=p.asset AND c.amount_raw=p.amount_raw"+
-   " AND c.route_id=p.onward_route_id LIMIT 1) c ON TRUE"+
-   " WHERE p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
-   " AND p.parent_message_id IS NULL AND ("+
-   " p.delivered IS FALSE OR (p.delivered IS TRUE AND"+
-   " p.onward_route_id IS NOT NULL AND (c.message_id IS NULL OR c.delivered IS FALSE)))"+
+   " c.grant_stage,c.grant_chain"+
+   " FROM xita_transfer_operations p"+
+   " JOIN xita_sponsor_quote_intents i ON"+
+   " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+   " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+   " AND i.quote_fee_wei=p.interchain_fee_wei"+
+   " JOIN xita_sponsor_quote_commitments c ON"+
+   " c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+   " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce"+
+   " WHERE p.parent_message_id IS NULL AND p.delivered IS FALSE"+
+   " AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
-   " g.grant_key=p.source_chain||':'||p.message_id||':'||"+
-   " CASE WHEN p.delivered IS FALSE THEN 'first-delivery'"+
-   " WHEN c.message_id IS NULL THEN 'hub-onward' ELSE 'final-delivery' END)"+
-   " ORDER BY p.source_indexed_at ASC LIMIT 120");
+   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
+   " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
-  const walletAware=true;
   for(const row of rows.rows){
-   if(!policy[sponsorStage(row)?.chain])continue;
+   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
+   if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
+   if(!policy[grant.chain])continue;
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy,walletAware}));}
+    providers:providerCache,fetcher,nativePolicy:policy,
+    stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
   return {status:"checked",reviewed:rows.rows.length,reserves,reconciled,

@@ -26,7 +26,7 @@ const el=document.querySelector("#app"),connect=document.querySelector("#connect
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
-const sponsorTransfer={key:"",status:"unavailable",grants:[],checkedAt:0,loading:false};
+const sponsorTransfer={key:"",status:"unavailable",grants:[],upfrontRequired:null,checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
  sponsorship.loading=true;sponsorship.checkedAt=Date.now();
@@ -233,6 +233,12 @@ function scheduleAutomaticWalletStep(){
  const step=nextVerifiedWalletStep(binding?.record);
  const key=walletStepKey(binding,step);
  if(!key||attemptedWalletSteps.has(key))return;
+ if(binding.record?.executionAdapter&&BigInt(binding.record?.interchainFeeWei||"0")>0n){
+  const id=binding.record.sourceChain+":"+binding.record.messageId.toLowerCase()+
+   ":"+binding.account.toLowerCase();
+  if(sponsorTransfer.key!==id||sponsorTransfer.upfrontRequired===null||
+    (sponsorTransfer.upfrontRequired&&sponsorTransfer.status!=="confirmed"))return;
+ }
  automaticWalletQueued=true;
  queueMicrotask(()=>{
   automaticWalletQueued=false;
@@ -433,7 +439,8 @@ function resetFlowView(){
 }
 async function refreshTransferSponsorship(binding){
  const record=binding?.record;
- if(!record?.confirmed||!record.messageId||!sponsorship.enabled)return;
+ if(!record?.confirmed||!record.messageId||
+    !record.executionAdapter||BigInt(record.interchainFeeWei||"0")<=0n)return;
  const key=record.sourceChain+":"+record.messageId.toLowerCase()+":"+binding.account.toLowerCase();
  if(sponsorTransfer.loading||(sponsorTransfer.key===key&&Date.now()-sponsorTransfer.checkedAt<15000))return;
  sponsorTransfer.loading=true;sponsorTransfer.key=key;sponsorTransfer.checkedAt=Date.now();
@@ -444,6 +451,8 @@ async function refreshTransferSponsorship(binding){
   if(!response.ok)throw Error("Sponsor status unavailable");
   const data=await response.json();
   if(sponsorTransfer.key!==key)return;
+  sponsorTransfer.upfrontRequired=data.ok===true&&typeof data.upfrontRequired==="boolean"?
+   data.upfrontRequired:null;
   sponsorTransfer.grants=Array.isArray(data.grants)?data.grants:[];
   // Only the backend may declare ALL committed stages complete.
   // A single confirmed grant is never evidence that the full journey's
@@ -456,11 +465,26 @@ async function refreshTransferSponsorship(binding){
      sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
      "pending"):"unavailable";
  }catch{
-  if(sponsorTransfer.key===key)sponsorTransfer.status="unavailable";
+  if(sponsorTransfer.key===key){
+   sponsorTransfer.status="unavailable";sponsorTransfer.upfrontRequired=null;
+  }
  }finally{
   sponsorTransfer.loading=false;
   if(sponsorTransfer.key===key&&flowView.open)updateFlowModal();
  }
+}
+async function requireUpfrontSponsorship(record,account){
+ if(!record?.confirmed||!record.executionAdapter||
+    BigInt(record.interchainFeeWei||"0")<=0n)return;
+ const query=new URLSearchParams({source:record.sourceChain,
+  messageId:record.messageId,account});
+ const response=await fetch("/api/xita/v1/managed/sponsorship?"+query,{
+  cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+ }).catch(()=>null);
+ const evidence=response?.ok?await response.json().catch(()=>null):null;
+ if(evidence?.ok!==true||evidence.upfrontRequired!==false&&
+   evidence.status!=="confirmed"&&evidence.status!=="not-required")
+  throw Error("Waiting for ALL quote-locked gas grants to be confirmed before TX2. No wallet transaction was sent.");
 }
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
@@ -469,9 +493,11 @@ function updateFlowModal(){
  if(!binding){resetFlowView();return}
  // Rebuild from the current selected source transaction, NEVER from stale
  // global journey state or the most recent child hop.
- if(sponsorship.enabled&&binding.record?.confirmed)void refreshTransferSponsorship(binding);
+ if(binding.record?.confirmed&&binding.record?.executionAdapter&&
+    BigInt(binding.record?.interchainFeeWei||"0")>0n)
+  void refreshTransferSponsorship(binding);
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
- const sponsorEnabled=sponsorship.enabled&&binding.record?.executionAdapter&&
+ const sponsorEnabled=Boolean(binding.record?.executionAdapter)&&
    BigInt(binding.record?.interchainFeeWei||0)>0n;
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",
@@ -534,6 +560,7 @@ async function performTransferAction(){
        next.amountRaw!==selected.amountRaw||
        next.status!=="awaiting-proof")
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
+    await requireUpfrontSponsorship(selected,account);
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:false,
      onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
@@ -555,6 +582,7 @@ async function performTransferAction(){
     setFlowStage("onward-source-sign");
     // The first on-chain message is already delivered to XGRChain. NEVER
     // replay its source Gateway, even if an RPC or UI later fails.
+    await requireUpfrontSponsorship(selected,account);
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
      onBroadcast:({txHash})=>{

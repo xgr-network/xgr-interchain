@@ -158,12 +158,12 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
  const sponsorStage=sponsorship?.status==="confirmed"?"complete":
   sponsorship?.status==="needs-review"?"attention":
   sponsorship?.status==="not-required"?"complete":"pending";
- const sponsorNote=sponsorship?.status==="confirmed"?"Native gas grant confirmed on chain":
+ const sponsorNote=sponsorship?.status==="confirmed"?"All upfront native gas grants confirmed on chain":
   sponsorship?.status==="needs-review"?"Gas grant requires operator review":
-  sponsorship?.status==="submitted"?"Gas grant submitted; awaiting confirmation":
+  sponsorship?.status==="submitted"?"Upfront gas grants submitted; awaiting confirmations":
   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
   sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
-  sponsorship?.status==="pending"?"Gas sponsorship decision pending; own native gas may still be required":
+  sponsorship?.status==="pending"?"Waiting for all upfront gas grants before destination delivery":
   sponsorship?.status==="disabled"?"Gas sponsorship disabled; own native gas required":
   "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
