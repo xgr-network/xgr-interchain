@@ -35,3 +35,11 @@ test("role repair retains exact privilege boundaries and is wired before signer 
  assert.match(sql,/GRANT SELECT ON TABLE public\.xita_sponsor_quote_commitments, public\.xita_sponsor_grants/);
  assert.doesNotMatch(sql,/GRANT ALL|TO PUBLIC|GRANT UPDATE|GRANT DELETE/);
 });
+
+test("update checks signed quote role before publishing website and restarts signer afterward",()=>{
+ const manage=readFileSync(new URL("../manage.sh",import.meta.url),"utf8");
+ const update=manage.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(update);
+ assert.ok(update.indexOf("install_wallet_aware_sponsor_db")<update.indexOf("publish_web"));
+ assert.ok(update.indexOf("publish_web")<update.indexOf("restart xita-interchain-fee-quote.service"));
+});
