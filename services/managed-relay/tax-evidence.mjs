@@ -72,7 +72,7 @@ export function quoteEvidence(reply,prices,ip,location){
 }
 export async function saveQuoteEvidence(row,{
  connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL,
- quoteReply=null
+ quoteReply=null,grantLimits=null
 }={}){
  if(!connectionString)throw Error("Tax evidence database unavailable");
  const pool=new Pool({connectionString,max:1,connectionTimeoutMillis:2000});
@@ -113,10 +113,38 @@ export async function saveQuoteEvidence(row,{
      "0x"+q.finalRecipient.slice(-40).toLowerCase(),q.onwardRouteId.toLowerCase(),
      row.issuedAt,row.expiresAt]
    });
+   // Lock each chain's budget in a stable sorted order, shared between
+   // concurrent quote transactions. Count all outstanding signed promises
+   // in the 24h window, even if a quote later expires: conservative by design.
+   // Reserved grant amounts are included in this bound before another quote
+   // can be signed and delivered to a wallet.
+   for(const chain of [...new Set(grants.map(g=>g.chain))].sort()){
+    const cap=grantLimits?.[chain];
+    if(!cap)throw Error("Missing chain sponsorship budget");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",
+     ["xita-sponsor-quote-budget:"+chain]);
+    const reserved=await client.query({text:
+     "SELECT COALESCE(SUM(promised_wei),0)::text AS amount"+
+     " FROM xita_sponsor_quote_commitments"+
+     " WHERE grant_chain=$1 AND created_at >= NOW()-INTERVAL '24 hours'",
+     values:[chain]});
+    const issued=await client.query({text:
+     "SELECT COALESCE(SUM(amount_wei),0)::text AS amount"+
+     " FROM xita_sponsor_grants"+
+     " WHERE chain_name=$1 AND created_at >= NOW()-INTERVAL '24 hours'",
+     values:[chain]});
+    const next=grants.filter(g=>g.chain===chain).reduce((v,g)=>v+BigInt(g.amountWei),0n);
+    // Conservative double-count of grants from promises prevents
+    // oversubscription; subsequent claims must fit the same budget.
+    if(next+BigInt(reserved.rows[0]?.amount||"0")+
+       BigInt(issued.rows[0]?.amount||"0")>BigInt(cap.dailyMaxWei))
+     throw Error("Sponsor quote capacity exhausted on "+chain);
+   }
    for(const g of grants){
     if(!["first-delivery","hub-onward","final-delivery"].includes(g.stage)||
        !/^[a-z][a-z0-9-]{1,39}$/.test(g.chain)||
-       !/^[1-9][0-9]*$/.test(g.amountWei))
+       !/^[1-9][0-9]*$/.test(g.amountWei)||
+       BigInt(g.amountWei)>BigInt(grantLimits?.[g.chain]?.maxGrantWei||"0"))
      throw Error("Invalid quote-bound sponsor grant");
     await client.query({
      text:"INSERT INTO xita_sponsor_quote_commitments "+
