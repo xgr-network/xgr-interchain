@@ -131,7 +131,16 @@ async function refreshFeePreview(){
     const node=document.createElement(tag);if(cls)node.className=cls;
     if(label!==undefined)node.textContent=label;return node;
    };
-   const rrows=rows.map(r=>({...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain}));
+   const allocation=value.pricing?.walletAware===true?
+    value.pricing?.sponsorAllocation:null;
+   const rrows=rows.map(r=>{
+    const stages=Array.isArray(allocation)?allocation.filter(x=>x.chain===r.chain):null;
+    const paid=stages?.reduce((sum,x)=>sum+BigInt(x.walletCoveredWei),0n);
+    const sponsored=stages?.reduce((sum,x)=>sum+BigInt(x.shortfallWei),0n);
+    return {...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain,
+     ...(stages?{conditionalNetWei:paid,potentialSponsorWei:sponsored,
+       eligible:sponsored>0n}:{})};
+   });
    detail.hidden=false;
    const section=make("div","ux-fee-summary");
    const initial=make("div","ux-fee-summary-part");
@@ -148,7 +157,7 @@ async function refreshFeePreview(){
      gas.append(line);
     }
     gas.append(make("small","ux-fee-summary-hint",
-     sponsorship.enabled?"After potential XITA sponsorship · estimates":"Estimated additional downstream network gas"));
+     sponsorship.enabled?(allocation?"Wallet-paid native gas · quote-time estimate":"After potential XITA sponsorship · estimates"):"Estimated additional downstream network gas"));
    }else gas.append(make("strong","ux-fee-summary-value","Unavailable"));
    section.append(initial,gas);
    const breakdown=make("details","ux-fee-details");
@@ -175,7 +184,9 @@ async function refreshFeePreview(){
       content.append(make("p","ux-fee-details-note","Sponsorship on "+r.label+" is unavailable; the wallet may need to fund gas."));
     }
    }
-   content.append(make("p","ux-fee-details-note","Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
+   content.append(make("p","ux-fee-details-note",allocation?
+    "Wallet-specific signed quote: the service fee includes only the promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and fixed onward protocol costs are included in the estimate. Source gas and ERC-20 approvals are separate.":
+    "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
    if(onward>0n)content.append(make("p","ux-fee-details-note","XGR onward protocol processing is already priced into the XITA Service Fee."));
    breakdown.append(content);
    detail.replaceChildren(section,breakdown);
