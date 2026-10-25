@@ -118,7 +118,12 @@ export async function readWalletTransferIndex(catalog,account,{
  const cursors=await connected.query(
   "SELECT source_chain,route_name,gateway,route_id,deployment_block,scanned_to,finalized_head,updated_at FROM xita_transfer_index_cursors"
  );
+ const activeRoutes=routeList||indexedRoutes(catalog);
  const coverage=routeIndexCoverage(catalog,cursors.rows,{now,routeList});
+ // Keep historical rows discoverable but prioritize currently deployed route
+ // traffic, so retired-route backlog cannot occupy the entire wallet page.
+ const activeKeys=[...new Set(activeRoutes.map(r=>
+  r.sourceChain+":"+lowercase(r.routeId)))];
  const rows=await connected.query({
   text:`SELECT account,asset,source_chain,destination_chain,route_name,route_id,gateway,
     source_tx_hash,message_id,source_block_number,amount_raw::text AS amount_raw,
@@ -135,8 +140,10 @@ export async function readWalletTransferIndex(catalog,account,{
     ORDER BY CASE WHEN (p.delivered IS DISTINCT FROM TRUE OR
       (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
       THEN 0 ELSE 1 END,
+      CASE WHEN (p.source_chain || ':' || trim(p.route_id)) =
+        ANY($4::text[]) THEN 0 ELSE 1 END,
       p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT $3`,
-  values:[lowercase(account),onlyPending,limit]
+  values:[lowercase(account),onlyPending,limit,activeKeys]
  });
  const totals=await connected.query({text:`SELECT
    COUNT(*) FILTER (WHERE p.delivered IS FALSE OR
