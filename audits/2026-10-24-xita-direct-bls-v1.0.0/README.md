@@ -2,9 +2,9 @@
 
 **Audit ID:** `XITA-DBLS-2026-10-24-v1.0.0`  
 **Audit date:** 2026-10-24; frozen snapshot: `2026-10-24T15:27:42Z`  
-**Reviewer:** GPT-6, independent AI-assisted source, integration and on-chain security assessment; **not** a human third-party security certification.  
+**Audit model:** OpenAI GPT-6 Astra (audit operator attribution); independent source, integration and on-chain security assessment.  
 **Architecture:** Direct BLS per message (no Merkle-tree checkpoint mechanism in the active transfer path).  
-**Disclosure:** REDACTED_PUBLIC; full original PDF and reproduction evidence remain access-controlled.  
+**Artifact provenance:** The original English audit PDF must be included here after exact-byte/hash verification. Existing public Markdown is a summary, not a substitute for the source report.  
 **Outcome:** 0 Critical / 1 High / 6 Medium / 7 Low / 3 Informational. **No unconditional mainnet security sign-off.**
 
 ## Immutable source baseline
