@@ -64,3 +64,20 @@ BEGIN
 END $$;
 -- No trigger may authorize a payout: worker must recheck canonical source TX,
 -- matched nonce/fee/route/recipient AND quote-time immutable intent separately.
+
+-- Indexer-issued wake-ups only. NOT grant authorization. PG coalesces equal
+-- notifications within a transaction and delivers them only on COMMIT.
+CREATE OR REPLACE FUNCTION xita_notify_sponsor_transfer_change()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+ IF TG_OP='INSERT' THEN
+  PERFORM pg_notify('xita_sponsor_tick','changed');
+ ELSIF OLD.delivered IS DISTINCT FROM NEW.delivered THEN
+  PERFORM pg_notify('xita_sponsor_tick','changed');
+ END IF;
+ RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS xita_sponsor_transfer_tick ON xita_transfer_operations;
+CREATE TRIGGER xita_sponsor_transfer_tick
+ AFTER INSERT OR UPDATE OF delivered ON xita_transfer_operations
+ FOR EACH ROW EXECUTE FUNCTION xita_notify_sponsor_transfer_change();
