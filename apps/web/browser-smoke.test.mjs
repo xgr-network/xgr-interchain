@@ -212,7 +212,7 @@ test("real browser reconnects wallet and opens pending transfer without TX input
   const transfer=await visit(executable,origin+"/transfer?token=XGR&resume="+txHash);
   assert.match(transfer,/data-passive-wallet="yes"/);
   assert.doesNotMatch(transfer,/data-unwanted-wallet-prompt="yes"/);
-  assert.match(transfer,/Continue delivery/);
+  assert.match(transfer,/Continue transfer · view status/);
   assert.match(transfer,/id="xita-open-transfer"/);
   assert.ok(transfer.includes(txHash),"Existing transfer must be selected by exact TX");
   assert.ok(received.filter(path=>path==="/api/xeta/v1/transfers/wallet").length>=2,
