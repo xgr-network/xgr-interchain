@@ -56,11 +56,8 @@ Preserve the original EIP-712 schema and XITAExecutionGateway contracts.
 
 ## Runtime implementation
 
-- `XITA_WALLET_AWARE_SPONSORING=false` is the default. The feature is OFF
-  until a production operator explicitly enables it, after SQL/role validation.
-- `XITA_WALLET_AWARE_BASE_FEE_WEI` is a **positive** source-native base cost
-  entered by the operator. The quote engine computes the signed gross fee,
-  including the uniform net markup and VAT reserve. There is no silent default.
+- `XITA_INTERCHAIN_SPONSOR_ENABLED` is the sole existing sponsor switch. When enabled, wallet-aware quote pricing and immutable grants apply. No secondary flag is supported.
+- The positive platform base cost is derived from the original full-journey cost using the existing 10% margin policy; the signed fee adds only the wallet gas shortfall. No additional fee ENV is required.
 - Only the allowlisted signer-side chain RPC supplies payer gas balances;
   client-provided balances are rejected. The signer binds payer to recipient.
 - `./manage.sh install-wallet-aware-sponsor-db` installs an additive SQL
@@ -87,7 +84,7 @@ Preserve the original EIP-712 schema and XITAExecutionGateway contracts.
    Native Interchain Contracts). Confirm the real browser smoke test.
 2. Run the additive DB migration as the operator, then verify tables,
    exact role permissions and notification trigger.
-3. Populate the base fee and verify sufficient XGR/ETH/POL native gas reserves
+3. Verify sufficient XGR/ETH/POL native gas reserves
    in the GmbH sponsor wallet on **each** relevant chain.
 4. Verify that a zero-gas, partial-gas and fully-funded wallet receive
    different signed service fees **without** any client-supplied gas amount.
@@ -99,10 +96,7 @@ Preserve the original EIP-712 schema and XITAExecutionGateway contracts.
 7. Execute both directions on a limited mainnet test amount, including a
    deliberately delayed proof, an interrupted browser session, and changed
    wallet balance after quoting.
-8. Explicitly opt in with `XITA_WALLET_AWARE_SPONSORING=true` only after
-   the above checks. Remove this switch for an immediate fail-closed rollback
-   to legacy optional-deficit sponsoring for **new** quotes. Already persisted
-   commitments require operator reconciliation before disabling the grant worker.
+8. The existing `XITA_INTERCHAIN_SPONSOR_ENABLED=true` enables new quotes with immutable grants after the database migration. If disabled, no new grants are issued; previously paid transfer commitments require operator reconciliation before disabling the worker.
 
 ## Critical limitations
 

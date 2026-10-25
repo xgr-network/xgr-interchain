@@ -155,7 +155,7 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
 // address or grant amount. Both come from verified read-only chain evidence.
 export async function sponsorOneCandidate({
  catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
- nativePolicy,walletAware=false,afterReserve=null
+ nativePolicy,walletAware=true,afterReserve=null
 }){
  const stageInfo=sponsorStage(row);
  if(!stageInfo)return {status:"ineligible"};
@@ -205,7 +205,7 @@ export async function sponsorOneCandidate({
  }
  if(value<=0n)throw Error("Invalid immutable sponsor grant amount");
  if(value>BigInt(cfg.maxGrantWei))
-  return {status:"over-grant-cap",chain,stage,requiredWei:needed.amountWei};
+  return {status:"over-grant-cap",chain,stage,requiredWei:value.toString()};
  const payerBalance=await provider.getBalance(wallet.address);
  if(payerBalance<value+BigInt(cfg.minReserveWei)+gasPrice*42000n)
   return {status:"sponsor-reserve-low",chain,stage};
@@ -405,7 +405,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
-  const walletAware=env.XITA_WALLET_AWARE_SPONSORING==="true";
+  const walletAware=true;
   for(const row of rows.rows){
    if(!policy[sponsorStage(row)?.chain])continue;
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,

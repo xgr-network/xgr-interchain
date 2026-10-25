@@ -546,14 +546,14 @@ install_interchain_fee() (
     privileged install -m 0644 "$ROOT/services/managed-relay/$service.timer.example" \
       "/etc/systemd/system/$service.timer"
   done
+  # Sponsor switch already exists; schema must precede signer activation.
+  install_wallet_aware_sponsor_db || return 1
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-interchain-fee-quote.service
   privileged systemctl restart xita-interchain-fee-quote.service
   privileged systemctl is-active xita-interchain-fee-quote.service
   privileged systemctl enable --now xita-interchain-fee-claim.timer xita-gas-sponsor.timer
-  # Safe additive SQL and idle listener are installed with the existing
-  # fee service; they NEVER enable sponsorship or send a transaction.
-  install_wallet_aware_sponsor_db
+  # Idle listener uses the same wallet flock and requires no new switch.
   sed -e "s|^User=.*|User=$user|" \
       -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
       -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/sponsor-event-listener.mjs|" \
@@ -709,6 +709,10 @@ complete_update() {
     privileged systemctl restart xita-transfer-intake.service
   fi
   if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    # Before restarting the existing sponsor-enabled signer, install the
+    # immutable quote schema. Otherwise an existing true sponsor switch
+    # would immediately sign quotes against a missing commitments table.
+    install_wallet_aware_sponsor_db || return 1
     privileged systemctl restart xita-interchain-fee-quote.service
   fi
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then

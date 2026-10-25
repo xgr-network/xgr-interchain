@@ -248,7 +248,6 @@ test("unsigned fee pricing automatically discovers the receipt-backed XGR to Arb
 
 test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact",async()=>{
  const base={...defaults(),walletAwareEnabled:true,
-  baseServiceFeeWei:"1000000000000000",
   readWalletNativeBalance:async()=>0n};
  const funded={...base,readWalletNativeBalance:async()=>100000000000000000n};
  const empty=await buildManagedQuote(base);
