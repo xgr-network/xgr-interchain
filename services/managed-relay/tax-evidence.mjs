@@ -72,10 +72,11 @@ export function quoteEvidence(reply,prices,ip,location){
 }
 export async function saveQuoteEvidence(row,{
  connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL,
- quoteReply=null,grantLimits=null
+ quoteReply=null,grantLimits=null,
+ poolFactory=opts=>new Pool(opts)
 }={}){
  if(!connectionString)throw Error("Tax evidence database unavailable");
- const pool=new Pool({connectionString,max:1,connectionTimeoutMillis:2000});
+ const pool=poolFactory({connectionString,max:1,connectionTimeoutMillis:2000});
  const client=await pool.connect();
  try{
   await client.query("BEGIN");
