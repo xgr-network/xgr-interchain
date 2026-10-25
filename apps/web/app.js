@@ -299,6 +299,7 @@ function setConnectedAccount(next){
    flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.account=null;flowView.stage="";
     document.getElementById("xita-flow-dialog")?.close();
  }
+ loadBroadcastHints(account);
  refreshTransferLink();
  if(!account&&path()==="/my-transfers")history.replaceState(null,"","/");
  if(state.catalog&&(changed||path()==="/my-transfers"))render();
