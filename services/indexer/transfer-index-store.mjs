@@ -63,7 +63,10 @@ export function indexedTransferRow(row){
   finalDestinationChain:row.final_destination_chain??null,
   finalRecipient:row.final_recipient?lowercase(row.final_recipient):null,
   onwardRouteId:row.onward_route_id?lowercase(row.onward_route_id):null,
-  parentMessageId:row.parent_message_id?lowercase(row.parent_message_id):null};
+  parentMessageId:row.parent_message_id?lowercase(row.parent_message_id):null,
+  sponsorCommitmentEvidence:row.sponsor_intent_matches==null?null:
+   Number(row.sponsor_intent_matches)===1&&Number(row.sponsor_grant_count)===0?"no-grants":
+   Number(row.sponsor_intent_matches)===1&&Number(row.sponsor_grant_count)>0?"committed-grants":"unverified"};
 }
 // A source's destination delivery is NOT proof that a two-hop journey
 // reached the final chain. Link only the uniquely confirmed second-hop
@@ -130,7 +133,18 @@ export async function readWalletTransferIndex(catalog,account,{
     validator_fee_wei::text AS validator_fee_wei,delivered,
     destination_checked_block,destination_checked_hash,
     execution_adapter,interchain_fee_wei::text AS interchain_fee_wei,
-    final_destination_chain,final_recipient,onward_route_id,parent_message_id
+    final_destination_chain,final_recipient,onward_route_id,parent_message_id,
+    (SELECT COUNT(*) FROM xita_sponsor_quote_intents i
+      WHERE i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter
+        AND i.payer=p.account AND i.quote_nonce=p.quote_nonce
+        AND i.quote_fee_wei=p.interchain_fee_wei) AS sponsor_intent_matches,
+    (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c
+      WHERE c.source_chain=p.source_chain AND c.execution_adapter=p.execution_adapter
+        AND c.payer=p.account AND c.quote_nonce=p.quote_nonce
+        AND EXISTS (SELECT 1 FROM xita_sponsor_quote_intents i
+          WHERE i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter
+            AND i.payer=p.account AND i.quote_nonce=p.quote_nonce
+            AND i.quote_fee_wei=p.interchain_fee_wei)) AS sponsor_grant_count
     FROM xita_transfer_operations p
     WHERE p.account=$1 AND NOT (${linkedChildPredicate}) AND ($2::boolean IS FALSE OR p.delivered IS DISTINCT FROM TRUE
       OR (p.onward_route_id IS NOT NULL AND NOT ${completedChildPredicate}))
