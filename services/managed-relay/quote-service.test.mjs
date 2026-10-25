@@ -275,8 +275,11 @@ test("fully funded quote charges only fixed gas-independent micro platform fee",
   getDestinationGasQuote:async()=>({gasPriceWei:9000000000n,availableWei:0n})});
  assert.deepEqual(low.pricing.sponsorCommitments,[]);
  assert.deepEqual(high.pricing.sponsorCommitments,[]);
- assert.equal(low.quote.interchainFeeWei,high.quote.interchainFeeWei);
- assert.equal(low.quote.interchainFeeWei,"139700000000000000");
+ assert.equal(low.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
+ assert.equal(high.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
+ assert.equal(low.pricing.sourceNativeInterchainFeeWei,"0");
+ assert.equal(high.pricing.sourceNativeInterchainFeeWei,"0");
+ assert.equal(low.signature,null);
 });
 test("only committed wallet gas deficits increase the signed service fee",async()=>{
  const options={...defaults(),request:{...request,recipient:request.payer},
@@ -284,7 +287,8 @@ test("only committed wallet gas deficits increase the signed service fee",async(
  const funded=await buildManagedQuote({...options,readWalletNativeBalance:async()=>10n**18n});
  const partial=await buildManagedQuote({...options,readWalletNativeBalance:async()=>650000000000000n});
  const empty=await buildManagedQuote({...options,readWalletNativeBalance:async()=>0n});
- assert.ok(BigInt(funded.quote.interchainFeeWei)<BigInt(partial.quote.interchainFeeWei));
+ assert.equal(funded.pricing.sourceNativeInterchainFeeWei,"0");
+ assert.ok(BigInt(funded.pricing.sourceNativeInterchainFeeWei)<BigInt(partial.quote.interchainFeeWei));
  assert.ok(BigInt(partial.quote.interchainFeeWei)<BigInt(empty.quote.interchainFeeWei));
  assert.equal(funded.pricing.sponsorCommitments.length,0);
  assert.equal(partial.pricing.sponsorCommitments.length,1);
