@@ -102,6 +102,10 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")))
   throw Error("Wallet-specific quote requires explicit wallet identity");
+ // Fail closed until the signer can atomically persist each grant promise
+ // and the worker can match finalized paid fee evidence. Never quote a
+ // wallet-specific discount that the deployed sponsor cannot honor.
+ if(walletAwareEnabled)throw Error("Wallet-aware grant activation requires verified immutable journal");
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
