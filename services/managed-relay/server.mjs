@@ -288,6 +288,8 @@ export function publicSponsorshipView(rows){
  const promised=aware?Number(rows[0]?.expected_grants):null;
  if(aware&&(!Number.isInteger(promised)||promised<0||promised>3))
   return {ok:false,status:"unavailable"};
+ const promisedStages=aware&&Array.isArray(rows[0]?.promised_stages)?
+  rows[0].promised_stages.filter(x=>["first-delivery","hub-onward","final-delivery"].includes(x)):null;
  const status=aware?
   promised===0?"not-required":
   grants.some(g=>g.status==="needs-review")?"needs-review":
@@ -295,7 +297,8 @@ export function publicSponsorshipView(rows){
   grants.some(g=>g.status==="submitted")?"submitted":
   grants.some(g=>g.status==="reserved")?"reserved":"pending":
   grants.length?"tracked":"pending";
- return {ok:true,status,grants,...(aware?{expectedGrants:promised}: {})};
+ return {ok:true,status,grants,...(aware?{expectedGrants:promised,
+  ...(promisedStages!==null?{promisedStages}: {})}: {})};
 }
 // Public signer request throttling: prevents an unauthenticated caller from
 // monopolizing the finite quote-time gas reservations. Not an authorization
@@ -362,7 +365,11 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
       " (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c"+
       " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
-      " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce) AS expected_grants ":
+      " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce) AS expected_grants,"+
+      " (SELECT COALESCE(array_agg(DISTINCT c.grant_stage ORDER BY c.grant_stage), ARRAY[]::text[])"+
+      " FROM xita_sponsor_quote_commitments c"+
+      " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+      " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce) AS promised_stages ":
       " FALSE AS wallet_aware, NULL::integer AS expected_grants ")+
     "FROM xita_transfer_operations p "+
     "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
