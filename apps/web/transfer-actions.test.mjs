@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector,keccak256} from "./keccak.js";
-import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,resumeDelivery,awaitUnsignedDeliveryProof,verifyDestinationInboundRoute,verifyJourneyInboundRoutes} from "./transfer-actions.js";
+import {amountToUnits,unitsToAmount,quoteCalldata,executeQuoteCalldata,continueJourneyCalldata,bridgeCalldata,startTransfer,startVerifiedOnwardHop,authorizesPaidFinalDeliveryGas,resumeDelivery,awaitUnsignedDeliveryProof,verifyDestinationInboundRoute,verifyJourneyInboundRoutes} from "./transfer-actions.js";
 import {DISPATCH_TOPIC,OPERATION_TOPIC} from "./wallet-transfers.js";
 import {deployedRoutes} from "./route-availability.js";
 const address=n=>"0x"+n.repeat(40),hash=n=>"0x"+n.repeat(64);
@@ -527,4 +527,23 @@ test("fully funded direct XGR transfer sends canonical gateway with zero service
  assert.equal(sends[0].value,"0x"+native.toString(16));
  assert.ok(sends[0].data.startsWith(selector("bridge(uint32,bytes32,uint256)")));
  assert.equal(outcome.interchainFeeWei,"0");
+});
+
+test("N-05 onward gas exception requires a paid parent-specific final gift",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const c=readFileSync(new URL("./transfer-actions.js",import.meta.url),"utf8");
+ assert.match(c,/onwardSponsorSourceChain:first.sourceChain/);
+ assert.match(c,/authorizesPaidFinalDeliveryGas\(status\)/);
+ assert.match(c,/messageId:onwardParentMessageId/);
+ assert.match(c,/Paid final-delivery gas grant not independently committed/);
+});
+
+test("N-05 parent-bound final gas authorization fails closed without final-stage promise",()=>{
+ assert.equal(authorizesPaidFinalDeliveryGas({ok:true,status:"pending",promisedStages:["final-delivery"]}),true);
+ for(const status of [null,{}, {ok:false,status:"pending",promisedStages:["final-delivery"]},
+  {ok:true,status:"needs-review",promisedStages:["final-delivery"]},
+  {ok:true,status:"disabled",promisedStages:["final-delivery"]},
+  {ok:true,status:"pending",promisedStages:["hub-onward"]},
+  {ok:true,status:"pending",promisedStages:[]}])
+  assert.equal(authorizesPaidFinalDeliveryGas(status),false);
 });
