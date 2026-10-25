@@ -386,8 +386,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    if(!/^0x[0-9a-f]{40}$/.test(account)||!/^0x[0-9a-f]{64}$/.test(messageId)||
     !/^[a-z][a-z0-9-]{1,39}$/.test(source))
     return send(400,{ok:false,error:"Invalid transfer identity"});
-   if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")
-    return send(200,{ok:true,status:"disabled"});
+   // Existing quote commitments remain enforceable if optional sponsoring is switched off.
+   // Read authenticated grants before classifying the transfer as non-sponsored.
    if(!sponsorPool){
     const {Pool}=await import("pg");
     sponsorPool=new Pool({connectionString:process.env.XITA_SPONSOR_STATUS_DATABASE_URL,
@@ -421,7 +421,11 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     values:[account,source,messageId]});
    if(!q.rows.length)return send(200,{ok:true,status:"unavailable"});
    // Return an explicit read-only journal status; no inferred sponsor success.
-   return send(200,publicSponsorshipView(q.rows));
+   const view=publicSponsorshipView(q.rows);
+   if(process.env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true"&&
+      view.upfrontRequired===true&&view.status!=="confirmed")
+    return send(200,{...view,status:"disabled"});
+   return send(200,view);
   }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
