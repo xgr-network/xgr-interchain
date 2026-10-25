@@ -81,7 +81,7 @@ const quoteIface=new Interface(EXECUTION_ABI);
 const getSnapshot=()=>readCachedGasPrices();
 const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
- const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw,request?.payer,process.env.XITA_INTERCHAIN_SPONSOR_ENABLED]):null;
+ const previewKey=null; // Fresh signer health and wallet balance must not be masked by preview caching.
  const cached=previewKey?previewMemo.get(previewKey):null;
  if(cached&&Date.now()-cached.at<60000)return cached.value;
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
@@ -97,14 +97,34 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
     String(executionAddress).toLowerCase()||
     !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
- const walletAwareEnabled=process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ // The keyless public preview reads the LOCAL signed-quote service's health.
+ // Do not duplicate a fee/sponsor mode setting or pass signer secrets to 4093.
+ let walletAwareEnabled=process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ if(preview&&PREVIEW_ONLY){
+  let status;
+  try{
+   const reply=await fetch("http://127.0.0.1:4092/api/xita/v1/managed/health",{
+    signal:AbortSignal.timeout(2000),headers:{accept:"application/json"}});
+   if(!reply.ok)throw Error("Signing service health unavailable");
+   status=await reply.json();
+   if(status?.ok!==true||typeof status.sponsorship?.enabled!=="boolean")
+    throw Error("Invalid managed sponsor health");
+  }catch{
+   // Never claim a wallet-specific sponsored discount when signing cannot be
+   // reached. A keyless, pre-deployment fee preview can still show old pricing.
+   status={sponsorship:{enabled:false,available:false}};
+  }
+  walletAwareEnabled=status.sponsorship.enabled===true;
+  if(walletAwareEnabled&&status.sponsorship.available!==true)
+   throw Error("Managed sponsor reserves not ready");
+ }
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
    String(request.payer).toLowerCase()!==String(request.recipient).toLowerCase()))
   throw Error("Wallet-specific quote requires explicit wallet identity");
  // Wallet-specific quotes are only issued if the public sponsor monitor is
  // fresh; a missing worker, missing chain reserve or price fails closed.
- if(walletAwareEnabled){
+ if(walletAwareEnabled&&!PREVIEW_ONLY){
   const health=await readSponsorAvailability(catalog);
   if(!health.available)throw Error("Sponsor reserves or worker not ready for wallet-aware quote");
  }
