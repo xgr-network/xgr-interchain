@@ -153,16 +153,14 @@ export async function buildManagedQuote({
  const allocation=walletAwareEnabled?
   walletAwareSponsorship({stages:sponsorStages,balances}):null;
  const fee=walletAwareEnabled?(()=>{
-  // Only the documented shortfall is priced; the positive fixed base fee is
-  // independent of wallet balances and covers the operation even at zero grants.
+  // Charge only the server-verified sponsor shortfall; if all native gas
+  // is wallet funded, the commercial fee is exactly ZERO.
   const cost=allocation.grants.reduce((total,grant)=>
    total+ceilDiv(BigInt(grant.amountWei)*
     usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
     usdPrice12(oracle.sourceUsd)),0n);
-  // Fixed micro base fee: gas prices and third-party validator fees MUST
-  // NOT increase the platform minimum when the wallet needs no sponsor.
-  const baseWei=0n;
-  const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):{estimatedCostSourceWei:'0',quotedServiceFeeWei:'0',grossInterchainFeeWei:'0',markupBps:'1000',priceVatCapBps:'2700'};
+  const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):
+   {estimatedCostSourceWei:"0",quotedServiceFeeWei:"0",grossInterchainFeeWei:"0",markupBps:"1000",priceVatCapBps:"2700"};
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
  })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
