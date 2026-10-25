@@ -187,12 +187,15 @@ async function refreshFeePreview(){
      if(r.eligible)
       content.append(detailRow("Potential XITA sponsorship · "+r.label,
        "− "+formatWeiFee(r.potentialSponsorWei)+" "+r.coin,"credit"));
+     else if(allocation)
+      content.append(make("p","ux-fee-details-note",
+       "No sponsorship required on "+r.label+" · existing wallet gas covers this stage."));
      else if(sponsorship.enabled)
       content.append(make("p","ux-fee-details-note","Sponsorship on "+r.label+" is unavailable; the wallet may need to fund gas."));
     }
    }
    content.append(make("p","ux-fee-details-note",allocation?
-    "Wallet-specific signed quote: the service fee includes only the promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and fixed onward protocol costs are included in the estimate. Source gas and ERC-20 approvals are separate.":
+    "Wallet-specific quote estimate: the XITA Service Fee includes a fixed micro base fee plus any promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and onward protocol costs apply only to actual gas needs. Source gas and ERC-20 approvals are separate.":
     "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
    if(onward>0n)content.append(make("p","ux-fee-details-note",allocation?
     "The XGR onward protocol fee is split between existing wallet gas funds and the quote-locked sponsor shortfall. Only the sponsor-funded portion is included in the XITA Service Fee.":
