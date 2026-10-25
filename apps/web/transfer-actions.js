@@ -588,8 +588,30 @@ export async function resumeDelivery({catalog,account,record,provider,
  const current=await findWalletSourceTx({catalog,account,sourceChain:record.sourceChain,
   txHash:record.txHash,fetcher});
  if(current.status==="delivered")return {status:"delivered"};
- if(current.status!=="awaiting-proof")
-  throw Error("Source confirmation or destination availability is unclear; do not sign");
+ // An indexed successful source can still fail an independent browser RPC
+ // recheck. This is a retryable verification blocker, NEVER a reason to
+ // repeat TX1, submit a destination transaction, or erase indexed evidence.
+ if(current.status!=="awaiting-proof"){
+  const waiting={
+   "pending-source":{
+    reason:"SOURCE_RECEIPT_PENDING",stage:"source-receipt",
+    notice:"The original source receipt is still pending. Do not repeat the source transaction."},
+   confirming:{
+    reason:"SOURCE_CONFIRMATIONS_PENDING",stage:"source-finality",
+    notice:"The source transaction is mined, but required confirmations are still pending. No wallet action is needed."},
+   "confirming-native-finality":{
+    reason:"SOURCE_NATIVE_SAFE_PENDING",stage:"source-finality",
+    notice:"Required confirmations are present, but the source block is not yet chain-native safe. No destination transaction may be signed."},
+   "finality-unavailable":{
+    reason:"SOURCE_FINALITY_RPC_UNAVAILABLE",stage:"source-finality",
+    notice:"Approved source RPC endpoints cannot currently verify the canonical safe block. The original source transaction remains recorded; retry verification, never the source transfer."},
+   "delivery-unknown":{
+    reason:"DESTINATION_MAILBOX_RPC_UNAVAILABLE",stage:"destination-finality",
+    notice:"Source evidence is verified, but the destination Mailbox state cannot be safely read. No destination transaction may be signed until this check recovers."}
+  }[current.status];
+  if(waiting)return {status:"waiting",...waiting};
+  throw Error("Independent transfer verification blocked ("+current.status+"). Do not sign or repeat the original source transaction.");
+ }
  if(!eq(current.messageId,record.messageId)||!current.routeName)
   throw Error("Unverified original transfer");
  const query=new URLSearchParams({asset:current.asset,route:current.routeName,
