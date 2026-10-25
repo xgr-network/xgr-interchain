@@ -165,3 +165,12 @@ test("pending gas sponsorship is not rendered as actively checking forever",()=>
  assert.match(html,/Gas sponsorship decision pending/);
  assert.match(html,/ux-flow-step-state">Pending/);
 });
+
+test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
+ const record={...base,status:"awaiting-onward",delivered:true,
+  executionAdapter:"0x"+"3".repeat(40),interchainFeeWei:"100"};
+ const html=renderTransferFlow({journey,record,
+  sponsorship:{enabled:true,status:"pending"}});
+ assert.match(html,/Gas sponsorship decision pending/);
+ assert.doesNotMatch(html,/Wallet already has sufficient native gas/);
+});
