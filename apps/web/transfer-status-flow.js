@@ -99,8 +99,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  if(status==="confirming")heading="Source finality pending";
  if(status==="confirming-native-finality")heading="Waiting for "+name(origin)+" safe finality";
  if(status==="finality-unavailable")heading="Source finality RPC unavailable";
- if(status==="awaiting-onward"&&!working&&!error)heading="Action required · Continue second hop";
- if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Action required · Continue final delivery";
+ if(status==="awaiting-onward"&&!working&&!error)heading="Preparing second hop";
+ if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Waiting for final delivery proof";
  if(delivered)heading="Transfer complete";
  const nativeFinalityMessage=status==="confirming-native-finality"?
    (confirmationText||"Source mined")+". "+name(origin)+" has not marked the source block safe yet"+
@@ -116,8 +116,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    proofWaiting?"XITA is checking validator signatures in the background. No wallet action is necessary. The status survives reloads and reconnects.":
    proofObservation?.state==="unavailable"?"Background proof verification is temporarily unavailable ("+String(proofObservation.reason||"PROOF_NOT_READY")+"). The source remains confirmed. XITA will retry automatically.":
    proofReady?"Unsigned validator proof was prepared. Continue when ready; XITA re-verifies source, proof and destination Mailbox before MetaMask opens.":
-   canContinue&&status==="awaiting-final-proof"?"The second hop is confirmed. Continue to verify the latest validator proof before any final MetaMask delivery.":
-   canContinue&&status==="awaiting-onward"?"XGRChain delivery is confirmed. Click below to authorize the onward transaction in MetaMask. Never repeat the original Arbitrum burn.":
+   canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
+   canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
    notice?String(notice):
    status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
@@ -190,8 +190,8 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
   '<div class="ux-flow-footer"><p>Closing this view does not cancel a blockchain transaction. Resume using the original source TX in My Transfers. Never repeat a confirmed lock or burn.</p>'+
    '<div class="ux-flow-actions">'+
-    (flow.canContinue?'<button id="xita-flow-continue" type="button" class="ux-button">'+esc(flow.continueLabel)+'</button>':
-     flow.canRefresh?'<button id="xita-flow-refresh" type="button" class="ux-outline-button">Refresh verified status</button>':'')+
+    // Modal is status-only. All blockchain checks and wallet steps advance without a modal CTA.
+
     '<button id="xita-flow-history" class="ux-outline-button" type="button">My Transfers</button>'+
     '<button id="xita-flow-done" class="ux-outline-button" type="button">'+(flow.delivered?"Close":"Hide status")+'</button>'+
    '</div></div></div>';
