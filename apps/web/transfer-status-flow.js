@@ -165,8 +165,22 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  const proof= status==="awaiting-final-proof"?record?.finalProofObservation:
    status==="awaiting-proof"?record?.proofObservation:null;
  if(flow.delivered)return {label:"Transfer complete",detail:"All destinations verified.",kind:"done"};
- if(error||flow.needsAttention)return {label:"Verification needs attention",
-  detail:String(error||flow.message||"Verification unavailable."),kind:"attention"};
+ if(error)return {label:"Verification needs attention",
+  detail:String(error),kind:"attention"};
+ // An observer attempt may temporarily fail even when its next verification is
+ // already queued. Don't turn one backend retry into a user-facing crisis.
+ // This changes presentation ONLY: signing still requires canonical proofs.
+ const updatedAt=Date.parse(proof?.updatedAt||"");
+ const nextCheckAt=Date.parse(proof?.nextCheckAt||"");
+ const scheduledRetry=proof?.state==="unavailable"&&
+  Number.isFinite(updatedAt)&&Date.now()-updatedAt<300000&&updatedAt<=Date.now()+60000&&
+  Number.isFinite(nextCheckAt)&&nextCheckAt>=Date.now()-30000&&
+  !["finality-unavailable","journey-ambiguous","destination-not-deployed",
+    "delivery-unknown","final-delivery-unknown"].includes(status);
+ if(scheduledRetry)return {label:"Retrying "+(status==="awaiting-final-proof"?"XGRChain":source)+
+   " verification",detail:"",kind:"waiting"};
+ if(flow.needsAttention)return {label:"Verification needs attention",
+  detail:String(flow.message||"Verification unavailable."),kind:"attention"};
  if(["confirming","confirming-native-finality","pending-source"].includes(status))
   return {label:"Waiting for "+source+" finality",detail:"",kind:"waiting"};
  if(status==="awaiting-final-proof"&&proof?.state==="delivery-observed")
