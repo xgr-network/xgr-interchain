@@ -709,6 +709,10 @@ complete_update() {
     privileged systemctl restart xita-transfer-intake.service
   fi
   if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    # Before restarting the existing sponsor-enabled signer, install the
+    # immutable quote schema. Otherwise an existing true sponsor switch
+    # would immediately sign quotes against a missing commitments table.
+    install_wallet_aware_sponsor_db || return 1
     privileged systemctl restart xita-interchain-fee-quote.service
   fi
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
