@@ -152,24 +152,33 @@ export async function buildManagedQuote({
  }
  const allocation=walletAwareEnabled?
   walletAwareSponsorship({stages:sponsorStages,balances}):null;
+ // The UI availability charge is a fixed GROSS 1,000 gwei in the native
+ // source coin (0.000001 XGR/ETH/POL). It is NOT an FX conversion or gas fee.
+ // Sponsor funding is a distinct optional service cost with existing margin.
+ const UI_FEE_WEI=1000n*10n**9n;
+ const journey=quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const fee=walletAwareEnabled?(()=>{
-  // Charge only the server-verified sponsor shortfall; if all native gas
-  // is wallet funded, the commercial fee is exactly ZERO.
   const cost=allocation.grants.reduce((total,grant)=>
    total+ceilDiv(BigInt(grant.amountWei)*
     usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
     usdPrice12(oracle.sourceUsd)),0n);
-  const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):
-   {estimatedCostSourceWei:"0",quotedServiceFeeWei:"0",grossInterchainFeeWei:"0",markupBps:"1000",priceVatCapBps:"2700"};
-  return {...priced,stages:quotedJourneyCostWei({source,stages,
-   coinGeckoSnapshot:priceData,now}).stages};
- })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
+  const sponsored=cost>0n?
+   priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):null;
+  const gross=UI_FEE_WEI+BigInt(sponsored?.grossInterchainFeeWei||"0");
+  return {estimatedCostSourceWei:cost.toString(),
+   quotedServiceFeeWei:gross.toString(),grossInterchainFeeWei:gross.toString(),
+   markupBps:"1000",priceVatCapBps:"2700",stages:journey.stages,
+   uiServiceFeeWei:UI_FEE_WEI.toString(),
+   sponsoredServiceFeeWei:String(sponsored?.grossInterchainFeeWei||"0")};
+ })():{
+  ...journey,
+  // Sponsorship-off legacy pricing remains a separately priced optional
+  // execution service; do not alter the disabled-switch behaviour here.
+  uiServiceFeeWei:"0",sponsoredServiceFeeWei:journey.quotedServiceFeeWei
+ };
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
- if(interchainFeeWei===0n&&secondRoute)throw Error("Zero-fee two-hop needs on-chain intent support");
- const directNoFee=interchainFeeWei===0n&&!secondRoute;
- if(directNoFee&&route.sourceToken!==null)
-  throw Error("Fee-free ERC20 route requires allowance-aware gateway transaction; no tokens locked");
+ const directNoFee=false;
  const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
@@ -210,6 +219,8 @@ export async function buildManagedQuote({
    sponsorCommitments:allocation?.grants||[],
    sponsorAllocation:allocation?.stages||[],
    grossInterchainFeeWei:fee.grossInterchainFeeWei,
+   uiServiceFeeWei:fee.uiServiceFeeWei,
+   sponsoredServiceFeeWei:fee.sponsoredServiceFeeWei,
    sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
    markupBps:fee.markupBps,
    priceVatCapBps:fee.priceVatCapBps,
