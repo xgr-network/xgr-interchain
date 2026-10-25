@@ -16,8 +16,10 @@ BEGIN
  ) THEN
   RAISE EXCEPTION 'Configured XITA signer database login is absent or overprivileged';
  END IF;
- IF NOT has_table_privilege(writer,'public.xita_tax_quote_evidence','INSERT') THEN
-  RAISE EXCEPTION 'Configured XITA signer login is not the existing tax evidence INSERT writer';
+ IF writer='xita_transfer_worker' THEN
+  EXECUTE format('GRANT INSERT ON TABLE public.xita_tax_quote_evidence TO %I',writer);
+ ELSIF NOT has_table_privilege(writer,'public.xita_tax_quote_evidence','INSERT') THEN
+  RAISE EXCEPTION 'Configured XITA signer has no tax evidence INSERT grant';
  END IF;
  EXECUTE format('GRANT USAGE ON SCHEMA public TO %I',writer);
  EXECUTE format('GRANT INSERT ON TABLE public.xita_sponsor_quote_intents, public.xita_sponsor_quote_commitments TO %I',writer);
