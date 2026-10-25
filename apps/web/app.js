@@ -15,6 +15,7 @@ import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
+import {walletSigningQueue,walletSigningNotice} from "./wallet-action-attention.js";
 import {rememberSourceTxHint,listSourceTxHints} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
@@ -273,11 +274,16 @@ function refreshTransferLink(){
  if(!alert)return;
  // Opening the badge must lead to the wallet's verified worklist, never
  // an accidental "new transfer" source action.
- alert.href="/my-transfers";
+ const queue=connected?walletSigningQueue({account:state.account,
+  items:transferActivity.items,sponsorship:sponsorTransfer}):[];
+ const signing=walletSigningNotice(queue);
+ alert.href=signing?.href||"/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
   items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount})+pendingBroadcastHints().length:0;
- alert.hidden=pending===0;
- if(pending){
+ alert.hidden=pending===0&&!signing;
+ if(signing){
+  alert.textContent=signing.label;alert.title=signing.title;
+ }else if(pending){
   const open=transferActivity.items.filter(t=>t.account?.toLowerCase()===
    state.account?.toLowerCase()&&t.status==="awaiting-proof"&&
    t.confirmed===true&&t.delivered===false);
@@ -490,7 +496,7 @@ async function refreshTransferSponsorship(binding){
   }
  }finally{
   sponsorTransfer.loading=false;
-  if(sponsorTransfer.key===key&&flowView.open)updateFlowModal();
+  if(sponsorTransfer.key===key){refreshTransferLink();if(flowView.open)updateFlowModal();}
  }
 }
 async function requireUpfrontSponsorship(record,account){
@@ -523,8 +529,10 @@ function updateFlowModal(){
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
  const sponsorEnabled=binding.record?.delivered!==true&&
   transferSponsorVisible(sponsorTransfer,sponsorKey);
+ const walletReady=walletSigningQueue({account:binding.account,
+  items:transferActivity.items,sponsorship:sponsorTransfer}).some(item=>item.sourceTxHash===binding.sourceTxHash);
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
-  record:binding.record,stage:binding.sameSession?flowView.stage:"",
+  record:binding.record,stage:binding.sameSession?flowView.stage:"",walletReady,
   working:transferActivity.working,scanning:transferActivity.scanning,
   notice:binding.sameSession?transferActivity.notice:"",
   error:binding.sameSession?transferActivity.error:"",
