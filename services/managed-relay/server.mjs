@@ -271,6 +271,28 @@ export function publicSponsorshipView(rows){
   grants.length?"tracked":"pending";
  return {ok:true,status,grants,...(aware?{expectedGrants:promised}: {})};
 }
+// Public signer request throttling: prevents an unauthenticated caller from
+// monopolizing the finite quote-time gas reservations. Not an authorization
+// mechanism; on-chain fee matching remains mandatory for grants.
+const signedQuoteWindows=new Map();
+export function enforceSignedQuoteRate(ip,payer,{now=Date.now()}={}){
+ if(typeof ip!=="string"||!/^0x[0-9a-f]{40}$/i.test(payer||""))
+  throw Error("Invalid signed quote request identity");
+ const limits=[["ip:"+ip,4],["wallet:"+payer.toLowerCase(),2],["global",120]];
+ if(signedQuoteWindows.size>50000)
+  for(const [key,v] of signedQuoteWindows)
+   if(now-v.start>=60000)signedQuoteWindows.delete(key);
+ for(const [key,max] of limits){
+  const row=signedQuoteWindows.get(key);
+  if(row&&now-row.start<60000&&row.count>=max)
+   throw Error("Signed quote rate limit exceeded");
+ }
+ for(const [key] of limits){
+  const row=signedQuoteWindows.get(key);
+  signedQuoteWindows.set(key,!row||now-row.start>=60000?
+   {start:now,count:1}:{start:row.start,count:row.count+1});
+ }
+}
 async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
   res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
@@ -343,6 +365,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
    const clientIP=preview?null:verifiedClientIP(req);
+   if(!preview)enforceSignedQuoteRate(clientIP,parsed.payer);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
    if(!preview){
     const prices=await getSnapshot();
