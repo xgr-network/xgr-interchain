@@ -716,6 +716,9 @@ complete_update() {
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
     privileged systemctl restart xita-fee-preview.service
   fi
+  if systemctl is-active --quiet xita-gas-sponsor-listener.service 2>/dev/null; then
+    privileged systemctl restart xita-gas-sponsor-listener.service
+  fi
 }
 
 update() {
