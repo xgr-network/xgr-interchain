@@ -382,9 +382,9 @@ test("four Base providers fail over on HTTP 429 without treating rejected logs a
  const calls=[];
  const read=canonicalRpc({baseUrls:"",fetcher:async(url,{body})=>{
   const {method}=JSON.parse(body);calls.push([url,method]);
-  if(method==="eth_chainId")return {ok:true,json:async()=>({result:"0x2105"})};
+  if(method==="eth_chainId")return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:"0x2105"})};
   if(url!==urls[2])return {ok:false,status:429};
-  return {ok:true,json:async()=>({result:[]})};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:[]})};
  }});
  const chain={name:"base",chainId:8453,rpcUrls:urls};
  assert.deepEqual(await read(chain,"eth_getLogs",[{address:"0x"+"1".repeat(40),fromBlock:"0x1",toBlock:"0x3"}]),[]);
