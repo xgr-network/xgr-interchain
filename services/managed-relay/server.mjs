@@ -100,7 +100,8 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  const walletAwareEnabled=process.env.XITA_WALLET_AWARE_SPONSORING==="true"&&
   process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
-   !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")))
+   !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
+   String(request.payer).toLowerCase()!==String(request.recipient).toLowerCase()))
   throw Error("Wallet-specific quote requires explicit wallet identity");
  // Wallet-specific quotes are only issued if the public sponsor monitor is
  // fresh; a missing worker, missing chain reserve or price fails closed.
