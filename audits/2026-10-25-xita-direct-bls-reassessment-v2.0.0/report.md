@@ -1,6 +1,6 @@
 # XITA Direct-BLS Re-Audit v2.0.0 — Public redacted summary
 
-This Markdown is a publication-safe digest, **not the complete confidential audit report** and not an external human certification.
+**Audit model:** OpenAI GPT-6 Astra (audit operator attribution). This Markdown summarizes the 35-page independent report and provides follow-up status; the complete report PDF is a distinct original artifact requiring exact-byte archival.
 
 ## Scope
 
