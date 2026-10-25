@@ -178,7 +178,7 @@ function chainOptions(model,selected){
 export function executableDestinations(model,assetId,source){
  const routes=(model?.transferRoutes||[]).filter(r=>r.asset===assetId);
  const edges=new Set(routes.map(r=>r.source+"->"+r.destination));
- const leg=(a,b)=>a!==b&&edges.has(a+"->"+b)&&edges.has(b+"->"+a);
+ const leg=(a,b)=>a!==b&&edges.has(a+"->"+b);
  return (model?.chains||[]).filter(c=>c.key!==source&&(
   source===HUB||c.key===HUB?leg(source,c.key):
    leg(source,HUB)&&leg(HUB,c.key)));
