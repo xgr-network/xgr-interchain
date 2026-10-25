@@ -137,3 +137,31 @@ test("optional sponsorship appears strictly after confirmed initial fee payment"
  assert.match(renderTransferFlow({journey,record,
   sponsorship:{enabled:true,status:"not-required"}}),/Wallet already has sufficient native gas/);
 });
+
+test("12 of 12 confirmations does not claim Base safe finality or unlock delivery",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const record={account,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum",txHash:sourceTxHash,confirmed:false,
+  confirmationsObserved:12,requiredConfirmations:12,
+  status:"confirming-native-finality",sourceSafeHeadBlock:123};
+ const safe=deriveTransferFlow({journey:j,record});
+ assert.equal(safe.verifiedWalletTx,0);
+ assert.equal(safe.steps[0].state,"current");
+ assert.match(safe.heading,/Base safe finality/);
+ assert.match(safe.message,/safe head #123/);
+ const unavailable=deriveTransferFlow({journey:j,record:{...record,status:"finality-unavailable"}});
+ assert.equal(unavailable.needsAttention,true);
+ assert.match(unavailable.message,/native safe head is unavailable/);
+ assert.equal(unavailable.canContinue,false);
+});
+
+test("pending gas sponsorship is not rendered as actively checking forever",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const record={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum",status:"awaiting-proof",confirmed:true,
+  interchainFeeWei:"100",executionAdapter:"0x"+"3".repeat(40)};
+ const html=renderTransferFlow({journey:j,record,
+  sponsorship:{enabled:true,status:"pending"}});
+ assert.match(html,/Gas sponsorship decision pending/);
+ assert.match(html,/ux-flow-step-state">Pending/);
+});

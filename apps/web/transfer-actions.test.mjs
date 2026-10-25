@@ -484,3 +484,25 @@ test("ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum reg
  assert.ok(calls.includes("eth_call"),"independent ABI allowance readback reached");
  assert.equal(transfers.some(t=>t.data?.startsWith(selector("bridge(uint32,bytes32,uint256)"))),false);
 });
+
+test("temporary source safe RPC outage returns a waiting reason without wallet signing",async()=>{
+ const c=catalog(),{messageId,logs}=sourceLogs(),wallet=[];
+ const record={account,sourceChain:"xgrchain",destinationChain:"base",asset:"XGR",
+  txHash:sourceTx,messageId,status:"awaiting-proof"};
+ const fetcher=async(url,options)=>{
+  const {method}=JSON.parse(options.body);
+  const result=method==="eth_chainId"?"0x66b":
+   method==="eth_getTransactionByHash"?{hash:sourceTx,from:account,to:gateway}:
+   method==="eth_getTransactionReceipt"?{transactionHash:sourceTx,from:account,
+    to:gateway,status:"0x1",blockNumber:"0x10",blockHash:hash("e"),logs}:
+   method==="eth_blockNumber"?"0x64":null;
+  if(method==="eth_getBlockByNumber")return {ok:false,status:400,
+   json:async()=>({error:"Read-only RPC method not permitted"})};
+  return rpcResponse(result);
+ };
+ const result=await resumeDelivery({catalog:c,account,record,fetcher,
+  provider:{request:async req=>{wallet.push(req.method);throw Error("wallet must not be called")}}});
+ assert.equal(result.status,"waiting");
+ assert.equal(result.reason,"SOURCE_FINALITY_RPC_UNAVAILABLE");
+ assert.deepEqual(wallet,[]);
+});

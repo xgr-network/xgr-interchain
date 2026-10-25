@@ -1229,7 +1229,7 @@ setInterval(async()=>{
  directFinalityPoll=true;
  const account=state.account;
  try{
-  if(["pending-source","confirming"].includes(entry.status)){
+  if(["pending-source","confirming","confirming-native-finality","finality-unavailable"].includes(entry.status)){
    const record=await findWalletSourceTx({catalog:state.catalog,account,
     sourceChain:entry.sourceChain,txHash:entry.txHash});
    if(state.account?.toLowerCase()!==account.toLowerCase()||

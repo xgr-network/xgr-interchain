@@ -7,6 +7,8 @@ const HASH=/^0x[0-9a-f]{64}$/i;
 const statuses={
  "pending-source":["Source pending","Await the first transaction receipt. Do not send again."],
  "confirming":["Waiting for finality","The source transaction needs additional confirmations."],
+ "confirming-native-finality":["Waiting for safe finality","The source transaction reached its confirmation count but is not yet in a native-safe block."],
+ "finality-unavailable":["Source finality RPC unavailable","The chain-native safe block cannot currently be verified. XITA will retry; never repeat the source transaction."],
  "source-failed":["Source failed","The source transaction reverted. No message was dispatched; check the source gas paid."],
  "destination-not-deployed":["Destination not deployed","The paired destination Mailbox is not documented. Delivery is not enabled."],
  "delivery-unknown":["Delivery unverified","The target-chain RPC cannot verify the delivery flag. Never assume delivered or lost."],
@@ -30,7 +32,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
   const canRecover=HASH.test(t.txHash||"")&&[
-   "pending-source","confirming","awaiting-proof","awaiting-onward",
+   "pending-source","confirming","confirming-native-finality","finality-unavailable","awaiting-proof","awaiting-onward",
    "awaiting-final-proof","delivery-unknown","final-delivery-unknown",
    "journey-ambiguous","destination-not-deployed"
   ].includes(t.status);

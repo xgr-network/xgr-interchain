@@ -4,7 +4,8 @@
 const ALLOWED=new Set([
  "eth_chainId","eth_blockNumber","eth_gasPrice","eth_getBalance",
  "eth_getTransactionCount","eth_call","eth_getTransactionByHash",
- "eth_getTransactionReceipt","eth_getLogs","eth_getCode"
+ "eth_getTransactionReceipt","eth_getLogs","eth_getCode",
+ "eth_getBlockByNumber"
 ]);
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -23,6 +24,12 @@ function validateParams(method,params){
   bad("Invalid read-only RPC parameters");
  if(["eth_chainId","eth_blockNumber","eth_gasPrice"].includes(method))
   return params.length===0||bad("Unexpected RPC parameters");
+ // Native-safe/finalized header reads are required by wallet recovery.
+ // Never permit full transaction bodies or pending/uncanonical block tags.
+ if(method==="eth_getBlockByNumber")
+  return params.length===2&&params[1]===false&&
+   (["latest","safe","finalized"].includes(params[0])||BLOCK.test(params[0]||""))||
+   bad("Only canonical block-header reads are permitted");
  if(method==="eth_getBalance"||method==="eth_getTransactionCount")
   return params.length===2&&ADDRESS.test(params[0])&&
    ["latest","pending"].includes(params[1])||bad("Invalid account RPC parameters");
@@ -36,8 +43,9 @@ function validateParams(method,params){
   return params.length===2&&isObj(tx)&&ADDRESS.test(tx.to)&&
    (tx.from===undefined||ADDRESS.test(tx.from))&&
    typeof tx.data==="string"&&/^0x(?:[0-9a-f]{2})*$/i.test(tx.data)&&
-   tx.data.length<=4100&&params[1]==="latest"||
-   bad("Only bounded latest-state contract reads are permitted");
+   tx.data.length<=4100&&
+   (params[1]==="latest"||BLOCK.test(params[1]||""))||
+   bad("Only bounded latest or block-pinned contract reads are permitted");
  }
  if(method==="eth_getLogs"){
   const filter=params[0];
