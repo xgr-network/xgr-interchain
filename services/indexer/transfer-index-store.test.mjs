@@ -262,3 +262,33 @@ test("active deployment routes get priority over retired route backlog (N-11)",a
  assert.equal(parameters[2],5);
  assert.deepEqual(parameters[3],["base:"+hash("b")]);
 });
+
+test("canonical wallet projection distinguishes exactly matched zero grants from missing quote",async()=>{
+ const wallet=addr("a"),source=hash("c"),msg=hash("d");
+ const base={account:wallet,asset:"XGR",source_chain:"base",destination_chain:"xgrchain",
+  route_name:"base_to_xgr",route_id:hash("f"),gateway:addr("1"),
+  source_tx_hash:source,message_id:msg,source_block_number:100,
+  amount_raw:"1",validator_fee_wei:"2",execution_adapter:addr("2"),
+  interchain_fee_wei:"1000000000000",delivered:false};
+ let intent="1",grants="0",queries=[];
+ const pool={query:async arg=>{
+  const sql=typeof arg==="string"?arg:arg.text;queries.push(sql);
+  if(sql.includes("FROM xita_transfer_index_cursors"))return {rows:[]};
+  if(sql.includes("COUNT(*) FILTER"))return {rows:[{open:"1",unknown:"0"}]};
+  if(sql.includes("FROM xita_transfer_announcements"))return {rows:[]};
+  if(sql.includes("FROM xita_transfer_proof_observations j"))return {rows:[]};
+  if(sql.includes("FROM xita_transfer_operations p"))return {rows:[{
+   ...base,sponsor_intent_matches:intent,sponsor_grant_count:grants}]};
+  return {rows:[]};
+ }};
+ const read=async()=>readWalletTransferIndex({},wallet,{pool,routeList:[]});
+ assert.equal((await read()).items[0].sponsorCommitmentEvidence,"no-grants");
+ assert.ok(queries.some(q=>q.includes("xita_sponsor_quote_commitments")&&
+  q.includes("i.quote_fee_wei=p.interchain_fee_wei")));
+ grants="1";
+ assert.equal((await read()).items[0].sponsorCommitmentEvidence,"committed-grants");
+ grants="0";intent="0";
+ assert.equal((await read()).items[0].sponsorCommitmentEvidence,"unverified");
+ intent="2";
+ assert.equal((await read()).items[0].sponsorCommitmentEvidence,"unverified");
+});
