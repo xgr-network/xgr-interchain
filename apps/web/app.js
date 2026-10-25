@@ -15,7 +15,7 @@ import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
-import {rememberSourceTxHint} from "./source-tx-hints.js";
+import {rememberSourceTxHint,listSourceTxHints} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
@@ -250,6 +250,14 @@ function scheduleAutomaticWalletStep(){
  });
 }
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
+let broadcastHints=[];
+function loadBroadcastHints(account){
+ broadcastHints=account?listSourceTxHints(account).filter(h=>Boolean(state.catalog?.chains?.[h.sourceChain])):[];
+}
+function pendingBroadcastHints(){
+ const indexed=new Set(transferActivity.items.map(t=>t.sourceChain+":"+String(t.txHash||"").toLowerCase()));
+ return broadcastHints.filter(h=>!indexed.has(h.sourceChain+":"+h.txHash));
+}
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
 const resumeProbed=new Map;
