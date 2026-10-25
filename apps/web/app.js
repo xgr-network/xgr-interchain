@@ -664,6 +664,8 @@ async function performTransferAction(){
    r.asset===asset&&r.source===origin&&r.destination===firstDestination);
   const onwardRoute=firstDestination===destination||model.transferRoutes.some(r=>
    r.asset===asset&&r.source==="xgrchain"&&r.destination===destination);
+  if(!origin||!destination||origin===destination)
+   throw Error("Choose two different supported chains for a transfer");
   if(!firstRoute||!onwardRoute)
    throw Error("Both independently deployed XITA routes are required");
   // Preflight/approvals do not constitute an on-chain bridge operation.

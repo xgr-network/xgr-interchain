@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity,executableDestinations} from "./experience.js";
 import {deployedFixture,visibilityFixture} from "./deployed-test-fixture.mjs";
 import {freshDeployedCatalog} from "../../services/managed-relay/test-deployments.mjs";
 import {executableTransferRoutes} from "./route-availability.js";
@@ -574,4 +574,24 @@ test("verified direct routes have neutral CTA; undeployed direct and two-hop rou
     assert.match(html,/Interchain Fee gateway not deployed/);
     assert.doesNotMatch(html,/Start Transfer<\/button>/);
   }
+});
+
+test("transfer form never offers identical origin and destination, including Arbitrum",()=>{
+ const {catalog:c}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+ const model=buildExperienceModel(c);
+ const html=renderPlanRoute(model,{origin:"base",destination:"base",asset:"XGR"},"ready");
+ const source=html.match(/<select id="ux-origin"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
+ const target=html.match(/<select id="ux-destination"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
+ assert.match(source,/value="base"/);
+ assert.doesNotMatch(target,/value="base"/);
+ assert.ok(target.includes('value="xgrchain"'));
+ assert.equal(executableDestinations(model,"XGR","base").some(x=>x.key==="base"),false);
+ const arbitrum={...model,chains:[...model.chains,{key:"arbitrum",label:"Arbitrum"}],
+  transferRoutes:[...model.transferRoutes,
+   {asset:"XGR",source:"arbitrum",destination:"xgrchain"},
+   {asset:"XGR",source:"xgrchain",destination:"arbitrum"}]};
+ const fromArb=renderPlanRoute(arbitrum,{origin:"arbitrum",destination:"arbitrum",asset:"XGR"},"ready");
+ const toArb=fromArb.match(/<select id="ux-destination"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
+ assert.doesNotMatch(toArb,/value="arbitrum"/);
+ assert.ok(toArb.includes('value="xgrchain"'));
 });
