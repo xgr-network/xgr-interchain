@@ -1,7 +1,7 @@
 // Immutable quote-time funding calculation. Never use native token principal
 // as available gas. One balance snapshot per chain is consumed ONCE.
 const UINT=/^(0|[1-9][0-9]*)$/;
-const STAGES=new Set(["first-delivery","hub-onward","final-delivery"]);
+const STAGES=new Set(["first-delivery","hub-onward","onward-protocol-fee","final-delivery"]);
 export function walletAwareSponsorship({stages,balances,enabled,gasSafetyBps=13000n}){
  if(!Array.isArray(stages)||stages.length<1||!balances||
     BigInt(gasSafetyBps)<10000n||BigInt(gasSafetyBps)>20000n)
