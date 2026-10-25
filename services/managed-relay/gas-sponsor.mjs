@@ -268,6 +268,9 @@ export function sponsorDatabase(pool){
     await client.query("BEGIN");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",
      ["xita-sponsor:"+chain+":"+beneficiary.toLowerCase()]);
+    // Same per-chain budget lock as the atomic signer-commitment writer.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",
+     ["xita-sponsor-quote-budget:"+chain]);
     const spent=await client.query({
      text:"SELECT COALESCE(SUM(amount_wei),0)::text AS amount FROM xita_sponsor_grants"+
       " WHERE chain_name=$1 AND sponsor_address=$2"+
