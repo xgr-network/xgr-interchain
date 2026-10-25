@@ -18,6 +18,19 @@ test("source confirmed is not mistaken for successful two-hop delivery",()=>{
  assert.notEqual(flow.steps[2].state,"complete");
  assert.equal(flow.verifiedWalletTx,1);
 });
+test("awaiting TX3 tells the wallet user exactly what is next",()=>{
+ const record={...base,status:"awaiting-onward",delivered:true};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.heading,"Preparing next wallet transaction");
+ assert.match(flow.message,/TX3 of 4/);
+ assert.match(flow.message,/MetaMask will request your confirmation/);
+ const preflight=deriveTransferFlow({journey,record,working:true,
+  stage:"onward-preflight",notice:"Preparing XGRChain transaction"});
+ assert.equal(preflight.heading,"Preparing MetaMask transaction");
+ const signing=deriveTransferFlow({journey,record,working:true,
+  stage:"onward-source-sign",notice:"Confirm transaction in MetaMask"});
+ assert.equal(signing.heading,"Confirm transaction in MetaMask");
+});
 test("first XGR delivery never advertises Base delivery",()=>{
  const flow=deriveTransferFlow({journey,record:{...base,status:"awaiting-onward",delivered:true}});
  assert.equal(flow.delivered,false);assert.equal(flow.steps[2].state,"complete");
