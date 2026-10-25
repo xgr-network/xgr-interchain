@@ -608,8 +608,8 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  // Unknown records remain non-actionable until the wallet index verifies them.
  const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
  const recoveryUnresolved=connected&&resumeRequested&&!selected&&!completedWork;
- // Status reopening never submits or retries a wallet transaction.
- const showStatusButton=connected&&(progress.hasFlow===true||Boolean(selected)||Boolean(completedWork));
+ // Completed delivery is history, not another pending wallet action or a fresh quote.
+ const recoveryMode=Boolean(selected||completedWork||recoveryUnresolved);
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const proofCheck=selected?.status==="awaiting-final-proof"?
@@ -617,18 +617,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const backgroundChecking=selected&&
    ["queued","checking","waiting"].includes(proofCheck?.state);
  const actionLabel=!connected?"Connect wallet to transfer":
-  busy?"Preparing transaction…":
-  backgroundChecking?"Validator proof is being checked…":
-  selected?.status==="awaiting-proof"?"Continue delivery":
-  selected?.status==="awaiting-onward"?"Continue XGR onward transfer":
-  selected?.status==="awaiting-final-proof"?"Continue final delivery":
-  selected?"Check delivery status":
-  completedWork?"Transfer complete":
+  selected?"Continue transfer · view status":
+  completedWork?"New transfer":
   recoveryUnresolved?"Locating previous transfer…":
+  busy?"Preparing transaction…":
   !routes.length?"Interchain Fee gateway not deployed":
   !deployed?"Route unavailable":
   "Start Transfer";
- const buttonDisabled=busy||backgroundChecking||recoveryUnresolved||Boolean(completedWork)||connected&&(!deployed&&!selected);
+ const buttonDisabled=busy||recoveryUnresolved||connected&&(!deployed&&!selected&&!completedWork);
  const progressValue=completedWork?2:selected?.confirmed?1:0;
  const statusLabel=selected?.status==="awaiting-proof"?"Source confirmed · destination not delivered":
   selected?.status==="awaiting-onward"?"XGRChain delivered · final hop still unverified":
@@ -687,7 +683,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro">'+
   '<span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1>'+
   '<p class="ux-muted">Move your tokens between supported networks using your own wallet.</p></div>'+
-  '<div class="ux-ns-operations-grid"><section class="ux-panel ux-route-panel">'+
+  '<div class="ux-ns-operations-grid'+(recoveryMode?' is-recovery':'')+'"><section class="ux-panel ux-route-panel">'+
   '<div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div>'+
   '<div class="ux-transfer-fields">'+
   '<div class="ux-transfer-field"><label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
@@ -709,14 +705,14 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<select id="xita-open-transfer"><option value=""'+(!selected?' selected':'')+'>New transfer</option>'+options+'</select>'+
    '<p class="ux-small">Older deliveries are optional to continue here. They do not disable a new transfer. The original source lock is never repeated.</p></div>':'')+
   '<div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary"'+
+   ' data-transfer-action="'+(selected?'resume':completedWork?'new':'start')+'"'+
+   (selected?' aria-haspopup="dialog" aria-controls="xita-flow-dialog"':'')+
    (buttonDisabled?' disabled':'')+'>'+esc(actionLabel)+'</button>'+
-  (showStatusButton?'<button type="button" class="ux-outline-button ux-transfer-status-trigger"'+
-   ' id="xita-flow-reopen" aria-haspopup="dialog" aria-controls="xita-flow-dialog">'+
-   '↗ View transfer status</button>':'')+
-  (progress.error&&!showStatusButton?'<p class="ux-transfer-error" id="xita-transfer-form-error" role="alert">'+esc(progress.error)+'</p>':"")+
+  (progress.error&&!completedWork?'<p class="ux-transfer-error" id="xita-transfer-form-error" role="alert">'+esc(progress.error)+'</p>':"")+
   '<p class="ux-transfer-action-hint">'+
   esc(!connected?"Connect your wallet to check the route and make a transfer.":
-   selected?"Existing source transfer selected; the original lock will not be repeated.":
+   selected?"Continue this verified transfer in the status window. Never repeat the original source lock.":
+   completedWork?"This journey is fully delivered. Start a new transfer or view its receipt in My Transfers.":
    busy?"Checking the selected transaction against the blockchain.":
    !routes.length?"New transfers need a verified Interchain Fee · Execution Gateway on each chain. Existing Gateway transfers can still be recovered.":
    deployed&&isDirect?"Gas and contract checks run before MetaMask asks you to sign.":
@@ -727,7 +723,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
    '<p class="ux-transfer-error">The downloaded site catalog has an XGR/Base route configured but lacks a complete deployment record. No transaction is allowed. Verify the published catalog.json against the current GitHub main.</p>':'')+
   (!isDirect&&deployed?'<p class="ux-small">XITA continuously checks both hops through XGRChain. Every required wallet transaction must still be confirmed in MetaMask.</p>':'')+
   (connected?'<p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p>':"")+
-  '</section><div class="ux-transfer-side">'+feeCard+'</div></div>'+feeDialog+
+  '</section>'+(recoveryMode?'':'<div class="ux-transfer-side">'+feeCard+'</div>')+'</div>'+(recoveryMode?'':feeDialog)+
   '<section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section>'+
   '</section></div>';
 }

@@ -1383,3 +1383,7 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
  #ux-fee-preview-details .ux-fee-summary-gas-line>strong,
  #ux-fee-preview-details .ux-fee-detail-row>strong{text-align:left}
 }
+
+/* Resume/read-only completed journeys do not show a fresh transfer-fee column. */
+.ux-plan-page .ux-ns-operations-grid.is-recovery{grid-template-columns:minmax(0,1fr)}
+.ux-plan-page .ux-ns-operations-grid.is-recovery>.ux-route-panel{max-width:none}
