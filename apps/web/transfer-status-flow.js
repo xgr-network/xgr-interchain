@@ -83,11 +83,15 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  // A crashed/stopped worker must not freeze the UI in "checking" forever.
  // Manual recovery still revalidates the complete canonical proof on demand.
  const proofWaiting=observing&&!observationStale&&proofObservation.state!=="unavailable";
+ const proofUnobserved=Boolean(record?.confirmed)&&
+   ["awaiting-proof","awaiting-final-proof"].includes(status)&&!proofObservation;
  const continueLabel=status==="awaiting-onward"?"Continue onward from XGRChain":
    status==="awaiting-final-proof"?"Continue final delivery":
    proofReady?"Continue destination delivery":"Check validators and continue delivery";
  const canContinue=!working&&!error&&Boolean(record?.confirmed)&&
-   pendingWallet.includes(status)&&!delivered&&!proofWaiting;
+   pendingWallet.includes(status)&&!delivered&&!proofWaiting&&
+   (status==="awaiting-onward"||proofReady||observationStale||
+    proofObservation?.state==="unavailable");
  const canRefresh=!working&&!delivered&&(Boolean(record)||HASH.test(journey.sourceTxHash||""));
  const needsAttention=Boolean(error)||status==="finality-unavailable"||observationStale||
    proofObservation?.state==="unavailable"||
@@ -100,6 +104,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    awaitingWallet?"MetaMask action required":
    working?"Checking transfer — please wait":
    proofWaiting?"Checking validator proof automatically":
+   proofUnobserved?"Awaiting validator proof observation":
    canContinue?"Ready for the next verified step":
    canRefresh?"Transfer not yet complete":"Preparing transfer";
  if(status==="pending-source")heading="Source transaction pending";
@@ -122,6 +127,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    observationStale?(backendProofDescription||"Backend proof observer stale")+". Waiting for backend recovery; no manual proof action is required.":
    proofWaiting?(backendProofDescription||"Backend validator verification pending")+". No wallet action needed; the backend continues even when this window is closed.":
    proofObservation?.state==="unavailable"?(backendProofDescription||"Backend proof unavailable")+". XITA retries automatically; no wallet action is required.":
+   proofUnobserved?"The confirmed source has no backend validator-proof observation yet. This step is not ready. No wallet action is required; check the Proof Observer in System Health if it persists.":
    proofReady?"Backend proof ready. XITA will revalidate the canonical chain state before asking MetaMask to sign.":
    canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
    canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
@@ -156,7 +162,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
  // the initial paid source TX, not an extra MetaMask action or proof of delivery.
  const sponsorEnabled=sponsorship?.enabled===true;
  const sponsorStage=sponsorship?.status==="confirmed"?"complete":
-  sponsorship?.status==="needs-review"?"attention":
+  ["needs-review","disabled"].includes(sponsorship?.status)?"attention":
   sponsorship?.status==="not-required"?"complete":"pending";
  const sponsorNote=sponsorship?.status==="confirmed"?"All upfront native gas grants confirmed on chain":
   sponsorship?.status==="needs-review"?"Gas grant requires operator review":
@@ -164,7 +170,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
   sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
   sponsorship?.status==="pending"?"Waiting for all upfront gas grants before destination delivery":
-  sponsorship?.status==="disabled"?"Gas sponsorship disabled; own native gas required":
+  sponsorship?.status==="disabled"?"Promised gas grants unavailable; operator attention required":
   "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
    '<span class="ux-flow-step-indicator" aria-hidden="true">'+(sponsorStage==="complete"?"✓":"⌛")+'</span>'+
