@@ -89,7 +89,7 @@ test("verified validator proof advances to MetaMask delivery before source recei
  assert.equal(signing.steps[1].state,"complete");
  assert.equal(signing.steps[2].state,"current");
  assert.equal(signing.verifiedWalletTx,1);
- assert.equal(signing.heading,"MetaMask action required");
+ assert.equal(signing.heading,"Confirm transaction in MetaMask");
  const pending=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-pending"});
  assert.equal(pending.steps[2].state,"current");
  assert.equal(pending.verifiedWalletTx,1);
