@@ -65,9 +65,13 @@ test("direct XGR to Base uses three statuses and two wallet transactions",()=>{
  assert.equal(f.twoHop,false);assert.equal(f.totalWalletTx,2);
  assert.equal(f.steps.length,3);assert.equal(f.verifiedWalletTx,2);
 });
-test("status content escapes errors and hashes safely",()=>{
+test("status content escapes errors while transient notices stay out of compact banner",()=>{
  const html=renderTransferFlow({journey,notice:"<script>evil</script>"});
- assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>/);
+ assert.doesNotMatch(html,/&lt;script&gt;/);
+ const errorHtml=renderTransferFlow({journey,error:"<script>evil</script>"});
+ assert.doesNotMatch(errorHtml,/<script>/);
+ assert.match(errorHtml,/&lt;script&gt;evil&lt;\/script&gt;/);
 });
 
 test("mined but unfinalized Arbitrum parent stays at first step and shows count",()=>{
@@ -209,17 +213,18 @@ test("status modal never renders wallet, refresh, or proof action buttons",()=>{
  }
 });
 
-test("final-hop modal displays durable backend proof reason, stage and retry",()=>{
+test("final-hop modal retains canonical proof details in model without verbose flickering banner",()=>{
  const retry="2026-10-25T07:40:00.000Z";
  const row={...base,status:"awaiting-final-proof",delivered:true,
   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
   finalProofObservation:{state:"waiting",reason:"PROOF_QUORUM_UNAVAILABLE",
    stage:"quorum",updatedAt:new Date().toISOString(),nextCheckAt:retry}};
+ const flow=deriveTransferFlow({journey,record:row});
+ assert.match(flow.message,/PROOF_QUORUM_UNAVAILABLE/);
+ assert.match(flow.message,/next check/);
  const html=renderTransferFlow({journey,record:row});
- assert.match(html,/Backend proof: waiting/);
- assert.match(html,/PROOF_QUORUM_UNAVAILABLE/);
- assert.match(html,/quorum/);
- assert.match(html,/next check/);
+ assert.match(html,/Waiting for XGRChain validators/);
+ assert.doesNotMatch(html,/Backend proof:|PROOF_QUORUM_UNAVAILABLE|next check/);
  assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
 });
 
