@@ -1,4 +1,4 @@
-# Wallet-aware quoted native-gas funding (feature branch)
+# Wallet-aware quoted native-gas funding
 
 ## Invariant
 This pricing model is NOT live until signer, durable quote commitments, payment
@@ -53,3 +53,62 @@ Preserve the original EIP-712 schema and XITAExecutionGateway contracts.
 5. Both transfer directions live tested, including zero-gas wallet, partial
    gas wallet, sufficient gas wallet, gas-price spike, cancel and restart.
 6. Flag disabled by default until validation and administrative opt-in.
+
+## Runtime implementation
+
+- `XITA_WALLET_AWARE_SPONSORING=false` is the default. The feature is OFF
+  until a production operator explicitly enables it, after SQL/role validation.
+- `XITA_WALLET_AWARE_BASE_FEE_WEI` is a **positive** source-native base cost
+  entered by the operator. The quote engine computes the signed gross fee,
+  including the uniform net markup and VAT reserve. There is no silent default.
+- Only the allowlisted signer-side chain RPC supplies payer gas balances;
+  client-provided balances are rejected. The signer binds payer to recipient.
+- `./manage.sh install-wallet-aware-sponsor-db` installs an additive SQL
+  schema. `./manage.sh install-interchain-fee` installs the same schema and
+  the persistent event listener. Neither enables grants by itself.
+- `xita_sponsor_quote_intents` and `xita_sponsor_quote_commitments` are
+  INSERT-only for the quote writer. The quote event and evidence are committed
+  in one PostgreSQL transaction *before* the signed quote is returned.
+- The worker joins commitments only to an indexed paid source transaction and
+  separately rechecks the canonical receipt, caller, route, EIP-712 nonce, fee,
+  amount and beneficiary before a wallet grant. Recipient and grant amounts
+  cannot be supplied through the public API.
+- Per-chain lock names are shared across the quote writer and grant reserve.
+  Both apply strict 24-hour exposure caps; accepted reservations also consume
+  sponsor nonce and daily budget before any transaction is broadcast.
+- The indexer's INSERT/delivery UPDATE causes a coalesced post-commit
+  PostgreSQL notification. Listener starts the **existing** one-shot sponsor
+  under the same `/run/lock/xita-fee-wallet.lock`; the five-minute timer is
+  still a safety fallback.
+
+## Deployment checklist
+
+1. Run all three GitHub workflows successfully (Validate, Direct BLS Security,
+   Native Interchain Contracts). Confirm the real browser smoke test.
+2. Run the additive DB migration as the operator, then verify tables,
+   exact role permissions and notification trigger.
+3. Populate the base fee and verify sufficient XGR/ETH/POL native gas reserves
+   in the GmbH sponsor wallet on **each** relevant chain.
+4. Verify that a zero-gas, partial-gas and fully-funded wallet receive
+   different signed service fees **without** any client-supplied gas amount.
+5. Prove quote nonce, source-chain fee event, parent message ID and grant
+   commitment join one-to-one. Reject altered nonce, amount, route, chain,
+   recipient, fee, sponsor address, or already-used grant key.
+6. Confirm each native grant receipt before labeling the stage green;
+   UI must never show overall Verified when just one of several grants lands.
+7. Execute both directions on a limited mainnet test amount, including a
+   deliberately delayed proof, an interrupted browser session, and changed
+   wallet balance after quoting.
+8. Explicitly opt in with `XITA_WALLET_AWARE_SPONSORING=true` only after
+   the above checks. Remove this switch for an immediate fail-closed rollback
+   to legacy optional-deficit sponsoring for **new** quotes. Already persisted
+   commitments require operator reconciliation before disabling the grant worker.
+
+## Critical limitations
+
+EIP-712 authorizes the initial fee quote; a native gas grant is a separate
+irreversible wallet payment. A 30% gas buffer cannot mathematically guarantee
+completion when gas spikes beyond 30%, when native token principal is missing,
+or when the customer spends native funds after quote time. Never auto-pay an
+unquoted top-up or take custody of locked tokens. Exceeding a risk budget
+blocks new quotes or creates a visible held-for-review transfer.
