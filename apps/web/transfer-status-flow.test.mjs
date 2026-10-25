@@ -135,7 +135,7 @@ test("optional sponsorship appears strictly after confirmed initial fee payment"
   sponsorship:{enabled:true,status:"confirmed"}});
  assert.match(paid,/Native gas grant confirmed on chain/);
  assert.match(renderTransferFlow({journey,record,
-  sponsorship:{enabled:true,status:"not-required"}}),/Wallet already has sufficient native gas/);
+  sponsorship:{enabled:true,status:"not-required"}}),/No sponsor grant required for a verified stage/);
 });
 
 test("12 of 12 confirmations does not claim Base safe finality or unlock delivery",()=>{
