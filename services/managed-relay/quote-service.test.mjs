@@ -255,8 +255,8 @@ test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP
  assert.equal(empty.pricing.walletAware,true);
  assert.equal(rich.pricing.walletAware,true);
  assert.ok(BigInt(empty.quote.interchainFeeWei)>0n);
- assert.equal(rich.pricing.sourceNativeInterchainFeeWei,"0");
- assert.equal(rich.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
+ assert.equal(rich.pricing.sourceNativeInterchainFeeWei,"1000000000000");
+ assert.equal(rich.status,"SIGNED_INTERCHAIN_FEE_QUOTE");
  assert.equal(rich.pricing.sponsorCommitments.length,0);
  assert.ok(empty.pricing.sponsorCommitments.length>0);
  const domain={name:"XITA Interchain Fee",version:"1",chainId:1643,
@@ -268,7 +268,7 @@ test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP
   readWalletNativeBalance:async()=>undefined}),/Unverified native wallet balance/);
 });
 
-test("fully funded direct quote has exactly zero platform fee",async()=>{
+test("fully funded route signs fixed 1000-gwei native fee independent of network gas",async()=>{
  const req={...request,recipient:request.payer};
  const options={...defaults(),request:req,walletAwareEnabled:true,
   readWalletNativeBalance:async()=>1000000000000000000n};
@@ -277,11 +277,13 @@ test("fully funded direct quote has exactly zero platform fee",async()=>{
   getDestinationGasQuote:async()=>({gasPriceWei:9000000000n,availableWei:0n})});
  assert.deepEqual(low.pricing.sponsorCommitments,[]);
  assert.deepEqual(high.pricing.sponsorCommitments,[]);
- assert.equal(low.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
- assert.equal(high.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
- assert.equal(low.pricing.sourceNativeInterchainFeeWei,"0");
- assert.equal(high.pricing.sourceNativeInterchainFeeWei,"0");
- assert.equal(low.signature,null);
+ assert.equal(low.status,"SIGNED_INTERCHAIN_FEE_QUOTE");
+ assert.equal(high.status,"SIGNED_INTERCHAIN_FEE_QUOTE");
+ assert.equal(low.pricing.sourceNativeInterchainFeeWei,"1000000000000");
+ assert.equal(high.pricing.sourceNativeInterchainFeeWei,"1000000000000");
+ assert.equal(low.pricing.uiServiceFeeWei,"1000000000000");
+ assert.equal(low.pricing.sponsoredServiceFeeWei,"0");
+ assert.ok(low.signature);
 });
 test("only committed wallet gas deficits increase the signed service fee",async()=>{
  const options={...defaults(),request:{...request,recipient:request.payer},
@@ -289,10 +291,34 @@ test("only committed wallet gas deficits increase the signed service fee",async(
  const funded=await buildManagedQuote({...options,readWalletNativeBalance:async()=>10n**18n});
  const partial=await buildManagedQuote({...options,readWalletNativeBalance:async()=>650000000000000n});
  const empty=await buildManagedQuote({...options,readWalletNativeBalance:async()=>0n});
- assert.equal(funded.pricing.sourceNativeInterchainFeeWei,"0");
+ assert.equal(funded.pricing.sourceNativeInterchainFeeWei,"1000000000000");
  assert.ok(BigInt(funded.pricing.sourceNativeInterchainFeeWei)<BigInt(partial.quote.interchainFeeWei));
  assert.ok(BigInt(partial.quote.interchainFeeWei)<BigInt(empty.quote.interchainFeeWei));
  assert.equal(funded.pricing.sponsorCommitments.length,0);
  assert.equal(partial.pricing.sponsorCommitments.length,1);
  assert.equal(empty.pricing.sponsorCommitments.length,1);
+});
+
+test("wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI charge",async()=>{
+ const options={...defaults(),catalog:multiHopFixture(),
+  request:{...request,source:"base",destination:"polygon",recipient:request.payer},
+  walletAwareEnabled:true,readWalletNativeBalance:async()=>10n**22n,
+  readGatewayQuote:async({source})=>source==="base"?
+   {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
+    tokenAmount:1000000000000000000n}:
+   {bridgeNativeWei:1100000000000000000n,validatorFeeWei:100000000000000000n,
+    tokenAmount:0n},
+  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:0n}),
+  getCoinGeckoSnapshot:async()=>({...exchange(),"polygon-ecosystem-token":{
+   usd:0.35,last_updated_at:Math.floor(now/1000)-11}})};
+ const result=await buildManagedQuote(options);
+ assert.equal(result.quote.interchainFeeWei,"1000000000000");
+ assert.equal(result.pricing.sponsorCommitments.length,0);
+ assert.equal(result.pricing.uiServiceFeeWei,"1000000000000");
+ assert.equal(result.pricing.sponsoredServiceFeeWei,"0");
+ assert.equal(result.quote.finalDestinationDomain,137);
+ assert.equal(result.quote.destinationDomain,1643);
+ assert.equal(result.quote.onwardRouteId,hash("a"));
+ assert.equal(result.status,"SIGNED_INTERCHAIN_FEE_QUOTE");
+ assert.ok(result.signature);
 });
