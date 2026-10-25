@@ -517,8 +517,8 @@ function updateFlowModal(){
  if(!binding){resetFlowView();return}
  // Rebuild from the current selected source transaction, NEVER from stale
  // global journey state or the most recent child hop.
- if(binding.record?.confirmed&&binding.record?.executionAdapter&&
-    BigInt(binding.record?.interchainFeeWei||"0")>0n)
+ if(binding.record?.confirmed&&binding.record?.delivered!==true&&
+    binding.record?.executionAdapter&&BigInt(binding.record?.interchainFeeWei||"0")>0n)
   void refreshTransferSponsorship(binding);
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
  const sponsorEnabled=binding.record?.delivered!==true&&
@@ -542,7 +542,9 @@ function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow
 function openFlowModal(){
  const binding=currentFlowBinding();
  if(!binding)return;
- if(!binding.sameSession){
+ // Reopening a status view must not resurrect a stale, transient preflight error.
+ // Canonical indexed records and backend proof diagnostics remain authoritative.
+ if(!transferActivity.working){
   flowView.stage="";transferActivity.error="";transferActivity.notice="";
  }
  flowView.journey=binding.journey;
