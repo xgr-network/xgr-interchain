@@ -326,7 +326,9 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    }
    // Public status is bound to the verified parent wallet. Never expose
    // reservations, sponsor nonces, payout values or unrelated customer grants.
-   const quoteAware=process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+   // Existing transfers may predate quote commitments. The immutable intent,
+ // not a mode ENV, distinguishes the newer commercial pricing.
+ const quoteAware=true;
    const q=await sponsorPool.query({text:
     "SELECT g.grant_key,g.status,p.delivered,"+
     (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
