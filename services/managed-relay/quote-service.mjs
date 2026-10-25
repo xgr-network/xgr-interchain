@@ -2,6 +2,8 @@
 // No protocol authority: signer can only authorize the commercial adapter.
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
+import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
+import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {COINGECKO_GAS_COIN_IDS,quotedJourneyCostWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
 
@@ -27,7 +29,8 @@ const invalid=()=>{throw Error("No uniquely deployed managed relay route")};
 export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,readSourceBlockTimestamp,
- getDestinationGasQuote,getCoinGeckoSnapshot,
+ getDestinationGasQuote,getCoinGeckoSnapshot,readWalletNativeBalance=null,
+ walletAwareEnabled=false,baseServiceFeeWei=null,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout,
@@ -130,7 +133,38 @@ export async function buildManagedQuote({
    throw Error("Source chain timestamp cannot safely issue fee quote");
  }
  const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
- const fee=quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
+ const sponsorStages=[{chain:firstDestination,kind:"first-delivery",
+  gasUnits:units,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei},
+  ...(secondRoute?[{chain:"xgrchain",kind:"hub-onward",
+   gasUnits:units,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei,
+   nativeFeeWei:onwardFeeWei},{chain:destination,kind:"final-delivery",
+   gasUnits:units,gasPriceWei:gasByChain.get(destination).gasPriceWei}]:[])];
+ if(walletAwareEnabled&&typeof readWalletNativeBalance!=="function")
+  throw Error("Verified wallet balance reader required");
+ const balances={};
+ if(walletAwareEnabled){
+  for(const chain of new Set(sponsorStages.map(x=>x.chain))){
+   const v=await readWalletNativeBalance({chain,account:payerAddress});
+   if(typeof v!=="bigint"||v<0n||v>=2n**256n)
+    throw Error("Unverified native wallet balance");
+   balances[chain]=v.toString();
+  }
+ }
+ const allocation=walletAwareEnabled?
+  walletAwareSponsorship({stages:sponsorStages,balances}):null;
+ const fee=walletAwareEnabled?(()=>{
+  // Only the documented shortfall is priced; the positive fixed base fee is
+  // independent of wallet balances and covers the operation even at zero grants.
+  const cost=allocation.grants.reduce((total,grant)=>
+   total+ceilDiv(BigInt(grant.amountWei)*
+    usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
+    usdPrice12(oracle.sourceUsd)),0n);
+  const baseWei=BigInt(baseServiceFeeWei);
+  if(baseWei<=0n)throw Error("Positive base service fee not configured");
+  const priced=priceInterchainCostWei({estimatedCostSourceWei:cost+baseWei,vatBps:0n});
+  return {...priced,stages:quotedJourneyCostWei({source,stages,
+   coinGeckoSnapshot:priceData,now}).stages};
+ })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(interchainFeeWei===0n)throw Error("Native source service fee unavailable");
@@ -168,6 +202,9 @@ export async function buildManagedQuote({
    estimatedCostSourceWei:fee.estimatedCostSourceWei,
    onwardProtocolFeeWei:onwardFeeWei===null?null:onwardFeeWei.toString(),
    journeyCostStages:fee.stages,
+   walletAware:walletAwareEnabled,
+   sponsorCommitments:allocation?.grants||[],
+   sponsorAllocation:allocation?.stages||[],
    grossInterchainFeeWei:fee.grossInterchainFeeWei,
    sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
    markupBps:fee.markupBps,
