@@ -183,6 +183,33 @@ export function executableDestinations(model,assetId,source){
   source===HUB||c.key===HUB?leg(source,c.key):
    leg(source,HUB)&&leg(HUB,c.key)));
 }
+// Single source of truth for new-transfer dropdowns. The most recently
+// changed selector wins; the opposite selector follows to a real executable
+// route. Never infer a spoke-to-spoke direct edge or a self-transfer.
+// Called BEFORE rendering, so balance, token identity, quote and form all
+// consume the same source/destination pair instead of stale DOM values.
+export function normalizeTransferSelection(model,selection={},changed="origin"){
+ const routes=model?.transferRoutes||[];
+ const activeAssets=new Set(routes.map(r=>r.asset));
+ const assets=(model?.assets||[]).filter(a=>activeAssets.has(a.id));
+ const asset=assets.some(a=>a.id===selection.asset)?selection.asset:assets[0]?.id||"";
+ const available=new Set(routes.flatMap(r=>[r.source,r.destination]));
+ const destinations=source=>executableDestinations(model,asset,source)
+  .filter(c=>available.has(c.key));
+ const origins=(model?.chains||[]).filter(c=>available.has(c.key)&&destinations(c.key).length>0);
+ let origin=origins.some(c=>c.key===selection.origin)?selection.origin:
+  origins.some(c=>c.key===HUB)?HUB:origins[0]?.key||"";
+ if(changed==="destination"&&selection.destination&&
+    !destinations(origin).some(c=>c.key===selection.destination)){
+  const alternative=origins.find(c=>destinations(c.key)
+   .some(d=>d.key===selection.destination));
+  if(alternative)origin=alternative.key;
+ }
+ const destinationOptions=destinations(origin);
+ const destination=destinationOptions.some(c=>c.key===selection.destination)?
+  selection.destination:destinationOptions[0]?.key||"";
+ return {asset,origin,destination};
+}
 function assetOptions(model,selected){
   return model.assets.map(a=>'<option value="'+esc(a.id)+'"'+(a.id===selected?" selected":"")+'>'+esc(a.name)+' ('+esc(a.id)+')</option>').join("");
 }

@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity,executableDestinations} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity,normalizeTransferSelection,executableDestinations} from "./experience.js";
 import {deployedFixture,visibilityFixture} from "./deployed-test-fixture.mjs";
 import {freshDeployedCatalog} from "../../services/managed-relay/test-deployments.mjs";
 import {executableTransferRoutes} from "./route-availability.js";
@@ -594,4 +594,47 @@ test("transfer form never offers identical origin and destination, including Arb
  const toArb=fromArb.match(/<select id="ux-destination"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
  assert.doesNotMatch(toArb,/value="arbitrum"/);
  assert.ok(toArb.includes('value="xgrchain"'));
+});
+
+test("select destination Arbitrum then source Arbitrum reconciles to XGRChain",()=>{
+ const {catalog:c}=freshDeployedCatalog({names:["xgrchain","base","arbitrum"],routeDestination:"arbitrum",reverseRoute:true});
+ const m=buildExperienceModel(c);
+ // Source includes Arbitrum reverse route; destination is independently executable.
+ const model={...m,transferRoutes:[...m.transferRoutes,
+  {asset:"XGR",source:"arbitrum",destination:"xgrchain"},
+  {asset:"XGR",source:"xgrchain",destination:"arbitrum"},
+  {asset:"XGR",source:"base",destination:"xgrchain"}],
+  chains:[{key:"xgrchain",label:"XGRChain"}, {key:"base",label:"Base"},
+   {key:"arbitrum",label:"Arbitrum"}]};
+ const before=normalizeTransferSelection(model,{asset:"XGR",origin:"xgrchain",destination:"arbitrum"},"destination");
+ assert.deepEqual(before,{asset:"XGR",origin:"xgrchain",destination:"arbitrum"});
+ const after=normalizeTransferSelection(model,{...before,origin:"arbitrum"},"origin");
+ assert.deepEqual(after,{asset:"XGR",origin:"arbitrum",destination:"xgrchain"});
+ const html=renderPlanRoute(model,{...after,amount:"20"},"ready",
+  {account:"0x"+"1".repeat(40),tokenBalances:{
+   "XGR:arbitrum":{status:"ready",balanceRaw:"50000000000000000000",decimals:18,symbol:"wXGR"},
+   "XGR:xgrchain":{status:"ready",balanceRaw:"1939453108210000000000",decimals:18,symbol:"XGR"}}});
+ const from=html.match(/<select id="ux-origin"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
+ const to=html.match(/<select id="ux-destination"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
+ assert.match(from,/<option value="arbitrum" selected>/);
+ assert.match(to,/<option value="xgrchain" selected>/);
+ assert.match(html,/Available on Arbitrum/);
+ assert.match(html,/50 wXGR/);
+ assert.doesNotMatch(html,/Available on XGRChain/);
+ assert.match(html,/Arbitrum · wXGR → XGRChain · XGR/);
+});
+test("repeated chain edits preserve feasible destinations, never self-transfer",()=>{
+ const m={chains:[{key:"xgrchain"},{key:"base"},{key:"arbitrum"}],
+  assets:[{id:"XGR"}],transferRoutes:[
+   {asset:"XGR",source:"base",destination:"xgrchain"},
+   {asset:"XGR",source:"xgrchain",destination:"base"},
+   {asset:"XGR",source:"arbitrum",destination:"xgrchain"},
+   {asset:"XGR",source:"xgrchain",destination:"arbitrum"}]};
+ let s={asset:"XGR",origin:"base",destination:"arbitrum"};
+ for(const [key,value] of [["origin","arbitrum"],["destination","base"],
+   ["origin","base"],["origin","xgrchain"],["destination","arbitrum"]]){
+  s=normalizeTransferSelection(m,{...s,[key]:value},key);
+  assert.notEqual(s.origin,s.destination);
+  assert.ok(executableDestinations(m,s.asset,s.origin).some(c=>c.key===s.destination));
+ }
 });
