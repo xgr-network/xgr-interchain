@@ -245,3 +245,24 @@ test("unsigned fee pricing automatically discovers the receipt-backed XGR to Arb
  assert.equal(quote.destination,"arbitrum");
  assert.ok(BigInt(quote.pricing.grossInterchainFeeWei)>0n);
 });
+
+test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact",async()=>{
+ const base={...defaults(),walletAwareEnabled:true,
+  baseServiceFeeWei:"1000000000000000",
+  readWalletNativeBalance:async()=>0n};
+ const funded={...base,readWalletNativeBalance:async()=>100000000000000000n};
+ const empty=await buildManagedQuote(base);
+ const rich=await buildManagedQuote(funded);
+ assert.equal(empty.pricing.walletAware,true);
+ assert.equal(rich.pricing.walletAware,true);
+ assert.ok(BigInt(empty.quote.interchainFeeWei)>BigInt(rich.quote.interchainFeeWei));
+ assert.equal(rich.pricing.sponsorCommitments.length,0);
+ assert.ok(empty.pricing.sponsorCommitments.length>0);
+ const domain={name:"XITA Interchain Fee",version:"1",chainId:1643,
+  verifyingContract:address(44)};
+ assert.equal(verifyTypedData(domain,MANAGED_QUOTE_TYPES,empty.quote,empty.signature),signer.address);
+ assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,
+  {...empty.quote,interchainFeeWei:rich.quote.interchainFeeWei},empty.signature),signer.address);
+ await assert.rejects(()=>buildManagedQuote({...base,
+  readWalletNativeBalance:async()=>undefined}),/Unverified native wallet balance/);
+});
