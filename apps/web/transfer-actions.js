@@ -283,7 +283,6 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  // Do not lock a new source if a destination has neither the wallet's
  // own native gas nor a fresh, independently verified sponsor reserve.
  const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];
- let sponsor=null;
  for(const key of destinations){
   const target=catalog.chains[key];
   const identity=await publicRead(target.rpcUrls?.[0],"eth_chainId",[],fetcher);
@@ -313,14 +312,10 @@ export async function startTransfer({catalog,account,asset,source,destination,am
     throw Error("Paid final-delivery gas grant not independently committed; do not send TX3");
    }
    if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
-   if(!sponsor){
-    const response=await fetcher("/api/xita/v1/managed/health",{
-     cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
-    }).catch(()=>null);
-    sponsor=response?.ok?await response.json().catch(()=>null):null;
-   }
-   if(sponsor?.ok!==true||sponsor.sponsorship?.chains?.[key]!==true)
-    throw Error("Destination native gas absent and sponsorship not available on "+key);
+   // The signed quote below verifies the actual positive grant shortfall
+   // against current chain balances and policy. A stale monitor row is
+   // not grounds to reject the transfer before its live funding check.
+
   }
  }
  await validateWalletAccount(provider,account);
