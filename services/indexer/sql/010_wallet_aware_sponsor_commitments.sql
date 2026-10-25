@@ -61,6 +61,12 @@ BEGIN
   GRANT SELECT ON xita_sponsor_quote_intents,
    xita_sponsor_quote_commitments TO xita_sponsor_status_reader;
  END IF;
+ -- Wallet index reader receives READ ONLY evidence, scoped by the already
+ -- verified account/transaction in readWalletTransferIndex. No grant creation.
+ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_indexer_reader') THEN
+  GRANT SELECT ON xita_sponsor_quote_intents,
+   xita_sponsor_quote_commitments TO xita_indexer_reader;
+ END IF;
 END $$;
 -- No trigger may authorize a payout: worker must recheck canonical source TX,
 -- matched nonce/fee/route/recipient AND quote-time immutable intent separately.
