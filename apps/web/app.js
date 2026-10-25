@@ -16,7 +16,7 @@ import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {pendingDeliveryCount} from "./wallet-pending.js";
 import {walletSigningQueue,walletSigningNotice} from "./wallet-action-attention.js";
-import {rememberSourceTxHint,listSourceTxHints} from "./source-tx-hints.js";
+import {rememberSourceTxHint,listSourceTxHints,unresolvedSourceTxHints} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
@@ -260,8 +260,7 @@ function loadBroadcastHints(account){
  broadcastHints=account?listSourceTxHints(account).filter(h=>Boolean(state.catalog?.chains?.[h.sourceChain])):[];
 }
 function pendingBroadcastHints(){
- const indexed=new Set(transferActivity.items.map(t=>t.sourceChain+":"+String(t.txHash||"").toLowerCase()));
- return broadcastHints.filter(h=>!indexed.has(h.sourceChain+":"+h.txHash));
+ return unresolvedSourceTxHints({account:state.account,items:transferActivity.items,hints:broadcastHints});
 }
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
@@ -279,7 +278,7 @@ function refreshTransferLink(){
  const signing=walletSigningNotice(queue);
  alert.href=signing?.href||"/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
-  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount})+pendingBroadcastHints().length:0;
+  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
  alert.hidden=pending===0&&!signing;
  if(signing){
   alert.textContent=signing.label;alert.title=signing.title;
