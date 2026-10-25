@@ -8,7 +8,7 @@ const now=Date.parse("2026-10-19T12:00:00.000Z");
 const cursor=(updatedAt,scannedTo=100,finalizedHead=100,complete=true)=>({
  source:"base",destination:"xgrchain",route:"base_to_xgr",scannedTo,finalizedHead,updatedAt,complete
 });
-const stats=(routes,complete=true)=>({ok:true,coverage:{routes,complete,indexedRoutes:routes.filter(r=>r.complete).length,requiredRoutes:routes.length}});
+const stats=(routes,complete=true)=>({ok:true,coverage:{routes,complete,indexedRoutes:routes.filter(r=>r.complete).length,requiredRoutes:routes.length},proofObserver:{status:"available",routes:[]}});
 test("systemd parses loaded and not-installed without inventing uptime",()=>{
  const def=UNITS[0];
  assert.equal(parseUnitShow("LoadState=loaded\nActiveState=active\nSubState=running\nNRestarts=2\n",def).state,"ok");
@@ -53,6 +53,10 @@ test("overall health is sound with absent optional services but flags core failu
  const bad=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-indexer.service"?
   "LoadState=loaded\nActiveState=failed\n":readUnit(name),readHTTP,checkChain,readEvidence,now});
  assert.equal(bad.status,"degraded");
+ const observerDown=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-proof-observer.service"?"LoadState=not-found\nActiveState=inactive\n":readUnit(name),readHTTP,checkChain,readEvidence,now});
+ assert.equal(observerDown.status,"degraded");
+ const missingMigration=await collectOperationsHealth({catalog,readUnit,readHTTP:async target=>target.id==="transfer-stats"?{...stats([cursor("2026-10-19T11:59:30Z")]),proofObserver:{status:"not-provisioned"}}:readHTTP(target),checkChain,readEvidence,now});
+ assert.equal(missingMigration.status,"degraded");
 });
 
 test("paid quote signer with responsive HTTP but missing DB permissions is DEGRADED",async()=>{

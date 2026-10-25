@@ -83,11 +83,15 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  // A crashed/stopped worker must not freeze the UI in "checking" forever.
  // Manual recovery still revalidates the complete canonical proof on demand.
  const proofWaiting=observing&&!observationStale&&proofObservation.state!=="unavailable";
+ const proofUnobserved=Boolean(record?.confirmed)&&
+   ["awaiting-proof","awaiting-final-proof"].includes(status)&&!proofObservation;
  const continueLabel=status==="awaiting-onward"?"Continue onward from XGRChain":
    status==="awaiting-final-proof"?"Continue final delivery":
    proofReady?"Continue destination delivery":"Check validators and continue delivery";
  const canContinue=!working&&!error&&Boolean(record?.confirmed)&&
-   pendingWallet.includes(status)&&!delivered&&!proofWaiting;
+   pendingWallet.includes(status)&&!delivered&&!proofWaiting&&
+   (status==="awaiting-onward"||proofReady||observationStale||
+    proofObservation?.state==="unavailable");
  const canRefresh=!working&&!delivered&&(Boolean(record)||HASH.test(journey.sourceTxHash||""));
  const needsAttention=Boolean(error)||status==="finality-unavailable"||observationStale||
    proofObservation?.state==="unavailable"||
@@ -95,18 +99,21 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
     "journey-ambiguous","destination-not-deployed"].includes(status);
  const awaitingWallet=working&&["source-approval","source-sign","first-delivery-sign",
    "onward-approval","onward-source-sign","final-delivery-sign"].includes(stage);
+ const walletPreparing=working&&stage==="onward-preflight";
  let heading=delivered?"Transfer delivered":
    needsAttention?"Verification needs attention":
-   awaitingWallet?"MetaMask action required":
+   awaitingWallet?"Confirm transaction in MetaMask":
+   walletPreparing?"Preparing MetaMask transaction":
    working?"Checking transfer — please wait":
    proofWaiting?"Checking validator proof automatically":
+   proofUnobserved?"Awaiting validator proof observation":
    canContinue?"Ready for the next verified step":
    canRefresh?"Transfer not yet complete":"Preparing transfer";
  if(status==="pending-source")heading="Source transaction pending";
  if(status==="confirming")heading="Source finality pending";
  if(status==="confirming-native-finality")heading="Waiting for "+name(origin)+" safe finality";
  if(status==="finality-unavailable")heading="Source finality RPC unavailable";
- if(status==="awaiting-onward"&&!working&&!error)heading="Preparing second hop";
+ if(status==="awaiting-onward"&&!working&&!error)heading="Preparing next wallet transaction";
  if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Waiting for final delivery proof";
  if(delivered)heading="Transfer complete";
  const nativeFinalityMessage=status==="confirming-native-finality"?
@@ -122,11 +129,12 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    observationStale?(backendProofDescription||"Backend proof observer stale")+". Waiting for backend recovery; no manual proof action is required.":
    proofWaiting?(backendProofDescription||"Backend validator verification pending")+". No wallet action needed; the backend continues even when this window is closed.":
    proofObservation?.state==="unavailable"?(backendProofDescription||"Backend proof unavailable")+". XITA retries automatically; no wallet action is required.":
+   proofUnobserved?"The confirmed source has no backend validator-proof observation yet. This step is not ready. No wallet action is required; check the Proof Observer in System Health if it persists.":
    proofReady?"Backend proof ready. XITA will revalidate the canonical chain state before asking MetaMask to sign.":
    canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
-   canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
+   canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. TX3 of 4 is available. Open this transfer and keep the window open: MetaMask will request your confirmation once preflight succeeds. Never repeat the original source transaction.":
+   status==="awaiting-onward"?"XGRChain delivery confirmed. XITA is preparing TX3 of 4. Keep this window open; MetaMask will request your confirmation when preflight succeeds.":
    notice?String(notice):
-   status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
    status==="awaiting-proof"?"Source transaction confirmed. Validator proof preparation and destination delivery may take time.":
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
@@ -149,14 +157,16 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   sourceTxHash:HASH.test(record?.txHash||"")?record.txHash:
    HASH.test(journey.sourceTxHash||"")?journey.sourceTxHash:null};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
+ const walletStep=record?.status==="awaiting-onward"?"TX3":
+  record?.status==="awaiting-final-proof"?"TX4":"TX2";
  // Sponsorship is an optional independent funded-wallet operation AFTER
  // the initial paid source TX, not an extra MetaMask action or proof of delivery.
  const sponsorEnabled=sponsorship?.enabled===true;
  const sponsorStage=sponsorship?.status==="confirmed"?"complete":
-  sponsorship?.status==="needs-review"?"attention":
+  ["needs-review","disabled"].includes(sponsorship?.status)?"attention":
   sponsorship?.status==="not-required"?"complete":"pending";
  const sponsorNote=sponsorship?.status==="confirmed"?"All upfront native gas grants confirmed on chain":
   sponsorship?.status==="needs-review"?"Gas grant requires operator review":
@@ -164,7 +174,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
   sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
   sponsorship?.status==="pending"?"Waiting for all upfront gas grants before destination delivery":
-  sponsorship?.status==="disabled"?"Gas sponsorship disabled; own native gas required":
+  sponsorship?.status==="disabled"?"Promised gas grants unavailable; operator attention required":
   "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
    '<span class="ux-flow-step-indicator" aria-hidden="true">'+(sponsorStage==="complete"?"✓":"⌛")+'</span>'+
@@ -189,7 +199,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   '</div>'+
   '<div class="ux-flow-banner'+(flow.needsAttention?" is-attention":flow.delivered?" is-done":"")+'" role="status" aria-live="polite">'+
    '<span class="ux-flow-spinner" aria-hidden="true">'+(flow.delivered?"✓":flow.needsAttention?"!":"⌛")+'</span>'+
-   '<div><strong>'+esc(flow.heading)+'</strong><p>'+esc(flow.message)+'</p></div></div>'+
+   '<div><strong>'+esc(walletReady&&!working?'Wallet confirmation coming up':flow.heading)+'</strong><p>'+esc(walletReady&&!working?'The next verified step is '+walletStep+'. Keep this window open: XITA is preparing MetaMask for your confirmation. You can hide this view and resume signing later.':flow.message)+'</p></div></div>'+
   '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
    '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
    ' wallet transactions verified</small></div>'+

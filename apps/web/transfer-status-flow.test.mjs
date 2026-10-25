@@ -18,6 +18,19 @@ test("source confirmed is not mistaken for successful two-hop delivery",()=>{
  assert.notEqual(flow.steps[2].state,"complete");
  assert.equal(flow.verifiedWalletTx,1);
 });
+test("awaiting TX3 tells the wallet user exactly what is next",()=>{
+ const record={...base,status:"awaiting-onward",delivered:true};
+ const flow=deriveTransferFlow({journey,record});
+ assert.equal(flow.heading,"Preparing next wallet transaction");
+ assert.match(flow.message,/TX3 of 4/);
+ assert.match(flow.message,/MetaMask will request your confirmation/);
+ const preflight=deriveTransferFlow({journey,record,working:true,
+  stage:"onward-preflight",notice:"Preparing XGRChain transaction"});
+ assert.equal(preflight.heading,"Preparing MetaMask transaction");
+ const signing=deriveTransferFlow({journey,record,working:true,
+  stage:"onward-source-sign",notice:"Confirm transaction in MetaMask"});
+ assert.equal(signing.heading,"Confirm transaction in MetaMask");
+});
 test("first XGR delivery never advertises Base delivery",()=>{
  const flow=deriveTransferFlow({journey,record:{...base,status:"awaiting-onward",delivered:true}});
  assert.equal(flow.delivered,false);assert.equal(flow.steps[2].state,"complete");
@@ -76,12 +89,18 @@ test("verified validator proof advances to MetaMask delivery before source recei
  assert.equal(signing.steps[1].state,"complete");
  assert.equal(signing.steps[2].state,"current");
  assert.equal(signing.verifiedWalletTx,1);
- assert.equal(signing.heading,"MetaMask action required");
+ assert.equal(signing.heading,"Confirm transaction in MetaMask");
  const pending=deriveTransferFlow({journey,record,working:true,stage:"first-delivery-pending"});
  assert.equal(pending.steps[2].state,"current");
  assert.equal(pending.verifiedWalletTx,1);
 });
 
+test("absent proof observer entry cannot render validator proof ready",()=>{
+ const flow=deriveTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false}});
+ assert.equal(flow.canContinue,false);
+ assert.equal(flow.heading,"Awaiting validator proof observation");
+ assert.match(flow.message,/no backend validator-proof observation yet/);
+});
 test("persistent background proof observation waits without asking for wallet signature",()=>{
  const record={...base,status:"awaiting-final-proof",delivered:true,
   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
@@ -155,6 +174,10 @@ test("12 of 12 confirmations does not claim Base safe finality or unlock deliver
  assert.equal(unavailable.canContinue,false);
 });
 
+test("disabled but promised gas warrants attention",()=>{
+ const html=renderTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false},sponsorship:{enabled:true,status:"disabled"}});
+ assert.match(html,/operator attention required/);
+});
 test("pending gas sponsorship is not rendered as actively checking forever",()=>{
  const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
  const record={...base,sourceChain:"base",destinationChain:"xgrchain",

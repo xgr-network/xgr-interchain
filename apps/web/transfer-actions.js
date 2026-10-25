@@ -228,7 +228,7 @@ export async function waitForWalletReceipt(provider,hash,{attempts=25,delayMs=30
  return null;
 }
 export async function startTransfer({catalog,account,asset,source,destination,amount,
- provider,onBroadcast,fetcher=globalThis.fetch,commercial=null,
+ provider,onBroadcast,onWalletReady,fetcher=globalThis.fetch,commercial=null,
  onwardParentMessageId=null,onwardSponsorSourceChain=null}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
  const firstDestination=source!=="xgrchain"&&destination!=="xgrchain"?
@@ -443,6 +443,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  await validateWalletAccount(provider,account);
  await rpcChain(provider,src);
  await ensureNoPendingWalletTransaction({provider,account,chain:src,fetcher});
+ onWalletReady?.();
  const txHash=await request(provider,"eth_sendTransaction",[tx]);
  if(!HASH.test(txHash||""))throw Error("Wallet did not return a transaction hash");
  onBroadcast?.({txHash,sourceChain:source,routeName:route.name});
@@ -457,7 +458,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
 // a previously observed same-asset/same-amount hop is ambiguous. Fail closed
 // until the full finality-aware index is complete and duplicates are excluded.
 export async function startVerifiedOnwardHop({
- catalog,account,record,provider,fetcher=globalThis.fetch,onBroadcast
+ catalog,account,record,provider,fetcher=globalThis.fetch,onBroadcast,onWalletReady
 }){
  if(!ADDRESS.test(account||"")||!record?.txHash||record.status!=="awaiting-onward")
   throw Error("Select a confirmed first-hop transfer before continuing");
@@ -500,7 +501,7 @@ export async function startVerifiedOnwardHop({
  // startTransfer() independently rechecks router bindings, gas, allowances,
  // wallet nonce, proof readiness and the destination native balance.
  return startTransfer({catalog,account,asset:first.asset,source:"xgrchain",
-  destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast,
+  destination:first.finalDestinationChain,amount,provider,fetcher,onBroadcast,onWalletReady,
   commercial:false,onwardParentMessageId:first.messageId,
   onwardSponsorSourceChain:first.sourceChain});
 }

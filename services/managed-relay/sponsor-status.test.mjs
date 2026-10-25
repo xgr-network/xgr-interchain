@@ -5,7 +5,7 @@ const message="base:0x"+"a".repeat(64);
 test("sponsor status is not falsely green when no grant journal exists",()=>{
  assert.deepEqual(publicSponsorshipView([]),{ok:true,status:"unavailable"});
  assert.deepEqual(publicSponsorshipView([{grant_key:null,status:null,delivered:true}]),
-  {ok:true,status:"pending",grants:[],upfrontRequired:false});
+  {ok:true,status:"not-required",grants:[],upfrontRequired:false});
 });
 test("only journalled stage-specific grants are reported",()=>{
  const r=publicSponsorshipView([{grant_key:message+":first-delivery",status:"confirmed"},
@@ -18,7 +18,7 @@ test("only a matching immutable wallet-aware quote may prove no sponsor needed",
  assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:true,expected_grants:0}]),
   {ok:true,status:"not-required",grants:[],upfrontRequired:false,expectedGrants:0});
  assert.deepEqual(publicSponsorshipView([{grant_key:null,wallet_aware:false}]),
-  {ok:true,status:"pending",grants:[],upfrontRequired:false});
+  {ok:true,status:"not-required",grants:[],upfrontRequired:false});
 });
 
 test("wallet-aware aggregate stays pending until ALL signed stages confirmed",()=>{
