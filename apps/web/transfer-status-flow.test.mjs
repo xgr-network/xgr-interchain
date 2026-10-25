@@ -258,3 +258,23 @@ test("error is never hidden by generic waiting animation",()=>{
  assert.match(html,/RPC failed: &lt;untrusted&gt;/);
  assert.doesNotMatch(html,/is-animated/);
 });
+
+test("scheduled transient proof error remains calm but stale or missing retry raises attention",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const parent={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum",status:"awaiting-proof",delivered:false};
+ const obs={state:"unavailable",reason:"PROOF_CONFIG_MISMATCH",stage:"confirmed-fee-vault-allocation",
+  updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
+ const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
+ assert.match(transient,/Retrying Base verification/);
+ assert.match(transient,/ux-flow-spinner is-animated/);
+ assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
+ const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
+  updatedAt:new Date(Date.now()-360000).toISOString(),
+  nextCheckAt:new Date(Date.now()-300000).toISOString()}}});
+ assert.match(stalled,/Verification needs attention/);
+ const explicit=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs},
+  error:"Fee vault mismatch: contact support"});
+ assert.match(explicit,/Verification needs attention/);
+ assert.match(explicit,/Fee vault mismatch: contact support/);
+});
