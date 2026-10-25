@@ -148,7 +148,8 @@ async function refreshFeePreview(){
     make("strong","ux-fee-summary-value",formatWeiFee(total)+" "+coin),
     make("small","ux-fee-summary-hint","Protocol + XITA Service Fee · ~ $"+value.estimatedRouteFeeUsd+" USD"));
    const gas=make("div","ux-fee-summary-part");
-   gas.append(make("span","ux-fee-summary-label","Transfer Gas Fees"));
+   gas.append(make("span","ux-fee-summary-label",allocation?
+    "Wallet-paid downstream gas & protocol costs":"Transfer Gas Fees"));
    if(rrows.length){
     for(const r of rrows){
      const line=make("div","ux-fee-summary-gas-line");
@@ -187,7 +188,9 @@ async function refreshFeePreview(){
    content.append(make("p","ux-fee-details-note",allocation?
     "Wallet-specific signed quote: the service fee includes only the promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and fixed onward protocol costs are included in the estimate. Source gas and ERC-20 approvals are separate.":
     "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
-   if(onward>0n)content.append(make("p","ux-fee-details-note","XGR onward protocol processing is already priced into the XITA Service Fee."));
+   if(onward>0n)content.append(make("p","ux-fee-details-note",allocation?
+    "The XGR onward protocol fee is split between existing wallet gas funds and the quote-locked sponsor shortfall. Only the sponsor-funded portion is included in the XITA Service Fee.":
+    "XGR onward protocol processing is already priced into the XITA Service Fee."));
    breakdown.append(content);
    detail.replaceChildren(section,breakdown);
   }
