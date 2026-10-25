@@ -638,3 +638,31 @@ test("repeated chain edits preserve feasible destinations, never self-transfer",
   assert.ok(executableDestinations(m,s.asset,s.origin).some(c=>c.key===s.destination));
  }
 });
+
+test("selected unfinished journey displays exactly one status action and no new fee quote",()=>{
+ const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+ const model=buildExperienceModel(deployed),account="0x"+"1".repeat(40);
+ const txHash="0x"+"a".repeat(64);
+ const item={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",
+  txHash,messageId:"0x"+"b".repeat(64),status:"awaiting-proof",
+  confirmed:true,delivered:false};
+ const html=renderPlanRoute(model,{asset:"XGR"},"ready",{account},
+  {items:[item],selectedTxHash:txHash,hasFlow:true});
+ assert.match(html,/data-transfer-action="resume"/);
+ assert.match(html,/Continue transfer · view status/);
+ assert.doesNotMatch(html,/id="xita-flow-reopen"/);
+ assert.doesNotMatch(html,/Transfer costs|id="ux-fee-preview-status"/);
+ assert.match(html,/is-recovery/);
+});
+test("completed journey loses stale status CTA and can reset to new transfer",()=>{
+ const {catalog:deployed}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
+ const model=buildExperienceModel(deployed),account="0x"+"1".repeat(40);
+ const txHash="0x"+"a".repeat(64);
+ const done={account,asset:"XGR",sourceChain:"xgrchain",destinationChain:"base",
+  txHash,messageId:"0x"+"b".repeat(64),status:"delivered",confirmed:true,delivered:true};
+ const html=renderPlanRoute(model,{asset:"XGR"},"ready",{account},
+  {items:[done],selectedTxHash:txHash,hasFlow:true});
+ assert.match(html,/data-transfer-action="new"/);
+ assert.match(html,/>New transfer<\/button>/);
+ assert.doesNotMatch(html,/id="xita-flow-reopen"|View transfer status|Transfer costs/);
+});
