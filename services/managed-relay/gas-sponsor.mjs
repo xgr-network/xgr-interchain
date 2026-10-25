@@ -352,32 +352,32 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
    " p.quote_nonce::text AS quote_nonce,p.route_id,"+
-   " c.message_id AS child_message_id,c.source_tx_hash AS child_source_tx_hash,"+
-   " c.destination_chain AS child_destination_chain,c.delivered AS child_delivered"+
-   " FROM xita_transfer_operations p LEFT JOIN LATERAL ("+
-   " SELECT message_id,source_tx_hash,destination_chain,delivered FROM xita_transfer_operations c"+
-   " WHERE c.parent_message_id=p.message_id AND c.source_chain='xgrchain'"+
-   " AND c.account=p.account AND c.asset=p.asset AND c.amount_raw=p.amount_raw"+
-   " AND c.route_id=p.onward_route_id LIMIT 1) c ON TRUE"+
-   " WHERE p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
-   " AND p.parent_message_id IS NULL AND ("+
-   " p.delivered IS FALSE OR (p.delivered IS TRUE AND"+
-   " p.onward_route_id IS NOT NULL AND (c.message_id IS NULL OR c.delivered IS FALSE)))"+
+   " c.grant_stage,c.grant_chain"+
+   " FROM xita_transfer_operations p"+
+   " JOIN xita_sponsor_quote_intents i ON"+
+   " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+   " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+   " AND i.quote_fee_wei=p.interchain_fee_wei"+
+   " JOIN xita_sponsor_quote_commitments c ON"+
+   " c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+   " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce"+
+   " WHERE p.parent_message_id IS NULL AND p.delivered IS FALSE"+
+   " AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
-   " g.grant_key=p.source_chain||':'||p.message_id||':'||"+
-   " CASE WHEN p.delivered IS FALSE THEN 'first-delivery'"+
-   " WHEN c.message_id IS NULL THEN 'hub-onward' ELSE 'final-delivery' END)"+
-   " ORDER BY p.source_indexed_at ASC LIMIT 120");
+   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
+   " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
-  const walletAware=true;
   for(const row of rows.rows){
-   if(!policy[sponsorStage(row)?.chain])continue;
+   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
+   if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
+   if(!policy[grant.chain])continue;
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy,walletAware}));}
+    providers:providerCache,fetcher,nativePolicy:policy,
+    stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
   return {status:"checked",reviewed:rows.rows.length,reserves,reconciled,
