@@ -21,7 +21,7 @@ import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
 import {nextVerifiedWalletStep,walletStepKey} from "./automatic-transfer-step.js";
-import {transferSponsorVisible,sponsorAllowsContinuation} from "./transfer-sponsor-evidence.js";
+import {transferSponsorVisible,sponsorAllowsContinuation,verifiedZeroGrantSource} from "./transfer-sponsor-evidence.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -505,20 +505,44 @@ async function refreshTransferSponsorship(binding){
 async function requireUpfrontSponsorship(record,account){
  if(!record?.confirmed||!record.executionAdapter||
     BigInt(record.interchainFeeWei||"0")<=0n)return;
+ // Critical: a paid fee is never proof of a sponsor promise. Fetch fresh,
+ // wallet-scoped, immutable quote+commitment counts independently of the
+ // optional sponsor worker. Never fall back from an unavailable read to zero.
+ const walletReply=await fetch("/api/xeta/v1/transfers/wallet?"+
+  new URLSearchParams({account}),{
+   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
+  }).catch(()=>null);
+ const walletData=walletReply?.ok?await walletReply.json().catch(()=>null):null;
+ if(walletData?.kind!=="xita-wallet-transfer-index-v1"||
+    walletData.wallet?.toLowerCase()!==account.toLowerCase()||
+    !Array.isArray(walletData.items))
+  throw Error("Immutable quote/grant evidence unavailable. No MetaMask transaction was sent; never repeat TX1.");
+ const exact=walletData.items.filter(row=>
+  row?.account?.toLowerCase()===account.toLowerCase()&&
+  row.sourceChain===record.sourceChain&&
+  row.txHash?.toLowerCase()===record.txHash?.toLowerCase()&&
+  row.messageId?.toLowerCase()===record.messageId?.toLowerCase());
+ if(exact.length!==1)
+  throw Error("Canonical paid source quote is missing or ambiguous. TX2 blocked; never repeat TX1.");
+ if(verifiedZeroGrantSource(exact[0],{...record,account}))return;
+ if(exact[0].sponsorCommitmentEvidence!=="committed-grants")
+  throw Error("Original TX1 immutable gas grant terms could not be verified. TX2 blocked; never repeat TX1.");
+ // ONLY a canonical positive grant commitment invokes the sponsor monitor.
  const query=new URLSearchParams({source:record.sourceChain,
   messageId:record.messageId,account});
  const response=await fetch("/api/xita/v1/managed/sponsorship?"+query,{
   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
  }).catch(()=>null);
  const evidence=response?.ok?await response.json().catch(()=>null):null;
- if(!sponsorAllowsContinuation(evidence)){
+ if(!sponsorAllowsContinuation(evidence)||evidence?.upfrontRequired!==true){
   if(evidence?.ok===true&&evidence.upfrontRequired===true)
    throw Error(["disabled","needs-review"].includes(evidence.status)?
     "Original TX1 gas grants need operator attention before XGRChain delivery. No MetaMask transaction was sent.":
     "Waiting for original TX1 gas grants to confirm before XGRChain delivery. No MetaMask transaction was sent.");
-  throw Error("Original TX1 sponsorship terms could not be verified. No MetaMask transaction was sent. Retry verification; never repeat TX1.");
+  throw Error("Committed TX1 gas grants are not verifiable. No MetaMask transaction was sent; never repeat TX1.");
  }
 }
+
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
  if(!dialog||!flowView.open)return;
