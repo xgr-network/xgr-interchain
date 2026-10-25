@@ -136,7 +136,7 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
 // address or grant amount. Both come from verified read-only chain evidence.
 export async function sponsorOneCandidate({
  catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
- nativePolicy,afterReserve=null
+ nativePolicy,walletAware=false,afterReserve=null
 }){
  const stageInfo=sponsorStage(row);
  if(!stageInfo)return {status:"ineligible"};
@@ -168,12 +168,38 @@ export async function sponsorOneCandidate({
   if(bridge<principal+BigInt(quote[0]))
    throw Error("Invalid sponsored native bridge quote");
  }
- const accountBalance=await provider.getBalance(row.account);
- const needed=sponsorGrantNeed({stage,balanceWei:accountBalance,
-  gasUnits:BigInt(cfg.gasUnits),gasPriceWei:gasPrice,
-  nativeBridgeValueWei:bridge,nativePrincipalWei:principal});
- if(needed.status!=="needed")return {status:needed.status,chain,stage};
- const value=BigInt(needed.amountWei);
+ let value;
+ if(walletAware){
+  // Immutable, database-joined commitment; independently verified source
+  // contract receipt is checked below. Never recompute a grant from current
+  // wallet balance after its fee has been signed and paid.
+  const quote=await db.readQuoteCommitment({row,stage,chain});
+  if(!quote)return {status:"no-matching-quote-promise",chain,stage};
+  const first=proof.first;
+  if(!same(first.messageId,row.message_id)||
+     !same(first.routeId,row.route_id)||
+     !same(first.executionAdapter,row.execution_adapter)||
+     String(first.quoteNonce||"")!==String(row.quote_nonce||"")||
+     String(first.interchainFeeWei||"")!==String(row.interchain_fee_wei||"")||
+     String(quote.quote_fee_wei)!==String(row.interchain_fee_wei)||
+     !same(quote.route_id,first.routeId)||
+     String(quote.amount_raw)!==String(row.amount_raw)||
+     quote.asset!==row.asset||
+     !same(quote.final_recipient,row.account)||
+     quote.first_destination_chain!==row.destination_chain||
+     quote.final_destination_chain!==(row.final_destination_chain||row.destination_chain)||
+     !same(quote.onward_route_id,row.onward_route_id||"0x"+"0".repeat(64)))
+   throw Error("Signed quote commitment and finalized receipt mismatch");
+  value=BigInt(quote.promised_wei);
+ }else{
+  const accountBalance=await provider.getBalance(row.account);
+  const needed=sponsorGrantNeed({stage,balanceWei:accountBalance,
+   gasUnits:BigInt(cfg.gasUnits),gasPriceWei:gasPrice,
+   nativeBridgeValueWei:bridge,nativePrincipalWei:principal});
+  if(needed.status!=="needed")return {status:needed.status,chain,stage};
+  value=BigInt(needed.amountWei);
+ }
+ if(value<=0n)throw Error("Invalid immutable sponsor grant amount");
  if(value>BigInt(cfg.maxGrantWei))
   return {status:"over-grant-cap",chain,stage,requiredWei:needed.amountWei};
  const payerBalance=await provider.getBalance(wallet.address);
@@ -208,6 +234,30 @@ export function sponsorDatabase(pool){
  // SQL atomicity: reservation wins exactly once per source parent + stage;
  // unresolved reservations also consume the rolling native budget.
  return {
+  async readQuoteCommitment({row,stage,chain}){
+   if(!ADDR.test(row.account||"")||!HASH.test(row.message_id||"")||
+      !positive(row.quote_nonce)||!ADDR.test(row.execution_adapter||"")||
+      !SPONSOR_STAGES.includes(stage))throw Error("Invalid quote lookup");
+   const data=await pool.query({text:
+    "SELECT c.promised_wei::text,i.quote_fee_wei::text,i.route_id,"+
+    " i.amount_raw::text,i.asset,i.final_recipient,i.first_destination_chain,"+
+    " i.final_destination_chain,i.onward_route_id"+
+    " FROM xita_sponsor_quote_commitments c"+
+    " JOIN xita_sponsor_quote_intents i ON"+
+    " i.source_chain=c.source_chain AND i.execution_adapter=c.execution_adapter"+
+    " AND i.payer=c.payer AND i.quote_nonce=c.quote_nonce"+
+    " JOIN xita_transfer_operations p ON"+
+    " p.source_chain=i.source_chain AND p.execution_adapter=i.execution_adapter"+
+    " AND p.account=i.payer AND p.quote_nonce=i.quote_nonce"+
+    " AND p.interchain_fee_wei=i.quote_fee_wei AND p.message_id=$5"+
+    " WHERE c.source_chain=$1 AND c.execution_adapter=$2"+
+    " AND c.payer=$3 AND c.quote_nonce=$4"+
+    " AND c.grant_chain=$6 AND c.grant_stage=$7 LIMIT 2",
+    values:[row.source_chain,row.execution_adapter,row.account,
+     row.quote_nonce,row.message_id,chain,stage]});
+   if(data.rows.length>1)throw Error("Ambiguous quote commitment");
+   return data.rows[0]||null;
+  },
   async reserveGrant({key,chain,recipient,beneficiary,amountWei,nonce,dailyMaxWei}){
    const client=await pool.connect();
    try{
@@ -326,6 +376,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " p.source_tx_hash,p.amount_raw::text AS amount_raw,p.delivered,"+
    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
+   " p.quote_nonce::text AS quote_nonce,p.route_id,"+
    " c.message_id AS child_message_id,c.source_tx_hash AS child_source_tx_hash,"+
    " c.destination_chain AS child_destination_chain,c.delivered AS child_delivered"+
    " FROM xita_transfer_operations p LEFT JOIN LATERAL ("+
@@ -347,10 +398,11 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
+  const walletAware=env.XITA_WALLET_AWARE_SPONSORING==="true";
   for(const row of rows.rows){
    if(!policy[sponsorStage(row)?.chain])continue;
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy}));}
+    providers:providerCache,fetcher,nativePolicy:policy,walletAware}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
   return {status:"checked",reviewed:rows.rows.length,reserves,reconciled,
