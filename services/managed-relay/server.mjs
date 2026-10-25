@@ -222,6 +222,18 @@ async function readSponsorAvailability(catalog){
   return {available:false,chains:{},reason:"sponsor-readiness-unavailable"};
  }
 }
+// A grant is verified only when the worker journal says confirmed.
+// An absent grant is NOT proof that the wallet had sufficient native gas.
+export function publicSponsorshipView(rows){
+ if(!Array.isArray(rows)||rows.length===0)
+  return {ok:true,status:"unavailable"};
+ const grants=rows.filter(row=>row?.grant_key).map(row=>({
+  stage:String(row.grant_key).split(":").at(-1),
+  status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
+   row.status:"unknown"
+ }));
+ return {ok:true,status:grants.length?"tracked":"pending",grants};
+}
 async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
   res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
@@ -264,11 +276,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     "ORDER BY g.created_at DESC LIMIT 3",
     values:[account,source,messageId]});
    if(!q.rows.length)return send(200,{ok:true,status:"unavailable"});
-   const grants=q.rows.filter(r=>r.grant_key).map(r=>({
-    stage:r.grant_key.split(":").at(-1),
-    status:["reserved","submitted","confirmed","needs-review"].includes(r.status)?r.status:"unknown"
-   }));
-   // The absence of a journaled grant does not prove adequate wallet gas.\n   // Sponsorship is independent per downstream hop; never mark all stages green\n   // merely because the first Mailbox delivery is complete.\n   return send(200,{ok:true,status:grants.length?"tracked":"pending",grants});
+   // Return an explicit read-only journal status; no inferred sponsor success.
+   return send(200,publicSponsorshipView(q.rows));
   }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
