@@ -196,7 +196,7 @@ async function refreshFeePreview(){
     }
    }
    content.append(make("p","ux-fee-details-note",allocation?
-    "Wallet-specific quote estimate: the XITA Service Fee includes a fixed micro base fee plus any promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and onward protocol costs apply only to actual gas needs. Source gas and ERC-20 approvals are separate.":
+    "Wallet-specific quote estimate: XITA charges exactly zero service fee when no gas grant is required. If sponsored gas is needed, the quoted service fee covers only the committed shortfall and the agreed pricing margin. Existing wallet gas and source wallet transaction gas are paid separately.":
     "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
    if(onward>0n)content.append(make("p","ux-fee-details-note",allocation?
     "The XGR onward protocol fee is split between existing wallet gas funds and the quote-locked sponsor shortfall. Only the sponsor-funded portion is included in the XITA Service Fee.":
