@@ -268,7 +268,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     stage:r.grant_key.split(":").at(-1),
     status:["reserved","submitted","confirmed","needs-review"].includes(r.status)?r.status:"unknown"
    }));
-   return send(200,{ok:true,status:grants.length?"tracked":q.rows[0].delivered===true?"not-required":"pending",grants});
+   // The absence of a journaled grant does not prove adequate wallet gas.\n   // Sponsorship is independent per downstream hop; never mark all stages green\n   // merely because the first Mailbox delivery is complete.\n   return send(200,{ok:true,status:grants.length?"tracked":"pending",grants});
   }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
