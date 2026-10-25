@@ -10,7 +10,7 @@ import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {globallySponsoredChains,sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
-import {requiredSponsorChains} from "../../apps/web/sponsor-route-readiness.js";
+import {requiredCommittedSponsorChains} from "../../apps/web/sponsor-route-readiness.js";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -116,24 +116,12 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    status={sponsorship:{enabled:false,available:false}};
   }
   walletAwareEnabled=status.sponsorship.enabled===true;
-  if(walletAwareEnabled){
-   const required=requiredSponsorChains(request.source,request.destination);
-   if(!required.every(chain=>status.sponsorship.chains?.[chain]===true))
-    throw Error("Managed sponsor reserves not ready for transfer route");
-  }
+
  }
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
    String(request.payer).toLowerCase()!==String(request.recipient).toLowerCase()))
   throw Error("Wallet-specific quote requires explicit wallet identity");
- // Wallet-specific quotes are only issued if the public sponsor monitor is
- // fresh; a missing worker, missing chain reserve or price fails closed.
- if(walletAwareEnabled&&!PREVIEW_ONLY){
-  const health=await readSponsorAvailability(catalog);
-  const required=requiredSponsorChains(request.source,request.destination);
-  if(!required.every(chain=>health.chains[chain]===true))
-   throw Error("Required destination sponsor reserves or worker not ready: "+required.filter(chain=>health.chains[chain]!==true).join(","));
- }
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
@@ -195,6 +183,19 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    return provider.getBalance(account,"latest");
   }
  });
+ // Read-only estimates never require a recent sponsor-worker heartbeat.
+ // Signed quotes remain fail-closed for precisely the positive immutable
+ // grants that the quoted wallet actually needs.
+ if(!preview&&walletAwareEnabled){
+  const required=requiredCommittedSponsorChains(result.pricing.sponsorCommitments);
+  if(required.length){
+   const health=await readSponsorAvailability(catalog);
+   const missing=required.filter(chain=>health.chains[chain]!==true);
+   if(missing.length)throw Error("Sponsor payout not verified ready on: "+missing.join(",")+
+    " ("+health.reason+"); no paid quote signed");
+  }
+ }
+
  if(preview){
   // Bridge value for native collateral contains the PRINCIPAL. Exclude that
   // from the fee preview; only native protocol fee + commercial price count.
