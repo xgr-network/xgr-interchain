@@ -297,7 +297,8 @@ export function publicSponsorshipView(rows){
   grants.some(g=>g.status==="submitted")?"submitted":
   grants.some(g=>g.status==="reserved")?"reserved":"pending":
   grants.length?"tracked":"pending";
- return {ok:true,status,grants,...(aware?{expectedGrants:promised,
+ return {ok:true,status,grants,upfrontRequired:aware&&promised>0,
+  ...(aware?{expectedGrants:promised,
   ...(promisedStages!==null?{promisedStages}: {})}: {})};
 }
 // Public signer request throttling: prevents an unauthenticated caller from
