@@ -506,3 +506,25 @@ test("temporary source safe RPC outage returns a waiting reason without wallet s
  assert.equal(result.reason,"SOURCE_FINALITY_RPC_UNAVAILABLE");
  assert.deepEqual(wallet,[]);
 });
+
+test("fully funded direct XGR transfer sends canonical gateway with zero service fee",async()=>{
+ const c=catalog(),contract=address("d");
+ for(const [chain,contractAddress] of [["xgrchain",contract],["base",address("f")]]){
+  const core=c.infrastructure[chain].xitaV315,comp=item(chain,contractAddress);
+  core.components.executionGateway=comp;core.receiptPaths.push(comp.receiptPath);
+ }
+ const sends=[],native=100100000000000000n,original=testFetch();
+ const reply={ok:true,status:"DIRECT_GATEWAY_NO_SERVICE_FEE",
+  source:"xgrchain",destination:"base",asset:"XGR",directGatewayEligible:true,
+  sourceBridgeNativeWei:native.toString(),interchainFeeWei:"0",
+  pricing:{walletAware:true,sourceNativeInterchainFeeWei:"0",sponsorCommitments:[]}};
+ const fetcher=async(url,opts)=>url==="/api/xita/v1/managed/quote"?
+  {ok:true,json:async()=>reply}:original(url,opts);
+ const outcome=await startTransfer({catalog:c,account,asset:"XGR",source:"xgrchain",
+  destination:"base",amount:"0.1",provider:sourceProvider(sends),fetcher});
+ assert.equal(sends.length,1);
+ assert.equal(sends[0].to,gateway);
+ assert.equal(sends[0].value,"0x"+native.toString(16));
+ assert.ok(sends[0].data.startsWith(selector("bridge(uint32,bytes32,uint256)")));
+ assert.equal(outcome.interchainFeeWei,"0");
+});

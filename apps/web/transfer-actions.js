@@ -400,10 +400,26 @@ export async function startTransfer({catalog,account,asset,source,destination,am
     (message||"Check the signed quote service logs")+". No bridge was submitted");
   }
   if(!result?.ok)throw Error("Signed fee quote response invalid; no bridge was submitted");
+  if(result.status==="DIRECT_GATEWAY_NO_SERVICE_FEE"){
+   // Only for a single hop. A direct Gateway cannot encode the final
+   // recipient/route intent of a multi-hop journey.
+   if(firstDestination!==destination||result.directGatewayEligible!==true||
+      result.source!==source||result.destination!==destination||result.asset!==asset||
+      String(result.sourceBridgeNativeWei)!==quote.value.toString()||
+      String(result.interchainFeeWei??result.pricing?.sourceNativeInterchainFeeWei)!=="0"||
+      result.pricing?.walletAware!==true||
+      !Array.isArray(result.pricing?.sponsorCommitments)||
+      result.pricing.sponsorCommitments.length!==0)
+    throw Error("Direct zero-fee Gateway quote mismatch");
+   tx={from:account,to:route.gateway,
+    data:bridgeCalldata(dst.domainId,account,units),value:hex(quote.value)};
+   interchainFeeWei="0";
+  }else{
   const validated=checkInterchainQuote(result,{catalog,account,asset,source,
    destination,route,firstDestination,amountRaw:units,
    validatorNativeWei:quote.value,adapter:paidAdapter});
   tx=validated.tx;interchainFeeWei=validated.interchainFeeWei;
+  }
  }
  // Simulate source-native payment and all adapter/internal Gateway calls
  // after required allowance changes but before requesting wallet signature.

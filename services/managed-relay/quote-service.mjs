@@ -3,7 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
-import {ceilDiv,usdPrice12,priceInterchainCostWei,fixedBaseServiceFeeSourceWei} from "./fee-quote.mjs";
+import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {COINGECKO_GAS_COIN_IDS,quotedJourneyCostWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
 
@@ -153,22 +153,23 @@ export async function buildManagedQuote({
  const allocation=walletAwareEnabled?
   walletAwareSponsorship({stages:sponsorStages,balances}):null;
  const fee=walletAwareEnabled?(()=>{
-  // Only the documented shortfall is priced; the positive fixed base fee is
-  // independent of wallet balances and covers the operation even at zero grants.
+  // Charge only the server-verified sponsor shortfall; if all native gas
+  // is wallet funded, the commercial fee is exactly ZERO.
   const cost=allocation.grants.reduce((total,grant)=>
    total+ceilDiv(BigInt(grant.amountWei)*
     usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
     usdPrice12(oracle.sourceUsd)),0n);
-  // Fixed micro base fee: gas prices and third-party validator fees MUST
-  // NOT increase the platform minimum when the wallet needs no sponsor.
-  const baseWei=fixedBaseServiceFeeSourceWei(oracle.sourceUsd);
-  const priced=priceInterchainCostWei({estimatedCostSourceWei:cost+baseWei,vatBps:0n});
+  const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):
+   {estimatedCostSourceWei:"0",quotedServiceFeeWei:"0",grossInterchainFeeWei:"0",markupBps:"1000",priceVatCapBps:"2700"};
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
  })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
- if(interchainFeeWei===0n)throw Error("Native source service fee unavailable");
+ if(interchainFeeWei===0n&&secondRoute)throw Error("Zero-fee two-hop needs on-chain intent support");
+ const directNoFee=interchainFeeWei===0n&&!secondRoute;
+ if(directNoFee&&route.sourceToken!==null)
+  throw Error("Fee-free ERC20 route requires allowance-aware gateway transaction; no tokens locked");
  const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
@@ -178,20 +179,21 @@ export async function buildManagedQuote({
   finalRecipient:zeroPadValue(recipientAddress,32),
   onwardRouteId:second?second[0].routeId:"0x"+"00".repeat(32),
   amount:amount.toString(),bridgeValueWei:bridgeValue.toString(),
-  interchainFeeWei:interchainFeeWei.toString(),nonce:preview?"0":nonce().toString(),
+  interchainFeeWei:interchainFeeWei.toString(),nonce:preview||directNoFee?"0":nonce().toString(),
   issuedAt
  };
  const domain={name:"XITA Interchain Fee",version:"1",chainId:src.chainId,
   verifyingContract:execution};
- const signature=preview?null:await signer.signTypedData(domain,MANAGED_QUOTE_TYPES,q);
- if(!preview&&!/^0x[0-9a-f]{130}$/i.test(signature))
+ const signature=preview||directNoFee?null:await signer.signTypedData(domain,MANAGED_QUOTE_TYPES,q);
+ if(!preview&&!directNoFee&&!/^0x[0-9a-f]{130}$/i.test(signature))
   throw Error("Invalid operator quote signature");
  return {
-  status:preview?"UNSIGNED_FEE_PREVIEW":"SIGNED_INTERCHAIN_FEE_QUOTE",source,sourceChainId:src.chainId,destination,
+  status:preview?"UNSIGNED_FEE_PREVIEW":directNoFee?"DIRECT_GATEWAY_NO_SERVICE_FEE":"SIGNED_INTERCHAIN_FEE_QUOTE",source,sourceChainId:src.chainId,destination,
   asset,relayerOwner:owner,executionAddress:execution,
-  quote:preview?null:q,signature:preview?null:signature,expiresAt:preview?null:expiresAt,quoteLifetimeSeconds:Number(ttl),
+  quote:preview||directNoFee?null:q,signature,expiresAt:preview||directNoFee?null:expiresAt,quoteLifetimeSeconds:Number(ttl),
   feeCurrency:COINGECKO_GAS_COIN_IDS[source], // CoinGecko ID, not an ERC20
   sourceValueWei:(bridgeValue+interchainFeeWei).toString(),
+  directGatewayEligible:directNoFee,
   validatorFeeWei:String(bridge.validatorFeeWei),
   sourceBridgeNativeWei:bridgeValue.toString(),
   sourceTokenPrincipalWei:route.sourceToken===null?amount.toString():"0",

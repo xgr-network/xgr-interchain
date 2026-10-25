@@ -200,7 +200,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
   // from the fee preview; only native protocol fee + commercial price count.
   const routeFeeWei=BigInt(result.sourceBridgeNativeWei)-
    BigInt(result.sourceTokenPrincipalWei)+BigInt(result.pricing.grossInterchainFeeWei);
-  if(routeFeeWei<=0n)throw Error("Invalid fee preview amount");
+  if(routeFeeWei<0n)throw Error("Invalid fee preview amount");
   const usdPrecision=10n**22n; // 18 wei decimals + 12 price decimals - 8 USD decimals
   const usd8=(routeFeeWei*usdPrice12(result.pricing.sourceNativeUsd)+usdPrecision-1n)/usdPrecision;
   const feeUsd=(usd8/100000000n).toString()+"."+
@@ -213,6 +213,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    sourceBridgeNativeWei:result.sourceBridgeNativeWei,
    sourceTokenPrincipalWei:result.sourceTokenPrincipalWei,
    interchainFeeWei:result.pricing.sourceNativeInterchainFeeWei,
+   directGatewayEligible:result.directGatewayEligible,
    pricing:result.pricing,sourceNativeSymbol:catalog.chains[source].nativeCurrency?.symbol||source,
    notes:"Wallet source gas and optional ERC20 approval gas are not included. Estimate only; refresh before wallet confirmation."};
   if(previewKey){
@@ -229,6 +230,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
     throw Error("Quote sponsor grant exceeds configured native budget");
   }
  }
+ if(result.directGatewayEligible)return result;
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
   chainId:result.sourceChainId,value:"0x"+BigInt(result.sourceValueWei).toString(16),
@@ -395,7 +397,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    if(!preview&&process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true")
     enforceSignedQuoteRate(clientIP,parsed.payer);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
-   if(!preview){
+   if(!preview&&reply.status!=="DIRECT_GATEWAY_NO_SERVICE_FEE"){
     const prices=await getSnapshot();
      const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
     const evidence=quoteEvidence(reply,prices,clientIP,country);
