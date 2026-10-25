@@ -9,13 +9,14 @@ const env=(role,db="xita")=>
 test("detects deployed signer's actual restricted database login without exposing password",()=>{
  assert.equal(quoteWriterRoleFromEnvironment(env("xita_tax_quote_writer")),"xita_tax_quote_writer");
  assert.equal(quoteWriterRoleFromEnvironment(env("xita_fee_quote_writer")),"xita_fee_quote_writer");
+ assert.equal(quoteWriterRoleFromEnvironment(env("xita_transfer_worker")),"xita_transfer_worker");
  assert.equal(quoteWriterRoleFromEnvironment(env("xita_fee_quote_writer","customdb"),"customdb"),"xita_fee_quote_writer");
  assert.equal(quoteWriterRoleFromEnvironment("# comment\n"+env("xita_fee_quote_writer")+"\nXITA_INTERCHAIN_SPONSOR_ENABLED=true"),"xita_fee_quote_writer");
 });
 test("refuses missing, ambiguous, wrong DB, unrelated role or unsafe URL without credentials",()=>{
  for(const input of ["",env("xita_tax_quote_writer")+env("xita_tax_quote_writer"),
   env("xita_tax_quote_writer","wrongdb"),env("postgres"),env("xita_indexer_reader"),
-  env("xita_transfer_worker"),env("xita_sponsor_worker"),env("xita_sponsor_status_reader"),
+  env("xita_sponsor_worker"),env("xita_sponsor_status_reader"),
   "XITA_TAX_QUOTE_DATABASE_URL=https://example.com/key\n",
   "XITA_TAX_QUOTE_DATABASE_URL=BAD_CREDENTIAL\n"]){
   assert.throws(()=>quoteWriterRoleFromEnvironment(input));
