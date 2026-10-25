@@ -276,7 +276,11 @@ function refreshTransferLink(){
  const queue=connected?walletSigningQueue({account:state.account,
   items:transferActivity.items,sponsorship:sponsorTransfer}):[];
  const signing=walletSigningNotice(queue);
- alert.href=signing?.href||"/my-transfers";
+ const openJourneys=connected?openWalletTransfers(transferActivity.items,state.account):[];
+ const single=openJourneys.length===1?openJourneys[0]:null;
+ const direct=single&&/^0x[0-9a-f]{64}$/i.test(single.txHash||"")?
+  "/transfer?token="+encodeURIComponent(single.asset||"XGR")+"&resume="+encodeURIComponent(single.txHash):null;
+ alert.href=signing?.href||direct||"/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
   items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
  alert.hidden=pending===0&&!signing;
@@ -1125,7 +1129,7 @@ function render(){
   // select values after a render. All dependent UI must share this state.
   if(!transferActivity.selectedTxHash)
    Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
-  void refreshSponsorship();scheduleFeePreview();
+  if(!transferActivity.selectedTxHash){void refreshSponsorship();scheduleFeePreview();}
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
@@ -1174,7 +1178,19 @@ function render(){
   resetFlowView();transferActivity.error="";transferActivity.notice="";
   render();
  });
- document.querySelector("#xita-transfer-primary")?.addEventListener("click",()=>void performTransferAction());
+ document.querySelector("#xita-transfer-primary")?.addEventListener("click",event=>{
+  if(event.currentTarget.dataset.transferAction==="new"){
+   if(transferActivity.working)return;
+   transferActivity.selectedTxHash=null;
+   transferActivity.notice="";transferActivity.error="";resetFlowView();
+   history.replaceState(null,"","/transfer?token="+encodeURIComponent(state.experience.asset||"XGR"));
+   render();return;
+  }
+  if(event.currentTarget.dataset.transferAction==="resume"){
+   openFlowModal();return;
+  }
+  void performTransferAction();
+ });
  document.querySelector("#xita-flow-reopen")?.addEventListener("click",openFlowModal);
  document.querySelector("#ux-fee-info-trigger")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.showModal());
  document.querySelector("#ux-fee-info-close")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
