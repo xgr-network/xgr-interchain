@@ -199,7 +199,7 @@ test("wallet-driven open transfer is one destination continuation, no browser WA
  const record={account,asset:"XGR",status:"awaiting-proof",sourceChain:"xgrchain",
   destinationChain:"base",txHash:"0x"+"a".repeat(64),messageId:"0x"+"b".repeat(64),confirmed:true};
  const html=renderPlanRoute(model,{},"ready",{account},{items:[record],selectedTxHash:record.txHash});
- assert.match(html,/Continue delivery/);
+ assert.match(html,/Continue transfer · view status/);
  assert.match(html,/Existing source transfer selected/);
  assert.match(html,/xita-open-transfer/);
  assert.doesNotMatch(html,/localStorage|sessionStorage|journal/);
@@ -260,7 +260,7 @@ test("old awaiting-proof operations never replace a new verified XGR/Base transf
   assert.match(fresh,/<option value="" selected>New transfer/);
   const selected=renderPlanRoute(m,selection,"ready",{account},
     {items:[item],selectedTxHash:txHash,scanning:true});
-  assert.match(selected,/Continue delivery/);
+  assert.match(selected,/Continue transfer · view status/);
   assert.match(selected,/Existing source transfer selected/);
   assert.doesNotMatch(fresh,/One transfer page/);
 });
