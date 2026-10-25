@@ -17,7 +17,8 @@ import {pendingDeliveryCount} from "./wallet-pending.js";
 import {rememberSourceTxHint} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
-import {transferFlowBinding,isFlowContinuationAuthorized} from "./transfer-flow-binding.js";
+import {transferFlowBinding} from "./transfer-flow-binding.js";
+import {nextVerifiedWalletStep,walletStepKey} from "./automatic-transfer-step.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -190,6 +191,25 @@ function scheduleFeePreview(){
 }
 let transferRequest=0;
 const flowView={open:false,journey:null,stage:"",sourceTxHash:null,account:null};
+// One attempt per verified step and wallet session. Wallet rejection is not retried automatically.
+const attemptedWalletSteps=new Set();
+let automaticWalletQueued=false;
+function scheduleAutomaticWalletStep(){
+ if(automaticWalletQueued||!flowView.open||transferActivity.working||transferActivity.scanning)return;
+ const binding=currentFlowBinding();
+ const step=nextVerifiedWalletStep(binding?.record);
+ const key=walletStepKey(binding,step);
+ if(!key||attemptedWalletSteps.has(key))return;
+ automaticWalletQueued=true;
+ queueMicrotask(()=>{
+  automaticWalletQueued=false;
+  const current=currentFlowBinding(),next=nextVerifiedWalletStep(current?.record);
+  if(!flowView.open||transferActivity.working||transferActivity.scanning||
+     !current||walletStepKey(current,next)!==key||attemptedWalletSteps.has(key))return;
+  attemptedWalletSteps.add(key);
+  void performTransferAction();
+ });
+}
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
 // Explicit resume-link fallback only: never scan arbitrary historical chains
 // or accept an unverified indexer claim as canonical wallet ownership.
@@ -228,6 +248,7 @@ function setConnectedAccount(next){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
+  attemptedWalletSteps.clear();
    flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.account=null;flowView.stage="";
     document.getElementById("xita-flow-dialog")?.close();
  }
@@ -428,15 +449,7 @@ function updateFlowModal(){
  dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
- dialog.querySelector("#xita-flow-refresh")?.addEventListener("click",()=>void scanWalletHistory());
- dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
-  const bound=currentFlowBinding();
-  if(!isFlowContinuationAuthorized({account:state.account,
-   selectedTxHash:transferActivity.selectedTxHash,binding:bound})||
-   bound.key!==binding.key||transferActivity.working)return;
-  // No silent re-selection and absolutely no fallback to a new source TX.
-  void performTransferAction();
- });
+ scheduleAutomaticWalletStep();
 }
 function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow-dialog")?.close();}
 function openFlowModal(){
@@ -484,7 +497,7 @@ async function performTransferAction(){
        next.status!=="awaiting-proof")
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
     const outcome=await resumeDelivery({catalog:state.catalog,account,
-     record:next,provider:globalThis.ethereum,waitForProof:true,
+     record:next,provider:globalThis.ethereum,waitForProof:false,
      onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
      onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
@@ -536,7 +549,7 @@ async function performTransferAction(){
      transferActivity.notice="Onward TX verified. Waiting for final destination validator proof…";
      if(path()==="/transfer")render();
      const processed=await resumeDelivery({catalog:state.catalog,account,
-      record:onward,provider:globalThis.ethereum,waitForProof:true,
+      record:onward,provider:globalThis.ethereum,waitForProof:false,
       onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
       onStatus:notice=>{setFlowStage("final-proof-wait",notice);if(path()==="/transfer")render();},
       onBroadcast:({txHash})=>{
@@ -559,7 +572,7 @@ async function performTransferAction(){
     return;
    }
    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
-    provider:globalThis.ethereum,waitForProof:true,
+    provider:globalThis.ethereum,waitForProof:false,
     onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
     onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
@@ -643,7 +656,7 @@ async function performTransferAction(){
     transferActivity.selectedTxHash=record.txHash;
     setFlowStage("first-proof-wait","Source finalized. Waiting for validator proof and destination delivery…");
     const delivered=await resumeDelivery({catalog:state.catalog,account,record,
-     provider:globalThis.ethereum,waitForProof:true,
+     provider:globalThis.ethereum,waitForProof:false,
      onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
      onStatus:notice=>{
       setFlowStage("first-proof-wait");
