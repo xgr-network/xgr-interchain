@@ -4,6 +4,7 @@ import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {readFileSync,statSync} from "node:fs";
 import {probeILNValidators,attachXitaReferenceLag} from "./validator-indexer-health.mjs";
+import {quoteWriterRoleFromEnvironment} from "../../tools/quote-db-role.mjs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
@@ -92,6 +93,20 @@ export async function readLocalJSON(target,{fetcher=globalThis.fetch,timeoutMs=3
  if(!data||typeof data!=="object"||Array.isArray(data)||data.ok!==true)
   throw Error("Local service did not return positive health");
  return data;
+}
+// This is an operational readiness gate, not a balance or uptime check.
+// A managed quote service can answer HTTP 200 while unable to commit the
+// immutable tax and sponsor records required before paid TX1.
+export async function probePaidQuoteWriter({readEnv=readFileSync,queryRole=null}={}){
+ try{
+  const role=quoteWriterRoleFromEnvironment(readEnv("/etc/xita/interchain-fee.env","utf8"));
+  if(!queryRole) return {state:"warning",reason:"Quote database grants not verified"};
+  const ready=await queryRole(role);
+  return ready===true?{state:"ok",reason:"Paid quote DB writer grants verified"}:
+   {state:"unavailable",reason:"Paid quote database permissions missing"};
+ }catch{
+  return {state:"unavailable",reason:"Paid quote DB role/configuration invalid"};
+ }
 }
 export function summarizeTransferIndex(stats,{now=Date.now(),staleMs=180000}={}){
  if(!stats||stats.ok!==true||!Array.isArray(stats.coverage?.routes))
@@ -196,7 +211,7 @@ function aggregateState(units,checks,indexer,chains){
 }
 export async function collectOperationsHealth({
  catalog,readUnit=readSystemdUnit,readHTTP=readLocalJSON,
- checkChain=probeChain,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
+ checkChain=probeChain,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,checkQuoteWriter=probePaidQuoteWriter,now=Date.now()
 }={}){
  if(!catalog||typeof catalog!=="object"||!catalog.chains)
   throw Error("Configured chain catalog unavailable");
@@ -236,6 +251,17 @@ export async function collectOperationsHealth({
    return {...p,state:p.data?.available===true?"ok":"warning"};
   return p;
  });
+ // A green HTTP heartbeat is not proof of a functioning paid quote writer.
+ // Check independently whenever the managed signer is installed/active.
+ const quoteUnit=units.find(x=>x.id==="quote");
+ const paidQuoteInstalled=quoteUnit&&quoteUnit.state!=="not-installed"&&quoteUnit.state!=="not-enabled";
+ const quoteWriter=paidQuoteInstalled?await checkQuoteWriter().catch(()=>({
+  state:"unavailable",reason:"Paid quote database check unavailable"
+ })):{state:"not-installed",reason:"No paid quote signer installed"};
+ if(paidQuoteInstalled&&quoteWriter.state!=="ok"){
+  const probe=observedProbes.find(p=>p.id==="quote-api");
+  if(probe)Object.assign(probe,{state:"unavailable",reason:quoteWriter.reason});
+ }
  const api=observedProbes.find(p=>p.id==="indexer-api");
  const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
@@ -258,6 +284,7 @@ export async function collectOperationsHealth({
   id:p.id,title:p.title,group:p.group,optional:Boolean(p.optional),
   state:p.state,
   ...(p.id==="proof-builder"&&p.data?{installationOnly:true}:{}),
+  ...(p.id==="quote-api"?{readinessReason:quoteWriter.reason}:{}),
   ...(p.id==="join-api"?{submissionsConfigured:p.state==="ok"&&p.data?.available===true}:{}),
   ...(p.id==="quote-api"&&p.data?{enabledChains:Array.isArray(p.data.enabledChains)?
    p.data.enabledChains.filter(x=>/^[a-z0-9-]+$/.test(x)).slice(0,20):[]}:{}),
@@ -266,10 +293,11 @@ export async function collectOperationsHealth({
  // the TVL/market verification worker has produced fresh evidence.
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
- const status=validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
+ const paidQuoteFault=paidQuoteInstalled&&quoteWriter.state!=="ok";
+ const status=paidQuoteFault?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
-  services,checks,indexer,evidence,chains,validators,
+  services,checks,indexer,evidence,chains,validators,quoteWriter,
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
