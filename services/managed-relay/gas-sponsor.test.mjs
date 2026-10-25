@@ -103,3 +103,14 @@ test("quote lookup requires exact nonce and restricts beneficiary in SQL",async(
  assert.match(sql,/p.message_id=\$5/);
  assert.equal(values[2],first.account);
 });
+
+test("L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 constant",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const source=readFileSync(new URL("./gas-sponsor.mjs",import.meta.url),"utf8");
+ assert.match(source,/provider\.estimateGas\(/);
+ assert.match(source,/gasEstimate>100000n/);
+ assert.match(source,/gasLimit>120000n/);
+ assert.doesNotMatch(source,/gasLimit:21000n/);
+ assert.ok(source.indexOf("provider.estimateGas")<source.indexOf("db.reserveGrant"),
+  "do not reserve one-shot grant after a failed gas estimate");
+});
