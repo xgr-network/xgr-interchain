@@ -254,19 +254,21 @@ test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP
  const rich=await buildManagedQuote(funded);
  assert.equal(empty.pricing.walletAware,true);
  assert.equal(rich.pricing.walletAware,true);
- assert.ok(BigInt(empty.quote.interchainFeeWei)>BigInt(rich.quote.interchainFeeWei));
+ assert.ok(BigInt(empty.quote.interchainFeeWei)>0n);
+ assert.equal(rich.pricing.sourceNativeInterchainFeeWei,"0");
+ assert.equal(rich.status,"DIRECT_GATEWAY_NO_SERVICE_FEE");
  assert.equal(rich.pricing.sponsorCommitments.length,0);
  assert.ok(empty.pricing.sponsorCommitments.length>0);
  const domain={name:"XITA Interchain Fee",version:"1",chainId:1643,
   verifyingContract:address(44)};
  assert.equal(verifyTypedData(domain,MANAGED_QUOTE_TYPES,empty.quote,empty.signature),signer.address);
  assert.notEqual(verifyTypedData(domain,MANAGED_QUOTE_TYPES,
-  {...empty.quote,interchainFeeWei:rich.quote.interchainFeeWei},empty.signature),signer.address);
+  {...empty.quote,interchainFeeWei:"0"},empty.signature),signer.address);
  await assert.rejects(()=>buildManagedQuote({...base,
   readWalletNativeBalance:async()=>undefined}),/Unverified native wallet balance/);
 });
 
-test("fully funded quote charges only fixed gas-independent micro platform fee",async()=>{
+test("fully funded direct quote has exactly zero platform fee",async()=>{
  const req={...request,recipient:request.payer};
  const options={...defaults(),request:req,walletAwareEnabled:true,
   readWalletNativeBalance:async()=>1000000000000000000n};
