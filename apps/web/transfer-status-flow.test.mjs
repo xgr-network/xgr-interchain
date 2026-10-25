@@ -89,7 +89,7 @@ test("persistent background proof observation waits without asking for wallet si
  const flow=deriveTransferFlow({journey,record});
  assert.equal(flow.canContinue,false);
  assert.match(flow.heading,/automatically/);
- assert.match(flow.message,/background/);
+ assert.match(flow.message,/backend continues even when this window is closed/);
  assert.equal(flow.steps[5].state,"pending");
  const ready=deriveTransferFlow({journey,record:{...record,
   finalProofObservation:{state:"ready",checkedAt:new Date().toISOString()}}});
@@ -112,7 +112,7 @@ test("stale server observer does not permanently disable independent manual reco
  const flow=deriveTransferFlow({journey,record});
  assert.equal(flow.canContinue,true);
  assert.equal(flow.needsAttention,true);
- assert.match(flow.message,/not updated recently/);
+ assert.match(flow.message,/Waiting for backend recovery/);
  assert.equal(flow.verifiedWalletTx,1);
 });
 
