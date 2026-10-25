@@ -154,3 +154,14 @@ test("12 of 12 confirmations does not claim Base safe finality or unlock deliver
  assert.match(unavailable.message,/native safe head is unavailable/);
  assert.equal(unavailable.canContinue,false);
 });
+
+test("pending gas sponsorship is not rendered as actively checking forever",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const record={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum",status:"awaiting-proof",confirmed:true,
+  interchainFeeWei:"100",executionAdapter:"0x"+"3".repeat(40)};
+ const html=renderTransferFlow({journey:j,record,
+  sponsorship:{enabled:true,status:"pending"}});
+ assert.match(html,/Gas sponsorship decision pending/);
+ assert.match(html,/ux-flow-step-state">Pending/);
+});
