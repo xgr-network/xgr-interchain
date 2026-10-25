@@ -12,3 +12,20 @@ export function sponsorRouteReady(sponsorship,source,destination){
  return requiredSponsorChains(source,destination).every(chain=>
   sponsorship.chains?.[chain]===true);
 }
+
+const WEI_DECIMAL=/^(0|[1-9][0-9]*)$/;
+// Only actually PROMISED positive grants need a live funded sponsor on that
+// chain. A route may have two hops but its wallet already pays one or both.
+export function requiredCommittedSponsorChains(commitments){
+ if(!Array.isArray(commitments)||commitments.length>3)
+  throw Error("Invalid sponsor quote commitments");
+ const chains=new Set();
+ for(const grant of commitments){
+  if(!grant||!CHAIN.test(grant.chain||"")||
+     !WEI_DECIMAL.test(String(grant.amountWei??""))||
+     BigInt(grant.amountWei)>=2n**256n)
+   throw Error("Invalid sponsor quote commitment");
+  if(BigInt(grant.amountWei)>0n)chains.add(grant.chain);
+ }
+ return [...chains];
+}
