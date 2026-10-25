@@ -425,12 +425,16 @@ async function refreshTransferSponsorship(binding){
   const data=await response.json();
   if(sponsorTransfer.key!==key)return;
   sponsorTransfer.grants=Array.isArray(data.grants)?data.grants:[];
-  sponsorTransfer.status=data.status==="tracked"?
-   (sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
-    sponsorTransfer.grants.some(x=>x.status==="confirmed")?"confirmed":
-    sponsorTransfer.grants.some(x=>x.status==="submitted")?"submitted":"reserved"):
-   data.status==="pending"?"pending":data.status==="not-required"?"not-required":
-   data.status==="disabled"?"disabled":"unavailable";
+  // Only the backend may declare ALL committed stages complete.
+  // A single confirmed grant is never evidence that the full journey's
+  // sponsorship obligations have been fulfilled.
+  sponsorTransfer.status=["confirmed","needs-review","submitted","reserved",
+   "pending","not-required","disabled"].includes(data.status)?data.status:
+   data.status==="tracked"?
+    (sponsorTransfer.grants.length>0&&
+     sponsorTransfer.grants.every(x=>x.status==="confirmed")?"confirmed":
+     sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
+     "pending"):"unavailable";
  }catch{
   if(sponsorTransfer.key===key)sponsorTransfer.status="unavailable";
  }finally{
