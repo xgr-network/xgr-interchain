@@ -157,11 +157,53 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   sourceTxHash:HASH.test(record?.txHash||"")?record.txHash:
    HASH.test(journey.sourceTxHash||"")?journey.sourceTxHash:null};
 }
+// Stable user-facing wording is independent of transient observer retry cycles.
+// Only a canonical completed journey is allowed to display "complete".
+export function transferDisplayStatus(flow,{record=null,stage="",working=false,walletReady=false,error=""}={}){
+ const source=name(flow.origin),target=name(flow.destination);
+ const status=record?.status||"";
+ const proof= status==="awaiting-final-proof"?record?.finalProofObservation:
+   status==="awaiting-proof"?record?.proofObservation:null;
+ if(flow.delivered)return {label:"Transfer complete",detail:"All destinations verified.",kind:"done"};
+ if(error)return {label:"Verification needs attention",
+  detail:String(error),kind:"attention"};
+ // An observer attempt may temporarily fail even when its next verification is
+ // already queued. Don't turn one backend retry into a user-facing crisis.
+ // This changes presentation ONLY: signing still requires canonical proofs.
+ const updatedAt=Date.parse(proof?.updatedAt||"");
+ const nextCheckAt=Date.parse(proof?.nextCheckAt||"");
+ const scheduledRetry=proof?.state==="unavailable"&&
+  Number.isFinite(updatedAt)&&Date.now()-updatedAt<300000&&updatedAt<=Date.now()+60000&&
+  Number.isFinite(nextCheckAt)&&nextCheckAt>=Date.now()-30000&&
+  !["finality-unavailable","journey-ambiguous","destination-not-deployed",
+    "delivery-unknown","final-delivery-unknown"].includes(status);
+ if(scheduledRetry)return {label:"Retrying "+(status==="awaiting-final-proof"?"XGRChain":source)+
+   " verification",detail:"",kind:"waiting"};
+ if(flow.needsAttention)return {label:"Verification needs attention",
+  detail:String(flow.message||"Verification unavailable."),kind:"attention"};
+ if(["confirming","confirming-native-finality","pending-source"].includes(status))
+  return {label:"Waiting for "+source+" finality",detail:"",kind:"waiting"};
+ if(status==="awaiting-final-proof"&&proof?.state==="delivery-observed")
+  return {label:"Waiting for "+target+" finality",detail:"",kind:"waiting"};
+ if(status==="awaiting-proof"&&proof?.state==="delivery-observed")
+  return {label:"Waiting for "+(flow.twoHop?"XGRChain":target)+" finality",detail:"",kind:"waiting"};
+ if(["first-delivery-pending","final-delivery-pending","onward-source-pending","source-pending"].includes(stage)&&working)
+  return {label:"Waiting for "+(stage==="source-pending"?source:
+   stage==="first-delivery-pending"?"XGRChain":
+   stage==="onward-source-pending"?"XGRChain":target)+" confirmation",detail:"",kind:"waiting"};
+ if(["first-delivery-sign","final-delivery-sign","onward-source-sign","source-sign","source-approval","onward-approval"].includes(stage)&&working)
+  return {label:"Confirm in MetaMask",detail:"",kind:"wallet"};
+ if(status==="awaiting-onward"||walletReady||working&&stage==="onward-preflight"||
+   proof?.state==="ready")return {label:"Preparing next wallet step",detail:"",kind:"waiting"};
+ if(["awaiting-proof","awaiting-final-proof"].includes(status))
+  return {label:"Waiting for "+(status==="awaiting-final-proof"?"XGRChain":source)+" validators",
+   detail:"",kind:"waiting"};
+ return {label:"Checking transfer",detail:"",kind:"waiting"};
+}
 export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
- const walletStep=record?.status==="awaiting-onward"?"TX3":
-  record?.status==="awaiting-final-proof"?"TX4":"TX2";
+ const visual=transferDisplayStatus(flow,{record,stage,working,walletReady,error});
  // Sponsorship is an optional independent funded-wallet operation AFTER
  // the initial paid source TX, not an extra MetaMask action or proof of delivery.
  const sponsorEnabled=sponsorship?.enabled===true;
@@ -197,15 +239,15 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
    '<p class="ux-flow-route">'+esc(flow.asset)+' · '+esc(sequence)+'</p></div>'+
    '<button id="xita-flow-close" class="ux-flow-close" type="button" aria-label="Close transfer status">×</button>'+
   '</div>'+
-  '<div class="ux-flow-banner'+(flow.needsAttention?" is-attention":flow.delivered?" is-done":"")+'" role="status" aria-live="polite">'+
-   '<span class="ux-flow-spinner" aria-hidden="true">'+(flow.delivered?"✓":flow.needsAttention?"!":"⌛")+'</span>'+
-   '<div><strong>'+esc(walletReady&&!working?'Wallet confirmation coming up':flow.heading)+'</strong><p>'+esc(walletReady&&!working?'The next verified step is '+walletStep+'. Keep this window open: XITA is preparing MetaMask for your confirmation. You can hide this view and resume signing later.':flow.message)+'</p></div></div>'+
+  '<div class="ux-flow-banner'+(visual.kind==="attention"?' is-attention':visual.kind==="done"?' is-done':'')+'" role="status" aria-live="polite">'+
+   '<span class="ux-flow-spinner'+(visual.kind==="waiting"?' is-animated':'')+'" aria-hidden="true">'+(visual.kind==="done"?'✓':visual.kind==="attention"?'!':visual.kind==="wallet"?'↗':'⌛')+'</span>'+
+   '<div><strong>'+esc(visual.label)+'</strong>'+(visual.detail?'<p>'+esc(visual.detail)+'</p>':'')+'</div></div>'+
   '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
    '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
    ' wallet transactions verified</small></div>'+
   '<ol class="ux-flow-steps">'+rows+'</ol>'+
   (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
-  '<div class="ux-flow-footer"><p>Closing this view does not cancel a blockchain transaction. Resume using the original source TX in My Transfers. Never repeat a confirmed lock or burn.</p>'+
+  '<div class="ux-flow-footer"><p>You can close this window anytime and resume the same transfer in My Transfers. Closing does not cancel a blockchain transaction; never repeat the original source transaction.</p>'+
    '<div class="ux-flow-actions">'+
     // Modal is status-only. All blockchain checks and wallet steps advance without a modal CTA.
 

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {deriveTransferFlow,renderTransferFlow} from "./transfer-status-flow.js";
+import {deriveTransferFlow,renderTransferFlow,transferDisplayStatus} from "./transfer-status-flow.js";
 const account="0x"+"1".repeat(40),sourceTxHash="0x"+"a".repeat(64),messageId="0x"+"b".repeat(64);
 const base={account,asset:"XGR",sourceChain:"arbitrum",destinationChain:"xgrchain",
  finalDestinationChain:"base",txHash:sourceTxHash,messageId,confirmed:true,
@@ -65,9 +65,13 @@ test("direct XGR to Base uses three statuses and two wallet transactions",()=>{
  assert.equal(f.twoHop,false);assert.equal(f.totalWalletTx,2);
  assert.equal(f.steps.length,3);assert.equal(f.verifiedWalletTx,2);
 });
-test("status content escapes errors and hashes safely",()=>{
+test("status content escapes errors while transient notices stay out of compact banner",()=>{
  const html=renderTransferFlow({journey,notice:"<script>evil</script>"});
- assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>/);
+ assert.doesNotMatch(html,/&lt;script&gt;/);
+ const errorHtml=renderTransferFlow({journey,error:"<script>evil</script>"});
+ assert.doesNotMatch(errorHtml,/<script>/);
+ assert.match(errorHtml,/&lt;script&gt;evil&lt;\/script&gt;/);
 });
 
 test("mined but unfinalized Arbitrum parent stays at first step and shows count",()=>{
@@ -209,16 +213,68 @@ test("status modal never renders wallet, refresh, or proof action buttons",()=>{
  }
 });
 
-test("final-hop modal displays durable backend proof reason, stage and retry",()=>{
+test("final-hop modal retains canonical proof details in model without verbose flickering banner",()=>{
  const retry="2026-10-25T07:40:00.000Z";
  const row={...base,status:"awaiting-final-proof",delivered:true,
   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
   finalProofObservation:{state:"waiting",reason:"PROOF_QUORUM_UNAVAILABLE",
    stage:"quorum",updatedAt:new Date().toISOString(),nextCheckAt:retry}};
+ const flow=deriveTransferFlow({journey,record:row});
+ assert.match(flow.message,/PROOF_QUORUM_UNAVAILABLE/);
+ assert.match(flow.message,/next check/);
  const html=renderTransferFlow({journey,record:row});
- assert.match(html,/Backend proof: waiting/);
- assert.match(html,/PROOF_QUORUM_UNAVAILABLE/);
- assert.match(html,/quorum/);
- assert.match(html,/next check/);
+ assert.match(html,/Waiting for XGRChain validators/);
+ assert.doesNotMatch(html,/Backend proof:|PROOF_QUORUM_UNAVAILABLE|next check/);
  assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
+});
+
+test("compact transfer status identifies which chain controls waiting",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const parent={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum"};
+ const child={...parent,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
+ const finality={...child,finalProofObservation:{state:"delivery-observed"}};
+ const html=renderTransferFlow({journey:j,record:finality});
+ assert.match(html,/Waiting for Arbitrum finality/);
+ assert.match(html,/ux-flow-spinner is-animated/);
+ assert.doesNotMatch(html,/Backend proof:/);
+ assert.match(html,/close this window anytime and resume/);
+ const proof=renderTransferFlow({journey:j,record:{...child,
+  finalProofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
+ assert.match(proof,/Waiting for XGRChain validators/);
+ assert.doesNotMatch(proof,/Backend proof: waiting/);
+ const signing=renderTransferFlow({journey:j,record:child,working:true,
+  stage:"final-delivery-sign",walletReady:true});
+ assert.match(signing,/Confirm in MetaMask/);
+ const done=renderTransferFlow({journey:j,record:{...child,status:"journey-delivered"}});
+ assert.match(done,/Transfer complete/);
+ assert.doesNotMatch(done,/is-animated/);
+});
+test("error is never hidden by generic waiting animation",()=>{
+ const html=renderTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false},
+  error:"RPC failed: <untrusted>"});
+ assert.match(html,/Verification needs attention/);
+ assert.match(html,/RPC failed: &lt;untrusted&gt;/);
+ assert.doesNotMatch(html,/is-animated/);
+});
+
+test("scheduled transient proof error remains calm but stale or missing retry raises attention",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const parent={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum",status:"awaiting-proof",delivered:false};
+ const obs={state:"unavailable",reason:"PROOF_CONFIG_MISMATCH",stage:"confirmed-fee-vault-allocation",
+  updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
+ const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
+ assert.match(transient,/Retrying Base verification/);
+ assert.match(transient,/ux-flow-spinner is-animated/);
+ assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
+ const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
+  updatedAt:new Date(Date.now()-360000).toISOString(),
+  nextCheckAt:new Date(Date.now()-300000).toISOString()}}});
+ assert.match(stalled,/Verification needs attention/);
+ const explicit=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs},
+  error:"Fee vault mismatch: contact support"});
+ assert.match(explicit,/Verification needs attention/);
+ assert.match(explicit,/Fee vault mismatch: contact support/);
 });

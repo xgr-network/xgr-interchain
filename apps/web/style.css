@@ -1168,6 +1168,9 @@ main:has(>.ux-plan-page){padding-top:5px}
 .ux-flow-banner.is-attention{background:#342b21;border-color:#96734e}
 .ux-flow-banner.is-done{background:#17372c;border-color:#4f8f6c}
 .ux-flow-spinner{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:50%;background:#294a69;font-size:13px}
+.ux-flow-spinner.is-animated{animation:xita-hourglass-pulse 1.8s ease-in-out infinite;transform-origin:50% 50%}
+@keyframes xita-hourglass-pulse{0%,100%{opacity:.55;transform:scale(.94)}50%{opacity:1;transform:scale(1.08)}}
+@media(prefers-reduced-motion:reduce){.ux-flow-spinner.is-animated{animation:none}}
 .ux-flow-banner strong{font-size:15px;color:#f2f8ff}
 .ux-flow-banner p{font-size:12px;line-height:1.65;margin:7px 0 0;color:#bfd3e8;overflow-wrap:anywhere}
 .ux-flow-steps-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
