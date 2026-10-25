@@ -271,7 +271,7 @@ function refreshTransferLink(){
  // an accidental "new transfer" source action.
  alert.href="/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
-  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
+  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount})+pendingBroadcastHints().length:0;
  alert.hidden=pending===0;
  if(pending){
   const open=transferActivity.items.filter(t=>t.account?.toLowerCase()===
@@ -331,6 +331,8 @@ function announceWalletSourceTx(sourceChain,txHash,account=state.account){
  if(!validWalletAddress(account)||!state.catalog?.chains?.[sourceChain]||
    !/^0x[0-9a-f]{64}$/i.test(txHash||""))return;
  rememberSourceTxHint({account,sourceChain,txHash});
+ if(account.toLowerCase()===state.account?.toLowerCase())loadBroadcastHints(account);
+ refreshTransferLink();
  void fetch("/api/xeta/v1/transfers/announce",{
   method:"POST",credentials:"omit",cache:"no-store",
   headers:{"content-type":"application/json"},
@@ -1082,7 +1084,7 @@ function render(){
       chains:sponsorship.chains}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
-   items:transferActivity.items,scanning:transferActivity.scanning,
+   items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
    notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
