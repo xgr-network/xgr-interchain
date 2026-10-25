@@ -61,6 +61,25 @@ export function sponsorGrantNeed({stage,balanceWei,gasUnits,gasPriceWei,
   amountWei:deficit.toString(),estimatedGasWei:gas.toString(),
   requiredBalanceWei:desired.toString()};
 }
+export function verifiedCommittedGrant({row,first,quote}){
+ if(!row||!first||!quote||
+    !same(first.messageId,row.message_id)||
+    !same(first.routeId,row.route_id)||
+    !same(first.executionAdapter,row.execution_adapter)||
+    String(first.quoteNonce||"")!==String(row.quote_nonce||"")||
+    String(first.interchainFeeWei||"")!==String(row.interchain_fee_wei||"")||
+    String(quote.quote_fee_wei)!==String(row.interchain_fee_wei)||
+    !same(quote.route_id,first.routeId)||
+    String(quote.amount_raw)!==String(row.amount_raw)||
+    quote.asset!==row.asset||
+    !same(quote.final_recipient,row.account)||
+    quote.first_destination_chain!==row.destination_chain||
+    quote.final_destination_chain!==(row.final_destination_chain||row.destination_chain)||
+    !same(quote.onward_route_id,row.onward_route_id||"0x"+"0".repeat(64))||
+    !positive(quote.promised_wei))
+  throw Error("Signed quote commitment and finalized receipt mismatch");
+ return BigInt(quote.promised_wei);
+}
 export function sponsorGrantKey(row,stage){
  if(!HASH.test(row?.message_id||"")||!SPONSOR_STAGES.includes(stage))
   throw Error("Invalid sponsor grant identity");
@@ -175,22 +194,7 @@ export async function sponsorOneCandidate({
   // wallet balance after its fee has been signed and paid.
   const quote=await db.readQuoteCommitment({row,stage,chain});
   if(!quote)return {status:"no-matching-quote-promise",chain,stage};
-  const first=proof.first;
-  if(!same(first.messageId,row.message_id)||
-     !same(first.routeId,row.route_id)||
-     !same(first.executionAdapter,row.execution_adapter)||
-     String(first.quoteNonce||"")!==String(row.quote_nonce||"")||
-     String(first.interchainFeeWei||"")!==String(row.interchain_fee_wei||"")||
-     String(quote.quote_fee_wei)!==String(row.interchain_fee_wei)||
-     !same(quote.route_id,first.routeId)||
-     String(quote.amount_raw)!==String(row.amount_raw)||
-     quote.asset!==row.asset||
-     !same(quote.final_recipient,row.account)||
-     quote.first_destination_chain!==row.destination_chain||
-     quote.final_destination_chain!==(row.final_destination_chain||row.destination_chain)||
-     !same(quote.onward_route_id,row.onward_route_id||"0x"+"0".repeat(64)))
-   throw Error("Signed quote commitment and finalized receipt mismatch");
-  value=BigInt(quote.promised_wei);
+  value=verifiedCommittedGrant({row,first:proof.first,quote});
  }else{
   const accountBalance=await provider.getBalance(row.account);
   const needed=sponsorGrantNeed({stage,balanceWei:accountBalance,
