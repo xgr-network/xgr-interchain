@@ -152,7 +152,7 @@ export async function buildManagedQuote({
  }
  const allocation=walletAwareEnabled?
   walletAwareSponsorship({stages:sponsorStages,balances}):null;
- const fee=walletAwareEnabled?(()=>{
+ const fee=allocation?.grants?.length?(()=>{
   // Only the documented shortfall is priced; the positive fixed base fee is
   // independent of wallet balances and covers the operation even at zero grants.
   const cost=allocation.grants.reduce((total,grant)=>
@@ -165,11 +165,13 @@ export async function buildManagedQuote({
   const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):{estimatedCostSourceWei:'0',quotedServiceFeeWei:'0',grossInterchainFeeWei:'0',markupBps:'1000',priceVatCapBps:'2700'};
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
- })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
+ })():{estimatedCostSourceWei:"0",quotedServiceFeeWei:"0",grossInterchainFeeWei:"0",markupBps:"1000",priceVatCapBps:"2700",stages:quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now}).stages};
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(interchainFeeWei===0n&&secondRoute&&!preview)throw Error("Zero-fee two-hop needs on-chain intent support");
  const directNoFee=interchainFeeWei===0n&&!secondRoute;
+ if(directNoFee&&route.sourceToken!==null&&!preview)
+  throw Error("Fee-free ERC20 route requires allowance-aware gateway transaction; no tokens locked");
  const expiresAt=issuedAt+Number(ttl);
  const q={
   payer:payerAddress,gateway:getAddress(route.gateway),routeId:route.routeId,
