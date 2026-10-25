@@ -20,6 +20,7 @@ import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
 import {nextVerifiedWalletStep,walletStepKey} from "./automatic-transfer-step.js";
+import {transferSponsorVisible,sponsorAllowsContinuation} from "./transfer-sponsor-evidence.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
@@ -493,8 +494,7 @@ async function requireUpfrontSponsorship(record,account){
   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
  }).catch(()=>null);
  const evidence=response?.ok?await response.json().catch(()=>null):null;
- if(evidence?.ok!==true||evidence.upfrontRequired!==false&&
-   evidence.status!=="confirmed"&&evidence.status!=="not-required")
+ if(!sponsorAllowsContinuation(evidence))
   throw Error("Waiting for ALL quote-locked gas grants to be confirmed before TX2. No wallet transaction was sent.");
 }
 function updateFlowModal(){
@@ -508,8 +508,7 @@ function updateFlowModal(){
     BigInt(binding.record?.interchainFeeWei||"0")>0n)
   void refreshTransferSponsorship(binding);
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
- const sponsorEnabled=Boolean(binding.record?.executionAdapter)&&
-   BigInt(binding.record?.interchainFeeWei||0)>0n;
+ const sponsorEnabled=transferSponsorVisible(sponsorTransfer,sponsorKey);
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",
   working:transferActivity.working,scanning:transferActivity.scanning,
