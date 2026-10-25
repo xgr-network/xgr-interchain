@@ -1,3 +1,4 @@
+import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
@@ -1026,7 +1027,7 @@ function render(){
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
    notice:transferActivity.notice,error:transferActivity.error,coverage:transferActivity.indexCoverage,
    hasFlow:Boolean(flowView.journey)&&Boolean(state.account),
-    sponsorship:{available:sponsorship.available,status:sponsorship.status,
+    sponsorship:{available:sponsorRouteReady(sponsorship,state.experience.origin,state.experience.destination),status:sponsorship.status,
       chains:sponsorship.chains}
   }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,

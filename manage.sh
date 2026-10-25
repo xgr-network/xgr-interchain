@@ -718,7 +718,21 @@ complete_update() {
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
     privileged systemctl restart xita-fee-preview.service
   fi
-  if systemctl is-active --quiet xita-gas-sponsor-listener.service 2>/dev/null; then
+  # Existing sponsor installation gets its event listener during normal
+  # updates too; retain the periodic one-shot timer as fallback.
+  if systemctl is-enabled --quiet xita-gas-sponsor.timer 2>/dev/null; then
+    local listener_unit listener_user listener_node
+    listener_user="$(id -un)"
+    listener_node="$(command -v node)"
+    listener_unit="$(mktemp)"
+    sed -e "s|^User=.*|User=$listener_user|" \
+        -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+        -e "s|^ExecStart=.*|ExecStart=$listener_node $ROOT/services/managed-relay/sponsor-event-listener.mjs|" \
+        "$ROOT/services/managed-relay/xita-gas-sponsor-listener.service.example" > "$listener_unit"
+    privileged install -m 0644 "$listener_unit" /etc/systemd/system/xita-gas-sponsor-listener.service
+    rm -f "$listener_unit"
+    privileged systemctl daemon-reload
+    privileged systemctl enable --now xita-gas-sponsor-listener.service
     privileged systemctl restart xita-gas-sponsor-listener.service
   fi
 }
