@@ -152,7 +152,7 @@ export async function buildManagedQuote({
  }
  const allocation=walletAwareEnabled?
   walletAwareSponsorship({stages:sponsorStages,balances}):null;
- const fee=allocation?.grants?.length?(()=>{
+ const fee=walletAwareEnabled?(()=>{
   // Only the documented shortfall is priced; the positive fixed base fee is
   // independent of wallet balances and covers the operation even at zero grants.
   const cost=allocation.grants.reduce((total,grant)=>
@@ -165,7 +165,7 @@ export async function buildManagedQuote({
   const priced=cost>0n?priceInterchainCostWei({estimatedCostSourceWei:cost,vatBps:0n}):{estimatedCostSourceWei:'0',quotedServiceFeeWei:'0',grossInterchainFeeWei:'0',markupBps:'1000',priceVatCapBps:'2700'};
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
- })():{estimatedCostSourceWei:"0",quotedServiceFeeWei:"0",grossInterchainFeeWei:"0",markupBps:"1000",priceVatCapBps:"2700",stages:quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now}).stages};
+ })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
  if(interchainFeeWei===0n&&secondRoute&&!preview)throw Error("Zero-fee two-hop needs on-chain intent support");
