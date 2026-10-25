@@ -30,7 +30,7 @@ export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,readSourceBlockTimestamp,
  getDestinationGasQuote,getCoinGeckoSnapshot,readWalletNativeBalance=null,
- walletAwareEnabled=false,baseServiceFeeWei=null,
+ walletAwareEnabled=false,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
  const {asset,source,destination,amountRaw,payer,recipient:payout,
@@ -159,8 +159,12 @@ export async function buildManagedQuote({
    total+ceilDiv(BigInt(grant.amountWei)*
     usdPrice12(verifiedCoinGeckoPrices(priceData,source,grant.chain,{now}).destinationUsd),
     usdPrice12(oracle.sourceUsd)),0n);
-  const baseWei=BigInt(baseServiceFeeWei);
-  if(baseWei<=0n)throw Error("Positive base service fee not configured");
+  // Fixed economic margin is derived from the original full journey cost,
+  // so sufficient wallet gas still pays the platform for its service.
+  const fullWei=BigInt(quotedJourneyCostWei({source,stages,
+   coinGeckoSnapshot:priceData,now}).estimatedCostSourceWei);
+  const baseWei=ceilDiv(fullWei*1000n,10000n);
+  if(baseWei<=0n)throw Error("Derived service margin is unavailable");
   const priced=priceInterchainCostWei({estimatedCostSourceWei:cost+baseWei,vatBps:0n});
   return {...priced,stages:quotedJourneyCostWei({source,stages,
    coinGeckoSnapshot:priceData,now}).stages};
