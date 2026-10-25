@@ -365,7 +365,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
    const clientIP=preview?null:verifiedClientIP(req);
-   if(!preview)enforceSignedQuoteRate(clientIP,parsed.payer);
+   if(!preview&&process.env.XITA_WALLET_AWARE_SPONSORING==="true")
+    enforceSignedQuoteRate(clientIP,parsed.payer);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
    if(!preview){
     const prices=await getSnapshot();
