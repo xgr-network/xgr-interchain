@@ -108,3 +108,19 @@ test("orphan second hop is not silently discarded as another person's journey",(
  const html=renderMyTransfers({account,catalog:cat,items:[lone]});
  assert.equal((html.match(/class="ux-transfer-card"/g)||[]).length,1);
 });
+
+test("recent wallet broadcast survives reload as explicitly UNVERIFIED, never as successful bridge",()=>{
+ const tx=h("d");
+ const html=renderMyTransfers({account,catalog:cat,items:[],broadcastHints:[
+  {sourceChain:"xgrchain",txHash:tx,at:Date.now()}]});
+ assert.match(html,/Unverified source TX/);
+ assert.match(html,new RegExp(tx));
+ assert.match(html,/Do not send TX1 again/);
+ assert.doesNotMatch(html,/Message ID/);
+ const indexed={account,sourceChain:"xgrchain",destinationChain:"base",
+  txHash:tx,messageId:h("1"),status:"awaiting-proof",confirmed:true};
+ const dedup=renderMyTransfers({account,catalog:cat,items:[indexed],
+  broadcastHints:[{sourceChain:"xgrchain",txHash:tx}]});
+ assert.equal((dedup.match(/data-source-tx=/g)||[]).length,1);
+ assert.doesNotMatch(dedup,/Unverified source TX/);
+});

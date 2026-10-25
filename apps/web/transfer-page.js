@@ -22,12 +22,22 @@ const statuses={
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
 export function transferMenuVisible(account){return validWalletAddress(account)}
-export function renderMyTransfers({account,catalog,items=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null}={}){
+export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null}={}){
  if(!validWalletAddress(account))return "";
  const routeList=configuredGatewayRoutes(catalog);
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
  const chains=catalog?.chains||{};
  const options=available.map(key=>'<option value="'+esc(key)+'">'+esc(chains[key]?.name||key)+'</option>').join("");
+ const indexed=new Set(items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>t.sourceChain+":"+String(t.txHash||"").toLowerCase()));
+ const broadcasts=(Array.isArray(broadcastHints)?broadcastHints:[]).filter(h=>
+  h&&chains[h.sourceChain]&&/^0x[0-9a-f]{64}$/i.test(h.txHash||"")&&!indexed.has(h.sourceChain+":"+h.txHash.toLowerCase())).slice(0,32).map(h=>
+  '<article class="ux-transfer-card" data-source-tx="'+esc(h.txHash)+'">'+
+  '<div class="ux-transfer-head"><strong>Recently broadcast · '+esc(chains[h.sourceChain].name||h.sourceChain)+'</strong>'+
+  '<span class="ux-transfer-status is-pending-source">Unverified source TX</span></div>'+
+  '<p class="ux-small">Wallet broadcast recorded on this device. Awaiting independent transaction and receipt checks. This is not evidence of a successful lock or delivery. Do not send TX1 again.</p>'+
+  '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(h.txHash)+'</code></div>'+
+  '<button class="ux-button" type="button" data-xita-inspect-broadcast="'+esc(h.txHash)+'" data-xita-broadcast-chain="'+esc(h.sourceChain)+'">Verify source TX</button>'+
+  '</article>').join("");
  const cards=walletJourneys(items).filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
   const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
@@ -80,7 +90,7 @@ export function renderMyTransfers({account,catalog,items=[],scanning=false,notic
    '<button type="submit"'+(available.length===0?" disabled":"")+'>Find transfer</button></form>'+
   '</details>'+
   '<section class="ux-transfer-cards"><h2>Wallet transfers and unconfirmed source transactions</h2>'+
-  (cards||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
+  (cards+broadcasts||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
   '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Unsigned proofs are built from canonical chain events and validator attestations; only the connected wallet can sign destination gas.</p>'+
   '</section>';
 }
