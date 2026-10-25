@@ -10,6 +10,7 @@ import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {globallySponsoredChains,sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
+import {requiredSponsorChains} from "../../apps/web/sponsor-route-readiness.js";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -116,8 +117,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
   }
   walletAwareEnabled=status.sponsorship.enabled===true;
   if(walletAwareEnabled){
-   const required=request.source!=="xgrchain"&&request.destination!=="xgrchain"?
-    ["xgrchain",request.destination]:[request.destination];
+   const required=requiredSponsorChains(request.source,request.destination);
    if(!required.every(chain=>status.sponsorship.chains?.[chain]===true))
     throw Error("Managed sponsor reserves not ready for transfer route");
   }
@@ -130,8 +130,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  // fresh; a missing worker, missing chain reserve or price fails closed.
  if(walletAwareEnabled&&!PREVIEW_ONLY){
   const health=await readSponsorAvailability(catalog);
-  const required=request.source!=="xgrchain"&&request.destination!=="xgrchain"?
-   ["xgrchain",request.destination]:[request.destination];
+  const required=requiredSponsorChains(request.source,request.destination);
   if(!required.every(chain=>health.chains[chain]===true))
    throw Error("Required destination sponsor reserves or worker not ready: "+required.filter(chain=>health.chains[chain]!==true).join(","));
  }
