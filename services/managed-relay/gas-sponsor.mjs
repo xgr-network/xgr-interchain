@@ -197,6 +197,23 @@ export async function sponsorOneCandidate({
    to:row.account,value,nonce:noncePending,gasLimit
   });
   await db.recordSubmitted(key,tx.hash);
+  // A single wallet may need two XGRChain grants. Confirm each grant before
+  // attempting the next nonce rather than postponing it until a timer tick.
+  // A timeout NEVER authorizes a duplicate transaction.
+  let receipt=null;
+  try{receipt=await tx.wait(1,30000)}catch{}
+  if(receipt){
+   if(receipt.hash?.toLowerCase()!==tx.hash.toLowerCase()||
+      !same(tx.from,wallet.address)||!same(tx.to,row.account)||
+      BigInt(tx.value)!==value||Number(tx.nonce)!==Number(noncePending))
+    throw Error("Sponsor receipt mismatch; operator reconciliation required");
+   if(receipt.status===1){
+    await db.recordConfirmed(key,tx.hash);
+    return {status:"confirmed",chain,stage,txHash:tx.hash,amountWei:value.toString()};
+   }
+   await db.recordFailed(key,tx.hash);
+   return {status:"needs-review",chain,stage,txHash:tx.hash};
+  }
   return {status:"submitted",chain,stage,txHash:tx.hash,amountWei:value.toString()};
  }catch(error){
   await db.recordNeedsReview(key,tiny(error?.message||error));
@@ -270,6 +287,21 @@ export function sponsorDatabase(pool){
     values:[key,txHash.toLowerCase()]
    });
    if(r.rows.length!==1)throw Error("Sponsorship reservation changed after broadcast");
+  },
+  async recordConfirmed(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
+   const result=await pool.query({text:
+    "UPDATE xita_sponsor_grants SET status='confirmed',updated_at=NOW()"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted' RETURNING grant_key",
+    values:[key,txHash.toLowerCase()]});
+   if(result.rows.length!==1)throw Error("Sponsor confirmation journal changed");
+  },
+  async recordFailed(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
+   await pool.query({text:
+    "UPDATE xita_sponsor_grants SET status='needs-review',updated_at=NOW()"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    values:[key,txHash.toLowerCase()]});
   },
   async recordNeedsReview(key,message){
    await pool.query({text:"UPDATE xita_sponsor_grants SET status='needs-review',"+
