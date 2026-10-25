@@ -500,7 +500,16 @@ install_wallet_aware_sponsor_db() (
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
    SELECT CASE WHEN to_regclass('public.xita_sponsor_quote_intents') IS NOT NULL
       AND to_regclass('public.xita_sponsor_quote_commitments') IS NOT NULL
-    THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS
+    THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS || return 1
+  # Inspect only the configured PostgreSQL login (never the URL/password).
+  # The signer may use a deployment-specific restricted role. Grant permissions
+  # to that actual role rather than silently assuming xita_tax_quote_writer.
+  local writer
+  writer="$(privileged node "$ROOT/tools/quote-db-role.mjs" /etc/xita/interchain-fee.env "$db")" || return 1
+  [[ "$writer" =~ ^xita_[a-z][a-z0-9_]{1,50}$ ]] || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -v "writer_role=$writer" -d "$db" \
+    < "$ROOT/services/indexer/sql/011_quote_writer_runtime_grants.sql" || return 1
+  echo "Signer quote database INSERT permissions verified for configured restricted role."
 )
 install_interchain_fee() (
   require_clean_main
