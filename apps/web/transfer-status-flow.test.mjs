@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {deriveTransferFlow,renderTransferFlow} from "./transfer-status-flow.js";
+import {deriveTransferFlow,renderTransferFlow,transferDisplayStatus} from "./transfer-status-flow.js";
 const account="0x"+"1".repeat(40),sourceTxHash="0x"+"a".repeat(64),messageId="0x"+"b".repeat(64);
 const base={account,asset:"XGR",sourceChain:"arbitrum",destinationChain:"xgrchain",
  finalDestinationChain:"base",txHash:sourceTxHash,messageId,confirmed:true,
@@ -221,4 +221,35 @@ test("final-hop modal displays durable backend proof reason, stage and retry",()
  assert.match(html,/quorum/);
  assert.match(html,/next check/);
  assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
+});
+
+test("compact transfer status identifies which chain controls waiting",()=>{
+ const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
+ const parent={...base,sourceChain:"base",destinationChain:"xgrchain",
+  finalDestinationChain:"arbitrum"};
+ const child={...parent,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
+ const finality={...child,finalProofObservation:{state:"delivery-observed"}};
+ const html=renderTransferFlow({journey:j,record:finality});
+ assert.match(html,/Waiting for Arbitrum finality/);
+ assert.match(html,/ux-flow-spinner is-animated/);
+ assert.doesNotMatch(html,/Backend proof:/);
+ assert.match(html,/close this window anytime and resume/);
+ const proof=renderTransferFlow({journey:j,record:{...child,
+  finalProofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
+ assert.match(proof,/Waiting for XGRChain validators/);
+ assert.doesNotMatch(proof,/Backend proof: waiting/);
+ const signing=renderTransferFlow({journey:j,record:child,working:true,
+  stage:"final-delivery-sign",walletReady:true});
+ assert.match(signing,/Confirm in MetaMask/);
+ const done=renderTransferFlow({journey:j,record:{...child,status:"journey-delivered"}});
+ assert.match(done,/Transfer complete/);
+ assert.doesNotMatch(done,/is-animated/);
+});
+test("error is never hidden by generic waiting animation",()=>{
+ const html=renderTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false},
+  error:"RPC failed: <untrusted>"});
+ assert.match(html,/Verification needs attention/);
+ assert.match(html,/RPC failed: &lt;untrusted&gt;/);
+ assert.doesNotMatch(html,/is-animated/);
 });
