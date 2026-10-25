@@ -81,6 +81,28 @@ const quoteIface=new Interface(EXECUTION_ABI);
 // Both quote/preview processes consume the SAME persisted backend cache.
 // External CoinGecko requests are exclusively performed by price-refresh.mjs.
 const getSnapshot=()=>readCachedGasPrices();
+async function paidQuoteDatabaseReady(){
+ if(PREVIEW_ONLY)return {ready:false,reason:"preview-only"};
+ const connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL;
+ if(!connectionString)return {ready:false,reason:"quote-db-not-configured"};
+ let pool;
+ try{
+  const {Pool}=await import("pg");
+  pool=new Pool({connectionString,max:1,connectionTimeoutMillis:1500,statement_timeout:2000});
+  const result=await pool.query(`SELECT
+   current_user LIKE 'xita_%' AS named,
+   has_table_privilege(current_user,'public.xita_tax_quote_evidence','INSERT') AS tax_write,
+   has_table_privilege(current_user,'public.xita_sponsor_quote_intents','INSERT') AS intent_write,
+   has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','INSERT') AS promise_write,
+   has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','SELECT') AS promise_read,
+   has_table_privilege(current_user,'public.xita_sponsor_grants','SELECT') AS grants_read`);
+  const row=result.rows?.[0]||{};
+  return {ready:Object.values(row).every(v=>v===true),
+   reason:Object.values(row).every(v=>v===true)?"verified":"quote-db-permissions-incomplete"};
+ }catch{return {ready:false,reason:"quote-db-unavailable"}}
+ finally{if(pool)await pool.end().catch(()=>{})}
+}
+
 const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
  const previewKey=null; // Fresh signer health and wallet balance must not be masked by preview caching.
@@ -345,7 +367,9 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  if(req.method==="GET"&&req.url==="/api/xita/v1/managed/health"){
   try{
    const catalog=loadCatalog();
+   const dbReadiness=await paidQuoteDatabaseReady();
    return send(200,{ok:true,service:"xita-source-native-fee-quote",
+    paidQuoteReady:dbReadiness.ready,paidQuoteReason:dbReadiness.reason,
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
     sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
