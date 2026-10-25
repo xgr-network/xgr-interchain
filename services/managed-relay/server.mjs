@@ -315,7 +315,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     const prices=await getSnapshot();
      const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
     const evidence=quoteEvidence(reply,prices,clientIP,country);
-    await saveQuoteEvidence(evidence);
+    await saveQuoteEvidence(evidence,{quoteReply:reply});
    }
   return send(200,{ok:true,...reply});
  }catch(e){
