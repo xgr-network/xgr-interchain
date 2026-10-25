@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {pendingDeliveryCount} from "./wallet-pending.js";
+import {pendingDeliveryCount,activeSourceConfirmation} from "./wallet-pending.js";
 const wallet="0x"+"a".repeat(40),messageId="0x"+"b".repeat(64),txHash="0x"+"c".repeat(64);
 const open={account:wallet,status:"awaiting-proof",delivered:false,
  confirmed:true,sourceChain:"xgrchain",messageId,txHash};
@@ -56,4 +56,15 @@ test("one verified two-hop journey is exactly one pending wallet operation",()=>
   executionAdapter:"0x"+"1".repeat(40),status:"awaiting-proof",delivered:false};
  assert.equal(pendingDeliveryCount({account,items:[parent,child]}),1);
  assert.equal(pendingDeliveryCount({account,items:[parent,child],indexedOpenCount:1}),1);
+});
+
+test("hidden exact active source remains visible before indexed confirmation",()=>{
+ const session={account:wallet,sourceTxHash:txHash,journey:{origin:"arbitrum",destination:"base",asset:"XGR"}};
+ const hint=activeSourceConfirmation({account:wallet,selectedTxHash:txHash,session,items:[]});
+ assert.match(hint.label,/awaiting confirmation/);
+ assert.match(hint.href,new RegExp(txHash));
+ assert.equal(pendingDeliveryCount({account:wallet,items:[]}),0);
+ assert.equal(activeSourceConfirmation({account:wallet,selectedTxHash:txHash,session:{...session,account:"0x"+"d".repeat(40)},items:[]}),null);
+ assert.equal(activeSourceConfirmation({account:wallet,selectedTxHash:txHash,session,items:[{...open,status:"awaiting-proof"}]}),null);
+ assert.equal(activeSourceConfirmation({account:wallet,selectedTxHash:null,session,items:[]}),null);
 });
