@@ -113,7 +113,7 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
  if(status==="confirming")heading="Source finality pending";
  if(status==="confirming-native-finality")heading="Waiting for "+name(origin)+" safe finality";
  if(status==="finality-unavailable")heading="Source finality RPC unavailable";
- if(status==="awaiting-onward"&&!working&&!error)heading="Preparing second hop";
+ if(status==="awaiting-onward"&&!working&&!error)heading="Preparing next wallet transaction";
  if(status==="awaiting-final-proof"&&!working&&!error&&!proofWaiting)heading="Waiting for final delivery proof";
  if(delivered)heading="Transfer complete";
  const nativeFinalityMessage=status==="confirming-native-finality"?
@@ -133,8 +133,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    proofReady?"Backend proof ready. XITA will revalidate the canonical chain state before asking MetaMask to sign.":
    canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
    canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
+   status==="awaiting-onward"?"XGRChain delivery confirmed. XITA is preparing TX3 of 4. Keep this window open; MetaMask will request your confirmation when preflight succeeds.":
    notice?String(notice):
-   status==="awaiting-onward"?"First delivery is verified. Continue only the linked onward transaction — never repeat the original source lock or burn.":
    status==="awaiting-final-proof"?"The onward source transaction is verified. The final destination proof and Mailbox delivery are still outstanding.":
    status==="awaiting-proof"?"Source transaction confirmed. Validator proof preparation and destination delivery may take time.":
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
