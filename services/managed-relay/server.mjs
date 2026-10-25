@@ -81,7 +81,7 @@ const quoteIface=new Interface(EXECUTION_ABI);
 const getSnapshot=()=>readCachedGasPrices();
 const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
- const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw]):null;
+ const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw,request?.payer,process.env.XITA_WALLET_AWARE_SPONSORING]):null;
  const cached=previewKey?previewMemo.get(previewKey):null;
  if(cached&&Date.now()-cached.at<60000)return cached.value;
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
@@ -97,6 +97,11 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
     String(executionAddress).toLowerCase()||
     !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
+ const walletAwareEnabled=process.env.XITA_WALLET_AWARE_SPONSORING==="true"&&
+  process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
+   !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")))
+  throw Error("Wallet-specific quote requires explicit wallet identity");
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
@@ -110,7 +115,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
- const previewRequest=preview?{...request,payer:request.payer||serviceAddress,
+ const previewRequest=preview&&!walletAwareEnabled?{...request,payer:request.payer||serviceAddress,
    recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
   catalog,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
@@ -151,7 +156,13 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
      throw Error("Cannot verify live source-chain block time");
     return block.timestamp;
   },
-  getCoinGeckoSnapshot:getSnapshot,preview
+  getCoinGeckoSnapshot:getSnapshot,preview,
+  walletAwareEnabled,
+  baseServiceFeeWei:walletAwareEnabled?process.env.XITA_WALLET_AWARE_BASE_FEE_WEI:null,
+  readWalletNativeBalance:async({chain:chainName,account})=>{
+   const provider=await chain(chainName,catalog);
+   return provider.getBalance(account,"latest");
+  }
  });
  if(preview){
   // Bridge value for native collateral contains the PRINCIPAL. Exclude that
