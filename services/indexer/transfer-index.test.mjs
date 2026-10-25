@@ -360,3 +360,33 @@ test("canonical provider cooldown prevents repeated identity and archive probes"
  await assert.rejects(()=>read(chain,"eth_getLogs",[{}]),/failed/);
  assert.ok(attempts>count);
 });
+
+test("release-reviewed Base and Arbitrum provider pools use four independent endpoints",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const {resolve}=await import("node:path");
+ const root=resolve(import.meta.dirname,"../..");
+ const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
+ for(const [name,expected] of Object.entries({
+  base:["https://mainnet.base.org","https://gateway.tenderly.co/public/base","https://base-rpc.publicnode.com","https://base.drpc.org"],
+  arbitrum:["https://arb1.arbitrum.io/rpc","https://arbitrum-one-rpc.publicnode.com","https://arbitrum.gateway.tenderly.co","https://arbitrum.drpc.org"]
+ })){
+  const config=JSON.parse(readFileSync(resolve(root,"config/chains",name,"chain.json"),"utf8"));
+  assert.deepEqual(config.rpcUrls,expected);
+  assert.deepEqual(catalog.chains[name].rpcUrls,expected);
+  assert.deepEqual(rpcCandidates(catalog.chains[name],{baseUrls:""}),expected);
+ }
+});
+test("four Base providers fail over on HTTP 429 without treating rejected logs as empty",async()=>{
+ const urls=["https://mainnet.base.org","https://gateway.tenderly.co/public/base",
+  "https://base-rpc.publicnode.com","https://base.drpc.org"];
+ const calls=[];
+ const read=canonicalRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);calls.push([url,method]);
+  if(method==="eth_chainId")return {ok:true,json:async()=>({result:"0x2105"})};
+  if(url!==urls[2])return {ok:false,status:429};
+  return {ok:true,json:async()=>({result:[]})};
+ }});
+ const chain={name:"base",chainId:8453,rpcUrls:urls};
+ assert.deepEqual(await read(chain,"eth_getLogs",[{address:"0x"+"1".repeat(40),fromBlock:"0x1",toBlock:"0x3"}]),[]);
+ assert.deepEqual(calls.filter(x=>x[1]==="eth_getLogs").map(x=>x[0]),urls.slice(0,3));
+});
