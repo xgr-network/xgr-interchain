@@ -115,8 +115,12 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    status={sponsorship:{enabled:false,available:false}};
   }
   walletAwareEnabled=status.sponsorship.enabled===true;
-  if(walletAwareEnabled&&status.sponsorship.available!==true)
-   throw Error("Managed sponsor reserves not ready");
+  if(walletAwareEnabled){
+   const required=request.source!=="xgrchain"&&request.destination!=="xgrchain"?
+    ["xgrchain",request.destination]:[request.destination];
+   if(!required.every(chain=>status.sponsorship.chains?.[chain]===true))
+    throw Error("Managed sponsor reserves not ready for transfer route");
+  }
  }
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
@@ -126,7 +130,10 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  // fresh; a missing worker, missing chain reserve or price fails closed.
  if(walletAwareEnabled&&!PREVIEW_ONLY){
   const health=await readSponsorAvailability(catalog);
-  if(!health.available)throw Error("Sponsor reserves or worker not ready for wallet-aware quote");
+  const required=request.source!=="xgrchain"&&request.destination!=="xgrchain"?
+   ["xgrchain",request.destination]:[request.destination];
+  if(!required.every(chain=>health.chains[chain]===true))
+   throw Error("Required destination sponsor reserves or worker not ready: "+required.filter(chain=>health.chains[chain]!==true).join(","));
  }
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
