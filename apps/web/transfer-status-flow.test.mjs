@@ -89,7 +89,7 @@ test("persistent background proof observation waits without asking for wallet si
  const flow=deriveTransferFlow({journey,record});
  assert.equal(flow.canContinue,false);
  assert.match(flow.heading,/automatically/);
- assert.match(flow.message,/background/);
+ assert.match(flow.message,/backend continues even when this window is closed/);
  assert.equal(flow.steps[5].state,"pending");
  const ready=deriveTransferFlow({journey,record:{...record,
   finalProofObservation:{state:"ready",checkedAt:new Date().toISOString()}}});
@@ -112,7 +112,7 @@ test("stale server observer does not permanently disable independent manual reco
  const flow=deriveTransferFlow({journey,record});
  assert.equal(flow.canContinue,true);
  assert.equal(flow.needsAttention,true);
- assert.match(flow.message,/not updated recently/);
+ assert.match(flow.message,/Waiting for backend recovery/);
  assert.equal(flow.verifiedWalletTx,1);
 });
 
@@ -135,7 +135,7 @@ test("optional sponsorship appears strictly after confirmed initial fee payment"
   sponsorship:{enabled:true,status:"confirmed"}});
  assert.match(paid,/Native gas grant confirmed on chain/);
  assert.match(renderTransferFlow({journey,record,
-  sponsorship:{enabled:true,status:"not-required"}}),/Wallet already has sufficient native gas/);
+  sponsorship:{enabled:true,status:"not-required"}}),/No sponsor grant required for a verified stage/);
 });
 
 test("12 of 12 confirmations does not claim Base safe finality or unlock delivery",()=>{
@@ -164,4 +164,38 @@ test("pending gas sponsorship is not rendered as actively checking forever",()=>
   sponsorship:{enabled:true,status:"pending"}});
  assert.match(html,/Gas sponsorship decision pending/);
  assert.match(html,/ux-flow-step-state">Pending/);
+});
+
+test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
+ const record={...base,status:"awaiting-onward",delivered:true,
+  executionAdapter:"0x"+"3".repeat(40),interchainFeeWei:"100"};
+ const html=renderTransferFlow({journey,record,
+  sponsorship:{enabled:true,status:"pending"}});
+ assert.match(html,/Gas sponsorship decision pending/);
+ assert.doesNotMatch(html,/Wallet already has sufficient native gas/);
+});
+
+test("status modal never renders wallet, refresh, or proof action buttons",()=>{
+ for(const status of ["awaiting-proof","awaiting-onward","awaiting-final-proof","delivery-unknown"]){
+  const record={...base,status,delivered:status!=="awaiting-proof",
+   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
+  const html=renderTransferFlow({journey,record});
+  assert.doesNotMatch(html,/id="xita-flow-(continue|refresh)"/);
+  assert.match(html,/id="xita-flow-done"/);
+  assert.match(html,/id="xita-flow-history"/);
+ }
+});
+
+test("final-hop modal displays durable backend proof reason, stage and retry",()=>{
+ const retry="2026-10-25T07:40:00.000Z";
+ const row={...base,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
+  finalProofObservation:{state:"waiting",reason:"PROOF_QUORUM_UNAVAILABLE",
+   stage:"quorum",updatedAt:new Date().toISOString(),nextCheckAt:retry}};
+ const html=renderTransferFlow({journey,record:row});
+ assert.match(html,/Backend proof: waiting/);
+ assert.match(html,/PROOF_QUORUM_UNAVAILABLE/);
+ assert.match(html,/quorum/);
+ assert.match(html,/next check/);
+ assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
 });

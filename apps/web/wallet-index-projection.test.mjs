@@ -35,3 +35,17 @@ test("parent already indexed prevents active onward TX becoming a second selecta
   activeSourceHash:staleChild.txHash});
  assert.deepEqual(result,[parent]);
 });
+
+test("verified onward receipt survives lagging SQL parent, without creating duplicate child",()=>{
+ const full={...parent,asset:"XGR",amountRaw:"500",routeId:h("6"),
+  finalDestinationChain:"base",finalRecipient:a};
+ const confirmed={...full,status:"awaiting-final-proof",
+  secondHopTxHash:h("3"),secondHopMessageId:h("4")};
+ const stale={...full,status:"awaiting-onward",secondHopTxHash:undefined,secondHopMessageId:undefined};
+ const result=canonicalWalletSnapshot({account:a,rows:[stale],previous:[confirmed]});
+ assert.equal(result.length,1);
+ assert.equal(result[0].secondHopTxHash,h("3"));
+ assert.equal(result[0].status,"awaiting-final-proof");
+ const conflicting=canonicalWalletSnapshot({account:a,rows:[{...stale,routeId:h("9")}],previous:[confirmed]});
+ assert.equal(conflicting[0].secondHopTxHash,undefined);
+});
