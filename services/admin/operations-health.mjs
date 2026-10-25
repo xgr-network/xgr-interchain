@@ -12,6 +12,7 @@ export const UNITS=Object.freeze([
  {id:"postgresql",title:"PostgreSQL",group:"Core",unit:"postgresql.service"},
  {id:"metrics-api",title:"XITA Metrics / Proof Builder API",group:"Indexer",unit:"xita-indexer.service"},
  {id:"transfer-worker",title:"XITA Transfer Index Worker",group:"Indexer",unit:"xita-transfer-indexer.service"},
+ {id:"proof-observer",title:"XITA Transfer Proof Observer",group:"Indexer",unit:"xita-transfer-proof-observer.service"},
  {id:"transfer-intake",title:"TX Announcement Intake",group:"Indexer",unit:"xita-transfer-intake.service",optional:true},
  {id:"tvl-worker",title:"Verified TVL Worker",group:"Indexer",unit:"xita-tvl.service",optional:true},
  {id:"quote",title:"Fee Quote Signer",group:"Managed Services",unit:"xita-interchain-fee-quote.service",optional:true},
@@ -250,6 +251,8 @@ export async function collectOperationsHealth({
  const api=observedProbes.find(p=>p.id==="indexer-api");
  const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
+ const proofJournalReady=stats?.data?.proofObserver?.status==="available";
+ const proofObserver={state:proofJournalReady?"ok":"unavailable",reason:proofJournalReady?"Proof observation journal readable":"Proof observation SQL migration or reader access unavailable"};
  const evidence=summarizeEvidence({evidence:readEvidence(process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json",{now})});
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
@@ -259,6 +262,7 @@ export async function collectOperationsHealth({
   let state=unit.state;
   if(unit.state==="ok"&&observed.some(p=>p.state!=="ok"))
    state="warning";
+  if(unit.id==="proof-observer"&&unit.state==="ok"&&!proofJournalReady)state="warning";
   if(unit.id==="transfer-worker"&&unit.state==="ok"&&["stalled","unavailable"].includes(indexer.state))
    state="warning";
   if(unit.id==="tvl-worker"&&unit.state==="ok"&&evidence.state!=="fresh")
@@ -279,10 +283,10 @@ export async function collectOperationsHealth({
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
  const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
- const status=paidQuoteFault?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
+ const status=paidQuoteFault||!proofJournalReady?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
-  services,checks,indexer,evidence,chains,validators,quoteWriter,
+  services,checks,indexer,proofObserver,evidence,chains,validators,quoteWriter,
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
