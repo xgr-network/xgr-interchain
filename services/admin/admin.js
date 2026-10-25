@@ -909,7 +909,7 @@ async function refreshOperationsHealth(){
    el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
   el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
    c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
-   c.id==="join-api"?(c.submissionsConfigured?"E-Mail-bestätigte Anträge aktiviert":"Einreichungen nicht verfügbar oder unkonfiguriert"):c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");
+   c.id==="quote-api"?(c.readinessReason||"Paid Quote DB readiness not verified"):c.id==="join-api"?(c.submissionsConfigured?"E-Mail-bestätigte Anträge aktiviert":"Einreichungen nicht verfügbar oder unkonfiguriert"):c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");
   el("health-chains").innerHTML=d.chains.map(c=>healthTile(c.name,c.state,
    "Chain-ID "+c.chainId+" · Head "+healthValue(c.head),
    c.attempted+" von "+c.configuredEndpoints+" konfigurierten RPCs getestet")).join("");
