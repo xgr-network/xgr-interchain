@@ -676,6 +676,19 @@ repair_transfer_db() (
 
 complete_update() {
   require_clean_main
+  # The unsigned website MUST NOT advertise freshly merged fee behavior while
+  # an already running paid signer still executes an older code version.
+  # Verify signer schema and least-privilege DB identity BEFORE publishing.
+  # Keyless preview-only installations require no signer credentials.
+  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    echo "Preflight: checking restricted paid-quote DB role BEFORE XITA publication ..."
+    if ! install_wallet_aware_sponsor_db; then
+      echo "ERROR: Paid quote DB preflight failed. Website not published; fee signer not restarted." >&2
+      echo "Inspect only the username configured in XITA_TAX_QUOTE_DATABASE_URL (never share the URL/password)." >&2
+      echo "The signer requires an independent limited PostgreSQL xita_ quote-writer login with tax evidence INSERT." >&2
+      return 1
+    fi
+  fi
   publish_web
   install_sync
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
@@ -718,10 +731,8 @@ complete_update() {
     privileged systemctl restart xita-transfer-intake.service
   fi
   if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
-    # Before restarting the existing sponsor-enabled signer, install the
-    # immutable quote schema. Otherwise an existing true sponsor switch
-    # would immediately sign quotes against a missing commitments table.
-    install_wallet_aware_sponsor_db || return 1
+    # Paid writer role and immutable quote schema have already passed the
+    # pre-publication gate; avoid a late abort after web publication.
     privileged systemctl restart xita-interchain-fee-quote.service
   fi
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
