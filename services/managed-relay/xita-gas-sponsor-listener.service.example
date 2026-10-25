@@ -1,0 +1,22 @@
+[Unit]
+Description=XITA Verified Gas Sponsorship Event Listener
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/interchain-fee.env
+ExecStart=/usr/bin/node services/managed-relay/sponsor-event-listener.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/lock
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
