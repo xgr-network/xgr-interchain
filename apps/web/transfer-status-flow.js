@@ -157,12 +157,17 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
   sponsorship?.status==="not-required"?"Wallet already has sufficient native gas":
   sponsorship?.status==="pending"?"Checking gas requirement after verified fee payment":
-  "Gas sponsor status unavailable; wallet gas may still be required";
+  sponsorship?.status==="pending"?"Gas sponsorship decision pending; own native gas may still be required":
+  sponsorship?.status==="disabled"?"Gas sponsorship disabled; own native gas required":
+  "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
    '<span class="ux-flow-step-indicator" aria-hidden="true">'+(sponsorStage==="complete"?"✓":"⌛")+'</span>'+
    '<div class="ux-flow-step-text"><strong>Optional gas sponsorship</strong><small>'+esc(sponsorNote)+'</small></div>'+
    '<span class="ux-flow-step-state">'+(sponsorStage==="complete"?"Verified":
-   sponsorStage==="attention"?"Attention":"Checking")+'</span></li>';
+   sponsorStage==="attention"?"Attention":
+   ["pending","reserved"].includes(sponsorship?.status)?"Pending":
+   sponsorship?.status==="submitted"?"Submitted":
+   sponsorship?.status==="disabled"?"Unavailable":"Unknown")+'</span></li>';
  const rows=flow.steps.map((step,i)=>
    '<li class="ux-flow-step is-'+step.state+'" data-flow-step="'+(i+1)+'">'+
     '<span class="ux-flow-step-indicator" aria-hidden="true">'+
