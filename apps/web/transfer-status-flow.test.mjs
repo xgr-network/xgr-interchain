@@ -185,3 +185,17 @@ test("status modal never renders wallet, refresh, or proof action buttons",()=>{
   assert.match(html,/id="xita-flow-history"/);
  }
 });
+
+test("final-hop modal displays durable backend proof reason, stage and retry",()=>{
+ const retry="2026-10-25T07:40:00.000Z";
+ const row={...base,status:"awaiting-final-proof",delivered:true,
+  secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
+  finalProofObservation:{state:"waiting",reason:"PROOF_QUORUM_UNAVAILABLE",
+   stage:"quorum",updatedAt:new Date().toISOString(),nextCheckAt:retry}};
+ const html=renderTransferFlow({journey,record:row});
+ assert.match(html,/Backend proof: waiting/);
+ assert.match(html,/PROOF_QUORUM_UNAVAILABLE/);
+ assert.match(html,/quorum/);
+ assert.match(html,/next check/);
+ assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
+});
