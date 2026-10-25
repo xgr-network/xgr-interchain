@@ -9,7 +9,7 @@ import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
-import {globallySponsoredChains} from "./sponsor-policy.mjs";
+import {globallySponsoredChains,sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -102,10 +102,12 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")))
   throw Error("Wallet-specific quote requires explicit wallet identity");
- // Fail closed until the signer can atomically persist each grant promise
- // and the worker can match finalized paid fee evidence. Never quote a
- // wallet-specific discount that the deployed sponsor cannot honor.
- if(walletAwareEnabled)throw Error("Wallet-aware grant activation requires verified immutable journal");
+ // Wallet-specific quotes are only issued if the public sponsor monitor is
+ // fresh; a missing worker, missing chain reserve or price fails closed.
+ if(walletAwareEnabled){
+  const health=await readSponsorAvailability(catalog);
+  if(!health.available)throw Error("Sponsor reserves or worker not ready for wallet-aware quote");
+ }
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
@@ -193,6 +195,14 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    if(previewMemo.size>80)previewMemo.delete(previewMemo.keys().next().value);
   }
   return resultPreview;
+ }
+ if(walletAwareEnabled){
+  const limits=sponsorPoliciesForCatalog({catalog,prices:await getSnapshot()});
+  for(const g of result.pricing.sponsorCommitments){
+   if(!limits[g.chain]||BigInt(g.amountWei)>BigInt(limits[g.chain].maxGrantWei)||
+      BigInt(g.amountWei)>BigInt(limits[g.chain].dailyMaxWei))
+    throw Error("Quote sponsor grant exceeds configured native budget");
+  }
  }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
@@ -315,7 +325,9 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     const prices=await getSnapshot();
      const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
     const evidence=quoteEvidence(reply,prices,clientIP,country);
-    await saveQuoteEvidence(evidence,{quoteReply:reply});
+    await saveQuoteEvidence(evidence,{quoteReply:reply,
+     grantLimits:reply.pricing?.walletAware?sponsorPoliciesForCatalog({
+      catalog:loadCatalog(),prices:await getSnapshot()}):null});
    }
   return send(200,{ok:true,...reply});
  }catch(e){
