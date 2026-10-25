@@ -489,6 +489,19 @@ install_fee_tax_ledger() (
   echo "Tax ledger schema installed; verify signer/worker database grants before live paid quotes."
 )
 
+# Explicit operator-only migration. Existing live transfers and EVM contracts
+# are untouched, and this never enables wallet-aware sponsorship.
+install_wallet_aware_sponsor_db() (
+  require_clean_main
+  local db="${XITA_TRANSFER_DB_NAME:-xita}"
+  [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/010_wallet_aware_sponsor_commitments.sql" || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
+   SELECT CASE WHEN to_regclass('public.xita_sponsor_quote_intents') IS NOT NULL
+      AND to_regclass('public.xita_sponsor_quote_commitments') IS NOT NULL
+    THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS
+)
 install_interchain_fee() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -762,6 +775,7 @@ case "${1:-help}" in
   install-price-cache) install_price_cache ;;
   install-interchain-fee) install_interchain_fee ;;
   install-fee-tax-ledger) install_fee_tax_ledger ;;
+  install-wallet-aware-sponsor-db) install_wallet_aware_sponsor_db ;;
   help|-h|--help) usage ;;
   *)
     usage >&2
