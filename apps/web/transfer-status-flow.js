@@ -99,9 +99,11 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
     "journey-ambiguous","destination-not-deployed"].includes(status);
  const awaitingWallet=working&&["source-approval","source-sign","first-delivery-sign",
    "onward-approval","onward-source-sign","final-delivery-sign"].includes(stage);
+ const walletPreparing=working&&stage==="onward-preflight";
  let heading=delivered?"Transfer delivered":
    needsAttention?"Verification needs attention":
-   awaitingWallet?"MetaMask action required":
+   awaitingWallet?"Confirm transaction in MetaMask":
+   walletPreparing?"Preparing MetaMask transaction":
    working?"Checking transfer — please wait":
    proofWaiting?"Checking validator proof automatically":
    proofUnobserved?"Awaiting validator proof observation":
