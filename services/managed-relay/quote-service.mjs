@@ -203,6 +203,7 @@ export async function buildManagedQuote({
    onwardProtocolFeeWei:onwardFeeWei===null?null:onwardFeeWei.toString(),
    journeyCostStages:fee.stages,
    walletAware:walletAwareEnabled,
+   firstDestinationChain:firstDestination,
    sponsorCommitments:allocation?.grants||[],
    sponsorAllocation:allocation?.stages||[],
    grossInterchainFeeWei:fee.grossInterchainFeeWei,
