@@ -155,7 +155,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   sponsorship?.status==="needs-review"?"Gas grant requires operator review":
   sponsorship?.status==="submitted"?"Gas grant submitted; awaiting confirmation":
   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
-  sponsorship?.status==="not-required"?"Wallet already has sufficient native gas":
+  sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
   sponsorship?.status==="pending"?"Gas sponsorship decision pending; own native gas may still be required":
   sponsorship?.status==="disabled"?"Gas sponsorship disabled; own native gas required":
   "Gas sponsorship status unavailable; own native gas may still be required";
