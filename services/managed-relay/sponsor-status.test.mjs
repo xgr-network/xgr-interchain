@@ -46,3 +46,9 @@ test("quote signer bounds unauthenticated attempts before reserving capacity",()
  assert.throws(()=>enforceSignedQuoteRate(ip,payer,{now:now+200}),/rate limit/);
  enforceSignedQuoteRate(ip,payer,{now:now+61000});
 });
+
+test("N-05 returns only chain-bound promised stage names",()=>{
+ const s=publicSponsorshipView([{wallet_aware:true,expected_grants:2,promised_stages:["hub-onward","final-delivery"],grant_key:null}]);
+ assert.equal(s.status,"pending");
+ assert.deepEqual(s.promisedStages,["hub-onward","final-delivery"]);
+});
