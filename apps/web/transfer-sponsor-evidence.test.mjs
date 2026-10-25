@@ -13,6 +13,7 @@ test("no grants permits continuation; promised stages remain fail-closed",()=>{
  for(const status of ["pending","disabled","unavailable","needs-review","submitted"])
   assert.equal(sponsorAllowsContinuation({ok:true,upfrontRequired:true,status}),false);
  assert.equal(sponsorAllowsContinuation({ok:true,upfrontRequired:true,status:"confirmed"}),true);
+ assert.equal(sponsorAllowsContinuation({ok:true,upfrontRequired:false,status:"pending"}),false);
  assert.equal(sponsorAllowsContinuation({ok:true,status:"not-required"}),false);
  assert.equal(sponsorAllowsContinuation(null),false);
 });
