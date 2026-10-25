@@ -24,7 +24,7 @@ import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
-const sponsorship={enabled:false,available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
+const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 const sponsorTransfer={key:"",status:"unavailable",grants:[],checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
@@ -39,11 +39,12 @@ async function refreshSponsorship(){
    throw Error("No verified sponsor status");
   sponsorship.enabled=data.sponsorship.enabled===true;
   sponsorship.available=data.sponsorship.available===true;
+  sponsorship.walletAware=data.sponsorship.walletAware===true;
   sponsorship.chains=data.sponsorship.chains&&typeof data.sponsorship.chains==="object"?
    data.sponsorship.chains:{};
   sponsorship.status=sponsorship.available?"available":"unavailable";
  }catch{
-  sponsorship.enabled=false;sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
+  sponsorship.enabled=false;sponsorship.available=false;sponsorship.walletAware=false;sponsorship.chains={};sponsorship.status="unknown";
  }finally{
   sponsorship.loading=false;
   if(path()==="/transfer"&&state.catalog)render();
@@ -68,6 +69,10 @@ async function refreshFeePreview(){
   destination=state.experience.destination,amount=state.experience.amount||"";
  if(path()!=="/transfer"||!state.catalog)return;
  const catalog=state.catalog;
+ if(sponsorship.walletAware&&!state.account){
+  updatePreviewState("Connect your wallet to calculate the personalized Service Fee.");
+  return;
+ }
  const first=source!=="xgrchain"&&destination!=="xgrchain"?"xgrchain":destination;
  const routes=deployedRoutes(catalog);
  if(!routes.some(r=>r.asset===asset&&r.source===source&&r.destination===first)||
