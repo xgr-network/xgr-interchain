@@ -50,6 +50,8 @@ BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_tax_quote_writer') THEN
   GRANT INSERT ON xita_sponsor_quote_intents,
    xita_sponsor_quote_commitments TO xita_tax_quote_writer;
+  GRANT SELECT ON xita_sponsor_quote_commitments,
+   public.xita_sponsor_grants TO xita_tax_quote_writer;
  END IF;
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_worker') THEN
   GRANT SELECT ON xita_sponsor_quote_intents,
