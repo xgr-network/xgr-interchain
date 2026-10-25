@@ -1,6 +1,7 @@
 import {walletJourneys} from "./verified-journey.js";
 // Wallet-bound recovery view: never show activity before account authorization.
 import {configuredGatewayRoutes} from "./wallet-transfers.js";
+import {unresolvedSourceTxHints} from "./source-tx-hints.js";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
@@ -28,9 +29,8 @@ export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],sc
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
  const chains=catalog?.chains||{};
  const options=available.map(key=>'<option value="'+esc(key)+'">'+esc(chains[key]?.name||key)+'</option>').join("");
- const indexed=new Set(items.filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>t.sourceChain+":"+String(t.txHash||"").toLowerCase()));
- const broadcasts=(Array.isArray(broadcastHints)?broadcastHints:[]).filter(h=>
-  h&&chains[h.sourceChain]&&/^0x[0-9a-f]{64}$/i.test(h.txHash||"")&&!indexed.has(h.sourceChain+":"+h.txHash.toLowerCase())).slice(0,32).map(h=>
+ const broadcasts=unresolvedSourceTxHints({account,items,hints:broadcastHints})
+  .filter(h=>chains[h.sourceChain]).slice(0,32).map(h=>
   '<article class="ux-transfer-card" data-source-tx="'+esc(h.txHash)+'">'+
   '<div class="ux-transfer-head"><strong>Recently broadcast · '+esc(chains[h.sourceChain].name||h.sourceChain)+'</strong>'+
   '<span class="ux-transfer-status is-pending-source">Unverified source TX</span></div>'+
@@ -89,8 +89,11 @@ export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],sc
    ' placeholder="0x…" minlength="66" maxlength="66" required></label>'+
    '<button type="submit"'+(available.length===0?" disabled":"")+'>Find transfer</button></form>'+
   '</details>'+
-  '<section class="ux-transfer-cards"><h2>Wallet transfers and unconfirmed source transactions</h2>'+
-  (cards+broadcasts||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
+  '<section class="ux-transfer-cards"><h2>Wallet transfers</h2>'+
+  (cards||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
+  (broadcasts?'<details class="ux-transfer-lookup"><summary>Unverified local wallet broadcasts (diagnostics only)</summary>'+
+   '<p class="ux-small">These browser-saved transaction hashes are not additional XITA transfers and do not count as pending. Verify a hash only if you need to investigate an unresolved wallet broadcast.</p>'+
+   '<div class="ux-transfer-cards">'+broadcasts+'</div></details>':'')+
   '<p class="ux-small">Destination gas is paid separately in MetaMask. A successful source transaction is not the same as completed delivery. Unsigned proofs are built from canonical chain events and validator attestations; only the connected wallet can sign destination gas.</p>'+
   '</section>';
 }

@@ -46,3 +46,30 @@ export function rememberSourceTxHint({account,sourceChain,txHash},
   return true;
  }catch{return false}
 }
+
+
+// Local wallet broadcasts are discovery hints, not an open-transfer ledger.
+// Exclude only canonical wallet-owned source transactions and independently
+// parent-linked TX3 hashes. Never hide an ambiguous/unlinked transaction
+// based on same amount, recency or token alone.
+export function unresolvedSourceTxHints({account,items=[],hints=[]}={}){
+ if(!ADDRESS.test(account||"")||!Array.isArray(items)||!Array.isArray(hints))return [];
+ const owner=account.toLowerCase(),verified=new Set();
+ for(const row of items){
+  if(row?.confirmed!==true||row.account?.toLowerCase()!==owner)continue;
+  if(SOURCE.test(row.sourceChain||"")&&HASH.test(row.txHash||""))
+   verified.add(row.sourceChain+":"+row.txHash.toLowerCase());
+  if(row.delivered===true&&
+     ["awaiting-final-proof","final-delivery-unknown","journey-delivered"].includes(row.status)&&
+     HASH.test(row.secondHopTxHash||"")&&HASH.test(row.secondHopMessageId||"")&&
+     HASH.test(row.onwardRouteId||""))
+   verified.add("xgrchain:"+row.secondHopTxHash.toLowerCase());
+ }
+ const seen=new Set();
+ return hints.filter(h=>{
+  if(!h||!SOURCE.test(h.sourceChain||"")||!HASH.test(h.txHash||""))return false;
+  const key=h.sourceChain+":"+h.txHash.toLowerCase();
+  if(verified.has(key)||seen.has(key))return false;
+  seen.add(key);return true;
+ }).map(h=>({...h,txHash:h.txHash.toLowerCase()}));
+}

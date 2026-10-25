@@ -113,6 +113,8 @@ test("recent wallet broadcast survives reload as explicitly UNVERIFIED, never as
  const tx=h("d");
  const html=renderMyTransfers({account,catalog:cat,items:[],broadcastHints:[
   {sourceChain:"xgrchain",txHash:tx,at:Date.now()}]});
+ assert.match(html,/Unverified local wallet broadcasts/);
+ assert.match(html,/<details class="ux-transfer-lookup">/);
  assert.match(html,/Unverified source TX/);
  assert.match(html,new RegExp(tx));
  assert.match(html,/Do not send TX1 again/);
@@ -123,4 +125,23 @@ test("recent wallet broadcast survives reload as explicitly UNVERIFIED, never as
   broadcastHints:[{sourceChain:"xgrchain",txHash:tx}]});
  assert.equal((dedup.match(/data-source-tx=/g)||[]).length,1);
  assert.doesNotMatch(dedup,/Unverified source TX/);
+});
+
+test("linked TX3 and already indexed TXs cannot appear as independent broadcasts",()=>{
+ const original=h("c"),child=h("d"),complete=h("e"),unknown=h("f");
+ const parent={account,asset:"XGR",sourceChain:"arbitrum",destinationChain:"xgrchain",
+  finalDestinationChain:"base",txHash:original,messageId:h("1"),
+  routeId:h("2"),onwardRouteId:h("3"),secondHopTxHash:child,
+  secondHopMessageId:h("4"),confirmed:true,delivered:true,status:"awaiting-final-proof"};
+ const delivered={account,asset:"XGR",sourceChain:"base",destinationChain:"arbitrum",
+  txHash:complete,messageId:h("5"),confirmed:true,delivered:true,status:"delivered"};
+ const html=renderMyTransfers({account,catalog:{...cat,chains:{...cat.chains,
+  arbitrum:{name:"Arbitrum"}}},items:[parent,delivered],broadcastHints:[
+  {sourceChain:"xgrchain",txHash:child},
+  {sourceChain:"base",txHash:complete},
+  {sourceChain:"arbitrum",txHash:unknown}]});
+ assert.match(html,/Unverified local wallet broadcasts/);
+ assert.equal((html.match(/Unverified source TX/g)||[]).length,1);
+ assert.equal((html.match(/data-source-tx=/g)||[]).length,3);
+ assert.match(html,new RegExp(unknown));
 });
