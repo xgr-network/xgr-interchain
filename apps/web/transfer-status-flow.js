@@ -67,6 +67,13 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   status==="awaiting-proof"?record?.proofObservation:null;
  const observing=Boolean(proofObservation&&
    ["queued","checking","waiting","unavailable"].includes(proofObservation.state));
+ const retryAt=proofObservation?.nextCheckAt&&Number.isFinite(Date.parse(proofObservation.nextCheckAt))?
+  new Date(proofObservation.nextCheckAt).toLocaleString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit"}):null;
+ const backendProofDescription=proofObservation?
+  "Backend proof: "+String(proofObservation.state||"unavailable")+
+  (proofObservation.reason?" · "+String(proofObservation.reason):"")+
+  (proofObservation.stage?" · "+String(proofObservation.stage):"")+
+  (retryAt?" · next check "+retryAt:""):null;
  const observationAt=Date.parse(proofObservation?.updatedAt||"");
  const observationStale=Boolean(proofObservation&&Number.isFinite(observationAt)&&
   Date.now()-observationAt>300000);
@@ -112,10 +119,10 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
    error?String(error):
    nativeFinalityMessage?nativeFinalityMessage:
    status==="confirming"?(confirmationText||"Source receipt mined; awaiting source-chain finality.")+". Do not submit another transaction.":
-   observationStale?"The background verification has not updated recently. Refresh your wallet status or retry the unsigned proof check; your original transfer remains recorded. No source lock/burn is repeated.":
-   proofWaiting?"XITA is checking validator signatures in the background. No wallet action is necessary. The status survives reloads and reconnects.":
-   proofObservation?.state==="unavailable"?"Background proof verification is temporarily unavailable ("+String(proofObservation.reason||"PROOF_NOT_READY")+"). The source remains confirmed. XITA will retry automatically.":
-   proofReady?"Unsigned validator proof was prepared. Continue when ready; XITA re-verifies source, proof and destination Mailbox before MetaMask opens.":
+   observationStale?(backendProofDescription||"Backend proof observer stale")+". Waiting for backend recovery; no manual proof action is required.":
+   proofWaiting?(backendProofDescription||"Backend validator verification pending")+". No wallet action needed; the backend continues even when this window is closed.":
+   proofObservation?.state==="unavailable"?(backendProofDescription||"Backend proof unavailable")+". XITA retries automatically; no wallet action is required.":
+   proofReady?"Backend proof ready. XITA will revalidate the canonical chain state before asking MetaMask to sign.":
    canContinue&&status==="awaiting-final-proof"?"Second hop confirmed. XITA monitors the final validator proof and prepares the next wallet request automatically.":
    canContinue&&status==="awaiting-onward"?"XGRChain delivery confirmed. XITA automatically prepares the onward MetaMask transaction; never repeat the source transaction.":
    notice?String(notice):
