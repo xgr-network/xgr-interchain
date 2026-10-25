@@ -172,7 +172,7 @@ export async function readWalletTransferIndex(catalog,account,{
  if(observedIds.length){
   try{
    const proof=await connected.query({text:`SELECT j.source_chain,j.message_id,
-    j.state,j.reason,j.stage,j.last_checked_at,j.updated_at
+    j.state,j.reason,j.stage,j.attempts,j.next_check_at,j.last_checked_at,j.updated_at
     FROM xita_transfer_proof_observations j
     JOIN xita_transfer_operations o USING(source_chain,message_id)
     WHERE o.account=$1 AND o.delivered IS FALSE
@@ -180,6 +180,8 @@ export async function readWalletTransferIndex(catalog,account,{
     values:[lowercase(account),observedIds]});
    const byKey=new Map(proof.rows.map(row=>[row.source_chain+":"+lowercase(row.message_id),{
     state:row.state,reason:row.reason||null,stage:row.stage||null,
+    attempts:Number.isSafeInteger(Number(row.attempts))?Number(row.attempts):null,
+    nextCheckAt:iso(row.next_check_at),
     checkedAt:iso(row.last_checked_at),updatedAt:iso(row.updated_at)
    }]));
    linkedItems=linkedItems.map(item=>{
