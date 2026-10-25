@@ -169,7 +169,19 @@ function systemDetails(model,selected,metrics=null,wallet={}){
     (system.tokens.some(t=>t.id==="XGR")?'<h4>XGR representation</h4>'+renderRepresentationInventory(model,"XGR",system.key,wallet):"");
 }
 function chainOptions(model,selected){
-  return model.chains.map(c=>'<option value="'+esc(c.key)+'"'+(c.key===selected?" selected":"")+'>'+esc(c.label)+'</option>').join("");
+ return model.chains.length?model.chains.map(c=>'<option value="'+esc(c.key)+'"'+
+  (c.key===selected?" selected":"")+'>'+esc(c.label)+'</option>').join(""):
+  '<option value="">No available route</option>';
+}
+// Only deployed and bidirectionally documented legs are offered. Every
+// spoke-to-spoke route uses XGRChain as hub; a self-transfer is never valid.
+export function executableDestinations(model,assetId,source){
+ const routes=(model?.transferRoutes||[]).filter(r=>r.asset===assetId);
+ const edges=new Set(routes.map(r=>r.source+"->"+r.destination));
+ const leg=(a,b)=>a!==b&&edges.has(a+"->"+b)&&edges.has(b+"->"+a);
+ return (model?.chains||[]).filter(c=>c.key!==source&&(
+  source===HUB||c.key===HUB?leg(source,c.key):
+   leg(source,HUB)&&leg(HUB,c.key)));
 }
 function assetOptions(model,selected){
   return model.assets.map(a=>'<option value="'+esc(a.id)+'"'+(a.id===selected?" selected":"")+'>'+esc(a.name)+' ('+esc(a.id)+')</option>').join("");
@@ -542,15 +554,20 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const deployedChains=model.chains.filter(c=>available.has(c.key)||recoveryChains.has(c.key));
  const deployedAssets=new Set(routes.map(r=>r.asset));
  const usableAssets=model.assets.filter(a=>deployedAssets.has(a.id)||a.id===currentWork?.asset);
- const requestedOrigin=currentWork?.sourceChain||selection.origin;
- const requestedDestination=currentWork?.finalDestinationChain||currentWork?.destinationChain||selection.destination;
  const requestedAsset=currentWork?.asset||selection.asset;
- const origin=deployedChains.some(c=>c.key===requestedOrigin)?requestedOrigin:
-   deployedChains.some(c=>c.key===HUB)?HUB:deployedChains[0]?.key||"";
- const destination=deployedChains.some(c=>c.key===requestedDestination)&&requestedDestination!==origin?
-   requestedDestination:deployedChains.find(c=>c.key!==origin)?.key||"";
  const assetId=usableAssets.some(a=>a.id===requestedAsset)?
    requestedAsset:usableAssets[0]?.id||"";
+ const requestedOrigin=currentWork?.sourceChain||selection.origin;
+ const requestedDestination=currentWork?.finalDestinationChain||currentWork?.destinationChain||selection.destination;
+ // Keep old routes selectable for recovery, not for new irreversible TX1.
+ const originChoices=currentWork?deployedChains:deployedChains.filter(c=>
+   executableDestinations(model,assetId,c.key).some(d=>available.has(d.key)));
+ const origin=originChoices.some(c=>c.key===requestedOrigin)?requestedOrigin:
+   originChoices.some(c=>c.key===HUB)?HUB:originChoices[0]?.key||"";
+ const destinationChoices=currentWork?deployedChains.filter(c=>c.key!==origin):
+   executableDestinations(model,assetId,origin).filter(c=>available.has(c.key));
+ const destination=destinationChoices.some(c=>c.key===requestedDestination)?
+   requestedDestination:destinationChoices[0]?.key||"";
  const path=previewRoute(model,origin,destination,assetId);
  const deployed=path.path.length>1&&path.hops.every((h,i)=>
    routes.some(r=>r.asset===assetId&&r.source===path.path[i]&&
@@ -649,10 +666,10 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<div class="ux-transfer-field"><label class="ux-field" for="ux-asset">Token</label><select id="ux-asset"'+(selected?' disabled':'')+'>'+
   assetOptions({assets:usableAssets},assetId)+'</select></div>'+
   '<div class="ux-transfer-network-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-origin">From</label><select id="ux-origin"'+(selected?' disabled':'')+'>'+
-  chainOptions({chains:deployedChains},origin)+'</select></div>'+
+  chainOptions({chains:originChoices},origin)+'</select></div>'+
   '<div class="ux-transfer-direction" aria-hidden="true">→</div>'+
   '<div class="ux-transfer-field"><label class="ux-field" for="ux-destination">To</label><select id="ux-destination"'+(selected?' disabled':'')+'>'+
-  chainOptions({chains:deployedChains},destination)+'</select></div></div>'+
+  chainOptions({chains:destinationChoices},destination)+'</select></div></div>'+
   '<div class="ux-transfer-field"><label class="ux-field" for="ux-transfer-amount">Amount ('+esc(assetId)+')</label>'+
   '<input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="'+
   (selected?'Original amount already locked/burned':'0.0')+'" value="'+(selected?'':esc(amount))+
