@@ -206,9 +206,6 @@ export async function sponsorOneCandidate({
  if(value<=0n)throw Error("Invalid immutable sponsor grant amount");
  if(value>BigInt(cfg.maxGrantWei))
   return {status:"over-grant-cap",chain,stage,requiredWei:value.toString()};
- const payerBalance=await provider.getBalance(wallet.address);
- if(payerBalance<value+BigInt(cfg.minReserveWei)+gasPrice*42000n)
-  return {status:"sponsor-reserve-low",chain,stage};
  // Native transfers can require more than 21,000 gas on L2s because of
  // chain-specific execution overhead. Estimate the exact signer/recipient
  // transfer before reserving a nonce, and never silently underfund it.
@@ -220,6 +217,9 @@ export async function sponsorOneCandidate({
  const gasLimit=(gasEstimate*12n+9n)/10n;
  if(gasLimit>120000n)
   return {status:"unsafe-gas-estimate",chain,stage};
+ const payerBalance=await provider.getBalance(wallet.address);
+ if(payerBalance<value+BigInt(cfg.minReserveWei)+gasPrice*gasLimit)
+  return {status:"sponsor-reserve-low",chain,stage};
  const noncePending=await provider.getTransactionCount(wallet.address,"pending");
  const nonceLatest=await provider.getTransactionCount(wallet.address,"latest");
  if(noncePending!==nonceLatest)
