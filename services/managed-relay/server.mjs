@@ -11,6 +11,7 @@ import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {globallySponsoredChains,sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 import {requiredCommittedSponsorChains} from "../../apps/web/sponsor-route-readiness.js";
+import {sponsorFundingCovered} from "./sponsor-funding.mjs";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -189,10 +190,21 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  if(!preview&&walletAwareEnabled){
   const required=requiredCommittedSponsorChains(result.pricing.sponsorCommitments);
   if(required.length){
-   const health=await readSponsorAvailability(catalog);
-   const missing=required.filter(chain=>health.chains[chain]!==true);
-   if(missing.length)throw Error("Sponsor payout not verified ready on: "+missing.join(",")+
-    " ("+health.reason+"); no paid quote signed");
+   const policies=sponsorPoliciesForCatalog({catalog,prices:await getSnapshot()});
+   for(const target of required){
+    const policy=policies[target];
+    if(!policy)throw Error("Sponsor policy missing for "+target);
+    const provider=await chain(target,catalog);
+    const [balance,fees]=await Promise.all([
+     provider.getBalance(signer.address,"latest"),provider.getFeeData()]);
+    const gasPrice=fees.maxFeePerGas||fees.gasPrice||0n;
+    const commitments=result.pricing.sponsorCommitments
+     .filter(g=>g.chain===target).map(g=>g.amountWei);
+    if(!sponsorFundingCovered({balanceWei:balance,gasPriceWei:gasPrice,
+     minReserveWei:policy.minReserveWei,commitments}))
+     throw Error("Live sponsor funding insufficient on "+target+
+      "; no paid quote signed");
+   }
   }
  }
 
