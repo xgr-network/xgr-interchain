@@ -1,6 +1,8 @@
 import {isIP} from "node:net";
 import {readFile,stat} from "node:fs/promises";
 import {Pool} from "pg";
+import {TypedDataEncoder} from "ethers";
+import {MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {COINGECKO_GAS_COIN_IDS,usdPrice12} from "./fee-quote.mjs";
 
 // Source headers are accepted ONLY through the loopback Nginx reverse proxy.
@@ -69,12 +71,15 @@ export function quoteEvidence(reply,prices,ip,location){
   expiresAt:new Date(reply.expiresAt*1000).toISOString()};
 }
 export async function saveQuoteEvidence(row,{
- connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL
+ connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL,
+ quoteReply=null
 }={}){
  if(!connectionString)throw Error("Tax evidence database unavailable");
  const pool=new Pool({connectionString,max:1,connectionTimeoutMillis:2000});
+ const client=await pool.connect();
  try{
-  const result=await pool.query(
+  await client.query("BEGIN");
+  const result=await client.query(
    `INSERT INTO xita_tax_quote_evidence
    (source_chain,execution_adapter,payer,quote_nonce,quoted_fee_wei,
     client_ip,ip_country_code,ip_country_source,ip_country_db_revision,
@@ -86,5 +91,42 @@ export async function saveQuoteEvidence(row,{
     row.sourceCountry,row.revision,row.coin,row.eurRate,row.euro,row.priceAt,
     row.issuedAt,row.expiresAt]);
   if(result.rowCount!==1)throw Error("Duplicate signed quote nonce");
- }finally{await pool.end()}
+  if(quoteReply?.pricing?.walletAware===true){
+   const q=quoteReply.quote,grants=quoteReply.pricing.sponsorCommitments;
+   if(!q||!Array.isArray(grants)||grants.length>3||
+      quoteReply.source!==row.source||q.payer.toLowerCase()!==row.payer||
+      String(q.nonce)!==row.nonce||String(q.interchainFeeWei)!==row.fee)
+    throw Error("Immutable quote commitment mismatch");
+   const digest=TypedDataEncoder.hash({name:"XITA Interchain Fee",version:"1",
+    chainId:quoteReply.sourceChainId,
+    verifyingContract:quoteReply.executionAddress},MANAGED_QUOTE_TYPES,q).toLowerCase();
+   const route=quoteReply.pricing;
+   await client.query({
+    text:"INSERT INTO xita_sponsor_quote_intents "+
+     "(source_chain,execution_adapter,payer,quote_nonce,quote_fee_wei,quote_digest,"+
+     "asset,amount_raw,gateway,route_id,first_destination_chain,"+
+     "final_destination_chain,final_recipient,onward_route_id,quote_issued_at,quote_expires_at) "+
+     "VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)",
+    values:[row.source,row.adapter,row.payer,row.nonce,row.fee,digest,
+     quoteReply.asset,q.amount,q.gateway.toLowerCase(),q.routeId.toLowerCase(),
+     route.firstDestinationChain,quoteReply.destination,
+     "0x"+q.finalRecipient.slice(-40).toLowerCase(),q.onwardRouteId.toLowerCase(),
+     row.issuedAt,row.expiresAt]
+   });
+   for(const g of grants){
+    if(!["first-delivery","hub-onward","final-delivery"].includes(g.stage)||
+       !/^[a-z][a-z0-9-]{1,39}$/.test(g.chain)||
+       !/^[1-9][0-9]*$/.test(g.amountWei))
+     throw Error("Invalid quote-bound sponsor grant");
+    await client.query({
+     text:"INSERT INTO xita_sponsor_quote_commitments "+
+      "(source_chain,execution_adapter,payer,quote_nonce,grant_chain,grant_stage,promised_wei) "+
+      "VALUES($1,$2,$3,$4,$5,$6,$7)",
+     values:[row.source,row.adapter,row.payer,row.nonce,g.chain,g.stage,g.amountWei]
+    });
+   }
+  }
+  await client.query("COMMIT");
+ }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
+ finally{client.release();await pool.end()}
 }
