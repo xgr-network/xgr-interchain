@@ -577,7 +577,7 @@ test("verified direct routes have neutral CTA; undeployed direct and two-hop rou
 });
 
 test("transfer form never offers identical origin and destination, including Arbitrum",()=>{
- const {catalog:c}=freshDeployedCatalog({routeDestination:"base"});
+ const {catalog:c}=freshDeployedCatalog({routeDestination:"base",reverseRoute:true});
  const model=buildExperienceModel(c);
  const html=renderPlanRoute(model,{origin:"base",destination:"base",asset:"XGR"},"ready");
  const source=html.match(/<select id="ux-origin"[^>]*>([\s\S]*?)<\/select>/)?.[1]||"";
