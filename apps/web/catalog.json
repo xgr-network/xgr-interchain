@@ -10,7 +10,9 @@
       "domainId": 42161,
       "rpcUrls": [
         "https://arb1.arbitrum.io/rpc",
-        "https://arbitrum-one-rpc.publicnode.com"
+        "https://arbitrum-one-rpc.publicnode.com",
+        "https://arbitrum.gateway.tenderly.co",
+        "https://arbitrum.drpc.org"
       ],
       "nativeCurrency": {
         "name": "Ether",
@@ -29,8 +31,10 @@
       "chainId": 8453,
       "domainId": 8453,
       "rpcUrls": [
+        "https://mainnet.base.org",
         "https://gateway.tenderly.co/public/base",
-        "https://base.gateway.tenderly.co"
+        "https://base-rpc.publicnode.com",
+        "https://base.drpc.org"
       ],
       "nativeCurrency": {
         "name": "Ether",
