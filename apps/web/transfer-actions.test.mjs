@@ -528,3 +528,12 @@ test("fully funded direct XGR transfer sends canonical gateway with zero service
  assert.ok(sends[0].data.startsWith(selector("bridge(uint32,bytes32,uint256)")));
  assert.equal(outcome.interchainFeeWei,"0");
 });
+
+test("N-05 onward gas exception requires a paid parent-specific final gift",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const c=readFileSync(new URL("./transfer-actions.js",import.meta.url),"utf8");
+ assert.match(c,/onwardSponsorSourceChain:first.sourceChain/);
+ assert.match(c,/promisedStages\?\.includes\("final-delivery"\)/);
+ assert.match(c,/messageId:onwardParentMessageId/);
+ assert.match(c,/Paid final-delivery gas grant not independently committed/);
+});
