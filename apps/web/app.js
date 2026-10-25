@@ -1148,6 +1148,12 @@ function render(){
  document.querySelector("[data-fee-info-close]")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
  document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelector("#xita-scan-transfers")?.addEventListener("click",()=>void scanWalletHistory());
+ document.querySelectorAll("[data-xita-inspect-broadcast]").forEach(button=>button.addEventListener("click",()=>{
+  if(!state.account)return;
+  const sourceChain=button.dataset.xitaBroadcastChain,txHash=button.dataset.xitaInspectBroadcast;
+  if(!state.catalog?.chains?.[sourceChain]||!/^0x[0-9a-f]{64}$/i.test(txHash||""))return;
+  void lookupWalletTransfer(sourceChain,txHash);
+ }));
  document.querySelectorAll("[data-verify-source-hint]").forEach(button=>button.addEventListener("click",()=>{
   if(!state.account)return;
   const sourceChain=button.dataset.chain,txHash=button.dataset.verifySourceHint;
