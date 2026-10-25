@@ -82,6 +82,12 @@ test("verified validator proof advances to MetaMask delivery before source recei
  assert.equal(pending.verifiedWalletTx,1);
 });
 
+test("absent proof observer entry cannot render validator proof ready",()=>{
+ const flow=deriveTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false}});
+ assert.equal(flow.canContinue,false);
+ assert.equal(flow.heading,"Awaiting validator proof observation");
+ assert.match(flow.message,/no backend validator-proof observation yet/);
+});
 test("persistent background proof observation waits without asking for wallet signature",()=>{
  const record={...base,status:"awaiting-final-proof",delivered:true,
   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64),
@@ -155,6 +161,10 @@ test("12 of 12 confirmations does not claim Base safe finality or unlock deliver
  assert.equal(unavailable.canContinue,false);
 });
 
+test("disabled but promised gas warrants attention",()=>{
+ const html=renderTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false},sponsorship:{enabled:true,status:"disabled"}});
+ assert.match(html,/operator attention required/);
+});
 test("pending gas sponsorship is not rendered as actively checking forever",()=>{
  const j={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash};
  const record={...base,sourceChain:"base",destinationChain:"xgrchain",
