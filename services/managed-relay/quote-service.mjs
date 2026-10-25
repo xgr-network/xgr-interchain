@@ -166,9 +166,9 @@ export async function buildManagedQuote({
  })():quotedJourneyCostWei({source,stages,coinGeckoSnapshot:priceData,now});
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
  const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
- if(interchainFeeWei===0n&&secondRoute&&!preview)throw Error("Zero-fee two-hop needs on-chain intent support");
+ if(interchainFeeWei===0n&&secondRoute)throw Error("Zero-fee two-hop needs on-chain intent support");
  const directNoFee=interchainFeeWei===0n&&!secondRoute;
- if(directNoFee&&route.sourceToken!==null&&!preview)
+ if(directNoFee&&route.sourceToken!==null)
   throw Error("Fee-free ERC20 route requires allowance-aware gateway transaction; no tokens locked");
  const expiresAt=issuedAt+Number(ttl);
  const q={
