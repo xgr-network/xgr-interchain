@@ -55,6 +55,25 @@ test("overall health is sound with absent optional services but flags core failu
  assert.equal(bad.status,"degraded");
 });
 
+test("paid quote signer with responsive HTTP but missing DB permissions is DEGRADED",async()=>{
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]}}};
+ const opts={catalog,now,checkValidators:async()=>[],
+  readUnit:async name=>UNITS.some(x=>x.unit===name&&x.optional&&x.id!=="quote")?
+   "LoadState=not-found\nActiveState=inactive\n":
+   "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n",
+  readHTTP:async target=>target.id==="quote-api"?{ok:true,paidQuoteReady:false,
+   paidQuoteReason:"quote-db-permissions-incomplete"}:
+   target.id==="transfer-stats"?stats([cursor("2026-10-19T11:59:30Z")]):
+   {ok:true},
+  checkChain:async()=>({name:"xgrchain",chainId:1643,head:100,attempted:1,configuredEndpoints:1,state:"ok"}),
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1})};
+ const broken=await collectOperationsHealth(opts);
+ assert.equal(broken.status,"degraded");
+ assert.equal(broken.checks.find(x=>x.id==="quote-api").state,"unavailable");
+ const ready=await collectOperationsHealth({...opts,readHTTP:async target=>target.id==="quote-api"?
+  {ok:true,paidQuoteReady:true,paidQuoteReason:"verified"}:opts.readHTTP(target)});
+ assert.equal(ready.status,"ok");
+});
 test("fee timers distinguish disabled, stopped and actually failed",()=>{
  const timer=UNITS.find(x=>x.id==="gas-sponsor");
  const disabled=parseUnitShow("LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n",timer);
@@ -82,6 +101,7 @@ test("Join health separates service readiness, missing configuration and missing
     "LoadState=not-found\nActiveState=inactive\n":
     "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
   const readHTTP=async target=>{
+   if(target.id==="quote-api")return {ok:true,paidQuoteReady:true,paidQuoteReason:"verified"};
    if(target.id==="join-api"){
     if(!joinInstalled)throw Error("not installed");
     return {ok:true,available};

@@ -236,6 +236,17 @@ export async function collectOperationsHealth({
    return {...p,state:p.data?.available===true?"ok":"warning"};
   return p;
  });
+ // A green HTTP heartbeat is not proof of a functioning paid quote writer.
+ // Check independently whenever the managed signer is installed/active.
+ const quoteUnit=units.find(x=>x.id==="quote");
+ const paidQuoteInstalled=quoteUnit&&["ok","warning","failed","stopped","inactive"].includes(quoteUnit.state);
+ const quoteProbe=observedProbes.find(p=>p.id==="quote-api");
+ const quoteReady=quoteProbe?.data?.paidQuoteReady===true;
+ const quoteWriter={state:!paidQuoteInstalled?"not-installed":quoteReady?"ok":"unavailable",
+  reason:!paidQuoteInstalled?"No signed quote service":quoteReady?"Paid quote database permissions verified":
+   String(quoteProbe?.data?.paidQuoteReason||"paid-quote-readiness-unverified").slice(0,95)};
+ if(paidQuoteInstalled&&!quoteReady&&quoteProbe)
+  Object.assign(quoteProbe,{state:"unavailable",reason:quoteWriter.reason});
  const api=observedProbes.find(p=>p.id==="indexer-api");
  const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
@@ -258,6 +269,7 @@ export async function collectOperationsHealth({
   id:p.id,title:p.title,group:p.group,optional:Boolean(p.optional),
   state:p.state,
   ...(p.id==="proof-builder"&&p.data?{installationOnly:true}:{}),
+  ...(p.id==="quote-api"?{readinessReason:quoteWriter.reason}:{}),
   ...(p.id==="join-api"?{submissionsConfigured:p.state==="ok"&&p.data?.available===true}:{}),
   ...(p.id==="quote-api"&&p.data?{enabledChains:Array.isArray(p.data.enabledChains)?
    p.data.enabledChains.filter(x=>/^[a-z0-9-]+$/.test(x)).slice(0,20):[]}:{}),
@@ -266,10 +278,11 @@ export async function collectOperationsHealth({
  // the TVL/market verification worker has produced fresh evidence.
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
- const status=validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
+ const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
+ const status=paidQuoteFault?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
-  services,checks,indexer,evidence,chains,validators,
+  services,checks,indexer,evidence,chains,validators,quoteWriter,
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,

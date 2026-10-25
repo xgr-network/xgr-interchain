@@ -1,7 +1,7 @@
 // Resolve the ACTUAL quote writer database login from the root-owned systemd
 // EnvironmentFile. Never print/log the connection URL or its password.
-// The role is validated again by PostgreSQL against existing tax-writer grants
-// before narrowly scoped sponsor permissions are ever added.
+// PostgreSQL validates the role and grants only the required quote privileges.
+// The deployed xita_transfer_worker is the explicitly consolidated XITA runtime writer.
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -24,9 +24,9 @@ export function quoteWriterRoleFromEnvironment(content,expectedDatabase="xita"){
  }catch{throw Error("Invalid signer quote database credentials syntax");}
  if(database!==expectedDatabase)throw Error("Signer quote database and target migration differ");
  if(!/^xita_[a-z][a-z0-9_]{1,50}$/.test(role)||
-  ["xita_indexer_reader","xita_transfer_worker","xita_sponsor_worker",
+  ["xita_indexer_reader","xita_sponsor_worker",
    "xita_sponsor_status_reader","xita_tax_accounting_reader"].includes(role))
-  throw Error("Signer quote database must use an independent restricted xita_ writer role");
+  throw Error("Signer quote database must use a permitted restricted XITA writer role");
  return role;
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
