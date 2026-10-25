@@ -561,6 +561,9 @@ function openFlowModal(){
  attemptedWalletSteps.clear();
  flowView.open=true;updateFlowModal();
 }
+function requireVisibleSigningModal(){
+ if(!flowView.open)throw Error("MetaMask signing paused when transfer status was hidden. Reopen the existing transfer to continue; never repeat the original source TX.");
+}
 async function performTransferAction(){
  if(transferActivity.working||!state.catalog)return;
  if(!state.account){document.querySelector("#connect")?.click();return;}
@@ -597,8 +600,8 @@ async function performTransferAction(){
     // Sponsorship was verified before TX2. Final delivery never reopens it.
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:false,
-     onWalletReady:()=>setFlowStage("final-delivery-sign",
-      "TX4 of 4: proof verified. Confirm final "+selected.finalDestinationChain+" delivery in MetaMask."),
+     onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("final-delivery-sign",
+      "TX4 of 4: proof verified. Confirm final "+selected.finalDestinationChain+" delivery in MetaMask.");},
      onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
@@ -622,8 +625,8 @@ async function performTransferAction(){
     // Do not re-run that stage after XGRChain delivery.
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
-     onWalletReady:()=>setFlowStage("onward-source-sign",
-      "TX3 of 4: confirm the onward XGRChain → "+selected.finalDestinationChain+" transaction in MetaMask."),
+     onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("onward-source-sign",
+      "TX3 of 4: confirm the onward XGRChain → "+selected.finalDestinationChain+" transaction in MetaMask.");},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
       setFlowStage("onward-source-pending");
@@ -669,7 +672,7 @@ async function performTransferAction(){
     await requireUpfrontSponsorship(selected,account);
     const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
     provider:globalThis.ethereum,waitForProof:false,
-    onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
+    onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("first-delivery-sign","TX2: proof verified. Confirm XGRChain delivery in MetaMask.");},
     onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
     },onBroadcast:({txHash})=>{
