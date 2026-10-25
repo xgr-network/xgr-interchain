@@ -9,7 +9,7 @@ import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
-import {globallySponsoredChains} from "./sponsor-policy.mjs";
+import {globallySponsoredChains,sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 import {verifiedClientIP,lookupIpCountry,quoteEvidence,saveQuoteEvidence} from "./tax-evidence.mjs";
 
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -81,7 +81,7 @@ const quoteIface=new Interface(EXECUTION_ABI);
 const getSnapshot=()=>readCachedGasPrices();
 const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
- const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw]):null;
+ const previewKey=preview?JSON.stringify([request?.asset,request?.source,request?.destination,request?.amountRaw,request?.payer,process.env.XITA_WALLET_AWARE_SPONSORING]):null;
  const cached=previewKey?previewMemo.get(previewKey):null;
  if(cached&&Date.now()-cached.at<60000)return cached.value;
  const sourceAddresses=sourceExecutionAddressesFromCatalog(catalog);
@@ -97,6 +97,18 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
     String(executionAddress).toLowerCase()||
     !/^0x[0-9a-f]{64}$/i.test(documented.runtimeCodeKeccak256||""))
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
+ const walletAwareEnabled=process.env.XITA_WALLET_AWARE_SPONSORING==="true"&&
+  process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ if(walletAwareEnabled&&(!/^0x[0-9a-f]{40}$/i.test(request?.payer||"")||
+   !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
+   String(request.payer).toLowerCase()!==String(request.recipient).toLowerCase()))
+  throw Error("Wallet-specific quote requires explicit wallet identity");
+ // Wallet-specific quotes are only issued if the public sponsor monitor is
+ // fresh; a missing worker, missing chain reserve or price fails closed.
+ if(walletAwareEnabled){
+  const health=await readSponsorAvailability(catalog);
+  if(!health.available)throw Error("Sponsor reserves or worker not ready for wallet-aware quote");
+ }
  const sourceProvider=await chain(source,catalog);
  await chain(destination,catalog);
  // Allow public estimates before any secrets or signer environment exist.
@@ -110,7 +122,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
  if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
- const previewRequest=preview?{...request,payer:request.payer||serviceAddress,
+ const previewRequest=preview&&!walletAwareEnabled?{...request,payer:request.payer||serviceAddress,
    recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
   catalog,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
@@ -151,7 +163,13 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
      throw Error("Cannot verify live source-chain block time");
     return block.timestamp;
   },
-  getCoinGeckoSnapshot:getSnapshot,preview
+  getCoinGeckoSnapshot:getSnapshot,preview,
+  walletAwareEnabled,
+  baseServiceFeeWei:walletAwareEnabled?process.env.XITA_WALLET_AWARE_BASE_FEE_WEI:null,
+  readWalletNativeBalance:async({chain:chainName,account})=>{
+   const provider=await chain(chainName,catalog);
+   return provider.getBalance(account,"latest");
+  }
  });
  if(preview){
   // Bridge value for native collateral contains the PRINCIPAL. Exclude that
@@ -178,6 +196,14 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    if(previewMemo.size>80)previewMemo.delete(previewMemo.keys().next().value);
   }
   return resultPreview;
+ }
+ if(walletAwareEnabled){
+  const limits=sponsorPoliciesForCatalog({catalog,prices:await getSnapshot()});
+  for(const g of result.pricing.sponsorCommitments){
+   if(!limits[g.chain]||BigInt(g.amountWei)>BigInt(limits[g.chain].maxGrantWei)||
+      BigInt(g.amountWei)>BigInt(limits[g.chain].dailyMaxWei))
+    throw Error("Quote sponsor grant exceeds configured native budget");
+  }
  }
  const data=quoteIface.encodeFunctionData("execute",[result.quote,result.signature]);
  return {...result,transaction:{from:result.quote.payer,to:result.executionAddress,
@@ -222,6 +248,51 @@ async function readSponsorAvailability(catalog){
   return {available:false,chains:{},reason:"sponsor-readiness-unavailable"};
  }
 }
+// A grant is verified only when the worker journal says confirmed.
+// An absent grant is NOT proof that the wallet had sufficient native gas.
+export function publicSponsorshipView(rows){
+ if(!Array.isArray(rows)||rows.length===0)
+  return {ok:true,status:"unavailable"};
+ const grants=rows.filter(row=>row?.grant_key).map(row=>({
+  stage:String(row.grant_key).split(":").at(-1),
+  status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
+   row.status:"unknown"
+ }));
+ const aware=rows.some(r=>r.wallet_aware===true);
+ const promised=aware?Number(rows[0]?.expected_grants):null;
+ if(aware&&(!Number.isInteger(promised)||promised<0||promised>3))
+  return {ok:false,status:"unavailable"};
+ const status=aware?
+  promised===0?"not-required":
+  grants.some(g=>g.status==="needs-review")?"needs-review":
+  grants.length===promised&&grants.every(g=>g.status==="confirmed")?"confirmed":
+  grants.some(g=>g.status==="submitted")?"submitted":
+  grants.some(g=>g.status==="reserved")?"reserved":"pending":
+  grants.length?"tracked":"pending";
+ return {ok:true,status,grants,...(aware?{expectedGrants:promised}: {})};
+}
+// Public signer request throttling: prevents an unauthenticated caller from
+// monopolizing the finite quote-time gas reservations. Not an authorization
+// mechanism; on-chain fee matching remains mandatory for grants.
+const signedQuoteWindows=new Map();
+export function enforceSignedQuoteRate(ip,payer,{now=Date.now()}={}){
+ if(typeof ip!=="string"||!/^0x[0-9a-f]{40}$/i.test(payer||""))
+  throw Error("Invalid signed quote request identity");
+ const limits=[["ip:"+ip,4],["wallet:"+payer.toLowerCase(),2],["global",120]];
+ if(signedQuoteWindows.size>50000)
+  for(const [key,v] of signedQuoteWindows)
+   if(now-v.start>=60000)signedQuoteWindows.delete(key);
+ for(const [key,max] of limits){
+  const row=signedQuoteWindows.get(key);
+  if(row&&now-row.start<60000&&row.count>=max)
+   throw Error("Signed quote rate limit exceeded");
+ }
+ for(const [key] of limits){
+  const row=signedQuoteWindows.get(key);
+  signedQuoteWindows.set(key,!row||now-row.start>=60000?
+   {start:now,count:1}:{start:row.start,count:row.count+1});
+ }
+}
 async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
   res.writeHead(status,{"content-type":"application/json","cache-control":"no-store",
@@ -235,6 +306,8 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
     sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+     walletAware:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true"&&
+      process.env.XITA_WALLET_AWARE_SPONSORING==="true",
      ...await readSponsorAvailability(catalog)}});
   }catch(e){return send(503,{ok:false,error:publicError(e)})}
  }
@@ -256,19 +329,27 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    }
    // Public status is bound to the verified parent wallet. Never expose
    // reservations, sponsor nonces, payout values or unrelated customer grants.
+   const quoteAware=process.env.XITA_WALLET_AWARE_SPONSORING==="true";
    const q=await sponsorPool.query({text:
-    "SELECT g.grant_key,g.status,p.delivered FROM xita_transfer_operations p "+
+    "SELECT g.grant_key,g.status,p.delivered,"+
+    (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
+      " (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c"+
+      " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+      " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce) AS expected_grants ":
+      " FALSE AS wallet_aware, NULL::integer AS expected_grants ")+
+    "FROM xita_transfer_operations p "+
     "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
+    (quoteAware?"LEFT JOIN xita_sponsor_quote_intents i ON"+
+      " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+      " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+      " AND i.quote_fee_wei=p.interchain_fee_wei ":"")+
     "WHERE p.account=$1 AND p.source_chain=$2 AND p.message_id=$3 "+
     "AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0 "+
     "ORDER BY g.created_at DESC LIMIT 3",
     values:[account,source,messageId]});
    if(!q.rows.length)return send(200,{ok:true,status:"unavailable"});
-   const grants=q.rows.filter(r=>r.grant_key).map(r=>({
-    stage:r.grant_key.split(":").at(-1),
-    status:["reserved","submitted","confirmed","needs-review"].includes(r.status)?r.status:"unknown"
-   }));
-   // The absence of a journaled grant does not prove adequate wallet gas.\n   // Sponsorship is independent per downstream hop; never mark all stages green\n   // merely because the first Mailbox delivery is complete.\n   return send(200,{ok:true,status:grants.length?"tracked":"pending",grants});
+   // Return an explicit read-only journal status; no inferred sponsor success.
+   return send(200,publicSponsorshipView(q.rows));
   }catch{return send(503,{ok:false,status:"unavailable"})}
  }
  const preview=req.url==="/api/xita/v1/managed/preview";
@@ -286,12 +367,16 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
    const clientIP=preview?null:verifiedClientIP(req);
+   if(!preview&&process.env.XITA_WALLET_AWARE_SPONSORING==="true")
+    enforceSignedQuoteRate(clientIP,parsed.payer);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
    if(!preview){
     const prices=await getSnapshot();
      const country=await lookupIpCountry(clientIP).catch(()=>({code:null,source:"lookup-unavailable",revision:null}));
     const evidence=quoteEvidence(reply,prices,clientIP,country);
-    await saveQuoteEvidence(evidence);
+    await saveQuoteEvidence(evidence,{quoteReply:reply,
+     grantLimits:reply.pricing?.walletAware?sponsorPoliciesForCatalog({
+      catalog:loadCatalog(),prices:await getSnapshot()}):null});
    }
   return send(200,{ok:true,...reply});
  }catch(e){

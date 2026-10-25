@@ -489,6 +489,19 @@ install_fee_tax_ledger() (
   echo "Tax ledger schema installed; verify signer/worker database grants before live paid quotes."
 )
 
+# Explicit operator-only migration. Existing live transfers and EVM contracts
+# are untouched, and this never enables wallet-aware sponsorship.
+install_wallet_aware_sponsor_db() (
+  require_clean_main
+  local db="${XITA_TRANSFER_DB_NAME:-xita}"
+  [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/010_wallet_aware_sponsor_commitments.sql" || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
+   SELECT CASE WHEN to_regclass('public.xita_sponsor_quote_intents') IS NOT NULL
+      AND to_regclass('public.xita_sponsor_quote_commitments') IS NOT NULL
+    THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS
+)
 install_interchain_fee() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -538,6 +551,16 @@ install_interchain_fee() (
   privileged systemctl restart xita-interchain-fee-quote.service
   privileged systemctl is-active xita-interchain-fee-quote.service
   privileged systemctl enable --now xita-interchain-fee-claim.timer xita-gas-sponsor.timer
+  # Safe additive SQL and idle listener are installed with the existing
+  # fee service; they NEVER enable sponsorship or send a transaction.
+  install_wallet_aware_sponsor_db
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/sponsor-event-listener.mjs|" \
+      "$ROOT/services/managed-relay/xita-gas-sponsor-listener.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-gas-sponsor-listener.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-gas-sponsor-listener.service
   if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
     privileged env XITA_INTERCHAIN_FEE_NGINX=1 "$node_bin" \
       "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
@@ -691,6 +714,9 @@ complete_update() {
   if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
     privileged systemctl restart xita-fee-preview.service
   fi
+  if systemctl is-active --quiet xita-gas-sponsor-listener.service 2>/dev/null; then
+    privileged systemctl restart xita-gas-sponsor-listener.service
+  fi
 }
 
 update() {
@@ -762,6 +788,7 @@ case "${1:-help}" in
   install-price-cache) install_price_cache ;;
   install-interchain-fee) install_interchain_fee ;;
   install-fee-tax-ledger) install_fee_tax_ledger ;;
+  install-wallet-aware-sponsor-db) install_wallet_aware_sponsor_db ;;
   help|-h|--help) usage ;;
   *)
     usage >&2

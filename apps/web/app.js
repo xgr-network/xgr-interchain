@@ -24,7 +24,7 @@ import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
-const sponsorship={enabled:false,available:false,chains:{},status:"unknown",checkedAt:0,loading:false};
+const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 const sponsorTransfer={key:"",status:"unavailable",grants:[],checkedAt:0,loading:false};
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
@@ -39,11 +39,12 @@ async function refreshSponsorship(){
    throw Error("No verified sponsor status");
   sponsorship.enabled=data.sponsorship.enabled===true;
   sponsorship.available=data.sponsorship.available===true;
+  sponsorship.walletAware=data.sponsorship.walletAware===true;
   sponsorship.chains=data.sponsorship.chains&&typeof data.sponsorship.chains==="object"?
    data.sponsorship.chains:{};
   sponsorship.status=sponsorship.available?"available":"unavailable";
  }catch{
-  sponsorship.enabled=false;sponsorship.available=false;sponsorship.chains={};sponsorship.status="unknown";
+  sponsorship.enabled=false;sponsorship.available=false;sponsorship.walletAware=false;sponsorship.chains={};sponsorship.status="unknown";
  }finally{
   sponsorship.loading=false;
   if(path()==="/transfer"&&state.catalog)render();
@@ -68,6 +69,10 @@ async function refreshFeePreview(){
   destination=state.experience.destination,amount=state.experience.amount||"";
  if(path()!=="/transfer"||!state.catalog)return;
  const catalog=state.catalog;
+ if(sponsorship.walletAware&&!state.account){
+  updatePreviewState("Connect your wallet to calculate the personalized Service Fee.");
+  return;
+ }
  const first=source!=="xgrchain"&&destination!=="xgrchain"?"xgrchain":destination;
  const routes=deployedRoutes(catalog);
  if(!routes.some(r=>r.asset===asset&&r.source===source&&r.destination===first)||
@@ -77,7 +82,8 @@ async function refreshFeePreview(){
  let raw;
  try{raw=amountToUnits(amount,catalog.assets[asset].metadata.decimals).toString();}
  catch{updatePreviewState("Enter a positive token amount to estimate costs.");return;}
- const cacheKey=[asset,source,destination,raw].join(":");
+ const wallet=state.account?.toLowerCase()||"";
+ const cacheKey=[asset,source,destination,raw,wallet].join(":");
  const cached=feePreviewCache.get(cacheKey);
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),13000);
  updatePreviewState("Calculating verified protocol and Interchain Fee costs…");
@@ -91,7 +97,8 @@ async function refreshFeePreview(){
     pending=(async()=>{
      const res=await fetch("/api/xita/v1/managed/preview",{method:"POST",cache:"no-store",
       credentials:"omit",headers:{"content-type":"application/json"},
-      signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw})});
+      signal:controller.signal,body:JSON.stringify({asset,source,destination,amountRaw:raw,
+       ...(wallet?{payer:wallet,recipient:wallet}:{})})});
      const type=res.headers?.get?.("content-type")||"";
      if(!/application\/(?:[a-z0-9.-]+\+)?json\b/i.test(type))
       throw Error("Cost preview endpoint unavailable (HTTP "+res.status+")");
@@ -129,7 +136,16 @@ async function refreshFeePreview(){
     const node=document.createElement(tag);if(cls)node.className=cls;
     if(label!==undefined)node.textContent=label;return node;
    };
-   const rrows=rows.map(r=>({...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain}));
+   const allocation=value.pricing?.walletAware===true?
+    value.pricing?.sponsorAllocation:null;
+   const rrows=rows.map(r=>{
+    const stages=Array.isArray(allocation)?allocation.filter(x=>x.chain===r.chain):null;
+    const paid=stages?.reduce((sum,x)=>sum+BigInt(x.walletCoveredWei),0n);
+    const sponsored=stages?.reduce((sum,x)=>sum+BigInt(x.shortfallWei),0n);
+    return {...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain,
+     ...(stages?{conditionalNetWei:paid,potentialSponsorWei:sponsored,
+       eligible:sponsored>0n}:{})};
+   });
    detail.hidden=false;
    const section=make("div","ux-fee-summary");
    const initial=make("div","ux-fee-summary-part");
@@ -137,7 +153,8 @@ async function refreshFeePreview(){
     make("strong","ux-fee-summary-value",formatWeiFee(total)+" "+coin),
     make("small","ux-fee-summary-hint","Protocol + XITA Service Fee · ~ $"+value.estimatedRouteFeeUsd+" USD"));
    const gas=make("div","ux-fee-summary-part");
-   gas.append(make("span","ux-fee-summary-label","Transfer Gas Fees"));
+   gas.append(make("span","ux-fee-summary-label",allocation?
+    "Wallet-paid downstream gas & protocol costs":"Transfer Gas Fees"));
    if(rrows.length){
     for(const r of rrows){
      const line=make("div","ux-fee-summary-gas-line");
@@ -146,7 +163,7 @@ async function refreshFeePreview(){
      gas.append(line);
     }
     gas.append(make("small","ux-fee-summary-hint",
-     sponsorship.enabled?"After potential XITA sponsorship · estimates":"Estimated additional downstream network gas"));
+     sponsorship.enabled?(allocation?"Wallet-paid native gas · quote-time estimate":"After potential XITA sponsorship · estimates"):"Estimated additional downstream network gas"));
    }else gas.append(make("strong","ux-fee-summary-value","Unavailable"));
    section.append(initial,gas);
    const breakdown=make("details","ux-fee-details");
@@ -173,8 +190,12 @@ async function refreshFeePreview(){
       content.append(make("p","ux-fee-details-note","Sponsorship on "+r.label+" is unavailable; the wallet may need to fund gas."));
     }
    }
-   content.append(make("p","ux-fee-details-note","Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
-   if(onward>0n)content.append(make("p","ux-fee-details-note","XGR onward protocol processing is already priced into the XITA Service Fee."));
+   content.append(make("p","ux-fee-details-note",allocation?
+    "Wallet-specific signed quote: the service fee includes only the promised downstream gas shortfall. Existing wallet gas remains customer-paid. The 30% gas buffer and fixed onward protocol costs are included in the estimate. Source gas and ERC-20 approvals are separate.":
+    "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
+   if(onward>0n)content.append(make("p","ux-fee-details-note",allocation?
+    "The XGR onward protocol fee is split between existing wallet gas funds and the quote-locked sponsor shortfall. Only the sponsor-funded portion is included in the XITA Service Fee.":
+    "XGR onward protocol processing is already priced into the XITA Service Fee."));
    breakdown.append(content);
    detail.replaceChildren(section,breakdown);
   }
@@ -412,12 +433,16 @@ async function refreshTransferSponsorship(binding){
   const data=await response.json();
   if(sponsorTransfer.key!==key)return;
   sponsorTransfer.grants=Array.isArray(data.grants)?data.grants:[];
-  sponsorTransfer.status=data.status==="tracked"?
-   (sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
-    sponsorTransfer.grants.some(x=>x.status==="confirmed")?"confirmed":
-    sponsorTransfer.grants.some(x=>x.status==="submitted")?"submitted":"reserved"):
-   data.status==="pending"?"pending":data.status==="not-required"?"not-required":
-   data.status==="disabled"?"disabled":"unavailable";
+  // Only the backend may declare ALL committed stages complete.
+  // A single confirmed grant is never evidence that the full journey's
+  // sponsorship obligations have been fulfilled.
+  sponsorTransfer.status=["confirmed","needs-review","submitted","reserved",
+   "pending","not-required","disabled"].includes(data.status)?data.status:
+   data.status==="tracked"?
+    (sponsorTransfer.grants.length>0&&
+     sponsorTransfer.grants.every(x=>x.status==="confirmed")?"confirmed":
+     sponsorTransfer.grants.some(x=>x.status==="needs-review")?"needs-review":
+     "pending"):"unavailable";
  }catch{
   if(sponsorTransfer.key===key)sponsorTransfer.status="unavailable";
  }finally{
