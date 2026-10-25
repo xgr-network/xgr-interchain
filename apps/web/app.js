@@ -1063,6 +1063,8 @@ function render(){
  // All discovery surfaces use the same derived publication policy. Only
  // deployed chain-specific representations become token planets.
  const universe=buildExperienceModel(p==="/transfer"?state.catalog:publicCatalog(),()=>false);
+ if(p==="/transfer"&&!transferActivity.selectedTxHash)
+  Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
  el.innerHTML=p==="/"?renderDashboard(universe,state.experience,state.apiState,state.leaderboard,publicCatalog(),walletGasView()):p==="/transfer"?renderPlanRoute(universe,state.experience,state.apiState,walletGasView(),{
    items:transferActivity.items,scanning:transferActivity.scanning,
    busy:transferActivity.working,selectedTxHash:transferActivity.selectedTxHash,
@@ -1078,7 +1080,8 @@ function render(){
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
-  Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
+  if(!transferActivity.selectedTxHash)
+   Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
   void refreshSponsorship();scheduleFeePreview();
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
