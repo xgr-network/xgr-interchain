@@ -257,8 +257,18 @@ export function publicSponsorshipView(rows){
   status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
    row.status:"unknown"
  }));
- return {ok:true,status:grants.length?"tracked":
-   rows.some(r=>r.wallet_aware===true)?"not-required":"pending",grants};
+ const aware=rows.some(r=>r.wallet_aware===true);
+ const promised=aware?Number(rows[0]?.expected_grants):null;
+ if(aware&&(!Number.isInteger(promised)||promised<0||promised>3))
+  return {ok:false,status:"unavailable"};
+ const status=aware?
+  promised===0?"not-required":
+  grants.some(g=>g.status==="needs-review")?"needs-review":
+  grants.length===promised&&grants.every(g=>g.status==="confirmed")?"confirmed":
+  grants.some(g=>g.status==="submitted")?"submitted":
+  grants.some(g=>g.status==="reserved")?"reserved":"pending":
+  grants.length?"tracked":"pending";
+ return {ok:true,status,grants,...(aware?{expectedGrants:promised}: {})};
 }
 async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  const send=(status,obj)=>{
@@ -297,7 +307,11 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    const quoteAware=process.env.XITA_WALLET_AWARE_SPONSORING==="true";
    const q=await sponsorPool.query({text:
     "SELECT g.grant_key,g.status,p.delivered,"+
-    (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware ":" FALSE AS wallet_aware ")+
+    (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
+      " (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c"+
+      " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+      " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce) AS expected_grants ":
+      " FALSE AS wallet_aware, NULL::integer AS expected_grants ")+
     "FROM xita_transfer_operations p "+
     "LEFT JOIN xita_sponsor_grants g ON g.grant_key LIKE p.source_chain||':'||p.message_id||':%' "+
     (quoteAware?"LEFT JOIN xita_sponsor_quote_intents i ON"+
