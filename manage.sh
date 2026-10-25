@@ -551,18 +551,16 @@ install_interchain_fee() (
   privileged systemctl restart xita-interchain-fee-quote.service
   privileged systemctl is-active xita-interchain-fee-quote.service
   privileged systemctl enable --now xita-interchain-fee-claim.timer xita-gas-sponsor.timer
-  # Event listener is opt-in when the journal schema is installed. It is
-  # NEVER a second signer: both event and periodic sweeps use the same flock.
-  if [[ "${XITA_WALLET_AWARE_SPONSORING:-false}" == "true" ]]; then
-    install_wallet_aware_sponsor_db
-    sed -e "s|^User=.*|User=$user|" \
-        -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
-        -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/sponsor-event-listener.mjs|" \
-        "$ROOT/services/managed-relay/xita-gas-sponsor-listener.service.example" > "$unit"
-    privileged install -m 0644 "$unit" /etc/systemd/system/xita-gas-sponsor-listener.service
-    privileged systemctl daemon-reload
-    privileged systemctl enable --now xita-gas-sponsor-listener.service
-  fi
+  # Safe additive SQL and idle listener are installed with the existing
+  # fee service; they NEVER enable sponsorship or send a transaction.
+  install_wallet_aware_sponsor_db
+  sed -e "s|^User=.*|User=$user|" \
+      -e "s|^WorkingDirectory=.*|WorkingDirectory=$ROOT|" \
+      -e "s|^ExecStart=.*|ExecStart=$node_bin $ROOT/services/managed-relay/sponsor-event-listener.mjs|" \
+      "$ROOT/services/managed-relay/xita-gas-sponsor-listener.service.example" > "$unit"
+  privileged install -m 0644 "$unit" /etc/systemd/system/xita-gas-sponsor-listener.service
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-gas-sponsor-listener.service
   if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
     privileged env XITA_INTERCHAIN_FEE_NGINX=1 "$node_bin" \
       "$ROOT/tools/install-transfer-recovery-nginx.mjs" "$XITA_NGINX_SITE_CONF"
