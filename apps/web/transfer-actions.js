@@ -32,6 +32,12 @@ export function unitsToAmount(raw,decimals){
  const fraction=(n%scale).toString().padStart(decimals,"0").replace(/0+$/,"");
  return fraction?whole+"."+fraction:whole;
 }
+// A parent-bound paid quote, not generic sponsor availability, is necessary
+// to allow TX3 while final-chain TX4 gas is still awaiting its child message.
+export function authorizesPaidFinalDeliveryGas(status){
+ return status?.ok===true&&status.status!=="needs-review"&&
+  status.status!=="disabled"&&status.promisedStages?.includes("final-delivery")===true;
+}
 // Exact ABI for the optional user-signed source-native commercial adapter.
 const EXECUTE_SELECTOR=selector("execute((address,address,bytes32,uint32,bytes32,uint32,bytes32,bytes32,uint256,uint256,uint256,uint256,uint64),bytes)");
 export function executeQuoteCalldata(q,signature){
@@ -303,8 +309,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
      cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
     }).catch(()=>null);
     const status=response?.ok?await response.json().catch(()=>null):null;
-    if(status?.ok===true&&status.status!=="needs-review"&&
-       status.promisedStages?.includes("final-delivery"))continue;
+    if(authorizesPaidFinalDeliveryGas(status))continue;
     throw Error("Paid final-delivery gas grant not independently committed; do not send TX3");
    }
    if(!paidAdapter)throw Error("Destination wallet needs native gas BEFORE locking tokens");
