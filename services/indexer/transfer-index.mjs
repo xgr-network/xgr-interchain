@@ -8,7 +8,6 @@ import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {configuredGatewayRoutes,findWalletSourceTx,OPERATION_TOPIC,publicRead} from "../../apps/web/wallet-transfers.js";
 import {selector} from "../../apps/web/keccak.js";
-import {probe as probeBaseArchive} from "../../tools/probe-base-rpc.mjs";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HEX=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
@@ -136,31 +135,55 @@ export function rpcCandidates(chain,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_
  if(!result.length||result.length>8)throw Error("Missing or excessive chain RPC URLs");
  return result;
 }
-export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=probeBaseArchive,
+// A normal historical scan qualifies a provider with its ACTUAL requested
+// finalized block and log window. The old fixed-height Base archive preflight
+// made several unrelated RPC calls per endpoint and was repeated on expiry.
+// An optional injected probe is retained for targeted tests only.
+export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
- const validated=new Map;
- return async (chain,method,params)=>{
+ const validated=new Map(),retryByProvider=new Map();
+ return async(chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid canonical chain config");
-  let last;
+  let last=null,skipped=0;
   for(const url of rpcCandidates(chain,{baseUrls})){
+   const key=String(chain.chainId)+"|"+url;
+   const retry=retryByProvider.get(key);
+   if(retry&&retry.until>now()){skipped++;continue;}
+   let identityVerified=false;
    try{
-    const ok=validated.get(url);
-    if(!ok||ok.id!==chain.chainId||ok.expire<=now()){
+    const ok=validated.get(key);
+    if(!ok||ok.expire<=now()){
      const id=await publicRead(url,"eth_chainId",[],fetcher);
      if(typeof id!=="string"||!/^0x[0-9a-f]+$/i.test(id)||
        BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain identity mismatch");
-     if(chain.chainId===8453){
+     identityVerified=true;
+     if(chain.chainId===8453&&typeof archiveProbe==="function"){
       const archive=await archiveProbe(url,{fetcher,ms:7000});
-      if(!archive?.ok)throw Error("Base historical RPC unsupported: "+String(archive?.error||"not qualified").slice(0,100));
+      if(!archive?.ok)throw Error("Base historical RPC unsupported: "+
+       String(archive?.error||"not qualified").slice(0,100));
      }
-     validated.set(url,{id:chain.chainId,expire:now()+300000});
+     validated.set(key,{expire:now()+300000});
     }
-    return await publicRead(url,method,params,fetcher);
-   }catch(error){validated.delete(url);last=error;}
+    // Canonical completeness is checked by the caller. Never reinterpret
+    // an eth_getLogs failure or unsupported range as an empty log set.
+    const value=await publicRead(url,method,params,fetcher);
+    retryByProvider.delete(key);
+    return value;
+   }catch(error){
+    if(identityVerified||/identity mismatch/.test(String(error?.message||"")))
+     validated.delete(key);
+    last=error;
+    const count=Math.min(5,(retry?.failures||0)+1);
+    // 15/30/60/120 second bounded backoff on transport, 429 and missing
+    // historical methods. It is per chain AND URL, never route-scoped.
+    retryByProvider.set(key,{failures:count,
+     until:now()+Math.min(120000,15000*2**(count-1))});
+   }
   }
   throw Error("All "+String(chain.name||chain.chainId)+" RPC endpoints failed: "+
-    String(last?.message||"unknown").slice(0,125));
+   (skipped>0?"provider cooldown; ":"")+
+   String(last?.message||"retry after cooldown").slice(0,125));
  };
 }
 // A known TX hash needs receipt and block confirmation, not archive-length
@@ -257,4 +280,115 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
  if(!end||number(end.number)!==to||!HASH.test(end.hash||""))
   throw Error("Finalized endpoint block unavailable");
  return {from,to,finalizedHead,events,hash:norm(end.hash)};
+}
+
+
+// Source-scoped Gateway observation. All routes share one finality-qualified
+// head and ONE eth_getLogs query per bounded window. The returned log is
+// dispatched only to its exact (Gateway, routeId) pair. This read model is
+// NOT a validator witness and cannot authorize BLS signing or custody.
+export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=null}={}){
+ if(!Array.isArray(routes)||routes.length===0||routes.length>64||
+   !(cursors instanceof Map)||typeof rpc!=="function"||
+   !Number.isSafeInteger(limit)||limit<1||limit>250)
+  throw Error("Invalid source observer inputs");
+ const source=routes[0].sourceConfig;
+ const chain=routes[0].sourceChain;
+ if(!source||!Number.isSafeInteger(source.chainId))throw Error("Invalid source chain");
+ const configured=JSON.stringify(source.rpcUrls||[]);
+ const byPair=new Map(),gateways=new Set(),ids=new Set(),positions=new Map();
+ let from=Number.MAX_SAFE_INTEGER;
+ for(const route of routes){
+  if(route.sourceChain!==chain||route.sourceConfig?.chainId!==source.chainId||
+    JSON.stringify(route.sourceConfig?.rpcUrls||[])!==configured||
+    !ADDRESS.test(route.gateway||"")||!HASH.test(route.routeId||"")||
+    !Number.isSafeInteger(route.deploymentBlock)||route.deploymentBlock<1)
+   throw Error("Inconsistent source Gateway route");
+  const pair=norm(route.gateway)+"|"+norm(route.routeId);
+  if(byPair.has(pair))throw Error("Duplicate source Gateway route identity");
+  byPair.set(pair,route);
+  gateways.add(norm(route.gateway));ids.add(norm(route.routeId));
+  const cursor=cursors.get(route.routeId)||null;
+  if(cursor?.stale)throw Error("Stale cursor requires separate recovery");
+  const prior=cursor?.scannedTo??(route.deploymentBlock-1);
+  if(!Number.isSafeInteger(prior)||prior<route.deploymentBlock-1)
+   throw Error("Invalid durable source cursor");
+  positions.set(route.routeId,prior);
+  from=Math.min(from,prior+1);
+ }
+ const confirmed=finality||await readNativeFinalityHead(
+  (method,args)=>rpc(source,method,args),source.chainId);
+ if(!Number.isSafeInteger(confirmed?.number)||confirmed.number<1||
+   !HASH.test(confirmed.hash||""))
+  throw Error("Unverified shared source safe head");
+ const byHeight=new Map(),reorgRoutes=[];
+ // A previously committed route cursor must still pin to the canonical
+ // block at that height; validate each DISTINCT height only once per batch.
+ for(const route of routes){
+  const cursor=cursors.get(route.routeId);
+  if(!cursor?.scannedHash)continue;
+  const height=positions.get(route.routeId);
+  if(height>confirmed.number)throw Error("Durable cursor above safe source head");
+  let block=byHeight.get(height);
+  if(!block){
+   block=await rpc(source,"eth_getBlockByNumber",[hex(height),false]);
+   if(!block||number(block.number)!==height||!HASH.test(block.hash||""))
+    throw Error("Recorded source cursor block unavailable");
+   byHeight.set(height,block);
+  }
+  if(norm(block.hash)!==norm(cursor.scannedHash))reorgRoutes.push(route);
+ }
+ if(reorgRoutes.length)return {reorgRoutes,head:confirmed.number,finality:confirmed};
+ for(const pos of positions.values())if(pos>confirmed.number)
+  throw Error("Durable cursor beyond safe source head");
+ const eventsByRoute=new Map(routes.map(r=>[r.routeId,[]]));
+ if(from>confirmed.number)
+  return {from,to:from-1,head:confirmed.number,finality:confirmed,
+   hash:null,eventsByRoute,reorgRoutes:[]};
+ const to=Math.min(confirmed.number,from+limit-1);
+ const logs=await rpc(source,"eth_getLogs",[{
+  address:[...gateways],topics:[OPERATION_TOPIC,[...ids]],
+  fromBlock:hex(from),toBlock:hex(to)}]);
+ if(!Array.isArray(logs)||logs.length>MAX_EVENTS*routes.length)
+  throw Error("Incomplete or excessive shared Gateway log response");
+ const seen=new Set(),timestampByHeight=new Map();
+ for(const log of logs){
+  if(!gateways.has(norm(log?.address))||
+    norm(log?.topics?.[0])!==norm(OPERATION_TOPIC)||
+    !ids.has(norm(log?.topics?.[1])))
+   throw Error("Unexpected event outside source Gateway filter");
+  const route=byPair.get(norm(log.address)+"|"+norm(log.topics[1]));
+  if(!route)continue; // Cross-product of address and routeId topic filters.
+  const item=validateIndexedGatewayLog(log,route,from,to);
+  const identity=route.routeId+"|"+item.txHash+":"+item.logIndex;
+  if(seen.has(identity))throw Error("Duplicate shared Gateway operation");
+  seen.add(identity);
+  if(item.blockNumber<route.deploymentBlock||
+    item.blockNumber<=positions.get(route.routeId))continue;
+  let block=byHeight.get(item.blockNumber);
+  if(!block){
+   block=await rpc(source,"eth_getBlockByNumber",[hex(item.blockNumber),false]);
+   if(!block||number(block.number)!==item.blockNumber||
+     !HASH.test(block.hash||""))
+    throw Error("Shared Gateway event block unavailable");
+   byHeight.set(item.blockNumber,block);
+  }
+  if(item.blockHash!==norm(block.hash))throw Error("Shared Gateway event not canonical");
+  if(!timestampByHeight.has(item.blockNumber)){
+   timestampByHeight.set(item.blockNumber,
+    HEX.test(block.timestamp||"")&&
+    BigInt(block.timestamp)<=BigInt(Number.MAX_SAFE_INTEGER)/1000n?
+     new Date(Number(BigInt(block.timestamp))*1000).toISOString():null);
+  }
+  item.sourceBlockAt=timestampByHeight.get(item.blockNumber);
+  eventsByRoute.get(route.routeId).push(item);
+ }
+ let end=byHeight.get(to);
+ if(!end){
+  end=await rpc(source,"eth_getBlockByNumber",[hex(to),false]);
+  if(!end||number(end.number)!==to||!HASH.test(end.hash||""))
+   throw Error("Shared source endpoint block unavailable");
+ }
+ return {from,to,head:confirmed.number,finality:confirmed,
+  hash:norm(end.hash),eventsByRoute,reorgRoutes:[]};
 }
