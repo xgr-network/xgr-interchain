@@ -439,7 +439,8 @@ function resetFlowView(){
 }
 async function refreshTransferSponsorship(binding){
  const record=binding?.record;
- if(!record?.confirmed||!record.messageId||!sponsorship.enabled)return;
+ if(!record?.confirmed||!record.messageId||
+    !record.executionAdapter||BigInt(record.interchainFeeWei||"0")<=0n)return;
  const key=record.sourceChain+":"+record.messageId.toLowerCase()+":"+binding.account.toLowerCase();
  if(sponsorTransfer.loading||(sponsorTransfer.key===key&&Date.now()-sponsorTransfer.checkedAt<15000))return;
  sponsorTransfer.loading=true;sponsorTransfer.key=key;sponsorTransfer.checkedAt=Date.now();
@@ -492,9 +493,11 @@ function updateFlowModal(){
  if(!binding){resetFlowView();return}
  // Rebuild from the current selected source transaction, NEVER from stale
  // global journey state or the most recent child hop.
- if(sponsorship.enabled&&binding.record?.confirmed)void refreshTransferSponsorship(binding);
+ if(binding.record?.confirmed&&binding.record?.executionAdapter&&
+    BigInt(binding.record?.interchainFeeWei||"0")>0n)
+  void refreshTransferSponsorship(binding);
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
- const sponsorEnabled=sponsorship.enabled&&binding.record?.executionAdapter&&
+ const sponsorEnabled=Boolean(binding.record?.executionAdapter)&&
    BigInt(binding.record?.interchainFeeWei||0)>0n;
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",
