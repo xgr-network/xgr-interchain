@@ -4,7 +4,7 @@
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {readFileSync} from "node:fs";
-import {indexedRoutes,readRouteWindow,verifiedTransfer,checkedDelivery,canonicalRpc,candidateRpc} from "./transfer-index.mjs";
+import {indexedRoutes,readRouteWindow,readSourceWindow,verifiedTransfer,checkedDelivery,canonicalRpc,candidateRpc} from "./transfer-index.mjs";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -534,6 +534,61 @@ export async function catchUpRoute({route,scan,batches=4}){
  }
  return {route:route.routeName,indexed,scannedTo,finalizedHead};
 }
+
+// A source batch is the only history scanner for its chain during this tick.
+// Keep every route's own cursor and atomic PostgreSQL commit; a failure before
+// commit never converts an RPC error into a confirmed empty window.
+export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4,
+ read=readSourceWindow,verify=verifiedTransfer}){
+ if(!Array.isArray(routes)||!routes.length||batches<1||batches>8)
+  throw Error("Invalid source batch");
+ const totals=new Map(routes.map(r=>[r.routeId,{route:r.routeName,indexed:0,
+  scannedTo:null,finalizedHead:null}]));
+ for(let pass=0;pass<batches;pass++){
+  const cursors=new Map();
+  for(const route of routes){
+   let cursor=await loadCursor(pool,route);
+   if(cursor?.stale){await resetIndexedRoute({pool,route});cursor=null;}
+   cursors.set(route.routeId,cursor);
+  }
+  const view=await read({routes,cursors,rpc,limit});
+  if(view.reorgRoutes?.length){
+   for(const route of view.reorgRoutes)await resetIndexedRoute({pool,route});
+   // A reorg resets only affected routes; retry on the next tick without
+   // committing ANY window based on the now-invalid source snapshot.
+   throw Error("Source cursor block reorg: reset affected route(s)");
+  }
+  let pending=0;
+  for(const route of routes){
+   const cursor=cursors.get(route.routeId);
+   const old=cursor?.scannedTo??(route.deploymentBlock-1);
+   const info=totals.get(route.routeId);
+   if(old>view.head)throw Error("Source cursor ahead of finalized head");
+   const to=old>=view.to?old:view.to;
+   const events=view.eventsByRoute.get(route.routeId)||[];
+   if(to<old)throw Error("Observer cursor regression");
+   // The route has caught up already or its activation lies ahead of
+   // this group's oldest range; no unrelated route's cursor is rewound.
+   const active=old<view.to||old===view.head;
+   if(!active){info.scannedTo=old;info.finalizedHead=view.head;continue;}
+   const records=[];
+   for(const event of events){
+    const record=await verify({catalog,route,transactionHash:event.txHash,rpc});
+    if(normalize(record.messageId)!==event.messageId)
+     throw Error("Shared source event verification mismatch");
+    records.push(record);
+   }
+   const window={from:old+1,to,hash:to===old?cursor?.scannedHash||null:view.hash,
+    finalizedHead:view.head,events};
+   const saved=await commitWindow({pool,route,window,records});
+   info.indexed+=saved.indexed;info.scannedTo=saved.scannedTo;
+   info.finalizedHead=saved.finalizedHead;
+   if(saved.scannedTo<view.head)pending++;
+  }
+  if(!pending)break;
+ }
+ return [...totals.values()];
+}
 export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc=candidateRpc(),blockFor,limit=150,batches=4}){
  const routes=indexedRoutes(catalog,{blockFor});
  let accelerated={status:"not-installed"};
@@ -545,10 +600,16 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
  catch(error){hintsRechecked=["42P01","42501"].includes(error?.code)?
   {status:"not-provisioned"}:{error:String(error.message||error).slice(0,200)};}
  const progress=[];
+ const bySource=new Map();
  for(const route of routes){
-  try{progress.push(await catchUpRoute({route,batches,
-   scan:()=>scanIndexedRoute({catalog,route,pool,rpc,limit})}));}
-  catch(error){progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)})}
+  const key=String(route.sourceConfig.chainId)+"|"+route.sourceChain;
+  if(!bySource.has(key))bySource.set(key,[]);
+  bySource.get(key).push(route);
+ }
+ for(const group of bySource.values()){
+  try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches}));}
+  catch(error){for(const route of group)progress.push({
+   route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
  const taxBackfill=await backfillPaidFeeTax({catalog,pool,routes,rpc})
   .catch(error=>({error:String(error.message||error).slice(0,160)}));

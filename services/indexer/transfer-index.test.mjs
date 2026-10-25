@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
-import {bridgeAmountFromTransaction,readRouteWindow,
+import {bridgeAmountFromTransaction,readRouteWindow,readSourceWindow,
  checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
 import {commitWindow,catchUpRoute,refreshPendingDeliveries} from "./transfer-index-worker.mjs";
@@ -289,4 +289,74 @@ test("M-02: finality-qualified false reopens a previously completed delivery",as
  assert.equal(update.values[2],false);
  assert.equal(update.values[3],200);
  assert.equal(update.values[4],hash("e"));
+});
+
+test("shared observer scans two routes using one verified safe head and one Gateway query",async()=>{
+ const r1={...route,sourceChain:"base",sourceConfig:{chainId:8453,rpcUrls:["https://rpc.example/a"]},
+  routeId:hash("1"),gateway:address("a")};
+ const r2={...r1,routeId:hash("2"),gateway:address("b")};
+ const calls=[];
+ const read=async(_chain,method,args)=>{
+  calls.push([method,args]);
+  if(method==="eth_chainId")return hex(8453);
+  if(method==="eth_getBlockByNumber"){
+   const h=args[0]==="safe"?105:Number(BigInt(args[0]));
+   return {number:hex(h),hash:hash("f"),timestamp:hex(1792667400)};
+  }
+  if(method==="eth_getLogs")return [];
+  throw Error("Unexpected RPC "+method);
+ };
+ const view=await readSourceWindow({routes:[r1,r2],cursors:new Map(),rpc:read,limit:4});
+ assert.equal(view.from,100);
+ assert.equal(view.to,103);
+ assert.equal(view.eventsByRoute.size,2);
+ assert.equal(calls.filter(([method])=>method==="eth_getLogs").length,1);
+ assert.equal(calls.filter(([method,args])=>method==="eth_getBlockByNumber"&&args[0]==="safe").length,1);
+ const filter=calls.find(([method])=>method==="eth_getLogs")[1][0];
+ assert.deepEqual(filter.address,[r1.gateway,r2.gateway]);
+ assert.deepEqual(filter.topics[1],[r1.routeId,r2.routeId]);
+});
+test("shared observer keeps lagging route independent of already advanced route",async()=>{
+ const a={...route,sourceChain:"base",sourceConfig:{chainId:8453,rpcUrls:["https://rpc.example/a"]},
+  gateway:address("a")};
+ const b={...a,routeId:hash("2"),gateway:address("b")};
+ let calls=0;
+ const read=async(_chain,method,args)=>{
+  if(method==="eth_chainId")return hex(8453);
+  if(method==="eth_getBlockByNumber"){
+   const n=args[0]==="safe"?120:Number(BigInt(args[0]));
+   return {number:hex(n),hash:hash("e")};
+  }
+  if(method==="eth_getLogs"){calls++;return [];}
+  throw Error("Unexpected method");
+ };
+ const cursors=new Map([[a.routeId,{scannedTo:115,scannedHash:hash("e")}],
+  [b.routeId,{scannedTo:100,scannedHash:hash("e")}]]);
+ const view=await readSourceWindow({routes:[a,b],cursors,rpc:read,limit:4});
+ assert.equal(view.from,101);assert.equal(view.to,104);
+ assert.equal(view.eventsByRoute.get(a.routeId).length,0);
+ assert.equal(calls,1);
+});
+test("shared observer rejects failed logs and does not synthesize a successful window",async()=>{
+ const a={...route,sourceChain:"base",sourceConfig:{chainId:8453,rpcUrls:["https://rpc.example/a"]}};
+ const read=async(_chain,method,args)=>{
+  if(method==="eth_chainId")return hex(8453);
+  if(method==="eth_getBlockByNumber")return {number:args[0]==="safe"?hex(105):args[0],hash:hash("e")};
+  if(method==="eth_getLogs")throw Error("RPC HTTP 429");
+ };
+ await assert.rejects(()=>readSourceWindow({routes:[a],cursors:new Map(),rpc:read}),/429/);
+});
+test("canonical provider cooldown prevents repeated identity and archive probes",async()=>{
+ let now=100000,attempts=0;
+ const chain={chainId:8453,name:"base",rpcUrls:["https://rpc1.test"]};
+ const read=canonicalRpc({now:()=>now,baseUrls:"",fetcher:async()=>{
+  attempts++;return {ok:false,status:429,json:async()=>({error:{code:429}})};
+ }});
+ await assert.rejects(()=>read(chain,"eth_getLogs",[{}]),/All base RPC endpoints failed/);
+ const count=attempts;
+ await assert.rejects(()=>read(chain,"eth_getLogs",[{}]),/cooldown/);
+ assert.equal(attempts,count,"do not hammer the same provider while cooling down");
+ now+=31000;
+ await assert.rejects(()=>read(chain,"eth_getLogs",[{}]),/failed/);
+ assert.ok(attempts>count);
 });
