@@ -4,7 +4,7 @@ import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {metaMaskTokenSpec,injectedMetaMask,requestMetaMaskToken,metaMaskFailure} from "./metamask-token.js";
@@ -1076,24 +1076,30 @@ function render(){
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
    notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
-  // The planner normalizes the target when the source changes. Commit the
-  // actual visible form values before any preview or wallet transaction.
-  for(const [key,id] of [["asset","ux-asset"],["origin","ux-origin"],["destination","ux-destination"]]){
-   const value=document.getElementById(id)?.value;
-   if(typeof value==="string"&&value)state.experience[key]=value;
-  }
+  // Retain the planner's validated pair, NEVER re-import stale native
+  // select values after a render. All dependent UI must share this state.
+  Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
   void refreshSponsorship();scheduleFeePreview();
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  updateFlowModal();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
-   document.getElementById(id)?.addEventListener("change",e=>{
-   state.experience[name]=e.target.value;
-   if(name==="asset"&&p==="/transfer")
-    history.replaceState(null,"","/transfer?token="+encodeURIComponent(e.target.value));
+   const control=document.getElementById(id);
+  if(!control)continue;
+  // Native selects may visually change on keyboard/input before blur/change.
+  // Handle both events; dedupe identical values to avoid duplicate rerenders.
+  const updateSelection=()=>{
+   if(control.value===state.experience[name])return;
+   state.experience[name]=control.value;
+   if(p==="/transfer"){
+    Object.assign(state.experience,normalizeTransferSelection(universe,state.experience,name));
+    if(name==="asset")history.replaceState(null,"","/transfer?token="+encodeURIComponent(state.experience.asset));
+   }
    render();
-  });
+  };
+  control.addEventListener("input",updateSelection);
+  control.addEventListener("change",updateSelection);
  }
  if(p==="/"){
   const host=document.querySelector("#xita-3d");
