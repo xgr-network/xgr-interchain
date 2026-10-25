@@ -14,7 +14,7 @@ import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from 
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
-import {pendingDeliveryCount} from "./wallet-pending.js";
+import {pendingDeliveryCount,activeSourceConfirmation} from "./wallet-pending.js";
 import {walletSigningQueue,walletSigningNotice} from "./wallet-action-attention.js";
 import {rememberSourceTxHint,listSourceTxHints,unresolvedSourceTxHints} from "./source-tx-hints.js";
 import {renderTransferFlow} from "./transfer-status-flow.js";
@@ -276,16 +276,22 @@ function refreshTransferLink(){
  const queue=connected?walletSigningQueue({account:state.account,
   items:transferActivity.items,sponsorship:sponsorTransfer}):[];
  const signing=walletSigningNotice(queue);
+ const provisional=connected?activeSourceConfirmation({account:state.account,
+  selectedTxHash:transferActivity.selectedTxHash,items:transferActivity.items,
+  session:flowView}):null;
  const openJourneys=connected?openWalletTransfers(transferActivity.items,state.account):[];
  const single=openJourneys.length===1?openJourneys[0]:null;
  const direct=single&&/^0x[0-9a-f]{64}$/i.test(single.txHash||"")?
   "/transfer?token="+encodeURIComponent(single.asset||"XGR")+"&resume="+encodeURIComponent(single.txHash):null;
- alert.href=signing?.href||direct||"/my-transfers";
+ alert.href=signing?.href||direct||provisional?.href||"/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
   items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
- alert.hidden=pending===0&&!signing;
+ alert.hidden=pending===0&&!signing&&!provisional;
  if(signing){
   alert.textContent=signing.label;alert.title=signing.title;
+ }else if(provisional&&pending===0){
+  alert.textContent=provisional.label+" →";
+  alert.title="Source broadcast recorded in this wallet session; awaiting independent chain confirmation";
  }else if(pending){
   const open=transferActivity.items.filter(t=>t.account?.toLowerCase()===
    state.account?.toLowerCase()&&t.status==="awaiting-proof"&&
@@ -549,7 +555,11 @@ function updateFlowModal(){
  dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
  scheduleAutomaticWalletStep();
 }
-function closeFlowModal(){flowView.open=false;document.getElementById("xita-flow-dialog")?.close();}
+function closeFlowModal(){
+ flowView.open=false;document.getElementById("xita-flow-dialog")?.close();
+ refreshTransferLink();
+ if(path()==="/transfer"||path()==="/my-transfers")render();
+}
 function openFlowModal(){
  const binding=currentFlowBinding();
  if(!binding)return;
@@ -1391,8 +1401,8 @@ setInterval(async()=>{
      transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
    transferActivity.items=canonicalWalletSnapshot({
     account,rows:data.items,previous:transferActivity.items,
-    activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()&&
-      flowView.open?flowView.sourceTxHash:null
+    activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()?
+      flowView.sourceTxHash:null
    });
    if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
    refreshTransferLink();
@@ -1510,5 +1520,7 @@ async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics
 const statusDialog=document.createElement("dialog");
 statusDialog.id="xita-flow-dialog";statusDialog.className="ux-flow-dialog";
 statusDialog.setAttribute("aria-labelledby","xita-flow-title");
-statusDialog.addEventListener("cancel",()=>{flowView.open=false;});
+statusDialog.addEventListener("cancel",event=>{
+ event.preventDefault();closeFlowModal();
+});
 document.body.append(statusDialog);
