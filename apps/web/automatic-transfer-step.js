@@ -26,3 +26,14 @@ export function walletStepKey(binding,step){
   return null;
  return binding.key+":"+step.kind+":"+step.identity;
 }
+
+// A ready proof starts an unsigned, independently checked wallet preflight.
+// Optional sponsorship status is NOT an admission gate here: a paid Execution
+// Gateway fee does not prove gas grants were promised. The TX2 path separately
+// verifies original quote commitments BEFORE any wallet signature is requested.
+export function automaticWalletPreflightKey({binding,open=false,working=false,
+ scanning=false,attemptedKeys=null,now=Date.now()}={}){
+ if(!open||working||scanning)return null;
+ const key=walletStepKey(binding,nextVerifiedWalletStep(binding?.record,{now}));
+ return key&&!attemptedKeys?.has(key)?key:null;
+}
