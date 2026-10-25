@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {publicSponsorshipView} from "./server.mjs";
+import {publicSponsorshipView,enforceSignedQuoteRate} from "./server.mjs";
 const message="base:0x"+"a".repeat(64);
 test("sponsor status is not falsely green when no grant journal exists",()=>{
  assert.deepEqual(publicSponsorshipView([]),{ok:true,status:"unavailable"});
@@ -37,4 +37,12 @@ test("wallet-aware aggregate stays pending until ALL signed stages confirmed",()
  const review=publicSponsorshipView([{...base,grant_key:message+":first-delivery",
   status:"needs-review"}]);
  assert.equal(review.status,"needs-review");
+});
+
+test("quote signer bounds unauthenticated attempts before reserving capacity",()=>{
+ const ip="203.0.113.88",payer="0x"+"f".repeat(40),now=1700000000000;
+ enforceSignedQuoteRate(ip,payer,{now});
+ enforceSignedQuoteRate(ip,payer,{now:now+100});
+ assert.throws(()=>enforceSignedQuoteRate(ip,payer,{now:now+200}),/rate limit/);
+ enforceSignedQuoteRate(ip,payer,{now:now+61000});
 });
