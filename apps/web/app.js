@@ -234,11 +234,14 @@ function scheduleAutomaticWalletStep(){
  const step=nextVerifiedWalletStep(binding?.record);
  const key=walletStepKey(binding,step);
  if(!key||attemptedWalletSteps.has(key))return;
- if(binding.record?.executionAdapter&&BigInt(binding.record?.interchainFeeWei||"0")>0n){
+ // Gas sponsorship is a TX1 -> TX2 dependency ONLY, not a TX3/TX4 gate.
+ if(step.kind==="first-delivery"&&binding.record?.executionAdapter&&
+    BigInt(binding.record?.interchainFeeWei||"0")>0n){
   const id=binding.record.sourceChain+":"+binding.record.messageId.toLowerCase()+
    ":"+binding.account.toLowerCase();
-  if(sponsorTransfer.key!==id||sponsorTransfer.upfrontRequired===null||
-    (sponsorTransfer.upfrontRequired&&sponsorTransfer.status!=="confirmed"))return;
+  if(sponsorTransfer.key!==id||
+     !sponsorAllowsContinuation({ok:true,status:sponsorTransfer.status,
+      upfrontRequired:sponsorTransfer.upfrontRequired}))return;
  }
  automaticWalletQueued=true;
  queueMicrotask(()=>{
@@ -455,6 +458,11 @@ async function refreshTransferSponsorship(binding){
     !record.executionAdapter||BigInt(record.interchainFeeWei||"0")<=0n)return;
  const key=record.sourceChain+":"+record.messageId.toLowerCase()+":"+binding.account.toLowerCase();
  if(sponsorTransfer.loading||(sponsorTransfer.key===key&&Date.now()-sponsorTransfer.checkedAt<15000))return;
+ // Never inherit sponsor commitments from a previously selected source hash.
+ if(sponsorTransfer.key!==key){
+  sponsorTransfer.status="unavailable";sponsorTransfer.grants=[];
+  sponsorTransfer.upfrontRequired=null;
+ }
  sponsorTransfer.loading=true;sponsorTransfer.key=key;sponsorTransfer.checkedAt=Date.now();
  try{
   const query=new URLSearchParams({source:record.sourceChain,messageId:record.messageId,account:binding.account});
@@ -494,8 +502,13 @@ async function requireUpfrontSponsorship(record,account){
   cache:"no-store",credentials:"omit",headers:{accept:"application/json"}
  }).catch(()=>null);
  const evidence=response?.ok?await response.json().catch(()=>null):null;
- if(!sponsorAllowsContinuation(evidence))
-  throw Error("Waiting for ALL quote-locked gas grants to be confirmed before TX2. No wallet transaction was sent.");
+ if(!sponsorAllowsContinuation(evidence)){
+  if(evidence?.ok===true&&evidence.upfrontRequired===true)
+   throw Error(["disabled","needs-review"].includes(evidence.status)?
+    "Original TX1 gas grants need operator attention before XGRChain delivery. No MetaMask transaction was sent.":
+    "Waiting for original TX1 gas grants to confirm before XGRChain delivery. No MetaMask transaction was sent.");
+  throw Error("Original TX1 sponsorship terms could not be verified. No MetaMask transaction was sent. Retry verification; never repeat TX1.");
+ }
 }
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
@@ -508,7 +521,8 @@ function updateFlowModal(){
     BigInt(binding.record?.interchainFeeWei||"0")>0n)
   void refreshTransferSponsorship(binding);
  const sponsorKey=binding.record?.sourceChain+":"+String(binding.record?.messageId||"").toLowerCase()+":"+binding.account.toLowerCase();
- const sponsorEnabled=transferSponsorVisible(sponsorTransfer,sponsorKey);
+ const sponsorEnabled=binding.record?.delivered!==true&&
+  transferSponsorVisible(sponsorTransfer,sponsorKey);
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",
   working:transferActivity.working,scanning:transferActivity.scanning,
@@ -570,10 +584,11 @@ async function performTransferAction(){
        next.amountRaw!==selected.amountRaw||
        next.status!=="awaiting-proof")
      throw Error("Parent-linked onward receipt changed; do not submit a delivery");
-    await requireUpfrontSponsorship(selected,account);
+    // Sponsorship was verified before TX2. Final delivery never reopens it.
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:false,
-     onWalletReady:()=>setFlowStage("final-delivery-sign","Proof verified. Confirm final Base delivery in MetaMask."),
+     onWalletReady:()=>setFlowStage("final-delivery-sign",
+      "TX4 of 4: proof verified. Confirm final "+selected.finalDestinationChain+" delivery in MetaMask."),
      onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
@@ -589,12 +604,16 @@ async function performTransferAction(){
     return;
    }
    if(selected.status==="awaiting-onward"){
-    setFlowStage("onward-source-sign");
+    setFlowStage("onward-preflight",
+     "Preparing TX3 of 4: checking XGRChain route, balance and nonce. MetaMask will open when ready.");
     // The first on-chain message is already delivered to XGRChain. NEVER
     // replay its source Gateway, even if an RPC or UI later fails.
-    await requireUpfrontSponsorship(selected,account);
+    // The quote-locked gas grants were a TX1 -> TX2 prerequisite.
+    // Do not re-run that stage after XGRChain delivery.
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
+     onWalletReady:()=>setFlowStage("onward-source-sign",
+      "TX3 of 4: confirm the onward XGRChain → "+selected.finalDestinationChain+" transaction in MetaMask."),
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
       setFlowStage("onward-source-pending");
@@ -636,7 +655,9 @@ async function performTransferAction(){
     await lookupWalletTransfer(selected.sourceChain,selected.txHash);
     return;
    }
-   const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
+   // Only TX2 is gated by the atomic original TX1 sponsorship commitments.
+    await requireUpfrontSponsorship(selected,account);
+    const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
     provider:globalThis.ethereum,waitForProof:false,
     onWalletReady:()=>setFlowStage("first-delivery-sign","Validator proof verified. Confirm XGRChain delivery in MetaMask."),
     onStatus:notice=>{
