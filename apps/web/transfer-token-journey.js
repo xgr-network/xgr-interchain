@@ -6,6 +6,12 @@ const CHAINS={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",polygon:"Polyg
 const TYPES=new Set(["native","collateral","synthetic"]);
 const LABEL={burn:"Burn",mint:"Mint",lock:"Lock",unlock:"Unlock"};
 const PAST={burn:"burned",mint:"minted",lock:"locked",unlock:"unlocked"};
+const SHORT={
+ burn:"Wrapped tokens removed",
+ lock:"Original tokens secured",
+ mint:"Wrapped tokens created",
+ unlock:"Original tokens released"
+};
 const DETAILS={
  burn:"Wrapped tokens are removed from supply on this chain.",
  lock:"Original tokens are secured by the source-chain bridge.",
@@ -46,6 +52,7 @@ export function describeTokenJourney({flow,record=null,representations=null}={})
   return {...action,
    label:action.action?LABEL[action.action]+" "+action.symbol:"Verify token delivery",
    detail:action.action?DETAILS[action.action]:"Token representation is not verified in the current catalog.",
+   hint:action.action?SHORT[action.action]:"Representation unverified",
    state:verified?"complete":"pending"};
  });
  // Never display a milestone as verified unless ALL preceding chain events
