@@ -181,11 +181,18 @@ export function canRetryBaseRecovery(error,configured){
  return (sourceBase&&sourceBaseStages.has(error.stage))||
   (destinationBase&&destinationBaseStages.has(error.stage));
 }
+// Shared by full recovery and the lightweight quorum watcher. Never permit
+// arbitrary URLs or public L2 providers in the status-only polling path.
+export function recoveryXgrRpcUrl(env=process.env){
+ const url=env.XITA_RECOVERY_XGR_RPC_URL||"http://127.0.0.1:8545";
+ if(!/^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(url))
+  throw Error("Invalid loopback XGR recovery RPC configuration");
+ return url;
+}
 async function runRecoveryAttempt(configured,timeoutMs){
  const script=resolve(root,"runtime/native-relayer/recover-iln.mjs");
  // Prefer validator-local ILN attestation/proof RPC over public RPC gateways.
- const localXGR=process.env.XITA_RECOVERY_XGR_RPC_URL||"http://127.0.0.1:8545";
- if(!/^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(localXGR))throw Error("Invalid loopback XGR recovery RPC configuration");
+ const localXGR=recoveryXgrRpcUrl();
  return new Promise((yes,no)=>{
   execFile(process.execPath,[script,configured.messageId],{
    cwd:root,env:{PATH:process.env.PATH||"/usr/bin:/bin",HOME:process.env.HOME||"/tmp",

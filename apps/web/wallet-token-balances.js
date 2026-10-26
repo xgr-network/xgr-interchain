@@ -5,11 +5,13 @@ import {deployedRoutes} from "./route-availability.js";
 import {publicRead} from "./wallet-transfers.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const QTY=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
-export async function readWalletTokenBalances({catalog,account,rpc=publicRead}){
+export async function readWalletTokenBalances({catalog,account,rpc=publicRead,chains=null}){
  if(!ADDRESS.test(account||""))throw Error("Connect a valid wallet");
  const routes=deployedRoutes(catalog);
  const byAsset=new Map();
+ const filter=chains===null?null:new Set(chains);
  for(const route of routes){
+  if(filter&&!filter.has(route.source))continue;
   const key=route.asset+":"+route.source;
   if(!byAsset.has(key))byAsset.set(key,route);
  }

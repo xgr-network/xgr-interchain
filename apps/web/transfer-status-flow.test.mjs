@@ -225,7 +225,7 @@ test("final-hop modal retains canonical proof details in model without verbose f
  assert.match(flow.message,/PROOF_QUORUM_UNAVAILABLE/);
  assert.match(flow.message,/next check/);
  const html=renderTransferFlow({journey,record:row});
- assert.match(html,/Waiting for XGRChain validators/);
+ assert.match(html,/Waiting for transfer verification/);
  assert.doesNotMatch(html,/Backend proof:|PROOF_QUORUM_UNAVAILABLE|next check/);
  assert.doesNotMatch(html,/id="xita-flow-(refresh|continue)"/);
 });
@@ -244,7 +244,7 @@ test("compact transfer status identifies which chain controls waiting",()=>{
  assert.match(html,/close this window anytime and resume/);
  const proof=renderTransferFlow({journey:j,record:{...child,
   finalProofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
- assert.match(proof,/Waiting for XGRChain validators/);
+ assert.match(proof,/Waiting for transfer verification/);
  assert.doesNotMatch(proof,/Backend proof: waiting/);
  const signing=renderTransferFlow({journey:j,record:child,working:true,
   stage:"final-delivery-sign",walletReady:true});
@@ -268,7 +268,7 @@ test("scheduled transient proof error remains calm but stale or missing retry ra
  const obs={state:"unavailable",reason:"PROOF_CONFIG_MISMATCH",stage:"confirmed-fee-vault-allocation",
   updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
  const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
- assert.match(transient,/Rechecking XGRChain delivery/);
+ assert.match(transient,/Waiting for transfer verification/);
  assert.match(transient,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
  const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
@@ -289,7 +289,7 @@ test("wallet index success notice never becomes a transfer warning",()=>{
    updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+30000).toISOString()}};
  const html=renderTransferFlow({journey:j,record,
   notice:"Wallet index synchronized. Source confirmations are checked separately."});
- assert.match(html,/Rechecking Base delivery/);
+ assert.match(html,/Waiting for transfer verification/);
  assert.doesNotMatch(html,/Wallet index synchronized|Verification needs attention|Preparing next wallet step/);
 });
 test("Base observed and observer rechecking both retain finality wording",()=>{
@@ -301,7 +301,7 @@ test("Base observed and observer rechecking both retain finality wording",()=>{
  const checking=renderTransferFlow({journey:j,record:{...record,
   proofObservation:{state:"checking"}}});
  assert.match(observed,/Waiting for Base safe finality/);
- assert.match(checking,/Checking Base delivery and safe finality/);
+ assert.match(checking,/Waiting for transfer verification/);
  assert.doesNotMatch(checking,/Preparing next wallet step|Verification needs attention/);
 });
 test("temporary destination RPC read failures remain waiting, not transfer failures",()=>{
