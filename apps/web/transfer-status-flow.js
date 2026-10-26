@@ -213,7 +213,8 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
    (step.state==="complete"?"✓":step.state==="observed"?"◷":step.state==="current"?"⌛":String(i+1))+'</span>'+
    '<div><span class="ux-token-journey-chain">'+esc(step.name)+'</span>'+
    '<strong>'+esc(step.label)+'</strong>'+
-   '<small>'+esc(step.state==="complete"?"Verified":step.state==="observed"?"Observed · finality pending":
+   '<small class="ux-token-journey-hint">'+esc(step.hint)+'</small>'+
+   '<small class="ux-token-journey-state">'+esc(step.state==="complete"?"Verified":step.state==="observed"?"Observed · finality pending":
      step.state==="current"?"Waiting":"Upcoming")+'</small></div>'+
    '</li>').join(""):"";
  const tokenPanel=hasTokenJourney?
