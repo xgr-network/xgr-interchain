@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -129,4 +129,32 @@ test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",a
  assert.equal(await verifiedSponsorFinality({provider,chain:"xgrchain",receipt,txHash:tx}),false);
  provider.getBlock=async tag=>{if(tag==="safe")throw Error("unsupported");return {number:100,hash:blockHash}};
  assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
+});
+
+test("N-06 expires only after finalized source nonce evidence, never merely by time",async()=>{
+ const quote={source_chain:"base",execution_adapter:addr("b"),payer:addr("a"),
+  quote_nonce:"42",quote_expires_at:new Date("2026-10-25T12:00:00Z")};
+ let inserted=0,seen=[];
+ const pool={query:async q=>{
+  const sql=typeof q==="string"?q:q.text;
+  seen.push(sql);
+  if(sql.startsWith("SELECT i.source_chain"))return {rows:[quote]};
+  if(sql.startsWith("INSERT INTO xita_sponsor_quote_resolutions")){
+   inserted++;assert.equal(q.values[4],"expired-unused");return {rowCount:1};
+  }
+  return {rows:[]};
+ }};
+ const provider={
+  getBlock:async()=>({number:1200,hash:hash("e"),timestamp:1792902000}),
+  getNetwork:async()=>({chainId:8453n}),
+  call:async()=>{throw Error("not mocked")},
+ };
+ // The worker must use the finalized tag and a canonical nonce-read,
+ // and must not insert a release on any missing/ambiguous RPC evidence.
+ const notFinal={...provider,getBlock:async()=>{throw Error("RPC down")}};
+ const providers=new Map([["base",notFinal]]);
+ const catalog={chains:{base:{chainId:8453,rpcUrls:["https://example.org"]}}};
+ const held=await reconcileExpiredSponsorQuotes({pool,catalog,providers});
+ assert.equal(held.resolved,0);assert.equal(inserted,0);
+ assert.ok(seen.some(x=>x.includes("quote_expires_at")));
 });
