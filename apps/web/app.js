@@ -790,7 +790,6 @@ async function performTransferAction({automaticStepKey=null}={}){
     // Preserve the canonical source hash in the URL immediately after
     // broadcast. A reload must not turn a pending source into a new CTA.
     transferActivity.selectedTxHash=txHash;
-    void updateWalletGas();
     history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset)+"&resume="+txHash);
     announceWalletSourceTx(origin,txHash,account);
     transferActivity.notice="Source TX "+txHash+" submitted; do NOT lock/burn again while pending.";
@@ -807,6 +806,7 @@ async function performTransferAction({automaticStepKey=null}={}){
    history.replaceState(null,"","/transfer?token="+encodeURIComponent(asset));
   }
   else {
+   queueTransferBalanceRefresh([origin],account);
    // The source receipt is irreversible. Continue this SAME on-chain message,
    // never start another bridge. The destination still requires a wallet signature.
    setFlowStage("source-pending","Source receipt mined. Verifying required source-chain finality…");
@@ -1121,7 +1121,10 @@ let transferBalancePending=new Set();
 let transferBalanceEpoch=0;
 function scheduleTransferBalanceRefresh(before,after,account){
  if(!account||account.toLowerCase()!==state.account?.toLowerCase())return;
- const chains=changedTransferBalanceChains(before,after,account);
+ queueTransferBalanceRefresh(changedTransferBalanceChains(before,after,account),account);
+}
+function queueTransferBalanceRefresh(chains,account){
+ if(!account||account.toLowerCase()!==state.account?.toLowerCase())return;
  for(const chain of chains)if(state.catalog?.chains?.[chain])transferBalancePending.add(chain);
  if(!transferBalancePending.size||transferBalanceTimer!==null)return;
  const epoch=transferBalanceEpoch;
