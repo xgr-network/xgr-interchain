@@ -497,9 +497,12 @@ install_wallet_aware_sponsor_db() (
   [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || return 1
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
     < "$ROOT/services/indexer/sql/010_wallet_aware_sponsor_commitments.sql" || return 1
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/012_sponsor_quote_finalized_resolution.sql" || return 1
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "
    SELECT CASE WHEN to_regclass('public.xita_sponsor_quote_intents') IS NOT NULL
       AND to_regclass('public.xita_sponsor_quote_commitments') IS NOT NULL
+      AND to_regclass('public.xita_sponsor_quote_resolutions') IS NOT NULL
     THEN 'PASS' ELSE 'FAIL' END;" | grep -qx PASS || return 1
   # Inspect only the configured PostgreSQL login (never the URL/password).
   # The signer may use a deployment-specific restricted role. Grant permissions
