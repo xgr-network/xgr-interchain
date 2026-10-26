@@ -7,7 +7,8 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {transferWriterPool} from "./transfer-index-store.mjs";
-import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,runRecoveryProcess,ilnValidatorRouteName} from "./transfer-recovery.mjs";
+import {pollLocalQuorum,quorumPollDecision} from "./xgr-quorum-poll.mjs";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HASH=/^0x[0-9a-f]{64}$/i;
 const REASON=/^PROOF_[A-Z0-9_]{3,48}$/;
@@ -58,7 +59,7 @@ export async function claimProofObservation(pool,{token=randomUUID()}={}){
  UPDATE xita_transfer_proof_observations j SET state='checking',
  lease_token=$1,lease_until=NOW()+INTERVAL '75 seconds',updated_at=NOW()
  FROM due WHERE j.source_chain=due.source_chain AND j.message_id=due.message_id
- RETURNING j.source_chain,j.message_id,j.attempts`,values:[token]});
+ RETURNING j.source_chain,j.message_id,j.attempts,j.reason,j.last_checked_at`,values:[token]});
  const item=leased.rows[0];
  if(!item)return null;
  // The FK deletes the job when a finalized source event is reorg-retracted.
@@ -67,13 +68,15 @@ export async function claimProofObservation(pool,{token=randomUUID()}={}){
  WHERE o.source_chain=$1 AND o.message_id=$2 AND o.delivered IS FALSE`,
  values:[item.source_chain,item.message_id]});
  if(!origin.rows.length)return null;
- return {...origin.rows[0],attempts:Number(item.attempts),leaseToken:token};
+ return {...origin.rows[0],attempts:Number(item.attempts),previousReason:item.reason,
+  lastFullCheckAt:item.last_checked_at,leaseToken:token};
 }
-export async function observeProofJob({pool,catalog,job,runner=runRecoveryProcess}){
+export async function observeProofJob({pool,catalog,job,runner=runRecoveryProcess,
+ quorumPoll=pollLocalQuorum,now=Date.now}={}){
  if(!pool||!catalog||!job||!HASH.test(job.message_id||"")||
     !HASH.test(job.source_tx_hash||""))
   throw Error("Observer requires a finalized canonical source operation");
- let decision;
+ let decision,lightweight=false;
  try{
   // Withdrawal or mismatch of a deployed route is an explicit configuration
   // failure, never a missing validator signature.
@@ -86,20 +89,39 @@ export async function observeProofJob({pool,catalog,job,runner=runRecoveryProces
   }
   if(configured.route.source!==job.source_chain)
    throw Object.assign(Error("Route mismatch"),{code:"PROOF_CONFIG_MISMATCH"});
-  const outcome=await runner(configured,{timeoutMs:35000});
-  decision=classifyProofObservation(outcome);
+  // Poll only the local XGRChain quorum journal while signatures are pending.
+  // Existing source safety evidence remains canonical in the SQL operation.
+  // A positive status never signs: it triggers the original full verifier.
+  if(["PROOF_PENDING","PROOF_QUORUM_UNAVAILABLE"].includes(job.previousReason)){
+   const route=ilnValidatorRouteName(configured.route.source==="xgrchain"?1643:
+    catalog.chains[configured.route.source].domainId,
+    catalog.chains[configured.route.destination].domainId,configured.route.routeId);
+   const status=await quorumPoll({route,messageId:job.message_id});
+   const decisionType=quorumPollDecision(status,{
+    lastFullCheckMs:Date.parse(job.lastFullCheckAt||"")||0,now:now()});
+   if(decisionType==="wait"){
+    lightweight=true;
+    decision={state:"waiting",reason:job.previousReason,stage:"quorum"};
+   }
+  }
+  if(!lightweight){
+   const outcome=await runner(configured,{timeoutMs:35000});
+   decision=classifyProofObservation(outcome);
+  }
  }catch(error){
   decision=classifyProofObservation(null,error);
  }
- const attempt=job.attempts+1,seconds=proofRetrySeconds(decision.state,attempt);
+ const attempt=job.attempts+1,seconds=lightweight?10:
+  decision.state==="waiting"?10:proofRetrySeconds(decision.state,attempt);
  const result=await pool.query({text:`UPDATE xita_transfer_proof_observations
  SET state=$4,reason=$5,stage=$6,attempts=attempts+1,
- lease_token=NULL,lease_until=NULL,last_checked_at=NOW(),
+ lease_token=NULL,lease_until=NULL,
+ last_checked_at=CASE WHEN $8::boolean THEN last_checked_at ELSE NOW() END,
  next_check_at=NOW()+($7::integer * INTERVAL '1 second'),updated_at=NOW()
  WHERE source_chain=$1 AND message_id=$2 AND lease_token=$3
  RETURNING message_id`,
  values:[job.source_chain,job.message_id,job.leaseToken,
- decision.state,decision.reason,decision.stage,seconds]});
+ decision.state,decision.reason,decision.stage,seconds,lightweight]});
  return {...decision,seconds,updated:result.rows.length===1};
 }
 export async function tickProofObserver({pool,catalog,runner=runRecoveryProcess}){
