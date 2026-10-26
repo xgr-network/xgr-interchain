@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -109,4 +109,24 @@ test("L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 cons
  assert.doesNotMatch(source,/gasLimit:21000n/);
  assert.ok(source.indexOf("provider.estimateGas")<source.indexOf("db.reserveGrant"),
   "do not reserve one-shot grant after a failed gas estimate");
+});
+
+test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",async()=>{
+ const tx=hash("a"),blockHash=hash("b");
+ const receipt={hash:tx,blockHash,blockNumber:100,status:1};
+ const provider={
+  getBlock:async tag=>tag==="safe"?{number:99}:
+   tag==="latest"?{number:102}:{number:100,hash:blockHash},
+  getTransactionReceipt:async()=>receipt
+ };
+ assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
+ provider.getBlock=async tag=>tag==="safe"?{number:100}:
+  tag==="latest"?{number:102}:{number:100,hash:blockHash};
+ assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),true);
+ assert.equal(await verifiedSponsorFinality({provider,chain:"xgrchain",receipt,txHash:tx}),true);
+ provider.getBlock=async tag=>tag==="safe"?{number:100}:
+  tag==="latest"?{number:101}:{number:100,hash:blockHash};
+ assert.equal(await verifiedSponsorFinality({provider,chain:"xgrchain",receipt,txHash:tx}),false);
+ provider.getBlock=async tag=>{if(tag==="safe")throw Error("unsupported");return {number:100,hash:blockHash}};
+ assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
 });
