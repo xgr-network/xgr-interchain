@@ -78,7 +78,7 @@ test("unsigned / unconfirmed and unverified representations never become token c
  const progress=get(record,repsXGR);
  assert.equal(progress.verified,0);
  assert.equal(progress.steps[0].state,"current");
- assert.match(progress.summary,/No token movement is assumed yet/);
+ assert.match(progress.summary,/Waiting for Base safe finality/);
  const missing=get(source("base","arbitrum"),null);
  assert.equal(missing.steps.every(x=>x.action===null),true);
  const ambiguous=get(source("base","arbitrum"),[...repsXGR,repsXGR[1]]);
