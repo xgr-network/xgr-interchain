@@ -65,9 +65,10 @@ export function describeTokenJourney({flow,record=null,representations=null,
   const verified=flow.steps[evidenceSteps[i]]?.state==="complete"&&
    (i!==chains.length-1||flow.delivered===true);
   return {...action,
-   label:action.action?LABEL[action.action]+" "+action.symbol:"Verify token delivery",
-   detail:action.action?DETAILS[action.action]:"Token representation is not verified in the current catalog.",
-   hint:action.action?SHORT[action.action]:"Representation unverified",
+   label:action.action?LABEL[action.action]+" "+action.symbol:
+    (directions[i]==="out"?"Sending ":"Receiving ")+(validSymbol(flow.asset)||"tokens"),
+   detail:action.action?DETAILS[action.action]:"Waiting for verified on-chain token operation.",
+   hint:action.action?SHORT[action.action]:"Token operation being verified",
    state:verified?"complete":"pending"};
  });
  // Never display a milestone as verified unless ALL preceding chain events
