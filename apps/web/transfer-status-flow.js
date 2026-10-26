@@ -1,3 +1,4 @@
+import {describeTokenJourney} from "./transfer-token-journey.js";
 // Transfer status is a view of canonical wallet/Gateway/Mailbox evidence.
 // Transient UI stages never establish chain finality or authorize another source TX.
 const NAMES={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",polygon:"Polygon"};
@@ -200,10 +201,29 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
    detail:"",kind:"waiting"};
  return {label:"Checking transfer",detail:"",kind:"waiting"};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false,representations=null}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
  const visual=transferDisplayStatus(flow,{record,stage,working,walletReady,error});
+ const tokenJourney=describeTokenJourney({flow,record,representations});
+ const hasTokenJourney=tokenJourney.steps.length>0&&tokenJourney.steps.every(step=>step.action);
+ const tokenRows=hasTokenJourney?tokenJourney.steps.map((step,i)=>
+  '<li class="ux-token-journey-step is-'+step.state+'" data-token-action="'+esc(step.action)+'" data-token-chain="'+esc(step.chain)+'">'+
+   '<span class="ux-token-journey-marker" aria-hidden="true">'+
+   (step.state==="complete"?"✓":step.state==="observed"?"◷":step.state==="current"?"⌛":String(i+1))+'</span>'+
+   '<div><span class="ux-token-journey-chain">'+esc(step.name)+'</span>'+
+   '<strong>'+esc(step.label)+'</strong>'+
+   '<small>'+esc(step.state==="complete"?"Verified":step.state==="observed"?"Observed · finality pending":
+     step.state==="current"?"Waiting":"Upcoming")+'</small></div>'+
+   '</li>').join(""):"";
+ const tokenPanel=hasTokenJourney?
+  '<section class="ux-token-journey" aria-label="Token journey">'+
+   '<div class="ux-token-journey-heading"><strong>Where your tokens are</strong>'+
+   '<small>'+esc(flow.twoHop?"Two network hops":"One network hop")+'</small></div>'+
+   '<ol class="ux-token-journey-steps">'+tokenRows+'</ol>'+
+   '<p class="ux-token-journey-summary">'+esc(tokenJourney.summary)+'</p>'+
+  '</section>':"";
+ 
  // Sponsorship is an optional independent funded-wallet operation AFTER
  // the initial paid source TX, not an extra MetaMask action or proof of delivery.
  const sponsorEnabled=sponsorship?.enabled===true;
@@ -242,11 +262,16 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   '<div class="ux-flow-banner'+(visual.kind==="attention"?' is-attention':visual.kind==="done"?' is-done':'')+'" role="status" aria-live="polite">'+
    '<span class="ux-flow-spinner'+(visual.kind==="waiting"?' is-animated':'')+'" aria-hidden="true">'+(visual.kind==="done"?'✓':visual.kind==="attention"?'!':visual.kind==="wallet"?'↗':'⌛')+'</span>'+
    '<div><strong>'+esc(visual.label)+'</strong>'+(visual.detail?'<p>'+esc(visual.detail)+'</p>':'')+'</div></div>'+
-  '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
-   '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
-   ' wallet transactions verified</small></div>'+
-  '<ol class="ux-flow-steps">'+rows+'</ol>'+
-  (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
+  tokenPanel+
+  '<details class="ux-flow-technical"'+(hasTokenJourney?'':' open')+'>'+
+   '<summary>Network verification details <span>'+flow.verifiedWalletTx+' / '+flow.totalWalletTx+' verified</span></summary>'+
+   '<div class="ux-flow-technical-body">'+
+    '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
+     '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
+     ' wallet transactions verified</small></div>'+
+    '<ol class="ux-flow-steps">'+rows+'</ol>'+
+    (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
+   '</div></details>'+
   '<div class="ux-flow-footer"><p>You can close this window anytime and resume the same transfer in My Transfers. Closing does not cancel a blockchain transaction; never repeat the original source transaction.</p>'+
    '<div class="ux-flow-actions">'+
     // Modal is status-only. All blockchain checks and wallet steps advance without a modal CTA.
