@@ -630,7 +630,7 @@ async function performTransferAction({automaticStepKey=null}={}){
  transferActivity.working=true;transferActivity.error="";
  setFlowStage(selected?.status==="awaiting-onward"?"onward-preflight":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
  let broadcastKnown=false;
- let autoContinueParent=null,needsUnsignedRetry=false;
+ let autoContinueParent=null;
  const markWalletIntent=()=>{
   if(walletKey)autoWalletAttempts.markWalletRequested(walletKey);
   clearAutomaticWalletRetryTimer();
@@ -666,7 +666,6 @@ async function performTransferAction({automaticStepKey=null}={}){
       if(path()==="/transfer")render();
      }
     });
-    if(outcome.status==="waiting"||outcome.status==="paused")needsUnsignedRetry=true;
     transferActivity.notice=outcome.status==="delivered"?
      "Both hops delivered; refreshing independent chain index.":
      outcome.notice||"Final destination delivery remains pending.";
@@ -744,7 +743,6 @@ async function performTransferAction({automaticStepKey=null}={}){
     result.status==="failed"?"Destination TX failed; retry only the destination.":
     "Destination TX pending; do not repeat it until chain status is checked.";
    if(result.status==="waiting"||result.status==="paused"){
-    needsUnsignedRetry=true;
     // Preserve the proof-builder's actual quorum/RPC/stage diagnostic. A
     // second source lookup would replace this with a generic success notice.
     await scanWalletHistory();
@@ -823,7 +821,6 @@ async function performTransferAction({automaticStepKey=null}={}){
   }
  }catch(error){
   if(automaticStepKey&&!autoWalletAttempts.walletRequested(automaticStepKey)&&!broadcastKnown){
-   needsUnsignedRetry=true;
    console.warn("[xita-auto-wallet-preflight]",String(error?.message||error).slice(0,240));
    transferActivity.error="";
    transferActivity.notice="Read-only verification is retrying; no wallet action was requested.";
@@ -834,7 +831,9 @@ async function performTransferAction({automaticStepKey=null}={}){
   // Preserve broadcast evidence when a transaction actually left the wallet.
   if(!broadcastKnown)transferActivity.notice="";
  }finally{
-  if(automaticStepKey&&needsUnsignedRetry&&!broadcastKnown&&
+  // Any unsigned return (waiting, unavailable or stale already-delivered
+  // index) is a read-only retry, never a consumed wallet confirmation.
+  if(automaticStepKey&&!broadcastKnown&&
      !autoWalletAttempts.walletRequested(automaticStepKey)&&flowView.open&&
      walletStepKey(currentFlowBinding(),nextVerifiedWalletStep(currentFlowBinding()?.record))===automaticStepKey)
    autoWalletAttempts.schedulePreflightRetry(automaticStepKey);
