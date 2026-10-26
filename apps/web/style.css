@@ -832,6 +832,11 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
 .ux-token-journey-chain{font-size:10px;color:#a1c4e3;overflow-wrap:anywhere}
 .ux-token-journey-step strong{font-size:12px;color:#eef6ff;overflow-wrap:anywhere}
 .ux-token-journey-step small{font-size:10px;line-height:1.4;color:#9bb6d0}
+.ux-token-journey-step .ux-token-journey-hint{font-size:10px;color:#a8bed2;line-height:1.4}
+.ux-token-journey-step .ux-token-journey-state{font-size:10px;color:#87a6c5}
+.ux-token-journey-step.is-complete .ux-token-journey-state{color:#9bd7b6}
+.ux-token-journey-step.is-observed .ux-token-journey-state{color:#b0d9fc}
+
 .ux-token-journey-summary{border-top:1px solid #2c465d;padding-top:12px;color:#c4dcf1;font-size:12px;line-height:1.6;margin:0}
 .ux-flow-technical{border:1px solid #2d455d;border-radius:11px;background:#081626;min-width:0}
 .ux-flow-technical>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:13px 15px;list-style:none;color:#b9d2e9;font-size:12px;font-weight:600}
