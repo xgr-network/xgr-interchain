@@ -814,6 +814,36 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
 }
 
 
+
+/* Canonical token lifecycle: four source/destination actions, not six
+   internal backend checks. No inferred balances, mint or unlock on pending steps. */
+.ux-token-journey{display:grid;gap:14px;border:1px solid #345673;border-radius:13px;padding:17px;background:linear-gradient(145deg,#0b2134,#081727);min-width:0}
+.ux-token-journey-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ux-token-journey-heading strong{font-size:14px;color:#eaf5ff}
+.ux-token-journey-heading small{font-size:10px;color:#a7c2dd}
+.ux-token-journey-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;list-style:none;padding:0;margin:0}
+.ux-token-journey-step{border:1px solid #354d66;border-radius:10px;background:#0b1a2c;min-width:0;padding:12px 10px;display:flex;align-items:flex-start;gap:9px}
+.ux-token-journey-marker{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border:1px solid #5b748c;border-radius:50%;background:#152a41;color:#cbdced;font-size:11px;font-weight:700}
+.ux-token-journey-step.is-complete{border-color:#446955;background:#10291f}
+.ux-token-journey-step.is-complete .ux-token-journey-marker{border-color:#64a37e;background:#22533b;color:#d0ffe1}
+.ux-token-journey-step.is-current,.ux-token-journey-step.is-observed{border-color:#527ea7;background:#142e46}
+.ux-token-journey-step.is-current .ux-token-journey-marker,.ux-token-journey-step.is-observed .ux-token-journey-marker{border-color:#8abce6;background:#254d70;color:#f2faff}
+.ux-token-journey-step>div{display:grid;gap:5px;min-width:0}
+.ux-token-journey-chain{font-size:10px;color:#a1c4e3;overflow-wrap:anywhere}
+.ux-token-journey-step strong{font-size:12px;color:#eef6ff;overflow-wrap:anywhere}
+.ux-token-journey-step small{font-size:10px;line-height:1.4;color:#9bb6d0}
+.ux-token-journey-summary{border-top:1px solid #2c465d;padding-top:12px;color:#c4dcf1;font-size:12px;line-height:1.6;margin:0}
+.ux-flow-technical{border:1px solid #2d455d;border-radius:11px;background:#081626;min-width:0}
+.ux-flow-technical>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:13px 15px;list-style:none;color:#b9d2e9;font-size:12px;font-weight:600}
+.ux-flow-technical>summary::-webkit-details-marker{display:none}
+.ux-flow-technical>summary::before{content:"+";font-weight:700;font-size:15px;margin-right:3px}
+.ux-flow-technical[open]>summary::before{content:"−"}
+.ux-flow-technical>summary span{color:#92adca;font-size:10px;font-weight:400;margin-left:auto}
+.ux-flow-technical[open]>summary{border-bottom:1px solid #2d455d}
+.ux-flow-technical-body{display:grid;gap:15px;padding:14px}
+@media(max-width:640px){.ux-token-journey-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:365px){.ux-token-journey-steps{grid-template-columns:1fr}}
+
 /* Clear, dual-audience Northstar hero without changing the 3D world. */
 .ux-dashboard .ux-ns-hero-copy{width:min(36vw,530px)}
 .ux-dashboard .ux-ns-hero-copy h1{font-size:clamp(59px,5.1vw,100px);max-width:540px;line-height:1.02}
