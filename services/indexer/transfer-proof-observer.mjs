@@ -96,7 +96,9 @@ export async function observeProofJob({pool,catalog,job,runner=runRecoveryProces
    const route=ilnValidatorRouteName(configured.route.source==="xgrchain"?1643:
     catalog.chains[configured.route.source].domainId,
     catalog.chains[configured.route.destination].domainId,configured.route.routeId);
-   const status=await quorumPoll({route,messageId:job.message_id});
+   // A failed local status read must not trigger an immediate L2-heavy
+   // full recovery. Keep the known pending state and retry local XGR RPC.
+   const status=await quorumPoll({route,messageId:job.message_id}).catch(()=> "PENDING");
    const decisionType=quorumPollDecision(status,{
     lastFullCheckMs:Date.parse(job.lastFullCheckAt||"")||0,now:now()});
    if(decisionType==="wait"){
