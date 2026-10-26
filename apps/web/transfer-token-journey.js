@@ -34,10 +34,25 @@ function tokenAction(chain,direction,representations,asset){
   rep.representation==="synthetic"?"mint":"unlock";
  return {chain,name:chainName(chain),action,symbol};
 }
-function observation(record,flow){
- return flow.twoHop?record?.finalProofObservation:record?.proofObservation;
+// Every source and destination action has its own chain-finality barrier.
+// L2: native safe head, XGRChain: committed IBFT. Neither a MetaMask prompt,
+// an unfinalized receipt nor latest-head "delivery-observed" completes a step.
+export function tokenFinalityName(chain){
+ return ["base","arbitrum"].includes(chain)?"safe finality":
+  chain==="xgrchain"?"IBFT finality":"network finality";
 }
-export function describeTokenJourney({flow,record=null,representations=null}={}){
+function deliveryObserved(record,flow,index){
+ if(flow.twoHop){
+  if(index===1)return record?.status==="awaiting-proof"&&
+   record?.proofObservation?.state==="delivery-observed";
+  if(index===3)return record?.status==="awaiting-final-proof"&&
+   record?.finalProofObservation?.state==="delivery-observed";
+ }else if(index===1)return record?.status==="awaiting-proof"&&
+  record?.proofObservation?.state==="delivery-observed";
+ return false;
+}
+export function describeTokenJourney({flow,record=null,representations=null,
+ stage="",working=false}={}){
  if(!flow?.origin||!flow?.destination||!Array.isArray(flow.steps))return {steps:[],summary:"Checking verified transfer evidence.",verified:0};
  const chains=flow.twoHop?[flow.origin,"xgrchain","xgrchain",flow.destination]:
   [flow.origin,flow.destination];
@@ -60,28 +75,42 @@ export function describeTokenJourney({flow,record=null,representations=null}={})
  let verified=0;
  while(verified<steps.length&&steps[verified].state==="complete")verified++;
  for(let i=verified;i<steps.length;i++)steps[i].state=i===verified?"current":"pending";
- const observed=verified===steps.length-1&&
-  observation(record,flow)?.state==="delivery-observed";
- if(observed)steps[steps.length-1].state="observed";
+ const observed=verified<steps.length&&deliveryObserved(record,flow,verified);
+ if(observed)steps[verified].state="observed";
+ const next=steps[verified];
  let summary;
  if(verified===steps.length){
   const last=steps.at(-1);
   summary=last.action?last.symbol+" "+PAST[last.action]+" on "+last.name+
    ". Delivery verified.":"Destination delivery verified on "+last.name+".";
  }else if(observed){
-  const last=steps.at(-1);
-  summary=last.action?"Destination "+last.symbol+" "+PAST[last.action]+
-   " on "+last.name+" observed; waiting for safe finality.":
-   "Destination delivery observed; waiting for safe finality on "+last.name+".";
- }else if(verified>0){
-  const last=steps[verified-1],next=steps[verified];
+  summary=next.action?next.symbol+" "+PAST[next.action]+
+   " on "+next.name+" observed; waiting for "+next.name+" "+
+   tokenFinalityName(next.chain)+".":"Delivery observed; waiting for "+
+   next.name+" "+tokenFinalityName(next.chain)+".";
+ }else if(verified===0){
+  const status=record?.status||"";
+  if(["confirming","confirming-native-finality","finality-unavailable"].includes(status))
+   summary="Waiting for "+chainName(flow.origin)+" "+tokenFinalityName(flow.origin)+
+    " before confirming the source transaction.";
+  else if(["pending-source","source-failed"].includes(status)||stage==="source-pending")
+   summary=status==="source-failed"?
+    "The source transaction failed; no token movement is confirmed.":
+    "Waiting for "+chainName(flow.origin)+
+     " transaction confirmation. No token movement is assumed yet.";
+  else summary="Waiting for verified "+chainName(flow.origin)+
+   " source confirmation. No token movement is assumed yet.";
+ }else if(working&&[
+  "first-delivery-pending","onward-source-pending","final-delivery-pending"
+ ].includes(stage)){
+  summary="Waiting for "+next.name+" "+tokenFinalityName(next.chain)+
+   " before confirming "+next.label+".";
+ }else{
+  const last=steps[verified-1];
   summary=(last.action?last.symbol+" "+PAST[last.action]+" on "+last.name:
    "Token action confirmed on "+last.name)+
    ". "+(next.action?"Next: "+LABEL[next.action].toLowerCase()+" "+
     next.symbol+" on "+next.name+".":"Waiting for verified delivery on "+next.name+".");
- }else{
-  summary="Waiting for verified "+chainName(flow.origin)+
-   " source confirmation. No token movement is assumed yet.";
  }
  return {steps,summary,verified};
 }
