@@ -452,7 +452,13 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     const evidence=quoteEvidence(reply,prices,clientIP,country);
     await saveQuoteEvidence(evidence,{quoteReply:reply,
      grantLimits:reply.pricing?.walletAware?sponsorPoliciesForCatalog({
-      catalog:loadCatalog(),prices:await getSnapshot()}):null});
+      catalog:loadCatalog(),prices:await getSnapshot()}):null,
+     readLiveFunding:async target=>{
+      const provider=await chain(target,loadCatalog());
+      const [balance,fees]=await Promise.all([
+       provider.getBalance(signer.address,"latest"),provider.getFeeData()]);
+      return {balanceWei:balance,gasPriceWei:fees.maxFeePerGas||fees.gasPrice||0n};
+     }});
    }
   return send(200,{ok:true,...reply});
  }catch(e){
