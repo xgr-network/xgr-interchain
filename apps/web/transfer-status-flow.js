@@ -1,3 +1,4 @@
+import {describeTokenJourney,tokenFinalityName} from "./transfer-token-journey.js";
 // Transfer status is a view of canonical wallet/Gateway/Mailbox evidence.
 // Transient UI stages never establish chain finality or authorize another source TX.
 const NAMES={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",polygon:"Polygon"};
@@ -181,12 +182,20 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
    " verification",detail:"",kind:"waiting"};
  if(flow.needsAttention)return {label:"Verification needs attention",
   detail:String(flow.message||"Verification unavailable."),kind:"attention"};
- if(["confirming","confirming-native-finality","pending-source"].includes(status))
-  return {label:"Waiting for "+source+" finality",detail:"",kind:"waiting"};
+ if(status==="pending-source")
+  return {label:"Waiting for "+source+" transaction",detail:"",kind:"waiting"};
+ if(["confirming","confirming-native-finality"].includes(status))
+  return {label:"Waiting for "+source+" "+tokenFinalityName(flow.origin),
+   detail:"",kind:"waiting"};
  if(status==="awaiting-final-proof"&&proof?.state==="delivery-observed")
-  return {label:"Waiting for "+target+" finality",detail:"",kind:"waiting"};
- if(status==="awaiting-proof"&&proof?.state==="delivery-observed")
-  return {label:"Waiting for "+(flow.twoHop?"XGRChain":target)+" finality",detail:"",kind:"waiting"};
+  return {label:"Waiting for "+target+" "+tokenFinalityName(flow.destination),
+   detail:"",kind:"waiting"};
+ if(status==="awaiting-proof"&&proof?.state==="delivery-observed"){
+  const dest=flow.twoHop?"XGRChain":target;
+  return {label:"Waiting for "+dest+" "+
+   tokenFinalityName(flow.twoHop?"xgrchain":flow.destination),
+   detail:"",kind:"waiting"};
+ }
  if(["first-delivery-pending","final-delivery-pending","onward-source-pending","source-pending"].includes(stage)&&working)
   return {label:"Waiting for "+(stage==="source-pending"?source:
    stage==="first-delivery-pending"?"XGRChain":
@@ -200,53 +209,61 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
    detail:"",kind:"waiting"};
  return {label:"Checking transfer",detail:"",kind:"waiting"};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false,representations=null}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
  const visual=transferDisplayStatus(flow,{record,stage,working,walletReady,error});
- // Sponsorship is an optional independent funded-wallet operation AFTER
- // the initial paid source TX, not an extra MetaMask action or proof of delivery.
- const sponsorEnabled=sponsorship?.enabled===true;
- const sponsorStage=sponsorship?.status==="confirmed"?"complete":
-  ["needs-review","disabled"].includes(sponsorship?.status)?"attention":
-  sponsorship?.status==="not-required"?"complete":"pending";
+ const tokenJourney=describeTokenJourney({flow,record,representations,stage,working});
+ // One compact, evidence-backed timeline. The live message belongs to its
+ // active action, never to a second technical timeline or floating banner.
+ const sponsorEnabled=sponsorship?.enabled===true&&record?.confirmed===true;
  const sponsorNote=sponsorship?.status==="confirmed"?"All upfront native gas grants confirmed on chain":
-  sponsorship?.status==="needs-review"?"Gas grant requires operator review":
-  sponsorship?.status==="submitted"?"Upfront gas grants submitted; awaiting confirmations":
-  sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
-  sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
-  sponsorship?.status==="pending"?"Waiting for all upfront gas grants before destination delivery":
-  sponsorship?.status==="disabled"?"Promised gas grants unavailable; operator attention required":
-  "Gas sponsorship status unavailable; own native gas may still be required";
- const sponsorRow='<li class="ux-flow-step is-'+sponsorStage+'" data-flow-step="sponsor">'+
-   '<span class="ux-flow-step-indicator" aria-hidden="true">'+(sponsorStage==="complete"?"✓":"⌛")+'</span>'+
-   '<div class="ux-flow-step-text"><strong>Optional gas sponsorship</strong><small>'+esc(sponsorNote)+'</small></div>'+
-   '<span class="ux-flow-step-state">'+(sponsorStage==="complete"?"Verified":
-   sponsorStage==="attention"?"Attention":
-   ["pending","reserved"].includes(sponsorship?.status)?"Pending":
-   sponsorship?.status==="submitted"?"Submitted":
-   sponsorship?.status==="disabled"?"Unavailable":"Unknown")+'</span></li>';
- const rows=flow.steps.map((step,i)=>
-   '<li class="ux-flow-step is-'+step.state+'" data-flow-step="'+(i+1)+'">'+
-    '<span class="ux-flow-step-indicator" aria-hidden="true">'+
-      (step.state==="complete"?"✓":step.state==="current"?"⌛":String(i+1))+'</span>'+
-    '<div class="ux-flow-step-text"><strong>'+esc(step.label)+'</strong><small>'+esc(step.detail)+'</small></div>'+
-    '<span class="ux-flow-step-state">'+(step.state==="complete"?"Verified":
-      step.state==="current"?"Current":"Pending")+'</span></li>'+
-    (i===0&&sponsorEnabled&&record?.confirmed===true?sponsorRow:"")).join("");
+   sponsorship?.status==="needs-review"?"Gas grant requires operator review":
+   sponsorship?.status==="submitted"?"Upfront gas grants submitted; awaiting confirmations":
+   sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
+   sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
+   sponsorship?.status==="pending"?"Waiting for all upfront gas grants before destination delivery":
+   sponsorship?.status==="disabled"?"Promised gas grants unavailable; operator attention required":
+   "Gas sponsorship status unavailable; own native gas may still be required";
+ const sponsorState=["needs-review","disabled"].includes(sponsorship?.status)?"attention":
+   ["confirmed","not-required"].includes(sponsorship?.status)?"complete":"pending";
+ const activeIndex=tokenJourney.verified<tokenJourney.steps.length?
+   tokenJourney.verified:tokenJourney.steps.length-1;
+ const rows=tokenJourney.steps.map((step,i)=>{
+  const live=i===activeIndex;
+  const activeStatus=live?
+   '<div class="ux-token-journey-live'+(visual.kind==="attention"?' is-attention':
+    visual.kind==="done"?' is-done':'')+'" role="status" aria-live="polite">'+
+    '<span class="ux-token-journey-pulse'+(visual.kind==="waiting"?' is-animated':'')+'" aria-hidden="true">'+
+      (visual.kind==="attention"?'!':visual.kind==="done"?'✓':visual.kind==="wallet"?'↗':'⌛')+'</span>'+
+    '<div><strong>'+esc(visual.label)+'</strong>'+
+      '<p>'+esc(visual.detail||tokenJourney.summary)+'</p></div></div>'+
+    (sponsorEnabled?
+      '<p class="ux-token-sponsor-note is-'+sponsorState+'"><strong>Gas sponsorship:</strong> '+
+       esc(sponsorNote)+'</p>':''):"";
+  return '<li class="ux-token-journey-step is-'+step.state+'" data-token-action="'+esc(step.action||"unverified")+
+    '" data-token-chain="'+esc(step.chain)+'">'+
+    '<span class="ux-token-journey-marker" aria-hidden="true">'+
+    (step.state==="complete"?"✓":step.state==="observed"?"◷":
+      step.state==="current"?"⌛":String(i+1))+'</span>'+
+    '<div class="ux-token-journey-step-content">'+
+    '<div class="ux-token-journey-step-head">'+
+     '<span class="ux-token-journey-chain">'+esc(step.name)+'</span>'+
+     '<strong>'+esc(step.label)+'</strong>'+
+     '<small class="ux-token-journey-state">'+esc(step.state==="complete"?"Verified":
+       step.state==="observed"?"Observed":step.state==="current"?"In progress":"Upcoming")+'</small>'+
+    '</div>'+activeStatus+'</div></li>';
+ }).join("");
  return '<div class="ux-flow-content"><div class="ux-flow-header">'+
    '<div><span class="ux-kicker">XITA · VERIFIED TRANSFER</span><h2 id="xita-flow-title">Transfer status</h2>'+
    '<p class="ux-flow-route">'+esc(flow.asset)+' · '+esc(sequence)+'</p></div>'+
    '<button id="xita-flow-close" class="ux-flow-close" type="button" aria-label="Close transfer status">×</button>'+
   '</div>'+
-  '<div class="ux-flow-banner'+(visual.kind==="attention"?' is-attention':visual.kind==="done"?' is-done':'')+'" role="status" aria-live="polite">'+
-   '<span class="ux-flow-spinner'+(visual.kind==="waiting"?' is-animated':'')+'" aria-hidden="true">'+(visual.kind==="done"?'✓':visual.kind==="attention"?'!':visual.kind==="wallet"?'↗':'⌛')+'</span>'+
-   '<div><strong>'+esc(visual.label)+'</strong>'+(visual.detail?'<p>'+esc(visual.detail)+'</p>':'')+'</div></div>'+
-  '<div class="ux-flow-steps-heading"><strong>'+esc(flow.twoHop?"Two hops · six stages":"One hop · three stages")+
-   '</strong><small>'+flow.verifiedWalletTx+' of '+flow.totalWalletTx+
-   ' wallet transactions verified</small></div>'+
-  '<ol class="ux-flow-steps">'+rows+'</ol>'+
-  (flow.sourceTxHash?'<p class="ux-flow-hash">Original source TX: <code>'+esc(flow.sourceTxHash)+'</code></p>':'')+
+  '<section class="ux-token-journey" aria-label="Token journey">'+
+   '<div class="ux-token-journey-heading"><strong>Where your tokens are</strong>'+
+    '<small>'+esc(flow.twoHop?"Four token actions":"Two token actions")+'</small></div>'+
+   '<ol class="ux-token-journey-steps">'+rows+'</ol>'+
+  '</section>'+
   '<div class="ux-flow-footer"><p>You can close this window anytime and resume the same transfer in My Transfers. Closing does not cancel a blockchain transaction; never repeat the original source transaction.</p>'+
    '<div class="ux-flow-actions">'+
     // Modal is status-only. All blockchain checks and wallet steps advance without a modal CTA.

@@ -581,7 +581,8 @@ function updateFlowModal(){
   notice:binding.sameSession?transferActivity.notice:"",
   error:binding.sameSession?transferActivity.error:"",
   sponsorship:{enabled:sponsorEnabled,
-   status:sponsorTransfer.key===sponsorKey?sponsorTransfer.status:"pending"}});
+   status:sponsorTransfer.key===sponsorKey?sponsorTransfer.status:"pending"},
+  representations:state.catalog?.assets?.[binding.journey.asset]?.metadata?.representations||null});
  const scroll=dialog.scrollTop;
  dialog.innerHTML=html;dialog.scrollTop=scroll;
  if(!dialog.open)dialog.showModal();

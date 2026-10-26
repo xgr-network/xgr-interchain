@@ -814,6 +814,41 @@ main:has(>.ux-plan-page){max-width:none;padding:20px 22px 70px}
 }
 
 
+
+/* One compact, primary 2/4-action lifecycle. Read-only finality detail is
+   attached to the current token action; no duplicate six-stage checklist. */
+.ux-token-journey{display:grid;gap:10px;border:1px solid #345673;border-radius:13px;padding:15px;background:linear-gradient(145deg,#0b2134,#081727);min-width:0}
+.ux-token-journey-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.ux-token-journey-heading strong{font-size:13px;color:#eaf5ff}
+.ux-token-journey-heading small{font-size:10px;color:#a7c2dd}
+.ux-token-journey-steps{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;list-style:none;padding:0;margin:0}
+.ux-token-journey-step{border:1px solid #354d66;border-radius:10px;background:#0b1a2c;min-width:0;padding:10px 12px;display:flex;align-items:flex-start;gap:11px}
+.ux-token-journey-marker{display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;border:1px solid #5b748c;border-radius:50%;background:#152a41;color:#cbdced;font-size:11px;font-weight:700}
+.ux-token-journey-step.is-complete{border-color:#446955;background:#10291f}
+.ux-token-journey-step.is-complete .ux-token-journey-marker{border-color:#64a37e;background:#22533b;color:#d0ffe1}
+.ux-token-journey-step.is-current,.ux-token-journey-step.is-observed{border-color:#527ea7;background:#142e46}
+.ux-token-journey-step.is-current .ux-token-journey-marker,.ux-token-journey-step.is-observed .ux-token-journey-marker{border-color:#8abce6;background:#254d70;color:#f2faff}
+.ux-token-journey-step-content{display:grid;gap:4px;min-width:0;flex:1}
+.ux-token-journey-step-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 10px;min-width:0}
+.ux-token-journey-chain{grid-column:1;font-size:10px;color:#a1c4e3}
+.ux-token-journey-step-head strong{grid-column:1;font-size:13px;color:#eef6ff;overflow-wrap:anywhere}
+.ux-token-journey-state{grid-column:2;grid-row:1 / 3;font-size:10px;color:#9bb6d0;white-space:nowrap}
+.ux-token-journey-step.is-complete .ux-token-journey-state{color:#9bd7b6}
+.ux-token-journey-step.is-observed .ux-token-journey-state{color:#b0d9fc}
+.ux-token-journey-live{display:flex;align-items:flex-start;gap:9px;border-top:1px solid #476887;padding-top:9px;margin-top:6px}
+.ux-token-journey-pulse{display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border-radius:50%;background:#284b68;color:#e4f3ff;font-size:11px}
+.ux-token-journey-pulse.is-animated{animation:xita-hourglass-pulse 1.8s ease-in-out infinite}
+.ux-token-journey-live strong{font-size:12px;color:#e5f2ff;font-weight:600}
+.ux-token-journey-live p{font-size:11px;line-height:1.55;color:#b4cee4;margin:4px 0 0;overflow-wrap:anywhere}
+.ux-token-journey-live.is-attention{border-color:#b78e5a}
+.ux-token-journey-live.is-attention .ux-token-journey-pulse{background:#68492d}
+.ux-token-journey-live.is-done{border-color:#588e70}
+.ux-token-sponsor-note{font-size:11px;line-height:1.5;color:#a9c8e5;border-top:1px dashed #48627e;padding-top:9px;margin:4px 0 0}
+.ux-token-sponsor-note.is-attention{color:#efd0a7}
+.ux-token-sponsor-note.is-complete{color:#b4dfc3}
+@media(prefers-reduced-motion:reduce){.ux-token-journey-pulse.is-animated{animation:none}}
+@media(max-width:450px){.ux-token-journey{padding:11px}.ux-token-journey-step{padding:9px}.ux-token-journey-step-head strong{font-size:12px}}
+
 /* Clear, dual-audience Northstar hero without changing the 3D world. */
 .ux-dashboard .ux-ns-hero-copy{width:min(36vw,530px)}
 .ux-dashboard .ux-ns-hero-copy h1{font-size:clamp(59px,5.1vw,100px);max-width:540px;line-height:1.02}

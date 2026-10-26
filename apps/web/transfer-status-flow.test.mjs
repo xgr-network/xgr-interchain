@@ -145,9 +145,11 @@ test("optional sponsorship appears strictly after confirmed initial fee payment"
   status:"awaiting-proof",delivered:false,executionAdapter:"0x"+"3".repeat(40),
   interchainFeeWei:"100",confirmed:true};
  const html=renderTransferFlow({journey,record,sponsorship:{enabled:true,status:"submitted"}});
- const source=html.indexOf("Source transaction"),sponsor=html.indexOf("Optional gas sponsorship"),
-  quorum=html.indexOf("Validator verification");
- assert.ok(source>=0&&source<sponsor&&sponsor<quorum);
+ const source=html.indexOf("Sending XGR"),sponsor=html.indexOf("Gas sponsorship:");
+ assert.ok(source>=0&&source<sponsor);
+ assert.match(html,/class="ux-token-sponsor-note is-pending"/);
+ assert.equal((html.match(/class="ux-token-journey-step is-/g)||[]).length,2);
+ assert.doesNotMatch(html,/Validator verification|Network verification details/);
  assert.match(html,/Upfront gas grants submitted; awaiting confirmations/);
  assert.doesNotMatch(html,/All upfront native gas grants confirmed on chain/);
  assert.doesNotMatch(renderTransferFlow({journey,record,sponsorship:{enabled:false,status:"submitted"}}),
@@ -190,7 +192,7 @@ test("pending gas sponsorship is not rendered as actively checking forever",()=>
  const html=renderTransferFlow({journey:j,record,
   sponsorship:{enabled:true,status:"pending"}});
  assert.match(html,/Waiting for all upfront gas grants before destination delivery/);
- assert.match(html,/ux-flow-step-state">Pending/);
+ assert.match(html,/ux-token-sponsor-note is-pending/);
 });
 
 test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
@@ -236,8 +238,8 @@ test("compact transfer status identifies which chain controls waiting",()=>{
   secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
  const finality={...child,finalProofObservation:{state:"delivery-observed"}};
  const html=renderTransferFlow({journey:j,record:finality});
- assert.match(html,/Waiting for Arbitrum finality/);
- assert.match(html,/ux-flow-spinner is-animated/);
+ assert.match(html,/Waiting for Arbitrum safe finality/);
+ assert.match(html,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(html,/Backend proof:/);
  assert.match(html,/close this window anytime and resume/);
  const proof=renderTransferFlow({journey:j,record:{...child,
@@ -267,7 +269,7 @@ test("scheduled transient proof error remains calm but stale or missing retry ra
   updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
  const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
  assert.match(transient,/Retrying Base verification/);
- assert.match(transient,/ux-flow-spinner is-animated/);
+ assert.match(transient,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
  const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
   updatedAt:new Date(Date.now()-360000).toISOString(),
