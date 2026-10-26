@@ -268,15 +268,48 @@ test("scheduled transient proof error remains calm but stale or missing retry ra
  const obs={state:"unavailable",reason:"PROOF_CONFIG_MISMATCH",stage:"confirmed-fee-vault-allocation",
   updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
  const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
- assert.match(transient,/Retrying Base verification/);
+ assert.match(transient,/Rechecking XGRChain delivery/);
  assert.match(transient,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
  const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
   updatedAt:new Date(Date.now()-360000).toISOString(),
   nextCheckAt:new Date(Date.now()-300000).toISOString()}}});
- assert.match(stalled,/Verification needs attention/);
+ assert.match(stalled,/Verification delayed/);
  const explicit=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs},
   error:"Fee vault mismatch: contact support"});
  assert.match(explicit,/Verification needs attention/);
  assert.match(explicit,/Fee vault mismatch: contact support/);
+});
+
+test("wallet index success notice never becomes a transfer warning",()=>{
+ const j={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const record={...base,sourceChain:"xgrchain",destinationChain:"base",
+  finalDestinationChain:"base",status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"unavailable",reason:"PROOF_RPC_UNAVAILABLE",
+   updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+30000).toISOString()}};
+ const html=renderTransferFlow({journey:j,record,
+  notice:"Wallet index synchronized. Source confirmations are checked separately."});
+ assert.match(html,/Rechecking Base delivery/);
+ assert.doesNotMatch(html,/Wallet index synchronized|Verification needs attention|Preparing next wallet step/);
+});
+test("Base observed and observer rechecking both retain finality wording",()=>{
+ const j={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const record={...base,sourceChain:"xgrchain",destinationChain:"base",
+  finalDestinationChain:"base",status:"awaiting-proof",delivered:false};
+ const observed=renderTransferFlow({journey:j,record:{...record,
+  proofObservation:{state:"delivery-observed"}}});
+ const checking=renderTransferFlow({journey:j,record:{...record,
+  proofObservation:{state:"checking"}}});
+ assert.match(observed,/Waiting for Base safe finality/);
+ assert.match(checking,/Checking Base delivery and safe finality/);
+ assert.doesNotMatch(checking,/Preparing next wallet step|Verification needs attention/);
+});
+test("temporary destination RPC read failures remain waiting, not transfer failures",()=>{
+ const j={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const rec={...base,sourceChain:"xgrchain",destinationChain:"base",
+  finalDestinationChain:"base",status:"delivery-unknown",delivered:null};
+ const html=renderTransferFlow({journey:j,record:rec,
+  notice:"Wallet index synchronized. Source confirmations are checked separately."});
+ assert.match(html,/Checking Base delivery and finality/);
+ assert.doesNotMatch(html,/Verification needs attention|Wallet index synchronized/);
 });
