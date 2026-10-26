@@ -248,7 +248,7 @@ test("compact transfer status identifies which chain controls waiting",()=>{
  assert.doesNotMatch(proof,/Backend proof: waiting/);
  const signing=renderTransferFlow({journey:j,record:child,working:true,
   stage:"final-delivery-sign",walletReady:true});
- assert.match(signing,/Confirm in MetaMask/);
+ assert.match(signing,/Confirm in your wallet/);
  const done=renderTransferFlow({journey:j,record:{...child,status:"journey-delivered"}});
  assert.match(done,/Transfer complete/);
  assert.doesNotMatch(done,/is-animated/);
