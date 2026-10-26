@@ -239,7 +239,7 @@ test("compact transfer status identifies which chain controls waiting",()=>{
  const finality={...child,finalProofObservation:{state:"delivery-observed"}};
  const html=renderTransferFlow({journey:j,record:finality});
  assert.match(html,/Waiting for Arbitrum safe finality/);
- assert.match(html,/ux-flow-spinner is-animated/);
+ assert.match(html,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(html,/Backend proof:/);
  assert.match(html,/close this window anytime and resume/);
  const proof=renderTransferFlow({journey:j,record:{...child,
@@ -269,7 +269,7 @@ test("scheduled transient proof error remains calm but stale or missing retry ra
   updatedAt:new Date().toISOString(),nextCheckAt:new Date(Date.now()+45000).toISOString()};
  const transient=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs}});
  assert.match(transient,/Retrying Base verification/);
- assert.match(transient,/ux-flow-spinner is-animated/);
+ assert.match(transient,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(transient,/PROOF_CONFIG_MISMATCH|Verification needs attention/);
  const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
   updatedAt:new Date(Date.now()-360000).toISOString(),
