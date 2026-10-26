@@ -205,7 +205,7 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
     "PROOF_DESTINATION_REVERT"].includes(proof.reason);
  if(repeatedStructuralFailure)return {label:"Verification delayed",
    detail:"Destination verification needs technical review. No further wallet transaction will be requested until checks pass.",kind:"attention"};
- if(scheduledRetry)return {label:"Rechecking "+destination+" delivery",
+ if(scheduledRetry)return {label:"Waiting for transfer verification",
    detail:"A verification retry is scheduled automatically. No wallet action is needed.",kind:"waiting"};
  if(flow.needsAttention)return {label:"Verification delayed",
    detail:"XITA cannot currently verify this transfer. It will keep checking; do not repeat the original transaction.",kind:"attention"};
@@ -223,13 +223,13 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  if(status==="awaiting-onward")
   return {label:"Preparing XGRChain wallet transaction",detail:"",kind:"waiting"};
  if(proof?.state==="checking")
-  return {label:"Checking "+destination+" delivery and "+tokenFinalityName(deliveryChain),
+  return {label:"Waiting for transfer verification",
    detail:"",kind:"waiting"};
  if(walletReady||working&&stage==="onward-preflight"||proof?.state==="ready")
   return {label:"Checking "+destination+" delivery",
    detail:"XITA is preparing a verified delivery transaction only if one is still required. Your wallet will ask for confirmation when needed.",kind:"waiting"};
  if(["awaiting-proof","awaiting-final-proof"].includes(status))
-  return {label:"Waiting for "+(status==="awaiting-final-proof"?"XGRChain":source)+" validators",
+  return {label:"Waiting for transfer verification",
    detail:"",kind:"waiting"};
  return {label:"Checking transfer",detail:"",kind:"waiting"};
 }
