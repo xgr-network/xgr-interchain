@@ -131,7 +131,6 @@ export async function saveQuoteEvidence(row,{
      "SELECT COALESCE(SUM(c.promised_wei),0)::text AS amount,COUNT(*)::int AS count"+
      " FROM xita_sponsor_quote_commitments c"+
      " WHERE c.grant_chain=$1"+
-     " AND c.created_at >= NOW()-INTERVAL '24 hours'"+
      " AND NOT EXISTS ("+
      " SELECT 1 FROM xita_sponsor_grants g"+
      " JOIN xita_transfer_operations p ON"+
