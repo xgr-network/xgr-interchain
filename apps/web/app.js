@@ -235,7 +235,8 @@ function clearAutomaticWalletRetryTimer(){
  automaticWalletRetryTimer=null;
 }
 function scheduleAutomaticWalletStep(){
- if(automaticWalletQueued||!flowView.open||transferActivity.working||transferActivity.scanning)return;
+ if(automaticWalletQueued||!flowView.open||document.visibilityState==="hidden"||
+    transferActivity.working||transferActivity.scanning)return;
  const binding=currentFlowBinding();
  const key=walletStepKey(binding,nextVerifiedWalletStep(binding?.record));
  if(!key)return;
@@ -256,7 +257,8 @@ function scheduleAutomaticWalletStep(){
  queueMicrotask(()=>{
   automaticWalletQueued=false;
   const current=currentFlowBinding();
-  if(!flowView.open||transferActivity.working||transferActivity.scanning||
+  if(!flowView.open||document.visibilityState==="hidden"||
+     transferActivity.working||transferActivity.scanning||
      walletStepKey(current,nextVerifiedWalletStep(current?.record))!==key||
      !autoWalletAttempts.canStart(key))return;
   void performTransferAction({automaticStepKey:key});
@@ -609,7 +611,7 @@ function openFlowModal(){
  flowView.open=true;updateFlowModal();
 }
 function requireVisibleSigningModal(){
- if(!flowView.open)throw Error("MetaMask signing paused when transfer status was hidden. Reopen the existing transfer to continue; never repeat the original source TX.");
+ if(!flowView.open||document.visibilityState==="hidden")throw Error("MetaMask signing paused while the transfer view is inactive. Return to the existing transfer to continue; never repeat TX1.");
 }
 async function performTransferAction({automaticStepKey=null}={}){
  if(transferActivity.working||!state.catalog)return;
@@ -1577,3 +1579,6 @@ statusDialog.addEventListener("cancel",event=>{
  event.preventDefault();closeFlowModal();
 });
 document.body.append(statusDialog);
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible"&&flowView.open)updateFlowModal();
+});
