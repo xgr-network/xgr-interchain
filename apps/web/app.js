@@ -20,7 +20,7 @@ import {rememberSourceTxHint,listSourceTxHints,unresolvedSourceTxHints} from "./
 import {renderTransferFlow} from "./transfer-status-flow.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
-import {nextVerifiedWalletStep,walletStepKey} from "./automatic-transfer-step.js";
+import {nextVerifiedWalletStep,walletStepKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
 import {transferSponsorVisible,sponsorAllowsContinuation,verifiedZeroGrantSource} from "./transfer-sponsor-evidence.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
@@ -226,26 +226,42 @@ function scheduleFeePreview(){
 }
 let transferRequest=0;
 const flowView={open:false,journey:null,stage:"",sourceTxHash:null,account:null};
-// One attempt per verified step and wallet session. Wallet rejection is not retried automatically.
-const attemptedWalletSteps=new Set();
-let automaticWalletQueued=false;
+// Read-only preflight errors may retry; only a real wallet prompt consumes
+// an automatic step. Attempts are scoped to the wallet+source+message+stage.
+const autoWalletAttempts=createAutomaticWalletAttemptLedger();
+let automaticWalletQueued=false,automaticWalletRetryTimer=null;
+function clearAutomaticWalletRetryTimer(){
+ if(automaticWalletRetryTimer)clearTimeout(automaticWalletRetryTimer.id);
+ automaticWalletRetryTimer=null;
+}
 function scheduleAutomaticWalletStep(){
- if(automaticWalletQueued||!flowView.open||transferActivity.working||transferActivity.scanning)return;
+ if(automaticWalletQueued||!flowView.open||document.visibilityState==="hidden"||
+    transferActivity.working||transferActivity.scanning)return;
  const binding=currentFlowBinding();
- const step=nextVerifiedWalletStep(binding?.record);
- const key=walletStepKey(binding,step);
- if(!key||attemptedWalletSteps.has(key))return;
- // Fee payment alone never constitutes a sponsor commitment.
- // Always attempt read-only preflight; requireUpfrontSponsorship enforces
- // matching quote commitments before asking the wallet to sign TX2.
+ const key=walletStepKey(binding,nextVerifiedWalletStep(binding?.record));
+ if(!key)return;
+ if(!autoWalletAttempts.canStart(key)){
+  const retryAt=autoWalletAttempts.retryAt(key);
+  if(retryAt&&retryAt>Date.now()){
+   if(automaticWalletRetryTimer?.key===key&&automaticWalletRetryTimer.retryAt===retryAt)return;
+   clearAutomaticWalletRetryTimer();
+   automaticWalletRetryTimer={key,retryAt,id:setTimeout(()=>{
+    automaticWalletRetryTimer=null;
+    scheduleAutomaticWalletStep();
+   },Math.max(250,retryAt-Date.now()))};
+  }
+  return;
+ }
+ clearAutomaticWalletRetryTimer();
  automaticWalletQueued=true;
  queueMicrotask(()=>{
   automaticWalletQueued=false;
-  const current=currentFlowBinding(),next=nextVerifiedWalletStep(current?.record);
-  if(!flowView.open||transferActivity.working||transferActivity.scanning||
-     !current||walletStepKey(current,next)!==key||attemptedWalletSteps.has(key))return;
-  attemptedWalletSteps.add(key);
-  void performTransferAction();
+  const current=currentFlowBinding();
+  if(!flowView.open||document.visibilityState==="hidden"||
+     transferActivity.working||transferActivity.scanning||
+     walletStepKey(current,nextVerifiedWalletStep(current?.record))!==key||
+     !autoWalletAttempts.canStart(key))return;
+  void performTransferAction({automaticStepKey:key});
  });
 }
 const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
@@ -308,7 +324,7 @@ function setConnectedAccount(next){
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
-  attemptedWalletSteps.clear();
+  autoWalletAttempts.reset();clearAutomaticWalletRetryTimer();
    flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.account=null;flowView.stage="";
     document.getElementById("xita-flow-dialog")?.close();
  }
@@ -457,6 +473,7 @@ function currentFlowBinding(){
   items:transferActivity.items,session:flowView});
 }
 function resetFlowView(){
+ clearAutomaticWalletRetryTimer();
  flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;
  flowView.account=null;flowView.stage="";
  document.getElementById("xita-flow-dialog")?.close();
@@ -574,6 +591,7 @@ function updateFlowModal(){
  scheduleAutomaticWalletStep();
 }
 function closeFlowModal(){
+ clearAutomaticWalletRetryTimer();
  flowView.open=false;document.getElementById("xita-flow-dialog")?.close();
  refreshTransferLink();
  if(path()==="/transfer"||path()==="/my-transfers")render();
@@ -589,17 +607,22 @@ function openFlowModal(){
  flowView.journey=binding.journey;
  flowView.sourceTxHash=binding.sourceTxHash;
  flowView.account=state.account;
- attemptedWalletSteps.clear();
+ autoWalletAttempts.reset();clearAutomaticWalletRetryTimer();
  flowView.open=true;updateFlowModal();
 }
 function requireVisibleSigningModal(){
- if(!flowView.open)throw Error("MetaMask signing paused when transfer status was hidden. Reopen the existing transfer to continue; never repeat the original source TX.");
+ if(!flowView.open||document.visibilityState==="hidden")throw Error("MetaMask signing paused while the transfer view is inactive. Return to the existing transfer to continue; never repeat TX1.");
 }
-async function performTransferAction(){
+async function performTransferAction({automaticStepKey=null}={}){
  if(transferActivity.working||!state.catalog)return;
  if(!state.account){document.querySelector("#connect")?.click();return;}
  const account=state.account;
  const selected=selectedRecovery(transferActivity.items,account,transferActivity.selectedTxHash);
+ const binding=currentFlowBinding();
+ const walletKey=automaticStepKey||walletStepKey(binding,nextVerifiedWalletStep(binding?.record));
+ if(automaticStepKey&&(!selected||
+    walletStepKey(binding,nextVerifiedWalletStep(binding?.record))!==automaticStepKey||
+    !autoWalletAttempts.canStart(automaticStepKey)))return;
  if(blocksUnverifiedSourceRepeat(transferActivity.selectedTxHash,selected)){
   transferActivity.error="A previous source TX is selected but not independently verified for continuation. Never submit another source burn/lock. Refresh My Transfers instead.";
   if(path()==="/transfer")render();
@@ -607,9 +630,13 @@ async function performTransferAction(){
  }
  if(selected&&!flowView.open)openFlowModal();
  transferActivity.working=true;transferActivity.error="";
- setFlowStage(selected?.status==="awaiting-onward"?"onward-source-sign":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
+ setFlowStage(selected?.status==="awaiting-onward"?"onward-preflight":selected?.status==="awaiting-final-proof"?"final-proof-wait":selected?"first-proof-wait":"source-sign");
  let broadcastKnown=false;
  let autoContinueParent=null;
+ const markWalletIntent=()=>{
+  if(walletKey)autoWalletAttempts.markWalletRequested(walletKey);
+  clearAutomaticWalletRetryTimer();
+ };
  transferActivity.notice=selected?"Rechecking original source and destination chains…":
   "Checking recovery readiness, wallet nonce and source route…";
  render();
@@ -631,7 +658,7 @@ async function performTransferAction(){
     // Sponsorship was verified before TX2. Final delivery never reopens it.
     const outcome=await resumeDelivery({catalog:state.catalog,account,
      record:next,provider:globalThis.ethereum,waitForProof:false,
-     onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("final-delivery-sign",
+     onWalletReady:()=>{requireVisibleSigningModal();markWalletIntent();setFlowStage("final-delivery-sign",
       "TX4 of 4: proof verified. Confirm final "+selected.finalDestinationChain+" delivery in MetaMask.");},
      onStatus:msg=>{setFlowStage("final-proof-wait",msg);if(path()==="/transfer")render();},
      onBroadcast:({txHash})=>{
@@ -656,7 +683,7 @@ async function performTransferAction(){
     // Do not re-run that stage after XGRChain delivery.
     const sent=await startVerifiedOnwardHop({
      catalog:state.catalog,account,record:selected,provider:globalThis.ethereum,
-     onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("onward-source-sign",
+     onWalletReady:()=>{requireVisibleSigningModal();markWalletIntent();setFlowStage("onward-source-sign",
       "TX3 of 4: confirm the onward XGRChain → "+selected.finalDestinationChain+" transaction in MetaMask.");},
      onBroadcast:({txHash})=>{
       broadcastKnown=true;
@@ -703,7 +730,7 @@ async function performTransferAction(){
     await requireUpfrontSponsorship(selected,account);
     const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
     provider:globalThis.ethereum,waitForProof:false,
-    onWalletReady:()=>{requireVisibleSigningModal();setFlowStage("first-delivery-sign","TX2: proof verified. Confirm XGRChain delivery in MetaMask.");},
+    onWalletReady:()=>{requireVisibleSigningModal();markWalletIntent();setFlowStage("first-delivery-sign","TX2: proof verified. Confirm XGRChain delivery in MetaMask.");},
     onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
     },onBroadcast:({txHash})=>{
@@ -795,13 +822,23 @@ async function performTransferAction(){
    }
   }
  }catch(error){
-  transferActivity.error=String(error.message||error);
+  if(automaticStepKey&&!autoWalletAttempts.walletRequested(automaticStepKey)&&!broadcastKnown){
+   console.warn("[xita-auto-wallet-preflight]",String(error?.message||error).slice(0,240));
+   transferActivity.error="";
+   transferActivity.notice="Read-only verification is retrying; no wallet action was requested.";
+  }else transferActivity.error=String(error.message||error);
   if(!broadcastKnown&&!selected&&!flowView.sourceTxHash)resetFlowView();
   updateFlowModal();
   // A failed preflight must not keep displaying a stale in-progress status.
   // Preserve broadcast evidence when a transaction actually left the wallet.
   if(!broadcastKnown)transferActivity.notice="";
  }finally{
+  // Any unsigned return (waiting, unavailable or stale already-delivered
+  // index) is a read-only retry, never a consumed wallet confirmation.
+  if(automaticStepKey&&!broadcastKnown&&
+     !autoWalletAttempts.walletRequested(automaticStepKey)&&flowView.open&&
+     walletStepKey(currentFlowBinding(),nextVerifiedWalletStep(currentFlowBinding()?.record))===automaticStepKey)
+   autoWalletAttempts.schedulePreflightRetry(automaticStepKey);
   if(state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.working=false;
    if(path()==="/transfer")render();
@@ -1542,3 +1579,6 @@ statusDialog.addEventListener("cancel",event=>{
  event.preventDefault();closeFlowModal();
 });
 document.body.append(statusDialog);
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible"&&flowView.open)updateFlowModal();
+});

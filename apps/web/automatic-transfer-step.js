@@ -37,3 +37,38 @@ export function automaticWalletPreflightKey({binding,open=false,working=false,
  const key=walletStepKey(binding,nextVerifiedWalletStep(binding?.record,{now}));
  return key&&!attemptedKeys?.has(key)?key:null;
 }
+
+/**
+ * One automatic wallet intent per source/message/stage while the dialog is open.
+ * Only a wallet-request callback makes a step terminal. Transient read-only
+ * preflight failures never consume the wallet intent; they get a bounded,
+ * gradually increasing retry delay. The main process owns the timer so closing
+ * the dialog cannot start a signing request.
+ */
+export function createAutomaticWalletAttemptLedger({now=Date.now}={}){
+ if(typeof now!=="function")throw Error("Clock must be a function");
+ const prompted=new Set(),pending=new Map();
+ return {
+  canStart(key){
+   return Boolean(key)&&!prompted.has(key)&&
+    (pending.get(key)?.retryAt??0)<=now();
+  },
+  retryAt(key){return pending.get(key)?.retryAt??null;},
+  walletRequested(key){return Boolean(key)&&prompted.has(key);},
+  markWalletRequested(key){
+   if(!key)return;
+   prompted.add(key);
+   pending.delete(key);
+  },
+  schedulePreflightRetry(key){
+   if(!key||prompted.has(key))return null;
+   const attempts=Math.min(12,(pending.get(key)?.attempts||0)+1);
+   // Retry at 12s / 24s / 48s / 90s maximum. No tight RPC loops.
+   const delay=Math.min(90000,12000*2**Math.min(3,attempts-1));
+   const retryAt=now()+delay;
+   pending.set(key,{attempts,retryAt});
+   return retryAt;
+  },
+  reset(){prompted.clear();pending.clear();}
+ };
+}

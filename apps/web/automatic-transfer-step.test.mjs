@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {nextVerifiedWalletStep,walletStepKey,automaticWalletPreflightKey} from "./automatic-transfer-step.js";
+import {nextVerifiedWalletStep,walletStepKey,automaticWalletPreflightKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
 const h=c=>"0x"+c.repeat(64),now=Date.parse("2026-10-25T06:00:00Z");
 const parent={confirmed:true,messageId:h("a"),onwardRouteId:h("b"),
  status:"awaiting-onward",delivered:true,finalDestinationChain:"arbitrum"};
@@ -39,4 +39,40 @@ test("paid but unsponsored source starts preflight when proof is ready",()=>{
  assert.equal(automaticWalletPreflightKey({binding,open:true,attemptedKeys:new Set([key]),now}),null);
  assert.equal(automaticWalletPreflightKey({binding:{...binding,record:{...record,
   proofObservation:{state:"waiting"}}},open:true,now}),null);
+});
+
+test("unsigned wallet preflight retries without consuming a MetaMask intent",()=>{
+ let nowMs=1000000;
+ const gate=createAutomaticWalletAttemptLedger({now:()=>nowMs});
+ const key="wallet:"+h("e")+":final-delivery:"+h("d");
+ assert.equal(gate.canStart(key),true);
+ const first=gate.schedulePreflightRetry(key);
+ assert.equal(first,nowMs+12000);
+ assert.equal(gate.canStart(key),false);
+ nowMs+=11999;
+ assert.equal(gate.canStart(key),false);
+ nowMs++;
+ assert.equal(gate.canStart(key),true);
+ const second=gate.schedulePreflightRetry(key);
+ assert.equal(second,nowMs+24000);
+ nowMs+=24000;
+ assert.equal(gate.canStart(key),true);
+ assert.equal(gate.schedulePreflightRetry(key),nowMs+48000);
+ nowMs+=48000;
+ assert.equal(gate.schedulePreflightRetry(key),nowMs+90000);
+});
+test("MetaMask intent is never automatically retried, even on rejection or slow receipt",()=>{
+ let nowMs=1000;
+ const gate=createAutomaticWalletAttemptLedger({now:()=>nowMs});
+ const source="wallet:"+h("e"),first=source+":first-delivery:"+h("a");
+ const onward=source+":onward-source:"+h("a");
+ gate.schedulePreflightRetry(first);
+ gate.markWalletRequested(first);
+ nowMs+=3600000;
+ assert.equal(gate.canStart(first),false);
+ assert.equal(gate.retryAt(first),null);
+ assert.equal(gate.schedulePreflightRetry(first),null);
+ assert.equal(gate.canStart(onward),true);
+ gate.reset(); // Explicit Hide -> reopen permits re-verification, NOT source replay.
+ assert.equal(gate.canStart(first),true);
 });
