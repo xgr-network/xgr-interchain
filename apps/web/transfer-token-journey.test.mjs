@@ -45,7 +45,7 @@ test("XGR two-hop burns wrapped Base, unlocks and re-locks native hub, mints Arb
  const observed=get({...onward,finalProofObservation:{state:"delivery-observed"}},repsXGR);
  assert.equal(observed.verified,3);
  assert.equal(observed.steps[3].state,"observed");
- assert.match(observed.summary,/wXGR minted on Arbitrum observed; waiting for safe finality/);
+ assert.match(observed.summary,/wXGR minted on Arbitrum observed; waiting for Arbitrum safe finality/);
  const done=get({...onward,status:"journey-delivered"},repsXGR);
  assert.equal(done.verified,4);
  assert.match(done.summary,/wXGR minted on Arbitrum\. Delivery verified/);
@@ -87,25 +87,59 @@ test("unsigned / unconfirmed and unverified representations never become token c
  assert.equal(unsafe.steps.every(x=>x.action===null),true);
 });
 
-test("modal makes verified four-token actions primary while retaining technical six-stage fallback",()=>{
+test("modal shows exactly four main token actions and one live status, without secondary timeline",()=>{
  const record={...source("base","arbitrum"),status:"awaiting-final-proof",
   delivered:true,secondHopTxHash:h("d"),secondHopMessageId:h("e"),
   finalProofObservation:{state:"delivery-observed"}};
  const journey={origin:"base",destination:"arbitrum",asset:"XGR",sourceTxHash:record.txHash};
  const html=renderTransferFlow({journey,record,representations:repsXGR});
  assert.match(html,/Where your tokens are/);
- assert.match(html,/Burn wXGR/);
- assert.match(html,/Unlock XGR/);
- assert.match(html,/Lock XGR/);
- assert.match(html,/Mint wXGR/);
- assert.match(html,/Waiting for Arbitrum finality/);
- assert.match(html,/Network verification details/);
- assert.match(html,/<details class="ux-flow-technical">/);
- assert.match(html,/Two hops · six stages/);
+ for(const action of ["Burn wXGR","Unlock XGR","Lock XGR","Mint wXGR"])assert.match(html,new RegExp(action));
+ assert.match(html,/Waiting for Arbitrum safe finality/);
  assert.match(html,/data-token-chain="arbitrum"/);
  assert.match(html,/is-observed/);
+ assert.equal((html.match(/class="ux-token-journey-step is-/g)||[]).length,4);
+ assert.equal((html.match(/class="ux-token-journey-live/g)||[]).length,1);
+ assert.doesNotMatch(html,/Network verification details|Two hops · six stages|ux-flow-steps|ux-flow-banner|<details/);
  const absent=renderTransferFlow({journey,record});
- assert.doesNotMatch(absent,/Where your tokens are/);
- assert.match(absent,/<details class="ux-flow-technical" open>/);
- assert.match(absent,/Two hops · six stages/);
+ assert.match(absent,/Where your tokens are/);
+ assert.match(absent,/Sending XGR/);
+ assert.match(absent,/Receiving XGR/);
+ assert.equal((absent.match(/class="ux-token-journey-step is-/g)||[]).length,4);
+ assert.doesNotMatch(absent,/Burn wXGR|Unlock XGR|Mint wXGR|<details/);
+});
+test("one-hop modal shows exactly two token actions and current step status",()=>{
+ const record={...source("xgrchain","base"),destinationChain:"base",
+  status:"awaiting-proof",proofObservation:{state:"waiting"}};
+ const html=renderTransferFlow({journey:{origin:"xgrchain",destination:"base",asset:"XGR"},
+  record,representations:repsXGR});
+ assert.equal((html.match(/class="ux-token-journey-step is-/g)||[]).length,2);
+ assert.match(html,/Lock XGR/);
+ assert.match(html,/Mint wXGR/);
+ assert.match(html,/Waiting for XGRChain validators/);
+ assert.doesNotMatch(html,/six stages|<details|ux-flow-steps/);
+});
+test("safe and IBFT finality appear on the relevant token action, not only the last",()=>{
+ const start={...source("base","arbitrum"),status:"confirming-native-finality",
+  confirmed:false,sourceSafeHeadBlock:99};
+ const first=get(start,repsXGR);
+ assert.match(first.summary,/Base safe finality/);
+ assert.equal(first.verified,0);
+ const firstObserved={...source("base","arbitrum"),status:"awaiting-proof",
+  proofObservation:{state:"delivery-observed"}};
+ const firstHop=get(firstObserved,repsXGR);
+ assert.equal(firstHop.verified,1);
+ assert.equal(firstHop.steps[1].state,"observed");
+ assert.match(firstHop.summary,/XGRChain IBFT finality/);
+ const direct={...source("xgrchain","base"),destinationChain:"base",
+  status:"awaiting-proof",proofObservation:{state:"delivery-observed"}};
+ assert.match(get(direct,repsXGR).summary,/Base safe finality/);
+ const onward={...source("base","arbitrum"),status:"awaiting-onward",delivered:true};
+ const flow=deriveTransferFlow({journey:{origin:"base",destination:"arbitrum",asset:"XGR"},record:onward,
+  stage:"onward-source-pending",working:true});
+ const on=get(onward,repsXGR);
+ const inFlight=describeTokenJourney({flow,record:onward,stage:"onward-source-pending",working:true,
+  representations:repsXGR});
+ assert.equal(on.verified,2);
+ assert.match(inFlight.summary,/XGRChain IBFT finality/);
 });
