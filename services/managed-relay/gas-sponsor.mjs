@@ -133,6 +133,30 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
   throw Error("Original parent already used for second hop");
  return {first,route:routes[0]};
 }
+// N-08: One receipt confirmation is NOT canonical finality on an L2.
+// Do not mark a gas payment complete until a safe-chain head covers its
+// block, and the block hash remains canonical. Unsupported safe tags fail
+// closed (the worker retains the submitted reservation for reconciliation).
+export async function verifiedSponsorFinality({provider,chain,receipt,txHash}){
+ if(!receipt||receipt.status!==1||!HASH.test(txHash||"")||
+    !same(receipt.hash,txHash)||!HASH.test(receipt.blockHash||"")||
+    !Number.isSafeInteger(receipt.blockNumber)||receipt.blockNumber<1)
+  return false;
+ const safeTag=chain==="xgrchain"?"latest":"safe";
+ try{
+  const [head,block,original]=await Promise.all([
+   provider.getBlock(safeTag),provider.getBlock(receipt.blockNumber),
+   provider.getTransactionReceipt(txHash)]);
+  if(!head||!block||!original||
+     head.number<receipt.blockNumber||
+     !same(block.hash,receipt.blockHash)||
+     !same(original.blockHash,receipt.blockHash)||
+     original.status!==1)return false;
+  if(chain==="xgrchain"&&head.number-receipt.blockNumber<2)
+   return false;
+  return true;
+ }catch{return false}
+}
 // The worker never accepts an unauthenticated public request, destination
 // address or grant amount. Both come from verified read-only chain evidence.
 export async function sponsorOneCandidate({
@@ -207,12 +231,13 @@ export async function sponsorOneCandidate({
       !same(tx.from,wallet.address)||!same(tx.to,row.account)||
       BigInt(tx.value)!==value||Number(tx.nonce)!==Number(noncePending))
     throw Error("Sponsor receipt mismatch; operator reconciliation required");
-   if(receipt.status===1){
+   if(await verifiedSponsorFinality({provider,chain,receipt,txHash:tx.hash})){
     await db.recordConfirmed(key,tx.hash);
     return {status:"confirmed",chain,stage,txHash:tx.hash,amountWei:value.toString()};
    }
-   await db.recordFailed(key,tx.hash);
-   return {status:"needs-review",chain,stage,txHash:tx.hash};
+   if(receipt.status===0){await db.recordFailed(key,tx.hash);
+    return {status:"needs-review",chain,stage,txHash:tx.hash};}
+   return {status:"submitted",chain,stage,txHash:tx.hash};
   }
   return {status:"submitted",chain,stage,txHash:tx.hash,amountWei:value.toString()};
  }catch(error){
@@ -326,6 +351,7 @@ export async function reconcileSponsorGrants({pool,catalog,wallet,providers}){
   if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
      tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
    throw Error("Sponsorship receipt does not match durable signed intent");
+  if(receipt.status===1&&!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))continue;
   checked++;
   const status=receipt.status===1?"confirmed":"needs-review";
   if(receipt.status===1)confirmed++;
@@ -364,6 +390,46 @@ export async function reportSponsorReserves({pool,catalog,wallet,policy,provider
  }
  return states;
 }
+// Resolve old quotes from a canonical FINALIZED source block, never from TTL alone.
+// A prior execution may create gas obligations; only unequivocally UNUSED
+// expired quotes can release them. Ambiguous RPCs leave promises reserved.
+export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new Map(),now=Date.now()}){
+ const items=await pool.query({text:
+  "SELECT i.source_chain,i.execution_adapter,i.payer,i.quote_nonce::text AS quote_nonce,"+
+  " i.quote_expires_at FROM xita_sponsor_quote_intents i"+
+  " LEFT JOIN xita_sponsor_quote_resolutions r ON"+
+  " r.source_chain=i.source_chain AND r.execution_adapter=i.execution_adapter"+
+  " AND r.payer=i.payer AND r.quote_nonce=i.quote_nonce"+
+  " WHERE r.quote_nonce IS NULL AND i.quote_expires_at < NOW()-INTERVAL '10 minutes'"+
+  " ORDER BY i.quote_expires_at LIMIT 80"});
+ let resolved=0,held=0;
+ const abi=["function nonceUsed(address,uint256) view returns (bool)"];
+ for(const item of items.rows){
+  try{
+   const p=await getProvider(catalog,item.source_chain,providers);
+   const tag=item.source_chain==="xgrchain"?"latest":"finalized";
+   const head=await p.getBlock(tag);
+   if(!head||!HASH.test(head.hash||"")||
+      !Number.isSafeInteger(head.timestamp)||head.timestamp<=0||
+      head.timestamp*1000 < new Date(item.quote_expires_at).getTime()+120000||
+      (item.source_chain==="xgrchain"&&
+       (await p.getBlockNumber())-head.number<0))
+    {held++;continue}
+   const contract=new Contract(item.execution_adapter,abi,p);
+   const used=await contract.nonceUsed(item.payer,item.quote_nonce,{blockTag:head.number});
+   // Disagreeing or unavailable finalized evidence never releases the funds.
+   const result=await pool.query({text:
+    "INSERT INTO xita_sponsor_quote_resolutions"+
+    " (source_chain,execution_adapter,payer,quote_nonce,resolution,"+
+    " finalized_source_block,finalized_source_hash)"+
+    " VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING",
+    values:[item.source_chain,item.execution_adapter,item.payer,item.quote_nonce,
+     used?"used":"expired-unused",head.number,head.hash.toLowerCase()]});
+   if(result.rowCount===1)resolved++;
+  }catch{held++}
+ }
+ return {resolved,held};
+}
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
  const required=k=>{
@@ -400,6 +466,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
    " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
+  const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
@@ -413,7 +480,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
     stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
-  return {status:"checked",reviewed:rows.rows.length,reserves,reconciled,
+  return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};
  }finally{await pool.end()}

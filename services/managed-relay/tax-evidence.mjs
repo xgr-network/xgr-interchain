@@ -3,6 +3,7 @@ import {readFile,stat} from "node:fs/promises";
 import {Pool} from "pg";
 import {TypedDataEncoder} from "ethers";
 import {MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
+import {sponsorCapacityCovered} from "./sponsor-funding.mjs";
 import {COINGECKO_GAS_COIN_IDS,usdPrice12} from "./fee-quote.mjs";
 
 // Source headers are accepted ONLY through the loopback Nginx reverse proxy.
@@ -72,7 +73,7 @@ export function quoteEvidence(reply,prices,ip,location){
 }
 export async function saveQuoteEvidence(row,{
  connectionString=process.env.XITA_TAX_QUOTE_DATABASE_URL,
- quoteReply=null,grantLimits=null,
+ quoteReply=null,grantLimits=null,readLiveFunding=null,
  poolFactory=opts=>new Pool(opts)
 }={}){
  if(!connectionString)throw Error("Tax evidence database unavailable");
@@ -114,32 +115,52 @@ export async function saveQuoteEvidence(row,{
      "0x"+q.finalRecipient.slice(-40).toLowerCase(),q.onwardRouteId.toLowerCase(),
      row.issuedAt,row.expiresAt]
    });
-   // Lock each chain's budget in a stable sorted order, shared between
-   // concurrent quote transactions. Count all outstanding signed promises
-   // in the 24h window, even if a quote later expires: conservative by design.
-   // Reserved grant amounts are included in this bound before another quote
-   // can be signed and delivered to a wallet.
+   // Lock the same per-chain budget used by the actual grant worker.
+   // Existing signed promises must be funded as well as the NEW quote,
+   // under one serializable-by-chain critical section (N-07).
    for(const chain of [...new Set(grants.map(g=>g.chain))].sort()){
     const cap=grantLimits?.[chain];
-    if(!cap)throw Error("Missing chain sponsorship budget");
+    if(!cap||typeof readLiveFunding!=="function")
+     throw Error("Atomic sponsor funding verifier unavailable");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",
      ["xita-sponsor-quote-budget:"+chain]);
+    // Keep all unproven/expired quotes reserved for now: an expired quote
+    // may have executed before its TTL. A separate finality-verified
+    // on-chain redemption reconciliation is required before releasing it.
     const reserved=await client.query({text:
-     "SELECT COALESCE(SUM(promised_wei),0)::text AS amount"+
-     " FROM xita_sponsor_quote_commitments"+
-     " WHERE grant_chain=$1 AND created_at >= NOW()-INTERVAL '24 hours'",
+     "SELECT COALESCE(SUM(c.promised_wei),0)::text AS amount,COUNT(*)::int AS count"+
+     " FROM xita_sponsor_quote_commitments c"+
+     " WHERE c.grant_chain=$1"+
+     " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_quote_resolutions r"+
+     " WHERE r.source_chain=c.source_chain AND r.execution_adapter=c.execution_adapter"+
+     " AND r.payer=c.payer AND r.quote_nonce=c.quote_nonce"+
+     " AND r.resolution='expired-unused')"+
+     " AND NOT EXISTS ("+
+     " SELECT 1 FROM xita_sponsor_grants g"+
+     " JOIN xita_transfer_operations p ON"+
+     " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage"+
+     " WHERE p.source_chain=c.source_chain AND p.execution_adapter=c.execution_adapter"+
+     " AND p.account=c.payer AND p.quote_nonce=c.quote_nonce"+
+     " AND g.status='confirmed')",
      values:[chain]});
     const issued=await client.query({text:
      "SELECT COALESCE(SUM(amount_wei),0)::text AS amount"+
      " FROM xita_sponsor_grants"+
      " WHERE chain_name=$1 AND created_at >= NOW()-INTERVAL '24 hours'",
      values:[chain]});
-    const next=grants.filter(g=>g.chain===chain).reduce((v,g)=>v+BigInt(g.amountWei),0n);
-    // Conservative double-count of grants from promises prevents
-    // oversubscription; subsequent claims must fit the same budget.
-    if(next+BigInt(reserved.rows[0]?.amount||"0")+
-       BigInt(issued.rows[0]?.amount||"0")>BigInt(cap.dailyMaxWei))
-     throw Error("Sponsor quote capacity exhausted on "+chain);
+    const fresh=grants.filter(g=>g.chain===chain).map(g=>g.amountWei);
+    const evidence=await readLiveFunding(chain);
+    const allocation=sponsorCapacityCovered({
+     balanceWei:evidence.balanceWei,gasPriceWei:evidence.gasPriceWei,
+     minReserveWei:cap.minReserveWei,
+     currentOutstandingWei:reserved.rows[0]?.amount||"0",
+     currentOutstandingCount:Number(reserved.rows[0]?.count||0),
+     newCommitments:fresh,
+     spentTodayWei:issued.rows[0]?.amount||"0",
+     dailyMaxWei:cap.dailyMaxWei
+    });
+    if(!allocation.funded||!allocation.withinDaily)
+     throw Error("Atomic sponsor quote capacity exhausted on "+chain);
    }
    for(const g of grants){
     if(!["first-delivery","hub-onward","final-delivery"].includes(g.stage)||
