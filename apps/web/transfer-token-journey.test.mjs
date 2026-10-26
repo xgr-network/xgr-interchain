@@ -116,7 +116,7 @@ test("one-hop modal shows exactly two token actions and current step status",()=
  assert.equal((html.match(/class="ux-token-journey-step is-/g)||[]).length,2);
  assert.match(html,/Lock XGR/);
  assert.match(html,/Mint wXGR/);
- assert.match(html,/Waiting for XGRChain validators/);
+ assert.match(html,/Waiting for transfer verification/);
  assert.doesNotMatch(html,/six stages|<details|ux-flow-steps/);
 });
 test("safe and IBFT finality appear on the relevant token action, not only the last",()=>{
