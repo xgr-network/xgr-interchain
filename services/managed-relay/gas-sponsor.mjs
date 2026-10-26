@@ -390,7 +390,10 @@ export async function reportSponsorReserves({pool,catalog,wallet,policy,provider
  }
  return states;
 }
-// Resolve old quotes from a canonical FINALIZED source block, never from TTL alone.
+// Resolve quotes five minutes AFTER the on-chain EIP-712 expiry, only from a
+// canonical FINALIZED source block (never by TTL alone). The 5-minute
+// grace covers delayed wallet submission and source ingestion; separately
+// finalized redemption evidence is still mandatory on the RPC.
 // A prior execution may create gas obligations; only unequivocally UNUSED
 // expired quotes can release them. Ambiguous RPCs leave promises reserved.
 export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new Map(),now=Date.now()}){
@@ -400,7 +403,7 @@ export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new 
   " LEFT JOIN xita_sponsor_quote_resolutions r ON"+
   " r.source_chain=i.source_chain AND r.execution_adapter=i.execution_adapter"+
   " AND r.payer=i.payer AND r.quote_nonce=i.quote_nonce"+
-  " WHERE r.quote_nonce IS NULL AND i.quote_expires_at < NOW()-INTERVAL '10 minutes'"+
+  " WHERE r.quote_nonce IS NULL AND i.quote_expires_at < NOW()-INTERVAL '5 minutes'"+
   " ORDER BY i.quote_expires_at LIMIT 80"});
  let resolved=0,held=0;
  const abi=["function nonceUsed(address,uint256) view returns (bool)"];

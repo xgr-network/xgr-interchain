@@ -156,5 +156,5 @@ test("N-06 expires only after finalized source nonce evidence, never merely by t
  const catalog={chains:{base:{chainId:8453,rpcUrls:["https://example.org"]}}};
  const held=await reconcileExpiredSponsorQuotes({pool,catalog,providers});
  assert.equal(held.resolved,0);assert.equal(inserted,0);
- assert.ok(seen.some(x=>x.includes("quote_expires_at")));
+ assert.ok(seen.some(x=>x.includes("quote_expires_at")&&x.includes("5 minutes")));
 });
