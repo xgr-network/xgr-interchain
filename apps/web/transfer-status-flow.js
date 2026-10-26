@@ -163,47 +163,71 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
 export function transferDisplayStatus(flow,{record=null,stage="",working=false,walletReady=false,error=""}={}){
  const source=name(flow.origin),target=name(flow.destination);
  const status=record?.status||"";
- const proof= status==="awaiting-final-proof"?record?.finalProofObservation:
+ const proof=status==="awaiting-final-proof"?record?.finalProofObservation:
    status==="awaiting-proof"?record?.proofObservation:null;
+ // Distinguish the first-hop destination from the final destination of a
+ // spoke-to-spoke journey. A safe-head observation is not final delivery.
+ const deliveryChain=status==="awaiting-final-proof"||status==="final-delivery-unknown"?
+   flow.destination:flow.twoHop?"xgrchain":flow.destination;
+ const destination=name(deliveryChain);
  if(flow.delivered)return {label:"Transfer complete",detail:"All destinations verified.",kind:"done"};
  if(error)return {label:"Verification needs attention",
-  detail:String(error),kind:"attention"};
- // An observer attempt may temporarily fail even when its next verification is
- // already queued. Don't turn one backend retry into a user-facing crisis.
- // This changes presentation ONLY: signing still requires canonical proofs.
+   detail:String(error),kind:"attention"};
+ // These are actionable evidence/configuration conflicts, not normal retries.
+ if(status==="journey-ambiguous")return {label:"Verification needs attention",
+   detail:"The two transfer steps could not be linked unambiguously. No further wallet transaction will be requested.",kind:"attention"};
+ if(status==="destination-not-deployed")return {label:"Delivery unavailable",
+   detail:"The destination route is not fully deployed. The original source transaction remains on-chain.",kind:"attention"};
+ if(status==="source-failed")return {label:"Source transaction failed",
+   detail:"No source token movement was confirmed. Check the transaction in your wallet.",kind:"attention"};
+ // Unknown reads are neither failed transfers nor proof of delivery. Do not
+ // render an unrelated wallet-index synchronization notice as an error.
+ if(["delivery-unknown","final-delivery-unknown"].includes(status))
+  return {label:"Checking "+destination+" delivery and finality",
+   detail:"Destination verification is temporarily unavailable. XITA keeps checking automatically; do not repeat the source transaction.",kind:"waiting"};
+ if(status==="finality-unavailable")
+  return {label:"Checking "+source+" "+tokenFinalityName(flow.origin),
+   detail:"The safe chain head is temporarily unavailable. XITA will retry automatically.",kind:"waiting"};
+ // The observer briefly leases a proof for a fresh read. During that time
+ // "checking" must not be shown as a backwards wallet-step transition.
+ if(proof?.state==="delivery-observed")
+  return {label:"Waiting for "+destination+" "+tokenFinalityName(deliveryChain),
+   detail:"",kind:"waiting"};
  const updatedAt=Date.parse(proof?.updatedAt||"");
  const nextCheckAt=Date.parse(proof?.nextCheckAt||"");
  const scheduledRetry=proof?.state==="unavailable"&&
-  Number.isFinite(updatedAt)&&Date.now()-updatedAt<300000&&updatedAt<=Date.now()+60000&&
-  Number.isFinite(nextCheckAt)&&nextCheckAt>=Date.now()-30000&&
-  !["finality-unavailable","journey-ambiguous","destination-not-deployed",
-    "delivery-unknown","final-delivery-unknown"].includes(status);
- if(scheduledRetry)return {label:"Retrying "+(status==="awaiting-final-proof"?"XGRChain":source)+
-   " verification",detail:"",kind:"waiting"};
- if(flow.needsAttention)return {label:"Verification needs attention",
-  detail:String(flow.message||"Verification unavailable."),kind:"attention"};
+   Number.isFinite(updatedAt)&&Date.now()-updatedAt<300000&&updatedAt<=Date.now()+60000&&
+   Number.isFinite(nextCheckAt)&&nextCheckAt>=Date.now()-30000;
+ const repeatedStructuralFailure=proof?.state==="unavailable"&&
+   Number(proof?.attempts)>=3&&
+   ["PROOF_CONFIG_MISMATCH","PROOF_DESTINATION_QUORUM_REJECTED",
+    "PROOF_DESTINATION_ROUTE_REJECTED","PROOF_DESTINATION_ISM_REJECTED",
+    "PROOF_DESTINATION_REVERT"].includes(proof.reason);
+ if(repeatedStructuralFailure)return {label:"Verification delayed",
+   detail:"Destination verification needs technical review. No further wallet transaction will be requested until checks pass.",kind:"attention"};
+ if(scheduledRetry)return {label:"Rechecking "+destination+" delivery",
+   detail:"A verification retry is scheduled automatically. No wallet action is needed.",kind:"waiting"};
+ if(flow.needsAttention)return {label:"Verification delayed",
+   detail:"XITA cannot currently verify this transfer. It will keep checking; do not repeat the original transaction.",kind:"attention"};
  if(status==="pending-source")
   return {label:"Waiting for "+source+" transaction",detail:"",kind:"waiting"};
  if(["confirming","confirming-native-finality"].includes(status))
   return {label:"Waiting for "+source+" "+tokenFinalityName(flow.origin),
    detail:"",kind:"waiting"};
- if(status==="awaiting-final-proof"&&proof?.state==="delivery-observed")
-  return {label:"Waiting for "+target+" "+tokenFinalityName(flow.destination),
-   detail:"",kind:"waiting"};
- if(status==="awaiting-proof"&&proof?.state==="delivery-observed"){
-  const dest=flow.twoHop?"XGRChain":target;
-  return {label:"Waiting for "+dest+" "+
-   tokenFinalityName(flow.twoHop?"xgrchain":flow.destination),
-   detail:"",kind:"waiting"};
- }
  if(["first-delivery-pending","final-delivery-pending","onward-source-pending","source-pending"].includes(stage)&&working)
   return {label:"Waiting for "+(stage==="source-pending"?source:
    stage==="first-delivery-pending"?"XGRChain":
    stage==="onward-source-pending"?"XGRChain":target)+" confirmation",detail:"",kind:"waiting"};
  if(["first-delivery-sign","final-delivery-sign","onward-source-sign","source-sign","source-approval","onward-approval"].includes(stage)&&working)
-  return {label:"Confirm in MetaMask",detail:"",kind:"wallet"};
- if(status==="awaiting-onward"||walletReady||working&&stage==="onward-preflight"||
-   proof?.state==="ready")return {label:"Preparing next wallet step",detail:"",kind:"waiting"};
+  return {label:"Confirm in your wallet",detail:"",kind:"wallet"};
+ if(status==="awaiting-onward")
+  return {label:"Preparing XGRChain wallet transaction",detail:"",kind:"waiting"};
+ if(proof?.state==="checking")
+  return {label:"Checking "+destination+" delivery and "+tokenFinalityName(deliveryChain),
+   detail:"",kind:"waiting"};
+ if(walletReady||working&&stage==="onward-preflight"||proof?.state==="ready")
+  return {label:"Checking "+destination+" delivery",
+   detail:"XITA is preparing a verified delivery transaction only if one is still required. Your wallet will ask for confirmation when needed.",kind:"waiting"};
  if(["awaiting-proof","awaiting-final-proof"].includes(status))
   return {label:"Waiting for "+(status==="awaiting-final-proof"?"XGRChain":source)+" validators",
    detail:"",kind:"waiting"};
