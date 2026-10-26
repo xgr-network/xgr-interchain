@@ -39,7 +39,7 @@ function fakePool({committed="0",taxRowCount=1}={}){
 test("fee evidence and all signed quote promises commit in ONE database transaction",async()=>{
  const fake=fakePool();
  await saveQuoteEvidence(row,{connectionString:"fake",quoteReply,grantLimits,
-  poolFactory:fake.poolFactory});
+  poolFactory:fake.poolFactory,readLiveFunding:async()=>({balanceWei:"1000000000",gasPriceWei:"1"})});
  const queries=fake.calls.map(c=>c.sql);
  assert.equal(queries[0],"BEGIN");
  assert.equal(queries.at(-1),"COMMIT");
@@ -51,19 +51,29 @@ test("fee evidence and all signed quote promises commit in ONE database transact
 test("over-budget or duplicate nonce never exposes a partially committed grant",async()=>{
  const budget=fakePool({committed:"9999"});
  await assert.rejects(()=>saveQuoteEvidence(row,{connectionString:"fake",
-  quoteReply,grantLimits,poolFactory:budget.poolFactory}),/capacity exhausted/);
+  quoteReply,grantLimits,poolFactory:budget.poolFactory,readLiveFunding:async()=>({balanceWei:"1000000000",gasPriceWei:"1"})}),/capacity exhausted/);
  assert.equal(budget.calls.at(-1).sql,"ROLLBACK");
  assert.equal(budget.calls.some(q=>q.sql==="COMMIT"),false);
  const dup=fakePool({taxRowCount:0});
  await assert.rejects(()=>saveQuoteEvidence(row,{connectionString:"fake",
-  quoteReply,grantLimits,poolFactory:dup.poolFactory}),/Duplicate signed quote nonce/);
+  quoteReply,grantLimits,poolFactory:dup.poolFactory,readLiveFunding:async()=>({balanceWei:"1000000000",gasPriceWei:"1"})}),/Duplicate signed quote nonce/);
  assert.equal(dup.calls.at(-1).sql,"ROLLBACK");
  assert.equal(dup.calls.some(q=>q.sql.includes("xita_sponsor_quote_intents")),false);
 });
 test("tampered quote nonce or fee cannot create a grant commitment",async()=>{
  const fake=fakePool();
  await assert.rejects(()=>saveQuoteEvidence(row,{connectionString:"fake",
-  quoteReply:{...quoteReply,quote:{...quote,nonce:"43"}},grantLimits,
+  quoteReply:{...quoteReply,quote:{...quote,nonce:"43"}},grantLimits,readLiveFunding:async()=>({balanceWei:"1000000000",gasPriceWei:"1"}),
   poolFactory:fake.poolFactory}),/commitment mismatch/);
  assert.equal(fake.calls.at(-1).sql,"ROLLBACK");
+});
+
+test("N-07 rejects an unfunded concurrently committed quote atomically",async()=>{
+ const fake=fakePool({committed:"0"});
+ await assert.rejects(()=>saveQuoteEvidence(row,{connectionString:"fake",
+  quoteReply,grantLimits,poolFactory:fake.poolFactory,
+  readLiveFunding:async()=>({balanceWei:"100",gasPriceWei:"10"})}),
+  /capacity exhausted/);
+ assert.equal(fake.calls.at(-1).sql,"ROLLBACK");
+ assert.ok(fake.calls.some(c=>c.sql.includes("xita_sponsor_quote_commitments")));
 });
