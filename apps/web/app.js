@@ -14,6 +14,7 @@ import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from 
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
+import {changedTransferBalanceChains} from "./transfer-balance-refresh.js";
 import {pendingDeliveryCount,activeSourceConfirmation} from "./wallet-pending.js";
 import {walletSigningQueue,walletSigningNotice} from "./wallet-action-attention.js";
 import {rememberSourceTxHint,listSourceTxHints,unresolvedSourceTxHints} from "./source-tx-hints.js";
@@ -321,6 +322,9 @@ function setConnectedAccount(next){
  state.account=account;
  connect.textContent=account?shorten(account):"Connect Wallet";
  if(changed){
+  transferBalanceEpoch++;
+  transferBalancePending.clear();
+  if(transferBalanceTimer!==null){clearTimeout(transferBalanceTimer);transferBalanceTimer=null;}
   transferRequest++;
   Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
   resumeProbed.clear();
@@ -348,6 +352,7 @@ function upsertTransfer(record){
  // One journey, not two pending operations. Link only independently verified
  // child Gateway+Dispatch provenance to the original parentMessageId.
  transferActivity.items=linkIndexedJourneys(current,current);
+ scheduleTransferBalanceRefresh(previous?[previous]:[],[observed],state.account);
  if(observed.confirmed===true&&/^0x[0-9a-f]{64}$/i.test(observed.txHash||"")&&
     state.catalog?.chains?.[observed.sourceChain])
   rememberSourceTxHint({account:state.account,sourceChain:observed.sourceChain,txHash:observed.txHash});
@@ -398,11 +403,13 @@ async function scanWalletHistory(){
   // Canonical SQL wallet projection REPLACES the previous browser read model.
   // Only the exact transaction being broadcast in this wallet session may
   // remain provisional until the index catches up. No Explorer/hint history.
+  const previousTransfers=transferActivity.items;
   transferActivity.items=canonicalWalletSnapshot({
    account,rows:data.items,previous:transferActivity.items,
    activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()&&
      flowView.open?flowView.sourceTxHash:null
   });
+  scheduleTransferBalanceRefresh(previousTransfers,transferActivity.items,account);
   transferActivity.indexOpenCount=Number.isSafeInteger(data.openCount)?
    Math.max(0,data.openCount):0;
   transferActivity.indexCoverage=data.coverage||null;
@@ -1107,6 +1114,31 @@ async function runJoin(action){
   drawJoin();
  }
 }
+// Targeted refresh after independently verified transfer progress. Debounce
+// several indexer events into one read per affected chain; no gas/wallet prompts.
+let transferBalanceTimer=null;
+let transferBalancePending=new Set();
+let transferBalanceEpoch=0;
+function scheduleTransferBalanceRefresh(before,after,account){
+ if(!account||account.toLowerCase()!==state.account?.toLowerCase())return;
+ const chains=changedTransferBalanceChains(before,after,account);
+ for(const chain of chains)if(state.catalog?.chains?.[chain])transferBalancePending.add(chain);
+ if(!transferBalancePending.size||transferBalanceTimer!==null)return;
+ const epoch=transferBalanceEpoch;
+ transferBalanceTimer=setTimeout(async()=>{
+  transferBalanceTimer=null;
+  const requested=[...transferBalancePending];transferBalancePending.clear();
+  const owner=state.account,catalog=state.catalog;
+  if(epoch!==transferBalanceEpoch||!owner||!catalog)return;
+  try{
+   const fresh=await readWalletTokenBalances({catalog,account:owner,chains:requested});
+   if(epoch!==transferBalanceEpoch||state.account?.toLowerCase()!==owner.toLowerCase())return;
+   state.walletTokenBalances={...(state.walletTokenBalances||{}),...fresh};
+   state.walletGasCheckedAt=new Date().toISOString();
+   if(["/transfer","/plan-route"].includes(path())||path().startsWith("/token/"))render();
+  }catch{/* A balance lookup failure never alters transfer evidence. */}
+ },800);
+}
 let walletGasRequest=0;
 const walletGasView=()=>({account:state.account,chainId:state.walletChainId,
   balances:state.walletBalances,tokenBalances:state.walletTokenBalances,
@@ -1455,11 +1487,13 @@ setInterval(async()=>{
       !Array.isArray(data.items))return;
    if(state.account?.toLowerCase()!==account.toLowerCase()||
      transferActivity.selectedTxHash?.toLowerCase()!==hash?.toLowerCase())return;
+   const previousTransfers=transferActivity.items;
    transferActivity.items=canonicalWalletSnapshot({
     account,rows:data.items,previous:transferActivity.items,
     activeSourceHash:flowView.account?.toLowerCase()===account.toLowerCase()?
       flowView.sourceTxHash:null
    });
+   scheduleTransferBalanceRefresh(previousTransfers,transferActivity.items,account);
    if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
    refreshTransferLink();
   }
