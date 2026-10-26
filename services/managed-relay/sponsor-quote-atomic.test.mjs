@@ -21,8 +21,8 @@ const quoteReply={status:"SIGNED_INTERCHAIN_FEE_QUOTE",source:"base",
   {chain:"xgrchain",stage:"first-delivery",amountWei:"1000"},
   {chain:"arbitrum",stage:"final-delivery",amountWei:"500"}]}};
 const grantLimits={
- xgrchain:{maxGrantWei:"2000",dailyMaxWei:"10000"},
- arbitrum:{maxGrantWei:"2000",dailyMaxWei:"10000"}};
+ xgrchain:{maxGrantWei:"2000",dailyMaxWei:"10000",minReserveWei:"500"},
+ arbitrum:{maxGrantWei:"2000",dailyMaxWei:"10000",minReserveWei:"500"}};
 function fakePool({committed="0",taxRowCount=1}={}){
  const calls=[],client={
   query:async req=>{
