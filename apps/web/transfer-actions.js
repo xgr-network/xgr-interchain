@@ -686,5 +686,5 @@ export async function resumeDelivery({catalog,account,record,provider,
  if(receipt.status!=="0x1")return {status:"failed",txHash};
  const after=await findWalletSourceTx({catalog,account,sourceChain:record.sourceChain,
   txHash:record.txHash,fetcher});
- return {status:after.status==="delivered"?"delivered":"pending",txHash};
+ return {status:after.status==="delivered"?"delivered":"pending",txHash,receiptConfirmed:true};
 }
