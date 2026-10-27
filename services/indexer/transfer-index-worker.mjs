@@ -200,13 +200,15 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  // routes remain in the historical index, but cannot starve active deliveries.
  if(!all.size)return {checked:0,delivered:0,unknown:0};
  const active=[...all.values()];
- const pairs=active.map((_,i)=>`(${2*i+1}::text,${2*i+2}::char(66))`).join(",");
+ const param=n=>String.fromCharCode(36)+n; // PostgreSQL numbered bind parameter
+ const pairs=active.map((_,i)=>"("+param(2*i+1)+"::text,"+param(2*i+2)+"::char(66))").join(",");
  const values=active.flatMap(r=>[r.sourceChain,r.routeId]);
+ const limitParam=param(values.length+1);
  const pending=await pool.query({text:`SELECT o.source_chain,o.route_id,o.message_id FROM
  xita_transfer_operations o
  WHERE EXISTS (SELECT 1 FROM (VALUES ${pairs}) AS active(source_chain,route_id)
    WHERE active.source_chain=o.source_chain AND active.route_id=o.route_id)
- ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${values.length+1}`,
+ ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${limitParam}`,
   values:[...values,limit]});
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
