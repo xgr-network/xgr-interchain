@@ -208,7 +208,7 @@ test("F-08: a stalled read expires without delaying another chain or releasing a
  const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers,readTimeoutMs:15});
  assert.deepEqual(result,{checked:0,confirmed:0,held:3,chainFailures:1,journalErrors:0});
  assert.equal(updates.length,2,"blocked chain's later rows are not needlessly probed");
- assert.ok(updates.every(x=>x.text.includes("status='submitted'")));
+ assert.ok(updates.every(x=>x.text.includes("status IN ('submitted','reserved')")));
  assert.ok(!updates.some(x=>x.text.includes("SET status=$2")));
 });
 
@@ -229,9 +229,56 @@ test("F-08: an unexpected transaction identity is held, not confirmed or retried
  assert.equal(result.confirmed,0);assert.equal(result.held,1);
  assert.equal(result.chainFailures,0,"mismatched grants do not poison the entire source chain");
  assert.equal(writes.length,1);assert.match(writes[0].values[2],/durable signed intent/);
- assert.match(writes[0].text,/status='submitted'/);
+ assert.match(writes[0].text,/status IN/);
 });
 
+test("F-07: prepared signed bytes recover after crash with no user signature and identical tx hash",async()=>{
+ const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b"),hashBlock=hash("e");
+ const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const digest=Transaction.from(rawTx).hash;
+ const row={grant_key:"base:"+hash("1")+":first-delivery",
+  chain_name:"xgrchain",sponsor_address:sponsor.address.toLowerCase(),
+  recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
+  prepared_hash:digest,raw_tx:rawTx};
+ const actions=[],provider={
+  getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>7,
+  getTransaction:async()=>null,
+  broadcastTransaction:async bytes=>{actions.push(bytes);return {hash:digest};}
+ };
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows:[row]};
+  actions.push(q);return {rowCount:1};
+ }};
+ const result=await reconcileSponsorGrants({pool,wallet:sponsor,
+  catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]])});
+ assert.equal(result.held,1);
+ assert.equal(actions[0],rawTx,"only exact originally signed bytes are rebroadcast");
+ assert.equal(actions.filter(x=>typeof x==="string").length,1);
+ assert.ok(actions.every(x=>typeof x!=="object" || !x.text?.includes("SET status=$2")));
+});
+
+test("F-07: a consumed nonce holds the exact signed grant for operator review",async()=>{
+ const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b");
+ const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const row={grant_key:"base:"+hash("1")+":first-delivery",
+  chain_name:"xgrchain",sponsor_address:sponsor.address.toLowerCase(),
+  recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
+  prepared_hash:Transaction.from(rawTx).hash,raw_tx:rawTx};
+ let broadcasts=0;
+ const provider={getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>8,
+  broadcastTransaction:async()=>{broadcasts++}};
+ const pool={query:async q=>q.text?.startsWith("WITH due AS")?
+  {rows:[row]}:{rowCount:1}};
+ const result=await reconcileSponsorGrants({pool,wallet:sponsor,
+  catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]])});
+ assert.equal(result.checked,1);
+ assert.equal(result.confirmed,0);
+ assert.equal(broadcasts,0);
+});
 test("N-06 expires only after finalized source nonce evidence, never merely by time",async()=>{
  const quote={source_chain:"base",execution_adapter:addr("b"),payer:addr("a"),
   quote_nonce:"42",quote_expires_at:new Date("2026-10-25T12:00:00Z")};
