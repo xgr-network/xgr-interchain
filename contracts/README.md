@@ -1,4 +1,4 @@
-# XITA v3.1.5 Solidity contracts
+# XITA Direct-BLS Solidity contracts
 
 There is one public, permissionless route-registration architecture.
 
@@ -33,13 +33,13 @@ remote-pair bindings and two-chain end-to-end behavior before enabling a deploym
 ## Optional operator service (no protocol authority)
 
 `XITAExecutionGateway.sol` is a chain-wide source adapter (one per chain),
-with owner-signed EIP-712 quotes (single signed `issuedAt`, configurable
+with service-wallet-signed EIP-712 quotes (single signed `issuedAt`, configurable
 on-chain validity 1–90 seconds; never a separately signed deadline) and
 exact SOURCE-native relayer fee receipts.
 It calls unchanged ILNGateway.bridge and does not grant the GmbH owner any
 mint, validator, registration, source FeeVault or Mailbox authority.
-The GmbH owner can withdraw its own delivery service fees even before
-completion: this is an explicitly operator-trusted commercial service, not
+Anyone can call `claimFees()`, but accrued commercial service fees are paid
+exclusively to the current `serviceWallet`, even before completion: this is an explicitly operator-trusted commercial service, not
 a refundable on-chain gas bond or an execution guarantee. Other relayers
 can provide their own frontend, relayer, quote service and indexer.
 No deployment is implied by adding the Solidity source.
@@ -48,3 +48,7 @@ No deployment is implied by adding the Solidity source.
 ## Current protocol baseline
 
 For node v3.4.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.
+
+## System context and individual contract roles
+
+See the [system and contract interaction diagrams](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Context_and_Contracts.md) for all production contracts, libraries and interfaces, their callers and authority, deployment dependencies, principal/fee flows and the two-hop lifecycle. The [contract reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_Reference.md) explains method behavior; the [declared API](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_API.md) inventories signatures.
