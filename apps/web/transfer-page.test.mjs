@@ -145,3 +145,20 @@ test("linked TX3 and already indexed TXs cannot appear as independent broadcasts
  assert.equal((html.match(/data-source-tx=/g)||[]).length,3);
  assert.match(html,new RegExp(unknown));
 });
+
+test("F-09: native XGR Mailbox delivery never implies direct recipient payout",()=>{
+ const delivered={account,asset:"XGR",sourceChain:"base",destinationChain:"xgrchain",
+  txHash:h("a"),messageId:h("b"),status:"delivered",delivered:true};
+ const html=renderMyTransfers({account,catalog:cat,items:[delivered],
+  nativeClaim:{account,status:"pending",amountWei:"5000000000000000000",busy:false}});
+ assert.match(html,/Native XGR claim pending/);
+ assert.match(html,/Claim native XGR in wallet/);
+ assert.match(html,/id="xita-check-native-claim"/);
+ assert.match(html,/original beneficiary/);
+ const unknown=renderMyTransfers({account,catalog:cat,items:[delivered]});
+ assert.match(unknown,/Mailbox delivered · payout not independently checked/);
+ assert.doesNotMatch(unknown,/Claim native XGR in wallet/);
+ const otherWallet=renderMyTransfers({account:other,catalog:cat,items:[delivered],
+  nativeClaim:{account,status:"pending",amountWei:"5000000000000000000"}});
+ assert.doesNotMatch(otherWallet,/Claim native XGR in wallet/);
+});

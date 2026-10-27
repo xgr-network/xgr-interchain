@@ -23,7 +23,7 @@ const statuses={
 };
 export function validWalletAddress(account){return typeof account==="string"&&ADDR.test(account)&&!/^0x0{40}$/i.test(account)}
 export function transferMenuVisible(account){return validWalletAddress(account)}
-export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null}={}){
+export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],scanning=false,notice="",error="",scanReport=null,indexCoverage=null,nativeClaim=null}={}){
  if(!validWalletAddress(account))return "";
  const routeList=configuredGatewayRoutes(catalog);
  const available=[...new Set(routeList.map(r=>r.sourceChain))];
@@ -38,8 +38,31 @@ export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],sc
   '<div class="ux-transfer-meta"><span>Source TX</span><code>'+esc(h.txHash)+'</code></div>'+
   '<button class="ux-button" type="button" data-xita-inspect-broadcast="'+esc(h.txHash)+'" data-xita-broadcast-chain="'+esc(h.sourceChain)+'">Verify source TX</button>'+
   '</article>').join("");
+ const claimActive=nativeClaim?.account===account.toLowerCase();
+ const pendingNative=claimActive&&nativeClaim.status==="pending"&&
+  /^\d+$/.test(nativeClaim.amountWei||"")&&BigInt(nativeClaim.amountWei)>0n;
+ const xgrNativeDestination=t=>t.asset==="XGR"&&t.destinationChain==="xgrchain"&&t.delivered===true;
+ const claimPanel='<section class="ux-panel ux-native-claim" aria-label="Native XGR payout claims">'+
+  '<div class="ux-kicker">NATIVE XGR · DELIVERY CHECK</div>'+
+  '<h3>Check native XGR payout</h3>'+
+  '<p class="ux-small">A verified Mailbox delivery does not guarantee that a recipient contract accepted native XGR. Any rejected payout stays backed in the XGRChain router and must be claimed by the original beneficiary.</p>'+
+  (pendingNative?'<p class="ux-transfer-warning"><strong>Unpaid native XGR:</strong> '+
+    esc((BigInt(nativeClaim.amountWei)/10n**18n).toString())+' XGR (whole units; check exact balance in wallet) is held for this beneficiary.</p>':
+   claimActive&&nativeClaim.status==="none"?'<p class="ux-small">No outstanding native XGR router claim was found at the checked head.</p>':
+   claimActive&&nativeClaim.status==="submitted"?'<p class="ux-transfer-warning">Native claim transaction submitted: '+esc(nativeClaim.txHash||"")+'. Verify its receipt and wallet balance. Do not submit another claim.</p>':
+   '<p class="ux-transfer-warning">Native payout is not yet independently verified. Do not assume a completed Mailbox delivery credited the wallet.</p>')+
+  (claimActive&&nativeClaim.error?'<p class="ux-transfer-error" role="alert">'+esc(nativeClaim.error)+'</p>':'')+
+  '<div class="ux-transfer-actions"><button type="button" id="xita-check-native-claim"'+(nativeClaim?.busy?' disabled':'')+'>Check XGR claim balance</button>'+
+  (pendingNative&&!nativeClaim.txHash?'<button class="ux-button" type="button" id="xita-withdraw-native-claim"'+
+   (nativeClaim.busy?' disabled':'')+'>Claim native XGR in wallet</button>':'')+'</div>'+
+  '<p class="ux-small">The claim requires a wallet transaction on XGRChain. Smart-contract beneficiaries must authorize withdrawal through their own wallet/contract execution path. No company wallet can claim another beneficiary’s funds.</p></section>';
  const cards=walletJourneys(items).filter(t=>t.account?.toLowerCase()===account.toLowerCase()).map(t=>{
-  const [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
+  let [title,detail]=statuses[t.status]||statuses["delivery-unknown"];
+  if(xgrNativeDestination(t)){
+   title=pendingNative?"Native XGR claim pending":"Mailbox delivered · payout not independently checked";
+   detail=pendingNative?"XGRChain router holds native XGR for this recipient. Claim it from the beneficiary wallet.":
+    "Mailbox delivery does not prove that a recipient contract received its native XGR. Check the native XGR claim balance below.";
+  }
   const ref=t.messageId&&HASH.test(t.messageId)?t.messageId:null;
   const canRecover=HASH.test(t.txHash||"")&&[
    "pending-source","confirming","confirming-native-finality","finality-unavailable","awaiting-proof","awaiting-onward",
@@ -89,6 +112,7 @@ export function renderMyTransfers({account,catalog,items=[],broadcastHints=[],sc
    ' placeholder="0x…" minlength="66" maxlength="66" required></label>'+
    '<button type="submit"'+(available.length===0?" disabled":"")+'>Find transfer</button></form>'+
   '</details>'+
+  claimPanel+
   '<section class="ux-transfer-cards"><h2>Wallet transfers</h2>'+
   (cards||'<p class="ux-muted">No verified transfers identified in available history. This is not proof that your wallet has never bridged.</p>')+'</section>'+
   (broadcasts?'<details class="ux-transfer-lookup"><summary>Unverified local wallet broadcasts (diagnostics only)</summary>'+

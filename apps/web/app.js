@@ -12,6 +12,7 @@ import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
 import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
+import {readNativeXGRClaim,submitNativeXGRClaim} from "./native-xgr-claim.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
 import {changedTransferBalanceChains} from "./transfer-balance-refresh.js";
@@ -31,6 +32,34 @@ const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,tr
 const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
 const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 const sponsorTransfer={key:"",status:"unavailable",grants:[],upfrontRequired:null,checkedAt:0,loading:false};
+const nativeClaim={account:"",status:"unknown",amountWei:"0",router:null,txHash:null,updated:0,busy:false,error:""};
+async function refreshNativeClaim(force=false){
+ const account=state.account;
+ if(!account||!state.catalog||nativeClaim.busy)return;
+ if(!force&&nativeClaim.account===account.toLowerCase()&&Date.now()-nativeClaim.updated<90000)return;
+ nativeClaim.busy=true;nativeClaim.account=account.toLowerCase();nativeClaim.updated=Date.now();
+ try{
+  const found=await readNativeXGRClaim({catalog:state.catalog,account});
+  if(state.account?.toLowerCase()!==account.toLowerCase())return;
+  nativeClaim.status=nativeClaim.txHash?"submitted":found.status;
+  nativeClaim.amountWei=found.amountWei;nativeClaim.router=found.router;nativeClaim.error="";
+ }catch(e){
+  if(state.account?.toLowerCase()!==account.toLowerCase())return;
+  nativeClaim.status="unavailable";nativeClaim.error=String(e?.message||"Unable to verify native XGR claim").slice(0,190);
+ }finally{nativeClaim.busy=false;if(path()==="/my-transfers"&&state.catalog)render();}
+}
+async function withdrawNativeClaim(){
+ if(nativeClaim.busy||nativeClaim.txHash||nativeClaim.status!=="pending"||!state.account)return;
+ const account=state.account;nativeClaim.busy=true;nativeClaim.error="";
+ try{
+  const submitted=await submitNativeXGRClaim({catalog:state.catalog,account,wallet:globalThis.ethereum});
+  if(state.account?.toLowerCase()!==account.toLowerCase())return;
+  nativeClaim.status="submitted";nativeClaim.txHash=submitted.txHash;
+ }catch(e){
+  nativeClaim.error=String(e?.message||"Native XGR claim could not be submitted").slice(0,200);
+ }finally{nativeClaim.busy=false;if(path()==="/my-transfers")render();}
+}
+
 async function refreshSponsorship(){
  if(sponsorship.loading||Date.now()-sponsorship.checkedAt<30000)return;
  sponsorship.loading=true;sponsorship.checkedAt=Date.now();
@@ -1271,7 +1300,8 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error,
+   nativeClaim:nativeClaim.account===state.account?.toLowerCase()?nativeClaim:null}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
@@ -1354,6 +1384,8 @@ function render(){
  document.querySelector("[data-fee-info-close]")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
  document.querySelectorAll("[data-xita-gas-refresh]").forEach(button=>button.addEventListener("click",()=>{if(state.account)void updateWalletGas();}));
  document.querySelector("#xita-scan-transfers")?.addEventListener("click",()=>void scanWalletHistory());
+ document.querySelector("#xita-check-native-claim")?.addEventListener("click",()=>void refreshNativeClaim(true));
+ document.querySelector("#xita-withdraw-native-claim")?.addEventListener("click",()=>void withdrawNativeClaim());
  document.querySelectorAll("[data-xita-inspect-broadcast]").forEach(button=>button.addEventListener("click",()=>{
   if(!state.account)return;
   const sourceChain=button.dataset.xitaBroadcastChain,txHash=button.dataset.xitaInspectBroadcast;
@@ -1387,6 +1419,9 @@ function render(){
  if((p==="/my-transfers"||p==="/transfer")&&state.account&&
    !transferActivity.scanned&&!transferActivity.scanning)
   void scanWalletHistory();
+ if(p==="/my-transfers"&&state.account&&!nativeClaim.busy&&
+    (nativeClaim.account!==state.account.toLowerCase()||Date.now()-nativeClaim.updated>90000))
+  void refreshNativeClaim();
  document.querySelectorAll("[data-leader-sort]").forEach(button=>button.addEventListener("click",()=>{
    const key=button.dataset.leaderSort;
    if(!["lockedUsd","movedUsd","marketCapUsd"].includes(key))return;
