@@ -17,4 +17,7 @@ BEGIN
  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_worker') THEN
   GRANT SELECT,INSERT ON xita_sponsor_overtaken_obligations TO xita_sponsor_worker;
  END IF;
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
+  GRANT SELECT,INSERT ON xita_sponsor_overtaken_obligations TO xita_transfer_worker;
+ END IF;
 END $migration$;
