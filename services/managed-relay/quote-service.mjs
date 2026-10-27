@@ -3,6 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
+import {capXgrLaunchServiceFee} from "./xgr-launch-fee.mjs";
 import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {COINGECKO_GAS_COIN_IDS,quotedJourneyCostWei,verifiedCoinGeckoPrices} from "./fee-quote.mjs";
@@ -176,8 +177,26 @@ export async function buildManagedQuote({
   // execution service; do not alter the disabled-switch behaviour here.
   uiServiceFeeWei:"0",sponsoredServiceFeeWei:journey.quotedServiceFeeWei
  };
+ // Promotional XGR-only commercial fee cap; the underlying bridge
+ // principal and validator protocol fees are NOT subsidized or modified.
+ // The optional wallet-aware grant is immutable and independently funded.
+ // No cap is applied to legacy sponsorship-off quotes, which have no
+ // fee-locked gas-grant commitment to fund the promotional shortfall.
+ const launch=asset==="XGR"&&walletAwareEnabled?
+  capXgrLaunchServiceFee({
+   regularFeeWei:fee.quotedServiceFeeWei,
+   uiAvailabilityFeeWei:fee.uiServiceFeeWei,
+   sourceNativeUsd:oracle.sourceUsd,
+   xgrUsd:verifiedCoinGeckoPrices(priceData,source,"xgrchain",{now}).destinationUsd
+  }):null;
+ const chargedFee=launch?{
+  ...fee,quotedServiceFeeWei:launch.chargedFeeWei,
+  grossInterchainFeeWei:launch.chargedFeeWei,
+  uiServiceFeeWei:launch.uiAvailabilityFeeWei,
+  sponsoredServiceFeeWei:launch.sponsoredServiceFeeWei
+ }:fee;
  const gasPriceWei=gasByChain.get(destination).gasPriceWei;
- const interchainFeeWei=BigInt(fee.quotedServiceFeeWei);
+ const interchainFeeWei=BigInt(chargedFee.quotedServiceFeeWei);
  const directNoFee=false;
  const expiresAt=issuedAt+Number(ttl);
  const q={
@@ -218,10 +237,13 @@ export async function buildManagedQuote({
    firstDestinationChain:firstDestination,
    sponsorCommitments:allocation?.grants||[],
    sponsorAllocation:allocation?.stages||[],
-   grossInterchainFeeWei:fee.grossInterchainFeeWei,
-   uiServiceFeeWei:fee.uiServiceFeeWei,
-   sponsoredServiceFeeWei:fee.sponsoredServiceFeeWei,
-   sourceNativeInterchainFeeWei:fee.quotedServiceFeeWei,
+   grossInterchainFeeWei:chargedFee.grossInterchainFeeWei,
+   uiServiceFeeWei:chargedFee.uiServiceFeeWei,
+   sponsoredServiceFeeWei:chargedFee.sponsoredServiceFeeWei,
+   sourceNativeInterchainFeeWei:chargedFee.quotedServiceFeeWei,
+   xgrLaunchFeeCap:launch?{applied:launch.applied,
+    capWei:launch.capWei,regularFeeWei:launch.regularFeeWei,
+    discountWei:launch.discountWei,capXgr:"100"}:null,
    markupBps:fee.markupBps,
    priceVatCapBps:fee.priceVatCapBps,
    oracle:"CoinGecko · cached backend prices",maximumAgeSeconds:900},
