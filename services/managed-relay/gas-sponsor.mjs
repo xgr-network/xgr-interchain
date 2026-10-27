@@ -482,7 +482,8 @@ export async function reconcileSponsorGrants({
    try{
     await pool.query({text:
      "UPDATE xita_sponsor_grants SET updated_at=NOW(),last_error=$3"+
-     " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+     " WHERE grant_key=$1 AND (tx_hash=$2 OR (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
      values:[row.grant_key,row.tx_hash||row.prepared_hash,lastError]});
    }catch{journalErrors++;}
   }
