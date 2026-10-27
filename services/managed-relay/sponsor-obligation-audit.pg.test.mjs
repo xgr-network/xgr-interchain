@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {Pool} from "pg";
 import {inspectSponsorObligations,inspectSponsorObligationsCLI} from "./sponsor-obligation-audit.mjs";
+import {recordOvertakenSponsorObligations} from "./gas-sponsor.mjs";
 const URL_STRING=process.env.XITA_SPONSOR_TEST_DATABASE_URL;
 const A=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
 const H=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
@@ -67,10 +68,11 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
  try{
   for(const file of ["002_transfer_operations.sql","003_interchain_journey.sql",
     "004_sponsor_grants.sql","009_initial_fee_tax_evidence.sql",
-    "010_wallet_aware_sponsor_commitments.sql"]){
+    "010_wallet_aware_sponsor_commitments.sql",
+    "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
-  const reset=()=>db.query("TRUNCATE xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
+  const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
   await t.test("F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart",async()=>{
    await reset();
    await grant(db,1,{hash:false,minutes:5});
@@ -157,6 +159,19 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
       "INSERT INTO xita_sponsor_grants (grant_key,chain_name,sponsor_address,recipient,amount_wei,wallet_nonce,status) VALUES ('test','base',$1,$1,1,1,'reserved')",
       [sponsor]),e=>e.code==="25006");
    }finally{await readonly.end()}
+  });
+  await t.test("F-19: overtaken paid obligations are durable and idempotent",async()=>{
+   await reset();
+   await paid(db,70,{delivered:true});
+   await paid(db,71,{delivered:true,grantStatus:"confirmed"});
+   const wallet={address:sponsor};
+   const first=await recordOvertakenSponsorObligations({pool:db,wallet});
+   const second=await recordOvertakenSponsorObligations({pool:db,wallet});
+   assert.equal(first.recorded,1);
+   assert.equal(second.recorded,0);
+   const result=await db.query("SELECT stage,chain_name,promised_wei::text AS amount"+
+    " FROM xita_sponsor_overtaken_obligations");
+   assert.deepEqual(result.rows,[{stage:"first-delivery",chain_name:"xgrchain",amount:"50"}]);
   });
   await t.test("Healthy paid grants => no alerts",async()=>{
    await reset();
