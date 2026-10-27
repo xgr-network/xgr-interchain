@@ -351,7 +351,9 @@ export function sponsorDatabase(pool){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
    await pool.query({text:
     "UPDATE xita_sponsor_grants SET status='needs-review',updated_at=NOW()"+
-    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    " WHERE grant_key=$1 AND (tx_hash=$2 OR"+
+     " (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
     values:[key,txHash.toLowerCase()]});
   },
   async recordNeedsReview(key,message){
@@ -378,14 +380,40 @@ async function boundedSponsorReconcileRead(read,timeoutMs){
 }
 async function inspectSubmittedSponsorGrant({row,catalog,wallet,providers}){
  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
- const receipt=await p.getTransactionReceipt(row.tx_hash);
+ const hash=row.tx_hash||row.prepared_hash;
+ if(!HASH.test(hash||""))throw Error("Missing durable payment hash");
+ if(row.raw_tx){
+  const signed=Transaction.from(row.raw_tx);
+  if(!same(keccak256(row.raw_tx),hash)||
+     !same(signed.from,wallet.address)||!same(signed.to,row.recipient)||
+     signed.value!==BigInt(row.amount_wei)||
+     signed.nonce!==Number(row.wallet_nonce)||
+     signed.chainId!==BigInt(catalog.chains[chain]?.chainId))
+   throw Error("Prepared payment contradicts durable signed intent");
+ }
+ let receipt=await p.getTransactionReceipt(hash);
+ if(!receipt&&row.raw_tx){
+  const confirmedNonce=await p.getTransactionCount(wallet.address,"latest");
+  if(confirmedNonce>Number(row.wallet_nonce))return "needs-review";
+  if(confirmedNonce===Number(row.wallet_nonce)){
+   const pending=await p.getTransaction(hash);
+   if(!pending){
+    try{await p.broadcastTransaction(row.raw_tx)}
+    catch(e){
+     if(!/already known|known transaction|already imported/i.test(String(e?.message||e)))
+      throw e;
+    }
+   }
+  }
+  receipt=await p.getTransactionReceipt(hash);
+ }
  if(!receipt)return "pending";
- const tx=await p.getTransaction(row.tx_hash);
+ const tx=await p.getTransaction(hash);
  if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
     tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
   throw Error("Sponsorship receipt does not match durable signed intent");
  if(receipt.status===1){
-  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))
+  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:hash})))
    return "pending";
   return "confirmed";
  }
@@ -406,10 +434,15 @@ export async function reconcileSponsorGrants({
   " ROW_NUMBER() OVER (PARTITION BY chain_name"+
   " ORDER BY updated_at ASC,created_at ASC,grant_key ASC) AS chain_rank"+
   " FROM xita_sponsor_grants"+
-  " WHERE status='submitted' AND tx_hash IS NOT NULL"+
+  " WHERE status IN ('submitted','reserved')"+
+  " AND (tx_hash IS NOT NULL OR grant_key IN"+
+  " (SELECT grant_key FROM xita_sponsor_prepared_tx))"+
   " AND sponsor_address=$1 AND updated_at<=NOW()-INTERVAL '60 seconds')"+
-  " SELECT grant_key,chain_name,sponsor_address,recipient,amount_wei,wallet_nonce,tx_hash"+
-  " FROM due WHERE chain_rank<=12"+
+  " SELECT due.grant_key,due.chain_name,due.sponsor_address,due.recipient,"+
+  " due.amount_wei,due.wallet_nonce,due.tx_hash,s.raw_tx,"+
+  " s.tx_hash AS prepared_hash"+
+  " FROM due LEFT JOIN xita_sponsor_prepared_tx s"+
+  " ON s.grant_key=due.grant_key WHERE chain_rank<=12"+
   " ORDER BY chain_rank ASC,updated_at ASC,chain_name ASC,grant_key ASC LIMIT 40",
   values:[wallet.address.toLowerCase()]});
  let checked=0,confirmed=0,held=0,chainFailures=0,journalErrors=0;
@@ -426,9 +459,12 @@ export async function reconcileSponsorGrants({
    // Never mark anything confirmed before the complete original transaction
    // identity and chain-native finality have both been verified.
    const result=await pool.query({text:
-    "UPDATE xita_sponsor_grants SET status=$2,updated_at=NOW(),last_error=NULL"+
-    " WHERE grant_key=$1 AND tx_hash=$3 AND status='submitted'",
-    values:[row.grant_key,state,row.tx_hash]});
+    "UPDATE xita_sponsor_grants SET status=$2,tx_hash=COALESCE(tx_hash,$3),"+
+   " updated_at=NOW(),last_error=NULL"+
+    " WHERE grant_key=$1 AND (tx_hash=$3 OR"+
+   " (tx_hash IS NULL AND status='reserved'))"+
+   " AND status IN ('submitted','reserved')",
+    values:[row.grant_key,state,row.tx_hash||row.prepared_hash]});
    if(result.rowCount===1){
     checked++;if(state==="confirmed")confirmed++;
    }else held++;
@@ -447,7 +483,7 @@ export async function reconcileSponsorGrants({
     await pool.query({text:
      "UPDATE xita_sponsor_grants SET updated_at=NOW(),last_error=$3"+
      " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
-     values:[row.grant_key,row.tx_hash,lastError]});
+     values:[row.grant_key,row.tx_hash||row.prepared_hash,lastError]});
    }catch{journalErrors++;}
   }
  }
