@@ -2,7 +2,7 @@
 // Mailbox transaction. Everything is rechecked against finalized on-chain
 // source evidence, with a durable one-shot reservation BEFORE signing.
 import {readFileSync} from "node:fs";
-import {Wallet,JsonRpcProvider,Contract} from "ethers";
+import {Wallet,JsonRpcProvider,Contract,Transaction,keccak256} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
 import {readCachedGasPrices} from "./price-cache.mjs";
@@ -207,20 +207,29 @@ export async function sponsorOneCandidate({
  if(noncePending!==nonceLatest)
   return {status:"sponsor-wallet-pending",chain,stage};
  const key=sponsorGrantKey(row,stage);
+ const unsigned=await wallet.connect(provider).populateTransaction({
+  to:row.account,value,nonce:noncePending,gasLimit
+ });
+ const rawTx=await wallet.signTransaction(unsigned);
+ const prepared=Transaction.from(rawTx);
+ if(!same(prepared.from,wallet.address)||!same(prepared.to,row.account)||
+    prepared.value!==value||prepared.nonce!==noncePending||
+    prepared.chainId!==BigInt(catalog.chains[chain].chainId)||
+    prepared.gasLimit!==gasLimit)
+  throw Error("Sponsor prepared transaction mismatch");
  const reserved=await db.reserveGrant({
   key,chain,recipient:row.account,beneficiary:wallet.address,
   amountWei:value.toString(),nonce:noncePending,
-  dailyMaxWei:String(cfg.dailyMaxWei)
+  dailyMaxWei:String(cfg.dailyMaxWei),rawTx,txHash:prepared.hash
  });
  if(!reserved)return {status:"already-reserved-or-budget",chain,stage};
  // Durable reservation COMMITTED above, before signing or broadcast.
  // If broadcast outcome is unknown, mark needs-review and NEVER retry this key.
  afterReserve?.(key);
  try{
-  const tx=await wallet.connect(provider).sendTransaction({
-   to:row.account,value,nonce:noncePending,gasLimit
-  });
-  await db.recordSubmitted(key,tx.hash);
+  const tx=await provider.broadcastTransaction(rawTx);
+  if(!same(tx.hash,prepared.hash))throw Error("Sponsor broadcast hash mismatch");
+  await db.recordSubmitted(key,prepared.hash);
   // A single wallet may need two XGRChain grants. Confirm each grant before
   // attempting the next nonce rather than postponing it until a timer tick.
   // A timeout NEVER authorizes a duplicate transaction.
@@ -241,7 +250,8 @@ export async function sponsorOneCandidate({
   }
   return {status:"submitted",chain,stage,txHash:tx.hash,amountWei:value.toString()};
  }catch(error){
-  await db.recordNeedsReview(key,tiny(error?.message||error));
+  // Durable signed bytes remain recoverable. Never create a new payout.
+  await db.recordBroadcastError(key,tiny(error?.message||error)).catch(()=>{});
   throw Error("Sponsorship outcome uncertain; reserved grant requires reconciliation");
  }
 }
@@ -273,7 +283,14 @@ export function sponsorDatabase(pool){
    if(data.rows.length>1)throw Error("Ambiguous quote commitment");
    return data.rows[0]||null;
   },
-  async reserveGrant({key,chain,recipient,beneficiary,amountWei,nonce,dailyMaxWei}){
+  async reserveGrant({key,chain,recipient,beneficiary,amountWei,nonce,dailyMaxWei,rawTx,txHash}){
+   if(!/^0x[0-9a-f]{100,12000}$/.test(rawTx||"")||
+      !HASH.test(txHash||"")||!same(keccak256(rawTx),txHash))
+    throw Error("Invalid prepared sponsor transaction");
+   const tx=Transaction.from(rawTx);
+   if(!same(tx.from,beneficiary)||!same(tx.to,recipient)||
+      tx.value!==BigInt(amountWei)||tx.nonce!==Number(nonce))
+    throw Error("Prepared transaction does not match reservation");
    const client=await pool.connect();
    try{
     await client.query("BEGIN");
@@ -299,10 +316,19 @@ export function sponsorDatabase(pool){
      values:[key,chain,beneficiary.toLowerCase(),recipient.toLowerCase(),
       amountWei,nonce]
     });
+    if(result.rows.length===1)
+     await client.query({text:"INSERT INTO xita_sponsor_prepared_tx"+
+      " (grant_key,tx_hash,raw_tx) VALUES($1,$2,$3)",
+      values:[key,txHash.toLowerCase(),rawTx.toLowerCase()]});
     await client.query("COMMIT");
     return result.rows.length===1;
    }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
    finally{client.release()}
+  },
+  async recordBroadcastError(key,message){
+   await pool.query({text:"UPDATE xita_sponsor_grants SET last_error=$2"+
+    " WHERE grant_key=$1 AND status IN ('reserved','submitted')",
+    values:[key,tiny(message)]});
   },
   async recordSubmitted(key,txHash){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsorship tx hash");
