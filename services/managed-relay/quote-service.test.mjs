@@ -293,7 +293,13 @@ test("only committed wallet gas deficits increase the signed service fee",async(
  const empty=await buildManagedQuote({...options,readWalletNativeBalance:async()=>0n});
  assert.equal(funded.pricing.sourceNativeInterchainFeeWei,"1000000000000");
  assert.ok(BigInt(funded.pricing.sourceNativeInterchainFeeWei)<BigInt(partial.quote.interchainFeeWei));
- assert.ok(BigInt(partial.quote.interchainFeeWei)<BigInt(empty.quote.interchainFeeWei));
+ // Launch ceiling intentionally saturates the customer fee. The
+ // immutable sponsor liability must still increase with the gas deficit.
+ assert.equal(partial.quote.interchainFeeWei,empty.quote.interchainFeeWei);
+ assert.ok(BigInt(partial.pricing.estimatedCostSourceWei)<
+   BigInt(empty.pricing.estimatedCostSourceWei));
+ assert.ok(BigInt(partial.pricing.sponsorCommitments[0].amountWei)<
+   BigInt(empty.pricing.sponsorCommitments[0].amountWei));
  assert.equal(funded.pricing.sponsorCommitments.length,0);
  assert.equal(partial.pricing.sponsorCommitments.length,1);
  assert.equal(empty.pricing.sponsorCommitments.length,1);
