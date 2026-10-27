@@ -48,7 +48,7 @@ async function paid(db,id,{delivered=false,minutes=15,withOperation=true,
   route_name:"base_to_xgrchain",route_id:route,gateway:A(601),
   destination_chain:"xgrchain",destination_mailbox:A(603),
   amount_raw:"1000",validator_fee_wei:"0",delivered,
-  delivery_checked_at:delivered?aged(12):null,
+  delivery_checked_at:aged(12),
   source_indexed_at:aged(minutes),execution_adapter:adapter,
   interchain_fee_wei:fee,final_destination_chain:"xgrchain",
   final_recipient:payer,onward_route_id:H(0),quote_nonce:nonce
