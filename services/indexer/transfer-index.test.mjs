@@ -271,7 +271,7 @@ test("successful finalized initial adapter fee is recorded once, without assumin
 test("M-02: finality-qualified false reopens a previously completed delivery",async()=>{
  const queries=[],pool={query:async q=>{
   queries.push(q);
-  if(q.text.startsWith("SELECT source_chain,route_id,message_id"))return {
+  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))return {
    rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
   return {rows:[],rowCount:1};
  }};
@@ -283,12 +283,68 @@ test("M-02: finality-qualified false reopens a previously completed delivery",as
  const result=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
  assert.equal(result.checked,1);
  assert.equal(result.delivered,0);
- assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+ORDER BY/);
+ assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
  const update=queries.find(q=>q.text.includes("destination_checked_block=$4"));
  assert.ok(update);
  assert.equal(update.values[2],false);
  assert.equal(update.values[3],200);
  assert.equal(update.values[4],hash("e"));
+});
+
+test("F-26: retired routes cannot starve active deliveries in a bounded sweep",async()=>{
+ const orphanRows=Array.from({length:125},(_,i)=>({
+  source_chain:SOURCE,route_id:hash("f"),message_id:hash((i%10).toString())
+ }));
+ const activeRow={source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")};
+ const history=[...orphanRows,activeRow],writes=[];
+ let selected=0;
+ const pool={query:async q=>{
+  const sql=q.text;
+  if(sql.startsWith("SELECT o.source_chain,o.route_id,o.message_id")){
+   assert.match(sql,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
+   assert.match(sql,/JOIN|\(VALUES\s+\(\$1::text,\$2::char\(66\)\)/);
+   assert.ok(sql.indexOf("WHERE EXISTS")<sql.indexOf("LIMIT"),
+    "filter must be applied before bounding the backlog");
+   assert.deepEqual(q.values,[SOURCE,route.routeId,40]);
+   const allowed=new Set;
+   for(let i=0;i<q.values.length-1;i+=2)allowed.add(q.values[i]+":"+q.values[i+1]);
+   const rows=history.filter(r=>allowed.has(r.source_chain+":"+r.route_id))
+    .slice(0,q.values.at(-1));
+   selected+=rows.length;
+   return {rows};
+  }
+  writes.push(q);
+  return {rows:[],rowCount:1};
+ }};
+ const reader=rpc({
+  eth_chainId:()=>hex(8453),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="safe"?hex(200):height,hash:hash("e")}),
+  eth_call:()=> "0x"+word(1)
+ });
+ const outcome=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
+ assert.equal(selected,1);
+ assert.deepEqual(outcome,{checked:1,delivered:1,unknown:0});
+ assert.equal(writes.length,2,"only the active delivery status and attempt timestamp are updated");
+ assert.ok(writes.every(q=>q.values[1]===activeRow.message_id));
+});
+test("F-26: an empty active route catalog does not alter historical delivery rows",async()=>{
+ let calls=0;
+ const outcome=await refreshPendingDeliveries({routes:[],limit:40,
+  pool:{query:async()=>{calls++;throw Error("must not query historical rows")}},
+  rpc:async()=>{throw Error("must not request delivery") }});
+ assert.deepEqual(outcome,{checked:0,delivered:0,unknown:0});
+ assert.equal(calls,0);
+});
+test("F-26: active route keys are selected as pairs, not independent lists",async()=>{
+ let statement;
+ const another={...route,sourceChain:"another-chain",routeId:hash("2")};
+ await refreshPendingDeliveries({routes:[route,another],limit:5,
+  pool:{query:async q=>{statement=q;return {rows:[]}}},
+  rpc:async()=>{throw Error("no work expected")}});
+ assert.deepEqual(statement.values,
+  [SOURCE,route.routeId,"another-chain",another.routeId,5]);
+ assert.match(statement.text,/\(\$1::text,\$2::char\(66\)\),\(\$3::text,\$4::char\(66\)\)/);
+ assert.match(statement.text,/LIMIT \$5/);
 });
 
 test("shared observer scans two routes using one verified safe head and one Gateway query",async()=>{
