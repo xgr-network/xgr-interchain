@@ -1,5 +1,8 @@
 # XITA / XGR-Node v3.2.0 — minimum-diff Hyperlane recovery
 
+> **Historical/versioned specification.** Current Direct-BLS operations and relayer-independent execution are documented in [architecture](./architecture.md) and [operations](./operations.md). Merkle/bootstrap, historical route governance and per-validator environment instructions below are not current v3.4.0 runtime procedures. Contract family suffixes alone do not select a node release.
+
+
 **Status: implementation and security tests still in progress. Do not release, deploy, or merge without end-to-end proof.**
 
 ## Fixed architecture

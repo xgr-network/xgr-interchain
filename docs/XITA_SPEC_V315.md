@@ -1,5 +1,8 @@
 # XITA / XGR Interchain v3.1.5 — protocol specification
 
+> **Historical/versioned specification.** Current Direct-BLS operations and relayer-independent execution are documented in [architecture](./architecture.md) and [operations](./operations.md). Merkle/bootstrap, historical route governance and per-validator environment instructions below are not current v3.4.0 runtime procedures. Contract family suffixes alone do not select a node release.
+
+
 **IN DEVELOPMENT — do not deploy to mainnet.**
 
 This is a fresh XITA architecture with ONE route registration scheme. There
