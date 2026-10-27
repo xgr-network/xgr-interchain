@@ -84,7 +84,7 @@ export function previewRoute(model,source,destination,assetId){
   const hops=path.slice(1).map((to,i)=>model.routes.find(r=>r.assetId===assetId&&r.source===path[i]&&r.destination===to)||null);
   const configured=hops.every(Boolean);
   const active=configured&&hops.every(r=>r.active);
-  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet independently verified for delivery.":hops.length===2?"XITA monitors both hops and prepares their next steps. Each wallet transaction still requires MetaMask approval.":"A verified single-hop route is available.";
+  const reason=!configured?"No complete directed route is configured for this asset.":!active?"Configured routes are not yet independently verified for delivery.":hops.length===2?"XITA monitors both hops and prepares their next steps. Each wallet transaction still requires approval in the connected wallet.":"A verified single-hop route is available.";
   return {path,hops,configured,active,reason};
 }
 
@@ -314,7 +314,7 @@ function northstarStage(model,{universe=false}={}){
   '<strong>'+systems+' configured systems</strong>'+
   '<small>'+active+' active directed routes</small>'+
   '<small class="ux-ns-network-note">Topology preview · no simulated activity</small></div>'+
-  '<div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGRChain hub">◎ XGR Hub</button></div>'+
+  '<div class="ux-3d-controls" aria-label="Universe navigation"><button type="button" data-cosmos-action="home" aria-label="Reset to XGRChain hub">◎ XGR Hub</button><button type="button" data-cosmos-action="zoom-in" aria-label="Zoom in">+</button><button type="button" data-cosmos-action="zoom-out" aria-label="Zoom out">−</button></div>'+
   '<div class="ux-3d-focus" aria-live="polite"><div class="ux-kicker">EXPLORING SYSTEM</div><h3 class="ux-3d-focus-title"></h3>'+
   '<p class="ux-3d-focus-count"></p><div class="ux-3d-asset-links"></div></div>'+
   '<div class="ux-3d-hint">Drag to orbit · Scroll to zoom · Select a star to explore tokens · Home to reset</div>'+
@@ -746,9 +746,13 @@ const faqGroups=[
  ]},
  {label:"03 · TOKEN HOLDERS",title:"Explore and Move Tokens",items:[
   ["Can I move tokens between different worlds?","Yes, when the relevant routes have been deployed, verified and activated. Use the token page to inspect what is actually available. A chain drawn in the Universe does not mean that transfers are already live."],
-  ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. XITA continuously monitors both hops, but each wallet transaction must be confirmed by the user in MetaMask."],
+  ["How do transfers between two external chains work?","XGRChain acts as the hub. A journey from one external chain to another requires two separate transfers: first to XGRChain, then to the destination network. XITA continuously monitors both hops, but each wallet transaction must be confirmed in the connected wallet."],
   ["What is a wrapped token?","A wrapped or synthetic representation makes an asset usable on a second chain. It is not the original token on its home network; always check its canonical origin and verified contracts."],
   ["What happens if a relayer is unavailable?","A relayer can be replaced. An interrupted transfer may remain pending until delivery is resumed or recovered. Use the verified transaction and message status rather than assuming an automatic refund."],
+  ["Why can a transfer take several minutes?","Source transactions must reach safe finality before XITA can verify delivery. Some networks take several minutes. XITA automatically checks progress. Never repeat the initial source transaction just because confirmation takes longer."],
+  ["Can I leave XITA and return to a transfer later?","Yes. You may leave the website and return at any time. Connect the same wallet and open My Transfers to confirm the next verified wallet step. Closing the window does not cancel an on-chain transaction."],
+  ["Why are several wallet confirmations needed?","Each source transfer and destination delivery is authorized by your own wallet. For two-hop journeys, XGRChain adds another independently authorized transfer. XITA does not control your private keys."],
+  ["How does optional gas sponsorship work?","When available, XITA may cover specified downstream gas steps using its service wallet. The offer and grants are bound to the initial signed quote and must pass funding limits. Source wallet gas and optional token approvals are separate."],
   ["What does a transfer cost?","XITA route fees comprise the source-chain protocol fee and XITA Service Fee. Both are additional to the blockchain network gas paid separately for wallet transactions, source lock/burn and destination delivery on each hop. ERC-20 approval can require additional gas. Two-hop journeys include additional processing and gas transactions. Optional gas sponsorship covers only eligible gas steps when expressly confirmed; otherwise fund gas on every required chain. A fresh signed service quote is obtained before the source transaction."]
  ]},
  {label:"04 · TRUST & TRANSPARENCY",title:"Security and Network Facts",items:[
@@ -767,7 +771,7 @@ export function renderFAQ(){
     '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
       '<details class="ux-faq-item"><summary>'+esc(q)+'</summary><p>'+esc(answer)+'</p></details>').join("")+'</div></section>').join("")+'</div>'+
   '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/transfer">Transfer Tokens →</a>'+
-  '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a></div></div>';
+  '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a><a class="ux-ns-secondary" data-nav href="/contact">Contact XITA ↗</a></div></div>';
 }
 export function renderUniverse(model,selected=HUB,metrics=null,wallet={}){
  const active=model.routes.filter(r=>r.active).length;
