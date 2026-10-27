@@ -274,7 +274,7 @@ test("scheduled transient proof error remains calm but stale or missing retry ra
  const stalled=renderTransferFlow({journey:j,record:{...parent,proofObservation:{...obs,
   updatedAt:new Date(Date.now()-360000).toISOString(),
   nextCheckAt:new Date(Date.now()-300000).toISOString()}}});
- assert.match(stalled,/Verification delayed/);
+ assert.match(stalled,/Waiting for transfer verification/);
  const explicit=renderTransferFlow({journey:j,record:{...parent,proofObservation:obs},
   error:"Fee vault mismatch: contact support"});
  assert.match(explicit,/Verification needs attention/);
@@ -312,4 +312,25 @@ test("temporary destination RPC read failures remain waiting, not transfer failu
   notice:"Wallet index synchronized. Source confirmations are checked separately."});
  assert.match(html,/Checking Base delivery and finality/);
  assert.doesNotMatch(html,/Verification needs attention|Wallet index synchronized/);
+});
+
+test("normal background proof retries and ready handoff keep stable status",()=>{
+ const j={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const common={...base,sourceChain:"xgrchain",destinationChain:"base",finalDestinationChain:"base",status:"awaiting-proof",delivered:false};
+ for(const proofObservation of [
+  {state:"unavailable",reason:"PROOF_DESTINATION_REVERT",attempts:6},
+  {state:"checking"},{state:"ready",checkedAt:new Date().toISOString()}
+ ]){
+  const html=renderTransferFlow({journey:j,record:{...common,proofObservation}});
+  assert.match(html,/Waiting for transfer verification/);
+  assert.doesNotMatch(html,/Verification delayed|needs technical review|Checking Base delivery/);
+ }
+});
+test("elapsed clock and positive footer appear only in active verified flow",()=>{
+ const html=renderTransferFlow({journey,record:{...base,status:"awaiting-proof",delivered:false},elapsedStartedAt:1700000000000});
+ assert.match(html,/data-transfer-elapsed-start="1700000000000"/);
+ assert.match(html,/Blockchain confirmations can take a few minutes/);
+ assert.match(html,/Return anytime via My Transfers/);
+ const done=renderTransferFlow({journey,record:{...base,status:"journey-delivered",delivered:true},elapsedStartedAt:1700000000000});
+ assert.doesNotMatch(done,/data-transfer-elapsed-start/);
 });
