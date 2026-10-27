@@ -155,7 +155,7 @@ async function refreshFeePreview(){
    detail.hidden=false;
    const section=make("div","ux-fee-summary");
    const initial=make("div","ux-fee-summary-part");
-   initial.append(make("span","ux-fee-summary-label","Initial Service Fees"),
+   initial.append(make("span","ux-fee-summary-label",value.pricing?.xgrLaunchFeeCap?.applied===true?"Initial Service Fees · XGR launch rate":"Initial Service Fees"),
     make("strong","ux-fee-summary-value",formatWeiFee(total)+" "+coin),
     make("small","ux-fee-summary-hint","Protocol + XITA Service Fee · ~ $"+value.estimatedRouteFeeUsd+" USD"));
    const gas=make("div","ux-fee-summary-part");
@@ -206,6 +206,11 @@ async function refreshFeePreview(){
      content.append(detailRow("Optional gas sponsorship service",
       formatWeiFee(value.pricing.sponsoredServiceFeeWei)+" "+coin,"cost"));
    }
+   if(value.pricing?.xgrLaunchFeeCap?.applied===true)
+    content.append(make("p","ux-fee-details-note",
+     "XGR launch offer: XITA service fee capped at the value of 100 XGR. "+
+     "XITA funds any additional committed gas sponsorship; "+
+     "independent protocol fees and wallet-paid network gas remain separate."));
    content.append(make("p","ux-fee-details-note",allocation?
     "Wallet-specific quote estimate: XITA charges a fixed 1,000 gwei native-coin UI availability fee (0.000001 source coin). Optional sponsorship is separately calculated from the committed gas shortfall with the agreed pricing margin. Existing wallet gas and source wallet transaction gas are paid separately.":
     "Initial payment excludes wallet gas. Sponsorship is conditional on eligibility, wallet shortfall and reserves, verified after the initial fee transaction. Source gas and ERC-20 approvals are not included."));
