@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {Wallet,Transaction} from "ethers";
 import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
@@ -49,6 +50,7 @@ test("durable reserve is committed before any possible payout; duplicate key den
    const sql=typeof q==="string"?q:q.text,values=q?.values||[];
    calls.push(sql);
    if(sql.startsWith("SELECT COALESCE"))return {rows:[{amount:"0"}]};
+   if(sql.startsWith("INSERT INTO xita_sponsor_prepared_tx"))return {rowCount:1};
    if(sql.startsWith("INSERT INTO xita_sponsor_grants")){
     if(inserts.has(values[0]))return {rows:[]};
     inserts.add(values[0]);return {rows:[{grant_key:values[0]}]};
@@ -58,12 +60,16 @@ test("durable reserve is committed before any possible payout; duplicate key den
   release:()=>{}
  };
  const pool={connect:async()=>client,query:async()=>({rows:[]})},db=sponsorDatabase(pool);
+ const signer=new Wallet("0x"+"11".repeat(32));
+ const rawTx=await signer.signTransaction({chainId:1643,nonce:17,
+  to:first.account,value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const txHash=Transaction.from(rawTx).hash;
  const args={key:sponsorGrantKey(first,"first-delivery"),chain:"xgrchain",
-  recipient:first.account,beneficiary:addr("8"),amountWei:"5000",
-  nonce:17,dailyMaxWei:"10000"};
+  recipient:first.account,beneficiary:signer.address,amountWei:"5000",
+  nonce:17,dailyMaxWei:"10000",rawTx,txHash};
  assert.equal(await db.reserveGrant(args),true);
  assert.equal(await db.reserveGrant(args),false);
- assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_grants")));
+ assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_prepared_tx")));
  await assert.rejects(()=>db.recordSubmitted(args.key,"not-a-hash"),/Invalid/);
 });
 
