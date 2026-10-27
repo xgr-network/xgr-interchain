@@ -30,6 +30,10 @@ test("Join has one form and retains every validation and privacy requirement",()
  assert.match(html,/data-join="logoUrl"/);
  assert.match(html,/data-join="description"/);
  assert.match(html,/No wallet connection or payment is needed/);
+ assert.match(html,/XITA handles the complete technical integration/);
+ assert.match(html,/XGR funds deployment/);
+ assert.match(html,/Free integration &amp; deployment if approved/);
+ assert.doesNotMatch(html,/ja-preview|data-join-preview|Suggested token profile/);
  assert.doesNotMatch(html,/data-join-action="next"|data-join-action="back"|Step 3 \/ 3|data-join-target/);
  assert.doesNotMatch(html,/data-join="slug"|Token URL/);
  assert.match(html,/\/token\/example-protocol/);
@@ -59,7 +63,7 @@ test("Single page validates all three underlying security groups before submitti
 test("Single-page join never requires chain target selection or a manually chosen URL",()=>{
  const html=joinMarkup(chains,valid());
  assert.doesNotMatch(html,/data-join-target|New worlds|Token URL/);
- assert.match(html,/No upfront listing or deployment fee/);
+ assert.match(html,/XITA handles the complete technical integration/);
  assert.match(html,/Privacy Policy/);
  assert.match(html,/Email/);
 });
@@ -111,4 +115,15 @@ test("Join navigation is separate from submitted receipt and can start a second 
  assert.match(app,/if\(a\.pathname==="\/join"&&path\(\)!=="\/join"\)\{/);
  assert.match(app,/joinState\.data=draft\(state\.catalog\.chains\);[\s\S]*?joinState\.accepted=false;/);
  assert.match(app,/window\.addEventListener\("popstate",\(\)=>\{/);
+});
+
+test("Join layout keeps every input and form action after preview is removed",()=>{
+ const html=joinMarkup(chains,valid());
+ for(const key of ["name","symbol","website","logoUrl","shortDescription","description","canonicalChain","canonicalAddress","decimals","coingeckoId","contactEmail","applicantRole","confirmed"])
+  assert.match(html,new RegExp('data-join="'+key+'"'));
+ assert.equal((html.match(/id="ja-application-form"/g)||[]).length,1);
+ assert.equal((html.match(/data-join-action="submit"/g)||[]).length,1);
+ assert.match(html,/id="ja-coingecko-dialog"/);
+ assert.match(html,/class="ja-layout"/);
+ assert.doesNotMatch(html,/class="ux-panel ja-preview"/);
 });
