@@ -58,8 +58,8 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
  assert.equal(r.quote.bridgeValueWei,"1100000000000000000");
- assert.equal(r.quote.interchainFeeWei,"34925000000000000000000");
- assert.equal(r.sourceValueWei,"34926100000000000000000");
+ assert.equal(r.quote.interchainFeeWei,"100000000000000000000");
+ assert.equal(r.sourceValueWei,"101100000000000000000");
  assert.equal(r.quote.nonce,"42");
  assert.equal(r.quote.issuedAt,Math.floor(now/1000)-3);
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
@@ -81,7 +81,7 @@ test("fee quotes remain available without sponsorship but fail on missing gas pr
  const unsponsored=await buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
   gasPriceWei:1000000000n,availableWei:0n
  })});
- assert.equal(unsponsored.quote.interchainFeeWei,"34925000000000000000000");
+ assert.equal(unsponsored.quote.interchainFeeWei,"100000000000000000000");
  await assert.rejects(()=>buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
   gasPriceWei:0n,availableWei:0n
  })}),/Unpriced destination gas/);
@@ -293,7 +293,13 @@ test("only committed wallet gas deficits increase the signed service fee",async(
  const empty=await buildManagedQuote({...options,readWalletNativeBalance:async()=>0n});
  assert.equal(funded.pricing.sourceNativeInterchainFeeWei,"1000000000000");
  assert.ok(BigInt(funded.pricing.sourceNativeInterchainFeeWei)<BigInt(partial.quote.interchainFeeWei));
- assert.ok(BigInt(partial.quote.interchainFeeWei)<BigInt(empty.quote.interchainFeeWei));
+ // Launch ceiling intentionally saturates the customer fee. The
+ // immutable sponsor liability must still increase with the gas deficit.
+ assert.equal(partial.quote.interchainFeeWei,empty.quote.interchainFeeWei);
+ assert.ok(BigInt(partial.pricing.estimatedCostSourceWei)<
+   BigInt(empty.pricing.estimatedCostSourceWei));
+ assert.ok(BigInt(partial.pricing.sponsorCommitments[0].amountWei)<
+   BigInt(empty.pricing.sponsorCommitments[0].amountWei));
  assert.equal(funded.pricing.sponsorCommitments.length,0);
  assert.equal(partial.pricing.sponsorCommitments.length,1);
  assert.equal(empty.pricing.sponsorCommitments.length,1);
@@ -321,4 +327,36 @@ test("wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI c
  assert.equal(result.quote.onwardRouteId,hash("a"));
  assert.equal(result.status,"SIGNED_INTERCHAIN_FEE_QUOTE");
  assert.ok(result.signature);
+});
+
+test("XGR promotion changes only signed commercial fee; no principal or protocol concession",async()=>{
+ const source=defaults();
+ const opts={...source,walletAwareEnabled:true,
+  readWalletNativeBalance:async()=>0n};
+ const full=await buildManagedQuote({...opts,request:{...request,asset:"XGR"}});
+ const cap=100n*10n**18n;
+ assert.equal(BigInt(full.quote.interchainFeeWei),cap);
+ assert.equal(full.pricing.grossInterchainFeeWei,cap.toString());
+ assert.equal(full.pricing.xgrLaunchFeeCap.capXgr,"100");
+ assert.equal(full.pricing.xgrLaunchFeeCap.applied,true);
+ assert.equal(full.quote.bridgeValueWei,source.readGatewayQuote?
+  String((await source.readGatewayQuote()).bridgeNativeWei):"");
+ assert.equal(full.validatorFeeWei,"100000000000000000");
+ assert.ok(full.pricing.sponsorCommitments.length>0);
+ assert.equal(full.quote.interchainFeeWei,full.pricing.sourceNativeInterchainFeeWei);
+ assert.equal(full.sourceValueWei,(BigInt(full.sourceBridgeNativeWei)+cap).toString());
+ const domain={name:"XITA Interchain Fee",version:"1",chainId:1643,
+ verifyingContract:address(44)};
+ assert.equal(verifyTypedData(domain,MANAGED_QUOTE_TYPES,full.quote,full.signature),signer.address);
+ const preview=await buildManagedQuote({...opts,preview:true});
+ assert.equal(preview.pricing.grossInterchainFeeWei,full.pricing.grossInterchainFeeWei);
+ assert.equal(preview.pricing.xgrLaunchFeeCap.capWei,full.pricing.xgrLaunchFeeCap.capWei);
+});
+test("no discount for non-XGR asset; XGR cap applies even without sponsorship",async()=>{
+ const bare=await buildManagedQuote(defaults());
+ assert.equal(bare.pricing.xgrLaunchFeeCap.capXgr,"100");
+ assert.equal(bare.quote.interchainFeeWei,"100000000000000000000");
+ const other=await buildManagedQuote({...defaults(),request:{...request,asset:"ARB"},
+  catalog:{...fixture(),assets:{ARB:fixture().assets.XGR}}});
+ assert.equal(other.pricing.xgrLaunchFeeCap,null);
 });
