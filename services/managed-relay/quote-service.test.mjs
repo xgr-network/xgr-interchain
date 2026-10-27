@@ -58,8 +58,8 @@ test("produces cryptographically valid owner EIP712 binding both chains and exac
  const r=await buildManagedQuote(defaults());
  assert.equal(r.feeCurrency,"xgr");
  assert.equal(r.quote.bridgeValueWei,"1100000000000000000");
- assert.equal(r.quote.interchainFeeWei,"34925000000000000000000");
- assert.equal(r.sourceValueWei,"34926100000000000000000");
+ assert.equal(r.quote.interchainFeeWei,"100000000000000000000");
+ assert.equal(r.sourceValueWei,"101100000000000000000");
  assert.equal(r.quote.nonce,"42");
  assert.equal(r.quote.issuedAt,Math.floor(now/1000)-3);
  assert.equal(r.expiresAt,r.quote.issuedAt+90);
@@ -81,7 +81,7 @@ test("fee quotes remain available without sponsorship but fail on missing gas pr
  const unsponsored=await buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
   gasPriceWei:1000000000n,availableWei:0n
  })});
- assert.equal(unsponsored.quote.interchainFeeWei,"34925000000000000000000");
+ assert.equal(unsponsored.quote.interchainFeeWei,"100000000000000000000");
  await assert.rejects(()=>buildManagedQuote({...defaults(),getDestinationGasQuote:async()=>({
   gasPriceWei:0n,availableWei:0n
  })}),/Unpriced destination gas/);
@@ -352,10 +352,10 @@ test("XGR promotion changes only signed commercial fee; no principal or protocol
  assert.equal(preview.pricing.grossInterchainFeeWei,full.pricing.grossInterchainFeeWei);
  assert.equal(preview.pricing.xgrLaunchFeeCap.capWei,full.pricing.xgrLaunchFeeCap.capWei);
 });
-test("no discount for non-XGR asset and no promotion without immutable sponsorship",async()=>{
+test("no discount for non-XGR asset; XGR cap applies even without sponsorship",async()=>{
  const bare=await buildManagedQuote(defaults());
- assert.equal(bare.pricing.xgrLaunchFeeCap,null);
- assert.equal(bare.quote.interchainFeeWei,"34925000000000000000000");
+ assert.equal(bare.pricing.xgrLaunchFeeCap.capXgr,"100");
+ assert.equal(bare.quote.interchainFeeWei,"100000000000000000000");
  const other=await buildManagedQuote({...defaults(),request:{...request,asset:"ARB"},
   catalog:{...fixture(),assets:{ARB:fixture().assets.XGR}}});
  assert.equal(other.pricing.xgrLaunchFeeCap,null);
