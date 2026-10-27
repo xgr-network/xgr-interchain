@@ -1,94 +1,20 @@
-# XITA standalone web UI
+# XITA standalone wallet interface
 
-Status: visual frontend implemented. **No production bridge is active.**
+The SPA provides dashboard `/`, `/universe`, `/markets`, `/token/<slug>`, `/transfer?token=<asset>` and `/join`. It loads the generated deployment catalog, public read services and an explicitly connected EIP-1193 wallet. No user seed/private key belongs in the browser application or backend configuration.
 
-## Pages
+Configured prospects, receipt-backed representations, reciprocal route readiness, proof readiness and confirmed delivery are separate states. Do not infer live bridge readiness from a catalog entry, planet, ticker or deployed contract alone. Source receipts and destination state are the transfer authority.
 
-- `/`: dashboard, configured inventories and journey planner
-- `/universe`: interactive chain systems; choose a system, then open its token
-- `/markets`: searchable, sortable Tokens directory with independently verified locked TVL, journey movement and market capitalization
-- `/token/<slug>`: token detail and prospects; link to the only transfer page
-- `/transfer?token=<ASSET>`: single transfer UI with on-chain worklist and destination-only recovery
-- `/join`: three-step Alliance onboarding (identity, home chain, review). Network targets are derived from every GitHub-approved chain, not selected by applicants; the resulting hub-and-spoke manifests are proposals only with live token universe preview, local JSON export, and optional manifest preview backend. GitHub draft PR creation is gated by confirmed applicant email, independent CoinGecko contract checks and a server-side writer; without configured private storage and email delivery it fails closed.
+The transfer UI validates Gateway quotes, amount/decimals, balances, native gas, original source identity and current destination recovery. User wallet approval is explicit. A confirmed source operation is recovered at destination; it is not repeated merely because a tab or optional indexer restarted. There is no browser transfer journal with authority to mint/unlock. Original source hashes remain necessary for older pending operations outside bounded scans.
 
-There is **no** standalone former bridge or `/bridge` route. The old XGR/Base
-v3.1.4 Gateway adapter is deleted. The XITA v3.1.5 route architecture is
-permissionless but activation remains fail-closed pending independent BLS safety
-proof and verified reciprocal route deployment.
+The recovery endpoint and public helper use Direct-BLS. The website is optional: independently quote/call the public Gateway and submit validated unsigned Mailbox calldata using the linked runbook. The commercial quote/sponsor path is also optional and does not give its signer spending authority over the user wallet.
 
-## Transfer UI security contract
+Join prepares listing proposals, with optional private email confirmation and a draft GitHub PR. It does not approve or deploy a token route. Public Factory access is separate from the application's CoinGecko/listing policy.
 
-The v3.1.5 Transfer Tokens screen now checks canonical deployed source
-Gateway quotes, native and ERC-20 balances, and gas before an explicit
-MetaMask source signature. At wallet connect it scans canonical Gateway
-operation and Mailbox events and reads destination `delivered(messageId)`.
-If a source lock/burn was confirmed without a completed mint/unlock, the
-one primary button switches to destination-only recovery. No browser
-transfer journal is used. A bounded recent scan cannot establish that
-no older open transfers exist; entering the original source tx hash
-under My Transfers remains supported. The unsigned Merkle/BLS recovery
-endpoint must be deployed with the separate indexer service and reverse
-proxy before the destination action can be used. Successful end-to-end
-delivery is not presumed by deployed contract receipts alone.
+Build/check from root: `node tools/build-xeta-web-catalog.mjs --check`, `node --test apps/web/*.test.mjs`, `node --check apps/web/app.js`. Publish with the reviewed `manage.sh` workflow and SPA fallback. Real browser wallet behavior and chain execution require separate testing; no production activation is implied here.
 
-## Startup and publication
+## Complete references
 
-Dashboard and Universe read the same-origin `catalog.json` (approximately 10 KB) directly. RPC, wallet and optional indexer endpoints are outside the critical rendering path. Browser modules use `.js` to avoid Nginx `.mjs` MIME inconsistencies. A classic-script watchdog replaces the placeholder with a visible error if JavaScript fails to execute; the catalog request is limited to 2.5 seconds.
-
-## Checks
-
-```sh
-node tools/build-xeta-web-catalog.mjs --check
-node --test apps/web/experience.test.mjs apps/web/keccak.test.mjs
-node --check apps/web/app.js
-node --check apps/web/experience.js
-node --check apps/web/wallet-core.js
-```
-
-The static site requires SPA fallback. Always review routes and wallet behavior
-in a real browser before deploying. No wallet private keys or secret seeds
-are requested.
-
-## The XITA Universe — immersive 3D
-
-`/universe` mounts a local, dependency-free WebGL star map using the existing `catalog.json`. XGRChain remains the spatial and routing hub; other chain systems are arranged in depth. A chain's body is the system star. Selecting a chain fades out its abstract stellar dust and galaxy rings while up to six catalog-listed native, collateral or wrapped representations emerge as selectable token planets. Planet visibility depends on complete verified deployments and fresh indexed net locked USD/USDC-equivalent collateral meeting the configured threshold. The focus panel lists publicly eligible deployed representations and explicitly does not claim route activation. Valid sourced rankings may reorder planets; a missing ranking never removes them. Directional configured routes are drawn only between the hub and a spoke; unactivated links are dashed. This scene is explanatory, **not on-chain delivery evidence**.
-
-Controls: left-drag to orbit; right-drag or Shift-drag to pan; wheel or `+`/`-` to zoom; arrow keys or on-screen arrows to rotate; WASD to pan; `H`/Home or `XGR ⌂` to reset; click stars to focus and token planets to open their token page. A native lightweight 2D fallback is shown if WebGL is unavailable. Animation pauses off-screen, on background tabs, and when navigating away.
-
-`/` retains the dashboard and embeds the same renderer in compact form. Browser smoke tests assert successful initialization on dashboard and `/universe`.
-
-## Alliance onboarding security
-
-`services/onboarding/manifests.mjs` generates three declarative token manifests and a catalog update, but no pending deployment index; PRs are **listing proposals only**, not route activation. `services/onboarding/server.mjs` can provide localhost-only `/api/xita/join/preview`. The publisher implementation prepares a GitHub draft PR but public `/submit` is intentionally closed pending signed project identity + short-lived scoped session. Never place a GitHub token in browser scripts, do not expose `/submit` directly to unauthenticated users. The public web continues to work if preview API is not configured; drafts can be exported locally.
-
-## Join price-source configuration
-
-The home chain must be selected explicitly (no default Base). Step 2 requires the original ERC-20 address and CoinGecko ID; no asset bridge is enabled by selecting a chain. Onboarding validation requires valid canonical chain and contract. Price feeds are informational and not collateral or route proof.
-
-## CoinGecko market data in Universe
-
-XGR uses CoinGecko ID `xgr` as its public market provider. The existing
-read-only metrics adapter refreshes the external market snapshot on its normal
-cache cycle. System detail panels and token profiles may show the sourced USD
-market cap and price with an as-of timestamp. Market cap is asset-wide and
-may repeat on several chains representing that same asset; **never aggregate
-it across chains or label it bridge TVL**. Unavailable market data remains
-absent; price-only market data never activates a transfer or supplies a
-verified escrow balance. The XGRChain network hub remains visible, but XGR token discovery requires
-its own deployment and indexed value rather than an unconditional exception.
-
-## Derived discovery policy
-No listing.json, permanent public switch or fixed USD threshold. Configured
-assets become public only with complete verifiable deployments and DB-verified
-net locked collateral valued above the configured minimum. The minimum is
-explicitly null until decided. See
-[publication policy](../../docs/XITA_PUBLICATION_POLICY.md).
-
-## Production Join deployment
-
-See [secure Join operations](../../docs/XITA_JOIN_OPERATIONS.md). The live public submission endpoint is fail-closed until private storage, mail verification and GitHub writer credentials are installed; updating the static site alone is not sufficient. Review and extend the XGR privacy policy before enabling mail processing.
-
-
-## Current protocol baseline
-
-For node v3.4.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.
+- [Service/API/configuration reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Services.md)
+- [Independent transfer and unsigned recovery](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
+- [Protocol and permissionless route registration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Asset_Bridge.md)
+- [Source map, validation and evidence limits](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)

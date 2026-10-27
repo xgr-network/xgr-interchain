@@ -114,7 +114,7 @@ ValidatorRegistry deployment.
    transaction hash, provenance and append-only GitHub receipt *before*
    the next paid transaction. Keep the existing XGRChain contracts.
 6. Do not fund or deploy any asset router / activate bridge UI until the
-   complete reciprocal real-message BLS/Merkle delivery and self-paid
+   complete reciprocal real-message Direct-BLS delivery and self-paid
    wallet recovery path has been exercised on both real chains.
 
 No contract deployment is performed by these software checks.

@@ -16,6 +16,14 @@ Every directed route has XGRChain (chain/domain 1643) at exactly one endpoint. B
 
 ## Current technical documentation
 
+- [Structured full documentation index](https://github.com/xgr-network/XGR/blob/main/docs/interchain/README.md)
+- [Contract API and fee reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_Reference.md)
+- [Complete CLI](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_CLI.md) and [JSON-RPC](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_RPC.md)
+- [Validator observation, P2P and durable state](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Validator_Runtime.md)
+- [Optional service HTTP APIs/configuration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Services.md)
+- [Source map and validation](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)
+
+
 - [Complete v3.4.0 reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Reference.md)
 - [Independent transfer and recovery](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
 - [Release and consensus activation](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.4.0_Release_and_Activation.md)
