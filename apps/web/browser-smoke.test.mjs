@@ -69,7 +69,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
         const app=document.querySelector("#app");
         if(app?.dataset.ready!=="1")return;
         clearInterval(task);
-        const button=app.querySelector('[data-join-action="next"]');
+        const button=app.querySelector('[data-join-action="submit"]');
         button?.click();
         const invalid=app.querySelector("#ja-status")?.textContent.includes("Please complete:")&&app.querySelector('[aria-invalid="true"]');
         document.body.dataset.joinValidation=invalid?"pass":"fail";
@@ -78,8 +78,11 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
         for(const [key,value] of Object.entries(values)){
           const input=app.querySelector('[data-join="'+key+'"]');if(input){input.value=value;input.dispatchEvent(new Event("input",{bubbles:true}));}
         }
-        app.querySelector('[data-join-action="next"]')?.click();
-        document.body.dataset.joinAdvance=app.textContent.includes("Step 2 / 3")?"pass":"fail";
+        const stillOnePage=app.querySelectorAll("#ja-application-form").length===1 &&
+          app.querySelectorAll(".ja-form-section").length===3 &&
+          app.querySelector('[data-join="coingeckoId"]') &&
+          app.querySelector('[data-join="contactEmail"]');
+        document.body.dataset.joinAdvance=stillOnePage?"pass":"fail";
        },25);
      })();
      </script>`;
@@ -108,7 +111,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    }
    if(path==="/transfer"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/id="xita-transfer-primary"/);assert.doesNotMatch(html,/id="ux-token-origin"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
-   if(path==="/join"){assert.match(html,/data-join-action="next"/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
+   if(path==="/join"){assert.match(html,/data-join-action="submit"/);assert.match(html,/ja-coingecko-help/);assert.match(html,/Not selected/);assert.match(html,/EXPLORE THE XITA UNIVERSE/);assert.match(html,/XGR-funded deployment/);assert.match(html,/Verified token locking/);assert.match(html,/href="\/universe" target="_blank" rel="noopener noreferrer"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
@@ -124,8 +127,8 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    }
   }
   const joinProbe=await visit(executable,origin+"/join?test-interaction=1");
-  assert.match(joinProbe,/data-join-validation="pass"/,"Continue must show inline field errors for invalid inputs");
-  assert.match(joinProbe,/data-join-advance="pass"/,"Continue must advance after valid fields");
+  assert.match(joinProbe,/data-join-validation="pass"/,"Submit must show inline field errors for invalid inputs");
+  assert.match(joinProbe,/data-join-advance="pass"/,"Single-page sections must persist after valid inputs");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
   for(const name of ["/app.js","/experience.js","/wallet-core.js","/wallet-gas.js","/wallet-transfers.js","/wallet-token-balances.js","/transfer-actions.js","/transfer-page.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
