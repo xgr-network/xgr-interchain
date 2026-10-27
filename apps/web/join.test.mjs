@@ -36,7 +36,7 @@ test("Join has one form and retains every validation and privacy requirement",()
  assert.doesNotMatch(html,/ja-preview|data-join-preview|Suggested token profile/);
  assert.doesNotMatch(html,/data-join-action="next"|data-join-action="back"|Step 3 \/ 3|data-join-target/);
  assert.doesNotMatch(html,/data-join="slug"|Token URL/);
- assert.match(html,/\/token\/example-protocol/);
+ assert.doesNotMatch(html,/Suggested token profile/);
 });
 test("CoinGecko help is an accessible dialog with an API ID example and matching fields",()=>{
  const html=joinMarkup(chains,valid());
