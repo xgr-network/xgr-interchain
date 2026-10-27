@@ -1497,3 +1497,32 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
  .ja-onepage .ja-actions{flex-direction:column;align-items:stretch}
  .ja-onepage .ja-actions .ux-button{width:100%}
 }
+
+/* Join outreach: clear vertical hierarchy and one focused, wider form. */
+.ja-onepage{max-width:1060px;margin:0 auto}
+.ja-onepage .ja-layout{display:block;max-width:100%;margin:0 auto}
+.ja-onepage .ja-hero{padding:26px 0 18px}
+.ja-onepage .ja-hero h1{max-width:100%}
+.ja-onepage .ja-hero .ux-lead{max-width:880px;line-height:1.55}
+.ja-onepage .ja-application-journey{margin:0 0 22px;gap:8px}
+.ja-onepage .ja-wizard{padding:clamp(22px,3.2vw,38px)}
+.ja-onepage .ja-form-head{margin:0 0 16px}
+.ja-onepage .ja-form-head h2{font-size:clamp(26px,2.5vw,32px);line-height:1.18;margin:7px 0 10px}
+.ja-onepage .ja-form-head .ja-info{font-family:var(--xita-type);font-size:12px;line-height:1.65;margin:0;color:#a8bfd8}
+.ja-onepage .ja-form-section{padding:27px 0 30px;border-bottom:1px solid #30445f}
+.ja-onepage .ja-form-section:first-of-type{padding-top:20px}
+.ja-onepage .ja-section-title{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin:0 0 20px}
+.ja-onepage .ja-section-title .ux-kicker{display:block;margin:0;font-size:10px;line-height:1.4;letter-spacing:.19em;color:#9cb9d8}
+.ja-onepage .ja-section-title h3{font-family:var(--xita-editorial);font-size:clamp(25px,2.35vw,29px);line-height:1.13;letter-spacing:-.035em;font-weight:400;margin:0}
+.ja-onepage .ja-fields{gap:18px 18px}
+.ja-onepage .ja-fields .ja-field:nth-last-child(-n+2){grid-column:auto}
+.ja-onepage .ja-field-full{grid-column:1/-1!important}
+.ja-onepage .ja-form-section .ja-info{font-family:var(--xita-type);font-size:12px;line-height:1.65;margin:18px 0 0;color:#a8bfd8}
+.ja-onepage .ja-private-contact{font-size:12px;line-height:1.65}
+@media(max-width:600px){
+ .ja-onepage .ja-hero{padding-top:12px}
+ .ja-onepage .ja-wizard{padding:20px 16px}
+ .ja-onepage .ja-fields{grid-template-columns:1fr}
+ .ja-onepage .ja-form-section{padding:23px 0}
+ .ja-onepage .ja-section-title h3{font-size:25px}
+}
