@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-config",
+  "asset": "BRETT",
+  "name": "Brett XITA Internal Test",
+  "symbol": "BRETT",
+  "decimals": 18,
+  "canonical": {
+    "chain": "base",
+    "representation": "collateral",
+    "symbol": "BRETT",
+    "tokenAddress": "0x532f27101965dd16442e59d40670faf5ebb142e4"
+  },
+  "representations": [
+    {
+      "chain": "base",
+      "representation": "collateral",
+      "symbol": "BRETT",
+      "assetAddress": "0x532f27101965dd16442e59d40670faf5ebb142e4"
+    },
+    {
+      "chain": "xgrchain",
+      "representation": "synthetic",
+      "symbol": "wBRETT",
+      "assetAddress": null
+    },
+    {
+      "chain": "arbitrum",
+      "representation": "synthetic",
+      "symbol": "wBRETT",
+      "assetAddress": null
+    },
+    {
+      "chain": "polygon",
+      "representation": "synthetic",
+      "symbol": "wBRETT",
+      "assetAddress": null
+    }
+  ],
+  "bridgeModel": "lock-mint-burn-unlock",
+  "assetId": "0x2f73049433d667c1292d8ea5f75ca1ad511c699ac6db3fd6083233997c3dd90a",
+  "notes": "Public directory application; no route or deployment is active without independent safety verification."
+}

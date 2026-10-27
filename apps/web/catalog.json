@@ -648,6 +648,145 @@
         ],
         "present": true
       }
+    },
+    "BRETT": {
+      "metadata": {
+        "schemaVersion": 1,
+        "kind": "asset-config",
+        "asset": "BRETT",
+        "name": "Brett XITA Internal Test",
+        "symbol": "BRETT",
+        "decimals": 18,
+        "canonical": {
+          "chain": "base",
+          "representation": "collateral",
+          "symbol": "BRETT",
+          "tokenAddress": "0x532f27101965dd16442e59d40670faf5ebb142e4"
+        },
+        "representations": [
+          {
+            "chain": "base",
+            "representation": "collateral",
+            "symbol": "BRETT",
+            "assetAddress": "0x532f27101965dd16442e59d40670faf5ebb142e4"
+          },
+          {
+            "chain": "xgrchain",
+            "representation": "synthetic",
+            "symbol": "wBRETT",
+            "assetAddress": null
+          },
+          {
+            "chain": "arbitrum",
+            "representation": "synthetic",
+            "symbol": "wBRETT",
+            "assetAddress": null
+          },
+          {
+            "chain": "polygon",
+            "representation": "synthetic",
+            "symbol": "wBRETT",
+            "assetAddress": null
+          }
+        ],
+        "bridgeModel": "lock-mint-burn-unlock",
+        "assetId": "0x2f73049433d667c1292d8ea5f75ca1ad511c699ac6db3fd6083233997c3dd90a",
+        "notes": "Public directory application; no route or deployment is active without independent safety verification."
+      },
+      "profile": {
+        "schemaVersion": 1,
+        "kind": "xeta-token-profile",
+        "asset": "BRETT",
+        "slug": "brett-xita-internal-test",
+        "name": "Brett XITA Internal Test",
+        "shortDescription": "Brett is a community-driven meme token on Base. This submission is an internal XITA onboarding test, not an official project application.",
+        "description": "Brett (BRETT) is a community-driven meme token on the Base blockchain. This application is submitted exclusively to test the XITA onboarding process, including CoinGecko verification, email confirmation, and automated GitHub Draft PR creation. This is an internal XGR integration test and not an official application from the BRETT project team. No deployment or public listing is intended.",
+        "categories": [
+          "DeFi"
+        ],
+        "tags": [],
+        "branding": {
+          "logoUrl": "https://coin-images.coingecko.com/coins/images/35529/large/1000050750.png?1709031995",
+          "bannerUrl": null
+        },
+        "links": {
+          "website": "https://basedbrett.com/",
+          "explorer": null,
+          "github": null,
+          "docs": null,
+          "whitepaper": null,
+          "x": null,
+          "linkedin": null,
+          "telegram": null,
+          "discord": null
+        },
+        "market": {
+          "coingeckoId": "based-brett",
+          "coinmarketcapId": null,
+          "priceSource": "coingecko"
+        },
+        "supply": {
+          "circulating": null,
+          "total": null,
+          "max": null
+        },
+        "verification": {
+          "status": "project-maintained",
+          "proof": null
+        }
+      },
+      "routes": {
+        "schemaVersion": 1,
+        "kind": "asset-routes",
+        "asset": "BRETT",
+        "network": "mainnet",
+        "protocol": "XITA-v3.1.5",
+        "routingHub": "xgrchain",
+        "routes": [
+          {
+            "name": "arbitrum_to_xgr",
+            "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_arbitrum",
+            "sourceChain": "xgrchain",
+            "destinationChain": "arbitrum"
+          },
+          {
+            "name": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_base",
+            "sourceChain": "xgrchain",
+            "destinationChain": "base"
+          },
+          {
+            "name": "polygon_to_xgr",
+            "sourceChain": "polygon",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_polygon",
+            "sourceChain": "xgrchain",
+            "destinationChain": "polygon"
+          }
+        ]
+      },
+      "deployment": {
+        "schemaVersion": 3,
+        "kind": "asset-deployment",
+        "network": "mainnet",
+        "asset": "BRETT",
+        "assetId": "0x2f73049433d667c1292d8ea5f75ca1ad511c699ac6db3fd6083233997c3dd90a",
+        "sourceManifest": "config/assets/2f/BRETT/asset.json",
+        "receiptPaths": [],
+        "representations": [],
+        "routeDeployments": [],
+        "present": false
+      }
     }
   },
   "infrastructure": {
