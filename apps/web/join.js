@@ -26,33 +26,104 @@ export function validateStep(d,step,chains){
  }
  return missing;
 }
-export function joinMarkup(chains,d,step,status="",busy=false){
- const pick=(field,label,opts={})=>'<label class="ja-field"><span>'+label+'</span><input data-join="'+field+'" type="'+(opts.type||"text")+'" value="'+escape(d[field]??"")+'" '+(opts.required===false?"":"required")+' placeholder="'+escape(opts.placeholder||"")+'" maxlength="'+(opts.max||500)+'"></label>';
- const textarea=(field,label,rows=3)=>'<label class="ja-field"><span>'+label+'</span><textarea data-join="'+field+'" rows="'+rows+'">'+escape(d[field])+'</textarea></label>';
- const selectChain='<label class="ja-field"><span>Canonical blockchain <b>*</b></span><select data-join="canonicalChain"><option value="">Select home chain…</option>'+Object.entries(chains).filter(([key])=>["base","polygon","arbitrum"].includes(key)).map(([key,c])=>'<option value="'+escape(key)+'" '+(key===d.canonicalChain?"selected":"")+'>'+escape(c.name||key)+'</option>').join("")+'</select></label>';
- const profileSlug=suggestedTokenSlug(d);
- const fieldSets=[
-  '<div class="ja-fields">'+pick("name","Project name",{max:80})+pick("symbol","Token symbol",{max:12})+pick("website","Project website",{type:"url",placeholder:"https://..."})+pick("logoUrl","Logo URL (HTTPS) *",{type:"url",placeholder:"https://example.org/logo.png"})+textarea("shortDescription","Short description",2)+textarea("description","Project description",5)+'</div>',
-  '<div class="ja-fields">'+selectChain+pick("canonicalAddress","Original ERC-20 contract *",{placeholder:"0x...",max:42})+pick("decimals","Decimals *",{type:"number",max:2})+'<p class="ja-info">CoinGecko listing required. XITA independently verifies the original token contract against the selected blockchain.</p>'+pick("coingeckoId","CoinGecko coin ID *",{placeholder:"e.g. based-brett",max:100})+'<div class="ja-info">The original token address defines its identity across all represented chains. No contract is deployed during registration.</div></div>',
-  '<div class="ja-review"><h3>Ready for review</h3><p class="ja-info">XITA proposes the token for every supported chain automatically, with all routes connected through XGRChain. XGR reviews the application and decides when to fund and deploy the proposed routes. No deployment takes place on submission.</p><p>'+escape(d.name)+' · '+escape(d.symbol)+' · '+escape(d.canonicalChain)+'</p><p>Proposed networks: '+escape(Object.entries(chains).map(([key,c])=>c.name||key).join(" · "))+'</p><div class="ja-fields">'+pick("contactEmail","Contact email (private) *",{type:"email",placeholder:"you@example.org",max:254})+'<label class="ja-field"><span>Your relationship to the token *</span><select data-join="applicantRole" required><option value="">Select your role…</option>'+[["founder","Founder"],["core-team","Core team"],["authorized-representative","Authorized representative"],["holder","Token holder"],["community","Community member"],["other","Other"]].map(([v,t])=>'<option value="'+v+'" '+(d.applicantRole===v?"selected":"")+'>'+t+'</option>').join("")+'</select></label></div><p class="ja-private-contact">We use the email only for application confirmation and review, deployment and listing updates; never for marketing. Unconfirmed submissions expire after 24 hours; active contacts are generally kept for up to 366 days and closed/listed contacts for 180 days after that event. The address stays outside the public PR and token manifests. Read our <a href="/privacy-policy.html">Privacy Policy</a>.</p><label class="ja-consent"><input data-join="confirmed" type="checkbox" '+(d.confirmed?"checked":"")+'><span>I declare my relationship to this token and confirm its public information is accurate to the best of my knowledge. Holder or community applications are proposals, not claims of project authority. I understand this is an application for XGR review, not an immediate listing or deployment.</span></label><p class="ja-info">Application flow: submit your completed project information for XGR review. If accepted, XGR sponsors the full approved route deployment. Your token is publicly discoverable only while verified locked value meets the XITA policy threshold. Preparing or validating a draft does not submit or approve an application.</p></div>'
- ];
- const steps=["Project identity","Home chain","Review"];
- return '<div class="ja-page"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div><h1>Bring your token into the <span>Universe.</span></h1><p class="ux-lead">Apply with a CoinGecko-listed ERC-20 token to the XGR Interchain Token Alliance. After a positive project review, XGR funds the approved route deployment. Public discovery begins only when verified net locked value meets the XITA policy threshold.</p></div>'+
- '<div class="ja-application-journey" aria-label="XITA partner onboarding">'+
- '<span><b>01</b> Apply</span><span><b>02</b> XGR review</span><span><b>03</b> XGR-funded deployment</span><span><b>04</b> Verified token locking</span><span><b>05</b> Public XITA listing</span></div>'+
- '<div class="ja-layout"><section class="ux-panel ja-wizard"><div class="ja-progress">'+steps.map((s,i)=>'<div class="ja-step '+(i===step?"is-current":i<step?"is-done":"")+'"><span>'+String(i+1).padStart(2,"0")+'</span><small>'+s+'</small></div>').join("")+'</div>'+
- '<div class="ja-form-head"><div class="ux-kicker">Step '+(step+1)+' / 3</div><h2>'+steps[step]+'</h2></div>'+
- fieldSets[step]+'<div class="ja-status" id="ja-status" role="alert">'+escape(status)+'</div><div class="ja-actions">'+
- (step>0?'<button type="button" class="ux-outline-button" data-join-action="back">← Back</button>':'<span></span>')+
- '<button class="ux-button" data-join-action="'+(step===2?"submit":"next")+'" '+(busy?"disabled aria-busy=\"true\"":"")+'>'+(busy?"Checking application…":step===2?"Verify & submit application":"Continue →")+'</button></div>'+
- '<button class="ja-export" type="button" data-join-action="export">Export application draft</button></section>'+
- '<aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · CONNECTED UNIVERSE</div><h2 data-join-preview="name">'+escape(d.name||"Your Token")+'</h2>'+
- '<div class="ja-universe-link"><div class="ja-universe-link-mark" aria-hidden="true">✧</div><div class="ja-universe-link-copy"><div class="ux-kicker">EXPLORE THE XITA UNIVERSE</div><strong>Discover connected worlds</strong><p>Explore the real 3D universe, with XGRChain as the interchain gateway.</p><a class="ja-universe-link-action" href="/universe" target="_blank" rel="noopener noreferrer">Explore the Universe ↗</a></div></div>'+
- '<div class="ja-preview-data"><div><span>Origin</span><strong>'+escape(d.canonicalChain||"Not selected")+'</strong></div><div><span>Asset</span><strong data-join-preview="symbol">'+escape(d.symbol||"—")+'</strong></div><div><span>Planned routes</span><strong>'+(d.canonicalChain?Object.keys(chains).filter(k=>k!=="xgrchain").length*2:0)+'</strong></div><div><span>Status</span><strong>Not deployed</strong></div></div>'+
- '<p class="ja-info">Your token page address is assigned automatically after review'+(profileSlug?': /token/'+escape(profileSlug):'')+'. No technical URL setup is required.</p><p class="ja-info">Application preview only. No route has been approved or deployed. XGR sponsors deployment only after a positive review; public discovery requires verified net locked value above the policy threshold.</p></aside></div></div>';
+
+export function validateApplication(d,chains){
+ return [0,1,2].flatMap(step=>validateStep(d,step,chains));
 }
-
-
+export function joinMarkup(chains,d,status="",busy=false){
+ const field=(key,label,opts={})=>{
+  const id="ja-"+key,type=opts.type||"text";
+  const rules=type==="number"?' min="0" max="36" step="1"':' maxlength="'+(opts.max||500)+'"';
+  return '<label class="ja-field'+(opts.full?' ja-field-full':'')+'" for="'+id+'"><span>'+escape(label)+'</span>'+
+   '<input id="'+id+'" data-join="'+key+'" type="'+type+'" value="'+escape(d[key]??"")+'" required'+
+   rules+' placeholder="'+escape(opts.placeholder||"")+'"></label>';
+ };
+ const area=(key,label,max,rows)=>
+  '<label class="ja-field ja-field-full" for="ja-'+key+'"><span>'+escape(label)+'</span>'+
+  '<textarea id="ja-'+key+'" data-join="'+key+'" required maxlength="'+max+
+  '" rows="'+rows+'" placeholder="'+escape(key==="description"?"What does your project do, and what is its token used for?":"A short introduction to your project")+'">'+
+  escape(d[key]||"")+'</textarea></label>';
+ const chainOptions=Object.entries(chains).filter(([key])=>["base","polygon","arbitrum"].includes(key))
+  .map(([key,c])=>'<option value="'+escape(key)+'"'+(key===d.canonicalChain?' selected':'')+'>'+
+   escape(c.name||key)+'</option>').join("");
+ const chain='<label class="ja-field" for="ja-canonicalChain"><span>Original blockchain *</span>'+
+  '<select id="ja-canonicalChain" data-join="canonicalChain" required><option value="">Select home chain…</option>'+
+  chainOptions+'</select></label>';
+ const coin='<div class="ja-field ja-coingecko-field">'+
+  '<div class="ja-field-title"><label for="ja-coingeckoId">CoinGecko API ID *</label>'+
+  '<button type="button" class="ux-fee-help" id="ja-coingecko-help" aria-haspopup="dialog"'+
+  ' aria-controls="ja-coingecko-dialog" aria-label="Where do I find my CoinGecko API ID?"'+
+  ' title="What is the CoinGecko API ID?">?</button></div>'+
+  '<input id="ja-coingeckoId" data-join="coingeckoId" type="text" required maxlength="100"'+
+  ' placeholder="e.g. arbitrum" value="'+escape(d.coingeckoId||"")+'">'+
+  '<small>Use the CoinGecko API ID, not the token symbol.</small></div>';
+ const roles=[["founder","Founder"],["core-team","Core team"],["authorized-representative","Authorized representative"],
+  ["holder","Token holder"],["community","Community member"],["other","Other"]]
+  .map(([key,label])=>'<option value="'+key+'"'+(d.applicantRole===key?' selected':'')+'>'+label+'</option>').join("");
+ const relationship='<label class="ja-field" for="ja-applicantRole"><span>Your relationship to the token *</span>'+
+  '<select id="ja-applicantRole" data-join="applicantRole" required>'+
+  '<option value="">Choose your role…</option>'+roles+'</select></label>';
+ const profileSlug=suggestedTokenSlug(d);
+ const dialog='<dialog id="ja-coingecko-dialog" class="ux-fee-dialog ja-coingecko-dialog" aria-labelledby="ja-coingecko-title">'+
+  '<div class="ux-fee-dialog-header"><div><span class="ux-kicker">XITA · TOKEN IDENTITY</span>'+
+  '<h2 id="ja-coingecko-title">Where is my CoinGecko API ID?</h2></div>'+
+  '<button type="button" id="ja-coingecko-close" aria-label="Close CoinGecko help">×</button></div>'+
+  '<p>Open <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a> and search for your token. Select its <strong>own coin page</strong>, not a similarly named asset.</p>'+
+  '<ol><li>Find the <strong>Info</strong> section on the coin page.</li>'+
+  '<li>Copy the field labeled <strong>API ID</strong> (for example <code>arbitrum</code> for ARB).</li>'+
+  '<li>Enter that ID here. Do not use the ticker symbol, contract address or full website link.</li></ol>'+
+  '<p>XITA checks this ID against CoinGecko and verifies that the listed token symbol, original blockchain and ERC-20 contract address match your application. A GeckoTerminal-only listing is not sufficient.</p>'+
+  '<p>If the CoinGecko listing does not show your original-chain contract, the application cannot be verified yet.</p>'+
+  '<button type="button" class="ux-fee-dialog-done" data-join-help-close>Got it</button></dialog>';
+ return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
+  '<h1>Bring your token into the <span>Universe.</span></h1>'+
+  '<p class="ux-lead">Apply for free with a CoinGecko-listed ERC-20 token. If accepted, XGR funds deployment of the approved interchain routes. No wallet connection or payment is needed to apply.</p></div>'+
+  '<div class="ja-application-journey" aria-label="XITA partner onboarding">'+
+  '<span><b>01</b> Free application</span><span><b>02</b> Confirm your email</span>'+
+  '<span><b>03</b> XGR review</span><span><b>04</b> Funded deployment if approved</span></div>'+
+  '<div class="ja-layout"><section class="ux-panel ja-wizard">'+
+  '<div class="ja-form-head"><span class="ux-kicker">ONE SIMPLE APPLICATION</span>'+
+  '<h2>Tell us about your token.</h2>'+
+  '<p class="ja-info">All required details are on this page. We verify the public token identity before sending your confirmation email.</p></div>'+
+  '<form id="ja-application-form" novalidate>'+
+  '<section class="ja-form-section" aria-labelledby="ja-section-project"><div class="ja-section-title">'+
+  '<span class="ux-kicker">01 · PROJECT</span><h3 id="ja-section-project">Project details</h3></div>'+
+  '<div class="ja-fields">'+field("name","Project name *",{max:80})+
+  field("symbol","Token symbol *",{max:12,placeholder:"e.g. ARB"})+
+  field("website","Project website *",{type:"url",placeholder:"https://project.example"})+
+  field("logoUrl","Logo image URL (HTTPS) *",{type:"url",placeholder:"https://project.example/logo.png"})+
+  area("shortDescription","Short description * (15–280 characters)",280,2)+
+  area("description","Project description * (40–5000 characters)",5000,3)+'</div></section>'+
+  '<section class="ja-form-section" aria-labelledby="ja-section-token"><div class="ja-section-title">'+
+  '<span class="ux-kicker">02 · TOKEN</span><h3 id="ja-section-token">Original token identity</h3></div>'+
+  '<div class="ja-fields">'+chain+
+  field("canonicalAddress","Original ERC-20 contract *",{max:42,placeholder:"0x…" })+
+  field("decimals","Token decimals *",{type:"number"})+coin+'</div>'+
+  '<p class="ja-info">The original contract must also be listed for this chain on CoinGecko. XGRChain acts as the hub; you do not need to select destination networks.</p></section>'+
+  '<section class="ja-form-section" aria-labelledby="ja-section-contact"><div class="ja-section-title">'+
+  '<span class="ux-kicker">03 · CONTACT</span><h3 id="ja-section-contact">Confirm your application</h3></div>'+
+  '<div class="ja-fields">'+field("contactEmail","Your email (private) *",{type:"email",max:254,placeholder:"you@project.example"})+
+  relationship+'</div>'+
+  '<p class="ja-private-contact">We use your email only for verification and application updates, not marketing. It stays outside public GitHub proposals. See our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> for storage and retention details.</p>'+
+  '<label class="ja-consent"><input id="ja-confirmed" data-join="confirmed" type="checkbox"'+(d.confirmed?' checked':'')+'>'+
+  '<span>I confirm the public project information is accurate to the best of my knowledge and declare my relationship to the token. Holder or community submissions are proposals, not claims of project authority. I understand that applying does not guarantee acceptance, deployment or a public listing. *</span></label></section>'+
+  '<div class="ja-status" id="ja-status" role="alert" aria-live="polite">'+escape(status)+'</div>'+
+  '<div class="ja-actions"><p class="ja-info">No fees or blockchain transactions. We will email you a link to confirm your application.</p>'+
+  '<button type="submit" class="ux-button" data-join-action="submit"'+
+  (busy?' disabled aria-busy="true"':'')+'>'+
+  (busy?'Checking application…':'Submit free application →')+'</button></div></form>'+
+  '<button class="ja-export" type="button" data-join-action="export">Export a local draft instead</button>'+
+  '</section><aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · PROJECT PREVIEW</div>'+
+  '<h2 data-join-preview="name">'+escape(d.name||"Your Token")+'</h2>'+
+  '<p class="ja-info">No upfront listing or deployment fee. XGR covers approved route deployment after review.</p>'+
+  '<div class="ja-preview-data"><div><span>Home chain</span><strong>'+
+  escape(d.canonicalChain||"Not selected")+'</strong></div>'+
+  '<div><span>Asset</span><strong data-join-preview="symbol">'+escape(d.symbol||"—")+'</strong></div>'+
+  '<div><span>Application</span><strong>Not yet submitted</strong></div></div>'+
+  '<p class="ja-info">After email confirmation and XGR review, approved routes are deployed. Public listing requires verified locked value to meet the publication threshold.</p>'+
+  (profileSlug?'<p class="ja-info">Suggested token profile: /token/'+escape(profileSlug)+'</p>':'')+
+  '</aside></div>'+dialog+'</div>';
+}
 // The accepted request is no longer an editable form. No additional submission is possible.
 export function joinPendingMarkup(data){
  const accepted=typeof data?.contactEmail==="string"&&data.contactEmail.length>0;
