@@ -38,7 +38,7 @@ test("role repair retains exact privilege boundaries and is wired before signer 
  assert.match(sql,/has_table_privilege\\(writer,'public\\.xita_transfer_operations','SELECT'\\)/);
  assert.match(sql,/has_table_privilege\\(writer,'public\\.xita_sponsor_quote_resolutions','SELECT'\\)/);
  const server=readFileSync(new URL("../services/managed-relay/server.mjs",import.meta.url),"utf8");
- const readiness=server.split("async function paidQuoteDatabaseReady(){")[1]?.split("\\nconst previewMemo=")[0];
+ const readiness=server.split("async function paidQuoteDatabaseReady(){")[1]?.split("\nconst previewMemo=")[0];
  assert.ok(readiness);
  assert.match(readiness,/has_table_privilege\\(current_user,'public\\.xita_transfer_operations','SELECT'\\)/);
  assert.match(readiness,/has_table_privilege\\(current_user,'public\\.xita_sponsor_quote_resolutions','SELECT'\\)/);
