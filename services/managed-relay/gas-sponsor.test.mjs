@@ -288,7 +288,12 @@ test("F-07: a consumed nonce holds the exact signed grant for operator review",a
   recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
   prepared_hash:Transaction.from(rawTx).hash,raw_tx:rawTx};
  let broadcasts=0;
- const provider={getTransactionReceipt:async()=>null,
+ const provider={send:async(method)=>{
+   if(method==="eth_chainId")return "0x66b";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("unexpected canonical call");
+  },getTransactionReceipt:async()=>null,
   getTransactionCount:async()=>8,
   broadcastTransaction:async()=>{broadcasts++}};
  const pool={query:async q=>q.text?.startsWith("WITH due AS")?
