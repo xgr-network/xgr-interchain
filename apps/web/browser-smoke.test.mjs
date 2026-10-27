@@ -53,6 +53,15 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.writeHead(200,{"Content-Type":"application/json"});
    response.end('{"ok":true,"available":true}');return;
   }
+  // In-memory fake Join responses: exercise actual SPA navigation without
+  // sending an email or writing a token/application to GitHub.
+  if(pathname==="/api/xita/join/preview"||pathname==="/api/xita/join/submit"){
+   response.writeHead(200,{"Content-Type":"application/json"});
+   response.end(pathname.endsWith("/preview")?
+    '{"ok":true,"summary":{"name":"Example Token","symbol":"EXMP"},"files":[]}':
+    '{"ok":true,"status":"pending-email"}');
+   return;
+  }
   if(pathname.startsWith("/api/")){
    response.writeHead(503,{"Content-Type":"application/json"});
    response.end('{"ok":false,"error":"Not deployed"}');
@@ -88,6 +97,38 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
           app.querySelector('[data-join="coingeckoId"]') &&
           app.querySelector('[data-join="contactEmail"]');
         document.body.dataset.joinAdvance=stillOnePage?"pass":"fail";
+        // Simulate a *successful* submission using only the local fake
+        // endpoints, then click Join for Free in the SAME JavaScript session.
+        const more={
+         canonicalChain:"base",
+         canonicalAddress:"0x1234567890123456789012345678901234567890",
+         coingeckoId:"example-token",
+         contactEmail:"qa@example.org",
+         applicantRole:"holder"
+        };
+        for(const [key,value] of Object.entries(more)){
+         const control=app.querySelector('[data-join="'+key+'"]');
+         if(!control)continue;
+         control.value=value;
+         control.dispatchEvent(new Event("input",{bubbles:true}));
+        }
+        const consent=app.querySelector('[data-join="confirmed"]');
+        if(consent){consent.checked=true;consent.dispatchEvent(new Event("input",{bubbles:true}));}
+        app.querySelector('[data-join-action="submit"]')?.click();
+        const receiptCheck=setInterval(()=>{
+         if(location.pathname!=="/join/submitted")return;
+         clearInterval(receiptCheck);
+         document.body.dataset.joinReceipt=app.textContent.includes("One more step: confirm your email")?"pass":"fail";
+         document.querySelector('a[aria-label="Join XITA for free"]')?.click();
+         const empty=app.querySelector('#ja-name')?.value===""&&
+          app.querySelector('#ja-symbol')?.value===""&&
+          app.querySelector('#ja-contactEmail')?.value===""&&
+          app.querySelector('#ja-confirmed')?.checked===false;
+         const form=app.querySelectorAll("#ja-application-form").length===1;
+         const receiptGone=!app.textContent.includes("One more step: confirm your email");
+         document.body.dataset.joinReturn=location.pathname==="/join"&&
+          form&&empty&&receiptGone?"pass":"fail";
+        },25);
        },25);
      })();
      </script>`;
@@ -134,6 +175,10 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   const joinProbe=await visit(executable,origin+"/join?test-interaction=1");
   assert.match(joinProbe,/data-join-validation="pass"/,"Submit must show inline field errors for invalid inputs");
   assert.match(joinProbe,/data-join-advance="pass"/,"Single-page sections must persist after valid inputs");
+  assert.match(joinProbe,/data-join-receipt="pass"/,"Mocked submission must reach the email-confirmation receipt");
+  assert.match(joinProbe,/data-join-return="pass"/,"Join for Free must open a NEW blank form without reloading after a successful submission");
+  assert.ok(requests.includes("/api/xita/join/preview")&&requests.includes("/api/xita/join/submit"),
+   "Browser regression must actually exercise the mocked preview and submit endpoints");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");
   assert.ok(!requests.some(x=>x.endsWith(".mjs")),"Browser requested an old .mjs asset");
   for(const name of ["/app.js","/experience.js","/wallet-core.js","/wallet-gas.js","/wallet-transfers.js","/wallet-token-balances.js","/transfer-actions.js","/transfer-page.js","/ui-data.js"])assert.ok(requests.includes(name),"Missing browser module "+name);
