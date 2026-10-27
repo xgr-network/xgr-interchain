@@ -12,6 +12,9 @@ BEGIN
  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_worker') THEN
   GRANT SELECT,INSERT ON xita_sponsor_prepared_tx TO xita_sponsor_worker;
  END IF;
+ IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
+  GRANT SELECT,INSERT ON xita_sponsor_prepared_tx TO xita_transfer_worker;
+ END IF;
 END $migration$;
 -- The configured production sponsor worker login also requires SELECT/INSERT;
 -- never grant this table to quote signer, web reader, or anonymous roles.
