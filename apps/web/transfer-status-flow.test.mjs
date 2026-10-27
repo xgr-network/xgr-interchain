@@ -334,3 +334,23 @@ test("elapsed clock and positive footer appear only in active verified flow",()=
  const done=renderTransferFlow({journey,record:{...base,status:"journey-delivered",delivered:true},elapsedStartedAt:1700000000000});
  assert.doesNotMatch(done,/data-transfer-elapsed-start/);
 });
+
+test("broadcast and mined Base Mint must not revert to preparatory wallet messaging",()=>{
+ const j={origin:"xgrchain",destination:"base",asset:"XGR"};
+ const record={...base,sourceChain:"xgrchain",destinationChain:"base",
+  finalDestinationChain:"base",status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"ready",checkedAt:new Date().toISOString()}};
+ for(const [stage,label] of [
+  ["first-delivery-pending","Base transaction submitted"],
+  ["first-delivery-confirmed","Base transaction confirmed"]
+ ]){
+  const html=renderTransferFlow({journey:j,record,stage,working:false,walletReady:true});
+  assert.match(html,new RegExp(label));
+  assert.doesNotMatch(html,/XITA is preparing the next verified step/);
+  assert.doesNotMatch(html,/Confirm in your wallet/);
+ }
+ const verified=renderTransferFlow({journey:j,record:{...record,status:"delivered",delivered:true},
+  stage:"first-delivery-pending"});
+ assert.match(verified,/Transfer complete/);
+ assert.doesNotMatch(verified,/transaction submitted/);
+});
