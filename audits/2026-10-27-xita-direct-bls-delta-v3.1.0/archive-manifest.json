@@ -1,0 +1,125 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-27-v3.1.0",
+  "revision": "r1",
+  "scope": "Corrected production-readiness supplement; not complete original 90-page draft archive",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1559,
+      "sha256": "597bed0fad19797bbcd4eefacb0a2f7328735a7d4dc59c41a2564e5ae017f91a",
+      "git_blob": "371ca7606e25cd274b036a85778f3d5a16040f24"
+    },
+    {
+      "path": "baseline-findings.csv",
+      "bytes": 30644,
+      "git_blob": "c15d64d5f987fe003b0b4c017f01a54c1190ad3d",
+      "provenance": "Unchanged predecessor snapshot; SHA-256 not recomputed during correction."
+    },
+    {
+      "path": "confidential-evidence-reference.json",
+      "bytes": 363,
+      "sha256": "77514f282f7f9bedcad94dd8d1bc3e3b4beef4670e2248881532898cb272ed1f",
+      "git_blob": "f4e995a10c8619375f7a92a3d38188829cd1d1c7"
+    },
+    {
+      "path": "delta-assessment.md",
+      "bytes": 1509,
+      "sha256": "cfe5b919e680f8698388174c03c17012749972919f1c91993fda0a70de6320c1",
+      "git_blob": "6b72b44373720c8249debf7951d2a848f1784161"
+    },
+    {
+      "path": "evidence-public.zip",
+      "bytes": 6654,
+      "sha256": "bb07320e8a15e2fd2a50eb0d30f1dc30978b7423130557e3f8bc60f5aa8d2af2",
+      "git_blob": "c1499c35594d41a6c4d23582c61c3c65890ebd75"
+    },
+    {
+      "path": "evidence/MANIFEST.json",
+      "bytes": 1072,
+      "sha256": "95c8bf8edd0f13ee76a402ce160b6152080d1de467771c1045187e443337af2e",
+      "git_blob": "5a03b4a730885fa1428a5d265bd215b78c543ffa"
+    },
+    {
+      "path": "evidence/README.md",
+      "bytes": 417,
+      "sha256": "3ded6b3c192d9ccd791c1291337a8bfabae8f3ee96a4c72f96f43fd1f2e3215d",
+      "git_blob": "0eb135015244843ac9dbaff996a1ccc66096957d"
+    },
+    {
+      "path": "findings.csv",
+      "bytes": 5749,
+      "sha256": "d6566dde7042b763c5a7b64665245d4a4b52eb39ebcece0c4f01b268a71c35ba",
+      "git_blob": "5c17c8d3974b5e022716533c88e84c671fe137a4"
+    },
+    {
+      "path": "historical-findings.csv",
+      "bytes": 88035,
+      "git_blob": "e0a69085f893de62ec4e920a34eb6e20780c5ff4",
+      "provenance": "Unchanged 43-occurrence predecessor snapshot; not a fresh r1 historical reassessment; SHA-256 not recomputed during correction."
+    },
+    {
+      "path": "launch-decision.md",
+      "bytes": 1451,
+      "sha256": "ed6c0e99f408df1df7a8039fd1760a417d18938dd54150f43ff868daf14858ef",
+      "git_blob": "5896f1f94195e3ff3a5a7886cfa06bcc9695de8e"
+    },
+    {
+      "path": "pdf-validation.json",
+      "bytes": 596,
+      "sha256": "b3a54badbb58f8e5fc0068927fc20afa6dbfef0d0063e125c18e7a98b4681a9f",
+      "git_blob": "cd5b58c12f040e9c7dbbcb3d12d1e90d0e7d7d21"
+    },
+    {
+      "path": "phase-a-findings.md",
+      "bytes": 1167,
+      "sha256": "ded8d6de95d93d19186077c098668de02c5c7f5e412bf99f8ed007f363393bec",
+      "git_blob": "5caa0b428f12ded74be5cd505d5cd7abd6b454c7"
+    },
+    {
+      "path": "phase-a-freeze.json",
+      "bytes": 3489,
+      "sha256": "8bc919a58c80838fcb09f24f2424e3dea918207733c5a989c74547e13de16688",
+      "git_blob": "91b03bfc8ff793aabf446c1c463dcc2fd8e59f77"
+    },
+    {
+      "path": "prior-findings-matrix.md",
+      "bytes": 1748,
+      "sha256": "3f7916ae97504fcc92e1904a06c62e189a14e39493dae7843863ffdb8337f7d0",
+      "git_blob": "50743e4e5dcb6e20b4e9af813dc202d5d24e8576"
+    },
+    {
+      "path": "remediation.md",
+      "bytes": 2173,
+      "sha256": "130ba82fe8b0b5c33b759c8de9dc1573ac419f4cf4907693c9b4b26e25a9908b",
+      "git_blob": "c1be0030ad7385584f166475ec9287ddc0807d63"
+    },
+    {
+      "path": "report.md",
+      "bytes": 20575,
+      "sha256": "4bc910f8d40260cee73305e6f35cb189dbd0b13d764dc5829e35e30ff5cdfa3b",
+      "git_blob": "91fef9484a4e386c0b89ca331e17b4948b7e39e4"
+    },
+    {
+      "path": "report.pdf",
+      "bytes": 19656,
+      "sha256": "3009ff59caf1c1bfc4f9d18662bc54fd7bac6d36eab47811fd5e5b9ba7c3663f",
+      "git_blob": "76537dfb8eb5e7e0d197cf67a10488c4d9824dea"
+    },
+    {
+      "path": "verification.md",
+      "bytes": 1798,
+      "sha256": "cf97648ff6037dd8541715dab520af4832bb9715efe55379d3fdd7e8e0e795e5",
+      "git_blob": "90c1cc683a2138a897e5fb32932efc705b762453"
+    },
+    {
+      "path": "verify_artifacts.py",
+      "bytes": 1748,
+      "sha256": "8889510230d34d39c555e4df345c5e90471701d6875f1a0f19cba2da46561fad",
+      "git_blob": "12646bf2ebc4de292bcdaff7e1b930627c6cbee1"
+    }
+  ],
+  "evidence_zip_entries": 9,
+  "public_evidence": "Seven JSON records, README and MANIFEST inside evidence-public.zip. Evidence paths in report.md refer to these entries.",
+  "self_exclusion": "This manifest excludes itself. The parent audits/README.md is indexed separately in Git.",
+  "verification_limit": "Git object metadata comparison is not exact downloaded-byte comparison; PR records actual publication verification."
+}

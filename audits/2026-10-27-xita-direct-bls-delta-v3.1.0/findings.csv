@@ -1,0 +1,33 @@
+id,title,historical_severity,current_severity,disposition,priority,correction_summary
+F-01,Native system-transaction accounting and proposal validation,High,RESOLVED,VERIFIED,P1,Corrected consensus boundaries independently tested; release contains fix; G1 production assumption remains.
+F-02,Transaction-original storage and refund accounting,Medium,RESOLVED,VERIFIED,P1,Transaction-local originals/refund invariants verified; finite historical vectors; same G1 limit.
+F-03,Expensive gossip work lacks complete admission bounds,Medium,Medium,OPEN,P1,Resource admission and consensus capacity isolation required; no production outage demonstrated.
+F-04,Shared observer retry fairness and failure isolation,Medium,Medium,OPEN,P1,Retain evidence and monitor oldest work; bound supported load.
+F-05,External source witnesses retain correlated-provider trust,Medium,Medium,OPEN,P1,Two qualified operators mitigate single-provider risk; upstream correlation and L2 safe assumptions remain.
+F-06,Quote-writer readiness misses required SQL privileges,Medium,RESOLVED,VERIFIED,P1,Retained isolated PostgreSQL restricted-role verification; actual production role inventory unverified.
+F-07,Sponsor reservation can strand the sender nonce after interruption,Medium,Medium,OPEN,P1,Preserve nonce ownership and paid liabilities; no uncontrolled retry or deletion.
+F-08,One grant RPC failure can block all-chain sponsorship,Medium,Medium,OPEN,P1,Partial per-submitted-grant isolation verified; earlier whole-sweep work remains exposed.
+F-09,Mailbox completion can conceal a pending native-principal claim,Medium,Medium,OPEN,P1,Supported code-free native recipients only; no additional claim signature invented.
+F-10,Authorized ownership transfer can collapse service/admin separation,Low,Low,OPEN,P2,Authorized-transition concern; retain independent roles and key custody.
+F-11,Membership authorizations omit the exact registry deployment,Medium,Medium,ACCEPTED_RISK,P1,Pre-existing single-active-registry decision only; no new blanket risk acceptance.
+F-12,Minimum validator committee size remains an operating rule,Low,Low,OPEN,P1,Maintain assessed committee/threshold and independent keys; no unprivileged quorum bypass claimed.
+F-13,Wallet proof calldata is not fully bound to selected intent,Low,Low,OPEN,P2,Bind selected intent before wallet submission; destination authentication remains separate.
+F-14,Regression fixtures and CI discovery drift from the current product,Low,Low,OPEN,P2,Retain failed originals and environment limits; selected CI success is not full coverage.
+F-15,Production sponsorship and installation readiness remain unproven,Medium,Medium,OPEN,P1,Activation-only blanket blocker withdrawn; sponsor readiness and host assurance remain distinct.
+F-16,Expiry-release evidence trusts one RPC without a canonical reread,Medium,Medium,OPEN,P1,Do not release ambiguous paid obligations on unqualified evidence.
+F-17,Unpaid quote reservations can still occupy sponsorship capacity,Medium,Medium,OPEN,P1,Bound provisional admission while protecting paid obligations; grace is not guaranteed release time.
+F-18,Conservative daily-limit accounting can count a liability twice,Low,Low,OPEN,P2,Under-admission issue; not proof of insolvency or principal loss.
+F-19,Paid grant lifecycle can remain unresolved after early delivery or shutdown,Medium,Medium,OPEN,P1,Stop new promises separately from controlled resolution of existing commitments.
+F-20,Pending recovery work can be removed before durable replacement,Medium,Medium,OPEN,P1,Preserve original evidence until durable successor or authenticated terminal delivery.
+F-21,Successful incomplete discovery responses can advance durable cursors,Medium,Medium,OPEN,P1,Discovery omission affects availability; signing still requires complete qualified witnesses.
+F-22,Admin deployment evidence uses confirmation depth as finality,Low,Low,OPEN,P2,Apply chain-native finality before future deployment promotion.
+F-23,Orphaned deployment locks require careful manual recovery,Low,Low,OPEN,P2,Establish stale ownership before recovery; preserve journal and transaction identity.
+F-24,Fee-tax backfill omits required verified event identity,Low,Low,OPEN,P2,Backfill completeness issue; primary ingestion and principal authority are separate.
+F-25,Dense event windows lack adaptive progress,Low,Low,OPEN,P2,Bound adaptive progress; never silently truncate authenticated events.
+F-26,Unknown route rows can starve background delivery refresh,Medium,RESOLVED,VERIFIED,P1,Background active-route scheduling verified by retained tests; production backlog not inspected.
+F-27,Published CLI version fields are empty despite valid embedded VCS data,Informational,RESOLVED,VERIFIED,P2,v3.4.0 release product/version metadata verified; not installed disk hashes.
+F-28,Compiler advisory applicability remains an assurance gap,Informational,Informational,OPEN,P2,Inherited compiler-equivalence task; no new project-specific miscompilation finding or current advisory claim.
+F-29,Membership and governance submission RPC remains unbounded,Medium,Medium,OPEN,P1,Coordinate maintenance and bound lifecycle; read-side cancellation alone is insufficient.
+F-30,Reconciliation refresh suppresses delayed-grant monitoring,NEW,Medium,OPEN,P1,Retained real-DB check; monitor immutable age/error evidence rather than a clean age-based diagnostic.
+F-31,A failed destination receipt can retain transaction-submitted wording,NEW,Low,OPEN,P2,Retained renderer reproduction; terminal failure must override pending wording.
+F-32,Expired unverified route hints leave permanent per-message request storage,NEW,Medium,OPEN,P1,Retained independent protocol checks; bound request admission/storage; no production exhaustion attempted.
