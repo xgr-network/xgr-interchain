@@ -49,6 +49,10 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
  const server=createServer(async(request,response)=>{
   const pathname=new URL(request.url,"http://127.0.0.1").pathname;
   requests.push(pathname);
+  if(pathname==="/api/xita/join/status"){
+   response.writeHead(200,{"Content-Type":"application/json"});
+   response.end('{"ok":true,"available":true}');return;
+  }
   if(pathname.startsWith("/api/")){
    response.writeHead(503,{"Content-Type":"application/json"});
    response.end('{"ok":false,"error":"Not deployed"}');
@@ -68,9 +72,10 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
        const task=setInterval(()=>{
         const app=document.querySelector("#app");
         if(app?.dataset.ready!=="1")return;
-        clearInterval(task);
         const button=app.querySelector('[data-join-action="submit"]');
-        button?.click();
+        if(!button||button.disabled)return;
+        clearInterval(task);
+        button.click();
         const invalid=app.querySelector("#ja-status")?.textContent.includes("Please complete:")&&app.querySelector('[aria-invalid="true"]');
         document.body.dataset.joinValidation=invalid?"pass":"fail";
         if(!invalid)return;
