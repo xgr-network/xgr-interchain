@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {Pool} from "pg";
+import {Wallet,Transaction} from "ethers";
 import {inspectSponsorObligations,inspectSponsorObligationsCLI} from "./sponsor-obligation-audit.mjs";
-import {recordOvertakenSponsorObligations} from "./gas-sponsor.mjs";
+import {recordOvertakenSponsorObligations,sponsorDatabase} from "./gas-sponsor.mjs";
 const URL_STRING=process.env.XITA_SPONSOR_TEST_DATABASE_URL;
 const A=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
 const H=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
@@ -73,6 +74,32 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
   const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
+  await t.test("F-07 PostgreSQL e2e: signed transaction and reservation commit atomically",async()=>{
+   await reset();
+   const wallet=new Wallet("0x"+"11".repeat(32));
+   const recipient=A(321);
+   const rawTx=await wallet.signTransaction({chainId:1643,nonce:73,to:recipient,
+    value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+   const txHash=Transaction.from(rawTx).hash;
+   const key="base:"+H(73)+":first-delivery";
+   const data={key,chain:"xgrchain",recipient,beneficiary:wallet.address,
+    amountWei:"5000",nonce:73,dailyMaxWei:"100000",rawTx,txHash};
+   const sponsorDb=sponsorDatabase(db);
+   assert.equal(await sponsorDb.reserveGrant(data),true);
+   assert.equal(await sponsorDb.reserveGrant(data),false);
+   const reopened=new Pool({connectionString:URL_STRING,max:1});
+   try{
+    const saved=await reopened.query("SELECT g.status,p.raw_tx,p.tx_hash"+
+     " FROM xita_sponsor_grants g JOIN xita_sponsor_prepared_tx p USING(grant_key)"+
+     " WHERE g.grant_key=$1",[key]);
+    assert.equal(saved.rows.length,1);
+    assert.equal(saved.rows[0].status,"reserved");
+    assert.equal(saved.rows[0].raw_tx,rawTx.toLowerCase());
+    assert.equal(saved.rows[0].tx_hash,txHash.toLowerCase());
+    assert.equal((await reopened.query("SELECT COUNT(*)::int AS n"+
+     " FROM xita_sponsor_grants WHERE grant_key=$1",[key])).rows[0].n,1);
+   }finally{await reopened.end()}
+  });
   await t.test("F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart",async()=>{
    await reset();
    await grant(db,1,{hash:false,minutes:5});
