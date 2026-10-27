@@ -157,3 +157,8 @@ Mailbox delivery solely from a healthy indexer.
 
 The Admin probes are diagnostics only. No PR merge, transfer,
 wallet signature, validator fee, or on-chain state mutation occurs.
+
+
+## Current protocol baseline
+
+For node v3.4.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.

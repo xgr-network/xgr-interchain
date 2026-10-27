@@ -1,5 +1,8 @@
 # XGR ILN v3.1.4 – operating and storage checklist
 
+> **Historical/versioned specification.** Current Direct-BLS operations and relayer-independent execution are documented in [architecture](./architecture.md) and [operations](./operations.md). Merkle/bootstrap, historical route governance and per-validator environment instructions below are not current v3.4.0 runtime procedures. Contract family suffixes alone do not select a node release.
+
+
 **Pre-release operating guide; feature branch only.** Base↔XGR is the first deployment. Other EVM chains and token routes require their own configuration and deployments.
 
 ## End-to-end operation

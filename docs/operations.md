@@ -1,19 +1,21 @@
-# XETA operations — v3.1.4 only
+# XGR Interchain — current operations
 
-## Readiness
-Validate manifests, Forge tests and JS relayer tests; verify actual on-chain environment rather than relying on planned JSON values. Route ADD immediately enables authorization and therefore must be executed last, after security modules, routers, fee quotes, BLS compatibility and source/destination test calls are ready.
+**Node baseline:** v3.4.0. **Reviewed:** 2026-10-27.
 
-## New route activation
-1. Register fresh origin/destination infrastructure and audited token representations.
-2. Deploy source Gateway and its FeeVault; deploy gateway-only upstream Warp router (or precompute and carefully bind address dependencies).
-3. Verify quoteILN and exact native/ERC20 adapter behavior, current set and nonzero source fee.
-4. Configure destination ISM and validated destination router and mailbox.
-5. Obtain current quorum through xgrchain governance CLI; execute source ROUTE_ADD.
-6. Test both directions with tiny real token amounts; confirm fee-vault claims, Direct-BLS message attestation, delivery and recovery.
-7. Update on-chain observed inventory and only then publish route as available.
+## Independent transfer and recovery
 
-## Runtime
-runtime/manage-relayers.sh starts only ILN relayer processes. Keep RELAYER_SUBMIT=false until approved and tested. Runtime env examples use NEW_XETA placeholders; never substitute old bridge token/router addresses. Service deployment and domain routing are managed separately from this XETA source branch.
+Follow the [complete direct execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Call the public source ILNGateway directly, retain the original source hash/message ID, and use `runtime/native-relayer/recover-iln.mjs` to validate and prepare unsigned destination `Mailbox.process` calldata. Anyone with destination gas can submit valid authorization. No XITA service quote, sponsor or managed relayer is required. Source fees, native gas, canonical chain access and current validator quorum remain required.
 
-## Visibility
-Inactive routes remain on-chain active; UI can demote them but must retain an accessible direct bridge/redeem path. Emergency governance disable only for substantiated security reasons and with recoverability.
+## Route deployment and validation
+
+Use current Factory/Registry code and deployment receipts. Register the supported canonical identities permissionlessly, confirm reciprocal router bindings and destination ISM/validator registry, and independently verify both directions. Chain-wide source fee governance is not a route-admission vote. A website prospect/listing does not establish readiness. New physical chains require reviewed shared infrastructure, compiled node configuration and finality policy; do not invent chain support through relayer environment variables.
+
+## Runtime and failure handling
+
+Keep the managed relayer replaceable. For a custom executor, preserve original source receipts, verify the exact Direct-BLS payload/current set, simulate destination execution and check replay status. `PENDING` requests/retries quorum for the same message; `ALREADY_DELIVERED` requires checking existing settlement; `RECOVERY_NOT_READY` requires resolving its reported verification failure. Do not create duplicate source lock/burn transactions or disable authorization checks to recover liveness.
+
+Monitor validator worker heartbeat and per-chain RPC/finality health separately from website/indexer/service health. Base and Arbitrum use checked `safe`; XGRChain uses its committed IBFT head. Never silently replace unavailable finality with `latest`. Restore validator quorum before expecting delivery. Review current audit evidence and residual assumptions; an operational restart does not resolve a protocol finding.
+
+## Release and backup
+
+For binary verification, consistent backups and the common `securityAccounting` fork, see the [v3.4.0 node runbook](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.4.0_Release_and_Activation.md). Node deployment does not deploy contracts. Back up secrets and node state separately from optional relayer/indexer data. Dated audit artifacts remain immutable evidence of their assessed revision.

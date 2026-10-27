@@ -87,3 +87,8 @@ explicitly null until decided. See
 ## Production Join deployment
 
 See [secure Join operations](../../docs/XITA_JOIN_OPERATIONS.md). The live public submission endpoint is fail-closed until private storage, mail verification and GitHub writer credentials are installed; updating the static site alone is not sufficient. Review and extend the XGR privacy policy before enabling mail processing.
+
+
+## Current protocol baseline
+
+For node v3.4.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.

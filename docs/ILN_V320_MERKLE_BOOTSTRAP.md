@@ -1,5 +1,8 @@
 # XGR-Node v3.2.0: one-time Merkle tree initialization
 
+> **Historical/versioned specification.** Current Direct-BLS operations and relayer-independent execution are documented in [architecture](./architecture.md) and [operations](./operations.md). Merkle/bootstrap, historical route governance and per-validator environment instructions below are not current v3.4.0 runtime procedures. Contract family suffixes alone do not select a node release.
+
+
 This console-only XITA tool bootstraps canonical Hyperlane Merkle leaf
 replicas into an existing XGR-Node data directory. It does not modify
 the blockchain, deploy any contract, sign a BLS vote, or require v3.2.1.
