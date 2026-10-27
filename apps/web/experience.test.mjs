@@ -33,7 +33,7 @@ test("spoke-to-spoke paths are exactly two directed operations",()=>{
   assert.deepEqual(plan.path,["base","xgrchain","polygon"]);
   assert.equal(plan.hops.length,2);
   assert.equal(plan.active,true);
-  assert.match(plan.reason,/MetaMask approval/);
+  assert.match(plan.reason,/approval in the connected wallet/);
 });
 test("unknown or unverified routes never become executable",()=>{
   const model=buildExperienceModel(catalog,()=>{throw Error("Missing deployment evidence")});
@@ -670,4 +670,11 @@ test("completed journey loses stale status CTA and can reset to new transfer",()
  assert.match(html,/data-transfer-action="new"/);
  assert.match(html,/>New transfer<\/button>/);
  assert.doesNotMatch(html,/id="xita-flow-reopen"|View transfer status|Transfer costs/);
+});
+
+test("outreach FAQ covers finality, recovery and sponsorship",()=>{
+ const faq=renderFAQ();
+ for(const needle of ["Why can a transfer take several minutes?","My Transfers","gas sponsorship","connected wallet","href=\"/contact\""])
+  assert.ok(faq.includes(needle),needle);
+ assert.doesNotMatch(faq,/must be confirmed by the user in MetaMask/);
 });
