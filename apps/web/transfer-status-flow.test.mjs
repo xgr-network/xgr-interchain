@@ -241,7 +241,7 @@ test("compact transfer status identifies which chain controls waiting",()=>{
  assert.match(html,/Waiting for Arbitrum safe finality/);
  assert.match(html,/ux-token-journey-pulse is-animated/);
  assert.doesNotMatch(html,/Backend proof:/);
- assert.match(html,/close this window anytime and resume/);
+ assert.match(html,/Return anytime via My Transfers/);
  const proof=renderTransferFlow({journey:j,record:{...child,
   finalProofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
  assert.match(proof,/Waiting for transfer verification/);
