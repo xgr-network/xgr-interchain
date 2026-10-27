@@ -22,7 +22,11 @@ test("F-19: only independently indexed paid and quote-matched promises are count
   /p\.parent_message_id IS NULL/,
   /p\.source_indexed_at<NOW\(\)-INTERVAL '5 minutes'/,
   /delivered IS TRUE AND grant_status IS DISTINCT FROM 'confirmed'/,
-  /grant_key IS NULL/
+  /grant_key IS NULL/,
+  /g\.chain_name=c\.grant_chain/,
+  /g\.sponsor_address=\$1/,
+  /g\.recipient=p\.account/,
+  /g\.amount_wei=c\.promised_wei/
  ])assert.match(PAID_ALERT_SQL,item);
 });
 test("auditor uses exactly two SELECT queries, no write, keys or customer identities",async()=>{
@@ -41,7 +45,7 @@ test("auditor uses exactly two SELECT queries, no write, keys or customer identi
  assert.equal(result.paidAlertGroups,1);
  assert.deepEqual(result.alerts.map(a=>a.count),[2,1]);
  assert.equal(calls.length,2);
- assert.deepEqual(calls.map(c=>c.values),[[sponsor],[]]);
+ assert.deepEqual(calls.map(c=>c.values),[[sponsor],[sponsor]]);
  const all=calls.map(c=>c.text).join("\n");
  assert.doesNotMatch(all,/\b(INSERT|UPDATE|DELETE|TRUNCATE|DROP|CREATE|CALL)\b/i);
  assert.doesNotMatch(JSON.stringify(result),new RegExp(sponsor));
