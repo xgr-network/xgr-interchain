@@ -17,7 +17,7 @@ export function capXgrLaunchServiceFee({
     !DECIMAL.test(String(uiAvailabilityFeeWei)))
   throw Error("Invalid XGR launch fee inputs");
  const regular=BigInt(regularFeeWei),ui=BigInt(uiAvailabilityFeeWei);
- if(regular<=0n||regular>=UINT256||ui<=0n||ui>regular)
+ if(regular<=0n||regular>=UINT256||ui<0n||ui>regular)
   throw Error("Invalid XGR launch fee bounds");
  // Floor the conversion to ensure the customer NEVER pays > 100 XGR
  // equivalent even when the source coin is ETH (Base/Arbitrum).
