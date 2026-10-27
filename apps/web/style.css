@@ -1435,3 +1435,24 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 .ux-contact-page .ux-panel h2{margin:12px 0;font-weight:400;font-family:var(--xita-editorial)}
 .ux-contact-email{font-size:clamp(19px,3vw,30px);color:#c1e1ff;overflow-wrap:anywhere;text-decoration:underline;text-underline-offset:5px}
 .ux-3d-controls button[data-cosmos-action^="zoom"]{min-width:36px;font-size:20px;line-height:1}
+
+/* XITA Join: one restrained, unmistakable no-cost application CTA. */
+body>header nav a.xita-nav-join{
+ min-height:37px;height:auto;padding:8px 15px;
+ border:1px solid rgba(171,213,246,.63);border-radius:8px;
+ background:linear-gradient(115deg,#e6f3ff,#c4dcf5);color:#092038;
+ font-family:var(--xita-type);font-size:12px;font-weight:700;
+ letter-spacing:.015em;white-space:nowrap;
+ box-shadow:0 2px 12px rgba(105,163,226,.17);
+ transition:background .18s,border-color .18s,box-shadow .18s,transform .18s;
+}
+body>header nav a.xita-nav-join:hover,
+body>header nav a.xita-nav-join:focus-visible{
+ color:#06172b;background:#f4f9ff;border-color:#e4f3ff;
+ box-shadow:0 3px 17px rgba(128,189,245,.25);transform:translateY(-1px);
+}
+body>header nav a.xita-nav-join:focus-visible{outline:2px solid #b3d9ff;outline-offset:3px}
+body>header nav a.xita-nav-join:focus-visible:after{content:none}
+body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
+@media(max-width:900px){body>header nav a.xita-nav-join{min-height:34px;padding:7px 12px}}
+@media(prefers-reduced-motion:reduce){body>header nav a.xita-nav-join{transition:none;transform:none!important}}

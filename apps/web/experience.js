@@ -431,7 +431,7 @@ function allianceIntro(){
   '<span><small>01</small>Apply and pass project review</span>'+
   '<span><small>02</small>XGR sponsors route deployment</span>'+
   '<span><small>03</small>Qualifying locked value → public listing</span></div>'+
-  '<a data-nav href="/join">Bring Your Token <span aria-hidden="true">↗</span></a></article>'+
+  '<a data-nav href="/join">Join XITA <span aria-hidden="true">↗</span></a></article>'+
   '</div></section>';
 }
 // Three compact, independent leaderboards. An unknown figure never enters a ranking.
@@ -737,10 +737,10 @@ const faqGroups=[
  ]},
  {label:"02 · TOKEN PROJECTS",title:"Join the Token Alliance",items:[
   ["Why should my project join XITA?","Reach additional blockchain communities while XGR covers the complete smart-contract deployment costs for your approved interchain route. The Alliance offers a clear onboarding and review process. Public discovery is derived automatically from current verified net locked collateral and the configured global threshold."],
-  ["How does the application process work?","Start with Bring Your Token and provide your project information, original token contract and desired networks. The application must then be submitted for XGR's review. A prepared draft or successful form validation is not yet an approved or submitted application."],
+  ["How does the application process work?","Start with Join XITA and provide your project information, original token contract and desired networks. The application must then be submitted for XGR's review. A prepared draft or successful form validation is not yet an approved or submitted application."],
   ["What happens after my project is approved?","XGR arranges and fully sponsors the deployment of the accepted route, including its required smart contracts. The team then completes the necessary contract and route verification before enabling live transfers. There is no public token listing merely for passing review."],
   ["When does my token appear on XITA?","Once net locked collateral is independently verified at or above the configured threshold, the token enters public discovery. Unlocking below the threshold hides it again. An application, positive review or contract deployment on its own is not enough."],
-  ["Is the route deployment free for accepted projects?","Yes. XGR sponsors the complete deployment of approved routes under the XITA Alliance program. This does not mean that later end-user transfers are gas-free: normal blockchain gas and applicable validator fees are separate."],
+  ["Is the route deployment free for accepted projects?","Yes. XGR sponsors the complete deployment of approved routes under the XITA Alliance program. End-user transfers are separate: users still pay their initial source-chain gas and applicable transfer fees. Eligible downstream gas may be covered by XITA when expressly included in a signed sponsorship quote, but this does not make every transfer gas-free."],
   ["Does XITA provide DEX liquidity or exchange listings?","No. XGR sponsors the approved route deployment and publishes the token on XITA while its verified locked value meets the public threshold. That is not a centralized-exchange listing, automatic DEX liquidity, market making or guaranteed trading volume."],
   ["Can my project expand to more networks later?","You can request additional supported networks through the Alliance review process. Accepted additional routes follow the same XGR-sponsored deployment, verification and real-transfer milestones."]
  ]},
@@ -752,8 +752,9 @@ const faqGroups=[
   ["Why can a transfer take several minutes?","Source transactions must reach safe finality before XITA can verify delivery. Some networks take several minutes. XITA automatically checks progress. Never repeat the initial source transaction just because confirmation takes longer."],
   ["Can I leave XITA and return to a transfer later?","Yes. You may leave the website and return at any time. Connect the same wallet and open My Transfers to confirm the next verified wallet step. Closing the window does not cancel an on-chain transaction."],
   ["Why are several wallet confirmations needed?","Each source transfer and destination delivery is authorized by your own wallet. For two-hop journeys, XGRChain adds another independently authorized transfer. XITA does not control your private keys."],
-  ["How does optional gas sponsorship work?","When available, XITA may cover specified downstream gas steps using its service wallet. The offer and grants are bound to the initial signed quote and must pass funding limits. Source wallet gas and optional token approvals are separate."],
-  ["What does a transfer cost?","XITA route fees comprise the source-chain protocol fee and XITA Service Fee. Both are additional to the blockchain network gas paid separately for wallet transactions, source lock/burn and destination delivery on each hop. ERC-20 approval can require additional gas. Two-hop journeys include additional processing and gas transactions. Optional gas sponsorship covers only eligible gas steps when expressly confirmed; otherwise fund gas on every required chain. A fresh signed service quote is obtained before the source transaction."]
+  ["Do I need XGR to transfer tokens between blockchains?","No. For a supported transfer between external chains, such as Base to Arbitrum, you do not need to buy or hold XGR even though the journey passes through XGRChain. When eligible downstream gas sponsorship is included in your signed quote, XITA supplies the required native gas for those specified later steps. You still need the source chain's native currency (for example, ETH on Base) for the initial wallet transaction and any required token approval. If you start on XGRChain, you need XGR for the initial transaction. Without confirmed sponsorship, you may also need native gas on intermediate or destination chains."],
+  ["How does optional gas sponsorship work?","If a personalized signed quote includes sponsorship, XITA commits to fund eligible native-gas shortfalls for the specified downstream wallet steps. After the initial source transaction is finalized and verified, those grants are sent to your wallet and must be confirmed before sponsored steps continue. Sponsorship is subject to verified funding and safety limits; it does not cover the initial source-chain gas or any required token approval."],
+  ["What does a transfer cost?","Your signed quote shows the source-chain protocol fee and XITA Service Fee. Your wallet separately pays network gas for the initial source transaction and any required token approval. Two-hop journeys also involve processing and gas costs on XGRChain and the destination chain. If your personalized signed quote includes eligible downstream gas sponsorship, XITA funds the specified shortfalls instead of requiring you to hold that native gas in advance; otherwise, you must provide the required native gas yourself. The transfer preview distinguishes wallet-paid gas from any quoted sponsorship. Sponsorship does not make the transfer free."]
  ]},
  {label:"04 · TRUST & TRANSPARENCY",title:"Security and Network Facts",items:[
   ["Who secures interchain transfers?","XGRChain's Proof-of-Stake validators secure cross-chain message verification. The XGRChain v3.x network and its interchain smart contracts provide the underlying infrastructure."],
@@ -771,7 +772,7 @@ export function renderFAQ(){
     '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
       '<details class="ux-faq-item"><summary>'+esc(q)+'</summary><p>'+esc(answer)+'</p></details>').join("")+'</div></section>').join("")+'</div>'+
   '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/transfer">Transfer Tokens →</a>'+
-  '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a><a class="ux-ns-secondary" data-nav href="/contact">Contact XITA ↗</a></div></div>';
+  '<a class="ux-ns-secondary" data-nav href="/join">Join XITA ↗</a><a class="ux-ns-secondary" data-nav href="/contact">Contact XITA ↗</a></div></div>';
 }
 export function renderUniverse(model,selected=HUB,metrics=null,wallet={}){
  const active=model.routes.filter(r=>r.active).length;
