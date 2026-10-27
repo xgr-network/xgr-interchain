@@ -1456,3 +1456,44 @@ body>header nav a.xita-nav-join:focus-visible:after{content:none}
 body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 @media(max-width:900px){body>header nav a.xita-nav-join{min-height:34px;padding:7px 12px}}
 @media(prefers-reduced-motion:reduce){body>header nav a.xita-nav-join{transition:none;transform:none!important}}
+
+/* Outreach: concise single-page application with real, accessible dialogs. */
+.ja-onepage .ja-layout{grid-template-columns:minmax(0,1.6fr) minmax(260px,.55fr);gap:18px}
+.ja-onepage .ja-hero{padding-bottom:18px}
+.ja-onepage .ja-application-journey{margin-bottom:18px}
+.ja-onepage .ja-wizard{padding:26px}
+.ja-onepage .ja-form-head{margin-bottom:10px}
+.ja-onepage .ja-form-head .ja-info{margin:10px 0 14px}
+.ja-onepage .ja-form-section{padding:16px 0 20px;border-bottom:1px solid #29405d}
+.ja-onepage .ja-form-section:first-of-type{padding-top:4px}
+.ja-onepage .ja-form-section:last-of-type{border-bottom:0}
+.ja-onepage .ja-section-title{display:flex;flex-wrap:wrap;align-items:center;gap:9px 16px;margin-bottom:14px}
+.ja-onepage .ja-section-title h3{font-size:21px;letter-spacing:-.035em;margin:0}
+.ja-onepage .ja-fields{gap:13px 16px}
+.ja-onepage .ja-fields .ja-field:nth-last-child(-n+2){grid-column:auto}
+.ja-onepage .ja-field-full{grid-column:1/-1!important}
+.ja-onepage .ja-field-title{display:flex;align-items:center;justify-content:flex-start;gap:10px;color:#b0c1dc}
+.ja-onepage .ja-field-title label{font:inherit}
+.ja-onepage .ja-coingecko-field{display:flex;flex-direction:column;gap:8px;color:#b0c1dc;font-size:11px}
+.ja-onepage .ja-coingecko-field .ux-fee-help{flex:0 0 26px;width:26px;height:26px;font-size:14px}
+.ja-onepage .ja-coingecko-field input{background:#071326;border:1px solid #36506d;border-radius:9px;padding:12px;color:#edf6ff;width:100%}
+.ja-onepage .ja-coingecko-field small{color:#90abc9;font-size:11px;line-height:1.45}
+.ja-onepage .ja-coingecko-dialog{width:min(570px,calc(100vw - 28px))}
+.ja-onepage .ja-coingecko-dialog ol{padding-left:22px;line-height:1.7;font-size:13px;color:#bfd5eb}
+.ja-onepage .ja-coingecko-dialog a{color:#b6dcff;text-decoration:underline}
+.ja-onepage .ja-coingecko-dialog code{font-size:12px;color:#f3e7bf}
+.ja-onepage .ja-actions{justify-content:space-between;align-items:center;margin-top:8px}
+.ja-onepage .ja-actions .ja-info{max-width:350px;margin:4px 0}
+.ja-onepage .ja-actions .ux-button{min-height:48px;white-space:normal;text-align:center}
+.ja-onepage .ja-actions .ux-button:disabled{opacity:.55}
+.ja-onepage .ja-consent{margin-top:10px}
+.ja-onepage .ja-field.is-invalid input,.ja-onepage .ja-field.is-invalid textarea,.ja-onepage .ja-field.is-invalid select,
+.ja-onepage .ja-coingecko-field.is-invalid input{border-color:#e8a08f}
+.ja-onepage .ja-field-error{color:#f5b6a4;font-size:11px}
+@media(max-width:1000px){.ja-onepage .ja-layout{grid-template-columns:1fr}.ja-onepage .ja-preview{order:0}}
+@media(max-width:550px){
+ .ja-onepage .ja-fields{grid-template-columns:1fr}
+ .ja-onepage .ja-wizard,.ja-onepage .ja-preview{padding:17px}
+ .ja-onepage .ja-actions{flex-direction:column;align-items:stretch}
+ .ja-onepage .ja-actions .ux-button{width:100%}
+}
