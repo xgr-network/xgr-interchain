@@ -1,11 +1,17 @@
-# XGR Interchain — current Direct-BLS architecture
+# Current Direct-BLS architecture
 
-Node baseline: **v3.4.0**, reviewed 2026-10-27. The [complete technical reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Reference.md) defines the current component boundaries and exact source references.
+The current source-based reference is maintained in the public XGR documentation.
 
-Each directed route includes XGRChain at exactly one endpoint. A spoke-to-spoke journey has two source operations and two deliveries via the hub. The public Factory deploys canonical router/Gateway bindings and records routes in the append-only source Registry. Registration is permissionless; website listing is independent of protocol participation. A new physical chain still requires reviewed infrastructure and node chain/finality bindings.
+- [Architecture and multiple routes](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Overview.md)
+- [Exact wire format and trust boundaries](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Security_Model.md)
+- [Assets and public Factory registration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Asset_Bridge.md)
+- [Contracts, source fees and claims](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_Reference.md)
+- [Executable transfer without managed relayer](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
+- [Complete Interchain CLI](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_CLI.md)
+- [Complete Interchain RPC](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_RPC.md)
+- [Validator runtime and retention](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Validator_Runtime.md)
+- [Optional services and HTTP APIs](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Services.md)
+- [Receipt-backed deployment inventory](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Deployment_Reference.md)
+- [Source map and verification scope](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)
 
-The source ILNGateway collects required principal/fees and emits a fee-qualified operation for the canonical dispatched message. Eligible validators independently check the source receipt, chain-native finality, route identity and durable FeeVault allocation. The Direct-BLS payload binds the exact source message, source and destination contracts, fee and current destination validator set. The destination Registry and ISM authenticate this authorization before the router can mint or unlock. Source registry fee governance and XGRChain weighted IBFT consensus are distinct mechanisms.
-
-Delivery is permissionless: any executor can pay destination gas and submit valid `Mailbox.process` calldata. Neither the XITA-managed relayer nor a company wallet is a trust anchor. The public recovery helper produces unsigned calls without private keys or source re-execution. Missing quorum, invalid bindings or failed simulation must be resolved rather than bypassed. The website, commercial Execution Gateway, transfer indexer and gas sponsor are optional services; the underlying on-chain escrows, chain/RPC access and validator availability remain actual dependencies.
-
-The current transport uses message-specific Direct-BLS, not Interchain MerkleTreeHook/replica proofs. Older document filenames and V315/V2 contract suffixes identify history/interface families, not a different current node version. Do not apply obsolete route-admission governance, Merkle bootstrap or per-route validator environment instructions to this release.
+Public Factory registration and authenticated destination execution are permissionless on supported physical networks. The commercial quote signer, website, sponsor, indexer and managed relay are optional. Required source evidence, validator quorum, protocol fees, gas and chain access remain dependencies. A source dispatch is recovered using its original hash/message ID; do not duplicate principal movement after a service outage.
