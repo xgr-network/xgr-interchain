@@ -196,9 +196,18 @@ export async function scanIndexedRoute({catalog,route,pool,rpc,limit=150}){
 }
 export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
- const pending=await pool.query({text:`SELECT source_chain,route_id,message_id FROM
- xita_transfer_operations
- ORDER BY delivery_attempted_at ASC NULLS FIRST,source_indexed_at ASC LIMIT $1`,values:[limit]});
+ // F-26: Filter by the exact active source/route PAIRS before LIMIT. Retired
+ // routes remain in the historical index, but cannot starve active deliveries.
+ if(!all.size)return {checked:0,delivered:0,unknown:0};
+ const active=[...all.values()];
+ const pairs=active.map((_,i)=>`(${2*i+1}::text,${2*i+2}::char(66))`).join(",");
+ const values=active.flatMap(r=>[r.sourceChain,r.routeId]);
+ const pending=await pool.query({text:`SELECT o.source_chain,o.route_id,o.message_id FROM
+ xita_transfer_operations o
+ WHERE EXISTS (SELECT 1 FROM (VALUES ${pairs}) AS active(source_chain,route_id)
+   WHERE active.source_chain=o.source_chain AND active.route_id=o.route_id)
+ ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${values.length+1}`,
+  values:[...values,limit]});
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
   const route=all.get(row.source_chain+":"+row.route_id);
