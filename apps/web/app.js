@@ -18,7 +18,8 @@ import {changedTransferBalanceChains} from "./transfer-balance-refresh.js";
 import {pendingDeliveryCount,activeSourceConfirmation} from "./wallet-pending.js";
 import {walletSigningQueue,walletSigningNotice} from "./wallet-action-attention.js";
 import {rememberSourceTxHint,listSourceTxHints,unresolvedSourceTxHints} from "./source-tx-hints.js";
-import {renderTransferFlow} from "./transfer-status-flow.js";
+import {renderTransferFlow,deriveTransferFlow} from "./transfer-status-flow.js";
+import {transferStepStartedAt,formatTransferStepElapsed} from "./transfer-step-timer.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
 import {nextVerifiedWalletStep,walletStepKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
@@ -567,6 +568,16 @@ async function requireUpfrontSponsorship(record,account){
  }
 }
 
+function paintTransferElapsed(){
+ const clock=document.querySelector("#xita-flow-dialog [data-transfer-elapsed-start]");
+ if(!clock)return;
+ const start=Number(clock.dataset.transferElapsedStart);
+ const value=clock.querySelector("[data-transfer-elapsed-value]");
+ if(value&&Number.isFinite(start)&&start>0)value.textContent=formatTransferStepElapsed(Date.now()-start);
+}
+setInterval(()=>{
+ if(flowView.open&&document.visibilityState!=="hidden")paintTransferElapsed();
+},1000);
 function updateFlowModal(){
  const dialog=document.getElementById("xita-flow-dialog");
  if(!dialog||!flowView.open)return;
@@ -582,6 +593,12 @@ function updateFlowModal(){
   transferSponsorVisible(sponsorTransfer,sponsorKey);
  const walletReady=walletSigningQueue({account:binding.account,
   items:transferActivity.items,sponsorship:sponsorTransfer}).some(item=>item.sourceTxHash===binding.sourceTxHash);
+ const progress=deriveTransferFlow({journey:binding.journey,record:binding.record,
+  stage:binding.sameSession?flowView.stage:"",working:transferActivity.working});
+ const activeStep=Math.min(progress.totalWalletTx-1,progress.verifiedWalletTx);
+ const elapsedStartedAt=progress.delivered?null:transferStepStartedAt({
+  account:binding.account,sourceTxHash:binding.sourceTxHash,step:activeStep,
+  storage:globalThis.sessionStorage});
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",walletReady,
   working:transferActivity.working,scanning:transferActivity.scanning,
@@ -589,9 +606,11 @@ function updateFlowModal(){
   error:binding.sameSession?transferActivity.error:"",
   sponsorship:{enabled:sponsorEnabled,
    status:sponsorTransfer.key===sponsorKey?sponsorTransfer.status:"pending"},
-  representations:state.catalog?.assets?.[binding.journey.asset]?.metadata?.representations||null});
+  representations:state.catalog?.assets?.[binding.journey.asset]?.metadata?.representations||null,
+  elapsedStartedAt});
  const scroll=dialog.scrollTop;
  dialog.innerHTML=html;dialog.scrollTop=scroll;
+ paintTransferElapsed();
  if(!dialog.open)dialog.showModal();
  dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
