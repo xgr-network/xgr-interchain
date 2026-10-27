@@ -337,29 +337,95 @@ export function sponsorDatabase(pool){
 }
 // Confirm native gifts by their exact previously journaled transaction
 // without ever rebroadcasting a grant after restart or uncertain RPC results.
-export async function reconcileSponsorGrants({pool,catalog,wallet,providers}){
- const records=await pool.query("SELECT grant_key,chain_name,sponsor_address,recipient,"+
-  " amount_wei::text AS amount_wei, wallet_nonce,tx_hash FROM xita_sponsor_grants"+
-  " WHERE status='submitted' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 40");
- let checked=0,confirmed=0;
- for(const row of records.rows){
-  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
-  if(!same(row.sponsor_address,wallet.address))continue;
-  const receipt=await p.getTransactionReceipt(row.tx_hash);
-  if(!receipt)continue;
-  const tx=await p.getTransaction(row.tx_hash);
-  if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
-     tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
-   throw Error("Sponsorship receipt does not match durable signed intent");
-  if(receipt.status===1&&!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))continue;
-  checked++;
-  const status=receipt.status===1?"confirmed":"needs-review";
-  if(receipt.status===1)confirmed++;
-  await pool.query({text:"UPDATE xita_sponsor_grants SET status=$2,updated_at=NOW()"+
-   " WHERE grant_key=$1 AND status='submitted'",
-   values:[row.grant_key,status]});
+// F-08: These are READ-ONLY RPC observations. Bounding them prevents one
+// stalled provider from blocking reconciliation on healthy chains. Late
+// completions never trigger a grant send or a database state transition.
+async function boundedSponsorReconcileRead(read,timeoutMs){
+ let timer;
+ try{
+  return await Promise.race([
+   Promise.resolve().then(read),
+   new Promise((_,reject)=>{timer=setTimeout(()=>
+    reject(Error("Sponsor reconciliation read deadline exceeded")),timeoutMs);})
+  ]);
+ }finally{clearTimeout(timer);}
+}
+async function inspectSubmittedSponsorGrant({row,catalog,wallet,providers}){
+ const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
+ const receipt=await p.getTransactionReceipt(row.tx_hash);
+ if(!receipt)return "pending";
+ const tx=await p.getTransaction(row.tx_hash);
+ if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
+    tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
+  throw Error("Sponsorship receipt does not match durable signed intent");
+ if(receipt.status===1){
+  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))
+   return "pending";
+  return "confirmed";
  }
- return {checked,confirmed};
+ if(receipt.status===0)return "needs-review";
+ throw Error("Sponsorship receipt status not authoritative");
+}
+export async function reconcileSponsorGrants({
+ pool,catalog,wallet,providers=new Map(),readTimeoutMs=12000
+}){
+ if(!Number.isSafeInteger(readTimeoutMs)||readTimeoutMs<1||readTimeoutMs>30000)
+  throw Error("Invalid sponsor reconciliation deadline");
+ // Bound each chain independently and rotate unresolved records durably.
+ // updated_at on submitted grants is retry scheduling metadata only;
+ // created_at, nonce, amount and exact tx_hash remain immutable.
+ const records=await pool.query({text:
+  "WITH due AS (SELECT grant_key,chain_name,sponsor_address,recipient,"+
+  " amount_wei::text AS amount_wei,wallet_nonce,tx_hash,updated_at,created_at,"+
+  " ROW_NUMBER() OVER (PARTITION BY chain_name"+
+  " ORDER BY updated_at ASC,created_at ASC,grant_key ASC) AS chain_rank"+
+  " FROM xita_sponsor_grants"+
+  " WHERE status='submitted' AND tx_hash IS NOT NULL"+
+  " AND sponsor_address=$1 AND updated_at<=NOW()-INTERVAL '60 seconds')"+
+  " SELECT grant_key,chain_name,sponsor_address,recipient,amount_wei,wallet_nonce,tx_hash"+
+  " FROM due WHERE chain_rank<=12"+
+  " ORDER BY chain_rank ASC,updated_at ASC,chain_name ASC,grant_key ASC LIMIT 40",
+  values:[wallet.address.toLowerCase()]});
+ let checked=0,confirmed=0,held=0,chainFailures=0,journalErrors=0;
+ const unavailableChains=new Set();
+ for(const row of records.rows){
+  // Foreign rows cannot be promoted by this worker, even under stale SQL.
+  if(!same(row.sponsor_address,wallet.address)){held++;continue;}
+  if(unavailableChains.has(row.chain_name)){held++;continue;}
+  let lastError=null;
+  try{
+   const state=await boundedSponsorReconcileRead(()=>
+    inspectSubmittedSponsorGrant({row,catalog,wallet,providers}),readTimeoutMs);
+   if(state==="pending"){held++;continue;}
+   // Never mark anything confirmed before the complete original transaction
+   // identity and chain-native finality have both been verified.
+   const result=await pool.query({text:
+    "UPDATE xita_sponsor_grants SET status=$2,updated_at=NOW(),last_error=NULL"+
+    " WHERE grant_key=$1 AND tx_hash=$3 AND status='submitted'",
+    values:[row.grant_key,state,row.tx_hash]});
+   if(result.rowCount===1){
+    checked++;if(state==="confirmed")confirmed++;
+   }else held++;
+  }catch(e){
+   held++;lastError=tiny(e?.message||e);
+   // A mismatched original transaction is a grant-specific anomaly, not
+   // evidence that the entire chain's RPC provider is unavailable.
+   if(!lastError.includes("durable signed intent")){
+    unavailableChains.add(row.chain_name);chainFailures++;
+   }
+  }finally{
+   // Move a retained unknown result to the back of the bounded worklist.
+   // No transaction bytes are signed or rebroadcast in reconciliation.
+   // Failure to write scheduling metadata leaves the original obligation.
+   try{
+    await pool.query({text:
+     "UPDATE xita_sponsor_grants SET updated_at=NOW(),last_error=$3"+
+     " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+     values:[row.grant_key,row.tx_hash,lastError]});
+   }catch{journalErrors++;}
+  }
+ }
+ return {checked,confirmed,held,chainFailures,journalErrors};
 }
 export async function reportSponsorReserves({pool,catalog,wallet,policy,providers}){
  const states=[];
