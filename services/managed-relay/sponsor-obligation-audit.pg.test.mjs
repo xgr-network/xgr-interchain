@@ -91,6 +91,13 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
      pool:reopened,sponsorAddress:sponsor})),out)}
    finally{await reopened.end()}
   });
+  await t.test("F-30: monitoring uses immutable creation age despite heartbeat",async()=>{
+   await reset();
+   await grant(db,61,{status:"submitted",minutes:30});
+   await db.query("UPDATE xita_sponsor_grants SET updated_at=NOW() WHERE wallet_nonce=61");
+   const out=issues(await inspectSponsorObligations({pool:db,sponsorAddress:sponsor}));
+   assert.equal(out.get("submitted-not-yet-finalized|any"),1);
+  });
   await t.test("F-19: external delivery, unresolved payment, wrong fee, route, fresh or unindexed",async()=>{
    await reset();
    await paid(db,10,{delivered:true});
