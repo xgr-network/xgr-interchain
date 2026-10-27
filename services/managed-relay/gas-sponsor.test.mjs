@@ -162,9 +162,9 @@ test("F-08: failing RPC on one chain cannot prevent another chain's verified gra
   wallet,providers:new Map([["base",unavailable],["xgrchain",healthy]])});
  assert.deepEqual(result,{checked:1,confirmed:1,held:1,chainFailures:1,journalErrors:0});
  const selection=statements[0];
- assert.match(selection.text,/ROW_NUMBER\\(\\) OVER \\(PARTITION BY chain_name/);
+ assert.match(selection.text,/ROW_NUMBER\(\) OVER \(PARTITION BY chain_name/);
  assert.match(selection.text,/chain_rank<=12/);
- assert.match(selection.text,/updated_at<=NOW\\(\\)-INTERVAL '60 seconds'/);
+ assert.match(selection.text,/updated_at<=NOW\(\)-INTERVAL '60 seconds'/);
  assert.deepEqual(selection.values,[wallet.address.toLowerCase()]);
  const statusChanges=statements.filter(x=>x.text?.includes("SET status=$2"));
  assert.equal(statusChanges.length,1);
