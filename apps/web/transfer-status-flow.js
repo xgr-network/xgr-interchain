@@ -203,12 +203,12 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
    ["PROOF_CONFIG_MISMATCH","PROOF_DESTINATION_QUORUM_REJECTED",
     "PROOF_DESTINATION_ROUTE_REJECTED","PROOF_DESTINATION_ISM_REJECTED",
     "PROOF_DESTINATION_REVERT"].includes(proof.reason);
- if(repeatedStructuralFailure)return {label:"Verification delayed",
-   detail:"Destination verification needs technical review. No further wallet transaction will be requested until checks pass.",kind:"attention"};
+ if(repeatedStructuralFailure)return {label:"Waiting for transfer verification",
+   detail:"XITA continues checking the destination proof. No wallet action is needed right now.",kind:"waiting"};
  if(scheduledRetry)return {label:"Waiting for transfer verification",
-   detail:"A verification retry is scheduled automatically. No wallet action is needed.",kind:"waiting"};
- if(flow.needsAttention)return {label:"Verification delayed",
-   detail:"XITA cannot currently verify this transfer. It will keep checking; do not repeat the original transaction.",kind:"attention"};
+   detail:"XITA is checking the transfer automatically. No wallet action is needed right now.",kind:"waiting"};
+ if(flow.needsAttention)return {label:"Waiting for transfer verification",
+   detail:"XITA is checking the transfer automatically. No wallet action is needed right now.",kind:"waiting"};
  if(status==="pending-source")
   return {label:"Waiting for "+source+" transaction",detail:"",kind:"waiting"};
  if(["confirming","confirming-native-finality"].includes(status))
@@ -226,14 +226,14 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
   return {label:"Waiting for transfer verification",
    detail:"",kind:"waiting"};
  if(walletReady||working&&stage==="onward-preflight"||proof?.state==="ready")
-  return {label:"Checking "+destination+" delivery",
-   detail:"XITA is preparing a verified delivery transaction only if one is still required. Your wallet will ask for confirmation when needed.",kind:"waiting"};
+  return {label:"Waiting for transfer verification",
+   detail:"XITA is preparing the next verified step. Your wallet will ask for confirmation when needed.",kind:"waiting"};
  if(["awaiting-proof","awaiting-final-proof"].includes(status))
   return {label:"Waiting for transfer verification",
    detail:"",kind:"waiting"};
  return {label:"Checking transfer",detail:"",kind:"waiting"};
 }
-export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false,representations=null}={}){
+export function renderTransferFlow({journey,record,stage,working,scanning,notice,error,sponsorship=null,walletReady=false,representations=null,elapsedStartedAt=null}={}){
  const flow=deriveTransferFlow({journey,record,stage,working,scanning,notice,error});
  const sequence=[name(flow.origin),...(flow.twoHop?["XGRChain"]:[]),name(flow.destination)].join(" → ");
  const visual=transferDisplayStatus(flow,{record,stage,working,walletReady,error});
@@ -261,7 +261,8 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
     '<span class="ux-token-journey-pulse'+(visual.kind==="waiting"?' is-animated':'')+'" aria-hidden="true">'+
       (visual.kind==="attention"?'!':visual.kind==="done"?'✓':visual.kind==="wallet"?'↗':'⌛')+'</span>'+
     '<div><strong>'+esc(visual.label)+'</strong>'+
-      '<p>'+esc(visual.detail||tokenJourney.summary)+'</p></div></div>'+
+      '<p>'+esc(visual.detail||tokenJourney.summary)+'</p>'+ 
+      (Number.isFinite(elapsedStartedAt)&&!flow.delivered?'<span class="ux-transfer-elapsed" data-transfer-elapsed-start="'+Math.floor(elapsedStartedAt)+'">Elapsed <span data-transfer-elapsed-value>00:00</span></span>':'')+'</div></div>'+
     (sponsorEnabled?
       '<p class="ux-token-sponsor-note is-'+sponsorState+'"><strong>Gas sponsorship:</strong> '+
        esc(sponsorNote)+'</p>':''):"";
@@ -288,7 +289,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
     '<small>'+esc(flow.twoHop?"Four token actions":"Two token actions")+'</small></div>'+
    '<ol class="ux-token-journey-steps">'+rows+'</ol>'+
   '</section>'+
-  '<div class="ux-flow-footer"><p>You can close this window anytime and resume the same transfer in My Transfers. Closing does not cancel a blockchain transaction; never repeat the original source transaction.</p>'+
+  '<div class="ux-flow-footer"><p>Blockchain confirmations can take a few minutes. Decentralized transfers involve multiple wallet approvals. Return anytime via My Transfers to confirm the next step.</p>'+
    '<div class="ux-flow-actions">'+
     // Modal is status-only. All blockchain checks and wallet steps advance without a modal CTA.
 
