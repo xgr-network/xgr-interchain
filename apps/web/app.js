@@ -1213,7 +1213,7 @@ function contactPage(){
   '<h2>Email us</h2><p>For project enquiries and general support:</p>'+
   '<p><a class="ux-contact-email" href="mailto:xita@xgr.network">xita@xgr.network</a></p>'+
   '<p class="ux-small">For existing transfers, include the transaction hash and source chain. Never share private keys or recovery phrases.</p></div>'+
-  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/join">Bring your token →</a>'+
+  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/join">Join XITA →</a>'+
   '<a class="ux-ns-secondary" data-nav href="/faq">Read FAQs ↗</a></div></section>';
 }
 function render(){

@@ -130,6 +130,23 @@ test("Transfer Tokens and FAQ use a single canonical transaction UI",()=>{
  assert.match(faq,/Locked TVL and Moved via XGR/);
  assert.match(faq,/href="\/transfer"/);
 });
+test("Join XITA navigation consistently highlights the free project application",()=>{
+ const index=readFileSync(new URL("./index.html",import.meta.url),"utf8");
+ const css=readFileSync(new URL("./style.css",import.meta.url),"utf8");
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ const home=renderDashboard(buildExperienceModel(catalog));
+ const faq=renderFAQ();
+ assert.match(index,/class="xita-nav-join" href="\/join" data-nav aria-label="Join XITA for free"/);
+ assert.match(index,/Join for Free/);
+ assert.match(css,/body>header nav a\.xita-nav-join/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(home,/href="\/join">Join XITA/);
+ assert.doesNotMatch(home,/href="\/join">Bring Your Token/);
+ assert.match(faq,/href="\/join">Join XITA/);
+ assert.match(app,/href="\/join">Join XITA/);
+ assert.doesNotMatch(app,/href="\/join">Bring your token/);
+});
+
 test("FAQ: no XGR purchase required for external chains with quote-bound sponsorship",()=>{
  const faq=renderFAQ();
  const answer=question=>{

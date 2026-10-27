@@ -431,7 +431,7 @@ function allianceIntro(){
   '<span><small>01</small>Apply and pass project review</span>'+
   '<span><small>02</small>XGR sponsors route deployment</span>'+
   '<span><small>03</small>Qualifying locked value → public listing</span></div>'+
-  '<a data-nav href="/join">Bring Your Token <span aria-hidden="true">↗</span></a></article>'+
+  '<a data-nav href="/join">Join XITA <span aria-hidden="true">↗</span></a></article>'+
   '</div></section>';
 }
 // Three compact, independent leaderboards. An unknown figure never enters a ranking.
@@ -737,7 +737,7 @@ const faqGroups=[
  ]},
  {label:"02 · TOKEN PROJECTS",title:"Join the Token Alliance",items:[
   ["Why should my project join XITA?","Reach additional blockchain communities while XGR covers the complete smart-contract deployment costs for your approved interchain route. The Alliance offers a clear onboarding and review process. Public discovery is derived automatically from current verified net locked collateral and the configured global threshold."],
-  ["How does the application process work?","Start with Bring Your Token and provide your project information, original token contract and desired networks. The application must then be submitted for XGR's review. A prepared draft or successful form validation is not yet an approved or submitted application."],
+  ["How does the application process work?","Start with Join XITA and provide your project information, original token contract and desired networks. The application must then be submitted for XGR's review. A prepared draft or successful form validation is not yet an approved or submitted application."],
   ["What happens after my project is approved?","XGR arranges and fully sponsors the deployment of the accepted route, including its required smart contracts. The team then completes the necessary contract and route verification before enabling live transfers. There is no public token listing merely for passing review."],
   ["When does my token appear on XITA?","Once net locked collateral is independently verified at or above the configured threshold, the token enters public discovery. Unlocking below the threshold hides it again. An application, positive review or contract deployment on its own is not enough."],
   ["Is the route deployment free for accepted projects?","Yes. XGR sponsors the complete deployment of approved routes under the XITA Alliance program. End-user transfers are separate: users still pay their initial source-chain gas and applicable transfer fees. Eligible downstream gas may be covered by XITA when expressly included in a signed sponsorship quote, but this does not make every transfer gas-free."],
@@ -772,7 +772,7 @@ export function renderFAQ(){
     '<div class="ux-faq-list">'+group.items.map(([q,answer])=>
       '<details class="ux-faq-item"><summary>'+esc(q)+'</summary><p>'+esc(answer)+'</p></details>').join("")+'</div></section>').join("")+'</div>'+
   '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/transfer">Transfer Tokens →</a>'+
-  '<a class="ux-ns-secondary" data-nav href="/join">Join the Alliance ↗</a><a class="ux-ns-secondary" data-nav href="/contact">Contact XITA ↗</a></div></div>';
+  '<a class="ux-ns-secondary" data-nav href="/join">Join XITA ↗</a><a class="ux-ns-secondary" data-nav href="/contact">Contact XITA ↗</a></div></div>';
 }
 export function renderUniverse(model,selected=HUB,metrics=null,wallet={}){
  const active=model.routes.filter(r=>r.active).length;
