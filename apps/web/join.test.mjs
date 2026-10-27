@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {draft,validateStep,validateApplication,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 const chains={
  xgrchain:{name:"XGRChain",nativeCurrency:{symbol:"XGR"}},
@@ -98,4 +99,16 @@ test("Join accepts only HTTPS logo URLs, not uploaded images",()=>{
  const html=joinMarkup(chains,d);
  assert.match(html,/data-join="logoUrl"/);
  assert.doesNotMatch(html,/type="file"|upload a PNG/i);
+});
+
+test("Join navigation is separate from submitted receipt and can start a second application",()=>{
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ const joinFn=app.split("function join(){")[1]?.split("\n}")[0];
+ assert.ok(joinFn,"Join renderer exists");
+ assert.match(joinFn,/return joinMarkup\(state\.catalog\.chains,joinState\.data,joinState\.status,joinState\.busy\)/);
+ assert.doesNotMatch(joinFn,/joinPendingMarkup|joinState\.accepted/);
+ assert.match(app,/p==="\/join"\?join\(\):p==="\/join\/submitted"\?joinPendingMarkup\(joinState\.accepted\?joinState\.data:null\)/);
+ assert.match(app,/if\(a\.pathname==="\/join"&&path\(\)!=="\/join"\)\{/);
+ assert.match(app,/joinState\.data=draft\(state\.catalog\.chains\);[\s\S]*?joinState\.accepted=false;/);
+ assert.match(app,/window\.addEventListener\("popstate",\(\)=>\{/);
 });

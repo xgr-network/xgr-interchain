@@ -1074,7 +1074,7 @@ async function processJoinEmailConfirmation(){
 }
 
 function join(){
- if(joinState.accepted)return joinPendingMarkup(joinState.data);
+ // /join always displays a form. The receipt belongs only to /join/submitted.
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
  return joinMarkup(state.catalog.chains,joinState.data,joinState.status,joinState.busy);
 }
@@ -1486,7 +1486,15 @@ el.addEventListener("change",event=>{
 document.addEventListener("click",e=>{
  const a=e.target.closest("a[data-nav]");
  if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
- e.preventDefault();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
+ e.preventDefault();
+ if(a.pathname==="/join"&&path()!=="/join"){
+  // A new Join click starts a fresh form, never the previous receipt.
+  joinState.data=draft(state.catalog.chains);
+  joinState.status="";
+  joinState.accepted=false;
+  joinState.busy=false;
+ }
+ history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });
 document.addEventListener("click",e=>{
  const copy=e.target.closest("button[data-xita-copy-address]");
@@ -1516,7 +1524,15 @@ document.addEventListener("error",event=>{
  const img=event.target;
  if(img?.matches?.(".ux-dashboard-token-logo-img"))img.hidden=true;
 },true);
-window.addEventListener("popstate",render);
+window.addEventListener("popstate",()=>{
+ if(path()==="/join"&&joinState.accepted){
+  joinState.data=draft(state.catalog.chains);
+  joinState.status="";
+  joinState.accepted=false;
+  joinState.busy=false;
+ }
+ render();
+});
 // Exact-hash finality polling is separate from the finalized event index.
 // Read-only; an RPC outage never causes another source transaction.
 let directFinalityPoll=false;
