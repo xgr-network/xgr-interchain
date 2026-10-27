@@ -1,0 +1,95 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-27-v3.1.0",
+  "frozen_at_utc": "2026-10-27T15:28:37.716089+00:00",
+  "historical_audit_package_read_before_freeze": false,
+  "assignment_exposure": "Selected historical IDs, inventory and verdict were disclosed by the user-provided brief.",
+  "source": {
+    "audit_id": "XITA-DBLS-2026-10-27-v3.1.0",
+    "retrieved_at": "2026-10-27T15:16:27.123Z",
+    "retrieval_channel": "Connected GitHub integration",
+    "repositories": [
+      {
+        "repository": "xgr-network/xgr-interchain",
+        "branch": "main",
+        "commit": "26d1356ce7c92eed67bfdbb91a5a0b19efc25ae3",
+        "tree": "de63f3712463012a9fdb1efdeff81d30524a0ef6",
+        "previous_audit_commit": "ffc24139738bcb25ab516e5d3242f258a75fcfb8"
+      },
+      {
+        "repository": "xgr-network/xgr-node",
+        "branch": "XGR3.0",
+        "commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+        "tree": "3c5d1a0a1e7264b8b7c5787ca390e976fed09b04",
+        "previous_audit_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032"
+      }
+    ]
+  },
+  "phase_a_findings": {
+    "path": "phase-a-findings.md",
+    "bytes": 90938,
+    "sha256": "f969196c28a26357a05c98fcd14018bbd3381af99684f7dc900af2851b1cf08e"
+  },
+  "track_and_evidence_commitments": [
+    {
+      "path": "audit-work/root/phaseA-root.md",
+      "bytes": 6313,
+      "sha256": "12cfb031150065ed3794569cde1f2d42e4a9eecfec380698394abb45d195c580"
+    },
+    {
+      "path": "audit-work/native/phaseA-native.md",
+      "bytes": 25940,
+      "sha256": "084e7f1ccaff54e239e6398f5a7f96a50a70f74aff5e7223e5852c9211be637f"
+    },
+    {
+      "path": "audit-work/protocol/phaseA-protocol.md",
+      "bytes": 26617,
+      "sha256": "e76039411929808b8a2db7d7ff4e505677567eadb218a96160209c3281ed0a89"
+    },
+    {
+      "path": "audit-work/services/phaseA-services.md",
+      "bytes": 30707,
+      "sha256": "cc8264d659f7f3192a80b9366a2178e8e19dbf37eb43981c67e8f807af7b9e27"
+    },
+    {
+      "path": "audit-work/source-freeze.json",
+      "bytes": 727,
+      "sha256": "b87a089d0c39ca90d1b67281369e1f4241cf7b018f7092f97bd5978fd18c5d8e"
+    },
+    {
+      "path": "audit-work/source/source-inventory.json",
+      "bytes": 26829,
+      "sha256": "ad2e49862fb48b411bdf1a9c582d149d8d31f7ac01c569c3c84b16cf07fba702"
+    },
+    {
+      "path": "audit-work/native/evidence.json",
+      "bytes": 8077,
+      "sha256": "889439a15dbacb0eae53c200600c82d63e70d24ac773a6a48c5153743adefc16"
+    },
+    {
+      "path": "audit-work/native/phaseA-native-freeze.json",
+      "bytes": 3159,
+      "sha256": "5596b5a014aa69f10bf7c0e877c04e53297694d55ccf80383690f889036d1901"
+    },
+    {
+      "path": "audit-work/protocol/evidence-sha256.json",
+      "bytes": 7381,
+      "sha256": "fe2adaee1c773be2f688d50b35d3613dff4ca6594c4e326a8143667796e1faf2"
+    },
+    {
+      "path": "audit-work/protocol/AUDIT_COMMANDS.md",
+      "bytes": 9166,
+      "sha256": "a33feaab82b38c347a68e28eecc26dfab71103c702e7553f89f91f5534e8ea77"
+    },
+    {
+      "path": "audit-work/services/phaseA-freeze.sha256",
+      "bytes": 12295,
+      "sha256": "6508cdd819e57c4f4aefa16eb7aa6a323c722e117db5d79bf1e018006cffd337"
+    },
+    {
+      "path": "audit-work/root/static-verification.json",
+      "bytes": 1094,
+      "sha256": "b243a70e088232f2fcc6e7356e16bc3e98cde43a44a48d502fa84312fb271644"
+    }
+  ],
+  "later_evidence_rule": "Additional tests, live observations and historical reassessment must be recorded separately; this phase record must not be rewritten."
+}
