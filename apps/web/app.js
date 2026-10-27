@@ -1035,7 +1035,16 @@ function token(){
   '<p class="ux-small">No routes deployed yet.</p>')+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
-const joinState={data:null,step:0,status:"",busy:false,accepted:false};
+const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false};
+async function checkJoinAvailability(){
+ if(joinState.checking||joinState.available!==null)return;
+ joinState.checking=true;
+ try{const response=await fetch("/api/xita/join/status",{cache:"no-store",credentials:"omit"});
+  const body=await response.json();joinState.available=response.ok&&body?.ok===true&&body.available===true;
+ }catch{joinState.available=false;}
+ joinState.checking=false;
+ if(path()==="/join")drawJoin();
+}
 const joinConfirmation={phase:"idle",message:"",prNumber:null,prUrl:null};
 let joinConfirmationProcessed=false;
 async function processJoinEmailConfirmation(){
@@ -1067,7 +1076,7 @@ async function processJoinEmailConfirmation(){
 function join(){
  if(joinState.accepted)return joinPendingMarkup(joinState.data);
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog.chains,joinState.data,joinState.step,joinState.status,joinState.busy);
+ return joinMarkup(state.catalog.chains,joinState.data,joinState.status,joinState.busy);
 }
 function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
@@ -1084,7 +1093,7 @@ async function runJoin(action){
  if(joinState.busy||joinState.accepted)return;
  captureJoin();
  const d=joinState.data;
- if(action==="back"){joinState.step=Math.max(0,joinState.step-1);joinState.status="";drawJoin();return;}
+ 
  if(action==="export"){
   const {contactEmail,...publicDraft}=d;
    const blob=new Blob([JSON.stringify({...publicDraft,kind:"xita-alliance-application-draft"},null,2)+"\n"],{type:"application/json"});
@@ -1092,7 +1101,7 @@ async function runJoin(action){
   a.href=url;a.download="xita-alliance-application.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
  }
- const problems=validateStep(d,joinState.step,state.catalog.chains);
+ const problems=[0,1,2].flatMap(step=>validateStep(d,step,state.catalog.chains));
  if(problems.length){
    joinState.status="Please complete the required fields.";
    const fields={name:"name",symbol:"symbol",website:"website",
@@ -1120,8 +1129,9 @@ async function runJoin(action){
    errors[0]?.focus({preventScroll:true});
    return;
  }
- if(action==="next"){joinState.step=Math.min(2,joinState.step+1);joinState.status="";drawJoin();return;}
+ 
  if(action==="submit"){
+  if(joinState.available!==true){joinState.status="Applications are temporarily unavailable. Your information is still on this page; you can export a draft.";drawJoin();return;}
   joinState.busy=true;
   joinState.status="Validating public token manifests…";drawJoin();
   try{
@@ -1271,6 +1281,12 @@ function render(){
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
+ if(p==="/join"&&joinState.available===null)void checkJoinAvailability();
+ if(p==="/join"){
+  const submit=document.querySelector('[data-join-action="submit"]');
+  if(submit){submit.disabled=joinState.busy||joinState.available!==true;submit.title=joinState.available===false?"Application service unavailable":"";}
+  if(joinState.available===false){const status=document.getElementById("ja-status");if(status&&!joinState.status)status.textContent="The application service is not ready. You can complete the form and export a draft.";}
+ }
  updateFlowModal();
  for(const [name,id] of [["origin","ux-origin"],["destination","ux-destination"],["asset","ux-asset"]]){
    const control=document.getElementById(id);
@@ -1330,6 +1346,9 @@ function render(){
   void performTransferAction();
  });
  document.querySelector("#xita-flow-reopen")?.addEventListener("click",openFlowModal);
+ document.querySelector("#ja-coingecko-help")?.addEventListener("click",()=>document.querySelector("#ja-coingecko-dialog")?.showModal());
+ document.querySelector("#ja-coingecko-close")?.addEventListener("click",()=>document.querySelector("#ja-coingecko-dialog")?.close());
+ document.querySelector("[data-join-help-close]")?.addEventListener("click",()=>document.querySelector("#ja-coingecko-dialog")?.close());
  document.querySelector("#ux-fee-info-trigger")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.showModal());
  document.querySelector("#ux-fee-info-close")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
  document.querySelector("[data-fee-info-close]")?.addEventListener("click",()=>document.querySelector("#ux-fee-info-dialog")?.close());
@@ -1434,9 +1453,13 @@ window.addEventListener("ethereum#initialized",()=>{
  if(state.catalog&&!state.account)void restoreAuthorizedWallet();
 });
 // Persistent listeners: repainting the wizard never discards its controls.
+el.addEventListener("submit",event=>{
+ if(event.target?.id!=="ja-application-form"||path()!=="/join")return;
+ event.preventDefault();void runJoin("submit");
+});
 el.addEventListener("click",event=>{
  const button=event.target.closest("[data-join-action]");
- if(!button||!el.contains(button)||path()!=="/join")return;
+ if(!button||!el.contains(button)||path()!=="/join"||button.dataset.joinAction==="submit")return;
  event.preventDefault();
  void runJoin(button.dataset.joinAction);
 });
