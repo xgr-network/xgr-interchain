@@ -193,6 +193,22 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  if(proof?.state==="delivery-observed")
   return {label:"Waiting for "+destination+" "+tokenFinalityName(deliveryChain),
    detail:"",kind:"waiting"};
+ // A real wallet broadcast is stronger evidence of the current action than
+ // an old proof-observer "ready", retry, or walletReady hint. Do not imply a
+ // second signing prompt while a destination transaction is already sent.
+ // Only independent canonical Mailbox delivery can mark the token action done.
+ if(["first-delivery-confirmed","final-delivery-confirmed"].includes(stage))
+  return {label:destination+" transaction confirmed",
+   detail:"Your destination transaction was mined. XITA is verifying the token delivery. No further wallet approval is needed for this step.",kind:"waiting"};
+ if(["first-delivery-pending","final-delivery-pending"].includes(stage))
+  return {label:destination+" transaction submitted",
+   detail:"Your wallet sent the destination transaction. Waiting for blockchain confirmation. Do not submit it again.",kind:"waiting"};
+ if(stage==="onward-source-pending"&&working)
+  return {label:"XGRChain transaction submitted",
+   detail:"The onward transaction was sent. Waiting for chain confirmation.",kind:"waiting"};
+ if(stage==="source-pending"&&working)
+  return {label:source+" transaction submitted",
+   detail:"Source transaction submitted. Waiting for chain confirmation.",kind:"waiting"};
  const updatedAt=Date.parse(proof?.updatedAt||"");
  const nextCheckAt=Date.parse(proof?.nextCheckAt||"");
  const scheduledRetry=proof?.state==="unavailable"&&
@@ -214,10 +230,7 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  if(["confirming","confirming-native-finality"].includes(status))
   return {label:"Waiting for "+source+" "+tokenFinalityName(flow.origin),
    detail:"",kind:"waiting"};
- if(["first-delivery-pending","final-delivery-pending","onward-source-pending","source-pending"].includes(stage)&&working)
-  return {label:"Waiting for "+(stage==="source-pending"?source:
-   stage==="first-delivery-pending"?"XGRChain":
-   stage==="onward-source-pending"?"XGRChain":target)+" confirmation",detail:"",kind:"waiting"};
+
  if(["first-delivery-sign","final-delivery-sign","onward-source-sign","source-sign","source-approval","onward-approval"].includes(stage)&&working)
   return {label:"Confirm in your wallet",detail:"",kind:"wallet"};
  if(status==="awaiting-onward")

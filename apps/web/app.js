@@ -771,6 +771,8 @@ async function performTransferAction({automaticStepKey=null}={}){
      transferActivity.notice="Destination TX "+txHash+
       " submitted. Original source transfer is NEVER repeated.";
     }});
+   if(result.receiptConfirmed===true&&result.status==="pending")
+    setFlowStage("first-delivery-confirmed");
    transferActivity.notice=result.status==="delivered"?
     "Delivery confirmed by the destination Mailbox.":
     result.status==="waiting"?result.notice||"Validator proof pending; retry later.":
