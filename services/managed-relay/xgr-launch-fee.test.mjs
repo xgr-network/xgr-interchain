@@ -42,7 +42,7 @@ test("invalid or unavailable FX or nonsensical invoice fail closed",()=>{
  const base={regularFeeWei:"100000000000000000000",uiAvailabilityFeeWei:"1",
  sourceNativeUsd:"2500",xgrUsd:"0.0001"};
  for(const patch of [{xgrUsd:0},{sourceNativeUsd:0},{xgrUsd:"NaN"},
- {regularFeeWei:"0"},{uiAvailabilityFeeWei:"0"},
+ {regularFeeWei:"0"},{uiAvailabilityFeeWei:"-1"},
  {uiAvailabilityFeeWei:"100000000000000000001"}]){
   assert.throws(()=>capXgrLaunchServiceFee({...base,...patch}));
  }
