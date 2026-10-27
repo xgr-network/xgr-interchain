@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {Wallet,Transaction} from "ethers";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -232,6 +232,19 @@ test("F-08: an unexpected transaction identity is held, not confirmed or retried
  assert.match(writes[0].text,/status IN/);
 });
 
+test("F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2",async()=>{
+ const row={grant_key:"base:"+hash("1")+":first-delivery",recipient:addr("b")};
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://xgr.example"]}}};
+ const base={account:addr("b"),destination_chain:"xgrchain",destination_mailbox:addr("c")};
+ for(const delivered of [true,null]){
+  const pool={query:async()=>({rows:[{...base,delivered}]})};
+  assert.equal(await preparedSponsorReplayAllowed({pool,row,catalog,providers:new Map()}),false);
+ }
+ const unknown={query:async()=>({rows:[{...base,delivered:false}]})};
+ await assert.rejects(()=>preparedSponsorReplayAllowed({pool:unknown,row,catalog,
+  providers:new Map([["xgrchain",{send:async()=>{throw Error("RPC unavailable")}}]])}),
+  /RPC unavailable/);
+});
 test("F-07: prepared signed bytes recover after crash with no user signature and identical tx hash",async()=>{
  const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b"),hashBlock=hash("e");
  const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
@@ -242,6 +255,12 @@ test("F-07: prepared signed bytes recover after crash with no user signature and
   recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
   prepared_hash:digest,raw_tx:rawTx};
  const actions=[],provider={
+  send:async(method,args)=>{
+   if(method==="eth_chainId")return "0x66b";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("unexpected canonical call");
+  },
   getTransactionReceipt:async()=>null,
   getTransactionCount:async()=>7,
   getTransaction:async()=>null,
@@ -249,6 +268,7 @@ test("F-07: prepared signed bytes recover after crash with no user signature and
  };
  const pool={query:async q=>{
   if(q.text?.startsWith("WITH due AS"))return {rows:[row]};
+  if(q.text?.startsWith("SELECT account,delivered"))return {rows:[{account:target,delivered:false,destination_chain:"xgrchain",destination_mailbox:addr("c")}]};
   actions.push(q);return {rowCount:1};
  }};
  const result=await reconcileSponsorGrants({pool,wallet:sponsor,
@@ -272,7 +292,8 @@ test("F-07: a consumed nonce holds the exact signed grant for operator review",a
   getTransactionCount:async()=>8,
   broadcastTransaction:async()=>{broadcasts++}};
  const pool={query:async q=>q.text?.startsWith("WITH due AS")?
-  {rows:[row]}:{rowCount:1}};
+  {rows:[row]}:q.text?.startsWith("SELECT account,delivered")?
+  {rows:[{account:target,delivered:false,destination_chain:"xgrchain",destination_mailbox:addr("c")}]}:{rowCount:1}};
  const result=await reconcileSponsorGrants({pool,wallet:sponsor,
   catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]])});
  assert.equal(result.checked,1);
