@@ -130,6 +130,42 @@ test("Transfer Tokens and FAQ use a single canonical transaction UI",()=>{
  assert.match(faq,/Locked TVL and Moved via XGR/);
  assert.match(faq,/href="\/transfer"/);
 });
+test("FAQ: no XGR purchase required for external chains with quote-bound sponsorship",()=>{
+ const faq=renderFAQ();
+ const answer=question=>{
+  const summary="<summary>"+question+"</summary>";
+  const start=faq.indexOf(summary);
+  assert.ok(start>=0,"Missing FAQ question: "+question);
+  const end=faq.indexOf("</p>",start);
+  assert.ok(end>start,"Missing FAQ answer: "+question);
+  return faq.slice(start+summary.length,end);
+ };
+ const xgr=answer("Do I need XGR to transfer tokens between blockchains?");
+ assert.match(xgr,/No\. For a supported transfer between external chains/);
+ assert.match(xgr,/Base to Arbitrum/);
+ assert.match(xgr,/do not need to buy or hold XGR/);
+ assert.match(xgr,/passes through XGRChain/);
+ assert.match(xgr,/signed quote/);
+ assert.match(xgr,/source chain&#39;s native currency/);
+ assert.match(xgr,/ETH on Base/);
+ assert.match(xgr,/If you start on XGRChain, you need XGR/);
+ assert.match(xgr,/Without confirmed sponsorship/);
+ const sponsor=answer("How does optional gas sponsorship work?");
+ assert.match(sponsor,/personalized signed quote/);
+ assert.match(sponsor,/initial source transaction is finalized and verified/);
+ assert.match(sponsor,/grants are sent to your wallet and must be confirmed/);
+ assert.match(sponsor,/does not cover the initial source-chain gas/);
+ const cost=answer("What does a transfer cost?");
+ assert.match(cost,/source-chain protocol fee and XITA Service Fee/);
+ assert.match(cost,/network gas for the initial source transaction/);
+ assert.match(cost,/wallet-paid gas from any quoted sponsorship/);
+ assert.match(cost,/Sponsorship does not make the transfer free/);
+ assert.doesNotMatch(cost,/gas paid separately.*destination delivery on each hop/);
+ const deployment=answer("Is the route deployment free for accepted projects?");
+ assert.match(deployment,/XGR sponsors the complete deployment/);
+ assert.match(deployment,/downstream gas may be covered by XITA/);
+});
+
 test("public ranking requires DB-qualified full deployments and sourced caps",()=>{
  const c={assets:{A:deployedFixture("A"),B:deployedFixture("B"),HIDDEN:deployedFixture("HIDDEN")}};
  const row=(id,cap)=>({assetId:id,verified:false,market:{status:"market-data",source:"coingecko",
