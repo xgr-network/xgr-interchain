@@ -349,7 +349,8 @@ test("customer-facing transfers never label the route quote as GmbH fee",()=>{
  const html=renderPlanRoute(model,{origin:"xgrchain",destination:"base",asset:"XGR",amount:"1"},"ready");
  assert.doesNotMatch(html,/GmbH Interchain Fee/);
  assert.doesNotMatch(html,/Route, network gas/);
- assert.match(html,/Network gas is additional/);
+ assert.match(html,/Downstream gas and sponsorship/);
+ assert.match(html,/wallet pays the native gas for the initial source-chain transfer/);
  assert.match(renderFAQ(),/XITA Service Fee/);
 });
 

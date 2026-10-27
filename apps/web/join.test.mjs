@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
-
+import {draft,validateStep,validateApplication,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 const chains={
  xgrchain:{name:"XGRChain",nativeCurrency:{symbol:"XGR"}},
  base:{name:"Base",nativeCurrency:{symbol:"ETH"}},
@@ -17,51 +16,52 @@ const valid=()=>({
  canonicalChain:"arbitrum",canonicalAddress:"0x912ce59144191c1204e64559fe8253a0e49e6548",
  coingeckoId:"arbitrum",contactEmail:"holder@example.org",applicantRole:"holder",confirmed:true
 });
-test("Join has exactly three steps with no destination-chain checkbox",()=>{
- const d=valid();
- assert.equal(Object.hasOwn(d,"targets"),false);
- for(const step of [0,1,2]){
-  assert.deepEqual(validateStep(d,step,chains),[]);
-  const html=joinMarkup(chains,d,step);
-  assert.match(html,new RegExp("Step "+(step+1)+" / 3"));
-  assert.doesNotMatch(html,/data-join-target|New worlds|Step 4 \/ 4/);
-  assert.doesNotMatch(html,/data-join="slug"|Token URL/);
-  assert.match(html,/\/token\/example-protocol/);
-  assert.match(html,/Planned routes/);
-  assert.match(html,/>6<\/strong>/);
-  if(step===2){
-   assert.match(html,/data-join-action="submit"/);
-   assert.match(html,/Proposed networks: XGRChain · Base · Polygon · Arbitrum/);
-   assert.match(html,/XGR reviews the application/);
-  }else{
-   assert.match(html,/data-join-action="next"/);
-   assert.doesNotMatch(html,/data-join-action="submit"/);
-  }
- }
+test("Join has one form and retains every validation and privacy requirement",()=>{
+ const d=valid(),html=joinMarkup(chains,d);
+ assert.deepEqual(validateApplication(d,chains),[]);
+ assert.match(html,/id="ja-application-form" novalidate/);
+ assert.match(html,/data-join-action="submit"/);
+ assert.match(html,/Submit free application/);
+ assert.match(html,/data-join="contactEmail"/);
+ assert.match(html,/data-join="applicantRole"/);
+ assert.match(html,/data-join="confirmed"/);
+ assert.match(html,/data-join="canonicalChain"/);
+ assert.match(html,/data-join="logoUrl"/);
+ assert.match(html,/data-join="description"/);
+ assert.match(html,/No wallet connection or payment is needed/);
+ assert.doesNotMatch(html,/data-join-action="next"|data-join-action="back"|Step 3 \/ 3|data-join-target/);
+ assert.doesNotMatch(html,/data-join="slug"|Token URL/);
+ assert.match(html,/\/token\/example-protocol/);
 });
-test("Applicant never has to provide a token URL",()=>{
+test("CoinGecko help is an accessible dialog with an API ID example and matching fields",()=>{
+ const html=joinMarkup(chains,valid());
+ assert.match(html,/id="ja-coingecko-help" aria-haspopup="dialog"/);
+ assert.match(html,/aria-controls="ja-coingecko-dialog"/);
+ assert.match(html,/id="ja-coingecko-dialog" class="ux-fee-dialog/);
+ assert.match(html,/API ID/);
+ assert.match(html,/CoinGecko/);
+ assert.match(html,/contract address/);
+ assert.match(html,/detail/mi);
+ assert.match(html,/data-join-help-close/);
+ assert.match(html,/target="_blank" rel="noopener noreferrer"/);
+});
+test("Single page validates all three underlying security groups before submitting",()=>{
  const d=valid();
- assert.equal(Object.hasOwn(d,"slug"),false);
+ assert.deepEqual(validateApplication({...d,name:"",coingeckoId:"",contactEmail:""},chains),
+  ["Project name","CoinGecko coin ID","Contact email"]);
+ assert.deepEqual(validateApplication({...d,confirmed:false},chains),["Project confirmation"]);
+ assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"x"},chains),["HTTPS logo URL"]);
  assert.deepEqual(validateStep(d,0,chains),[]);
- assert.doesNotMatch(joinMarkup(chains,d,0),/Token URL|data-join="slug"/);
-});
-test("Review validates identity but never requires chain selection",()=>{
- const d=valid();
+ assert.deepEqual(validateStep(d,1,chains),[]);
  assert.deepEqual(validateStep(d,2,chains),[]);
- assert.deepEqual(validateStep({...d,contactEmail:""},2,chains),["Contact email"]);
- const html=joinMarkup(chains,{...d,canonicalChain:"base"},2);
- assert.match(html,/Proposed networks: XGRChain · Base · Polygon · Arbitrum/);
- assert.doesNotMatch(html,/type="checkbox" data-join-target/);
 });
-
-test("invalid formatting is detected on project identity step, not on Review",()=>{
- const d=valid();
- d.description="Arbitrum is an Ethereum scaling ecosystem.\n\nThis is a holder application.";
- assert.deepEqual(validateStep(d,0,chains),[]);
- d.description="A description with disallowed <script> markup.";
- assert.deepEqual(validateStep(d,0,chains),["Full description (40–5000 characters)"]);
+test("Single-page join never requires chain target selection or a manually chosen URL",()=>{
+ const html=joinMarkup(chains,valid());
+ assert.doesNotMatch(html,/data-join-target|New worlds|Token URL/);
+ assert.match(html,/No upfront listing or deployment fee/);
+ assert.match(html,/Privacy Policy/);
+ assert.match(html,/Email/);
 });
-
 test("submission displays a standalone email-confirmation page without another submit button",()=>{
  const h=joinPendingMarkup(valid());
  assert.match(h,/Thank you for submitting your project!/);
@@ -94,8 +94,8 @@ test("confirmation page distinguishes email verification from receipt",()=>{
 
 test("Join accepts only HTTPS logo URLs, not uploaded images",()=>{
  const d=valid();
- assert.deepEqual(validateStep({...d,logoUrl:"",logoPngBase64:"abc"},0,chains),["HTTPS logo URL"]);
- const html=joinMarkup(chains,d,0);
+ assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"abc"},chains),["HTTPS logo URL"]);
+ const html=joinMarkup(chains,d);
  assert.match(html,/data-join="logoUrl"/);
- assert.doesNotMatch(html,/ja-logo|type="file"|upload a PNG/i);
+ assert.doesNotMatch(html,/type="file"|upload a PNG/i);
 });
