@@ -2,9 +2,10 @@
 // Mailbox transaction. Everything is rechecked against finalized on-chain
 // source evidence, with a durable one-shot reservation BEFORE signing.
 import {readFileSync} from "node:fs";
-import {Wallet,JsonRpcProvider,Contract,Transaction,keccak256} from "ethers";
+import {Wallet,JsonRpcProvider,Contract,Transaction,keccak256,Interface} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
+import {verifiedNativeMailboxState} from "../../apps/web/chain-finality.js";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 
@@ -15,6 +16,7 @@ const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const positive=x=>UINT.test(String(x))&&BigInt(x)>0n;
 const tiny=x=>String(x||"").slice(0,190);
 const ABI_FEE=["function interchainFeeRecipient() view returns (address)"];
+const MAILBOX_DELIVERED=new Interface(["function delivered(bytes32) view returns (bool)"]);
 const ABI_HUB=[
  "function onwardParentUsed(address,bytes32) view returns (bool)"
 ];
@@ -363,8 +365,9 @@ export function sponsorDatabase(pool){
   }
  };
 }
-// Confirm native gifts by their exact previously journaled transaction
-// without ever rebroadcasting a grant after restart or uncertain RPC results.
+// Confirm native gifts by their exact previously journaled transaction.
+// Only identical stored bytes may be rebroadcast after fresh finality proves
+// that TX2 has not yet occurred; unknown proofs remain held.
 // F-08: These are READ-ONLY RPC observations. Bounding them prevents one
 // stalled provider from blocking reconciliation on healthy chains. Late
 // completions never trigger a grant send or a database state transition.
@@ -378,7 +381,34 @@ async function boundedSponsorReconcileRead(read,timeoutMs){
   ]);
  }finally{clearTimeout(timer);}
 }
-async function inspectSubmittedSponsorGrant({row,catalog,wallet,providers}){
+// A stored, signed native payout is not an authorization to pay AFTER TX2.
+// Query the immutable original parent, then independently observe current
+// destination delivery using the protocol's pinned native-safe finality.
+// Missing/mismatched/indexer-lagged evidence fails closed. No new signatures.
+export async function preparedSponsorReplayAllowed({pool,row,catalog,providers}){
+ const parts=/^([a-z][a-z0-9-]{0,39}):(0x[0-9a-f]{64}):(first-delivery|hub-onward|final-delivery)$/.exec(row.grant_key||"");
+ if(!parts)throw Error("Invalid prepared grant identity");
+ const q=await pool.query({text:
+  "SELECT account,delivered,destination_chain,destination_mailbox"+
+  " FROM xita_transfer_operations WHERE source_chain=$1 AND message_id=$2"+
+  " AND parent_message_id IS NULL LIMIT 2",
+  values:[parts[1],parts[2]]});
+ if(q.rows.length!==1||!same(q.rows[0].account,row.recipient))
+  throw Error("Prepared grant original transfer is missing or ambiguous");
+ const operation=q.rows[0];
+ if(operation.delivered!==false)return false;
+ const cfg=catalog.chains?.[operation.destination_chain];
+ if(!Number.isSafeInteger(cfg?.chainId)||
+    !ADDR.test(operation.destination_mailbox||""))
+  throw Error("Prepared grant original destination unavailable");
+ const p=await getProvider(catalog,operation.destination_chain,providers);
+ const calldata=MAILBOX_DELIVERED.encodeFunctionData("delivered",[parts[2]]);
+ const proof=await verifiedNativeMailboxState(
+  (method,args)=>p.send(method,args),cfg.chainId,
+  operation.destination_mailbox,calldata);
+ return proof.verified===true&&proof.delivered===false;
+}
+async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}){
  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
  const hash=row.tx_hash||row.prepared_hash;
  if(!HASH.test(hash||""))throw Error("Missing durable payment hash");
@@ -393,6 +423,8 @@ async function inspectSubmittedSponsorGrant({row,catalog,wallet,providers}){
  }
  let receipt=await p.getTransactionReceipt(hash);
  if(!receipt&&row.raw_tx){
+  if(!(await preparedSponsorReplayAllowed({pool,row,catalog,providers})))
+   return "needs-review";
   const confirmedNonce=await p.getTransactionCount(wallet.address,"latest");
   if(confirmedNonce>Number(row.wallet_nonce))return "needs-review";
   if(confirmedNonce===Number(row.wallet_nonce)){
@@ -454,7 +486,7 @@ export async function reconcileSponsorGrants({
   let lastError=null;
   try{
    const state=await boundedSponsorReconcileRead(()=>
-    inspectSubmittedSponsorGrant({row,catalog,wallet,providers}),readTimeoutMs);
+    inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}),readTimeoutMs);
    if(state==="pending"){held++;continue;}
    // Never mark anything confirmed before the complete original transaction
    // identity and chain-native finality have both been verified.
@@ -477,7 +509,7 @@ export async function reconcileSponsorGrants({
    }
   }finally{
    // Move a retained unknown result to the back of the bounded worklist.
-   // No transaction bytes are signed or rebroadcast in reconciliation.
+   // Only previously stored transaction bytes can be rebroadcast.
    // Failure to write scheduling metadata leaves the original obligation.
    try{
     await pool.query({text:
