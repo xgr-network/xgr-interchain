@@ -673,10 +673,12 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
   '<button id="ux-fee-info-close" type="button" aria-label="Close fee information">×</button></div>'+
   '<dl><dt>Protocol fee</dt><dd>The native network protocol fee required for the source route.</dd>'+
   '<dt>XITA Service Fee</dt><dd>A fee for the optional XITA execution service. Its estimate includes quoted downstream execution and processing costs for the selected route.</dd></dl>'+
-  '<h3>Network gas is additional</h3>'+
-  '<p>Every hop involves wallet-authorized blockchain transactions. Source lock/burn, destination message delivery and any onward hop require network gas in the respective chain’s native currency. An ERC-20 approval can require an additional transaction. These wallet gas costs are not included in the route fee shown here.</p>'+
-  '<p>Gas sponsorship only applies to specific steps when explicitly offered and confirmed. Otherwise ensure that you have enough gas on each required chain.</p>'+
-  '<p>Figures are non-binding estimates. XITA requests a fresh signed service quote before the source transaction. Exchange rates and network gas can change.</p>'+
+  '<h3>What you pay directly</h3>'+ 
+  '<p>Your wallet pays the native gas for the initial source-chain transfer and any separate ERC-20 approval. The signed quote includes the source-chain protocol fee and the XITA Service Fee; network gas for that first wallet transaction is separate.</p>'+
+  '<h3>Downstream gas and sponsorship</h3>'+
+  '<p>Later wallet steps on XGRChain and the destination network also consume native gas. If your personalized signed quote includes wallet-aware gas sponsorship, XITA funds only the specified downstream native-gas shortfalls, after the source transaction has been verified. Confirmed grants must reach your wallet before sponsored steps proceed. Without a verified sponsorship commitment, you must fund the required gas yourself.</p>'+
+  '<p>For example, a Base-to-Arbitrum transfer does not require you to buy XGR if the XGRChain step is covered by a confirmed sponsor commitment. You still need ETH for the initial Base transaction.</p>'+
+  '<p>Cost previews are estimates based on current network conditions. A fresh signed quote is required before paying. Market prices, final gas usage and sponsorship availability can change; sponsoring gas does not make the transfer free.</p>'+
   '<button type="button" class="ux-fee-dialog-done" data-fee-info-close>Close</button>'+
   '</dialog>';
  return '<div class="ux-app ux-plan-page ux-northstar-page">'+
