@@ -2,6 +2,7 @@
 
 The current source-based reference is maintained in the public XGR documentation.
 
+- [System context, individual contracts and caller authority](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Context_and_Contracts.md)
 - [Architecture and multiple routes](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Overview.md)
 - [Exact wire format and trust boundaries](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Security_Model.md)
 - [Assets and public Factory registration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Asset_Bridge.md)

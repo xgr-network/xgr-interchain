@@ -1,5 +1,7 @@
 # XGR Interchain / XITA — Direct-BLS protocol
 
+[System context and every Interchain contract](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Context_and_Contracts.md): component diagrams, contract roles, trust boundaries and value flows.
+
 The maintained Interchain implementation uses XGRChain as its mandatory hub and **Direct-BLS authorization for each source message**. The node baseline is **xgr-node v3.4.0**; Solidity family suffixes (V315/V2) are independent interface versions.
 
 ## Permissionless protocol, optional service
