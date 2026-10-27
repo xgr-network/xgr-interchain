@@ -128,3 +128,24 @@ test("Join health separates service readiness, missing configuration and missing
  assert.equal(missing.services.find(x=>x.id==="join").state,"not-installed");
  assert.equal(missing.checks.find(x=>x.id==="join-api").state,"not-installed");
 });
+
+test("failed sponsor oneshot degrades health although timer and listener are green",async()=>{
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]}}};
+ const health=await collectOperationsHealth({catalog,now,
+  readUnit:async unit=>{
+   if(unit==="xita-gas-sponsor.service")return "LoadState=loaded\nActiveState=failed\nResult=exit-code\nExecMainStatus=1\n";
+   if(unit==="xita-gas-sponsor.timer"||unit==="xita-gas-sponsor-listener.service")
+    return "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
+   return UNITS.find(x=>x.unit===unit)?.optional?"LoadState=not-found\nActiveState=inactive\n":
+    "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
+  },
+  readHTTP:async target=>target.id==="transfer-stats"?stats([cursor("2026-10-19T11:59:30Z")]):{ok:true},
+  checkChain:async()=>({state:"ok",name:"xgrchain",head:2}),
+  checkValidators:async()=>[],
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1})
+ });
+ assert.equal(health.status,"degraded");
+ assert.equal(health.services.find(x=>x.id==="gas-sponsor").state,"failed");
+ assert.equal(health.services.find(x=>x.id==="gas-sponsor-worker").state,"failed");
+ assert.equal(health.sponsorWorker.state,"failed");
+});
