@@ -95,7 +95,9 @@ async function paidQuoteDatabaseReady(){
    has_table_privilege(current_user,'public.xita_sponsor_quote_intents','INSERT') AS intent_write,
    has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','INSERT') AS promise_write,
    has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','SELECT') AS promise_read,
-   has_table_privilege(current_user,'public.xita_sponsor_grants','SELECT') AS grants_read`);
+   has_table_privilege(current_user,'public.xita_sponsor_grants','SELECT') AS grants_read,
+   has_table_privilege(current_user,'public.xita_sponsor_quote_resolutions','SELECT') AS resolutions_read,
+   has_table_privilege(current_user,'public.xita_transfer_operations','SELECT') AS transfers_read`);
   const row=result.rows?.[0]||{};
   return {ready:Object.values(row).every(v=>v===true),
    reason:Object.values(row).every(v=>v===true)?"verified":"quote-db-permissions-incomplete"};

@@ -23,13 +23,15 @@ BEGIN
  END IF;
  EXECUTE format('GRANT USAGE ON SCHEMA public TO %I',writer);
  EXECUTE format('GRANT INSERT ON TABLE public.xita_sponsor_quote_intents, public.xita_sponsor_quote_commitments TO %I',writer);
- EXECUTE format('GRANT SELECT ON TABLE public.xita_sponsor_quote_commitments, public.xita_sponsor_grants, public.xita_sponsor_quote_resolutions TO %I',writer);
+ EXECUTE format('GRANT SELECT ON TABLE public.xita_sponsor_quote_commitments, public.xita_sponsor_grants, public.xita_sponsor_quote_resolutions, public.xita_transfer_operations TO %I',writer);
  IF NOT (
   has_schema_privilege(writer,'public','USAGE') AND
   has_table_privilege(writer,'public.xita_sponsor_quote_intents','INSERT') AND
   has_table_privilege(writer,'public.xita_sponsor_quote_commitments','INSERT') AND
   has_table_privilege(writer,'public.xita_sponsor_quote_commitments','SELECT') AND
-  has_table_privilege(writer,'public.xita_sponsor_grants','SELECT')
+  has_table_privilege(writer,'public.xita_sponsor_grants','SELECT') AND
+  has_table_privilege(writer,'public.xita_sponsor_quote_resolutions','SELECT') AND
+  has_table_privilege(writer,'public.xita_transfer_operations','SELECT')
  ) THEN
   RAISE EXCEPTION 'XITA signer quote role permission verification failed';
  END IF;
