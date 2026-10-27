@@ -341,17 +341,32 @@ export async function reconcileSponsorGrants({pool,catalog,wallet,providers}){
  const records=await pool.query("SELECT grant_key,chain_name,sponsor_address,recipient,"+
   " amount_wei::text AS amount_wei, wallet_nonce,tx_hash FROM xita_sponsor_grants"+
   " WHERE status='submitted' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 40");
- let checked=0,confirmed=0;
+ let checked=0,confirmed=0,deferred=0;
  for(const row of records.rows){
-  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
   if(!same(row.sponsor_address,wallet.address))continue;
-  const receipt=await p.getTransactionReceipt(row.tx_hash);
-  if(!receipt)continue;
-  const tx=await p.getTransaction(row.tx_hash);
-  if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
+  const chain=row.chain_name;
+  let p,receipt,tx;
+  try{
+   p=await getProvider(catalog,chain,providers);
+   receipt=await p.getTransactionReceipt(row.tx_hash);
+   if(!receipt){deferred++;continue}
+   tx=await p.getTransaction(row.tx_hash);
+  }catch{
+   // RPC outages must not block unrelated grants. This grant retains its
+   // immutable 'submitted' record and can never be broadcast again.
+   deferred++;continue;
+  }
+  if(!tx||receipt.status===null||receipt.status===undefined){
+   deferred++;continue;
+  }
+  // Contradictory on-chain evidence remains a hard failure; never silently
+  // confirm or release a journal entry with mismatched beneficiary/nonce.
+  if(!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
      tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
    throw Error("Sponsorship receipt does not match durable signed intent");
-  if(receipt.status===1&&!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))continue;
+  if(receipt.status===1&&!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash}))){
+   deferred++;continue;
+  }
   checked++;
   const status=receipt.status===1?"confirmed":"needs-review";
   if(receipt.status===1)confirmed++;
@@ -359,7 +374,7 @@ export async function reconcileSponsorGrants({pool,catalog,wallet,providers}){
    " WHERE grant_key=$1 AND status='submitted'",
    values:[row.grant_key,status]});
  }
- return {checked,confirmed};
+ return {checked,confirmed,deferred};
 }
 export async function reportSponsorReserves({pool,catalog,wallet,policy,providers}){
  const states=[];
@@ -469,23 +484,38 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
    " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
-  const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
-  const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
-   providers:providerCache});
-  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
-   providers:providerCache});
+  // Fulfil verified immutable gas promises BEFORE nonurgent quote expiry and
+  // reserve monitoring. On slow RPCs the old maintenance-first order could
+  // exhaust the one-shot service's 120s deadline without paying any grant.
   for(const row of rows.rows){
    const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
    if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
-   if(!policy[grant.chain])continue;
+   if(!policy[grant.chain]){outcomes.push({status:"policy-unavailable"});continue}
    try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
     providers:providerCache,fetcher,nativePolicy:policy,
     stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
+  // Reconcile existing broadcasts only after processing unreserved
+  // candidates. Database uniqueness prevents a second grant for any stage.
+  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
+   providers:providerCache});
+  const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
+   providers:providerCache});
+  const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,
+   providers:providerCache});
+  const deferredByReason={};
+  for(const outcome of outcomes){
+   if(["submitted","confirmed"].includes(outcome.status))continue;
+   // Emit no RPC URLs, addresses, recipient, private keys or raw exceptions.
+   const reason=String(outcome.status||"unknown");
+   deferredByReason[reason]=(deferredByReason[reason]||0)+1;
+  }
   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,
-   grants:outcomes.filter(x=>x.status==="submitted"),
-   held:outcomes.filter(x=>x.status==="held-for-review").length};
+   grantsSubmitted:outcomes.filter(x=>x.status==="submitted").length,
+   grantsConfirmed:outcomes.filter(x=>x.status==="confirmed").length,
+   held:Object.values(deferredByReason).reduce((a,b)=>a+b,0),
+   deferredByReason};
  }finally{await pool.end()}
 }
 if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
