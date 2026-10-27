@@ -1,5 +1,4 @@
 const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-import {suggestedTokenSlug} from "./token-slug.js";
 import {normalizeJoinDescription} from "./join-description.js";
 const url=s=>/^https:\/\/[^@\s/]+/.test(s||"");
 export function draft(chains){
@@ -63,7 +62,6 @@ export function joinMarkup(chains,d,status="",busy=false){
  const relationship='<label class="ja-field" for="ja-applicantRole"><span>Your relationship to the token *</span>'+
   '<select id="ja-applicantRole" data-join="applicantRole" required>'+
   '<option value="">Choose your role…</option>'+roles+'</select></label>';
- const profileSlug=suggestedTokenSlug(d);
  const dialog='<dialog id="ja-coingecko-dialog" class="ux-fee-dialog ja-coingecko-dialog" aria-labelledby="ja-coingecko-title">'+
   '<div class="ux-fee-dialog-header"><div><span class="ux-kicker">XITA · TOKEN IDENTITY</span>'+
   '<h2 id="ja-coingecko-title">Where is my CoinGecko API ID?</h2></div>'+
@@ -77,10 +75,10 @@ export function joinMarkup(chains,d,status="",busy=false){
   '<button type="button" class="ux-fee-dialog-done" data-join-help-close>Got it</button></dialog>';
  return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
   '<h1>Bring your token into the <span>Universe.</span></h1>'+
-  '<p class="ux-lead">Apply for free with a CoinGecko-listed ERC-20 token. If accepted, XGR funds deployment of the approved interchain routes. No wallet connection or payment is needed to apply.</p></div>'+
+  '<p class="ux-lead">Join XITA for free. For accepted CoinGecko-listed ERC-20 tokens, XITA handles the complete technical integration and XGR funds deployment of the approved interchain routes. No wallet connection or payment is needed to apply.</p></div>'+
   '<div class="ja-application-journey" aria-label="XITA partner onboarding">'+
   '<span><b>01</b> Free application</span><span><b>02</b> Confirm your email</span>'+
-  '<span><b>03</b> XGR review</span><span><b>04</b> Funded deployment if approved</span></div>'+
+  '<span><b>03</b> XGR review</span><span><b>04</b> Free integration &amp; deployment if approved</span></div>'+
   '<div class="ja-layout"><section class="ux-panel ja-wizard">'+
   '<div class="ja-form-head"><span class="ux-kicker">ONE SIMPLE APPLICATION</span>'+
   '<h2>Tell us about your token.</h2>'+
@@ -113,16 +111,7 @@ export function joinMarkup(chains,d,status="",busy=false){
   (busy?' disabled aria-busy="true"':'')+'>'+
   (busy?'Checking application…':'Submit free application →')+'</button></div></form>'+
   '<button class="ja-export" type="button" data-join-action="export">Export a local draft instead</button>'+
-  '</section><aside class="ux-panel ja-preview"><div class="ux-kicker">XITA · PROJECT PREVIEW</div>'+
-  '<h2 data-join-preview="name">'+escape(d.name||"Your Token")+'</h2>'+
-  '<p class="ja-info">No upfront listing or deployment fee. XGR covers approved route deployment after review.</p>'+
-  '<div class="ja-preview-data"><div><span>Home chain</span><strong>'+
-  escape(d.canonicalChain||"Not selected")+'</strong></div>'+
-  '<div><span>Asset</span><strong data-join-preview="symbol">'+escape(d.symbol||"—")+'</strong></div>'+
-  '<div><span>Application</span><strong>Not yet submitted</strong></div></div>'+
-  '<p class="ja-info">After email confirmation and XGR review, approved routes are deployed. Public listing requires verified locked value to meet the publication threshold.</p>'+
-  (profileSlug?'<p class="ja-info">Suggested token profile: /token/'+escape(profileSlug)+'</p>':'')+
-  '</aside></div>'+dialog+'</div>';
+  '</section></div>'+dialog+'</div>';
 }
 // The accepted request is no longer an editable form. No additional submission is possible.
 export function joinPendingMarkup(data){
