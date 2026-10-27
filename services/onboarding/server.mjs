@@ -118,6 +118,9 @@ export function localMainSha(){
   if(!/^[0-9a-f]{40}$/.test(sha))throw Error("Local Git main revision unavailable");
   return sha;
 }
+// Capture the revision when this process BOOTS, not on every status request.
+// An old Node process must never impersonate a newly pulled checkout.
+const JOIN_BOOT_SHA=(()=>{try{return localMainSha();}catch{return null;}})();
 const rate=new Map();
 function allowed(client,now=Date.now()){
   const key=String(client||"unknown").slice(0,128);
@@ -143,7 +146,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
  const url=new URL(req.url,"http://localhost"),path=url.pathname;
  if(req.method==="GET"&&path==="/api/xita/join/status")
-  return reply(res,200,{ok:true,...joinReadiness(env,sourceCatalog)});
+  return reply(res,200,{ok:true,readinessVersion:2,sourceSha:JOIN_BOOT_SHA,...joinReadiness(env,sourceCatalog)});
  if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm"].includes(path))
   return reply(res,404,{ok:false});
  try{
