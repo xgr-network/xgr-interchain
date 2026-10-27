@@ -3,7 +3,7 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {execFileSync} from "node:child_process";
-import {loadCatalog} from "../../tools/validate-manifests.mjs";
+import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
@@ -90,6 +90,29 @@ export function joinAvailable(env=process.env){
   if(!joinGithubToken(env)||!mailConfigured(env))return false;
   try{return Boolean(privateLocation(env));}catch{return false;}
 }
+// Fail closed on broken *operator-owned* infrastructure manifests. Public
+// applicants cannot repair this state, so never label it a field error (422).
+// Do not substitute a browser catalog, drop receipt checks or mask bad hooks.
+function checkedJoinCatalog(sourceCatalog){
+ let catalog;
+ try{
+  catalog=sourceCatalog();
+  if(validateCatalog(catalog).length)throw Error("Invalid operator inventory");
+ }catch{
+  throw Error("Join inventory unavailable; operator verification required");
+ }
+ return catalog;
+}
+export function joinReadiness(env=process.env,sourceCatalog=()=>loadCatalog(root)){
+ if(!joinAvailable(env))
+  return {available:false,note:"Email confirmation or GitHub writer not configured"};
+ try{
+  checkedJoinCatalog(sourceCatalog);
+  return {available:true,note:"Email-confirmed applications supported"};
+ }catch{
+  return {available:false,note:"Join inventory unavailable; operator verification required"};
+ }
+}
 export function localMainSha(){
   const sha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",timeout:3000}).trim();
   if(!/^[0-9a-f]{40}$/.test(sha))throw Error("Local Git main revision unavailable");
@@ -120,8 +143,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
  const url=new URL(req.url,"http://localhost"),path=url.pathname;
  if(req.method==="GET"&&path==="/api/xita/join/status")
-  return reply(res,200,{ok:true,available:joinAvailable(env),
-    note:joinAvailable(env)?"Email-confirmed applications supported":"Email-confirmed applications not configured; export locally"});
+  return reply(res,200,{ok:true,...joinReadiness(env,sourceCatalog)});
  if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm"].includes(path))
   return reply(res,404,{ok:false});
  try{
@@ -143,7 +165,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       if(Date.parse(record.confirmBefore)<clock()||!matchesToken(record.tokenHash,token))
         throw Error("Expired or invalid confirmation token");
       // Rebuild against current checkout; block a stale or displaced main revision.
-      const bundle=buildManifestBundle(record.input,sourceCatalog());
+      const bundle=buildManifestBundle(record.input,checkedJoinCatalog(sourceCatalog));
       const identity=await verify(record.input);
       const expectedMain=await getMainSha();
       const pr=await publisher(bundle,{expectedMain,applicationId:record.id});
@@ -165,7 +187,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   if(path.endsWith("/submit")&&!joinAvailable(env))
     return reply(res,503,{ok:false,error:"Private email confirmation and GitHub writer are not configured; use Export draft"});
   const input=await readBody(req);
-  const bundle=buildManifestBundle(input,sourceCatalog());
+  const bundle=buildManifestBundle(input,checkedJoinCatalog(sourceCatalog));
   const identity=await verify(input); // fail-closed live CoinGecko identity check
   if(path.endsWith("/preview"))
     return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),

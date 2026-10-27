@@ -5,7 +5,7 @@ import {mkdtempSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
-import {handleJoin,joinAvailable,joinGithubToken} from "./server.mjs";
+import {handleJoin,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 const catalog=loadCatalog();
 const input={
@@ -26,6 +26,35 @@ test("Join status fails closed until private email delivery and writer exist",()
  assert.equal(joinAvailable({}),false);
  assert.equal(joinAvailable({XITA_JOIN_WRITER_TOKEN:"yes"}),false);
  assert.equal(joinAvailable({XITA_GITHUB_TOKEN:"yes"}),false);
+});
+test("Join readiness rejects broken operator inventory even with mail and GitHub configured",()=>{
+ const env={XITA_JOIN_WRITER_TOKEN:"writer",XITA_JOIN_PRIVATE_DIR:"/tmp/xita-join-qa",
+  XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
+  XITA_JOIN_MAIL_API_TOKEN:"mail",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
+ assert.equal(joinReadiness(env,()=>catalog).available,true);
+ const broken=structuredClone(catalog);
+ broken.infrastructure.base.xitaV315.components.dispatchHook.receiptPath="deployments/receipts/base/invalid.json";
+ const status=joinReadiness(env,()=>broken);
+ assert.equal(status.available,false);
+ assert.match(status.note,/operator verification/);
+ assert.equal(joinReadiness(env,()=>{throw Error("missing files")}).available,false);
+});
+test("Join preview blocks bad operator inventory before calling CoinGecko",async()=>{
+ const broken=structuredClone(catalog);
+ broken.infrastructure.base.xitaV315.components.dispatchHook.receiptPath="deployments/receipts/base/invalid.json";
+ let verifies=0;
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+  sourceCatalog:()=>broken,verify:async()=>{verifies++;throw Error("must not verify")}})});
+ await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+ try{
+  const url="http://127.0.0.1:"+server.address().port;
+  const preview=await fetch(url+"/api/xita/join/preview",{method:"POST",
+   headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
+  const body=await preview.json();
+  assert.equal(body.ok,false);
+  assert.match(body.error,/Join inventory unavailable/);
+  assert.equal(verifies,0);
+ }finally{await new Promise(resolve=>server.close(resolve));}
 });
 test("email confirmation is private, single-use and required before public GitHub Draft PR",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-join-integration-")),mail=[];
