@@ -598,7 +598,7 @@ function updateFlowModal(){
  const activeStep=Math.min(progress.totalWalletTx-1,progress.verifiedWalletTx);
  const elapsedStartedAt=progress.delivered?null:transferStepStartedAt({
   account:binding.account,sourceTxHash:binding.sourceTxHash,step:activeStep,
-  storage:globalThis.sessionStorage});
+  storage:globalThis.localStorage});
  const html=renderTransferFlow({journey:{...binding.journey,sourceTxHash:binding.sourceTxHash},
   record:binding.record,stage:binding.sameSession?flowView.stage:"",walletReady,
   working:transferActivity.working,scanning:transferActivity.scanning,
