@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "audit_id": "XITA-DBLS-2026-10-27-v3.0.0",
+  "assessment": "NO-GO",
+  "archive_directory": "audits/2026-10-27-xita-direct-bls-final-v3.0.0",
+  "audited_source_revisions": [
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "branch": "main",
+      "sha": "ffc24139738bcb25ab516e5d3242f258a75fcfb8",
+      "tree": "3654eff1b4015ccee78ead91cc9a6617cf08e762"
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "branch": "XGR3.0",
+      "sha": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "tree": "cc24e44aeecc7dafabe445da18242bb7fea07330"
+    }
+  ],
+  "source_freeze_utc": "2026-10-27T07:14:49.792Z",
+  "phase_a_freeze_utc": "2026-10-27T07:23:07.946971Z",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3796,
+      "sha256": "e33181989cea13e0624fe9a9d65fa0c7d09f42b684b4e3ea70ca22358ad54e99"
+    },
+    {
+      "path": "confidential-evidence-reference.json",
+      "bytes": 356,
+      "sha256": "e389fefce94cb0c7f955c75acdeac9bfc21ba75a70ca8546544cecec70f4b416"
+    },
+    {
+      "path": "evidence/MANIFEST.json",
+      "bytes": 53831,
+      "sha256": "01ab319019fd6c945cea595bcd3b15ec03e19c8b72931de38d5b39f9d310ad9b"
+    },
+    {
+      "path": "evidence/README.md",
+      "bytes": 18002,
+      "sha256": "6f88d532d2b9baffe67ea3dcd6df4b3ed9591d601bcd5e0254d531caabd40e5f"
+    },
+    {
+      "path": "evidence-public.zip",
+      "bytes": 601494,
+      "sha256": "6d34b5de341a8a84659e967c5b8b2e5a18dc288cd04ee7a51cad77b0ad5e2272"
+    },
+    {
+      "path": "findings.csv",
+      "bytes": 30644,
+      "sha256": "cdcc9274a88229aa5be016872ba3ccb6620c41fbbbf1a763289b202a4e8c458f"
+    },
+    {
+      "path": "historical-findings.csv",
+      "bytes": 88035,
+      "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235"
+    },
+    {
+      "path": "pdf-validation.json",
+      "bytes": 916,
+      "sha256": "2c65131e447e19279c1364734cfc767980a66e658e3b7844f71798576bc62b3f"
+    },
+    {
+      "path": "phase-a-findings.md",
+      "bytes": 62233,
+      "sha256": "2a50051a01d73f36dcd01faed86709947395ed4474ae93578b4802d2fa85be32"
+    },
+    {
+      "path": "phase-a-freeze.json",
+      "bytes": 1146,
+      "sha256": "f7341dccdba60f149a96b14580b94d3d0ac308f5640417671cdd39db37e7a398"
+    },
+    {
+      "path": "prior-findings-matrix.md",
+      "bytes": 104313,
+      "sha256": "a67c5eaee334d1a0bfbd78982be1a7bdecac24a65accf2e6d31af4074d44fc87"
+    },
+    {
+      "path": "remediation.md",
+      "bytes": 17347,
+      "sha256": "56ced4624fe43e48c0e0e7172adb49219b3498364d9113fdf3f51b267c4a6559"
+    },
+    {
+      "path": "render_report.py",
+      "bytes": 10227,
+      "sha256": "eca394a5f24022bcf91af9fc936186db3cc654138ce4d6fa8a9df6454976b4c2"
+    },
+    {
+      "path": "report.md",
+      "bytes": 190197,
+      "sha256": "3993d2dc7e9eb44161e07588ed6591a693c758b97b5dfa24db58b5030c2fb517"
+    },
+    {
+      "path": "report.pdf",
+      "bytes": 284509,
+      "sha256": "8a23d73b4cbc0c57366d544e5b46f0049df58a078ddf15fc432ee57cd6900286"
+    },
+    {
+      "path": "verification.md",
+      "bytes": 11666,
+      "sha256": "abc2396665965f7d4888480f78887b51d7a4dac98cf94408b798147885c8abf8"
+    }
+  ],
+  "additional_repository_files": [
+    {
+      "path": "audits/README.md",
+      "bytes": 3952,
+      "sha256": "840475e6fb4d4b5baba2084020f535d4dc550927232ccc0700ea57214ceda5d4"
+    }
+  ],
+  "manifest_self_exclusion": "This manifest excludes its own bytes/hash to avoid self-reference. Its exact size and SHA-256 are included in the final GitHub main readback attestation.",
+  "public_evidence_entries": 104,
+  "confidential_evidence": {
+    "audit_id": "XITA-DBLS-2026-10-27-v3.0.0",
+    "storage": "Access-controlled audit-owner storage; not publicly shared",
+    "reference": "libfile_b50f042ceb0c8191a9e8d0bf027b152c",
+    "filename": "XITA_2026-10-27_Confidential_Evidence.zip",
+    "bytes": 62218,
+    "sha256": "c957de67af58ada37db103da545fcdf98d46b99b02ddefe7a0376845d7d45c32",
+    "entries": 38
+  },
+  "readback_requirement": "Read every listed file and this manifest from GitHub main after the documentation PR merge, and compare the returned bytes, lengths and SHA-256 against the frozen local publication payload."
+}

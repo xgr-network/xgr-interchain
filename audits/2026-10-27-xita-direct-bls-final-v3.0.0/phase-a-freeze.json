@@ -1,0 +1,42 @@
+{
+  "phase": "A",
+  "frozen_at_utc": "2026-10-27T07:23:07.946971+00:00",
+  "historical_reports_read_before_freeze": false,
+  "sources": {
+    "xgr-network/xgr-interchain": {
+      "branch": "main",
+      "commit": "ffc24139738bcb25ab516e5d3242f258a75fcfb8"
+    },
+    "xgr-network/xgr-node": {
+      "branch": "XGR3.0",
+      "commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032"
+    }
+  },
+  "files": [
+    {
+      "file": "lead.md",
+      "bytes": 9561,
+      "sha256": "e241a810e37e9c8a9deb07d8e9fc971b4d5113785fe0874018d976019db85597"
+    },
+    {
+      "file": "contracts.md",
+      "bytes": 17234,
+      "sha256": "ee9edc45aa9f5149a5ff5f020cb3d2621b84c7fa4eade87f1dadbfb5ddc48a5a"
+    },
+    {
+      "file": "node.md",
+      "bytes": 18863,
+      "sha256": "92c1429c998844838f012c574b3555cfa149f8cfbb71a094dfce2a9ec4a7fd68"
+    },
+    {
+      "file": "sponsorship.md",
+      "bytes": 16312,
+      "sha256": "8be5d7947e26d7314db6263ee0d461a4557b5fb10bf6eadee05fc55ca4d32d0b"
+    },
+    {
+      "file": "phase-a-findings.md",
+      "bytes": 62233,
+      "sha256": "2a50051a01d73f36dcd01faed86709947395ed4474ae93578b4802d2fa85be32"
+    }
+  ]
+}
