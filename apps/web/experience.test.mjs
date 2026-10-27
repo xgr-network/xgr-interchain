@@ -671,3 +671,10 @@ test("completed journey loses stale status CTA and can reset to new transfer",()
  assert.match(html,/>New transfer<\/button>/);
  assert.doesNotMatch(html,/id="xita-flow-reopen"|View transfer status|Transfer costs/);
 });
+
+test("outreach FAQ covers finality, recovery and sponsorship",()=>{
+ const faq=renderFAQ();
+ for(const needle of ["Why can a transfer take several minutes?","My Transfers","gas sponsorship","connected wallet","href=\"/contact\""])
+  assert.ok(faq.includes(needle),needle);
+ assert.doesNotMatch(faq,/must be confirmed by the user in MetaMask/);
+});
