@@ -54,7 +54,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.end('{"ok":false,"error":"Not deployed"}');
    return;
   }
-  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/join/confirm"||pathname==="/my-transfers";
+  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/contact"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/join/confirm"||pathname==="/my-transfers";
   const target=isPage?"index.html":pathname.slice(1);
   const full=resolve(root,target);
   if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
