@@ -39,12 +39,14 @@ export const PAID_ALERT_SQL=[
  " AND p.parent_message_id IS NULL",
  " LEFT JOIN xita_sponsor_grants g ON",
  " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage",
+ " AND g.chain_name=c.grant_chain AND g.sponsor_address=$1",
+ " AND g.recipient=p.account AND g.amount_wei=c.promised_wei",
  " WHERE p.source_indexed_at<NOW()-INTERVAL '5 minutes'",
  "), classified AS (",
  " SELECT chain_name,grant_stage,CASE",
  " WHEN delivered IS TRUE AND grant_status IS DISTINCT FROM 'confirmed'",
  "  THEN 'F-19:delivered-before-grant-confirmed'",
- " WHEN grant_key IS NULL THEN 'F-19:paid-commitment-without-grant'",
+ " WHEN grant_key IS NULL THEN 'F-19:paid-commitment-without-matching-grant'",
  " WHEN grant_status='reserved' AND tx_hash IS NULL",
  "  THEN 'F-07:paid-grant-reserved-without-hash'",
  " WHEN grant_status='needs-review' THEN 'paid-grant-needs-review'",
@@ -78,7 +80,7 @@ export async function inspectSponsorObligations({pool,sponsorAddress}={}){
  const address=sponsorAddress.toLowerCase();
  // Aggregate in PostgreSQL: no customer address, nonce or message ID returned.
  const grants=await pool.query({text:GRANT_ALERT_SQL,values:[address]});
- const paid=await pool.query({text:PAID_ALERT_SQL,values:[]});
+ const paid=await pool.query({text:PAID_ALERT_SQL,values:[address]});
  const alerts=[
   ...normalizedAlerts(grants.rows,"grant-journal"),
   ...normalizedAlerts(paid.rows,"indexed-paid-commitments")
