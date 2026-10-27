@@ -131,6 +131,11 @@ test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",a
  assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
 });
 
+// Reconciliation uses documented chain identity even with injected RPC providers.
+const reconciliationCatalog={chains:{
+ base:{chainId:8453,rpcUrls:["https://base.example"]},
+ xgrchain:{chainId:1643,rpcUrls:["https://xgr.example"]}
+}};
 test("F-08: failing RPC on one chain cannot prevent another chain's verified grant",async()=>{
  const wallet={address:addr("a")},baseTx=hash("1"),hubTx=hash("2"),blockHash=hash("e");
  const rows=[
@@ -158,7 +163,7 @@ test("F-08: failing RPC on one chain cannot prevent another chain's verified gra
  const unavailable={
   getTransactionReceipt:async()=>{throw Error("RPC HTTP 503");}
  };
- const result=await reconcileSponsorGrants({pool,catalog:{},
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,
   wallet,providers:new Map([["base",unavailable],["xgrchain",healthy]])});
  assert.deepEqual(result,{checked:1,confirmed:1,held:1,chainFailures:1,journalErrors:0});
  const selection=statements[0];
@@ -194,7 +199,7 @@ test("F-08: a stalled read expires without delaying another chain or releasing a
   ["base",{getTransactionReceipt:async()=>new Promise(()=>{})}],
   ["xgrchain",{getTransactionReceipt:async()=>null}]
  ]);
- const result=await reconcileSponsorGrants({pool,catalog:{},wallet,providers,readTimeoutMs:15});
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers,readTimeoutMs:15});
  assert.deepEqual(result,{checked:0,confirmed:0,held:3,chainFailures:1,journalErrors:0});
  assert.equal(updates.length,2,"blocked chain's later rows are not needlessly probed");
  assert.ok(updates.every(x=>x.text.includes("status='submitted'")));
@@ -214,7 +219,7 @@ test("F-08: an unexpected transaction identity is held, not confirmed or retried
    blockHash:hash("e")}),
   getTransaction:async()=>({from:wallet.address,to:addr("c"),value:100n,nonce:4})
  }]]);
- const result=await reconcileSponsorGrants({pool,catalog:{},wallet,providers});
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers});
  assert.equal(result.confirmed,0);assert.equal(result.held,1);
  assert.equal(result.chainFailures,0,"mismatched grants do not poison the entire source chain");
  assert.equal(writes.length,1);assert.match(writes[0].values[2],/durable signed intent/);
