@@ -1,0 +1,9 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-27-v3.0.0",
+  "storage": "Access-controlled audit-owner storage; not publicly shared",
+  "reference": "libfile_b50f042ceb0c8191a9e8d0bf027b152c",
+  "filename": "XITA_2026-10-27_Confidential_Evidence.zip",
+  "bytes": 62218,
+  "sha256": "c957de67af58ada37db103da545fcdf98d46b99b02ddefe7a0376845d7d45c32",
+  "entries": 38
+}

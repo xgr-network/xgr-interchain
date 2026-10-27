@@ -1,0 +1,19 @@
+{
+  "file": "report.pdf",
+  "pages": 59,
+  "bytes": 284509,
+  "sha256": "8a23d73b4cbc0c57366d544e5b46f0049df58a078ddf15fc432ee57cd6900286",
+  "text_chars": 189683,
+  "empty_pages": [],
+  "outline_entries": 25,
+  "all_current_ids_present": true,
+  "all_chapters_present": true,
+  "report_markdown_sha256": "3993d2dc7e9eb44161e07588ed6591a693c758b97b5dfa24db58b5030c2fb517",
+  "all_43_historical_occurrences_present": true,
+  "replacement_glyph_count": 0,
+  "literal_break_markup_present": false,
+  "rendered_pages": 59,
+  "render_resolution_dpi": 80,
+  "visual_review": "All 59 page renderings reviewed in contact sheets, with full-size checks of cover, tables, finding details, historical transitions and final gates; no clipping, overlaps, missing glyphs or orphan finding headings observed.",
+  "validation_scope": "Document readability and structure only; not security closure or GitHub archival verification."
+}
