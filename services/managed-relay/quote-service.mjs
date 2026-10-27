@@ -177,12 +177,10 @@ export async function buildManagedQuote({
   // execution service; do not alter the disabled-switch behaviour here.
   uiServiceFeeWei:"0",sponsoredServiceFeeWei:journey.quotedServiceFeeWei
  };
- // Promotional XGR-only commercial fee cap; the underlying bridge
- // principal and validator protocol fees are NOT subsidized or modified.
- // The optional wallet-aware grant is immutable and independently funded.
- // No cap is applied to legacy sponsorship-off quotes, which have no
- // fee-locked gas-grant commitment to fund the promotional shortfall.
- const launch=asset==="XGR"&&walletAwareEnabled?
+ // XGR-only price ceiling, independent of whether optional sponsorship
+ // is enabled. Grants/commitments remain exactly as calculated above.
+ // Gateway protocol fees and token principal are never discounted.
+ const launch=asset==="XGR"?
   capXgrLaunchServiceFee({
    regularFeeWei:fee.quotedServiceFeeWei,
    uiAvailabilityFeeWei:fee.uiServiceFeeWei,
