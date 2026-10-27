@@ -561,6 +561,35 @@ export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new 
  }
  return {resolved,held};
 }
+// F-19: record externally completed transfers with an unfulfilled quote-bound
+// grant. Never send gas after TX2; retain evidence for operator reconciliation.
+export async function recordOvertakenSponsorObligations({pool,wallet}){
+ const r=await pool.query({text:
+  "INSERT INTO xita_sponsor_overtaken_obligations"+
+  " (grant_key,chain_name,stage,sponsor_address,promised_wei)"+
+  " SELECT p.source_chain||':'||p.message_id||':'||c.grant_stage,"+
+  " c.grant_chain,c.grant_stage,$1,c.promised_wei"+
+  " FROM xita_transfer_operations p"+
+  " JOIN xita_sponsor_quote_intents i ON"+
+  " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+  " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+  " AND i.quote_fee_wei=p.interchain_fee_wei"+
+  " AND i.route_id=p.route_id AND i.asset=p.asset"+
+  " AND i.amount_raw=p.amount_raw AND i.final_recipient=p.final_recipient"+
+  " JOIN xita_sponsor_quote_commitments c ON"+
+  " c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+  " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce"+
+  " LEFT JOIN xita_sponsor_grants g ON"+
+  " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage"+
+  " AND g.chain_name=c.grant_chain AND g.sponsor_address=$1"+
+  " AND g.recipient=p.account AND g.amount_wei=c.promised_wei"+
+  " WHERE p.parent_message_id IS NULL AND p.delivered IS TRUE"+
+  " AND p.source_indexed_at<NOW()-INTERVAL '5 minutes'"+
+  " AND g.status IS DISTINCT FROM 'confirmed'"+
+  " ON CONFLICT(grant_key) DO NOTHING",
+  values:[wallet.address.toLowerCase()]});
+ return {recorded:r.rowCount||0};
+}
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
  const required=k=>{
@@ -602,6 +631,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
+  const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
   for(const row of rows.rows){
    const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
    if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
@@ -611,7 +641,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
     stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
-  return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,
+  return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};
  }finally{await pool.end()}
