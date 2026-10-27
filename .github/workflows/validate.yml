@@ -10,6 +10,34 @@ permissions:
   contents: read
 
 jobs:
+  sponsor-obligation-postgres:
+    name: Sponsor obligations (real disposable PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: xita_ci
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: xita_sponsor_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install isolated managed relay test dependencies
+        run: npm install --prefix services/managed-relay --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Run real PostgreSQL liability fault matrix
+        run: |
+          set -euo pipefail
+          test -n "$XITA_SPONSOR_TEST_DATABASE_URL"
+          node --test services/managed-relay/sponsor-obligation-audit.pg.test.mjs
   runtime:
     runs-on: ubuntu-latest
     steps:
