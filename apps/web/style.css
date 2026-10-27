@@ -1425,3 +1425,7 @@ body.xita-subpage-planet>#app{position:relative;z-index:1}
 /* Resume/read-only completed journeys do not show a fresh transfer-fee column. */
 .ux-plan-page .ux-ns-operations-grid.is-recovery{grid-template-columns:minmax(0,1fr)}
 .ux-plan-page .ux-ns-operations-grid.is-recovery>.ux-route-panel{max-width:none}
+
+/* Read-only time spent on current verified token action. */
+.ux-transfer-elapsed{display:inline-block;margin-top:7px;font-size:10px;line-height:1.4;color:#a9c6df;font-variant-numeric:tabular-nums}
+.ux-transfer-elapsed [data-transfer-elapsed-value]{color:#e0efff;font-weight:600;font-variant-numeric:tabular-nums}
