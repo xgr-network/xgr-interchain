@@ -781,11 +781,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    else if(focused)home();
   },{signal});
   canvas.addEventListener("contextmenu",e=>e.preventDefault(),{signal});
-  canvas.addEventListener("wheel",e=>{
-   e.preventDefault();
-   const unit=e.deltaMode===1?16:e.deltaMode===2?canvas.clientHeight:1;
-   zoom(clamp(e.deltaY*unit/105,-4,4));
-  },{passive:false,signal});
+  // Mouse wheel and trackpad scrolling remain native page scrolling.
+  // Explicit +/- controls and keyboard shortcuts retain camera zoom.
   const keys=e=>{
    if(!root.isConnected||/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||""))return;
    const step=e.shiftKey?30:16;
@@ -809,6 +806,8 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
   const action=button.dataset.cosmosAction;
   if(action==="home")home();
   if(action==="home")canvas.focus({preventScroll:true});
+  if(action==="zoom-in")zoom(-1);
+  if(action==="zoom-out")zoom(1);
  },{signal}));
  initialize();
  if(gl)start();
