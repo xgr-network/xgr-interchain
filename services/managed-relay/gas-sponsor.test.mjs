@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -129,6 +129,101 @@ test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",a
  assert.equal(await verifiedSponsorFinality({provider,chain:"xgrchain",receipt,txHash:tx}),false);
  provider.getBlock=async tag=>{if(tag==="safe")throw Error("unsupported");return {number:100,hash:blockHash}};
  assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
+});
+
+// Reconciliation uses documented chain identity even with injected RPC providers.
+const reconciliationCatalog={chains:{
+ base:{chainId:8453,rpcUrls:["https://base.example"]},
+ xgrchain:{chainId:1643,rpcUrls:["https://xgr.example"]}
+}};
+test("F-08: failing RPC on one chain cannot prevent another chain's verified grant",async()=>{
+ const wallet={address:addr("a")},baseTx=hash("1"),hubTx=hash("2"),blockHash=hash("e");
+ const rows=[
+  {grant_key:"base:old:first-delivery",chain_name:"base",
+   sponsor_address:wallet.address,recipient:addr("b"),
+   amount_wei:"100",wallet_nonce:4,tx_hash:baseTx},
+  {grant_key:"xgrchain:new:hub-onward",chain_name:"xgrchain",
+   sponsor_address:wallet.address,recipient:addr("c"),
+   amount_wei:"200",wallet_nonce:5,tx_hash:hubTx}
+ ];
+ const statements=[];
+ const pool={query:async q=>{
+  statements.push(q);
+  if(q.text?.startsWith("WITH due AS"))return {rows};
+  return {rowCount:1,rows:[]};
+ }};
+ const receipt={hash:hubTx,blockHash,blockNumber:100,status:1};
+ const healthy={
+  getTransactionReceipt:async tx=>{assert.equal(tx,hubTx);return receipt;},
+  getTransaction:async tx=>{assert.equal(tx,hubTx);return {
+   from:wallet.address,to:addr("c"),value:200n,nonce:5};},
+  getBlock:async tag=>tag==="latest"?{number:103}:
+   {number:100,hash:blockHash}
+ };
+ const unavailable={
+  getTransactionReceipt:async()=>{throw Error("RPC HTTP 503");}
+ };
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,
+  wallet,providers:new Map([["base",unavailable],["xgrchain",healthy]])});
+ assert.deepEqual(result,{checked:1,confirmed:1,held:1,chainFailures:1,journalErrors:0});
+ const selection=statements[0];
+ assert.match(selection.text,/ROW_NUMBER\(\) OVER \(PARTITION BY chain_name/);
+ assert.match(selection.text,/chain_rank<=12/);
+ assert.match(selection.text,/updated_at<=NOW\(\)-INTERVAL '60 seconds'/);
+ assert.deepEqual(selection.values,[wallet.address.toLowerCase()]);
+ const statusChanges=statements.filter(x=>x.text?.includes("SET status=$2"));
+ assert.equal(statusChanges.length,1);
+ assert.deepEqual(statusChanges[0].values,[rows[1].grant_key,"confirmed",hubTx]);
+ const retained=statements.find(x=>x.values?.[0]===rows[0].grant_key &&
+  x.text?.includes("last_error=$3"));
+ assert.ok(retained);assert.match(retained.values[2],/503/);
+ assert.ok(statements.every(x=>!x.text?.includes("DELETE FROM xita_sponsor_grants")));
+});
+
+test("F-08: a stalled read expires without delaying another chain or releasing an obligation",async()=>{
+ const wallet={address:addr("a")},rows=[
+  {grant_key:"bad",chain_name:"base",sponsor_address:wallet.address,
+   recipient:addr("b"),amount_wei:"1",wallet_nonce:1,tx_hash:hash("1")},
+  {grant_key:"later-bad",chain_name:"base",sponsor_address:wallet.address,
+   recipient:addr("b"),amount_wei:"1",wallet_nonce:2,tx_hash:hash("2")},
+  {grant_key:"good",chain_name:"xgrchain",sponsor_address:wallet.address,
+   recipient:addr("c"),amount_wei:"2",wallet_nonce:1,tx_hash:hash("3")}
+ ];
+ const updates=[];
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows};
+  updates.push(q);
+  return {rowCount:1};
+ }};
+ const providers=new Map([
+  ["base",{getTransactionReceipt:async()=>new Promise(()=>{})}],
+  ["xgrchain",{getTransactionReceipt:async()=>null}]
+ ]);
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers,readTimeoutMs:15});
+ assert.deepEqual(result,{checked:0,confirmed:0,held:3,chainFailures:1,journalErrors:0});
+ assert.equal(updates.length,2,"blocked chain's later rows are not needlessly probed");
+ assert.ok(updates.every(x=>x.text.includes("status='submitted'")));
+ assert.ok(!updates.some(x=>x.text.includes("SET status=$2")));
+});
+
+test("F-08: an unexpected transaction identity is held, not confirmed or retried",async()=>{
+ const wallet={address:addr("a")},row={grant_key:"mismatch",chain_name:"base",
+  sponsor_address:wallet.address,recipient:addr("b"),
+  amount_wei:"100",wallet_nonce:4,tx_hash:hash("1")};
+ const writes=[],pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows:[row]};
+  writes.push(q);return {rowCount:1};
+ }};
+ const providers=new Map([["base",{
+  getTransactionReceipt:async()=>({hash:row.tx_hash,status:1,blockNumber:100,
+   blockHash:hash("e")}),
+  getTransaction:async()=>({from:wallet.address,to:addr("c"),value:100n,nonce:4})
+ }]]);
+ const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers});
+ assert.equal(result.confirmed,0);assert.equal(result.held,1);
+ assert.equal(result.chainFailures,0,"mismatched grants do not poison the entire source chain");
+ assert.equal(writes.length,1);assert.match(writes[0].values[2],/durable signed intent/);
+ assert.match(writes[0].text,/status='submitted'/);
 });
 
 test("N-06 expires only after finalized source nonce evidence, never merely by time",async()=>{
