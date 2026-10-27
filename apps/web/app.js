@@ -1198,6 +1198,17 @@ async function updateWalletGas(){
  }
 }
 let cosmos=null;
+function contactPage(){
+ return '<section class="ux-app ux-faq-page ux-contact-page">'+
+  '<span class="ux-kicker">XITA · CONTACT</span><h1>Get in touch.</h1>'+
+  '<p class="ux-lead">Questions about token onboarding, interchain transfers or partnerships? Contact the XITA team.</p>'+
+  '<div class="ux-panel"><span class="ux-kicker">CONTACT THE XITA TEAM</span>'+
+  '<h2>Email us</h2><p>For project enquiries and general support:</p>'+
+  '<p><a class="ux-contact-email" href="mailto:xita@xgr.network">xita@xgr.network</a></p>'+
+  '<p class="ux-small">For existing transfers, include the transaction hash and source chain. Never share private keys or recovery phrases.</p></div>'+
+  '<div class="ux-faq-footer"><a class="ux-ns-primary" data-nav href="/join">Bring your token →</a>'+
+  '<a class="ux-ns-secondary" data-nav href="/faq">Read FAQs ↗</a></div></section>';
+}
 function render(){
  if(cosmos){cosmos.dispose();cosmos=null;}
  const rawPath=path();
@@ -1239,7 +1250,7 @@ function render(){
    hasFlow:Boolean(flowView.journey)&&Boolean(state.account),
     sponsorship:{available:sponsorRouteReady(sponsorship,state.experience.origin,state.experience.destination),status:sponsorship.status,
       chains:sponsorship.chains}
-  }):p==="/faq"?renderFAQ():p==="/markets"?markets():p==="/my-transfers"?
+  }):p==="/faq"?renderFAQ():p==="/contact"?contactPage():p==="/markets"?markets():p==="/my-transfers"?
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
