@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {Wallet,Transaction} from "ethers";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -137,6 +137,19 @@ test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",a
  assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
 });
 
+test("Sponsor inclusion: mined canonical payout is usable before L2 safe finality",async()=>{
+ const tx=hash("a"),blockHash=hash("b");
+ const receipt={hash:tx,blockHash,blockNumber:101,status:1};
+ const provider={
+  getBlock:async tag=>tag==="safe"?{number:100}:
+   {number:101,hash:blockHash},
+  getTransactionReceipt:async()=>receipt
+ };
+ assert.equal(await verifiedSponsorInclusion({provider,receipt,txHash:tx}),true);
+ assert.equal(await verifiedSponsorFinality({provider,chain:"arbitrum",receipt,txHash:tx}),false);
+ provider.getBlock=async()=>({number:101,hash:hash("c")});
+ assert.equal(await verifiedSponsorInclusion({provider,receipt,txHash:tx}),false);
+});
 // Reconciliation uses documented chain identity even with injected RPC providers.
 const reconciliationCatalog={chains:{
  base:{chainId:8453,rpcUrls:["https://base.example"]},
