@@ -135,6 +135,23 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
   throw Error("Original parent already used for second hop");
  return {first,route:routes[0]};
 }
+// A successful receipt in the canonical latest block makes the sponsored
+// gas usable. SAFE remains the separate final settlement criterion.
+export async function verifiedSponsorInclusion({provider,receipt,txHash}){
+ if(!receipt||receipt.status!==1||!HASH.test(txHash||"")||
+    !same(receipt.hash,txHash)||!HASH.test(receipt.blockHash||"")||
+    !Number.isSafeInteger(receipt.blockNumber)||receipt.blockNumber<1)
+  return false;
+ try{
+  const [block,observed]=await Promise.all([
+   provider.getBlock(receipt.blockNumber),
+   provider.getTransactionReceipt(txHash)
+  ]);
+  return Boolean(block&&observed&&
+   block.number===receipt.blockNumber&&same(block.hash,receipt.blockHash)&&
+   same(observed.blockHash,receipt.blockHash)&&observed.status===1);
+ }catch{return false}
+}
 // N-08: One receipt confirmation is NOT canonical finality on an L2.
 // Do not mark a gas payment complete until a safe-chain head covers its
 // block, and the block hash remains canonical. Unsupported safe tags fail
@@ -242,6 +259,8 @@ export async function sponsorOneCandidate({
       !same(tx.from,wallet.address)||!same(tx.to,row.account)||
       BigInt(tx.value)!==value||Number(tx.nonce)!==Number(noncePending))
     throw Error("Sponsor receipt mismatch; operator reconciliation required");
+   if(await verifiedSponsorInclusion({provider,receipt,txHash:tx.hash}))
+    await db.recordSpendable(key,tx.hash);
    if(await verifiedSponsorFinality({provider,chain,receipt,txHash:tx.hash})){
     await db.recordConfirmed(key,tx.hash);
     return {status:"confirmed",chain,stage,txHash:tx.hash,amountWei:value.toString()};
@@ -340,6 +359,13 @@ export function sponsorDatabase(pool){
     values:[key,txHash.toLowerCase()]
    });
    if(r.rows.length!==1)throw Error("Sponsorship reservation changed after broadcast");
+  },
+  async recordSpendable(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid included gas payment hash");
+   await pool.query({text:"UPDATE xita_sponsor_grants"+
+    " SET spendable_at=COALESCE(spendable_at,NOW())"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    values:[key,txHash.toLowerCase()]});
   },
   async recordConfirmed(key,txHash){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
@@ -445,8 +471,10 @@ async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers})
     tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
   throw Error("Sponsorship receipt does not match durable signed intent");
  if(receipt.status===1){
-  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:hash})))
+  if(!(await verifiedSponsorInclusion({provider:p,receipt,txHash:hash})))
    return "pending";
+  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:hash})))
+   return "spendable";
   return "confirmed";
  }
  if(receipt.status===0)return "needs-review";
@@ -488,6 +516,17 @@ export async function reconcileSponsorGrants({
    const state=await boundedSponsorReconcileRead(()=>
     inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}),readTimeoutMs);
    if(state==="pending"){held++;continue;}
+   if(state==="spendable"){
+    const result=await pool.query({text:
+     "UPDATE xita_sponsor_grants SET"+
+     " spendable_at=COALESCE(spendable_at,NOW())"+
+     " WHERE grant_key=$1 AND (tx_hash=$2 OR"+
+     " (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
+     values:[row.grant_key,row.tx_hash||row.prepared_hash]});
+    if(result.rowCount===1)checked++;else held++;
+    continue;
+   }
    // Never mark anything confirmed before the complete original transaction
    // identity and chain-native finality have both been verified.
    const result=await pool.query({text:
