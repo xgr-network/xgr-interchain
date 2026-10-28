@@ -380,7 +380,9 @@ test("learned gas changes signed wallet commitment and source fee",async()=>{
   initial.pricing.sponsorCommitments);
 });
 test("two-hop pre-commits all three individually learned stage grants",async()=>{
- const o={...defaults(),catalog:multiHopFixture(),
+ const catalog=multiHopFixture();
+ catalog.infrastructure.xgrchain.xitaV315.components.executionGateway=record("xgrchain",90);
+ const o={...defaults(),catalog,
   request:{...request,source:"base",destination:"polygon",recipient:request.payer},
   walletAwareEnabled:true,readWalletNativeBalance:async()=>0n,
   readGatewayQuote:async({source})=>source==="base"?
