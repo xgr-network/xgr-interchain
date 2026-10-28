@@ -30,7 +30,7 @@ export function transferGasProfile(catalog,route,stage){
   (dst==="synthetic"?"mint":"unlock");
  if(!HASH.test(executor?.runtimeCodeKeccak256||""))return null;
  // Code hashes separate upgrades, operation/representations separate gas paths.
- const key=[chain,onward?"onward":"delivery",src,dst,operation,
+ const key=[chain,stage,src,dst,operation,
   executor.runtimeCodeKeccak256.toLowerCase(),
   router.runtimeCodeKeccak256.toLowerCase()].join("|");
  return {chain,kind:onward?"onward":"delivery",stage,operation,
