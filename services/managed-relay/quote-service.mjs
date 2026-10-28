@@ -3,6 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
+import {transferGasProfile,quotedGasUnits} from "../../apps/web/transfer-gas-profile.js";
 import {capXgrLaunchServiceFee} from "./xgr-launch-fee.mjs";
 import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
@@ -31,6 +32,7 @@ export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,readSourceBlockTimestamp,
  getDestinationGasQuote,getCoinGeckoSnapshot,readWalletNativeBalance=null,
+ readGasProfile=null,
  walletAwareEnabled=false,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
