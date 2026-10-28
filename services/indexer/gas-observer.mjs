@@ -114,7 +114,7 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
     if(!eq(log.address,group.mailbox)||!HASH.test(log.transactionHash||"")||
       !HASH.test(log.topics?.[1]||"")||log.removed===true)continue;
     const operation=await pool.query({text:`SELECT source_chain,route_id,
-     destination_mailbox FROM xita_transfer_operations
+     destination_mailbox,parent_message_id FROM xita_transfer_operations
      WHERE destination_chain=$1 AND message_id=$2 AND delivered=TRUE
      LIMIT 2`,values:[group.chain,log.topics[1].toLowerCase()]});
     if(operation.rows.length!==1){incomplete=true;continue;}
@@ -122,7 +122,8 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
     const row=operation.rows[0];
     const route=group.routes.filter(r=>r.source===row.source_chain&&eq(r.routeId,row.route_id));
     if(route.length!==1){incomplete=true;continue;}
-    const profile=transferGasProfile(catalog,route[0],"first-delivery");
+    const profile=transferGasProfile(catalog,route[0],
+     row.parent_message_id?"final-delivery":"first-delivery");
     if(!profile){incomplete=true;continue;}
     if(await recordVerifiedGas({pool,rpc,chain:group.chain,chainConfig:cfg,
      txHash:log.transactionHash,profile,expectedBlock:num(log.blockNumber),
