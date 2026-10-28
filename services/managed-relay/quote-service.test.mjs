@@ -360,3 +360,48 @@ test("no discount for non-XGR asset; XGR cap applies even without sponsorship",a
   catalog:{...fixture(),assets:{ARB:fixture().assets.XGR}}});
  assert.equal(other.pricing.xgrLaunchFeeCap,null);
 });
+
+test("learned gas changes signed wallet commitment and source fee",async()=>{
+ const o={...defaults(),walletAwareEnabled:true,request:{...request,recipient:request.payer},
+  readWalletNativeBalance:async()=>0n};
+ const initial=await buildManagedQuote(o);
+ const learned=await buildManagedQuote({...o,readGasProfile:async()=>({
+  sample_count:45,p95_gas_units:"130000"
+ })});
+ assert.equal(initial.pricing.sponsorCommitments.length,1);
+ assert.equal(learned.pricing.sponsorCommitments.length,1);
+ assert.ok(BigInt(learned.pricing.sponsorCommitments[0].amountWei)<
+  BigInt(initial.pricing.sponsorCommitments[0].amountWei));
+ assert.equal(learned.pricing.sponsorAllocation[0].gasWei,(130000n*1000000000n).toString());
+ const insufficient=await buildManagedQuote({...o,readGasProfile:async()=>({
+  sample_count:4,p95_gas_units:"130000"
+ })});
+ assert.deepEqual(insufficient.pricing.sponsorCommitments,
+  initial.pricing.sponsorCommitments);
+});
+test("two-hop pre-commits all three individually learned stage grants",async()=>{
+ const o={...defaults(),catalog:multiHopFixture(),
+  request:{...request,source:"base",destination:"polygon",recipient:request.payer},
+  walletAwareEnabled:true,readWalletNativeBalance:async()=>0n,
+  readGatewayQuote:async({source})=>source==="base"?
+   {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
+    tokenAmount:1000000000000000000n}:
+   {bridgeNativeWei:1100000000000000000n,validatorFeeWei:100000000000000000n,
+    tokenAmount:0n},
+  getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:0n}),
+  getCoinGeckoSnapshot:async()=>({...exchange(),"polygon-ecosystem-token":{
+   usd:0.35,last_updated_at:Math.floor(now/1000)-11}})};
+ const baseline=await buildManagedQuote(o);
+ const learned=await buildManagedQuote({...o,readGasProfile:async()=>({
+  sample_count:200,p95_gas_units:"150000"
+ })});
+ assert.equal(learned.pricing.sponsorCommitments.length,3);
+ assert.deepEqual(learned.pricing.sponsorCommitments.map(g=>g.stage),
+  ["first-delivery","hub-onward","final-delivery"]);
+ assert.ok(learned.pricing.sponsorCommitments.some(g=>
+  BigInt(g.amountWei)<BigInt(baseline.pricing.sponsorCommitments
+   .find(b=>b.stage===g.stage).amountWei)));
+ assert.deepEqual(learned.pricing.journeyCostStages
+  .filter(x=>BigInt(x.gasUnits||0)>0n).map(x=>x.gasUnits),
+  ["150000","150000","150000"]);
+});
