@@ -373,11 +373,13 @@ test("learned gas changes signed wallet commitment and source fee",async()=>{
  assert.ok(BigInt(learned.pricing.sponsorCommitments[0].amountWei)<
   BigInt(initial.pricing.sponsorCommitments[0].amountWei));
  assert.equal(learned.pricing.sponsorAllocation[0].gasWei,(130000n*1000000000n).toString());
- const insufficient=await buildManagedQuote({...o,readGasProfile:async()=>({
+ const early=await buildManagedQuote({...o,readGasProfile:async()=>({
   sample_count:4,p95_gas_units:"130000"
  })});
- assert.deepEqual(insufficient.pricing.sponsorCommitments,
-  initial.pricing.sponsorCommitments);
+ assert.ok(BigInt(early.pricing.sponsorCommitments[0].amountWei)<
+  BigInt(initial.pricing.sponsorCommitments[0].amountWei));
+ assert.ok(BigInt(early.pricing.sponsorCommitments[0].amountWei)>
+  BigInt(learned.pricing.sponsorCommitments[0].amountWei));
 });
 test("two-hop pre-commits all three individually learned stage grants",async()=>{
  const catalog=multiHopFixture();
