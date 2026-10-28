@@ -41,20 +41,36 @@ export async function recordVerifiedGas({pool,rpc,chain,chainConfig,txHash,
 // Recheck a small set of canonical child-transaction receipts every tick.
 // This captures TX3 burn/forward independently of how its gas was funded.
 export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
+ const cursor=await pool.query({text:"SELECT indexed_at,source_tx_hash"+
+  " FROM xita_gas_onward_cursors WHERE singleton=TRUE"});
+ const last=cursor.rows[0]||{indexed_at:"1970-01-01T00:00:00Z",
+  source_tx_hash:"0x"+"0".repeat(64)};
  const rows=await pool.query({text:`SELECT source_chain,route_id,source_tx_hash,
- source_block_number,source_block_hash FROM xita_transfer_operations
+ source_block_number,source_block_hash,source_indexed_at
+ FROM xita_transfer_operations
  WHERE parent_message_id IS NOT NULL
- ORDER BY source_indexed_at DESC LIMIT $1`,values:[limit]});
+ AND (source_indexed_at,source_tx_hash) > ($1::timestamptz,$2::char(66))
+ ORDER BY source_indexed_at ASC,source_tx_hash ASC LIMIT $3`,
+ values:[last.indexed_at,last.source_tx_hash,limit]});
  let measured=0;
  for(const row of rows.rows){
+  const profile=gasObservationProfile(catalog,row.source_chain,row.route_id,"hub-onward");
+  if(!profile)break;
   try{
-   const profile=gasObservationProfile(catalog,row.source_chain,row.route_id,"hub-onward");
-   if(!profile)continue;
-   if(await recordVerifiedGas({pool,rpc,chain:row.source_chain,
+   const ok=await recordVerifiedGas({pool,rpc,chain:row.source_chain,
     chainConfig:catalog.chains[row.source_chain],txHash:row.source_tx_hash,
     profile,expectedBlock:Number(row.source_block_number),
-    expectedBlockHash:row.source_block_hash}))measured++;
-  }catch{/* Other routes continue; a failed RPC never produces a sample. */}
+    expectedBlockHash:row.source_block_hash});
+   if(!ok)break;
+   measured++;
+   await pool.query({text:`INSERT INTO xita_gas_onward_cursors
+    (singleton,indexed_at,source_tx_hash) VALUES(TRUE,$1,$2)
+    ON CONFLICT(singleton) DO UPDATE SET
+    indexed_at=EXCLUDED.indexed_at,source_tx_hash=EXCLUDED.source_tx_hash
+    WHERE (xita_gas_onward_cursors.indexed_at,xita_gas_onward_cursors.source_tx_hash)<
+      (EXCLUDED.indexed_at,EXCLUDED.source_tx_hash)`,
+    values:[row.source_indexed_at,row.source_tx_hash]});
+  }catch{break}
  }
  return measured;
 }
