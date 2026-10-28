@@ -70,7 +70,8 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
   for(const file of ["002_transfer_operations.sql","003_interchain_journey.sql",
     "004_sponsor_grants.sql","009_initial_fee_tax_evidence.sql",
     "010_wallet_aware_sponsor_commitments.sql",
-    "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql"]){
+    "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
+    "015_sponsor_spendable_receipt.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
   const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
@@ -99,6 +100,15 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     assert.equal((await reopened.query("SELECT COUNT(*)::int AS n"+
      " FROM xita_sponsor_grants WHERE grant_key=$1",[key])).rows[0].n,1);
    }finally{await reopened.end()}
+  });
+  await t.test("Mined gas persists spendable independently of safe confirmation",async()=>{
+   await reset();
+   await grant(db,78,{status:"submitted",minutes:2});
+   await db.query("UPDATE xita_sponsor_grants SET spendable_at=NOW() WHERE wallet_nonce=78");
+   const r=await db.query("SELECT status,spendable_at IS NOT NULL AS spendable"+
+    " FROM xita_sponsor_grants WHERE wallet_nonce=78");
+   assert.equal(r.rows[0].status,"submitted");
+   assert.equal(r.rows[0].spendable,true);
   });
   await t.test("F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart",async()=>{
    await reset();
