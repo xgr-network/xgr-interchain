@@ -201,6 +201,19 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
      throw Error("Cannot verify live source-chain block time");
     return block.timestamp;
   },
+  readGasProfile:async key=>{
+   const url=process.env.XITA_SPONSOR_STATUS_DATABASE_URL||
+    process.env.XITA_TAX_QUOTE_DATABASE_URL;
+   if(!url)return null;
+   const {Pool}=await import("pg");
+   const db=new Pool({connectionString:url,max:1,connectionTimeoutMillis:1200,
+    statement_timeout:1500});
+   try{
+    const res=await db.query({text:"SELECT sample_count,p95_gas_units"+
+     " FROM public.xita_gas_profiles WHERE profile_key=$1",values:[key]});
+    return res.rows.length===1?res.rows[0]:null;
+   }finally{await db.end()}
+  },
   getCoinGeckoSnapshot:getSnapshot,preview,
   walletAwareEnabled,
   readWalletNativeBalance:async({chain:chainName,account})=>{
