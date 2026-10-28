@@ -5,7 +5,11 @@ const ROLES=Object.freeze({nativeRouter:"native",collateralRouter:"collateral",
  syntheticRouter:"synthetic"});
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 export const DEFAULT_GAS_UNITS=1200000n;
-export const GAS_PROFILE_MIN_SAMPLES=20;
+// The quote allocator applies an additional 30% native gas margin. Gas units
+// therefore carry only the remaining learning margin: effective total
+// buffer decreases linearly from 2.0x at sample 1 to 1.3x at sample 20.
+export const GAS_PROFILE_MIN_SAMPLES=1;
+export const GAS_PROFILE_FULL_CONFIDENCE_SAMPLES=20;
 export const GAS_PROFILE_MAX_SAMPLES=1000;
 export function transferGasProfile(catalog,route,stage){
  if(!route||!["first-delivery","hub-onward","final-delivery"].includes(stage))
@@ -38,7 +42,14 @@ export function transferGasProfile(catalog,route,stage){
 }
 export function quotedGasUnits(profile,{minimum=GAS_PROFILE_MIN_SAMPLES,
  fallback=DEFAULT_GAS_UNITS}={}){
- if(!profile||Number(profile.sample_count)<minimum)return BigInt(fallback);
+ if(!profile||!Number.isInteger(Number(profile.sample_count))||
+    Number(profile.sample_count)<minimum)return BigInt(fallback);
+ const n=Math.min(Number(profile.sample_count),GAS_PROFILE_FULL_CONFIDENCE_SAMPLES);
  const value=BigInt(profile.p95_gas_units);
- return value>=21000n&&value<=5000000n?value:BigInt(fallback);
+ if(value<21000n||value>5000000n)return BigInt(fallback);
+ // Ratio of target overall margin to the allocator's 1.3x buffer.
+ // n=1 => 2/1.3; n>=20 => 1.3/1.3. Integer arithmetic rounds up.
+ const factorBps=20000n-((BigInt(n-1)*7000n)/19n);
+ const estimated=(value*factorBps+12999n)/13000n;
+ return estimated<=5000000n?estimated:5000000n;
 }

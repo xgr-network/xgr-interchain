@@ -29,10 +29,18 @@ test("contract-based profile distinguishes collateral mint from synthetic burn",
  assert.equal(onward.operation,"burn");
  assert.notEqual(first.key,back.key);
 });
-test("safe initial estimate, sufficient profile, upgrade invalidation",()=>{
+test("first finalized sample uses 2x total gas buffer, falling smoothly to 1.3x",()=>{
  assert.equal(quotedGasUnits(null),DEFAULT_GAS_UNITS);
- assert.equal(quotedGasUnits({sample_count:19,p95_gas_units:250000}),DEFAULT_GAS_UNITS);
- assert.equal(quotedGasUnits({sample_count:20,p95_gas_units:250000}),250000n);
+ const observed=250000n;
+ const values=Array.from({length:21},(_,i)=>quotedGasUnits({
+  sample_count:i+1,p95_gas_units:observed.toString()}));
+ assert.equal(values[0],(observed*20000n+12999n)/13000n);
+ assert.equal(values[19],observed);
+ assert.equal(values[20],observed);
+ assert.ok(values.slice(1,20).every((v,i)=>v<=values[i]));
+ assert.ok(values[0]*13n>=observed*20n);
+ assert.equal(quotedGasUnits({sample_count:0,p95_gas_units:250000}),DEFAULT_GAS_UNITS);
+ assert.equal(quotedGasUnits({sample_count:1,p95_gas_units:10000}),DEFAULT_GAS_UNITS);
  const {route,catalog}=setup();
  const a=transferGasProfile(catalog,route,"first-delivery");
  catalog.assets.T.deployment.representations[1].runtimeCodeKeccak256=H("f");
