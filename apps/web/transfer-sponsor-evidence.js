@@ -8,7 +8,7 @@ export function sponsorAllowsContinuation(evidence){
  // A quote with no committed gas grants must never wait for the sponsor worker.
  if(evidence.upfrontRequired===false)return evidence.status==="not-required";
  // Promised gas grants remain a strict pre-TX2 security/economic gate.
- return evidence.upfrontRequired===true&&evidence.status==="confirmed";
+ return evidence.upfrontRequired===true&&["confirmed","spendable"].includes(evidence.status);
 }
 
 // This is not a sponsorship inference from an ExecutionGateway fee.

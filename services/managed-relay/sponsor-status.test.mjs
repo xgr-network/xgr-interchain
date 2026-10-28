@@ -40,6 +40,24 @@ test("wallet-aware aggregate stays pending until ALL signed stages confirmed",()
  assert.equal(review.status,"needs-review");
 });
 
+test("All gas grants become usable when mined; safe finality remains separate",()=>{
+ const base={wallet_aware:true,expected_grants:2};
+ const result=publicSponsorshipView([
+  {...base,grant_key:message+":first-delivery",status:"submitted",
+   spendable_at:new Date().toISOString()},
+  {...base,grant_key:message+":final-delivery",status:"confirmed"}
+ ]);
+ assert.equal(result.status,"spendable");
+ assert.equal(result.upfrontRequired,true);
+ assert.equal(result.grants[0].status,"spendable");
+ const partial=publicSponsorshipView([
+  {...base,grant_key:message+":first-delivery",status:"submitted",
+   spendable_at:new Date().toISOString()},
+  {...base,grant_key:message+":final-delivery",status:"submitted",
+   spendable_at:null}
+ ]);
+ assert.equal(partial.status,"submitted");
+});
 test("quote signer bounds unauthenticated attempts before reserving capacity",()=>{
  const ip="203.0.113.88",payer="0x"+"f".repeat(40),now=1700000000000;
  enforceSignedQuoteRate(ip,payer,{now});

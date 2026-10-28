@@ -201,6 +201,19 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
      throw Error("Cannot verify live source-chain block time");
     return block.timestamp;
   },
+  readGasProfile:async key=>{
+   const url=process.env.XITA_TAX_QUOTE_DATABASE_URL||
+    process.env.XITA_SPONSOR_STATUS_DATABASE_URL;
+   if(!url)return null;
+   const {Pool}=await import("pg");
+   const db=new Pool({connectionString:url,max:1,connectionTimeoutMillis:1200,
+    statement_timeout:1500});
+   try{
+    const res=await db.query({text:"SELECT sample_count,p95_gas_units"+
+     " FROM public.xita_gas_profiles WHERE profile_key=$1",values:[key]});
+    return res.rows.length===1?res.rows[0]:null;
+   }finally{await db.end()}
+  },
   getCoinGeckoSnapshot:getSnapshot,preview,
   walletAwareEnabled,
   readWalletNativeBalance:async({chain:chainName,account})=>{
@@ -318,7 +331,8 @@ export function publicSponsorshipView(rows){
   return {ok:true,status:"unavailable"};
  const grants=rows.filter(row=>row?.grant_key).map(row=>({
   stage:String(row.grant_key).split(":").at(-1),
-  status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
+  status:row.status==="submitted"&&row.spendable_at?"spendable":
+   ["reserved","submitted","confirmed","needs-review"].includes(row.status)?
    row.status:"unknown"
  }));
  const aware=rows.some(r=>r.wallet_aware===true);
@@ -331,6 +345,7 @@ export function publicSponsorshipView(rows){
   promised===0?"not-required":
   grants.some(g=>g.status==="needs-review")?"needs-review":
   grants.length===promised&&grants.every(g=>g.status==="confirmed")?"confirmed":
+  grants.length===promised&&grants.every(g=>["confirmed","spendable"].includes(g.status))?"spendable":
   grants.some(g=>g.status==="submitted")?"submitted":
   grants.some(g=>g.status==="reserved")?"reserved":"pending":
   grants.length?"tracked":"not-required";
@@ -401,7 +416,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  // not a mode ENV, distinguishes the newer commercial pricing.
  const quoteAware=true;
    const q=await sponsorPool.query({text:
-    "SELECT g.grant_key,g.status,p.delivered,"+
+    "SELECT g.grant_key,g.status,g.spendable_at,p.delivered,"+
     (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
       " (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c"+
       " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+

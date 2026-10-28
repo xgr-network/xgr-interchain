@@ -2,9 +2,10 @@
 // Mailbox transaction. Everything is rechecked against finalized on-chain
 // source evidence, with a durable one-shot reservation BEFORE signing.
 import {readFileSync} from "node:fs";
-import {Wallet,JsonRpcProvider,Contract} from "ethers";
+import {Wallet,JsonRpcProvider,Contract,Transaction,keccak256,Interface} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
+import {verifiedNativeMailboxState} from "../../apps/web/chain-finality.js";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
 
@@ -15,6 +16,7 @@ const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const positive=x=>UINT.test(String(x))&&BigInt(x)>0n;
 const tiny=x=>String(x||"").slice(0,190);
 const ABI_FEE=["function interchainFeeRecipient() view returns (address)"];
+const MAILBOX_DELIVERED=new Interface(["function delivered(bytes32) view returns (bool)"]);
 const ABI_HUB=[
  "function onwardParentUsed(address,bytes32) view returns (bool)"
 ];
@@ -133,6 +135,23 @@ async function checkCandidate({catalog,row,stage,providers,fetcher}){
   throw Error("Original parent already used for second hop");
  return {first,route:routes[0]};
 }
+// A successful receipt in the canonical latest block makes the sponsored
+// gas usable. SAFE remains the separate final settlement criterion.
+export async function verifiedSponsorInclusion({provider,receipt,txHash}){
+ if(!receipt||receipt.status!==1||!HASH.test(txHash||"")||
+    !same(receipt.hash,txHash)||!HASH.test(receipt.blockHash||"")||
+    !Number.isSafeInteger(receipt.blockNumber)||receipt.blockNumber<1)
+  return false;
+ try{
+  const [block,observed]=await Promise.all([
+   provider.getBlock(receipt.blockNumber),
+   provider.getTransactionReceipt(txHash)
+  ]);
+  return Boolean(block&&observed&&
+   block.number===receipt.blockNumber&&same(block.hash,receipt.blockHash)&&
+   same(observed.blockHash,receipt.blockHash)&&observed.status===1);
+ }catch{return false}
+}
 // N-08: One receipt confirmation is NOT canonical finality on an L2.
 // Do not mark a gas payment complete until a safe-chain head covers its
 // block, and the block hash remains canonical. Unsupported safe tags fail
@@ -207,20 +226,29 @@ export async function sponsorOneCandidate({
  if(noncePending!==nonceLatest)
   return {status:"sponsor-wallet-pending",chain,stage};
  const key=sponsorGrantKey(row,stage);
+ const unsigned=await wallet.connect(provider).populateTransaction({
+  to:row.account,value,nonce:noncePending,gasLimit
+ });
+ const rawTx=await wallet.signTransaction(unsigned);
+ const prepared=Transaction.from(rawTx);
+ if(!same(prepared.from,wallet.address)||!same(prepared.to,row.account)||
+    prepared.value!==value||prepared.nonce!==noncePending||
+    prepared.chainId!==BigInt(catalog.chains[chain].chainId)||
+    prepared.gasLimit!==gasLimit)
+  throw Error("Sponsor prepared transaction mismatch");
  const reserved=await db.reserveGrant({
   key,chain,recipient:row.account,beneficiary:wallet.address,
   amountWei:value.toString(),nonce:noncePending,
-  dailyMaxWei:String(cfg.dailyMaxWei)
+  dailyMaxWei:String(cfg.dailyMaxWei),rawTx,txHash:prepared.hash
  });
  if(!reserved)return {status:"already-reserved-or-budget",chain,stage};
  // Durable reservation COMMITTED above, before signing or broadcast.
  // If broadcast outcome is unknown, mark needs-review and NEVER retry this key.
  afterReserve?.(key);
  try{
-  const tx=await wallet.connect(provider).sendTransaction({
-   to:row.account,value,nonce:noncePending,gasLimit
-  });
-  await db.recordSubmitted(key,tx.hash);
+  const tx=await provider.broadcastTransaction(rawTx);
+  if(!same(tx.hash,prepared.hash))throw Error("Sponsor broadcast hash mismatch");
+  await db.recordSubmitted(key,prepared.hash);
   // A single wallet may need two XGRChain grants. Confirm each grant before
   // attempting the next nonce rather than postponing it until a timer tick.
   // A timeout NEVER authorizes a duplicate transaction.
@@ -231,6 +259,8 @@ export async function sponsorOneCandidate({
       !same(tx.from,wallet.address)||!same(tx.to,row.account)||
       BigInt(tx.value)!==value||Number(tx.nonce)!==Number(noncePending))
     throw Error("Sponsor receipt mismatch; operator reconciliation required");
+   if(await verifiedSponsorInclusion({provider,receipt,txHash:tx.hash}))
+    await db.recordSpendable(key,tx.hash);
    if(await verifiedSponsorFinality({provider,chain,receipt,txHash:tx.hash})){
     await db.recordConfirmed(key,tx.hash);
     return {status:"confirmed",chain,stage,txHash:tx.hash,amountWei:value.toString()};
@@ -241,7 +271,8 @@ export async function sponsorOneCandidate({
   }
   return {status:"submitted",chain,stage,txHash:tx.hash,amountWei:value.toString()};
  }catch(error){
-  await db.recordNeedsReview(key,tiny(error?.message||error));
+  // Durable signed bytes remain recoverable. Never create a new payout.
+  await db.recordBroadcastError(key,tiny(error?.message||error)).catch(()=>{});
   throw Error("Sponsorship outcome uncertain; reserved grant requires reconciliation");
  }
 }
@@ -273,7 +304,14 @@ export function sponsorDatabase(pool){
    if(data.rows.length>1)throw Error("Ambiguous quote commitment");
    return data.rows[0]||null;
   },
-  async reserveGrant({key,chain,recipient,beneficiary,amountWei,nonce,dailyMaxWei}){
+  async reserveGrant({key,chain,recipient,beneficiary,amountWei,nonce,dailyMaxWei,rawTx,txHash}){
+   if(!/^0x[0-9a-f]{100,12000}$/.test(rawTx||"")||
+      !HASH.test(txHash||"")||!same(keccak256(rawTx),txHash))
+    throw Error("Invalid prepared sponsor transaction");
+   const tx=Transaction.from(rawTx);
+   if(!same(tx.from,beneficiary)||!same(tx.to,recipient)||
+      tx.value!==BigInt(amountWei)||tx.nonce!==Number(nonce))
+    throw Error("Prepared transaction does not match reservation");
    const client=await pool.connect();
    try{
     await client.query("BEGIN");
@@ -299,10 +337,19 @@ export function sponsorDatabase(pool){
      values:[key,chain,beneficiary.toLowerCase(),recipient.toLowerCase(),
       amountWei,nonce]
     });
+    if(result.rows.length===1)
+     await client.query({text:"INSERT INTO xita_sponsor_prepared_tx"+
+      " (grant_key,tx_hash,raw_tx) VALUES($1,$2,$3)",
+      values:[key,txHash.toLowerCase(),rawTx.toLowerCase()]});
     await client.query("COMMIT");
     return result.rows.length===1;
    }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
    finally{client.release()}
+  },
+  async recordBroadcastError(key,message){
+   await pool.query({text:"UPDATE xita_sponsor_grants SET last_error=$2"+
+    " WHERE grant_key=$1 AND status IN ('reserved','submitted')",
+    values:[key,tiny(message)]});
   },
   async recordSubmitted(key,txHash){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsorship tx hash");
@@ -312,6 +359,13 @@ export function sponsorDatabase(pool){
     values:[key,txHash.toLowerCase()]
    });
    if(r.rows.length!==1)throw Error("Sponsorship reservation changed after broadcast");
+  },
+  async recordSpendable(key,txHash){
+   if(!HASH.test(txHash||""))throw Error("Invalid included gas payment hash");
+   await pool.query({text:"UPDATE xita_sponsor_grants"+
+    " SET spendable_at=COALESCE(spendable_at,NOW())"+
+    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    values:[key,txHash.toLowerCase()]});
   },
   async recordConfirmed(key,txHash){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
@@ -325,7 +379,9 @@ export function sponsorDatabase(pool){
    if(!HASH.test(txHash||""))throw Error("Invalid sponsor receipt hash");
    await pool.query({text:
     "UPDATE xita_sponsor_grants SET status='needs-review',updated_at=NOW()"+
-    " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
+    " WHERE grant_key=$1 AND (tx_hash=$2 OR"+
+     " (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
     values:[key,txHash.toLowerCase()]});
   },
   async recordNeedsReview(key,message){
@@ -335,8 +391,9 @@ export function sponsorDatabase(pool){
   }
  };
 }
-// Confirm native gifts by their exact previously journaled transaction
-// without ever rebroadcasting a grant after restart or uncertain RPC results.
+// Confirm native gifts by their exact previously journaled transaction.
+// Only identical stored bytes may be rebroadcast after fresh finality proves
+// that TX2 has not yet occurred; unknown proofs remain held.
 // F-08: These are READ-ONLY RPC observations. Bounding them prevents one
 // stalled provider from blocking reconciliation on healthy chains. Late
 // completions never trigger a grant send or a database state transition.
@@ -350,17 +407,74 @@ async function boundedSponsorReconcileRead(read,timeoutMs){
   ]);
  }finally{clearTimeout(timer);}
 }
-async function inspectSubmittedSponsorGrant({row,catalog,wallet,providers}){
+// A stored, signed native payout is not an authorization to pay AFTER TX2.
+// Query the immutable original parent, then independently observe current
+// destination delivery using the protocol's pinned native-safe finality.
+// Missing/mismatched/indexer-lagged evidence fails closed. No new signatures.
+export async function preparedSponsorReplayAllowed({pool,row,catalog,providers}){
+ const parts=/^([a-z][a-z0-9-]{0,39}):(0x[0-9a-f]{64}):(first-delivery|hub-onward|final-delivery)$/.exec(row.grant_key||"");
+ if(!parts)throw Error("Invalid prepared grant identity");
+ const q=await pool.query({text:
+  "SELECT account,delivered,destination_chain,destination_mailbox"+
+  " FROM xita_transfer_operations WHERE source_chain=$1 AND message_id=$2"+
+  " AND parent_message_id IS NULL LIMIT 2",
+  values:[parts[1],parts[2]]});
+ if(q.rows.length!==1||!same(q.rows[0].account,row.recipient))
+  throw Error("Prepared grant original transfer is missing or ambiguous");
+ const operation=q.rows[0];
+ if(operation.delivered!==false)return false;
+ const cfg=catalog.chains?.[operation.destination_chain];
+ if(!Number.isSafeInteger(cfg?.chainId)||
+    !ADDR.test(operation.destination_mailbox||""))
+  throw Error("Prepared grant original destination unavailable");
+ const p=await getProvider(catalog,operation.destination_chain,providers);
+ const calldata=MAILBOX_DELIVERED.encodeFunctionData("delivered",[parts[2]]);
+ const proof=await verifiedNativeMailboxState(
+  (method,args)=>p.send(method,args),cfg.chainId,
+  operation.destination_mailbox,calldata);
+ return proof.verified===true&&proof.delivered===false;
+}
+async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}){
  const chain=row.chain_name,p=await getProvider(catalog,chain,providers);
- const receipt=await p.getTransactionReceipt(row.tx_hash);
+ const hash=row.tx_hash||row.prepared_hash;
+ if(!HASH.test(hash||""))throw Error("Missing durable payment hash");
+ if(row.raw_tx){
+  const signed=Transaction.from(row.raw_tx);
+  if(!same(keccak256(row.raw_tx),hash)||
+     !same(signed.from,wallet.address)||!same(signed.to,row.recipient)||
+     signed.value!==BigInt(row.amount_wei)||
+     signed.nonce!==Number(row.wallet_nonce)||
+     signed.chainId!==BigInt(catalog.chains[chain]?.chainId))
+   throw Error("Prepared payment contradicts durable signed intent");
+ }
+ let receipt=await p.getTransactionReceipt(hash);
+ if(!receipt&&row.raw_tx){
+  if(!(await preparedSponsorReplayAllowed({pool,row,catalog,providers})))
+   return "needs-review";
+  const confirmedNonce=await p.getTransactionCount(wallet.address,"latest");
+  if(confirmedNonce>Number(row.wallet_nonce))return "needs-review";
+  if(confirmedNonce===Number(row.wallet_nonce)){
+   const pending=await p.getTransaction(hash);
+   if(!pending){
+    try{await p.broadcastTransaction(row.raw_tx)}
+    catch(e){
+     if(!/already known|known transaction|already imported/i.test(String(e?.message||e)))
+      throw e;
+    }
+   }
+  }
+  receipt=await p.getTransactionReceipt(hash);
+ }
  if(!receipt)return "pending";
- const tx=await p.getTransaction(row.tx_hash);
+ const tx=await p.getTransaction(hash);
  if(!tx||!same(tx.from,wallet.address)||!same(tx.to,row.recipient)||
     tx.value!==BigInt(row.amount_wei)||Number(tx.nonce)!==Number(row.wallet_nonce))
   throw Error("Sponsorship receipt does not match durable signed intent");
  if(receipt.status===1){
-  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:row.tx_hash})))
+  if(!(await verifiedSponsorInclusion({provider:p,receipt,txHash:hash})))
    return "pending";
+  if(!(await verifiedSponsorFinality({provider:p,chain,receipt,txHash:hash})))
+   return "spendable";
   return "confirmed";
  }
  if(receipt.status===0)return "needs-review";
@@ -380,10 +494,15 @@ export async function reconcileSponsorGrants({
   " ROW_NUMBER() OVER (PARTITION BY chain_name"+
   " ORDER BY updated_at ASC,created_at ASC,grant_key ASC) AS chain_rank"+
   " FROM xita_sponsor_grants"+
-  " WHERE status='submitted' AND tx_hash IS NOT NULL"+
+  " WHERE status IN ('submitted','reserved')"+
+  " AND (tx_hash IS NOT NULL OR grant_key IN"+
+  " (SELECT grant_key FROM xita_sponsor_prepared_tx))"+
   " AND sponsor_address=$1 AND updated_at<=NOW()-INTERVAL '60 seconds')"+
-  " SELECT grant_key,chain_name,sponsor_address,recipient,amount_wei,wallet_nonce,tx_hash"+
-  " FROM due WHERE chain_rank<=12"+
+  " SELECT due.grant_key,due.chain_name,due.sponsor_address,due.recipient,"+
+  " due.amount_wei,due.wallet_nonce,due.tx_hash,s.raw_tx,"+
+  " s.tx_hash AS prepared_hash"+
+  " FROM due LEFT JOIN xita_sponsor_prepared_tx s"+
+  " ON s.grant_key=due.grant_key WHERE chain_rank<=12"+
   " ORDER BY chain_rank ASC,updated_at ASC,chain_name ASC,grant_key ASC LIMIT 40",
   values:[wallet.address.toLowerCase()]});
  let checked=0,confirmed=0,held=0,chainFailures=0,journalErrors=0;
@@ -395,14 +514,28 @@ export async function reconcileSponsorGrants({
   let lastError=null;
   try{
    const state=await boundedSponsorReconcileRead(()=>
-    inspectSubmittedSponsorGrant({row,catalog,wallet,providers}),readTimeoutMs);
+    inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}),readTimeoutMs);
    if(state==="pending"){held++;continue;}
+   if(state==="spendable"){
+    const result=await pool.query({text:
+     "UPDATE xita_sponsor_grants SET"+
+     " spendable_at=COALESCE(spendable_at,NOW())"+
+     " WHERE grant_key=$1 AND (tx_hash=$2 OR"+
+     " (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
+     values:[row.grant_key,row.tx_hash||row.prepared_hash]});
+    if(result.rowCount===1)checked++;else held++;
+    continue;
+   }
    // Never mark anything confirmed before the complete original transaction
    // identity and chain-native finality have both been verified.
    const result=await pool.query({text:
-    "UPDATE xita_sponsor_grants SET status=$2,updated_at=NOW(),last_error=NULL"+
-    " WHERE grant_key=$1 AND tx_hash=$3 AND status='submitted'",
-    values:[row.grant_key,state,row.tx_hash]});
+    "UPDATE xita_sponsor_grants SET status=$2,tx_hash=COALESCE(tx_hash,$3),"+
+   " updated_at=NOW(),last_error=NULL"+
+    " WHERE grant_key=$1 AND (tx_hash=$3 OR"+
+   " (tx_hash IS NULL AND status='reserved'))"+
+   " AND status IN ('submitted','reserved')",
+    values:[row.grant_key,state,row.tx_hash||row.prepared_hash]});
    if(result.rowCount===1){
     checked++;if(state==="confirmed")confirmed++;
    }else held++;
@@ -415,13 +548,14 @@ export async function reconcileSponsorGrants({
    }
   }finally{
    // Move a retained unknown result to the back of the bounded worklist.
-   // No transaction bytes are signed or rebroadcast in reconciliation.
+   // Only previously stored transaction bytes can be rebroadcast.
    // Failure to write scheduling metadata leaves the original obligation.
    try{
     await pool.query({text:
      "UPDATE xita_sponsor_grants SET updated_at=NOW(),last_error=$3"+
-     " WHERE grant_key=$1 AND tx_hash=$2 AND status='submitted'",
-     values:[row.grant_key,row.tx_hash,lastError]});
+     " WHERE grant_key=$1 AND (tx_hash=$2 OR (tx_hash IS NULL AND status='reserved'))"+
+     " AND status IN ('submitted','reserved')",
+     values:[row.grant_key,row.tx_hash||row.prepared_hash,lastError]});
    }catch{journalErrors++;}
   }
  }
@@ -499,6 +633,35 @@ export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new 
  }
  return {resolved,held};
 }
+// F-19: record externally completed transfers with an unfulfilled quote-bound
+// grant. Never send gas after TX2; retain evidence for operator reconciliation.
+export async function recordOvertakenSponsorObligations({pool,wallet}){
+ const r=await pool.query({text:
+  "INSERT INTO xita_sponsor_overtaken_obligations"+
+  " (grant_key,chain_name,stage,sponsor_address,promised_wei)"+
+  " SELECT p.source_chain||':'||p.message_id||':'||c.grant_stage,"+
+  " c.grant_chain,c.grant_stage,$1,c.promised_wei"+
+  " FROM xita_transfer_operations p"+
+  " JOIN xita_sponsor_quote_intents i ON"+
+  " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+  " AND i.payer=p.account AND i.quote_nonce=p.quote_nonce"+
+  " AND i.quote_fee_wei=p.interchain_fee_wei"+
+  " AND i.route_id=p.route_id AND i.asset=p.asset"+
+  " AND i.amount_raw=p.amount_raw AND i.final_recipient=p.final_recipient"+
+  " JOIN xita_sponsor_quote_commitments c ON"+
+  " c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
+  " AND c.payer=i.payer AND c.quote_nonce=i.quote_nonce"+
+  " LEFT JOIN xita_sponsor_grants g ON"+
+  " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage"+
+  " AND g.chain_name=c.grant_chain AND g.sponsor_address=$1"+
+  " AND g.recipient=p.account AND g.amount_wei=c.promised_wei"+
+  " WHERE p.parent_message_id IS NULL AND p.delivered IS TRUE"+
+  " AND p.source_indexed_at<NOW()-INTERVAL '5 minutes'"+
+  " AND g.status IS DISTINCT FROM 'confirmed'"+
+  " ON CONFLICT(grant_key) DO NOTHING",
+  values:[wallet.address.toLowerCase()]});
+ return {recorded:r.rowCount||0};
+}
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
  const required=k=>{
@@ -540,6 +703,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    providers:providerCache});
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
+  const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
   for(const row of rows.rows){
    const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
    if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
@@ -549,7 +713,7 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
     stage:grant.stage,chain:grant.chain}));}
    catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
   }
-  return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,
+  return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};
  }finally{await pool.end()}

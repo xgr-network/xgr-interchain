@@ -516,7 +516,7 @@ async function refreshTransferSponsorship(binding){
   // Only the backend may declare ALL committed stages complete.
   // A single confirmed grant is never evidence that the full journey's
   // sponsorship obligations have been fulfilled.
-  sponsorTransfer.status=["confirmed","needs-review","submitted","reserved",
+  sponsorTransfer.status=["confirmed","spendable","needs-review","submitted","reserved",
    "pending","not-required","disabled"].includes(data.status)?data.status:
    data.status==="tracked"?
     (sponsorTransfer.grants.length>0&&

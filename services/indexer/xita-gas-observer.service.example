@@ -1,0 +1,21 @@
+[Unit]
+Description=XITA Finalized Gas Measurement Observer (no wallet keys)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xgradmin
+WorkingDirectory=/home/xgradmin/repos/xgr-interchain
+EnvironmentFile=/etc/xita/transfer-indexer.env
+ExecStart=/usr/bin/node services/indexer/gas-observer-runner.mjs
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

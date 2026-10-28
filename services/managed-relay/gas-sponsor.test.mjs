@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,reconcileExpiredSponsorQuotes,reconcileSponsorGrants} from "./gas-sponsor.mjs";
+import {Wallet,Transaction} from "ethers";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -49,6 +50,7 @@ test("durable reserve is committed before any possible payout; duplicate key den
    const sql=typeof q==="string"?q:q.text,values=q?.values||[];
    calls.push(sql);
    if(sql.startsWith("SELECT COALESCE"))return {rows:[{amount:"0"}]};
+   if(sql.startsWith("INSERT INTO xita_sponsor_prepared_tx"))return {rowCount:1};
    if(sql.startsWith("INSERT INTO xita_sponsor_grants")){
     if(inserts.has(values[0]))return {rows:[]};
     inserts.add(values[0]);return {rows:[{grant_key:values[0]}]};
@@ -58,12 +60,16 @@ test("durable reserve is committed before any possible payout; duplicate key den
   release:()=>{}
  };
  const pool={connect:async()=>client,query:async()=>({rows:[]})},db=sponsorDatabase(pool);
+ const signer=new Wallet("0x"+"11".repeat(32));
+ const rawTx=await signer.signTransaction({chainId:1643,nonce:17,
+  to:first.account,value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const txHash=Transaction.from(rawTx).hash;
  const args={key:sponsorGrantKey(first,"first-delivery"),chain:"xgrchain",
-  recipient:first.account,beneficiary:addr("8"),amountWei:"5000",
-  nonce:17,dailyMaxWei:"10000"};
+  recipient:first.account,beneficiary:signer.address,amountWei:"5000",
+  nonce:17,dailyMaxWei:"10000",rawTx,txHash};
  assert.equal(await db.reserveGrant(args),true);
  assert.equal(await db.reserveGrant(args),false);
- assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_grants")));
+ assert.ok(calls.indexOf("COMMIT")>calls.findIndex(x=>x.startsWith("INSERT INTO xita_sponsor_prepared_tx")));
  await assert.rejects(()=>db.recordSubmitted(args.key,"not-a-hash"),/Invalid/);
 });
 
@@ -131,6 +137,19 @@ test("N-08 sponsor payout waits for the safe L2 head and canonical block hash",a
  assert.equal(await verifiedSponsorFinality({provider,chain:"base",receipt,txHash:tx}),false);
 });
 
+test("Sponsor inclusion: mined canonical payout is usable before L2 safe finality",async()=>{
+ const tx=hash("a"),blockHash=hash("b");
+ const receipt={hash:tx,blockHash,blockNumber:101,status:1};
+ const provider={
+  getBlock:async tag=>tag==="safe"?{number:100}:
+   {number:101,hash:blockHash},
+  getTransactionReceipt:async()=>receipt
+ };
+ assert.equal(await verifiedSponsorInclusion({provider,receipt,txHash:tx}),true);
+ assert.equal(await verifiedSponsorFinality({provider,chain:"arbitrum",receipt,txHash:tx}),false);
+ provider.getBlock=async()=>({number:101,hash:hash("c")});
+ assert.equal(await verifiedSponsorInclusion({provider,receipt,txHash:tx}),false);
+});
 // Reconciliation uses documented chain identity even with injected RPC providers.
 const reconciliationCatalog={chains:{
  base:{chainId:8453,rpcUrls:["https://base.example"]},
@@ -202,7 +221,7 @@ test("F-08: a stalled read expires without delaying another chain or releasing a
  const result=await reconcileSponsorGrants({pool,catalog:reconciliationCatalog,wallet,providers,readTimeoutMs:15});
  assert.deepEqual(result,{checked:0,confirmed:0,held:3,chainFailures:1,journalErrors:0});
  assert.equal(updates.length,2,"blocked chain's later rows are not needlessly probed");
- assert.ok(updates.every(x=>x.text.includes("status='submitted'")));
+ assert.ok(updates.every(x=>x.text.includes("status IN ('submitted','reserved')")));
  assert.ok(!updates.some(x=>x.text.includes("SET status=$2")));
 });
 
@@ -223,9 +242,82 @@ test("F-08: an unexpected transaction identity is held, not confirmed or retried
  assert.equal(result.confirmed,0);assert.equal(result.held,1);
  assert.equal(result.chainFailures,0,"mismatched grants do not poison the entire source chain");
  assert.equal(writes.length,1);assert.match(writes[0].values[2],/durable signed intent/);
- assert.match(writes[0].text,/status='submitted'/);
+ assert.match(writes[0].text,/status IN/);
 });
 
+test("F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2",async()=>{
+ const row={grant_key:"base:"+hash("1")+":first-delivery",recipient:addr("b")};
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://xgr.example"]}}};
+ const base={account:addr("b"),destination_chain:"xgrchain",destination_mailbox:addr("c")};
+ for(const delivered of [true,null]){
+  const pool={query:async()=>({rows:[{...base,delivered}]})};
+  assert.equal(await preparedSponsorReplayAllowed({pool,row,catalog,providers:new Map()}),false);
+ }
+ const unknown={query:async()=>({rows:[{...base,delivered:false}]})};
+ await assert.rejects(()=>preparedSponsorReplayAllowed({pool:unknown,row,catalog,
+  providers:new Map([["xgrchain",{send:async()=>{throw Error("RPC unavailable")}}]])}),
+  /RPC unavailable/);
+});
+test("F-07: prepared signed bytes recover after crash with no user signature and identical tx hash",async()=>{
+ const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b"),hashBlock=hash("e");
+ const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const digest=Transaction.from(rawTx).hash;
+ const row={grant_key:"base:"+hash("1")+":first-delivery",
+  chain_name:"xgrchain",sponsor_address:sponsor.address.toLowerCase(),
+  recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
+  prepared_hash:digest,raw_tx:rawTx};
+ const actions=[],provider={
+  send:async(method,args)=>{
+   if(method==="eth_chainId")return "0x66b";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("unexpected canonical call");
+  },
+  getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>7,
+  getTransaction:async()=>null,
+  broadcastTransaction:async bytes=>{actions.push(bytes);return {hash:digest};}
+ };
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows:[row]};
+  if(q.text?.startsWith("SELECT account,delivered"))return {rows:[{account:target,delivered:false,destination_chain:"xgrchain",destination_mailbox:addr("c")}]};
+  actions.push(q);return {rowCount:1};
+ }};
+ const result=await reconcileSponsorGrants({pool,wallet:sponsor,
+  catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]])});
+ assert.equal(result.held,1);
+ assert.equal(actions[0],rawTx,"only exact originally signed bytes are rebroadcast");
+ assert.equal(actions.filter(x=>typeof x==="string").length,1);
+ assert.ok(actions.every(x=>typeof x!=="object" || !x.text?.includes("SET status=$2")));
+});
+
+test("F-07: a consumed nonce holds the exact signed grant for operator review",async()=>{
+ const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b");
+ const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const row={grant_key:"base:"+hash("1")+":first-delivery",
+  chain_name:"xgrchain",sponsor_address:sponsor.address.toLowerCase(),
+  recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
+  prepared_hash:Transaction.from(rawTx).hash,raw_tx:rawTx};
+ let broadcasts=0;
+ const provider={send:async(method)=>{
+   if(method==="eth_chainId")return "0x66b";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("unexpected canonical call");
+  },getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>8,
+  broadcastTransaction:async()=>{broadcasts++}};
+ const pool={query:async q=>q.text?.startsWith("WITH due AS")?
+  {rows:[row]}:q.text?.startsWith("SELECT account,delivered")?
+  {rows:[{account:target,delivered:false,destination_chain:"xgrchain",destination_mailbox:addr("c")}]}:{rowCount:1}};
+ const result=await reconcileSponsorGrants({pool,wallet:sponsor,
+  catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]])});
+ assert.equal(result.checked,1);
+ assert.equal(result.confirmed,0);
+ assert.equal(broadcasts,0);
+});
 test("N-06 expires only after finalized source nonce evidence, never merely by time",async()=>{
  const quote={source_chain:"base",execution_adapter:addr("b"),payer:addr("a"),
   quote_nonce:"42",quote_expires_at:new Date("2026-10-25T12:00:00Z")};

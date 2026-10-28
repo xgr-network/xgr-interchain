@@ -282,6 +282,33 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  await verifyJourneyInboundRoutes({catalog,asset,source,destination,fetcher});
  // Do not lock a new source if a destination has neither the wallet's
  // own native gas nor a fresh, independently verified sponsor reserve.
+ // Prefer the same server-priced gas envelopes as the signing service.
+ // Fall back conservatively if an unsigned preview is temporarily unavailable.
+ const quotedGasByChain=new Map();
+ if(paidAdapter){
+  try{
+   const reply=await fetcher("/api/xita/v1/managed/preview",{
+    method:"POST",credentials:"omit",cache:"no-store",
+    headers:{"content-type":"application/json"},
+    body:JSON.stringify({asset,source,destination,amountRaw:units.toString(),
+     payer:account,recipient:account})
+   });
+   const preview=reply.ok?await reply.json():null;
+   if(preview?.status==="UNSIGNED_FEE_PREVIEW"&&
+      Array.isArray(preview.pricing?.journeyCostStages)){
+    for(const stage of preview.pricing.journeyCostStages){
+     if(!["first-delivery","onward-bridge-gas","final-delivery"].includes(stage.kind))
+      continue;
+     if(!catalog.chains[stage.chain]||
+        !/^[0-9]+$/.test(String(stage.gasUnits))||
+        BigInt(stage.gasUnits)<21000n||BigInt(stage.gasUnits)>5000000n)
+      continue;
+     quotedGasByChain.set(stage.chain,(quotedGasByChain.get(stage.chain)||0n)+
+      BigInt(stage.gasUnits));
+    }
+   }
+  }catch{/* Keep conservative preflight during an optional preview outage. */}
+ }
  const destinations=[firstDestination,...(firstDestination===destination?[]:[destination])];
  for(const key of destinations){
   const target=catalog.chains[key];
@@ -297,7 +324,7 @@ export async function startTransfer({catalog,account,asset,source,destination,am
   // A positive one-wei balance is NOT evidence that a Mailbox delivery
   // can be paid. Require the same conservative 1.2m-gas envelope as the
   // commercial estimator, or a current stage-specific sponsor reserve.
-  const nativeGasFloor=BigInt(price)*1200000n*13n/10n;
+  const nativeGasFloor=BigInt(price)*(quotedGasByChain.get(key)||1200000n)*13n/10n;
   if(BigInt(bal)<nativeGasFloor){
    if(onwardParentMessageId&&key===destination&&
        /^[a-z][a-z0-9-]{1,39}$/.test(onwardSponsorSourceChain||"")){

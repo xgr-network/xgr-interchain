@@ -3,6 +3,7 @@
 import {randomBytes} from "node:crypto";
 import {getAddress,zeroPadValue} from "ethers";
 import {walletAwareSponsorship} from "./wallet-aware-sponsorship.mjs";
+import {transferGasProfile,quotedGasUnits} from "../../apps/web/transfer-gas-profile.js";
 import {capXgrLaunchServiceFee} from "./xgr-launch-fee.mjs";
 import {ceilDiv,usdPrice12,priceInterchainCostWei} from "./fee-quote.mjs";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
@@ -31,6 +32,7 @@ export async function buildManagedQuote({
  catalog,request,executionAddress,signer,readGatewayQuote,
  readExecutionOwner,readQuoteLifetime,readSourceBlockTimestamp,
  getDestinationGasQuote,getCoinGeckoSnapshot,readWalletNativeBalance=null,
+ readGasProfile=null,
  walletAwareEnabled=false,
  clock=Date.now,nonce=NONCE,gasUnits=1200000n,preview=false
 }){
@@ -93,8 +95,18 @@ export async function buildManagedQuote({
  for(const [name,data] of gasSnapshots)gasByChain.set(name,data);
  const units=BigInt(gasUnits);
  if(units<21000n||units>5000000n)throw Error("Gas units exceed quote safety cap");
+ const estimate=async(r,stage)=>{
+  if(!readGasProfile)return units;
+  const p=transferGasProfile(catalog,r,stage);
+  if(!p)return units;
+  try{return quotedGasUnits(await readGasProfile(p.key),{fallback:units})}
+  catch{return units}
+ };
+ const firstGas=await estimate(route,"first-delivery");
+ const onwardGas=secondRoute?await estimate(secondRoute,"hub-onward"):units;
+ const finalGas=secondRoute?await estimate(secondRoute,"final-delivery"):units;
  const stages=[{chain:firstDestination,kind:"first-delivery",
-  gasUnits:units,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei}];
+  gasUnits:firstGas,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei}];
  let onwardFeeWei=null;
  if(secondRoute){
   if(!secondBridge||BigInt(secondBridge.validatorFeeWei??0)<1n)
@@ -107,11 +119,11 @@ export async function buildManagedQuote({
    throw Error("Second hop protocol quote or principal invalid");
   onwardFeeWei=secondValue-secondPrincipal;
   stages.push({chain:"xgrchain",kind:"onward-bridge-gas",
-   gasUnits:units,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei});
+   gasUnits:onwardGas,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei});
   stages.push({chain:"xgrchain",kind:"onward-protocol-fee",
    nativeFeeWei:onwardFeeWei});
   stages.push({chain:destination,kind:"final-delivery",
-   gasUnits:units,gasPriceWei:gasByChain.get(destination).gasPriceWei});
+   gasUnits:finalGas,gasPriceWei:gasByChain.get(destination).gasPriceWei});
  }
  const ttl=BigInt(onChainLifetime);
  if(ttl<1n||ttl>90n)throw Error("Invalid deployed fee quote lifetime");
@@ -135,11 +147,11 @@ export async function buildManagedQuote({
  }
  const oracle=verifiedCoinGeckoPrices(priceData,source,destination,{now});
  const sponsorStages=[{chain:firstDestination,kind:"first-delivery",
-  gasUnits:units,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei},
+  gasUnits:firstGas,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei},
   ...(secondRoute?[{chain:"xgrchain",kind:"hub-onward",
-   gasUnits:units,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei,
+   gasUnits:onwardGas,gasPriceWei:gasByChain.get("xgrchain").gasPriceWei,
    nativeFeeWei:onwardFeeWei},{chain:destination,kind:"final-delivery",
-   gasUnits:units,gasPriceWei:gasByChain.get(destination).gasPriceWei}]:[])];
+   gasUnits:finalGas,gasPriceWei:gasByChain.get(destination).gasPriceWei}]:[])];
  if(walletAwareEnabled&&typeof readWalletNativeBalance!=="function")
   throw Error("Verified wallet balance reader required");
  const balances={};
@@ -226,8 +238,8 @@ export async function buildManagedQuote({
   pricing:{sourceNativeCoinGeckoId:oracle.sourceId,
    destinationNativeCoinGeckoId:oracle.destinationId,
    sourceNativeUsd:oracle.sourceUsd,destinationNativeUsd:oracle.destinationUsd,
-   destinationGasUnits:units.toString(),destinationGasPriceWei:gasPriceWei.toString(),
-   estimatedDestinationCostWei:(units*gasPriceWei).toString(),
+   destinationGasUnits:(secondRoute?finalGas:firstGas).toString(),destinationGasPriceWei:gasPriceWei.toString(),
+   estimatedDestinationCostWei:((secondRoute?finalGas:firstGas)*gasPriceWei).toString(),
    estimatedCostSourceWei:fee.estimatedCostSourceWei,
    onwardProtocolFeeWei:onwardFeeWei===null?null:onwardFeeWei.toString(),
    journeyCostStages:fee.stages,
