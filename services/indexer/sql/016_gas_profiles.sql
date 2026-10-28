@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS public.xita_gas_observation_cursors (
  PRIMARY KEY(chain_name,mailbox)
 );
 REVOKE ALL ON public.xita_gas_observation_cursors FROM PUBLIC;
+CREATE TABLE IF NOT EXISTS public.xita_gas_onward_cursors (
+ singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK(singleton),
+ indexed_at TIMESTAMPTZ NOT NULL DEFAULT 'epoch'::timestamptz,
+ source_tx_hash CHAR(66) NOT NULL DEFAULT '0x0000000000000000000000000000000000000000000000000000000000000000'
+);
+REVOKE ALL ON public.xita_gas_onward_cursors FROM PUBLIC;
 
 REVOKE ALL ON FUNCTION public.xita_record_gas_observation(
  TEXT,TEXT,CHAR(66),BIGINT,CHAR(66),BIGINT) FROM PUBLIC;
@@ -86,7 +92,8 @@ DO $grants$
 BEGIN
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_transfer_worker') THEN
   GRANT SELECT,INSERT,UPDATE,DELETE ON
-   public.xita_gas_observations,public.xita_gas_observation_cursors
+   public.xita_gas_observations,public.xita_gas_observation_cursors,
+   public.xita_gas_onward_cursors
    TO xita_transfer_worker;
   GRANT SELECT,INSERT,UPDATE ON public.xita_gas_profiles
    TO xita_transfer_worker;
