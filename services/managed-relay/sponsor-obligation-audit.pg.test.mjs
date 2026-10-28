@@ -71,7 +71,7 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     "004_sponsor_grants.sql","009_initial_fee_tax_evidence.sql",
     "010_wallet_aware_sponsor_commitments.sql",
     "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
-    "015_sponsor_spendable_receipt.sql"]){
+    "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
   const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
@@ -100,6 +100,23 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     assert.equal((await reopened.query("SELECT COUNT(*)::int AS n"+
      " FROM xita_sponsor_grants WHERE grant_key=$1",[key])).rows[0].n,1);
    }finally{await reopened.end()}
+  });
+  await t.test("Gas observations cap at 1000, deduplicate receipts and recalculate p95",async()=>{
+   const profile="base|first-delivery|synthetic|synthetic|mint|v1";
+   const hex=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
+   for(let i=1;i<=1002;i++)
+    await db.query("SELECT xita_record_gas_observation($1,$2,$3,$4,$5,$6)",
+     [profile,"base",hex(i),i,hex(10000+i),100000+i]);
+   const o=await db.query("SELECT COUNT(*)::int AS n,"+
+    " MIN(gas_used)::int AS minimum FROM xita_gas_observations WHERE profile_key=$1",[profile]);
+   assert.equal(o.rows[0].n,1000);
+   assert.equal(o.rows[0].minimum,100003);
+   await db.query("SELECT xita_record_gas_observation($1,$2,$3,$4,$5,$6)",
+    [profile,"base",hex(1002),1002,hex(11002),101002]);
+   const q=await db.query("SELECT sample_count,p95_gas_units FROM xita_gas_profiles"+
+    " WHERE profile_key=$1",[profile]);
+   assert.equal(q.rows[0].sample_count,1000);
+   assert.ok(BigInt(q.rows[0].p95_gas_units)>100900n);
   });
   await t.test("Mined gas persists spendable independently of safe confirmation",async()=>{
    await reset();
