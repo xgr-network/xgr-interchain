@@ -318,7 +318,8 @@ export function publicSponsorshipView(rows){
   return {ok:true,status:"unavailable"};
  const grants=rows.filter(row=>row?.grant_key).map(row=>({
   stage:String(row.grant_key).split(":").at(-1),
-  status:["reserved","submitted","confirmed","needs-review"].includes(row.status)?
+  status:row.status==="submitted"&&row.spendable_at?"spendable":
+   ["reserved","submitted","confirmed","needs-review"].includes(row.status)?
    row.status:"unknown"
  }));
  const aware=rows.some(r=>r.wallet_aware===true);
@@ -331,6 +332,7 @@ export function publicSponsorshipView(rows){
   promised===0?"not-required":
   grants.some(g=>g.status==="needs-review")?"needs-review":
   grants.length===promised&&grants.every(g=>g.status==="confirmed")?"confirmed":
+  grants.length===promised&&grants.every(g=>["confirmed","spendable"].includes(g.status))?"spendable":
   grants.some(g=>g.status==="submitted")?"submitted":
   grants.some(g=>g.status==="reserved")?"reserved":"pending":
   grants.length?"tracked":"not-required";
@@ -401,7 +403,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
  // not a mode ENV, distinguishes the newer commercial pricing.
  const quoteAware=true;
    const q=await sponsorPool.query({text:
-    "SELECT g.grant_key,g.status,p.delivered,"+
+    "SELECT g.grant_key,g.status,g.spendable_at,p.delivered,"+
     (quoteAware?" (i.quote_nonce IS NOT NULL) AS wallet_aware,"+
       " (SELECT COUNT(*) FROM xita_sponsor_quote_commitments c"+
       " WHERE c.source_chain=i.source_chain AND c.execution_adapter=i.execution_adapter"+
