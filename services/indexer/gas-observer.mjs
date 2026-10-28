@@ -93,6 +93,7 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
     fromBlock:hex(from),toBlock:hex(to)
    }]);
    if(!Array.isArray(logs)||logs.length>1000)continue;
+   let incomplete=false;
    for(const log of logs){
     if(!eq(log.address,group.mailbox)||!HASH.test(log.transactionHash||"")||
       !HASH.test(log.topics?.[1]||"")||log.removed===true)continue;
@@ -100,17 +101,19 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
      destination_mailbox FROM xita_transfer_operations
      WHERE destination_chain=$1 AND message_id=$2 AND delivered=TRUE
      LIMIT 2`,values:[group.chain,log.topics[1].toLowerCase()]});
-    if(operation.rows.length!==1||!eq(operation.rows[0].destination_mailbox,group.mailbox))
-     continue;
+    if(operation.rows.length!==1){incomplete=true;continue;}
+    if(!eq(operation.rows[0].destination_mailbox,group.mailbox))continue;
     const row=operation.rows[0];
     const route=group.routes.filter(r=>r.source===row.source_chain&&eq(r.routeId,row.route_id));
-    if(route.length!==1)continue;
+    if(route.length!==1){incomplete=true;continue;}
     const profile=transferGasProfile(catalog,route[0],"first-delivery");
-    if(!profile)continue;
+    if(!profile){incomplete=true;continue;}
     if(await recordVerifiedGas({pool,rpc,chain:group.chain,chainConfig:cfg,
      txHash:log.transactionHash,profile,expectedBlock:num(log.blockNumber),
      expectedBlockHash:log.blockHash}))measured++;
+    else incomplete=true;
    }
+   if(incomplete)continue;
    const end=await rpc(cfg,"eth_getBlockByNumber",[hex(to),false]);
    if(!end||!HASH.test(end.hash||"")||num(end.number)!==to)continue;
    await pool.query({text:`INSERT INTO xita_gas_observation_cursors
