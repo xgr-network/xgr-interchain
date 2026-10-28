@@ -95,6 +95,16 @@ export async function buildManagedQuote({
  for(const [name,data] of gasSnapshots)gasByChain.set(name,data);
  const units=BigInt(gasUnits);
  if(units<21000n||units>5000000n)throw Error("Gas units exceed quote safety cap");
+ const estimate=async(r,stage)=>{
+  if(!readGasProfile)return units;
+  const p=transferGasProfile(catalog,r,stage);
+  if(!p)return units;
+  try{return quotedGasUnits(await readGasProfile(p.key),{fallback:units})}
+  catch{return units}
+ };
+ const firstGas=await estimate(route,"first-delivery");
+ const onwardGas=secondRoute?await estimate(secondRoute,"hub-onward"):units;
+ const finalGas=secondRoute?await estimate(secondRoute,"final-delivery"):units;
  const stages=[{chain:firstDestination,kind:"first-delivery",
   gasUnits:units,gasPriceWei:gasByChain.get(firstDestination).gasPriceWei}];
  let onwardFeeWei=null;
