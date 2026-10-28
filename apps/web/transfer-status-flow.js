@@ -256,6 +256,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
  const sponsorEnabled=sponsorship?.enabled===true&&record?.confirmed===true;
  const sponsorNote=sponsorship?.status==="confirmed"?"All upfront native gas grants confirmed on chain":
    sponsorship?.status==="needs-review"?"Gas grant requires operator review":
+   sponsorship?.status==="spendable"?"Gas received on chain; finality monitored in background":
    sponsorship?.status==="submitted"?"Upfront gas grants submitted; awaiting confirmations":
    sponsorship?.status==="reserved"?"Gas grant reserved; awaiting submission":
    sponsorship?.status==="not-required"?"No sponsor grant required for a verified stage":
@@ -263,7 +264,7 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
    sponsorship?.status==="disabled"?"Promised gas grants unavailable; operator attention required":
    "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorState=["needs-review","disabled"].includes(sponsorship?.status)?"attention":
-   ["confirmed","not-required"].includes(sponsorship?.status)?"complete":"pending";
+   ["confirmed","spendable","not-required"].includes(sponsorship?.status)?"complete":"pending";
  const activeIndex=tokenJourney.verified<tokenJourney.steps.length?
    tokenJourney.verified:tokenJourney.steps.length-1;
  const rows=tokenJourney.steps.map((step,i)=>{
