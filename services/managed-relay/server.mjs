@@ -202,8 +202,8 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
     return block.timestamp;
   },
   readGasProfile:async key=>{
-   const url=process.env.XITA_SPONSOR_STATUS_DATABASE_URL||
-    process.env.XITA_TAX_QUOTE_DATABASE_URL;
+   const url=process.env.XITA_TAX_QUOTE_DATABASE_URL||
+    process.env.XITA_SPONSOR_STATUS_DATABASE_URL;
    if(!url)return null;
    const {Pool}=await import("pg");
    const db=new Pool({connectionString:url,max:1,connectionTimeoutMillis:1200,
