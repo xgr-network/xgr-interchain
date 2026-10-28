@@ -18,6 +18,10 @@ test("no grants permits continuation; promised stages remain fail-closed",()=>{
  assert.equal(sponsorAllowsContinuation(null),false);
 });
 
+test("verified spendable native gas unlocks without claiming SAFE finality",()=>{
+ assert.equal(sponsorAllowsContinuation({ok:true,upfrontRequired:true,status:"spendable"}),true);
+ assert.equal(sponsorAllowsContinuation({ok:true,upfrontRequired:true,status:"submitted"}),false);
+});
 test("TX2 only accepts immutable exactly matched zero-grants quote",()=>{
  const account="0x"+"1".repeat(40), txHash="0x"+"a".repeat(64);
  const messageId="0x"+"b".repeat(64),executionAdapter="0x"+"2".repeat(40);
