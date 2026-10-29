@@ -85,6 +85,44 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
     ". CoinGecko original-chain contract verified before submission; required CI repeats the check. No approval, deployment or live transfer is implied. Review token representations before merging. No applicant email is present."});
  return {number:pr.number,url:pr.html_url,status:"draft"};
 }
+// The private contact record is not authoritative about whether a GitHub PR
+// is still open: operator closure may precede the notification poller.
+// Only active email confirmations, open PRs and accepted/deployed assets block
+// a new proposal for the same original token. Never infer a GitHub 5xx/timeout
+// or malformed response is a deleted PR.
+export async function hasBlockingJoinApplication(records,assetId,{
+ readPR=number=>github("/pulls/"+number)
+}={}){
+ if(!Array.isArray(records))throw Error("Join storage unavailable");
+ for(const record of records){
+  if(record.assetId!==assetId)continue;
+  if(record.phase==="pending-email"||
+     ["approved","deployed","first-lock","listed","delisted"].includes(record.phase))
+   return true;
+  const number=record.pr?.number;
+  if(!Number.isSafeInteger(number)||number<=0){
+   // Older rejected records without a PR should not prevent reapplication.
+   if(record.phase==="rejected")continue;
+   return true;
+  }
+  let pr;
+  try{pr=await readPR(number)}
+  catch(error){
+   // An explicitly missing PR is no longer a live proposal. All other GitHub
+   // failures must fail closed rather than admitting duplicate open PRs.
+   if(String(error?.message||"").includes("GitHub rejected request (404)"))
+    continue;
+   throw Error("Join PR status unavailable; retry later");
+  }
+  if(!pr||!["open","closed"].includes(pr.state))
+   throw Error("Join PR status unavailable; retry later");
+  if(pr.state==="open"||pr.merged===true||Boolean(pr.merged_at))
+   return true;
+  // Verified closed AND unmerged PR; allow a new independent application.
+ }
+ return false;
+}
+
 // Only operator-held credentials and a verified email enable public submissions.
 export function joinAvailable(env=process.env){
   if(!joinGithubToken(env)||!mailConfigured(env))return false;
@@ -140,6 +178,7 @@ function httpError(error){
     error:message.replace(/[^\x20-\x7e]/g," ").slice(0,220)};
 }
 export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCoinGecko,deliver=sendMail,
+  readPR=number=>github("/pulls/"+number),
   getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
  const url=new URL(req.url,"http://localhost"),path=url.pathname;
  if(req.method==="GET"&&path==="/api/xita/join/status")
@@ -195,8 +234,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   // Per-email throttle; proxies normally share loopback as socket address.
   if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
   const dir=preparePrivateDir(privateLocation(env));
-  if(listPrivate(dir,{now:clock()}).some(record=>record.assetId===bundle.assetId&&!["rejected","listed"].includes(record.phase)))
-    return reply(res,409,{ok:false,error:"A current application for this original token is already pending review"});
+  if(await hasBlockingJoinApplication(listPrivate(dir,{now:clock()}),bundle.assetId,{readPR}))
+    return reply(res,409,{ok:false,error:"An active application or approved token already exists for this original token"});
   const {id,token}=createPending(dir,input,bundle.assetId,{now:clock()});
   // No email, token, or role holder contact is ever written to GitHub here.
   try{
