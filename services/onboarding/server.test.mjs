@@ -5,7 +5,7 @@ import {mkdtempSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
-import {handleJoin,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
+import {handleJoin,hasBlockingJoinApplication,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 const catalog=loadCatalog();
 const input={
@@ -120,4 +120,19 @@ test("email confirmation is private, single-use and required before public GitHu
   assert.equal(stored[0].tokenHash,null);
   assert.match(stored[0].receiptHash,/^[0-9a-f]{64}$/);
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});}
+});
+
+test("closed or deleted unmerged PR allows reapplication; open or merged PR blocks",async()=>{
+ const assetId="0x"+"a".repeat(64);
+ const record={assetId,phase:"under-review",pr:{number:271}};
+ const check=(records,readPR)=>hasBlockingJoinApplication(records,assetId,{readPR});
+ assert.equal(await check([record],async()=>({state:"closed",merged:false,merged_at:null})),false);
+ assert.equal(await check([record],async()=>{throw Error("GitHub rejected request (404)")}),false);
+ assert.equal(await check([record],async()=>({state:"open",merged:false})),true);
+ assert.equal(await check([record],async()=>({state:"closed",merged:true,merged_at:"2026-10-28T00:00:00Z"})),true);
+ assert.equal(await check([{...record,phase:"rejected"}],async()=>({state:"closed",merged:false})),false);
+ assert.equal(await check([{...record,phase:"pending-email",pr:null}],async()=>{throw Error("should not be called")}),true);
+ assert.equal(await check([{...record,phase:"approved"}],async()=>{throw Error("should not be called")}),true);
+ await assert.rejects(()=>check([record],async()=>{throw Error("GitHub rejected request (503)")}),/status unavailable/);
+ await assert.rejects(()=>check([record],async()=>null),/status unavailable/);
 });
