@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "kind": "chain-config",
   "name": "bsc",
+  "displayName": "BNB Smart Chain",
   "environment": "mainnet",
   "chainId": 56,
   "domainId": 56,
