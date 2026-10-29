@@ -1,3 +1,11 @@
+# Public disclosure derivative of the sealed Phase A record
+
+**This file is a curated public derivative, not the original sealed Phase A master.** The exact original remains unchanged in protected evidence with SHA256 `8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52`. The original freeze applies to those original bytes. This derivative has its own hash in the publication metadata.
+
+Only two detailed private test-sequence paragraphs and one archive-publication statement have been replaced for responsible disclosure. Findings, severities, technical causes, evidence outcomes, limitations, and the Phase A chronology are unchanged. The confidential redaction ledger preserves the exact original and replacement paragraphs. No private fixture, raw security log, signing material or unrestricted evidence archive is included here.
+
+---
+
 # Phase A - independently completed security delta assessment
 
 Audit ID: `XITA-DBLS-2026-10-29-v3.2.0`. Phase A was completed before reading the historical finding registers or reports in detail. The source freeze is recorded in `scope-and-baselines.json`.
@@ -13,7 +21,7 @@ Audit ID: `XITA-DBLS-2026-10-29-v3.2.0`. Phase A was completed before reading th
 
 These are independent candidates, not predetermined final historical IDs. Two other observations are retained without asserting an unmeasured exploit: validator-set workload is absent from the learned gas key, and an unchanged RPC test contains contradictory block-pinned-call expectations. No new Critical/High code defect was demonstrated during Phase A.
 
-The following four workstream records are the complete independent analyses. Reproduction files, logs and provenance are committed in the final evidence archive; their Phase A identities are sealed by the accompanying freeze record.
+The following four workstream records retain the independent scientific analyses, subject only to the disclosure redactions identified in this public derivative. Private reproduction fixtures, raw security logs and detailed negative-test sequences are retained in the protected evidence archive. Public-safe results, provenance and hashes are published separately; the accompanying freeze identifies the exact sealed original.
 
 
 
@@ -127,7 +135,7 @@ The overtaken-obligation ledger is append-only at the worker privilege level. It
 
 **Preconditions:** a prepared grant exists (for example, crash after the committed reservation but before the original broadcast), no receipt is initially found, the original destination is undelivered at the gate, and a later provider call exceeds the configured 12-second reconciliation deadline but eventually completes while the process remains alive. The original destination may be completed independently during that delay.
 
-**Reproduction:** `recovery-adversarial.test.mjs`, test `A-SP-01`, drives the real exported `reconcileSponsorGrants` with a generated ephemeral signer, a durable-row mock and isolated provider mocks. The nonce call is held behind a controllable promise. After the 20 ms test deadline, reconciliation returns `{held:1, chainFailures:1}` with zero broadcasts. The fixture then marks destination delivery complete and releases the nonce call. The same previously prepared bytes are broadcast, without another delivery read or status transition. The shorter test deadline exercises the same code path as the production default. `adversarial-recovery-direct.log` records the observation.
+**Independent test result:** an isolated mock-provider test of the actual reconciliation function reproduced a payout after reconciliation had returned a held result and destination delivery had independently completed. The test establishes the uncancelled-effect boundary; it does not establish an observed production payout or arbitrary recipient/amount control. Detailed sequencing, synthetic inputs and the raw log are retained in the protected evidence archive.
 
 **Impact and limits:** this violates the promised worker boundary that timed-out observations cannot send and can issue a gas payment after the transfer has completed. It also leaves a side effect outside the returned reconciliation result and subsequent operator hold. Identical-byte rebroadcast does not create duplicate Ethereum transactions or change the recipient/amount; the finding does not claim arbitrary theft, duplicate token issuance or nonce reuse. The failure is a stale authorization/control-boundary defect with bounded sponsor cost.
 
@@ -258,7 +266,7 @@ This is an ancillary gas learner, not the consensus observer or transfer authori
 
 ### Reproduction
 
-`phase-a-observer.test.mjs` uses the actual frozen deployment catalog and actual observer functions with deterministic canonical RPC/DB fixtures. With an existing Base cursor at block 80 and safe head 120, a valid-looking ProcessId at block 81 without a matching indexed row causes two consecutive calls to query exactly blocks 81-100 and never update that chain's cursor. A separate case places one unknown-route child row before a valid child row; the collector makes zero receipt reads and zero cursor writes. No live chain transaction was performed.
+**Independent test result:** isolated canonical RPC/database fixtures exercised the actual frozen gas-observer functions. Repeated delivery scans remained on the same window when a valid shared-Mailbox event had no indexed match; a separate onward-sampling case prevented later independent measurements from progressing. The fixtures establish the cursor control-flow defect, while the contract/node/indexer source comparison above establishes permissionless reachability. No live-chain transaction or production index mutation was performed. Exact synthetic inputs and fixture sequencing remain protected.
 
 The same file verifies that chain-ID mismatch and expected-block-hash mismatch prevent recording; it also demonstrates the existing absence of a profile-age fallback. Four tests pass with detailed per-test TAP in `observer-adversarial-detailed.log`. These fixtures prove the control-flow defect; the contract/node/indexer source comparison establishes normal permissionless reachability.
 
