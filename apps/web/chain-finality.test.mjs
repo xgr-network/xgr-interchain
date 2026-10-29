@@ -9,8 +9,8 @@ function rpc(chainId=8453,{safe=100,mismatch=false,latest=110,delivered=true,hea
   if(method==="eth_chainId")return "0x"+chainId.toString(16);
   if(method==="eth_getBlockByNumber"){
    const tag=args[0];
-   if(headUnavailable&&tag==="safe")throw Error("Safe tag unsupported");
-   if(tag==="safe")return {number:"0x"+safe.toString(16),hash:H};
+   if(headUnavailable&&(tag==="safe"||tag==="finalized"))throw Error("Native finality tag unsupported");
+   if(tag==="safe"||tag==="finalized")return {number:"0x"+safe.toString(16),hash:H};
    if(tag==="latest")return {number:"0x"+latest.toString(16),hash:H};
    const height=Number(BigInt(tag));
    return {number:tag,hash:mismatch&&height===90?BAD:H};
@@ -24,11 +24,12 @@ test("chain-native policy requires L2 safe and XGR committed latest",async()=>{
  assert.equal(nativeFinalityTag(8453),"safe");
  assert.equal(nativeFinalityTag(42161),"safe");
  assert.equal(nativeFinalityTag(1643),"latest");
+ assert.equal(nativeFinalityTag(56),"finalized");
  assert.throws(()=>nativeFinalityTag(137),/Unsupported/);
- for(const id of [8453,42161]){
+ for(const id of [8453,42161,56]){
   const p=rpc(id),head=await readNativeFinalityHead(p.call,id);
   assert.equal(head.number,100);
-  assert.ok(p.calls.some(c=>c.method==="eth_getBlockByNumber"&&c.args[0]==="safe"));
+  assert.ok(p.calls.some(c=>c.method==="eth_getBlockByNumber"&&c.args[0]===(id===56?"finalized":"safe")));
  }
 });
 test("Source above safe, mismatched receipt hash or unavailable safe never gets finalized",async()=>{
