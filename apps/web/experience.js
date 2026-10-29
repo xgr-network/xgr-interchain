@@ -13,7 +13,7 @@ const POSITIONS = [
   {x:23,y:25},{x:77,y:27},{x:78,y:75},{x:22,y:74},{x:50,y:11},{x:50,y:91}
 ];
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const chainLabel = (key,chain) => LABELS[key] || chain?.name || key;
+const chainLabel = (key,chain) => typeof chain?.displayName==="string" && chain.displayName.trim() ? chain.displayName : LABELS[key] || chain?.name || key;
 const tokenLink = token => "/token/"+encodeURIComponent(token.slug);
 const pill = (isActive) => '<span class="ux-badge '+(isActive?"is-verified":"is-pending")+'">'+(isActive?"Verified active":"Not verified")+"</span>";
 const valueOrDash = value => value===null||value===undefined ? "—" : String(value);
