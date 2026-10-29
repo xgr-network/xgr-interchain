@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {Wallet,Transaction} from "ethers";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,verifiedExpiredSponsorQuote,reportSponsorReserves,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -344,4 +344,79 @@ test("N-06 expires only after finalized source nonce evidence, never merely by t
  const held=await reconcileExpiredSponsorQuotes({pool,catalog,providers});
  assert.equal(held.resolved,0);assert.equal(inserted,0);
  assert.ok(seen.some(x=>x.includes("quote_expires_at")&&x.includes("5 minutes")));
+});
+
+test("F-16: identical independent finalized hashes and nonce permit expiry release evidence",async()=>{
+ const block={number:100,hash:hash("e"),timestamp:1793000000};
+ const item={execution_adapter:addr("b"),payer:addr("a"),quote_nonce:"42",
+  quote_expires_at:new Date(1792999000000).toISOString()};
+ const primary={getBlock:async()=>block};
+ const witness={getBlock:async()=>block};
+ const readNonceUsed=async()=>false;
+ const result=await verifiedExpiredSponsorQuote({
+  item,sourceChain:"base",provider:primary,witness,readNonceUsed
+ });
+ assert.deepEqual(result,{used:false,blockNumber:100,blockHash:block.hash});
+});
+test("F-16: mismatched witness, conflicting nonce and reorg never release quote",async()=>{
+ const block={number:100,hash:hash("e"),timestamp:1793000000};
+ const item={execution_adapter:addr("b"),payer:addr("a"),quote_nonce:"42",
+  quote_expires_at:new Date(1792999000000).toISOString()};
+ const primary={getBlock:async()=>block};
+ const witness={getBlock:async()=>({...block,hash:hash("f")})};
+ await assert.rejects(()=>verifiedExpiredSponsorQuote({
+  item,sourceChain:"base",provider:primary,witness,readNonceUsed:async()=>false
+ }),/disagree/);
+ const agree={getBlock:async()=>block};
+ await assert.rejects(()=>verifiedExpiredSponsorQuote({
+  item,sourceChain:"base",provider:primary,witness:agree,
+  readNonceUsed:async p=>p===primary?false:true
+ }),/nonce/);
+ let count=0;
+ const changing={getBlock:async()=>++count>=3?{...block,hash:hash("f")}:block};
+ await assert.rejects(()=>verifiedExpiredSponsorQuote({
+  item,sourceChain:"xgrchain",provider:changing,readNonceUsed:async()=>false
+ }),/changed/);
+ await assert.rejects(()=>verifiedExpiredSponsorQuote({
+  item,sourceChain:"base",provider:primary,readNonceUsed:async()=>false
+ }),/Second expiry RPC/);
+});
+test("F-16: lagging finalized witness retains unresolved promise",async()=>{
+ const block={number:100,hash:hash("e"),timestamp:1793000000};
+ const item={execution_adapter:addr("b"),payer:addr("a"),quote_nonce:"42",
+  quote_expires_at:new Date(1792999000000).toISOString()};
+ const evidence=await verifiedExpiredSponsorQuote({
+  item,sourceChain:"base",provider:{getBlock:async()=>block},
+  witness:{getBlock:async()=>({...block,number:99})},
+  readNonceUsed:async()=>false
+ });
+ assert.equal(evidence,null);
+});
+test("F-08: expiry work is fairly partitioned across source chains",async()=>{
+ let sql="";
+ const pool={query:async q=>{sql=q.text;return {rows:[]}}};
+ const result=await reconcileExpiredSponsorQuotes({
+  pool,catalog:reconciliationCatalog,providers:new Map()
+ });
+ assert.deepEqual(result,{resolved:0,held:0});
+ assert.match(sql,/PARTITION BY i.source_chain/);
+ assert.match(sql,/chain_rank<=12/);
+});
+test("F-08: stalled reserve balance RPC does not prevent healthy chain monitoring",async()=>{
+ const wallet={address:addr("a")},writes=[];
+ const pool={query:async q=>{writes.push(q);return {rowCount:1}}};
+ const providers=new Map([
+  ["base",{getFeeData:async()=>new Promise(()=>{})}],
+  ["xgrchain",{getFeeData:async()=>({gasPrice:10n}),
+   getBalance:async()=>10000000n}]
+ ]);
+ const policy={
+  base:{minReserveWei:"1",maxGrantWei:"10"},
+  xgrchain:{minReserveWei:"1",maxGrantWei:"10"}
+ };
+ const result=await reportSponsorReserves({
+  pool,catalog:reconciliationCatalog,wallet,policy,providers,readTimeoutMs:10
+ });
+ assert.deepEqual(result,[{chain:"base",ready:false},{chain:"xgrchain",ready:true}]);
+ assert.equal(writes.length,2);
 });
