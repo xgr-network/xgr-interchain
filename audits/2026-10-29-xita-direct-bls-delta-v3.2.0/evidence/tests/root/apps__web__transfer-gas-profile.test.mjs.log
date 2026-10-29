@@ -1,0 +1,10 @@
+✔ contract-based profile distinguishes collateral mint from synthetic burn (1.327037ms)
+✔ first finalized sample uses 2x total gas buffer, falling smoothly to 1.3x (0.5576ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.897146

@@ -1,0 +1,12 @@
+✔ chain-native policy requires L2 safe and XGR committed latest (1.588671ms)
+✔ Source above safe, mismatched receipt hash or unavailable safe never gets finalized (1.237133ms)
+✔ Mailbox delivery is read at pinned safe height, not latest; stale or reorg evidence rejected (0.449316ms)
+✔ native-safe delivery reorg during eth_call is rejected and not persisted (0.250768ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9.120899

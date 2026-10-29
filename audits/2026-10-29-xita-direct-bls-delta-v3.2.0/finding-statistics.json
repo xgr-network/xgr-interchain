@@ -1,0 +1,42 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "current_unique_entries": 35,
+  "prior_current_entries_reassessed": 32,
+  "new_findings": 3,
+  "reopened_regressions": [
+    "F-06"
+  ],
+  "resolved_ids": [
+    "F-01",
+    "F-02",
+    "F-07",
+    "F-16",
+    "F-26",
+    "F-27",
+    "F-30"
+  ],
+  "newly_resolved_current_ids": [
+    "F-07",
+    "F-16",
+    "F-30"
+  ],
+  "newly_verified_legacy_ids": [
+    "2026-10-24/M-03"
+  ],
+  "unresolved_severity_counts": {
+    "Critical": 0,
+    "High": 0,
+    "Medium": 14,
+    "Low": 12,
+    "Informational": 2
+  },
+  "resolved_count": 7,
+  "disposition_counts": {
+    "VERIFIED / RESOLVED": 7,
+    "OPEN": 24,
+    "PARTIALLY_MITIGATED": 3,
+    "ACCEPTED_RISK": 1
+  },
+  "historical_occurrences": 43,
+  "counts_note": "Resolved causes are excluded from current residual severity totals. Historical occurrences are not additional unique findings."
+}

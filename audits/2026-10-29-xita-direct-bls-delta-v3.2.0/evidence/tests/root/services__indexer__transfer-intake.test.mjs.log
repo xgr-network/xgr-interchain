@@ -1,0 +1,11 @@
+✔ intake accepts ONLY source wallet chain and 32-byte hash (3.435251ms)
+✔ duplicate hint cannot override a claim, nor reserve a hash for another wallet (0.550789ms)
+✔ no false claim can be promoted via public HTTP handler (0.819393ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.434391

@@ -1,0 +1,262 @@
+{
+  "file": "report.pdf",
+  "source": "report.md",
+  "source_sha256": "ac8f00e6a1b548ae784d1bcb3e4b8570a4f8a2c8145985d112f60cacb1958604",
+  "pages": 60,
+  "bytes": 289247,
+  "sha256": "0a4c218d85bc1504995cfceb520ab8425d91c08945269c630169807ebaeb6d12",
+  "text_chars": 187468,
+  "empty_pages": [],
+  "all_current_ids_present": true,
+  "all_chapters_present": true,
+  "visual_review": "PASS: all60 pages inspected in contact sheets; cover, source/finding/invariant and remediation pages also inspected individually. Whole table rows, repeated headers and kept subheadings checked. No clipped/overlapping text, empty pages or missing glyphs observed.",
+  "rendered_pages": 60,
+  "render_engine": "pdftoppm (Poppler),72dpi",
+  "font_embedding": "ReportLab embedded DejaVu Sans/Sans Mono",
+  "horizontal_overflow_spans": [],
+  "rendered_page_sha256": [
+    {
+      "page": 1,
+      "sha256": "152c66a76355d3bf1b02f53cf86c172952e7ac077dd0a05b029c1d6b2fe4d772"
+    },
+    {
+      "page": 2,
+      "sha256": "20eb029ed5b67342a0eefeb8cc975a37c50fc461110a3198ce6f198f78bea1ed"
+    },
+    {
+      "page": 3,
+      "sha256": "6d5df2cce0cc1d2b7ff680688ec1ca13e35317281ef84c12ad93c47eea867725"
+    },
+    {
+      "page": 4,
+      "sha256": "49ebaa3d9822ced6d108bcfe8fe13d6abe5ca5e2cc55481fc805a139d1e9c574"
+    },
+    {
+      "page": 5,
+      "sha256": "4bc6047e0de121d003b77038138dc18501355c1ffa4db86c13a3de68d3194e77"
+    },
+    {
+      "page": 6,
+      "sha256": "7584e3cd68315467685ccc6ebc9a6beacd7a74aba46b76942e51dfcb4ecaaf7c"
+    },
+    {
+      "page": 7,
+      "sha256": "acb3f9b62579df8e357c4d61b324d96283b7da0d45219f473b5232240b93842b"
+    },
+    {
+      "page": 8,
+      "sha256": "92f9b944af6fb32c5d5e901310e8464e0f9f490605750638585fe3528eaec083"
+    },
+    {
+      "page": 9,
+      "sha256": "daf195d61765ba75ecbe2a09e7a547d1cbec0f2fd754a413349582b1832a6e10"
+    },
+    {
+      "page": 10,
+      "sha256": "cbd1cd6aaa30b3a7e1362217fee293375c5bf04fe6703d18b72aee3eefb9a296"
+    },
+    {
+      "page": 11,
+      "sha256": "efbcdd3cb72fe31f256cb482848072bf64553d8c4bd3db6bdd2e16e648d93b85"
+    },
+    {
+      "page": 12,
+      "sha256": "60f9776f6e760abbf1c29120ed312314230646126a995e7a80e323e55b836363"
+    },
+    {
+      "page": 13,
+      "sha256": "08b5df9ecd235b26483636f2cbfc410f7c795e448072ce9c4d2eab74545cc4ab"
+    },
+    {
+      "page": 14,
+      "sha256": "13a50147e81278af1e5711e3b82b1541b1262edb54590b468c78b3c56f2674c3"
+    },
+    {
+      "page": 15,
+      "sha256": "80b4803630b64991440085c3ef1fae7a084e234a99081922a43233f21b50d260"
+    },
+    {
+      "page": 16,
+      "sha256": "3fe341a3f3ba6829ff466013d5c50356bd4dd935bf7e9622a75c8986e066e9b3"
+    },
+    {
+      "page": 17,
+      "sha256": "8b1a14ffcb945fb7ff0eb0210c1c4aff2e4bfdfa04570169c22ac35a5edc461e"
+    },
+    {
+      "page": 18,
+      "sha256": "cde287f01dda294c89766072ca96eb5ce116e398e1bda36b2ee51bbab8c921b7"
+    },
+    {
+      "page": 19,
+      "sha256": "3b34e8384b467cfc53d022c920ca22fae08275c05b855e46a5d6b4acf2dbaa3d"
+    },
+    {
+      "page": 20,
+      "sha256": "236c47b800d0afee49dfd9b26509b0edd0f4ff4f42a64230c71f19008eb07234"
+    },
+    {
+      "page": 21,
+      "sha256": "5210daac7d0345a974b3af15fc9fa7829a2555f929ad7f62090396db51dd7f4a"
+    },
+    {
+      "page": 22,
+      "sha256": "a22279f3403a0c2ba6138c0d7e602db64d5f57a477cada4b1486e7f2165ef46a"
+    },
+    {
+      "page": 23,
+      "sha256": "b55f841157fccb990497d69c4112acf5ff22c1ae080b7376f90dc895cf23b1e8"
+    },
+    {
+      "page": 24,
+      "sha256": "ee1dba6972c7898b85d059a3f7e2fbd3996f8268fd116bfa351e1afa5e016b6d"
+    },
+    {
+      "page": 25,
+      "sha256": "1fc76426a8f65dc646c7de22eda3971971bf8c149d8d7ef655eef46840e09a47"
+    },
+    {
+      "page": 26,
+      "sha256": "5da135400b98723d9e178d26f83207ea72ff906eee720e2bf5d5f9fcf57ef891"
+    },
+    {
+      "page": 27,
+      "sha256": "98a199822d66bb8ede7c91238b98f82140369e82b2a1900bec5e2fd74a84f325"
+    },
+    {
+      "page": 28,
+      "sha256": "c0658dbb26a725badae4dd17bb01cb9401e6424e2fd68990cbf0fa39cd497f36"
+    },
+    {
+      "page": 29,
+      "sha256": "7a91f4dd1e6daea42ba7cb16ff297f4bbe769ab6f6c44e0247c56537b41be951"
+    },
+    {
+      "page": 30,
+      "sha256": "684a131ec5b5de02ab69b5741d8c97745a86be169be3838bf6f77c99a2a207f0"
+    },
+    {
+      "page": 31,
+      "sha256": "227dda713c4ef0bdacf52985b90cabf532ac7bcf12eda1b5c934638d0d3c90bf"
+    },
+    {
+      "page": 32,
+      "sha256": "4576ae1bf92ffe6a7918b1e1ae36a194cd06a26a529e76ee897fbe454cff1f3e"
+    },
+    {
+      "page": 33,
+      "sha256": "2970e3d29c527bbeeb4ec4c8723b4c4d9dd81850210b57dd3577e4d673dc1ce8"
+    },
+    {
+      "page": 34,
+      "sha256": "26f9fabcbaff422d91614bb97e840cb111ba142b7dd6ebd45b0a3a5fef8546cc"
+    },
+    {
+      "page": 35,
+      "sha256": "80bcf5fcf7dd6da1b6cee9bc067c90f1c0ada3aad0ccc8aa0d7bd96d77c3eb55"
+    },
+    {
+      "page": 36,
+      "sha256": "dc2949a5b22116a625ff10311f4c35aeb2080ca53a767887f1cc42a48691fbbc"
+    },
+    {
+      "page": 37,
+      "sha256": "00479f40e49c60d23d879486e8461f1b87496d893ab87220dae5eac6876fc77a"
+    },
+    {
+      "page": 38,
+      "sha256": "38a1cba8e76624600d20038d2682182aa3e0b108312163e8adf254b9ed29dec2"
+    },
+    {
+      "page": 39,
+      "sha256": "802aef4ea22534d5117b7529d8e4167f73d2606d7d115d4dba529d70b34dbeb8"
+    },
+    {
+      "page": 40,
+      "sha256": "3a166b788dbcb873f9815479715174984bf3f24ce27eab762cfb3194af481059"
+    },
+    {
+      "page": 41,
+      "sha256": "36a69209323fcf5d2e7aa1522d0cd88ca992b47d0fea73b4024e3929868e3af1"
+    },
+    {
+      "page": 42,
+      "sha256": "117f3b66764a27bffa16dbdf1136b0d597375d9f5bb7ac581f72bf5ed37cdba8"
+    },
+    {
+      "page": 43,
+      "sha256": "0777e3d813367a43c386a3d0d8b01171a43c231f062f73098ffbb7c349660367"
+    },
+    {
+      "page": 44,
+      "sha256": "32e6778466f0604f4a31bde77ba5c1cae96d2e3f668d41e3227a498801287a65"
+    },
+    {
+      "page": 45,
+      "sha256": "623ca3769bec922a72c09dc5c8ecc08853444f4efffd0990d2781408ae8eab53"
+    },
+    {
+      "page": 46,
+      "sha256": "c65c3e8a1eebde248b64bacc466bb4ad11ead8f543e50ee753d7e1d8526a89a3"
+    },
+    {
+      "page": 47,
+      "sha256": "4fd8758c6dfc590c5ebe98757b74372e3aca2d656d84887c3a74a8163acbfa6e"
+    },
+    {
+      "page": 48,
+      "sha256": "302b98ead02886cedff17f16ccdbf41f9c84097c58e831550a779603d3f85df6"
+    },
+    {
+      "page": 49,
+      "sha256": "25ca48212f368d18dd55ede79786c2ab009c7fba20291782fc764253fc06f17f"
+    },
+    {
+      "page": 50,
+      "sha256": "9efca1504b0936696c073d5a18be0b3ce6302ea9993fe93fbb00a51ed7020769"
+    },
+    {
+      "page": 51,
+      "sha256": "28b20a0ff834e688002b754a7cc1c774e569b482fcc5434b2cfe6895a3e82a65"
+    },
+    {
+      "page": 52,
+      "sha256": "9ecf6e429963e5df30a8dd3330f894a26d3213a4423669f84318086aeb6d49e4"
+    },
+    {
+      "page": 53,
+      "sha256": "50ef9b9e9544a2f11156b088855418e9958f9a43543663651bfbdcea87104f38"
+    },
+    {
+      "page": 54,
+      "sha256": "9417afa499935c97daddbabc8d3355fc2f45954fc83128ab46e30be9f73c327c"
+    },
+    {
+      "page": 55,
+      "sha256": "2425ece45577c34b51350bc3996443e68a720cc4577a1fe3eb09ec2bffb4d344"
+    },
+    {
+      "page": 56,
+      "sha256": "f87df35ea518e72c313529be92e7c1d434d39b95d4ea71da3bc1a79ec9db77f5"
+    },
+    {
+      "page": 57,
+      "sha256": "ad342b7053b87e4eead0ccc50773b0fc66ab292a94fc6a71e4f90fd1a1e4dd12"
+    },
+    {
+      "page": 58,
+      "sha256": "6a750d1f9b6f130cf3d5f539291d9a87bd0d7511fcdbaaf53cb0dffe814d70d5"
+    },
+    {
+      "page": 59,
+      "sha256": "7fac4798b62548e27d2df0ba28bff013c08fa9174fc046ce89411db671cb515e"
+    },
+    {
+      "page": 60,
+      "sha256": "9ea8b9ccca358876c3f4616893694caccfb277cfe176bef16563f51791e25e3a"
+    }
+  ],
+  "visual_review_completed_at_utc": "2026-10-29T09:24:21.047152+00:00",
+  "renderer_sha256": "4dc102c9e1b69b9ec413895eb680da6d434d426bb0749ba1a871a5e569a33a95",
+  "render_notes": "Fontconfig cache warnings did not prevent rasterization. An earlier scratch PNG was truncated and rerendered; all final release raster pages decode fully. No PDF-content failure was involved."
+}

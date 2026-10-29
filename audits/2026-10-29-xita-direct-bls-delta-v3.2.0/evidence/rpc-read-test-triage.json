@@ -1,0 +1,21 @@
+{
+  "observed_at_utc": "2026-10-29T08:53:42.793207+00:00",
+  "classification": "PRE_EXISTING_TEST_CONTRADICTION",
+  "reason": "Earlier negative request list expects eth_call at numeric block 0x1 to reject; final test explicitly permits block-pinned eth_call and current implementation requires it for finality verification. Both test and implementation have identical blobs at baseline and frozen head.",
+  "files": [
+    {
+      "path": "services/indexer/rpc-read.mjs",
+      "blob_ids": {
+        "26d1356ce7c92eed67bfdbb91a5a0b19efc25ae3": "9d635666aa4106471d0ae0f21441ead9d0f3225d",
+        "5cfc095d0f02271427832ee6bbb268322f38ae2d": "9d635666aa4106471d0ae0f21441ead9d0f3225d"
+      }
+    },
+    {
+      "path": "services/indexer/rpc-read.test.mjs",
+      "blob_ids": {
+        "26d1356ce7c92eed67bfdbb91a5a0b19efc25ae3": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "5cfc095d0f02271427832ee6bbb268322f38ae2d": "e3588fc98eb1addd519f1b8f363d91ffa2614830"
+      }
+    }
+  ]
+}

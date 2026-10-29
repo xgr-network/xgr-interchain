@@ -1,0 +1,16 @@
+✔ native source fee price maps XGR to CoinGecko xgr and Base gas to ETH (1.221428ms)
+✔ tiny native gas coin prices preserve precision and reject zero (0.708958ms)
+✔ gas quote is round-up source-native, no tokens or fractions of wei (1.349291ms)
+✔ quote rejects suspicious zero gas, extremely large gas cap or arbitrary risk margin (0.407103ms)
+✔ VAT is charged on full net fee and missing tax policy fails closed (0.242595ms)
+✔ CoinGecko snapshot freshness is checked for BOTH chain gas coins (0.326361ms)
+✔ single CoinGecko ETH price can support Base and Arbitrum without duplicate feeds (0.178258ms)
+✔ integer ceil division never rounds under cost (0.229235ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.031791

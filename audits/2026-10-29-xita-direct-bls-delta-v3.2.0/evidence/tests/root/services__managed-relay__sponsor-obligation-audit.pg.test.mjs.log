@@ -1,0 +1,21 @@
+▶ F-07/F-19: disposable PostgreSQL regression suite (real schema)
+  ✔ F-07 PostgreSQL e2e: signed transaction and reservation commit atomically (72.95429ms)
+  ✔ Gas observations cap at 1000, deduplicate receipts and recalculate p95 (856.278976ms)
+  ✔ Mined gas persists spendable independently of safe confirmation (22.951455ms)
+  ✔ F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart (34.394668ms)
+  ✔ F-30: monitoring uses immutable creation age despite heartbeat (23.150144ms)
+  ✔ F-19: external delivery, unresolved payment, wrong fee, route, fresh or unindexed (38.091628ms)
+  ✔ F-19: false confirmed if sponsor, chain, recipient or amount differs (33.002283ms)
+  ✔ 2-hop promises: only unmatched stage triggers alert (23.023073ms)
+  ✔ Sponsoring disabled: obligation remains; monitor is read-only even on writable DB login (33.007875ms)
+  ✔ F-19: overtaken paid obligations are durable and idempotent (28.834069ms)
+  ✔ Healthy paid grants => no alerts (25.550633ms)
+✔ F-07/F-19: disposable PostgreSQL regression suite (real schema) (1263.436313ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1268.892446

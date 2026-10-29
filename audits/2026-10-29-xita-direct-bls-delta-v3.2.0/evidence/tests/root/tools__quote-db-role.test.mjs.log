@@ -1,0 +1,12 @@
+✔ detects deployed signer's actual restricted database login without exposing password (1.240747ms)
+✔ refuses missing, ambiguous, wrong DB, unrelated role or unsafe URL without credentials (1.403963ms)
+✔ role repair retains exact privilege boundaries and is wired before signer restart (0.560113ms)
+✔ update checks signed quote role before publishing website and restarts signer afterward (0.315595ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.095095

@@ -1,0 +1,137 @@
+{
+  "command": "node audit-work/protocol/registry_plan.mjs analyze",
+  "completed_at_utc": "2026-10-29T08:53:26.492Z",
+  "node": "v24.22.1",
+  "results": [
+    {
+      "chain": "xgrchain",
+      "registry": {
+        "destinationDomain": [
+          "1643"
+        ],
+        "getValidatorSet": [
+          [
+            "0x98F8bC086454B8386788244eee9A43d5D0b4E63E",
+            "0x7E8f8Fd2A198F77dF298041b48D79b0df4c8B1fa",
+            "0x7913fDAe82C678F42B98Ca8076Fe7D13b3EdFF15"
+          ],
+          [
+            "0xa65579c3b300f0d8e94e77b3915ac09f309c0a109a3aa3bb66d8beb538d733026624bf9d096e2a3d52deff78a36513d1",
+            "0xa32a09397128b801da5b88319bcca6cc33d4400e12ef7e1a94141b2360abd70306aaeb5599dd0d0984bb02f88fe20b71",
+            "0xb56b72d028aa6d063d36917f9f18a3ee4b216e22694a701814af4fd55e6cbbe99209fc1359012e4733987ebdd0123e88"
+          ],
+          "1"
+        ],
+        "originChainId": [
+          "1643"
+        ],
+        "quorumThreshold": [
+          "2"
+        ],
+        "setId": [
+          "1"
+        ],
+        "verifier": [
+          "0x0000000000000000000000000000000000002040"
+        ]
+      },
+      "gateway": {
+        "owner": [
+          "0x2F1048CF4c55bcafc0846a72C5bCb86a5b947b40"
+        ],
+        "quoteLifetimeSeconds": [
+          "90"
+        ],
+        "serviceWallet": [
+          "0xf0dcD6Aad6dE2057c7e49e7D294b3736504D4316"
+        ],
+        "sourceRegistry": [
+          "0xeA887a7f2f519f291732AAaDF578bAF3ff374DF6"
+        ]
+      },
+      "common_blocks": [
+        {
+          "endpoint": "https://rpc1.xgr.network",
+          "number": "0xbb297f",
+          "hash": "0x5e439b4cd949d600520c97bce3600c0d17f33ed056731fa5b1bd3d766fd1bd94"
+        },
+        {
+          "endpoint": "https://rpc2.xgr.network",
+          "number": "0xbb297f",
+          "hash": "0x5e439b4cd949d600520c97bce3600c0d17f33ed056731fa5b1bd3d766fd1bd94"
+        }
+      ],
+      "common_block_agreement": true,
+      "member_count": 3,
+      "threshold_matches": true,
+      "owner_service_wallet_distinct": true
+    },
+    {
+      "chain": "base",
+      "registry": {
+        "destinationDomain": null,
+        "getValidatorSet": null,
+        "originChainId": null,
+        "quorumThreshold": null,
+        "setId": null,
+        "verifier": null
+      },
+      "gateway": {
+        "owner": null,
+        "quoteLifetimeSeconds": null,
+        "serviceWallet": null,
+        "sourceRegistry": null
+      },
+      "common_blocks": [
+        {
+          "endpoint": "https://mainnet.base.org",
+          "number": null,
+          "hash": null
+        },
+        {
+          "endpoint": "https://base-rpc.publicnode.com",
+          "number": null,
+          "hash": null
+        }
+      ],
+      "common_block_agreement": false,
+      "member_count": null,
+      "threshold_matches": null,
+      "owner_service_wallet_distinct": null
+    },
+    {
+      "chain": "arbitrum",
+      "registry": {
+        "destinationDomain": null,
+        "getValidatorSet": null,
+        "originChainId": null,
+        "quorumThreshold": null,
+        "setId": null,
+        "verifier": null
+      },
+      "gateway": {
+        "owner": null,
+        "quoteLifetimeSeconds": null,
+        "serviceWallet": null,
+        "sourceRegistry": null
+      },
+      "common_blocks": [
+        {
+          "endpoint": "https://arb1.arbitrum.io/rpc",
+          "number": null,
+          "hash": null
+        },
+        {
+          "endpoint": "https://arbitrum-one-rpc.publicnode.com",
+          "number": null,
+          "hash": null
+        }
+      ],
+      "common_block_agreement": false,
+      "member_count": null,
+      "threshold_matches": null,
+      "owner_service_wallet_distinct": null
+    }
+  ],
+  "limitation": "Public read-only RPC state, not an attestation of key storage or host binaries."
+}

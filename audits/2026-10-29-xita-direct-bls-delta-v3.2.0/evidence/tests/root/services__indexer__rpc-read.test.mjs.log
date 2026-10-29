@@ -1,0 +1,34 @@
+✔ catalog-only read allows Arbitrum preflight through loopback without browser CORS (3.438917ms)
+✔ automatic failover must verify destination chain ID before providing data (0.670599ms)
+✖ unknown URLs, private hosts, unsafe methods and broad log scans are refused without network (1.474109ms)
+✔ receipt and filtered bounded event reads remain available for wallet recovery (0.287262ms)
+✔ wrong-chain and untrusted RPC responses fail closed (0.381734ms)
+✔ latest-only eth_getCode is allowed; archive-state requests remain refused (0.273331ms)
+✔ many concurrent wallet reads single-flight one verified chain ID (3.593739ms)
+✔ proxy 503 errors preserve safe upstream failure categories, not secrets or request params (0.384549ms)
+✔ a failed read invalidates the identity cache and independently checks fallback chain (0.527745ms)
+✔ native safe block and pinned mailbox finality reads are permitted, but signing is forbidden (0.715036ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.337841
+
+✖ failing tests:
+
+test at services/indexer/rpc-read.test.mjs:37:1
+✖ unknown URLs, private hosts, unsafe methods and broad log scans are refused without network (1.474109ms)
+  AssertionError [ERR_ASSERTION]: Missing expected rejection.
+      at async TestContext.<anonymous> (file:///workspace/scratch/b6f9b43360e2/xgr-interchain/services/indexer/rpc-read.test.mjs:50:32)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /permitted|Invalid|Only|Unsupported|catalog|RPC/,
+    operator: 'rejects',
+    diff: 'simple'
+  }

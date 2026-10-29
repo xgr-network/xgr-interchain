@@ -1,0 +1,15 @@
+✔ XGR two-hop burns wrapped Base, unlocks and re-locks native hub, mints Arbitrum (3.806439ms)
+✔ reversed XGR and ARB collateral journeys use actual token representation types (0.301824ms)
+✔ direct one-hop token journey does not invent synthetic mint before delivery (0.253352ms)
+✔ unsigned / unconfirmed and unverified representations never become token claims (0.286201ms)
+✔ modal shows exactly four main token actions and one live status, without secondary timeline (1.008308ms)
+✔ one-hop modal shows exactly two token actions and current step status (0.303447ms)
+✔ safe and IBFT finality appear on the relevant token action, not only the last (0.26549ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14.12495

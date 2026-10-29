@@ -1,0 +1,12 @@
+✔ reads current chain via wallet; other chains via read-only RPC (3.364885ms)
+✔ wrong chain RPC or blocked remote requests stay unknown, never zero (0.534455ms)
+✔ verified zero is not an unavailable balance (0.568656ms)
+✔ reject malformed quantities, accounts and insecure endpoints (0.798011ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.63679

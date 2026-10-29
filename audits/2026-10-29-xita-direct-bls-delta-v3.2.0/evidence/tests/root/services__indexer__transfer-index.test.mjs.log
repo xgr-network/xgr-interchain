@@ -1,0 +1,35 @@
+✔ decode canonical Gateway.bridge amount without rounding or trusting arbitrary calldata (1.931897ms)
+✔ a finalized source scan only accepts canonical Gateway operation logs (1.070711ms)
+✔ known endpoint block hash mismatch forces reindex, not silent cursor advance (0.288404ms)
+✔ destination delivery uses pinned Base safe block, not latest (0.80435ms)
+✔ wallet index requires every configured route cursor current and reconciled (0.849628ms)
+✔ DB row with unknown delivery is never advertised as pending mint (0.369546ms)
+✔ wallet API filters by normalized address and counts open events beyond pagination (0.854286ms)
+✔ atomically persist verified canonical event and cursor, roll back on mismatched message (0.979585ms)
+✔ Base event index falls back to the second archive-qualified RPC (2.176797ms)
+✔ failed archive RPCs never silently index an empty block range (0.839324ms)
+✔ bounded backfill advances every committed window and stops at finality (0.431149ms)
+✔ known Base tx hash checks skip archive-only gate but still fail over and verify identity (0.989239ms)
+✔ verified transfer RPC routing supports every source and destination backup (0.248704ms)
+✔ candidate RPC reads confirmed TX from fallback after primary returns null (0.280222ms)
+✔ Arbitrum indexer converts safe block timestamp without fractional BigInt (0.477879ms)
+✔ direct transfers never write a commercial tax fee (0.233922ms)
+✔ successful finalized initial adapter fee is recorded once, without assuming delivery (0.331268ms)
+✔ M-02: finality-qualified false reopens a previously completed delivery (0.734095ms)
+✔ F-26: retired routes cannot starve active deliveries in a bounded sweep (0.752462ms)
+✔ F-26: an empty active route catalog does not alter historical delivery rows (0.177737ms)
+✔ F-26: active route keys are selected as pairs, not independent lists (0.230848ms)
+✔ shared observer scans two routes using one verified safe head and one Gateway query (0.900626ms)
+✔ shared observer keeps lagging route independent of already advanced route (0.417207ms)
+✔ shared observer rejects failed logs and does not synthesize a successful window (0.275244ms)
+✔ canonical provider cooldown prevents repeated identity and archive probes (0.61124ms)
+✔ release-reviewed Base and Arbitrum provider pools use four independent endpoints (3.609183ms)
+✔ four Base providers fail over on HTTP 429 without treating rejected logs as empty (0.630169ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34.692859

@@ -1,0 +1,2018 @@
+{
+  "kind": "fresh_read_only_observation_curated_from_sealed_A",
+  "source_evidence": [
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/protocol/rpc-observations.json",
+      "sha256": "fcb40c6867b0b70ec3ccf2b5d8fec8d22671d4d5fb27760127738476d24d3600",
+      "bytes": 1635010
+    },
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/protocol/rpc-deployment-results.json",
+      "sha256": "67f3e263a91d89c44ae0e1344363a85de2c1aa495be6849bdc6013733fb1b1a2",
+      "bytes": 1054396
+    },
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/protocol/deployment-identity-checks.json",
+      "sha256": "32d91267756257385146976c0793a6bed9ca1da0ea94d73bc10abc47614d3a82",
+      "bytes": 55965
+    }
+  ],
+  "command": "python3 audit-work/protocol/read_only_rpc.py",
+  "started_at_utc": "2026-10-29T08:50:46.356181+00:00",
+  "completed_at_utc": "2026-10-29T08:51:00.023329+00:00",
+  "python_version": "3.12.14",
+  "keccak_command": "node audit-work/protocol/verify_deployment_hashes.mjs",
+  "keccak_checked_at_utc": "2026-10-29T08:52:00.926Z",
+  "node": "v24.22.1",
+  "ethers": "6.13.4",
+  "summary": {
+    "count": 57,
+    "runtime_matches": 57,
+    "canonical_deployment_receipts": 57,
+    "approved_source_matches": 57
+  },
+  "chain_heads": [
+    {
+      "chain": "xgrchain",
+      "endpoint_heads": [
+        {
+          "endpoint": "https://rpc1.xgr.network",
+          "chain_id": "0x66b",
+          "version": "xgrchain/v3.4.0/linux-amd64/go1.23.11",
+          "finality_tag": "latest",
+          "head_number": "0xbb297f",
+          "head_hash": "0x5e439b4cd949d600520c97bce3600c0d17f33ed056731fa5b1bd3d766fd1bd94",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:47.287966+00:00"
+        },
+        {
+          "endpoint": "https://rpc2.xgr.network",
+          "chain_id": "0x66b",
+          "version": "xgrchain/v3.4.0/linux-amd64/go1.23.11",
+          "finality_tag": "latest",
+          "head_number": "0xbb2980",
+          "head_hash": "0xfd8e77c380cfcdd62b7968624b4a5a5af0a3de385b4838910ac4362a480e45be",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:49.032410+00:00"
+        }
+      ],
+      "fork_blocks": [
+        {
+          "endpoint": "https://rpc1.xgr.network",
+          "number": "0xb9f265",
+          "hash": "0x55c7c034fc458073271fe953bd64aa348f96b64beae9b9a12b38a1f65f5d042d",
+          "observed_at_utc": "2026-10-29T08:50:47.611455+00:00"
+        },
+        {
+          "endpoint": "https://rpc2.xgr.network",
+          "number": "0xb9f265",
+          "hash": "0x55c7c034fc458073271fe953bd64aa348f96b64beae9b9a12b38a1f65f5d042d",
+          "observed_at_utc": "2026-10-29T08:50:49.905371+00:00"
+        }
+      ]
+    },
+    {
+      "chain": "base",
+      "endpoint_heads": [
+        {
+          "endpoint": "https://mainnet.base.org",
+          "chain_id": "0x2105",
+          "version": "reth/v2.5.2-7134be3/x86_64-unknown-linux-gnu/base/v1.5.0",
+          "finality_tag": "safe",
+          "head_number": "0x32c55f6",
+          "head_hash": "0x4d9fe8cd9a428cc1f7b6b43482c5df3f65fdd8bfbd9181cc81a421b1db8c0ce8",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:46.480142+00:00"
+        },
+        {
+          "endpoint": "https://base-rpc.publicnode.com",
+          "chain_id": "0x2105",
+          "version": "reth/v2.5.2-7134be3/x86_64-unknown-linux-gnu/base/v1.5.1",
+          "finality_tag": "safe",
+          "head_number": "0x32c55db",
+          "head_hash": "0x7be8767c21da59d16741a8125c6c95561a788e37aa239ea691c2a62890b244d3",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:46.679762+00:00"
+        }
+      ]
+    },
+    {
+      "chain": "arbitrum",
+      "endpoint_heads": [
+        {
+          "endpoint": "https://arb1.arbitrum.io/rpc",
+          "chain_id": "0xa4b1",
+          "version": "nitro/v3.12.2+5f02f3f-20261014T220458Z/linux-arm64/go1.25.12",
+          "finality_tag": "safe",
+          "head_number": "0x1ef40357",
+          "head_hash": "0x75312a25c4d37def228960dc597ddbabce87ebb0e4c87d48fa8742a2049c2d96",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:46.462483+00:00"
+        },
+        {
+          "endpoint": "https://arbitrum-one-rpc.publicnode.com",
+          "chain_id": "0xa4b1",
+          "version": "nitro/vlocal+5f02f3f-20261014T220458Z-modified/linux-amd64/go1.25.12",
+          "finality_tag": "safe",
+          "head_number": "0x1ef40357",
+          "head_hash": "0x75312a25c4d37def228960dc597ddbabce87ebb0e4c87d48fa8742a2049c2d96",
+          "canonical_numeric_head_matches": true,
+          "observed_at_utc": "2026-10-29T08:50:46.679097+00:00"
+        }
+      ]
+    }
+  ],
+  "shared_xgr_height": [
+    {
+      "endpoint": "https://rpc1.xgr.network",
+      "observed_at_utc": "2026-10-29T08:50:47.449992+00:00",
+      "number": "0xbb297f",
+      "hash": "0x5e439b4cd949d600520c97bce3600c0d17f33ed056731fa5b1bd3d766fd1bd94"
+    }
+  ],
+  "deployments": [
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/369ce335efd63fa2d2c39de4f8196955ed6e1e9d31bd8d518b180562e48634ab-ea887a7f2f519f291732aaadf578baf3ff374df6.json",
+      "address": "0xea887a7f2f519f291732aaadf578baf3ff374df6",
+      "component": "sourceRegistry",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x9754a80aa983bc2cc3cfdea8682b7339b92985c5ea1553fd70dceceed4d13a91",
+      "observed_runtime_keccak256": "0x9754a80aa983bc2cc3cfdea8682b7339b92985c5ea1553fd70dceceed4d13a91",
+      "runtime_code_matches": true,
+      "code_bytes": 5114,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "76b390a895af2966afaf753c70bdd4ad8cd0572b",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:50.229683+00:00",
+      "receipt": {
+        "transactionHash": "0x369ce335efd63fa2d2c39de4f8196955ed6e1e9d31bd8d518b180562e48634ab",
+        "blockNumber": "0xb7ed25",
+        "blockHash": "0x33842bc156c081c4c8b75fe9b28853e2fc96ea407d50b821409f056d5d287da6",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7ed25",
+        "hash": "0x33842bc156c081c4c8b75fe9b28853e2fc96ea407d50b821409f056d5d287da6"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:50.395101+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b-17eb63cc1af0c1a206781e3b4ad7faa1e3c3fbc7.json",
+      "address": "0x17eb63cc1af0c1a206781e3b4ad7faa1e3c3fbc7",
+      "component": "feeVault",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xd32293350832076a641d6390cd28f37b21d7af35c88577966cd5bb7afc02d550",
+      "observed_runtime_keccak256": "0xd32293350832076a641d6390cd28f37b21d7af35c88577966cd5bb7afc02d550",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "430cecabde17835efb6b3e6cfe0391803ac0e56c",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:50.729777+00:00",
+      "receipt": {
+        "transactionHash": "0x3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b",
+        "blockNumber": "0xb7faa7",
+        "blockHash": "0xce392b3d53a7cb0685177bec04382555e2c7826b07e4674e70dd1f4854ec1ca6",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7faa7",
+        "hash": "0xce392b3d53a7cb0685177bec04382555e2c7826b07e4674e70dd1f4854ec1ca6"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:50.896627+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b-d79fca769f7ecd45593411abb905cb93dd0230f7.json",
+      "address": "0xd79fca769f7ecd45593411abb905cb93dd0230f7",
+      "component": "gateway",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x090b4a8473db21939cda9cda595286dac34360078545a5853d95f8617d7974ac",
+      "observed_runtime_keccak256": "0x090b4a8473db21939cda9cda595286dac34360078545a5853d95f8617d7974ac",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "430cecabde17835efb6b3e6cfe0391803ac0e56c",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:50.729777+00:00",
+      "receipt": {
+        "transactionHash": "0x3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b",
+        "blockNumber": "0xb7faa7",
+        "blockHash": "0xce392b3d53a7cb0685177bec04382555e2c7826b07e4674e70dd1f4854ec1ca6",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7faa7",
+        "hash": "0xce392b3d53a7cb0685177bec04382555e2c7826b07e4674e70dd1f4854ec1ca6"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:50.896627+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/3dd79d903bf31912e6a7d81dcfc960e5e2d2bcd7b1d392c740551bcb7a4cb06e-511ebf6ce53781c279e88ecf7681f0ea59cc4cad.json",
+      "address": "0x511ebf6ce53781c279e88ecf7681f0ea59cc4cad",
+      "component": "syntheticRouterDeployer",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "observed_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "runtime_code_matches": true,
+      "code_bytes": 18600,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "531b1a501e167f7288f0ea45caacfb2b5e62b654",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:51.589216+00:00",
+      "receipt": {
+        "transactionHash": "0x3dd79d903bf31912e6a7d81dcfc960e5e2d2bcd7b1d392c740551bcb7a4cb06e",
+        "blockNumber": "0xb7ecd7",
+        "blockHash": "0xfd8961c59a0cae78f1c1cd11fcc1ddf400d72d9fb8a279368983d678621b73ce",
+        "status": "0x1",
+        "contractAddress": "0x511eBF6CE53781c279e88ECF7681F0eA59CC4cAd"
+      },
+      "canonical_block": {
+        "number": "0xb7ecd7",
+        "hash": "0xfd8961c59a0cae78f1c1cd11fcc1ddf400d72d9fb8a279368983d678621b73ce"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:51.756357+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd.json",
+      "address": "0x0a6e9d3e672b281f3351aaa77bfcfbfb5ed019fd",
+      "component": "dispatchHook",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "observed_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "runtime_code_matches": true,
+      "code_bytes": 2707,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "d5028a56892b264ed7ad8bff66aa5042b5f70904",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:52.092145+00:00",
+      "receipt": {
+        "transactionHash": "0x516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f",
+        "blockNumber": "0xb7ecaa",
+        "blockHash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa",
+        "status": "0x1",
+        "contractAddress": "0xEeB50AE5adE22969a5Ec3b9DA0878AB57211D606"
+      },
+      "canonical_block": {
+        "number": "0xb7ecaa",
+        "hash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:52.262029+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-37a8c5f601adf3cbbe70ea66df2f964321c0e02a.json",
+      "address": "0x37a8c5f601adf3cbbe70ea66df2f964321c0e02a",
+      "component": "mailbox",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xc74c51fe81b5daab41948f000d99b86c84fbd9026ae8027476bffc5b9f1236dd",
+      "observed_runtime_keccak256": "0xc74c51fe81b5daab41948f000d99b86c84fbd9026ae8027476bffc5b9f1236dd",
+      "runtime_code_matches": true,
+      "code_bytes": 7074,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "d5028a56892b264ed7ad8bff66aa5042b5f70904",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:52.092145+00:00",
+      "receipt": {
+        "transactionHash": "0x516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f",
+        "blockNumber": "0xb7ecaa",
+        "blockHash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa",
+        "status": "0x1",
+        "contractAddress": "0xEeB50AE5adE22969a5Ec3b9DA0878AB57211D606"
+      },
+      "canonical_block": {
+        "number": "0xb7ecaa",
+        "hash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:52.262029+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f-eeb50ae5ade22969a5ec3b9da0878ab57211d606.json",
+      "address": "0xeeb50ae5ade22969a5ec3b9da0878ab57211d606",
+      "component": "transportBundle",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xcfc67c32b97b9559fdae5b5a8918e11bf74fe57fad63df32c172da66e40b8641",
+      "observed_runtime_keccak256": "0xcfc67c32b97b9559fdae5b5a8918e11bf74fe57fad63df32c172da66e40b8641",
+      "runtime_code_matches": true,
+      "code_bytes": 395,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "d5028a56892b264ed7ad8bff66aa5042b5f70904",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:52.092145+00:00",
+      "receipt": {
+        "transactionHash": "0x516baafdf932e41d9f22b49a39cb325e37b801633bce282dcee933f0cb92ea3f",
+        "blockNumber": "0xb7ecaa",
+        "blockHash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa",
+        "status": "0x1",
+        "contractAddress": "0xEeB50AE5adE22969a5Ec3b9DA0878AB57211D606"
+      },
+      "canonical_block": {
+        "number": "0xb7ecaa",
+        "hash": "0x49613e432b9f5574013645b06936db6bb8db97ae1b7b3711ee828738406722aa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:52.262029+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b-731dd9a0417810013b2958555c79038dfb93aa90.json",
+      "address": "0x731dd9a0417810013b2958555c79038dfb93aa90",
+      "component": "gateway",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x1551f7416487fe7e079f3fba304d839ce2808f8e7e0a0b98d1e2c1837e9bd239",
+      "observed_runtime_keccak256": "0x1551f7416487fe7e079f3fba304d839ce2808f8e7e0a0b98d1e2c1837e9bd239",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "053aa6395b00f1b5f03e65fdcb381a3f251459ee",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:52.951239+00:00",
+      "receipt": {
+        "transactionHash": "0x69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b",
+        "blockNumber": "0xb7f9c7",
+        "blockHash": "0x1ab952df30df499d23aa9e3ba0819145c83bdfd89c61c79a91ce05f887c64b08",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7f9c7",
+        "hash": "0x1ab952df30df499d23aa9e3ba0819145c83bdfd89c61c79a91ce05f887c64b08"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:53.120378+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b-c60375387eb571e0fd58e518b89619eaec4a8da3.json",
+      "address": "0xc60375387eb571e0fd58e518b89619eaec4a8da3",
+      "component": "feeVault",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xda47f2c93255d7ce15d6524851dd6755cb33843d4f8b584537fd5ad7142ef103",
+      "observed_runtime_keccak256": "0xda47f2c93255d7ce15d6524851dd6755cb33843d4f8b584537fd5ad7142ef103",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "053aa6395b00f1b5f03e65fdcb381a3f251459ee",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:52.951239+00:00",
+      "receipt": {
+        "transactionHash": "0x69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b",
+        "blockNumber": "0xb7f9c7",
+        "blockHash": "0x1ab952df30df499d23aa9e3ba0819145c83bdfd89c61c79a91ce05f887c64b08",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7f9c7",
+        "hash": "0x1ab952df30df499d23aa9e3ba0819145c83bdfd89c61c79a91ce05f887c64b08"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:53.120378+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/97a3cfbea2351277f4464f87eaa500ca4ed04f86c94f84ea52da3c451c9db5d6-96940e83d3096eb868541adf29aa8da44a783e85.json",
+      "address": "0x96940e83d3096eb868541adf29aa8da44a783e85",
+      "component": "syntheticRouter",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x5841ffe451fd871f06d2a995ef1b976eaf39d56c8489d991e37e436164d62600",
+      "observed_runtime_keccak256": "0x5841ffe451fd871f06d2a995ef1b976eaf39d56c8489d991e37e436164d62600",
+      "runtime_code_matches": true,
+      "code_bytes": 15126,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "ae7a29c4c7e35fcc83f420fd102d782fb3a90a9b",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:53.771168+00:00",
+      "receipt": {
+        "transactionHash": "0x97a3cfbea2351277f4464f87eaa500ca4ed04f86c94f84ea52da3c451c9db5d6",
+        "blockNumber": "0xb7f976",
+        "blockHash": "0x7855f51410422899aae59995783e47fa96d426828e2fe2114a0d7162de0db904",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7f976",
+        "hash": "0x7855f51410422899aae59995783e47fa96d426828e2fe2114a0d7162de0db904"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:53.939023+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/9d7e5cd82bdafc5b3dcf06b4b657cdf4c0228d91926dabefc432646bf6e39265-1c5ba6dcc7ed4caa8748462789b6eb5df494e1cd.json",
+      "address": "0x1c5ba6dcc7ed4caa8748462789b6eb5df494e1cd",
+      "component": "feeVault",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x2f918cf4cc314a3bb1f00eed8a27c336a0b48eed2adb0d390318cf2bb5999975",
+      "observed_runtime_keccak256": "0x2f918cf4cc314a3bb1f00eed8a27c336a0b48eed2adb0d390318cf2bb5999975",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "ce0f877ea6a139a30dadfe764a5989c160ffdb55",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:54.272991+00:00",
+      "receipt": {
+        "transactionHash": "0x9d7e5cd82bdafc5b3dcf06b4b657cdf4c0228d91926dabefc432646bf6e39265",
+        "blockNumber": "0xb7f9f6",
+        "blockHash": "0xfdca503303d37ac7a230f3cffcbe2fea85ebf940bd208eb6fe2b6660610b1901",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7f9f6",
+        "hash": "0xfdca503303d37ac7a230f3cffcbe2fea85ebf940bd208eb6fe2b6660610b1901"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:54.440574+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/9d7e5cd82bdafc5b3dcf06b4b657cdf4c0228d91926dabefc432646bf6e39265-6084f3136d6d9563f19acd41a8afb3020cd2859f.json",
+      "address": "0x6084f3136d6d9563f19acd41a8afb3020cd2859f",
+      "component": "gateway",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xc96059fb5b9d7d2be83b97efda9dc2d0938ef9a62690aef851ce60aafc808c7a",
+      "observed_runtime_keccak256": "0xc96059fb5b9d7d2be83b97efda9dc2d0938ef9a62690aef851ce60aafc808c7a",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "ce0f877ea6a139a30dadfe764a5989c160ffdb55",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:54.272991+00:00",
+      "receipt": {
+        "transactionHash": "0x9d7e5cd82bdafc5b3dcf06b4b657cdf4c0228d91926dabefc432646bf6e39265",
+        "blockNumber": "0xb7f9f6",
+        "blockHash": "0xfdca503303d37ac7a230f3cffcbe2fea85ebf940bd208eb6fe2b6660610b1901",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7f9f6",
+        "hash": "0xfdca503303d37ac7a230f3cffcbe2fea85ebf940bd208eb6fe2b6660610b1901"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:54.440574+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/9ef0e0413751d06896b32fbdea22dd233b8f2831a7ee57baac3468ffa6937a44-62a9fb2f0df77aa0297dbc567079813ccf7c4ea1.json",
+      "address": "0x62a9fb2f0df77aa0297dbc567079813ccf7c4ea1",
+      "component": "nativeRouterDeployer",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "observed_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "runtime_code_matches": true,
+      "code_bytes": 14007,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "fde8854c596393d6b0c5cb0f424762923751d85c",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:55.088541+00:00",
+      "receipt": {
+        "transactionHash": "0x9ef0e0413751d06896b32fbdea22dd233b8f2831a7ee57baac3468ffa6937a44",
+        "blockNumber": "0xb7ecbe",
+        "blockHash": "0xe57543f5e8082488f490564d66d948639870567e7a97027be2d6b4c63cec0cf3",
+        "status": "0x1",
+        "contractAddress": "0x62A9fB2f0dF77Aa0297DbC567079813CCf7C4EA1"
+      },
+      "canonical_block": {
+        "number": "0xb7ecbe",
+        "hash": "0xe57543f5e8082488f490564d66d948639870567e7a97027be2d6b4c63cec0cf3"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:55.255049+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/b56c020cec2fd1e7d6c0e64859afc4c87f91dee5768a88dcc3f8d4de06ed0b54-7d9354baab0bf308d17e90ee3895609680e355ed.json",
+      "address": "0x7d9354baab0bf308d17e90ee3895609680e355ed",
+      "component": "nativeRouter",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x62338a97f45ccccb54b0fdeaebb0e93b9f58ded0c7a58c359e14fa6cd491da96",
+      "observed_runtime_keccak256": "0x62338a97f45ccccb54b0fdeaebb0e93b9f58ded0c7a58c359e14fa6cd491da96",
+      "runtime_code_matches": true,
+      "code_bytes": 12026,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "5d88070c0ecc955ce9e58fd42dbd3a92a2be3a69",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:55.737691+00:00",
+      "receipt": {
+        "transactionHash": "0xb56c020cec2fd1e7d6c0e64859afc4c87f91dee5768a88dcc3f8d4de06ed0b54",
+        "blockNumber": "0xb7fa21",
+        "blockHash": "0x27e74ee0cfbd4bb972610c085ed2f96137881405635ca4be9fe4d236e8cac31f",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7fa21",
+        "hash": "0x27e74ee0cfbd4bb972610c085ed2f96137881405635ca4be9fe4d236e8cac31f"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:55.904465+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/b76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e-44a479f722cb146ccb1dffa46e297879ab76268d.json",
+      "address": "0x44a479f722cb146ccb1dffa46e297879ab76268d",
+      "component": "gateway",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xef041a22ba1c1225876e70812320d39b754518b6b2a628703b0a9e0a536610cd",
+      "observed_runtime_keccak256": "0xef041a22ba1c1225876e70812320d39b754518b6b2a628703b0a9e0a536610cd",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "68847141f16fac9d5331e92efdb53c1927251255",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:56.245325+00:00",
+      "receipt": {
+        "transactionHash": "0xb76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e",
+        "blockNumber": "0xb7fa76",
+        "blockHash": "0x822e6187c4c50e70230baef9b4035e6223763c43480d1c139381586527c0f1aa",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7fa76",
+        "hash": "0x822e6187c4c50e70230baef9b4035e6223763c43480d1c139381586527c0f1aa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:56.415027+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/b76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e-c2fd91639964d91e069225f2a08e70f1c0228eed.json",
+      "address": "0xc2fd91639964d91e069225f2a08e70f1c0228eed",
+      "component": "feeVault",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x2125854138a85a47c7298d97e4862aaea0d7009882a4646e9e5f3861d264e79f",
+      "observed_runtime_keccak256": "0x2125854138a85a47c7298d97e4862aaea0d7009882a4646e9e5f3861d264e79f",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "68847141f16fac9d5331e92efdb53c1927251255",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:56.245325+00:00",
+      "receipt": {
+        "transactionHash": "0xb76a0576425d88af95cbe2c42b2c6fa949e0d01ab9fbbe813b9667416015aa3e",
+        "blockNumber": "0xb7fa76",
+        "blockHash": "0x822e6187c4c50e70230baef9b4035e6223763c43480d1c139381586527c0f1aa",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0xb7fa76",
+        "hash": "0x822e6187c4c50e70230baef9b4035e6223763c43480d1c139381586527c0f1aa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:56.415027+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/c9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0-1bd47599e8e7436948e596a0e055f2c7ec02cc30.json",
+      "address": "0x1bd47599e8e7436948e596a0e055f2c7ec02cc30",
+      "component": "ism",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x4be13e8a70bd20aa698858c885d9b2b51456aceb891b145c7675fa4e29e32142",
+      "observed_runtime_keccak256": "0x4be13e8a70bd20aa698858c885d9b2b51456aceb891b145c7675fa4e29e32142",
+      "runtime_code_matches": true,
+      "code_bytes": 3830,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "dc747dc47ac2aa383620cea8d330982ce9dded77",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:56.920892+00:00",
+      "receipt": {
+        "transactionHash": "0xc9885fe5749129cc9635ea8b99517d9d58281a3aade8a0f3a0cf5994026c7ab0",
+        "blockNumber": "0xb7ebe0",
+        "blockHash": "0x97e61b2aeea77eb200865520c14d71758be673751c7143c4766f26ad3600d59e",
+        "status": "0x1",
+        "contractAddress": "0x1BD47599E8E7436948E596a0E055F2C7EC02cC30"
+      },
+      "canonical_block": {
+        "number": "0xb7ebe0",
+        "hash": "0x97e61b2aeea77eb200865520c14d71758be673751c7143c4766f26ad3600d59e"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:57.091203+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/d2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb-6e886a9c17bea13190a2dc26a4c61e1a258d608e.json",
+      "address": "0x6e886a9c17bea13190a2dc26a4c61e1a258d608e",
+      "component": "collateralRouterDeployer",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "observed_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "runtime_code_matches": true,
+      "code_bytes": 14125,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "d6b1ff419e432be7bb2fc13a6059c8a267d73318",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:57.575924+00:00",
+      "receipt": {
+        "transactionHash": "0xd2daac47651ce0ab165068b5b7a863fd457a73dcabd6ac570ca60acfdcd554bb",
+        "blockNumber": "0xb7ecf1",
+        "blockHash": "0xc3ba5097cd31cc1af0a0c87032a467fa564258cc3b8e236769dfef98c7dc01f2",
+        "status": "0x1",
+        "contractAddress": "0x6E886A9c17bEa13190A2dC26A4c61E1a258d608e"
+      },
+      "canonical_block": {
+        "number": "0xb7ecf1",
+        "hash": "0xc3ba5097cd31cc1af0a0c87032a467fa564258cc3b8e236769dfef98c7dc01f2"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:57.745654+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/f0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc-9b6b92ef1745611f402341965f7fc649cbe0da8c.json",
+      "address": "0x9b6b92ef1745611f402341965f7fc649cbe0da8c",
+      "component": "validatorRegistry",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0xff3c068e9f7111b415713b7376a282bac9f35c631b3ee90f48b52ea2ce2f4cbe",
+      "observed_runtime_keccak256": "0xff3c068e9f7111b415713b7376a282bac9f35c631b3ee90f48b52ea2ce2f4cbe",
+      "runtime_code_matches": true,
+      "code_bytes": 11298,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "137be0381b231760a68772a249385b3969f3db80",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:58.229362+00:00",
+      "receipt": {
+        "transactionHash": "0xf0156bb3f725bba47458435a6f848911e354252654aef751a0edac198fd9e9dc",
+        "blockNumber": "0xb7ebbe",
+        "blockHash": "0x1e18f8eee76cc0ab600c7b92bfc79d1ef0954a5ed13575a0b8cffa091938a8c9",
+        "status": "0x1",
+        "contractAddress": "0x9b6B92EF1745611f402341965f7FC649Cbe0Da8c"
+      },
+      "canonical_block": {
+        "number": "0xb7ebbe",
+        "hash": "0x1e18f8eee76cc0ab600c7b92bfc79d1ef0954a5ed13575a0b8cffa091938a8c9"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:58.398666+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/f5f0c153f64e94425c036701227b9309312005dd2904be69b0901d6f2286e2df-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json",
+      "address": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+      "component": "factory",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x3d25f44fc1e88146ab243ecf2f7eeecfd8c580e80cb50819002039aef740cc1f",
+      "observed_runtime_keccak256": "0x3d25f44fc1e88146ab243ecf2f7eeecfd8c580e80cb50819002039aef740cc1f",
+      "runtime_code_matches": true,
+      "code_bytes": 24352,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "88fb9da4a525a470e8a08627f42d617b6544b79b",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:59.033313+00:00",
+      "receipt": {
+        "transactionHash": "0xf5f0c153f64e94425c036701227b9309312005dd2904be69b0901d6f2286e2df",
+        "blockNumber": "0xb7ed0b",
+        "blockHash": "0x0ff93b495bc7a9a59a26c548bb34a050c86aa4146ce3d01422ea0dcd3d2f7231",
+        "status": "0x1",
+        "contractAddress": "0x0E657364C1a82ecb4C62D16e8c4560d95610fe56"
+      },
+      "canonical_block": {
+        "number": "0xb7ed0b",
+        "hash": "0x0ff93b495bc7a9a59a26c548bb34a050c86aa4146ce3d01422ea0dcd3d2f7231"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:59.202816+00:00"
+    },
+    {
+      "chain": "xgrchain",
+      "record": "deployments/receipts/xgrchain/f80fd00056d3a2b8253f45a56d320982c8968065eda62155ec9c720c310b0262-edd68419d215c8e4fdc9fc5f0d63f824747bc176.json",
+      "address": "0xedd68419d215c8e4fdc9fc5f0d63f824747bc176",
+      "component": "executionGateway",
+      "endpoint": "https://rpc1.xgr.network",
+      "block": "0xbb297f",
+      "expected_runtime_keccak256": "0x7ddb1a32483a68959296c9978e8c521f2364e229ca100597eae0e31c95552c65",
+      "observed_runtime_keccak256": "0x7ddb1a32483a68959296c9978e8c521f2364e229ca100597eae0e31c95552c65",
+      "runtime_code_matches": true,
+      "code_bytes": 9702,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "2840518826459af2a1b951e0550dc0c3ae3ea134",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:59.686400+00:00",
+      "receipt": {
+        "transactionHash": "0xf80fd00056d3a2b8253f45a56d320982c8968065eda62155ec9c720c310b0262",
+        "blockNumber": "0xb7ed49",
+        "blockHash": "0x821bad780eaf3131876f891df8a1a48f7756d184147cc98ced5bb070f13484fc",
+        "status": "0x1",
+        "contractAddress": "0xEdd68419D215c8e4FdC9FC5f0d63F824747BC176"
+      },
+      "canonical_block": {
+        "number": "0xb7ed49",
+        "hash": "0x821bad780eaf3131876f891df8a1a48f7756d184147cc98ced5bb070f13484fc"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:59.854458+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-7bc756993559a26bac564fdf4abc5a5dabbf4849.json",
+      "address": "0x7bc756993559a26bac564fdf4abc5a5dabbf4849",
+      "component": "transportBundle",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x4375d077b1df07e4e372c9adb5ee92d2cea669b03f09a09bdb8dcd0a5645039f",
+      "observed_runtime_keccak256": "0x4375d077b1df07e4e372c9adb5ee92d2cea669b03f09a09bdb8dcd0a5645039f",
+      "runtime_code_matches": true,
+      "code_bytes": 395,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "4355d6bbb15b4ba2083600479f7b5a3fdb6354c6",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:46.857154+00:00",
+      "receipt": {
+        "transactionHash": "0x109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8",
+        "blockNumber": "0x3291e22",
+        "blockHash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67",
+        "status": "0x1",
+        "contractAddress": "0x7bc756993559a26bac564fdf4abc5a5dabbf4849"
+      },
+      "canonical_block": {
+        "number": "0x3291e22",
+        "hash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:46.924574+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-a77c34aa23d190c71a1d0b9d4ac469b0fb01b363.json",
+      "address": "0xa77c34aa23d190c71a1d0b9d4ac469b0fb01b363",
+      "component": "mailbox",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x75ab953a386848fc0c5f3731749568c6ca65124c37d925fc39327431d4d43857",
+      "observed_runtime_keccak256": "0x75ab953a386848fc0c5f3731749568c6ca65124c37d925fc39327431d4d43857",
+      "runtime_code_matches": true,
+      "code_bytes": 7074,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "4355d6bbb15b4ba2083600479f7b5a3fdb6354c6",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:46.857154+00:00",
+      "receipt": {
+        "transactionHash": "0x109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8",
+        "blockNumber": "0x3291e22",
+        "blockHash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67",
+        "status": "0x1",
+        "contractAddress": "0x7bc756993559a26bac564fdf4abc5a5dabbf4849"
+      },
+      "canonical_block": {
+        "number": "0x3291e22",
+        "hash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:46.924574+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8-e83d5ad3014c4d31584b87fd892f51969c385172.json",
+      "address": "0xe83d5ad3014c4d31584b87fd892f51969c385172",
+      "component": "dispatchHook",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "observed_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "runtime_code_matches": true,
+      "code_bytes": 2707,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "4355d6bbb15b4ba2083600479f7b5a3fdb6354c6",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:46.857154+00:00",
+      "receipt": {
+        "transactionHash": "0x109e957cc801a5164d7257ac4fe415f10948d03257c516c429ef7f455bcedfe8",
+        "blockNumber": "0x3291e22",
+        "blockHash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67",
+        "status": "0x1",
+        "contractAddress": "0x7bc756993559a26bac564fdf4abc5a5dabbf4849"
+      },
+      "canonical_block": {
+        "number": "0x3291e22",
+        "hash": "0x5e92101e71f1e754e23986353f60aa017eb6e95cc647b0fa97c2ee0b44b0ac67"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:46.924574+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-df4289e8037c736955127af53371e1002677b35f.json",
+      "address": "0xdf4289e8037c736955127af53371e1002677b35f",
+      "component": "feeVault",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x14abf73b263f847a17d158fc266c698ec99050a5eefac51ea16677063e0e78c4",
+      "observed_runtime_keccak256": "0x14abf73b263f847a17d158fc266c698ec99050a5eefac51ea16677063e0e78c4",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "8a95b0fbc5850d4cf181b59b5a90e74a5415dca1",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.087254+00:00",
+      "receipt": {
+        "transactionHash": "0x1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e",
+        "blockNumber": "0x329267c",
+        "blockHash": "0x51d8a0b3041990bca2deda145fe56730f53822fc8ec9655240792cd733f871ef",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x329267c",
+        "hash": "0x51d8a0b3041990bca2deda145fe56730f53822fc8ec9655240792cd733f871ef"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.137136+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-eeb21da92aaeca479009346c8f27f2fd4d3571f3.json",
+      "address": "0xeeb21da92aaeca479009346c8f27f2fd4d3571f3",
+      "component": "gateway",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xaaa3d3f8fe9d28cc530043de26533784d34fdd24e0c2363c6df10d58f9b3024e",
+      "observed_runtime_keccak256": "0xaaa3d3f8fe9d28cc530043de26533784d34fdd24e0c2363c6df10d58f9b3024e",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "8a95b0fbc5850d4cf181b59b5a90e74a5415dca1",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.087254+00:00",
+      "receipt": {
+        "transactionHash": "0x1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e",
+        "blockNumber": "0x329267c",
+        "blockHash": "0x51d8a0b3041990bca2deda145fe56730f53822fc8ec9655240792cd733f871ef",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x329267c",
+        "hash": "0x51d8a0b3041990bca2deda145fe56730f53822fc8ec9655240792cd733f871ef"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.137136+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/1f259f1d894b77305d1a03ae29b2989d18d5ab470cc4c3532f81ea4af272130b-01ddcbbda44b2a7d72b6c5801b88cd36319cec94.json",
+      "address": "0x01ddcbbda44b2a7d72b6c5801b88cd36319cec94",
+      "component": "factory",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xcb86ae9ad5207b5f4b1d3442b9658326977825fff51b4a212c91373fc5904db1",
+      "observed_runtime_keccak256": "0xcb86ae9ad5207b5f4b1d3442b9658326977825fff51b4a212c91373fc5904db1",
+      "runtime_code_matches": true,
+      "code_bytes": 24352,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "be7f6d37aa9837f0260981f6118e23c9769757be",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.271004+00:00",
+      "receipt": {
+        "transactionHash": "0x1f259f1d894b77305d1a03ae29b2989d18d5ab470cc4c3532f81ea4af272130b",
+        "blockNumber": "0x3291ea8",
+        "blockHash": "0xbd65ec58b4d7a802f6abe12f67d1d0381daae0eb1cac3e7575fc092cdf1e7a5d",
+        "status": "0x1",
+        "contractAddress": "0x01ddcbbda44b2a7d72b6c5801b88cd36319cec94"
+      },
+      "canonical_block": {
+        "number": "0x3291ea8",
+        "hash": "0xbd65ec58b4d7a802f6abe12f67d1d0381daae0eb1cac3e7575fc092cdf1e7a5d"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.349870+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/348f1902420b3c9af4fe00e761890bdeee6be64dd5819b5e6315fd4e9ec7d220-3617775089b94591a60316f63b200a5963b442ea.json",
+      "address": "0x3617775089b94591a60316f63b200a5963b442ea",
+      "component": "nativeRouterDeployer",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "observed_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "runtime_code_matches": true,
+      "code_bytes": 14007,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "66f4e477c3ccfcb64243efb83395bd6fb6283d97",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.430703+00:00",
+      "receipt": {
+        "transactionHash": "0x348f1902420b3c9af4fe00e761890bdeee6be64dd5819b5e6315fd4e9ec7d220",
+        "blockNumber": "0x3291e3e",
+        "blockHash": "0x68db240fe9bd0032e251c218cd622db4b63012f92209a401147bcf7c8e1c88ae",
+        "status": "0x1",
+        "contractAddress": "0x3617775089b94591a60316f63b200a5963b442ea"
+      },
+      "canonical_block": {
+        "number": "0x3291e3e",
+        "hash": "0x68db240fe9bd0032e251c218cd622db4b63012f92209a401147bcf7c8e1c88ae"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.472135+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/418f8efcb6dcc2ebdbcf16316a5251922e30cd5722c6e5913b51186bc71ee80a-0e657364c1a82ecb4c62d16e8c4560d95610fe56.json",
+      "address": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56",
+      "component": "blsVerifier",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+      "observed_runtime_keccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+      "runtime_code_matches": true,
+      "code_bytes": 3351,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "5039f0a778a3fdbfcd4dbd32843ef75c78ce9528",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.552093+00:00",
+      "receipt": {
+        "transactionHash": "0x418f8efcb6dcc2ebdbcf16316a5251922e30cd5722c6e5913b51186bc71ee80a",
+        "blockNumber": "0x3291db9",
+        "blockHash": "0xc7f6393245b3f225cf1185040f2342af054ae6e4c282149594798d1c5392a924",
+        "status": "0x1",
+        "contractAddress": "0x0e657364c1a82ecb4c62d16e8c4560d95610fe56"
+      },
+      "canonical_block": {
+        "number": "0x3291db9",
+        "hash": "0xc7f6393245b3f225cf1185040f2342af054ae6e4c282149594798d1c5392a924"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.632221+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/47091c4b867bd6e97ab765bfab0d4b37455b9d72bfc6a15db422791d23fa1c8b-719e08364b4a1f04f6364dd81df0ca6456676c9c.json",
+      "address": "0x719e08364b4a1f04f6364dd81df0ca6456676c9c",
+      "component": "collateralRouterDeployer",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "observed_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "runtime_code_matches": true,
+      "code_bytes": 14125,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "c87b22d20df574af214c2a1c75cdf265e470099a",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.736346+00:00",
+      "receipt": {
+        "transactionHash": "0x47091c4b867bd6e97ab765bfab0d4b37455b9d72bfc6a15db422791d23fa1c8b",
+        "blockNumber": "0x3291e8b",
+        "blockHash": "0x19021ba8991a22532270160557792ea1662067d4b5bf7be2aac96f520554395d",
+        "status": "0x1",
+        "contractAddress": "0x719e08364b4a1f04f6364dd81df0ca6456676c9c"
+      },
+      "canonical_block": {
+        "number": "0x3291e8b",
+        "hash": "0x19021ba8991a22532270160557792ea1662067d4b5bf7be2aac96f520554395d"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.778382+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/80f52b736d67462514dd1f4a251266ca12a2ca1d6576789fe5fa74b33471d8ad-edd68419d215c8e4fdc9fc5f0d63f824747bc176.json",
+      "address": "0xedd68419d215c8e4fdc9fc5f0d63f824747bc176",
+      "component": "ism",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x9a6737b4a7c07012179affa7499c96ae03ec06d5f3bd69c390f216e564f2e042",
+      "observed_runtime_keccak256": "0x9a6737b4a7c07012179affa7499c96ae03ec06d5f3bd69c390f216e564f2e042",
+      "runtime_code_matches": true,
+      "code_bytes": 3830,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "0f2bad372bfea290ccd407200edc2306345dcd21",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.863895+00:00",
+      "receipt": {
+        "transactionHash": "0x80f52b736d67462514dd1f4a251266ca12a2ca1d6576789fe5fa74b33471d8ad",
+        "blockNumber": "0x3291e07",
+        "blockHash": "0x2a78d887a8ece18184fb8a9d23d3f0714855e94720a082260a48f14bfe7a51e1",
+        "status": "0x1",
+        "contractAddress": "0xedd68419d215c8e4fdc9fc5f0d63f824747bc176"
+      },
+      "canonical_block": {
+        "number": "0x3291e07",
+        "hash": "0x2a78d887a8ece18184fb8a9d23d3f0714855e94720a082260a48f14bfe7a51e1"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.905963+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/96627a097fd66348fea3dfc4d9bb8607e5d75eb4cb1b0bbfc41e8dac90838fa8-c78929dc2d877ced57034319c3f162407cd605b9.json",
+      "address": "0xc78929dc2d877ced57034319c3f162407cd605b9",
+      "component": "syntheticRouter",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xdc391e3a115a96cab16bbcbe61065b19e1b7b3897ab4b162f8406412fe88e1f4",
+      "observed_runtime_keccak256": "0xdc391e3a115a96cab16bbcbe61065b19e1b7b3897ab4b162f8406412fe88e1f4",
+      "runtime_code_matches": true,
+      "code_bytes": 15126,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "8d91f95bbb6295ec7ae8a04c29cb5ca80456569f",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.995504+00:00",
+      "receipt": {
+        "transactionHash": "0x96627a097fd66348fea3dfc4d9bb8607e5d75eb4cb1b0bbfc41e8dac90838fa8",
+        "blockNumber": "0x329257c",
+        "blockHash": "0xbc9a73fb547af86d08759b41131ffe96954aa8c2c9e405d7948f5ee577b11796",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x329257c",
+        "hash": "0xbc9a73fb547af86d08759b41131ffe96954aa8c2c9e405d7948f5ee577b11796"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.036830+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/99859eb9e20e848c566525226b2f371f31d675de1cfab6a39e1f8193e6420c59-8910679c883b00e42f9c52fd6664571cd64833f4.json",
+      "address": "0x8910679c883b00e42f9c52fd6664571cd64833f4",
+      "component": "executionGateway",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x124ef70d6d15b502a0f1d2db915782e1790b8d248f59a49d38336b829930baa1",
+      "observed_runtime_keccak256": "0x124ef70d6d15b502a0f1d2db915782e1790b8d248f59a49d38336b829930baa1",
+      "runtime_code_matches": true,
+      "code_bytes": 9702,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "2c09fb3be4161192e2f794095bf964e60a532077",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.143189+00:00",
+      "receipt": {
+        "transactionHash": "0x99859eb9e20e848c566525226b2f371f31d675de1cfab6a39e1f8193e6420c59",
+        "blockNumber": "0x32920a8",
+        "blockHash": "0x03574a176d08a588815c07e64563acd0188f7190ae39a81b1e680c0baf42aaf4",
+        "status": "0x1",
+        "contractAddress": "0x8910679c883b00e42f9c52fd6664571cd64833f4"
+      },
+      "canonical_block": {
+        "number": "0x32920a8",
+        "hash": "0x03574a176d08a588815c07e64563acd0188f7190ae39a81b1e680c0baf42aaf4"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.224675+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a-d7443427ca21ae0907d2aa55446470307c990092.json",
+      "address": "0xd7443427ca21ae0907d2aa55446470307c990092",
+      "component": "syntheticRouter",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xdc391e3a115a96cab16bbcbe61065b19e1b7b3897ab4b162f8406412fe88e1f4",
+      "observed_runtime_keccak256": "0xdc391e3a115a96cab16bbcbe61065b19e1b7b3897ab4b162f8406412fe88e1f4",
+      "runtime_code_matches": true,
+      "code_bytes": 15126,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "b02e5dafe67b7bbfd2a9fb30c125476793f16ab9",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.309467+00:00",
+      "receipt": {
+        "transactionHash": "0x9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a",
+        "blockNumber": "0x3292631",
+        "blockHash": "0xac39a987f365a6586ab8863eadf28cd86f7a6e8d0d8d764395581b4b9822d3e4",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x3292631",
+        "hash": "0xac39a987f365a6586ab8863eadf28cd86f7a6e8d0d8d764395581b4b9822d3e4"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.361048+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/b69083ca7601b13fc972f0b3497d46932ca1492cd87a3d8da183acdc543e553b-2dbdd19c9cd267ffe6830bb61f7988c140a7a75a.json",
+      "address": "0x2dbdd19c9cd267ffe6830bb61f7988c140a7a75a",
+      "component": "syntheticRouterDeployer",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "observed_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "runtime_code_matches": true,
+      "code_bytes": 18600,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "e91b5e1974c7fb42921060ed1b237d54c152bb39",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.450664+00:00",
+      "receipt": {
+        "transactionHash": "0xb69083ca7601b13fc972f0b3497d46932ca1492cd87a3d8da183acdc543e553b",
+        "blockNumber": "0x3291e5c",
+        "blockHash": "0x6c8ce1f2ac1eb23d6823a98df49aa092e78e3a89c0a06d9f10247ca2ad23bb72",
+        "status": "0x1",
+        "contractAddress": "0x2dbdd19c9cd267ffe6830bb61f7988c140a7a75a"
+      },
+      "canonical_block": {
+        "number": "0x3291e5c",
+        "hash": "0x6c8ce1f2ac1eb23d6823a98df49aa092e78e3a89c0a06d9f10247ca2ad23bb72"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.515124+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/c1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd-a2785616b468a92829c48806fbd2cd22be37ffb4.json",
+      "address": "0xa2785616b468a92829c48806fbd2cd22be37ffb4",
+      "component": "gateway",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x88745fcf4f4d81b6bc6e766140cc27634aa6ebca51f34afbde7ec48ab045b2d5",
+      "observed_runtime_keccak256": "0x88745fcf4f4d81b6bc6e766140cc27634aa6ebca51f34afbde7ec48ab045b2d5",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "9eea4994937f29dad83aeb06ae046b734e713011",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.613123+00:00",
+      "receipt": {
+        "transactionHash": "0xc1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd",
+        "blockNumber": "0x32925ca",
+        "blockHash": "0x3f33812738b71bc38a9df578905b1c9aad08730b4e5bab4c36318eb7eabbd2ae",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x32925ca",
+        "hash": "0x3f33812738b71bc38a9df578905b1c9aad08730b4e5bab4c36318eb7eabbd2ae"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.696421+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/c1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd-c1349b7c7bef9e49e314716d1e28f2b5a4aced04.json",
+      "address": "0xc1349b7c7bef9e49e314716d1e28f2b5a4aced04",
+      "component": "feeVault",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xb2ddfee3204a4827fb5ca1490038d91bda50c9074f53f398de00ed433737dc6c",
+      "observed_runtime_keccak256": "0xb2ddfee3204a4827fb5ca1490038d91bda50c9074f53f398de00ed433737dc6c",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "9eea4994937f29dad83aeb06ae046b734e713011",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.613123+00:00",
+      "receipt": {
+        "transactionHash": "0xc1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd",
+        "blockNumber": "0x32925ca",
+        "blockHash": "0x3f33812738b71bc38a9df578905b1c9aad08730b4e5bab4c36318eb7eabbd2ae",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x32925ca",
+        "hash": "0x3f33812738b71bc38a9df578905b1c9aad08730b4e5bab4c36318eb7eabbd2ae"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.696421+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/c8b2547d9da5daa39cdf15e6d680825a8d4ada161bf0f7e9c286ba83982c0706-3dc4cc1912792749d320789a67c2c14b7ee4ee33.json",
+      "address": "0x3dc4cc1912792749d320789a67c2c14b7ee4ee33",
+      "component": "validatorRegistry",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0x2fb132da20be434262a9824259f95c8abf14ae500f0dc1d6bed9f2992f65e94f",
+      "observed_runtime_keccak256": "0x2fb132da20be434262a9824259f95c8abf14ae500f0dc1d6bed9f2992f65e94f",
+      "runtime_code_matches": true,
+      "code_bytes": 11298,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "b964567a626c3140982b685bbfd72138005202ac",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.844416+00:00",
+      "receipt": {
+        "transactionHash": "0xc8b2547d9da5daa39cdf15e6d680825a8d4ada161bf0f7e9c286ba83982c0706",
+        "blockNumber": "0x3291de9",
+        "blockHash": "0x466ccb49f590e39d74f71c3075ebd918de99ad6867590a7719a402b8503830ee",
+        "status": "0x1",
+        "contractAddress": "0x3dc4cc1912792749d320789a67c2c14b7ee4ee33"
+      },
+      "canonical_block": {
+        "number": "0x3291de9",
+        "hash": "0x466ccb49f590e39d74f71c3075ebd918de99ad6867590a7719a402b8503830ee"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.899175+00:00"
+    },
+    {
+      "chain": "base",
+      "record": "deployments/receipts/base/da05fb98fbc2cc8625d4a28e5e61dd2b9ce987acfa9ff3be612787dad561b4e5-f243093350b1b4ef8a9e3b0c13be3495297461b0.json",
+      "address": "0xf243093350b1b4ef8a9e3b0c13be3495297461b0",
+      "component": "sourceRegistry",
+      "endpoint": "https://mainnet.base.org",
+      "block": "0x32c55f6",
+      "expected_runtime_keccak256": "0xb42c1a1daef853afe6e76889b5b942fb9713dfd77a3a4875398dad66e9cc2314",
+      "observed_runtime_keccak256": "0xb42c1a1daef853afe6e76889b5b942fb9713dfd77a3a4875398dad66e9cc2314",
+      "runtime_code_matches": true,
+      "code_bytes": 5114,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "46f536b5f4272018381b7a789d72fc0b14fc5911",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.992259+00:00",
+      "receipt": {
+        "transactionHash": "0xda05fb98fbc2cc8625d4a28e5e61dd2b9ce987acfa9ff3be612787dad561b4e5",
+        "blockNumber": "0x3291ed9",
+        "blockHash": "0x751c2c6e7e40447838052f4ec917c5346a5ecd5a6570fdee3d13f4a6c72b8f13",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x3291ed9",
+        "hash": "0x751c2c6e7e40447838052f4ec917c5346a5ecd5a6570fdee3d13f4a6c72b8f13"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:49.066403+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/048d1697485ba89963c161b0142510c8d568fef500206d2e730a1a6f69ad3ffa-a27eadcaf70631e29009019d390e48410a830e64.json",
+      "address": "0xa27eadcaf70631e29009019d390e48410a830e64",
+      "component": "factory",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x1c43de8bff2fe73ae3e32c154307b3411eaa7eb50896735c9a91c731b2480ceb",
+      "observed_runtime_keccak256": "0x1c43de8bff2fe73ae3e32c154307b3411eaa7eb50896735c9a91c731b2480ceb",
+      "runtime_code_matches": true,
+      "code_bytes": 24352,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "22f2fb0591745f5a05d71de41257aee78a6b862d",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:46.853169+00:00",
+      "receipt": {
+        "transactionHash": "0x048d1697485ba89963c161b0142510c8d568fef500206d2e730a1a6f69ad3ffa",
+        "blockNumber": "0x1edd8fae",
+        "blockHash": "0x0914fe8d9506ebfe41c45da366c653a9b1540112594d3c51314e2f077c19f1c5",
+        "status": "0x1",
+        "contractAddress": "0xa27eadcaf70631e29009019d390e48410a830e64"
+      },
+      "canonical_block": {
+        "number": "0x1edd8fae",
+        "hash": "0x0914fe8d9506ebfe41c45da366c653a9b1540112594d3c51314e2f077c19f1c5"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:46.896687+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/278fb105f65918f0ae18ab64ce0766afe4f1c6c22ab2b56574ab7a6a63c8bd0b-51e3b684ed61fc88083497e475825a6cecaf21f5.json",
+      "address": "0x51e3b684ed61fc88083497e475825a6cecaf21f5",
+      "component": "sourceRegistry",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x912330252a11ba326de95ecd32d9f479b0706178d45e64eefca3f5bd6a240ae8",
+      "observed_runtime_keccak256": "0x912330252a11ba326de95ecd32d9f479b0706178d45e64eefca3f5bd6a240ae8",
+      "runtime_code_matches": true,
+      "code_bytes": 5114,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "96c071dbd257278a83a60dac675100a6b19ec2ff",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:46.970406+00:00",
+      "receipt": {
+        "transactionHash": "0x278fb105f65918f0ae18ab64ce0766afe4f1c6c22ab2b56574ab7a6a63c8bd0b",
+        "blockNumber": "0x1edd9067",
+        "blockHash": "0x7003dc4eaf3afb32f0de9a34b104b33e655b083f8e1f198175be86fa93f5da34",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edd9067",
+        "hash": "0x7003dc4eaf3afb32f0de9a34b104b33e655b083f8e1f198175be86fa93f5da34"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.004774+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/51d4063ec97aeda7a19a5494b8d1cd879c50b9aa8a850711bfdf0282c2d9e769-21c248434512378906cc19c70e6401d65247b048.json",
+      "address": "0x21c248434512378906cc19c70e6401d65247b048",
+      "component": "feeVault",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xd99b89c89816615fcde751ec2226ea529ea5470d13c8d7059234922b857ce42d",
+      "observed_runtime_keccak256": "0xd99b89c89816615fcde751ec2226ea529ea5470d13c8d7059234922b857ce42d",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "e0d0165e9125f0598f13eba01cecf369bf2f6796",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.089833+00:00",
+      "receipt": {
+        "transactionHash": "0x51d4063ec97aeda7a19a5494b8d1cd879c50b9aa8a850711bfdf0282c2d9e769",
+        "blockNumber": "0x1edd9fef",
+        "blockHash": "0x1d890941cd4a793cfbe7a6a1bfef67bc6cc43209ebce3459db591ab690b3d214",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edd9fef",
+        "hash": "0x1d890941cd4a793cfbe7a6a1bfef67bc6cc43209ebce3459db591ab690b3d214"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.150473+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/51d4063ec97aeda7a19a5494b8d1cd879c50b9aa8a850711bfdf0282c2d9e769-a979d979d1f9aab0e246b307b8192620310a9d18.json",
+      "address": "0xa979d979d1f9aab0e246b307b8192620310a9d18",
+      "component": "gateway",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x1cc10d29e51ea6ebd13dd4477ee8eff19ff6e244cf11a530ff201e0f295931a5",
+      "observed_runtime_keccak256": "0x1cc10d29e51ea6ebd13dd4477ee8eff19ff6e244cf11a530ff201e0f295931a5",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "e0d0165e9125f0598f13eba01cecf369bf2f6796",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.089833+00:00",
+      "receipt": {
+        "transactionHash": "0x51d4063ec97aeda7a19a5494b8d1cd879c50b9aa8a850711bfdf0282c2d9e769",
+        "blockNumber": "0x1edd9fef",
+        "blockHash": "0x1d890941cd4a793cfbe7a6a1bfef67bc6cc43209ebce3459db591ab690b3d214",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edd9fef",
+        "hash": "0x1d890941cd4a793cfbe7a6a1bfef67bc6cc43209ebce3459db591ab690b3d214"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.150473+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f-76f5d761ae41116ba5fa2ecb358e5fad15e0d992.json",
+      "address": "0x76f5d761ae41116ba5fa2ecb358e5fad15e0d992",
+      "component": "collateralRouter",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xc45c9ba8f4ed9e9b62d1f5c570545c42e8bcda40a6f25c82adcf227f6c95e88b",
+      "observed_runtime_keccak256": "0xc45c9ba8f4ed9e9b62d1f5c570545c42e8bcda40a6f25c82adcf227f6c95e88b",
+      "runtime_code_matches": true,
+      "code_bytes": 12058,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "8b4b078fda4edf5592b6f83510d14c0ef9a88830",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.273845+00:00",
+      "receipt": {
+        "transactionHash": "0x5c7eb172bb556a70126a0a68f3d0c60fdf1f78f7941f3624c050d83f9ab8386f",
+        "blockNumber": "0x1edd9d3f",
+        "blockHash": "0xdea0907626af09fc9ba3d8099e586d3b7b0ffafedcaa662b0b71d0678d42a996",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edd9d3f",
+        "hash": "0xdea0907626af09fc9ba3d8099e586d3b7b0ffafedcaa662b0b71d0678d42a996"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.329169+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/6db840ad41ef56a4c9fbe960a71b483580c1816448fa69fb2bae074446390051-cf7e1a877d919c1c8dba48b42a832bdb1042101f.json",
+      "address": "0xcf7e1a877d919c1c8dba48b42a832bdb1042101f",
+      "component": "ism",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x91dbe69b65dbe93d3c884fc62d7cc97c8a22bb4ac17286f0674761649a76ee8d",
+      "observed_runtime_keccak256": "0x91dbe69b65dbe93d3c884fc62d7cc97c8a22bb4ac17286f0674761649a76ee8d",
+      "runtime_code_matches": true,
+      "code_bytes": 3830,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "db823f90fcaebdd25ab4cc4a7d31a992bf7d8c8a",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.407458+00:00",
+      "receipt": {
+        "transactionHash": "0x6db840ad41ef56a4c9fbe960a71b483580c1816448fa69fb2bae074446390051",
+        "blockNumber": "0x1edd8b52",
+        "blockHash": "0x05d00f09377c34419242e55deb96d4be578a457a5035169369e1a07883c00975",
+        "status": "0x1",
+        "contractAddress": "0xcf7e1a877d919c1c8dba48b42a832bdb1042101f"
+      },
+      "canonical_block": {
+        "number": "0x1edd8b52",
+        "hash": "0x05d00f09377c34419242e55deb96d4be578a457a5035169369e1a07883c00975"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.447109+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/879889c27ff9693908a4dcdcb21b585be2ee4638ef610cf5a33f22d17d2f7218-1a6610cc7dd0d0f42e22c3608e025d891065814c.json",
+      "address": "0x1a6610cc7dd0d0f42e22c3608e025d891065814c",
+      "component": "validatorRegistry",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x8a4216f9d4d7e6b006ad6a00fe2a481abf829df26058c2d3fbeaedbbe9031c1b",
+      "observed_runtime_keccak256": "0x8a4216f9d4d7e6b006ad6a00fe2a481abf829df26058c2d3fbeaedbbe9031c1b",
+      "runtime_code_matches": true,
+      "code_bytes": 11298,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "f8d650fc9eabb01a26cd4c30a733e8ced26dceed",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.522830+00:00",
+      "receipt": {
+        "transactionHash": "0x879889c27ff9693908a4dcdcb21b585be2ee4638ef610cf5a33f22d17d2f7218",
+        "blockNumber": "0x1edd8a93",
+        "blockHash": "0xeb6a070761055248080fbdd6ff9788d5419df2f61a614a3163ec0d7683d0cd3b",
+        "status": "0x1",
+        "contractAddress": "0x1a6610cc7dd0d0f42e22c3608e025d891065814c"
+      },
+      "canonical_block": {
+        "number": "0x1edd8a93",
+        "hash": "0xeb6a070761055248080fbdd6ff9788d5419df2f61a614a3163ec0d7683d0cd3b"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.561990+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/87a83fdb83920b3a0d05ac5f05f8e6a2700d083a02c0762184ae13b57bb7a1a8-2c7a18747fda9b8a3d98e8603ddab24a5248dcce.json",
+      "address": "0x2c7a18747fda9b8a3d98e8603ddab24a5248dcce",
+      "component": "nativeRouterDeployer",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "observed_runtime_keccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
+      "runtime_code_matches": true,
+      "code_bytes": 14007,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "1065c0c8a5cdbce5fe1614b7117b7c1e6bd3b9eb",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.658148+00:00",
+      "receipt": {
+        "transactionHash": "0x87a83fdb83920b3a0d05ac5f05f8e6a2700d083a02c0762184ae13b57bb7a1a8",
+        "blockNumber": "0x1edd8ce7",
+        "blockHash": "0xaff4a1304579f3e8b3700cf49d03b62732703bc40b9f2f4825b3c8883545dffa",
+        "status": "0x1",
+        "contractAddress": "0x2c7a18747fda9b8a3d98e8603ddab24a5248dcce"
+      },
+      "canonical_block": {
+        "number": "0x1edd8ce7",
+        "hash": "0xaff4a1304579f3e8b3700cf49d03b62732703bc40b9f2f4825b3c8883545dffa"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.693029+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/9e3b1de0f9c7bf7c8aea9de1f3cad5ce386ea7f8daf4575ce389687a45cea08b-504f241c1c177d811021f6412a0c2474d410ec99.json",
+      "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+      "component": "blsVerifier",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+      "observed_runtime_keccak256": "0x88194b99b3e769c2ead2c1c9aebee548407cc2cf435596b6ea1188a10ee96da5",
+      "runtime_code_matches": true,
+      "code_bytes": 3351,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "585a3ec7477b578d7fd18349a5596edeb4240ded",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.775271+00:00",
+      "receipt": {
+        "transactionHash": "0x9e3b1de0f9c7bf7c8aea9de1f3cad5ce386ea7f8daf4575ce389687a45cea08b",
+        "blockNumber": "0x1edd89c0",
+        "blockHash": "0x3656bad86d881df3ae9ac619830692005763d603b5f31f06a1483ed742384148",
+        "status": "0x1",
+        "contractAddress": "0x504f241c1c177d811021f6412a0c2474d410ec99"
+      },
+      "canonical_block": {
+        "number": "0x1edd89c0",
+        "hash": "0x3656bad86d881df3ae9ac619830692005763d603b5f31f06a1483ed742384148"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.815334+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-402d1eabd5b11e517688231a641d027376c6ed10.json",
+      "address": "0x402d1eabd5b11e517688231a641d027376c6ed10",
+      "component": "transportBundle",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xf1810c420675bdc9674f4727fe62ff83d9f3076222ae1db2d9eca5401959e8d8",
+      "observed_runtime_keccak256": "0xf1810c420675bdc9674f4727fe62ff83d9f3076222ae1db2d9eca5401959e8d8",
+      "runtime_code_matches": true,
+      "code_bytes": 395,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "60c0e31ada4242e1e47e6f12c65db30e46c8b853",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.901156+00:00",
+      "receipt": {
+        "transactionHash": "0xa940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2",
+        "blockNumber": "0x1edd8c15",
+        "blockHash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef",
+        "status": "0x1",
+        "contractAddress": "0x402d1eabd5b11e517688231a641d027376c6ed10"
+      },
+      "canonical_block": {
+        "number": "0x1edd8c15",
+        "hash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.946692+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-b58225ac533243b03bde6d38720310c24b1dd37a.json",
+      "address": "0xb58225ac533243b03bde6d38720310c24b1dd37a",
+      "component": "dispatchHook",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "observed_runtime_keccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+      "runtime_code_matches": true,
+      "code_bytes": 2707,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "60c0e31ada4242e1e47e6f12c65db30e46c8b853",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.901156+00:00",
+      "receipt": {
+        "transactionHash": "0xa940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2",
+        "blockNumber": "0x1edd8c15",
+        "blockHash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef",
+        "status": "0x1",
+        "contractAddress": "0x402d1eabd5b11e517688231a641d027376c6ed10"
+      },
+      "canonical_block": {
+        "number": "0x1edd8c15",
+        "hash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.946692+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/a940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2-d4c7665f3c984bfbbeca9e67e593a5bab3881fe3.json",
+      "address": "0xd4c7665f3c984bfbbeca9e67e593a5bab3881fe3",
+      "component": "mailbox",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x2f439ae52ee5667e64c6c963e7a75069c2d376bf632c7a197a498478677bc48d",
+      "observed_runtime_keccak256": "0x2f439ae52ee5667e64c6c963e7a75069c2d376bf632c7a197a498478677bc48d",
+      "runtime_code_matches": true,
+      "code_bytes": 7074,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "60c0e31ada4242e1e47e6f12c65db30e46c8b853",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:47.901156+00:00",
+      "receipt": {
+        "transactionHash": "0xa940bb5e9a52a5715d347edceee8e2fdecbff31d4595232272a4b1e257f2dcb2",
+        "blockNumber": "0x1edd8c15",
+        "blockHash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef",
+        "status": "0x1",
+        "contractAddress": "0x402d1eabd5b11e517688231a641d027376c6ed10"
+      },
+      "canonical_block": {
+        "number": "0x1edd8c15",
+        "hash": "0x8710e400b013e970c68b8b3af17225f8c7602451c38778feb393a8b6e08659ef"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:47.946692+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/c49aefb248efe523f37d0d204aa1c728b1b4bfe7b496d01f502311ac12fb914e-5a31a62bb6441b499718df8fb767b6286267c74b.json",
+      "address": "0x5a31a62bb6441b499718df8fb767b6286267c74b",
+      "component": "syntheticRouter",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xe183096b8a7b4f2af4832131fa2eb285fd71e6fc0af9b480552e9cef53672d66",
+      "observed_runtime_keccak256": "0xe183096b8a7b4f2af4832131fa2eb285fd71e6fc0af9b480552e9cef53672d66",
+      "runtime_code_matches": true,
+      "code_bytes": 15126,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "b5c0767d4a670eaafadc42eea4320c42e1677a2f",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.106792+00:00",
+      "receipt": {
+        "transactionHash": "0xc49aefb248efe523f37d0d204aa1c728b1b4bfe7b496d01f502311ac12fb914e",
+        "blockNumber": "0x1edda50b",
+        "blockHash": "0x58fa6371b4a41980592f20ea9f745c94782a64aa68320d49d17cc8160955cc24",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edda50b",
+        "hash": "0x58fa6371b4a41980592f20ea9f745c94782a64aa68320d49d17cc8160955cc24"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.147405+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/c9fbe83e0c9e5f8be2a1cd0ca62c6af8e15feaf9efaeba925ea0297dfddf80ea-495eeac5e0ae1eba54fb30de31483929d847a5db.json",
+      "address": "0x495eeac5e0ae1eba54fb30de31483929d847a5db",
+      "component": "syntheticRouterDeployer",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "observed_runtime_keccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+      "runtime_code_matches": true,
+      "code_bytes": 18600,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "d4fed0c329ca4381c288dad51e3c7cca1ad90ae2",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.238251+00:00",
+      "receipt": {
+        "transactionHash": "0xc9fbe83e0c9e5f8be2a1cd0ca62c6af8e15feaf9efaeba925ea0297dfddf80ea",
+        "blockNumber": "0x1edd8db2",
+        "blockHash": "0xcf8552b36ba293d7b88fac0f1ab089de06e6ecb9484766f90778dc9f96d4cb96",
+        "status": "0x1",
+        "contractAddress": "0x495eeac5e0ae1eba54fb30de31483929d847a5db"
+      },
+      "canonical_block": {
+        "number": "0x1edd8db2",
+        "hash": "0xcf8552b36ba293d7b88fac0f1ab089de06e6ecb9484766f90778dc9f96d4cb96"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.285465+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/eba76a6679996c7fd77268b521fe03c0fc09e48cdfc56a47e27fa3b563169147-64d9da5d8365069d79ea82344c4ce488bb6a72e7.json",
+      "address": "0x64d9da5d8365069d79ea82344c4ce488bb6a72e7",
+      "component": "executionGateway",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x99eb9cd45b3f83cb73c27381ebf841f0cb8c6c9f0ac9f8909b7b21329ff692e2",
+      "observed_runtime_keccak256": "0x99eb9cd45b3f83cb73c27381ebf841f0cb8c6c9f0ac9f8909b7b21329ff692e2",
+      "runtime_code_matches": true,
+      "code_bytes": 9702,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "ce7814ea4082936afd844cf0c7227d08581a3747",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.371846+00:00",
+      "receipt": {
+        "transactionHash": "0xeba76a6679996c7fd77268b521fe03c0fc09e48cdfc56a47e27fa3b563169147",
+        "blockNumber": "0x1edd91a7",
+        "blockHash": "0xcbefad969ecd552f3c401af1752c0c63c6eb78cb3bab755762c6d475c19d2b93",
+        "status": "0x1",
+        "contractAddress": "0x64d9da5d8365069d79ea82344c4ce488bb6a72e7"
+      },
+      "canonical_block": {
+        "number": "0x1edd91a7",
+        "hash": "0xcbefad969ecd552f3c401af1752c0c63c6eb78cb3bab755762c6d475c19d2b93"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.427154+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/f72af354dbd5b67db03b415b61f9221ec0ff97f0a97bad16b1f25fc5be28899a-a91b1e7179a50f0d798d284676d3ba9ff705fe82.json",
+      "address": "0xa91b1e7179a50f0d798d284676d3ba9ff705fe82",
+      "component": "collateralRouterDeployer",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "observed_runtime_keccak256": "0xd45a6341dd705a3ac3ccb4d2c2e2963555e23aae966b29c8dec5cc33219493d3",
+      "runtime_code_matches": true,
+      "code_bytes": 14125,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "f4a9aaf9c66429f432abd7c1fe746d5ad3d93e35",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.507461+00:00",
+      "receipt": {
+        "transactionHash": "0xf72af354dbd5b67db03b415b61f9221ec0ff97f0a97bad16b1f25fc5be28899a",
+        "blockNumber": "0x1edd8e87",
+        "blockHash": "0x5657764fb9118fd2159872b40ac97e856c41e38e062d40d9407fd1391784205f",
+        "status": "0x1",
+        "contractAddress": "0xa91b1e7179a50f0d798d284676d3ba9ff705fe82"
+      },
+      "canonical_block": {
+        "number": "0x1edd8e87",
+        "hash": "0x5657764fb9118fd2159872b40ac97e856c41e38e062d40d9407fd1391784205f"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.567625+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-834291e15b9db12b599bfc201ad5516490776d7f.json",
+      "address": "0x834291e15b9db12b599bfc201ad5516490776d7f",
+      "component": "feeVault",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0xc1d491d111c448551c0a6169aa201b5ef66e23da6169c67dd76859ab21a5c12c",
+      "observed_runtime_keccak256": "0xc1d491d111c448551c0a6169aa201b5ef66e23da6169c67dd76859ab21a5c12c",
+      "runtime_code_matches": true,
+      "code_bytes": 4692,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "5de52243effa9fdbc62a1824f311b3eb3c430efb",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.673894+00:00",
+      "receipt": {
+        "transactionHash": "0xf8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58",
+        "blockNumber": "0x1edda835",
+        "blockHash": "0xd29d311ea02cc5b8c3f62b1c9e7156300b35cb630c9f93e16f3be25405d0d6a1",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edda835",
+        "hash": "0xd29d311ea02cc5b8c3f62b1c9e7156300b35cb630c9f93e16f3be25405d0d6a1"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.718002+00:00"
+    },
+    {
+      "chain": "arbitrum",
+      "record": "deployments/receipts/arbitrum/f8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58-88da20e5ae14c2ec48c3b3069f0d88a33f5849db.json",
+      "address": "0x88da20e5ae14c2ec48c3b3069f0d88a33f5849db",
+      "component": "gateway",
+      "endpoint": "https://arb1.arbitrum.io/rpc",
+      "block": "0x1ef40357",
+      "expected_runtime_keccak256": "0x0b3047f73c29521a07c80cb515222628ab35605c2ebb433ef37b44ab0e03c63c",
+      "observed_runtime_keccak256": "0x0b3047f73c29521a07c80cb515222628ab35605c2ebb433ef37b44ab0e03c63c",
+      "runtime_code_matches": true,
+      "code_bytes": 4684,
+      "receipt_success": true,
+      "recorded_block_matches": true,
+      "canonical_block_matches": true,
+      "approval_source_commit": "5de52243effa9fdbc62a1824f311b3eb3c430efb",
+      "approved_contract_and_vendor_code_unchanged": true,
+      "approval_to_frozen_changes": [
+        "contracts/README.md"
+      ],
+      "receipt_observed_at_utc": "2026-10-29T08:50:48.673894+00:00",
+      "receipt": {
+        "transactionHash": "0xf8ef98227d4d908e64c98d38d888c722b314567d4a0fb1c7fc25134bafb9fd58",
+        "blockNumber": "0x1edda835",
+        "blockHash": "0xd29d311ea02cc5b8c3f62b1c9e7156300b35cb630c9f93e16f3be25405d0d6a1",
+        "status": "0x1",
+        "contractAddress": null
+      },
+      "canonical_block": {
+        "number": "0x1edda835",
+        "hash": "0xd29d311ea02cc5b8c3f62b1c9e7156300b35cb630c9f93e16f3be25405d0d6a1"
+      },
+      "canonical_block_observed_at_utc": "2026-10-29T08:50:48.718002+00:00"
+    }
+  ],
+  "publication_exclusions": "Raw bytecode, receipt logs, consensus header extraData/seals, signing material and detailed RPC error logs omitted. No signing secret or private fixture is needed for these public identities.",
+  "limits": "One successful endpoint per chain checked all deployed code/receipts. Multiple endpoint head/fork observations are separate. Observed RPC versions are not per-host disk hashes."
+}

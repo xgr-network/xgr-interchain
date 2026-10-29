@@ -1,0 +1,37 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "frozen_at_utc": "2026-10-29T08:49:12.369544+00:00",
+  "phase_a_history_rule": "Only previous phase-a-freeze.json read for baseline provenance; detailed historical findings not read. Brief disclosed named historical findings.",
+  "repositories": [
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "branch": "main",
+      "baseline_commit": "26d1356ce7c92eed67bfdbb91a5a0b19efc25ae3",
+      "frozen_commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "baseline_tree": "de63f3712463012a9fdb1efdeff81d30524a0ef6",
+      "frozen_tree": "4b19f296d2791eec0a98b1f0e4e60ca0225963f9",
+      "baseline_is_ancestor": true,
+      "baseline_matches_previous_audit": true,
+      "commits_including_merges": 62,
+      "merge_commits": 3,
+      "net_changed_files": 48,
+      "all_touched_files": 48,
+      "diff_sha256": "852139e49f3dbd60c58117a350def496437dcc87a1e0c398e26cca1c9db06e70"
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "branch": "XGR3.0",
+      "baseline_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "frozen_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_tree": "3c5d1a0a1e7264b8b7c5787ca390e976fed09b04",
+      "frozen_tree": "3c5d1a0a1e7264b8b7c5787ca390e976fed09b04",
+      "baseline_is_ancestor": true,
+      "baseline_matches_previous_audit": true,
+      "commits_including_merges": 0,
+      "merge_commits": 0,
+      "net_changed_files": 0,
+      "all_touched_files": 0,
+      "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

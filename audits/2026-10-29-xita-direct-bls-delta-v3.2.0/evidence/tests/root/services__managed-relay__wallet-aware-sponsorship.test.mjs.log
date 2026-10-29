@@ -1,0 +1,12 @@
+✔ wallet's XGR balance is counted once across first delivery and hub onward (3.627871ms)
+✔ fully funded wallet pays own downstream gas and gets no grants (0.226371ms)
+✔ fail closed on missing, negative or user-ambiguous RPC balance (0.701095ms)
+✔ gas principal is excluded and 30-percent gas margin is not applied to protocol fee (1.077202ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.150099

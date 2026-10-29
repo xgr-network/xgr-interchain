@@ -1,0 +1,269 @@
+[
+  {
+    "version": "2026-10-27-xita-direct-bls-final-v3.0.0",
+    "zip_entries": 104,
+    "crc_error": null,
+    "manifest_checks": [
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/README.md",
+        "sha256": "e33181989cea13e0624fe9a9d65fa0c7d09f42b684b4e3ea70ca22358ad54e99",
+        "expected_sha256": "e33181989cea13e0624fe9a9d65fa0c7d09f42b684b4e3ea70ca22358ad54e99",
+        "sha256_matches": true,
+        "bytes": 3796
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/confidential-evidence-reference.json",
+        "sha256": "e389fefce94cb0c7f955c75acdeac9bfc21ba75a70ca8546544cecec70f4b416",
+        "expected_sha256": "e389fefce94cb0c7f955c75acdeac9bfc21ba75a70ca8546544cecec70f4b416",
+        "sha256_matches": true,
+        "bytes": 356
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/evidence/MANIFEST.json",
+        "sha256": "01ab319019fd6c945cea595bcd3b15ec03e19c8b72931de38d5b39f9d310ad9b",
+        "expected_sha256": "01ab319019fd6c945cea595bcd3b15ec03e19c8b72931de38d5b39f9d310ad9b",
+        "sha256_matches": true,
+        "bytes": 53831
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/evidence/README.md",
+        "sha256": "6f88d532d2b9baffe67ea3dcd6df4b3ed9591d601bcd5e0254d531caabd40e5f",
+        "expected_sha256": "6f88d532d2b9baffe67ea3dcd6df4b3ed9591d601bcd5e0254d531caabd40e5f",
+        "sha256_matches": true,
+        "bytes": 18002
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/evidence-public.zip",
+        "sha256": "6d34b5de341a8a84659e967c5b8b2e5a18dc288cd04ee7a51cad77b0ad5e2272",
+        "expected_sha256": "6d34b5de341a8a84659e967c5b8b2e5a18dc288cd04ee7a51cad77b0ad5e2272",
+        "sha256_matches": true,
+        "bytes": 601494
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/findings.csv",
+        "sha256": "cdcc9274a88229aa5be016872ba3ccb6620c41fbbbf1a763289b202a4e8c458f",
+        "expected_sha256": "cdcc9274a88229aa5be016872ba3ccb6620c41fbbbf1a763289b202a4e8c458f",
+        "sha256_matches": true,
+        "bytes": 30644
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/historical-findings.csv",
+        "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+        "expected_sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+        "sha256_matches": true,
+        "bytes": 88035
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/pdf-validation.json",
+        "sha256": "2c65131e447e19279c1364734cfc767980a66e658e3b7844f71798576bc62b3f",
+        "expected_sha256": "2c65131e447e19279c1364734cfc767980a66e658e3b7844f71798576bc62b3f",
+        "sha256_matches": true,
+        "bytes": 916
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/phase-a-findings.md",
+        "sha256": "2a50051a01d73f36dcd01faed86709947395ed4474ae93578b4802d2fa85be32",
+        "expected_sha256": "2a50051a01d73f36dcd01faed86709947395ed4474ae93578b4802d2fa85be32",
+        "sha256_matches": true,
+        "bytes": 62233
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/phase-a-freeze.json",
+        "sha256": "f7341dccdba60f149a96b14580b94d3d0ac308f5640417671cdd39db37e7a398",
+        "expected_sha256": "f7341dccdba60f149a96b14580b94d3d0ac308f5640417671cdd39db37e7a398",
+        "sha256_matches": true,
+        "bytes": 1146
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/prior-findings-matrix.md",
+        "sha256": "a67c5eaee334d1a0bfbd78982be1a7bdecac24a65accf2e6d31af4074d44fc87",
+        "expected_sha256": "a67c5eaee334d1a0bfbd78982be1a7bdecac24a65accf2e6d31af4074d44fc87",
+        "sha256_matches": true,
+        "bytes": 104313
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/remediation.md",
+        "sha256": "56ced4624fe43e48c0e0e7172adb49219b3498364d9113fdf3f51b267c4a6559",
+        "expected_sha256": "56ced4624fe43e48c0e0e7172adb49219b3498364d9113fdf3f51b267c4a6559",
+        "sha256_matches": true,
+        "bytes": 17347
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/render_report.py",
+        "sha256": "eca394a5f24022bcf91af9fc936186db3cc654138ce4d6fa8a9df6454976b4c2",
+        "expected_sha256": "eca394a5f24022bcf91af9fc936186db3cc654138ce4d6fa8a9df6454976b4c2",
+        "sha256_matches": true,
+        "bytes": 10227
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/report.md",
+        "sha256": "3993d2dc7e9eb44161e07588ed6591a693c758b97b5dfa24db58b5030c2fb517",
+        "expected_sha256": "3993d2dc7e9eb44161e07588ed6591a693c758b97b5dfa24db58b5030c2fb517",
+        "sha256_matches": true,
+        "bytes": 190197
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/report.pdf",
+        "sha256": "8a23d73b4cbc0c57366d544e5b46f0049df58a078ddf15fc432ee57cd6900286",
+        "expected_sha256": "8a23d73b4cbc0c57366d544e5b46f0049df58a078ddf15fc432ee57cd6900286",
+        "sha256_matches": true,
+        "bytes": 284509
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-final-v3.0.0/verification.md",
+        "sha256": "abc2396665965f7d4888480f78887b51d7a4dac98cf94408b798147885c8abf8",
+        "expected_sha256": "abc2396665965f7d4888480f78887b51d7a4dac98cf94408b798147885c8abf8",
+        "sha256_matches": true,
+        "bytes": 11666
+      }
+    ]
+  },
+  {
+    "version": "2026-10-27-xita-direct-bls-delta-v3.1.0",
+    "zip_entries": 9,
+    "crc_error": null,
+    "manifest_checks": [
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/README.md",
+        "sha256": "597bed0fad19797bbcd4eefacb0a2f7328735a7d4dc59c41a2564e5ae017f91a",
+        "expected_sha256": "597bed0fad19797bbcd4eefacb0a2f7328735a7d4dc59c41a2564e5ae017f91a",
+        "sha256_matches": true,
+        "bytes": 1559
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/baseline-findings.csv",
+        "sha256": "cdcc9274a88229aa5be016872ba3ccb6620c41fbbbf1a763289b202a4e8c458f",
+        "expected_sha256": null,
+        "sha256_matches": null,
+        "bytes": 30644,
+        "sha256_note": "Historical manifest declared Git blob identity instead of SHA-256; SHA-256 newly computed here.",
+        "expected_git_blob": "c15d64d5f987fe003b0b4c017f01a54c1190ad3d",
+        "actual_git_blob": "c15d64d5f987fe003b0b4c017f01a54c1190ad3d",
+        "git_blob_matches": true
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/confidential-evidence-reference.json",
+        "sha256": "77514f282f7f9bedcad94dd8d1bc3e3b4beef4670e2248881532898cb272ed1f",
+        "expected_sha256": "77514f282f7f9bedcad94dd8d1bc3e3b4beef4670e2248881532898cb272ed1f",
+        "sha256_matches": true,
+        "bytes": 363
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/delta-assessment.md",
+        "sha256": "cfe5b919e680f8698388174c03c17012749972919f1c91993fda0a70de6320c1",
+        "expected_sha256": "cfe5b919e680f8698388174c03c17012749972919f1c91993fda0a70de6320c1",
+        "sha256_matches": true,
+        "bytes": 1509
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/evidence-public.zip",
+        "sha256": "bb07320e8a15e2fd2a50eb0d30f1dc30978b7423130557e3f8bc60f5aa8d2af2",
+        "expected_sha256": "bb07320e8a15e2fd2a50eb0d30f1dc30978b7423130557e3f8bc60f5aa8d2af2",
+        "sha256_matches": true,
+        "bytes": 6654
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/evidence/MANIFEST.json",
+        "sha256": "95c8bf8edd0f13ee76a402ce160b6152080d1de467771c1045187e443337af2e",
+        "expected_sha256": "95c8bf8edd0f13ee76a402ce160b6152080d1de467771c1045187e443337af2e",
+        "sha256_matches": true,
+        "bytes": 1072
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/evidence/README.md",
+        "sha256": "3ded6b3c192d9ccd791c1291337a8bfabae8f3ee96a4c72f96f43fd1f2e3215d",
+        "expected_sha256": "3ded6b3c192d9ccd791c1291337a8bfabae8f3ee96a4c72f96f43fd1f2e3215d",
+        "sha256_matches": true,
+        "bytes": 417
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/findings.csv",
+        "sha256": "d6566dde7042b763c5a7b64665245d4a4b52eb39ebcece0c4f01b268a71c35ba",
+        "expected_sha256": "d6566dde7042b763c5a7b64665245d4a4b52eb39ebcece0c4f01b268a71c35ba",
+        "sha256_matches": true,
+        "bytes": 5749
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/historical-findings.csv",
+        "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+        "expected_sha256": null,
+        "sha256_matches": null,
+        "bytes": 88035,
+        "sha256_note": "Historical manifest declared Git blob identity instead of SHA-256; SHA-256 newly computed here.",
+        "expected_git_blob": "e0a69085f893de62ec4e920a34eb6e20780c5ff4",
+        "actual_git_blob": "e0a69085f893de62ec4e920a34eb6e20780c5ff4",
+        "git_blob_matches": true
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/launch-decision.md",
+        "sha256": "ed6c0e99f408df1df7a8039fd1760a417d18938dd54150f43ff868daf14858ef",
+        "expected_sha256": "ed6c0e99f408df1df7a8039fd1760a417d18938dd54150f43ff868daf14858ef",
+        "sha256_matches": true,
+        "bytes": 1451
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/pdf-validation.json",
+        "sha256": "b3a54badbb58f8e5fc0068927fc20afa6dbfef0d0063e125c18e7a98b4681a9f",
+        "expected_sha256": "b3a54badbb58f8e5fc0068927fc20afa6dbfef0d0063e125c18e7a98b4681a9f",
+        "sha256_matches": true,
+        "bytes": 596
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/phase-a-findings.md",
+        "sha256": "ded8d6de95d93d19186077c098668de02c5c7f5e412bf99f8ed007f363393bec",
+        "expected_sha256": "ded8d6de95d93d19186077c098668de02c5c7f5e412bf99f8ed007f363393bec",
+        "sha256_matches": true,
+        "bytes": 1167
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/phase-a-freeze.json",
+        "sha256": "8bc919a58c80838fcb09f24f2424e3dea918207733c5a989c74547e13de16688",
+        "expected_sha256": "8bc919a58c80838fcb09f24f2424e3dea918207733c5a989c74547e13de16688",
+        "sha256_matches": true,
+        "bytes": 3489
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/prior-findings-matrix.md",
+        "sha256": "3f7916ae97504fcc92e1904a06c62e189a14e39493dae7843863ffdb8337f7d0",
+        "expected_sha256": "3f7916ae97504fcc92e1904a06c62e189a14e39493dae7843863ffdb8337f7d0",
+        "sha256_matches": true,
+        "bytes": 1748
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/remediation.md",
+        "sha256": "130ba82fe8b0b5c33b759c8de9dc1573ac419f4cf4907693c9b4b26e25a9908b",
+        "expected_sha256": "130ba82fe8b0b5c33b759c8de9dc1573ac419f4cf4907693c9b4b26e25a9908b",
+        "sha256_matches": true,
+        "bytes": 2173
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/report.md",
+        "sha256": "4bc910f8d40260cee73305e6f35cb189dbd0b13d764dc5829e35e30ff5cdfa3b",
+        "expected_sha256": "4bc910f8d40260cee73305e6f35cb189dbd0b13d764dc5829e35e30ff5cdfa3b",
+        "sha256_matches": true,
+        "bytes": 20575
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/report.pdf",
+        "sha256": "3009ff59caf1c1bfc4f9d18662bc54fd7bac6d36eab47811fd5e5b9ba7c3663f",
+        "expected_sha256": "3009ff59caf1c1bfc4f9d18662bc54fd7bac6d36eab47811fd5e5b9ba7c3663f",
+        "sha256_matches": true,
+        "bytes": 19656
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/verification.md",
+        "sha256": "cf97648ff6037dd8541715dab520af4832bb9715efe55379d3fdd7e8e0e795e5",
+        "expected_sha256": "cf97648ff6037dd8541715dab520af4832bb9715efe55379d3fdd7e8e0e795e5",
+        "sha256_matches": true,
+        "bytes": 1798
+      },
+      {
+        "path": "audits/2026-10-27-xita-direct-bls-delta-v3.1.0/verify_artifacts.py",
+        "sha256": "8889510230d34d39c555e4df345c5e90471701d6875f1a0f19cba2da46561fad",
+        "expected_sha256": "8889510230d34d39c555e4df345c5e90471701d6875f1a0f19cba2da46561fad",
+        "sha256_matches": true,
+        "bytes": 1748
+      }
+    ]
+  }
+]

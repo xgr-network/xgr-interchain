@@ -1,0 +1,11 @@
+✔ Base and Arbitrum require safe; XGRChain uses IBFT latest (2.643749ms)
+✔ unsupported safe, noncanonical head, wrong chain ID and unknown chain fail closed (0.835377ms)
+✔ original receipt must be canonical and inside source safe finality (1.453709ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.974119

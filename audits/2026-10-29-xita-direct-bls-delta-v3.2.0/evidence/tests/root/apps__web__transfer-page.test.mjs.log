@@ -1,0 +1,19 @@
+✔ My Transfers introduction never uses the global navigation header layout (2.236517ms)
+✔ My Transfers and menu are entirely absent until a valid wallet connects (0.221083ms)
+✔ wallet-specific transfer cards never expose previous connected account (0.580293ms)
+✔ My Transfers never signs and links to the unique transfer recovery flow (0.300252ms)
+✔ without deployed routes, import is disabled and does not invent wallet history (0.213761ms)
+✔ manual source TX hash is optional while wallet discovery is primary (0.336016ms)
+✔ every unresolved transfer links to its own verified wallet recovery intent (0.633073ms)
+✔ verified linked two-hop Arbitrum to Base renders ONE wallet operation (0.72405ms)
+✔ orphan second hop is not silently discarded as another person's journey (0.31251ms)
+✔ recent wallet broadcast survives reload as explicitly UNVERIFIED, never as successful bridge (0.521465ms)
+✔ linked TX3 and already indexed TXs cannot appear as independent broadcasts (1.71422ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16.183138

@@ -1,0 +1,11 @@
+✔ live quote funding accounts for all grants on one chain (1.319206ms)
+✔ live funding rejects missing fee estimate or malformed commitments (0.629117ms)
+✔ N-07 aggregate signed quotes cannot overcommit liquid sponsor wallet (0.439642ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.490577

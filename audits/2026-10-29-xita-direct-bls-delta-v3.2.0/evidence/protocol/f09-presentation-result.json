@@ -1,0 +1,13 @@
+{
+  "finding": "F-09",
+  "checked_utc": "2026-10-29T09:01:09.580Z",
+  "source_commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+  "type": "fresh isolated current-module projection; adverse condition reproduced",
+  "assertions_passed": 5,
+  "finality_verified": true,
+  "displayed_heading": "Transfer complete",
+  "displayed_message": "Both destination Mailbox deliveries are confirmed. No further wallet action is required.",
+  "displayed_principal_summary": "XGR unlocked on XGRChain. Delivery verified.",
+  "pending_balance_supplied": true,
+  "limits": "No fresh contract execution, browser E2E, BLS bypass, production transaction or funded wallet. Native deferred-claim contract behavior is inherited and unchanged."
+}

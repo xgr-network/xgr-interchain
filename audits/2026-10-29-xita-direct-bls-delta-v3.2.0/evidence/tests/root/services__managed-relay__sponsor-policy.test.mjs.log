@@ -1,0 +1,11 @@
+✔ global opt-in covers BOTH source and target, despite no Base env override (4.388686ms)
+✔ global disabled means no policy, explicitly missing market data fails closed (0.730009ms)
+✔ explicit chain limits override only their chain, invalid partial override denied (0.538521ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13.45397

@@ -1,0 +1,40 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "kind": "curated_public_phase_a_derivative",
+  "created_utc": "2026-10-29T09:06:54.015417+00:00",
+  "original": {
+    "path": "xgr-interchain/audits/2026-10-29-xita-direct-bls-delta-v3.2.0/phase-a-findings.md",
+    "sha256": "8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52",
+    "bytes": 71049,
+    "sealed_original_unchanged": true,
+    "archive": "protected evidence"
+  },
+  "derivative": {
+    "path": "audit-work/protocol/phase-b/phase-a-publication-safe.md",
+    "sha256": "c9e3c4045a1f43eef51bc88b7556cb2a71c00b7153c34644d8dd1707cfb871c1",
+    "bytes": 71935
+  },
+  "change_scope": "Header plus two private-test-sequence summaries and one publication-boundary statement; no finding/severity/conclusion changed.",
+  "redactions": [
+    {
+      "original_line": 16,
+      "reason": "Clarify public versus protected evidence publication; do not imply private reproductions/raw security logs are committed publicly.",
+      "original_paragraph_sha256": "9604b2d8b65b11fe864600ff861c2782f77a98259f6eaa8222c8576d0a54aa41",
+      "public_paragraph_sha256": "9a4b20fdacbdaa0138d4522cecd5399561a71e6c580744b362583d74ec02232e"
+    },
+    {
+      "original_line": 130,
+      "reason": "Replace the exact timed private-fixture sequence and intermediate counter values for an unrepaired condition with a bounded method/result/limits summary.",
+      "original_paragraph_sha256": "35da7e1705c8e52d7f7767c5195cfd4b34a62cb732668dddf9cf018a8961e39a",
+      "public_paragraph_sha256": "7f717c071c62a750361446222a811f85270458752d50008fdb769f9ab5d933ba"
+    },
+    {
+      "original_line": 261,
+      "reason": "Remove exact synthetic cursor/window values and ordered private-fixture recipe while preserving evidence, causal mechanism, impact and production limits.",
+      "original_paragraph_sha256": "ee9193ddb029f07d29f487eeaeb2b91f92edfc184c6a7a9059d075f462366cab",
+      "public_paragraph_sha256": "4a6a72836e30bb16bac8a57921973f660779af2cf8b44cbff7486145992a6bc5"
+    }
+  ],
+  "private_ledger": "publication-redactions.json; protected only, excluded from public evidence selection",
+  "policy": "xgr-interchain/audits/README.md:41"
+}

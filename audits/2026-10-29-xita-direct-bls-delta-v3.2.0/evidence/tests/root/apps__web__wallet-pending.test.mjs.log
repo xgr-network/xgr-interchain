@@ -1,0 +1,14 @@
+✔ header alert only counts genuine confirmed locks without delivery (2.001262ms)
+✔ confirmed XGR transit delivery remains visibly unfinished until final journey proof (0.195995ms)
+✔ confirmed source with unknown destination remains visibly pending (0.130747ms)
+✔ second-hop uncertain after XGR hub delivery is still pending (0.224828ms)
+✔ one verified two-hop journey is exactly one pending wallet operation (0.475546ms)
+✔ hidden exact active source remains visible before indexed confirmation (0.608806ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.431942

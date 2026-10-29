@@ -1,0 +1,157 @@
+[
+  {
+    "path": "services/managed-relay/quote-service.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "e1b5eb52ed21a37a4d6dd5f9c0651fe538bd4115c9868b5290b5b2d8347d2409",
+    "component": "quote construction and immutable stage funding",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Full control flow; new three profile estimates feed fee and sponsorship allocation before EIP-712 binding; native principal subtraction retained.",
+    "evidence": "existing-tests-detailed.log",
+    "commits": [
+      "0d5f448084cc8e83f9c27819370c91767007bd4b",
+      "a9ff3bcb3eb3f58cd8f02911af694576c03252fc",
+      "84e4af29c5dd11f89fd4009288bcfe8a1a0c8f5d"
+    ]
+  },
+  {
+    "path": "services/managed-relay/quote-service.test.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "79cd8251b171ec83812a507b83a803f5e6c4d37808d8d776e0c10a9ac365b64f",
+    "component": "quote regressions",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Read and reran all cases, including learned gas and complete two-hop stage commitment.",
+    "evidence": "existing-tests-detailed.log",
+    "commits": [
+      "b870302f4567c0a3f22eb089402ab781463ff2f2",
+      "446afc5899f86c13d0adc0af5c29f32dec392aa1",
+      "8f62c901126b58c4b55298bd7057a4f3fd62c4d6"
+    ]
+  },
+  {
+    "path": "services/managed-relay/server.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "c1141aabfd4096ff38a796b686907a02f7e62c2db288860c2fcc78111e37cf2f",
+    "component": "HTTP signing/status/DB readiness",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Full request, quote creation, runtime binding, new profile DB reads, public spendable status and response-after-persistence paths reviewed; readiness privilege omission reproduced.",
+    "evidence": "postgres-reproducible.log",
+    "commits": [
+      "5fdbf94bf8538bbf9f03f636c2fd1980ae2adb38",
+      "d1a47b1b589b964aca6da8b52e33cabbc5e4fa39",
+      "7478bf4f970564b235a09ce42e4b3d451af185a1"
+    ]
+  },
+  {
+    "path": "services/managed-relay/sponsor-quote-atomic.test.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "e5c13262041f266cbd140c84414490f55d891aabad9251235f0d5424f1a7887e",
+    "component": "mock reservation tests",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Read and reran; additional real PostgreSQL concurrency, failure and rollback proofs added outside product.",
+    "evidence": "existing-tests-detailed.log;postgres-reproducible.log",
+    "commits": [
+      "4bb4d8171cdcb7f4976c904b3f343805e01ada48"
+    ]
+  },
+  {
+    "path": "services/managed-relay/tax-evidence.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "cc8ab1a86beb143e331211bdb27a12968e05d51a73df8a3d55eb40d37b7b1ed9",
+    "component": "durable admission/atomic liabilities",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Full transaction and lock order reviewed. New SELECT intents omits supported role grant; genuine concurrent limits and rollback tested.",
+    "evidence": "postgres-reproducible.log",
+    "commits": [
+      "69e4e2ff0bee9e81ab8bc570866f7966b73c5283"
+    ]
+  },
+  {
+    "path": "services/managed-relay/tax-evidence.test.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "3cabd560671f8517f2f01db6cd18e2e3049457089b8c3b28bcee77ace779cbb0",
+    "component": "quote evidence tests",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "All existing tests reran; text-match admission test supplemented with actual role and concurrent DB cases.",
+    "evidence": "existing-tests-detailed.log;postgres-reproducible.log",
+    "commits": [
+      "1181fe0100764afd0edc90e33dc79c587f9b14b3"
+    ]
+  },
+  {
+    "path": "services/indexer/gas-observer.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "80d4982bf2d6468b735d4e4f9b6c3ec78130a780207ae8278f3dc02cde48c574",
+    "component": "canonical gas receipt collection",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Entire collector traced incl profile lookups, shared-Mailbox logs, finality, canonical block, cursor and error handling. Permanent unprofileable record stalls cursor reproduced.",
+    "evidence": "observer-adversarial-detailed.log",
+    "commits": [
+      "c65eb20677f678e530478a2b2084ac47186872b9",
+      "ffcdfc6c23645b809ab5cc5ccce1be10bdcd8e84",
+      "0a8d4a96832333a4650b287d389f2772ca7d8301",
+      "9a1d735293d59b45037532f4736cc3f6ffe12e59"
+    ]
+  },
+  {
+    "path": "services/indexer/gas-observer.test.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "a1f7be00b8ab03e71939b6e8a15e848f6acfd1d4d99981c2de33285a1b0d7c57",
+    "component": "receipt test coverage",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Reran existing success/failure/finality cases; added chain mismatch, expected block mismatch, and both cursor stall cases.",
+    "evidence": "existing-tests-detailed.log;observer-adversarial-detailed.log",
+    "commits": [
+      "9a128cba5814c024a79eeef3e0718d83c761475f"
+    ]
+  },
+  {
+    "path": "services/indexer/gas-observer-runner.mjs",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "4ada1bc1cd0fdc48abc99e010e339a03682757b4c7fc68e991669665cd2af210",
+    "component": "worker lifecycle",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Read startup DB config, catalog snapshot per tick, no key access, signal handling, 12-second poll and catch/finally paths. No production install inferred.",
+    "evidence": "phase-a.md",
+    "commits": [
+      "b38e3f65a509d0da677692702fd0b6bcc7331a2f"
+    ]
+  },
+  {
+    "path": "services/indexer/sql/016_gas_profiles.sql",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "e3187eda44588a169fb77e90276e00bc74b12d2a7b85221cd80a91f88007865f",
+    "component": "rolling profile SQL and permissions",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Full constraints, per-profile lock, deduplication, pruning, percentile and role grants read; applied successfully to isolated PG. Root/sponsor track tests row retention.",
+    "evidence": "postgres-reproducible.log",
+    "commits": [
+      "067cc420025d81e58421c54f89167d72b5079f62",
+      "c70dc73c86a752c60dfb08713cc306ef10329115",
+      "9a2eb5dba6ff635f5fc9c0a1469410a7ea842f67",
+      "34cb3e1518674aff5ccc025dfbb74228c4140571"
+    ]
+  },
+  {
+    "path": "services/indexer/xita-gas-observer.service.example",
+    "revision": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "sha256": "6e80883d3c9474b602ae423a93f09f8e4130585fff3955894aea8b2eb792afad",
+    "component": "service sandbox and lifecycle",
+    "review_status": "REVIEWED",
+    "review_scope": "full file, delta and adjacent call paths",
+    "assessment": "Read all settings; dedicated observer script, no signer env, read-only home/filesystem, restart and user conditions. Existing transfer-worker role is shared, not independently least-privileged.",
+    "evidence": "phase-a.md",
+    "commits": [
+      "b64d18a9a8703c8610aa98869cac452ae359d6c9"
+    ]
+  }
+]

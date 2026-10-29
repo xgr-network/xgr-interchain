@@ -1,0 +1,29 @@
+{
+  "observed_at_utc": "2026-10-29T08:55:03.799647+00:00",
+  "method": "GET",
+  "url": "https://xita.xgr.network/api/xita/v1/managed/health",
+  "mutation": false,
+  "http_status": 200,
+  "body": {
+    "ok": true,
+    "service": "xita-source-native-fee-quote",
+    "paidQuoteReady": true,
+    "paidQuoteReason": "verified",
+    "enabledChains": [
+      "arbitrum",
+      "base",
+      "xgrchain"
+    ],
+    "sponsorship": {
+      "enabled": true,
+      "walletAware": true,
+      "available": true,
+      "chains": {
+        "arbitrum": true,
+        "xgrchain": true,
+        "base": true
+      },
+      "reason": "native-grants-operator-ready"
+    }
+  }
+}

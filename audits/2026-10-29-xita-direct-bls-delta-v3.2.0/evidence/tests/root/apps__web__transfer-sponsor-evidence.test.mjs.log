@@ -1,0 +1,12 @@
+✔ paid adapter without committed gas grants must not display sponsorship (0.952434ms)
+✔ no grants permits continuation; promised stages remain fail-closed (0.163877ms)
+✔ verified spendable native gas unlocks without claiming SAFE finality (0.130917ms)
+✔ TX2 only accepts immutable exactly matched zero-grants quote (0.226631ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7.368951

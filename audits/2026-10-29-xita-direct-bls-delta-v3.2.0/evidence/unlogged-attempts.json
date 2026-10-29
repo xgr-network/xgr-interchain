@@ -1,0 +1,60 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "source_revision": "xgr-network/xgr-interchain@5cfc095d0f02271427832ee6bbb268322f38ae2d",
+  "record_type": "retrospective note-only accounting of early unsuccessful audit attempts",
+  "recorded_at_utc": "2026-10-29T09:13:57.328360+00:00",
+  "scope": "These attempts were disclosed in retained notes but lack separately saved raw process outputs and exact invocation metadata. They are not complete execution records and are not counted as completed product-test coverage. Missing values are not reconstructed from successful reruns.",
+  "attempts": [
+    {
+      "attempt_id": "Q-NOTE-01",
+      "classification": "Environmental failure before disposable database connection",
+      "command": null,
+      "command_description": "An initial default-sandbox invocation of the Phase A quote PostgreSQL test attempted to connect to the disposable local database. Its exact argument vector was not separately retained.",
+      "started_at_utc": null,
+      "finished_at_utc": null,
+      "exit_code": null,
+      "raw_log": null,
+      "raw_log_sha256": null,
+      "expected": "Connect only to the isolated loopback audit PostgreSQL database and execute the canonical-role and reservation checks.",
+      "observed": "The default sandbox denied the TCP connection with EPERM at 127.0.0.1:55432 before database access. The attempt did not establish product behavior.",
+      "recorded_quote": "default sandbox failed before connection with EPERM 127.0.0.1:55432; retried with allowed local-network execution",
+      "evidence_status": "NOTE_ONLY: prior_attempt field of the successful rerun metadata; no separate original stdout/stderr or UTC interval saved.",
+      "note_references": [
+        {
+          "reference": "Protected: quote/postgres-adversarial.json",
+          "sha256": "436401b71cdfb0a702a7f39fd75b8e813061472c2516ae23aed6fe74e42b27a7",
+          "kind": "Successful rerun metadata, prior_attempt field"
+        }
+      ],
+      "follow_up": "Approved loopback-only execution succeeded; exact successful execution is separately recorded in quote/postgres-adversarial.json and quote/postgres-adversarial.log. A subsequent clean-schema reproducibility run is also separately recorded.",
+      "counting": "Do not add to successful PostgreSQL case totals; no raw TAP event count is available.",
+      "product_code_changed": false,
+      "production_action": false
+    },
+    {
+      "attempt_id": "Q-NOTE-02",
+      "classification": "Audit fixture omission with an environment-dependent skipped database case",
+      "command": null,
+      "command_description": "Initial direct Node invocation of audit-work/quote/phase-b/historical-rechecks.test.mjs; the exact argument vector was not separately retained.",
+      "started_at_utc": null,
+      "finished_at_utc": null,
+      "exit_code": null,
+      "raw_log": null,
+      "raw_log_sha256": null,
+      "expected": "Exercise the actual verified paid-fee backfill boundary and the bounded payer-alias admission scenario using local fixtures.",
+      "observed": "The F-24 fixture failed before its intended store boundary because its deterministic RPC fixture lacked eth_blockNumber. The F-17 PostgreSQL case was skipped in the same invocation because the local database environment variable was unset.",
+      "evidence_status": "NOTE_ONLY: fixture-adjustments.md preserves the cause and correction; no separate original stdout/stderr or UTC interval saved.",
+      "note_references": [
+        {
+          "reference": "Protected: quote/phase-b/fixture-adjustments.md",
+          "sha256": "8de248eda2fd568715c06746442d5ccd48525af5d6180891ae55f1376d1253bc",
+          "kind": "Audit fixture adjustment note"
+        }
+      ],
+      "follow_up": "The audit-only RPC fixture was completed and the isolated database environment supplied. historical-rechecks.json/log and historical-rechecks-final.json/log separately record the two successful 2/2 executions; the final execution uses positive reserve and a complete gas-unit policy fixture.",
+      "counting": "Do not count as a product vulnerability or successful test coverage. The disclosed initial failure and database skip have no retained raw TAP summary.",
+      "product_code_changed": false,
+      "production_action": false
+    }
+  ]
+}

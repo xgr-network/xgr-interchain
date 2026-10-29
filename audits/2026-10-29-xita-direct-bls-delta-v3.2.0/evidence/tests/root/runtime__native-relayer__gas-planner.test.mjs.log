@@ -1,0 +1,12 @@
+✔ relayer sizes the full destination process with independent 30 pct gas buffer (0.788136ms)
+✔ destination BLS proof can require more than immutable 500000 gas hint (0.189195ms)
+✔ estimation rejects invalid gas or insufficient block headroom (0.835317ms)
+✔ no fixed factory-level ceiling even for a complex destination adapter (0.237618ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.40478

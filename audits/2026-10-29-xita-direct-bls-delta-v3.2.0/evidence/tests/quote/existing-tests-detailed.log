@@ -1,0 +1,310 @@
+TAP version 13
+# Subtest: contract-based profile distinguishes collateral mint from synthetic burn
+ok 1 - contract-based profile distinguishes collateral mint from synthetic burn
+  ---
+  duration_ms: 2.368214
+  type: 'test'
+  ...
+# Subtest: first finalized sample uses 2x total gas buffer, falling smoothly to 1.3x
+ok 2 - first finalized sample uses 2x total gas buffer, falling smoothly to 1.3x
+  ---
+  duration_ms: 0.465721
+  type: 'test'
+  ...
+# Subtest: observer consumes canonical receipt gas, never wallet sponsor balances
+ok 3 - observer consumes canonical receipt gas, never wallet sponsor balances
+  ---
+  duration_ms: 0.774105
+  type: 'test'
+  ...
+# Subtest: observer never records unsuccessful or non-finalized receipts
+ok 4 - observer never records unsuccessful or non-finalized receipts
+  ---
+  duration_ms: 0.307813
+  type: 'test'
+  ...
+# Subtest: produces cryptographically valid owner EIP712 binding both chains and exact native fees
+ok 5 - produces cryptographically valid owner EIP712 binding both chains and exact native fees
+  ---
+  duration_ms: 25.133547
+  type: 'test'
+  ...
+# Subtest: never signs when relayer owner mismatches deployed adapter
+ok 6 - never signs when relayer owner mismatches deployed adapter
+  ---
+  duration_ms: 1.061588
+  type: 'test'
+  ...
+# Subtest: fee quotes remain available without sponsorship but fail on missing gas price or stale prices
+ok 7 - fee quotes remain available without sponsorship but fail on missing gas price or stale prices
+  ---
+  duration_ms: 3.315911
+  type: 'test'
+  ...
+# Subtest: quotes only canonical deployed routes and exact bridge principal
+ok 8 - quotes only canonical deployed routes and exact bridge principal
+  ---
+  duration_ms: 0.816479
+  type: 'test'
+  ...
+# Subtest: no unsupported source/destination or non-decimal raw amount
+ok 9 - no unsupported source/destination or non-decimal raw amount
+  ---
+  duration_ms: 0.763599
+  type: 'test'
+  ...
+# Subtest: worldwide source-native quote is not gated on VAT customer location
+ok 10 - worldwide source-native quote is not gated on VAT customer location
+  ---
+  duration_ms: 2.067682
+  type: 'test'
+  ...
+# Subtest: honors owner-configured on-chain TTL, never exceeds 90 seconds
+ok 11 - honors owner-configured on-chain TTL, never exceeds 90 seconds
+  ---
+  duration_ms: 2.885432
+  type: 'test'
+  ...
+# Subtest: refuses invalid source timestamp before signing
+ok 12 - refuses invalid source timestamp before signing
+  ---
+  duration_ms: 0.409747
+  type: 'test'
+  ...
+# Subtest: two-hop quote includes both deliveries, XGR bridge gas and its native validator fee
+ok 13 - two-hop quote includes both deliveries, XGR bridge gas and its native validator fee
+  ---
+  duration_ms: 4.896349
+  type: 'test'
+  ...
+# Subtest: browser reconstructs exactly the signed EIP-712 execute ABI calldata
+ok 14 - browser reconstructs exactly the signed EIP-712 execute ABI calldata
+  ---
+  duration_ms: 5.030671
+  type: 'test'
+  ...
+# Subtest: preview reuses exact priced source and two-hop fees but never signs or allocates a nonce
+ok 15 - preview reuses exact priced source and two-hop fees but never signs or allocates a nonce
+  ---
+  duration_ms: 2.81705
+  type: 'test'
+  ...
+# Subtest: signed quote never carries a future timestamp relative to source block
+ok 16 - signed quote never carries a future timestamp relative to source block
+  ---
+  duration_ms: 2.256787
+  type: 'test'
+  ...
+# Subtest: signer refuses stale or invalid source block rather than issuing unsafe quote
+ok 17 - signer refuses stale or invalid source block rather than issuing unsafe quote
+  ---
+  duration_ms: 1.230252
+  type: 'test'
+  ...
+# Subtest: unsigned fee pricing automatically discovers the receipt-backed XGR to Arbitrum route
+ok 18 - unsigned fee pricing automatically discovers the receipt-backed XGR to Arbitrum route
+  ---
+  duration_ms: 1.46148
+  type: 'test'
+  ...
+# Subtest: wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact
+ok 19 - wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact
+  ---
+  duration_ms: 9.616172
+  type: 'test'
+  ...
+# Subtest: fully funded route signs fixed 1000-gwei native fee independent of network gas
+ok 20 - fully funded route signs fixed 1000-gwei native fee independent of network gas
+  ---
+  duration_ms: 4.920606
+  type: 'test'
+  ...
+# Subtest: only committed wallet gas deficits increase the signed service fee
+ok 21 - only committed wallet gas deficits increase the signed service fee
+  ---
+  duration_ms: 6.489597
+  type: 'test'
+  ...
+# Subtest: wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI charge
+ok 22 - wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI charge
+  ---
+  duration_ms: 2.666062
+  type: 'test'
+  ...
+# Subtest: XGR promotion changes only signed commercial fee; no principal or protocol concession
+ok 23 - XGR promotion changes only signed commercial fee; no principal or protocol concession
+  ---
+  duration_ms: 6.067642
+  type: 'test'
+  ...
+# Subtest: no discount for non-XGR asset; XGR cap applies even without sponsorship
+ok 24 - no discount for non-XGR asset; XGR cap applies even without sponsorship
+  ---
+  duration_ms: 5.657835
+  type: 'test'
+  ...
+# Subtest: learned gas changes signed wallet commitment and source fee
+ok 25 - learned gas changes signed wallet commitment and source fee
+  ---
+  duration_ms: 4.961567
+  type: 'test'
+  ...
+# Subtest: two-hop pre-commits all three individually learned stage grants
+ok 26 - two-hop pre-commits all three individually learned stage grants
+  ---
+  duration_ms: 4.196316
+  type: 'test'
+  ...
+# Subtest: live quote funding accounts for all grants on one chain
+ok 27 - live quote funding accounts for all grants on one chain
+  ---
+  duration_ms: 0.206711
+  type: 'test'
+  ...
+# Subtest: live funding rejects missing fee estimate or malformed commitments
+ok 28 - live funding rejects missing fee estimate or malformed commitments
+  ---
+  duration_ms: 0.253923
+  type: 'test'
+  ...
+# Subtest: N-07 aggregate signed quotes cannot overcommit liquid sponsor wallet
+ok 29 - N-07 aggregate signed quotes cannot overcommit liquid sponsor wallet
+  ---
+  duration_ms: 0.33234
+  type: 'test'
+  ...
+# Subtest: fee evidence and all signed quote promises commit in ONE database transaction
+ok 30 - fee evidence and all signed quote promises commit in ONE database transaction
+  ---
+  duration_ms: 1.691075
+  type: 'test'
+  ...
+# Subtest: over-budget or duplicate nonce never exposes a partially committed grant
+ok 31 - over-budget or duplicate nonce never exposes a partially committed grant
+  ---
+  duration_ms: 1.134387
+  type: 'test'
+  ...
+# Subtest: tampered quote nonce or fee cannot create a grant commitment
+ok 32 - tampered quote nonce or fee cannot create a grant commitment
+  ---
+  duration_ms: 0.208904
+  type: 'test'
+  ...
+# Subtest: N-07 rejects an unfunded concurrently committed quote atomically
+ok 33 - N-07 rejects an unfunded concurrently committed quote atomically
+  ---
+  duration_ms: 0.937821
+  type: 'test'
+  ...
+# Subtest: sponsor status is not falsely green when no grant journal exists
+ok 34 - sponsor status is not falsely green when no grant journal exists
+  ---
+  duration_ms: 0.341434
+  type: 'test'
+  ...
+# Subtest: only journalled stage-specific grants are reported
+ok 35 - only journalled stage-specific grants are reported
+  ---
+  duration_ms: 0.197006
+  type: 'test'
+  ...
+# Subtest: only a matching immutable wallet-aware quote may prove no sponsor needed
+ok 36 - only a matching immutable wallet-aware quote may prove no sponsor needed
+  ---
+  duration_ms: 0.140651
+  type: 'test'
+  ...
+# Subtest: wallet-aware aggregate stays pending until ALL signed stages confirmed
+ok 37 - wallet-aware aggregate stays pending until ALL signed stages confirmed
+  ---
+  duration_ms: 0.23272
+  type: 'test'
+  ...
+# Subtest: All gas grants become usable when mined; safe finality remains separate
+ok 38 - All gas grants become usable when mined; safe finality remains separate
+  ---
+  duration_ms: 0.197537
+  type: 'test'
+  ...
+# Subtest: quote signer bounds unauthenticated attempts before reserving capacity
+ok 39 - quote signer bounds unauthenticated attempts before reserving capacity
+  ---
+  duration_ms: 0.340812
+  type: 'test'
+  ...
+# Subtest: N-05 returns only chain-bound promised stage names
+ok 40 - N-05 returns only chain-bound promised stage names
+  ---
+  duration_ms: 0.137247
+  type: 'test'
+  ...
+# Subtest: trusted quote IP cannot be spoofed by forwarded headers
+ok 41 - trusted quote IP cannot be spoofed by forwarded headers
+  ---
+  duration_ms: 3.397844
+  type: 'test'
+  ...
+# Subtest: OTC-style local CIDR lookup returns ISO country and provenance
+ok 42 - OTC-style local CIDR lookup returns ISO country and provenance
+  ---
+  duration_ms: 16.938694
+  type: 'test'
+  ...
+# Subtest: native source fee fixed to eight-decimal EUR value
+ok 43 - native source fee fixed to eight-decimal EUR value
+  ---
+  duration_ms: 0.238408
+  type: 'test'
+  ...
+# Subtest: unknown customer country or EUR rate cannot cancel a signed fee
+ok 44 - unknown customer country or EUR rate cannot cancel a signed fee
+  ---
+  duration_ms: 0.288174
+  type: 'test'
+  ...
+# Subtest: ZZ synthetic CIDR cannot override country match
+ok 45 - ZZ synthetic CIDR cannot override country match
+  ---
+  duration_ms: 2.038938
+  type: 'test'
+  ...
+# Subtest: F-17 wallet-aware quotes enforce durable pending limit inside database transaction
+ok 46 - F-17 wallet-aware quotes enforce durable pending limit inside database transaction
+  ---
+  duration_ms: 0.512832
+  type: 'test'
+  ...
+# Subtest: wallet's XGR balance is counted once across first delivery and hub onward
+ok 47 - wallet's XGR balance is counted once across first delivery and hub onward
+  ---
+  duration_ms: 0.187993
+  type: 'test'
+  ...
+# Subtest: fully funded wallet pays own downstream gas and gets no grants
+ok 48 - fully funded wallet pays own downstream gas and gets no grants
+  ---
+  duration_ms: 0.162324
+  type: 'test'
+  ...
+# Subtest: fail closed on missing, negative or user-ambiguous RPC balance
+ok 49 - fail closed on missing, negative or user-ambiguous RPC balance
+  ---
+  duration_ms: 0.244187
+  type: 'test'
+  ...
+# Subtest: gas principal is excluded and 30-percent gas margin is not applied to protocol fee
+ok 50 - gas principal is excluded and 30-percent gas margin is not applied to protocol fee
+  ---
+  duration_ms: 0.171548
+  type: 'test'
+  ...
+1..50
+# tests 50
+# suites 0
+# pass 50
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 337.547414

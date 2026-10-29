@@ -1,0 +1,14 @@
+✔ valid wallet nonces require no fallback (1.821743ms)
+✔ invalid or missing EIP-1193 nonces are recovered only from verified canonical RPC (1.67446ms)
+✔ unambiguous padded hex, decimal and safe numeric nonces are normalized locally (0.519602ms)
+✔ stale injected pending nonce can be reconciled with chain RPC (0.359881ms)
+✔ known pending nonce from either source stays blocked (1.168489ms)
+✔ unavailable or contradictory canonical source RPC fails closed (0.862027ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.925915
