@@ -55,7 +55,7 @@ test("stale main still renders read-only inventory while never approving Deploy"
  assert.equal(snapshot.readOnly,true);
  assert.equal(snapshot.githubApproved,false);
  assert.ok(snapshot.inventory.assets.XGR);
- assert.equal(snapshot.inventory.chains.length,4);
+ assert.equal(snapshot.inventory.chains.length,5);
 });
 test("GitHub outage still allows a local read-only inventory but denies authorization",async()=>{
  const {readOnlyWorkQueue}=await import("./main-gate.mjs");
