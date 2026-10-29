@@ -1,4 +1,4 @@
-import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway,isDeployedChain} from "./route-availability.js";
 import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
@@ -42,6 +42,24 @@ const chainAddressExplorer=(chain,address)=>{
  return roots[chain]?roots[chain]+address:null;
 };
 
+// Public planets require the full mandatory XITA suite, not merely routing core.
+// The optional commercial execution gateway is intentionally excluded.
+const UNIVERSE_REQUIRED=["validatorRegistry","ism","transportBundle","mailbox",
+ "dispatchHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer",
+ "collateralRouterDeployer","factory","sourceRegistry"];
+function isFullyDeployedUniverseChain(catalog,key){
+ if(!isDeployedChain(catalog,key))return false;
+ const c=catalog.chains[key],core=catalog.infrastructure[key]?.xitaV315;
+ const required=c?.blsVerifierFormat==="compressed"?UNIVERSE_REQUIRED:
+  ["blsVerifier",...UNIVERSE_REQUIRED];
+ const receipts=new Set(core?.receiptPaths||[]);
+ return required.every(part=>{
+  const item=core?.components?.[part];
+  return /^0x[0-9a-f]{40}$/i.test(item?.address||"")&&
+   /^0x[0-9a-f]{64}$/i.test(item?.runtimeCodeKeccak256||"")&&
+   receipts.has(item?.receiptPath);
+ });
+}
 export function buildExperienceModel(catalog, isVerified = () => false) {
   const assets = Object.entries(catalog?.assets||{}).map(([id,entry])=>({
     id, name:entry?.profile?.name||entry?.metadata?.name||id,
@@ -51,7 +69,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
     representations:Array.isArray(entry?.metadata?.representations)?entry.metadata.representations:[]
   }));
   const chains = Object.entries(catalog?.chains||{}).map(([key,entry])=>({
-    key,label:chainLabel(key,entry),chainId:entry?.chainId??null,
+    key,label:chainLabel(key,entry),infrastructureDeployed:catalog?.infrastructure?isFullyDeployedUniverseChain(catalog,key):undefined,chainId:entry?.chainId??null,
     domainId:entry?.domainId??null,
     nativeCurrency:entry?.nativeCurrency?.symbol||"native",
     nativeCurrencyDecimals:Number.isInteger(entry?.nativeCurrency?.decimals)&&entry.nativeCurrency.decimals>=0&&entry.nativeCurrency.decimals<=36?entry.nativeCurrency.decimals:18,
