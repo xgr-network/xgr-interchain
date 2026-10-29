@@ -9,7 +9,7 @@ const fake=(chainId=8453,{unsafe=false,mismatch=false}={})=>({
   this.calls.push([method,args]);
   if(method==="eth_chainId")return "0x"+chainId.toString(16);
   if(method==="eth_getBlockByNumber"){
-   if(unsafe&&args[0]==="safe")throw Error("RPC safe unsupported");
+   if(unsafe&&["safe","finalized"].includes(args[0]))throw Error("RPC native finality unsupported");
    return {number:"0x64",hash:H};
   }
   throw Error("Unexpected JSON-RPC method "+method);
@@ -23,6 +23,9 @@ test("Base and Arbitrum require safe; XGRChain uses IBFT latest",async()=>{
   assert.equal(await sourceFinalityHead(p,id),100);
   assert.deepEqual(p.calls.find(c=>c[0]==="eth_getBlockByNumber")[1],["safe",false]);
  }
+ const b=fake(56);
+ assert.equal(await sourceFinalityHead(b,56),100);
+ assert.deepEqual(b.calls.find(c=>c[0]==="eth_getBlockByNumber")[1],["finalized",false]);
  const x=fake(1643);
  assert.equal(await sourceFinalityHead(x,1643),100);
  assert.deepEqual(x.calls.find(c=>c[0]==="eth_getBlockByNumber")[1],["latest",false]);
@@ -30,6 +33,7 @@ test("Base and Arbitrum require safe; XGRChain uses IBFT latest",async()=>{
 
 test("unsupported safe, noncanonical head, wrong chain ID and unknown chain fail closed",async()=>{
  await assert.rejects(sourceFinalityHead(fake(8453,{unsafe:true}),8453),/unsupported/);
+ await assert.rejects(sourceFinalityHead(fake(56,{unsafe:true}),56),/unsupported/);
  await assert.rejects(sourceFinalityHead(fake(8453,{mismatch:true}),8453),/canonical/);
  await assert.rejects(sourceFinalityHead(fake(8453),42161),/chain ID/);
  await assert.rejects(sourceFinalityHead(fake(137),137),/Unsupported/);
