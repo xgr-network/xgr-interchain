@@ -11,7 +11,7 @@ test("all main-approved chains derive deployment progress from documented compon
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
  assert.equal(chains.length,5);
  assert.equal(chains.find(c=>c.name==="bsc").chainId,56);
- assert.equal(chains.find(c=>c.name==="bsc").status,"not-deployed");
+ assert.equal(chains.find(c=>c.name==="bsc").status,"partial");
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required+1 && c.components.filter(x=>x.optional).length===1));
