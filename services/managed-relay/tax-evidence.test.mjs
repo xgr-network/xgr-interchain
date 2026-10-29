@@ -47,3 +47,15 @@ test("ZZ synthetic CIDR cannot override country match",async()=>{
   assert.equal(matched.code,"US");
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("F-17 wallet-aware quotes enforce durable pending limit inside database transaction",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const source=readFileSync(new URL("./tax-evidence.mjs",import.meta.url),"utf8");
+ assert.match(source,/pg_advisory_xact_lock\(hashtext\(\$1\)\)/);
+ assert.match(source,/xita-sponsor-wallet-admission:/);
+ assert.match(source,/i\.quote_expires_at>NOW\(\)/);
+ assert.match(source,/pendingCount>=2/);
+ assert.ok(source.indexOf("pendingCount>=2")<source.indexOf("INSERT INTO xita_sponsor_quote_intents"),
+  "signed promise storage must be after durable admission guard");
+ assert.doesNotMatch(source,/DELETE FROM xita_sponsor_quote_intents/);
+});
