@@ -14,18 +14,18 @@
     "notes": "Initial Interchain validators are selected from config/validators/initial.json. Their public BLS possession proofs must bind origin 1643 and destination 56 and be verified against the deployed BSC verifier. No PoS snapshot or private key enters the admin."
   },
   "reserve": {
-    "minimumWei": null,
-    "maxExecutorReimbursementWei": null,
-    "perValidatorWei": null,
-    "notes": "BNB-denominated validator reserve and executor reimbursement are intentionally unapproved. Set positive reviewed wei values in a later main commit before ValidatorRegistry deployment; do not inherit ETH-spoke economic values without review."
+    "minimumWei": "112500000000000",
+    "maxExecutorReimbursementWei": "75000000000000",
+    "perValidatorWei": "150000000000000",
+    "notes": "Operator-approved BSC Registry V3 economics (2026-10-29): 3x the live 0.05 gwei proposal, using a 0.15 gwei design gas price. Minimum deactivation reserve 0.0001125 BNB (750000 gas), maximum executor reimbursement 0.000075 BNB (500000 gas), and initial reserve per validator 0.00015 BNB (1000000 gas); exactly three genesis validators require 0.00045 BNB constructor reserve, excluding deployment gas. Immutable wei limits do not adjust automatically when gas prices change; check signed BNB value in wallet."
   },
   "sourceFee": {
-    "targetWei": null,
+    "targetWei": "100000000000",
     "governance": "validator-bls-quorum",
     "ttlSeconds": 300,
     "initialization": "factory-constructor-no-quorum",
-    "notes": "Initial native BNB-denominated source validator fee requires explicit operator approval. Factory deployment remains blocked until the fee is committed and shown in the wallet preview."
+    "notes": "Operator-approved initial BSC source-native validator fee (2026-10-29): 0.0000001 BNB (100000000000 wei) per BSC-originating operation, separate from network gas and not relayer gas coverage. Fixed in the Factory constructor and initialized in SourceRegistry at nonce 0; later changes require validator BLS quorum."
   },
-  "notes": "Preparation only: BSC EIP-2537 precompiles (BEP-439) and finalized RPC must pass live read-only checks. Wallet deployment starts at the verifier. ValidatorRegistry additionally needs verified public destination-domain BLS proofs and reviewed initial BNB parameters. No contract addresses are inferred or pre-populated.",
+  "notes": "BSC uses destination domain 56, EIP-2537 verification, and finalized-only deployment receipt proofs. Three existing explicit Interchain Genesis validators must supply separate public possession proofs for domain 56, verified against the documented BSC BLS verifier. Admin deploys only missing components in order; never invent deployment addresses or private keys.",
   "genesisValidatorManifest": "config/validators/initial.json"
 }
