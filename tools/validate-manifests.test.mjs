@@ -40,6 +40,14 @@ test("recorded XITA deployments are valid; unauthorized metadata or malformed bi
  };
  assert.ok(validateCatalog(altered).some(s=>s.includes("invalid component deployment binding")));
 });
+test("BSC public label is configured independently of canonical chain identity",()=>{
+ const c=copy();
+ assert.equal(c.chains.bsc.name,"bsc");
+ assert.equal(c.chains.bsc.displayName,"BNB Smart Chain");
+ assert.deepEqual(validateCatalog(c),[]);
+ c.chains.bsc.displayName=" ";
+ assert.ok(validateCatalog(c).some(e=>e.includes("invalid chain display name")));
+});
 test("rejects duplicate domains",()=>{const x=copy();x.chains.base.domainId=1643;assert.ok(validateCatalog(x).some(s=>s.includes("duplicate chainId or domainId")))});
 test("XGR deployment receipts stay tied to recorded contract bindings, without assumed deployment counts",()=>{
  const x=copy(),dep=x.assets.XGR.deployment;
