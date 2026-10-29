@@ -22,10 +22,33 @@
         "address": "0x3d2add3a7dacb82c11338b6731b22d2afed4e1cc",
         "runtimeCodeKeccak256": "0xd097d1020508558a40667f33f364a3d442de4711b8183644a684a0333384d09c",
         "receiptPath": "deployments/receipts/bsc/09006c8d61edc8e88897052056aa3920ffcf08f4c7e6cb8060884fae992379dc-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json"
+      },
+      "transportBundle": {
+        "address": "0x119f5533d40889b23769b3c2d507cdfc90fff8ca",
+        "runtimeCodeKeccak256": "0x312dc62d539dc81cb5d929c7501ccfceb2b539c1ca2f43859883a318f1b62b40",
+        "receiptPath": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-119f5533d40889b23769b3c2d507cdfc90fff8ca.json"
+      },
+      "mailbox": {
+        "address": "0x9465471e6dbadac4759f5950bc0e8d8ee6e81c83",
+        "runtimeCodeKeccak256": "0xba89ab1b6a1c782b1def3baf7810316f17d4f8b7d0413cdae9ca7dbdd24e5012",
+        "receiptPath": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json"
+      },
+      "dispatchHook": {
+        "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
+        "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+        "receiptPath": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json"
+      },
+      "requiredHook": {
+        "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
+        "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+        "receiptPath": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json"
       }
     },
     "receiptPaths": [
       "deployments/receipts/bsc/09006c8d61edc8e88897052056aa3920ffcf08f4c7e6cb8060884fae992379dc-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
+      "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
+      "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
+      "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json",
       "deployments/receipts/bsc/d7258302501713f25084c399ced03316aa1c7e474d39307bd8663c2b4e3f4645-70f5752326735b31641f21d174ba035e904db93c.json",
       "deployments/receipts/bsc/f1cbe96a70bc822f68f48c2e0e8c3b4a550af6f07dad1c8d549334960317de5a-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
     ]
