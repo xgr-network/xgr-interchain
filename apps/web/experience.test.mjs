@@ -27,6 +27,15 @@ test("universe always includes the hub and filters forbidden direct spoke routes
   assert.ok(!model.routes.some(r=>r.name==="base_to_polygon"));
   assert.ok(renderUniverse(model).includes("XGRChain"));
 });
+test("BSC shows its configured public name on the planet while preserving the chain slug",()=>{
+ const published=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const model=buildExperienceModel(published);
+ assert.equal(published.chains.bsc.name,"bsc");
+ assert.equal(published.chains.bsc.chainId,56);
+ assert.equal(model.chains.find(c=>c.key==="bsc")?.label,"BNB Smart Chain");
+ assert.match(renderDashboard(model),/BNB Smart Chain/);
+ assert.match(renderUniverse(model,"bsc"),/BNB Smart Chain/);
+});
 test("spoke-to-spoke paths are exactly two directed operations",()=>{
   const model=buildExperienceModel(catalog,()=>true);
   const plan=previewRoute(model,"base","polygon","XGR");
