@@ -28,6 +28,7 @@ if(get("runtime/native-relayer/recover-iln.mjs").includes("xgr_getILNInterchainA
   errs.push("recovery uses retired attestation RPC");
 const routes=JSON.parse(get("config/assets/a7/XGR/routes.json")).routes;
 if(!routes.length||routes.some(r=>r.sourceChain!=="xgrchain"&&r.destinationChain!=="xgrchain")||
-  routes.some(r=>!routes.some(reverse=>reverse.sourceChain===r.destinationChain&&reverse.destinationChain===r.sourceChain)))\n  errs.push("hub routes invalid or missing reciprocal counterpart");
+  routes.some(r=>!routes.some(reverse=>reverse.sourceChain===r.destinationChain&&reverse.destinationChain===r.sourceChain)))
+  errs.push("hub routes invalid or missing reciprocal counterpart");
 if(errs.length){for(const e of errs)console.error(e);process.exitCode=1}
 else console.log("PASS: clean XETA routes and runtime invariants");
