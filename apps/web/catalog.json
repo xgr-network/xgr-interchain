@@ -149,6 +149,12 @@
             "representation": "synthetic",
             "symbol": "wARB",
             "assetAddress": null
+          },
+          {
+            "chain": "bsc",
+            "representation": "synthetic",
+            "symbol": "wARB",
+            "assetAddress": null
           }
         ],
         "bridgeModel": "lock-mint-burn-unlock",
@@ -234,6 +240,16 @@
             "name": "xgr_to_polygon",
             "sourceChain": "xgrchain",
             "destinationChain": "polygon"
+          },
+          {
+            "name": "xgr_to_bsc",
+            "sourceChain": "xgrchain",
+            "destinationChain": "bsc"
+          },
+          {
+            "name": "bsc_to_xgr",
+            "sourceChain": "bsc",
+            "destinationChain": "xgrchain"
           }
         ]
       },
@@ -426,6 +442,12 @@
             "representation": "synthetic",
             "symbol": "wXGR",
             "assetAddress": null
+          },
+          {
+            "chain": "bsc",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
           }
         ],
         "bridgeModel": "lock-mint-burn-unlock",
@@ -517,6 +539,16 @@
           {
             "name": "arbitrum_to_xgr",
             "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_bsc",
+            "sourceChain": "xgrchain",
+            "destinationChain": "bsc"
+          },
+          {
+            "name": "bsc_to_xgr",
+            "sourceChain": "bsc",
             "destinationChain": "xgrchain"
           }
         ]

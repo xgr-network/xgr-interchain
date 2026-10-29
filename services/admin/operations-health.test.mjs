@@ -128,3 +128,25 @@ test("Join health separates service readiness, missing configuration and missing
  assert.equal(missing.services.find(x=>x.id==="join").state,"not-installed");
  assert.equal(missing.checks.find(x=>x.id==="join-api").state,"not-installed");
 });
+
+test("System Health automatically discovers BSC from chain catalog without a new hardcoded chain entry",async()=>{
+ const catalog={chains:{
+  xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]},
+  bsc:{chainId:56,rpcUrls:["https://bsc-rpc.publicnode.com"]}
+ }};
+ const seen=[];
+ const result=await collectOperationsHealth({
+  catalog,now,checkValidators:async()=>[],
+  checkChain:async chain=>{seen.push(chain.name);return {
+   name:chain.name,chainId:chain.chainId,head:123,
+   configuredEndpoints:chain.rpcUrls.length,attempted:1,state:"ok"
+  };},
+  readUnit:async name=>UNITS.find(x=>x.unit===name)?.optional?
+   "LoadState=not-found\nActiveState=inactive\n":
+   "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n",
+  readHTTP:async target=>target.id==="transfer-stats"?stats([],true):{ok:true},
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:0})
+ });
+ assert.deepEqual(seen.sort(),["bsc","xgrchain"]);
+ assert.equal(result.chains.find(x=>x.name==="bsc").chainId,56);
+});

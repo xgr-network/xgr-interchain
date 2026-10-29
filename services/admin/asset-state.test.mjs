@@ -10,9 +10,9 @@ test("native XGR has deterministic canonical asset ID",()=>{
   asset:"XGR",canonical:{chain:"xgrchain",representation:"native"}
  },Object.fromEntries(inv.chains.map(c=>[c.name,c]))));
 });
-test("all six XGR routes remain attached to ONE asset and one deployment index",()=>{
+test("all eight XGR routes remain attached to ONE asset and one deployment index",()=>{
  const inv=approvedWorkInventory(root),asset=inv.assets.XGR;
- assert.equal(asset.routeCount,6);
+ assert.equal(asset.routeCount,8);
  assert.equal(asset.deploymentManifest,"deployments/assets/a7/XGR");
  assert.equal(asset.receiptCount,Object.values(asset.representations).flatMap(r=>r.deployedContracts).length);
  assert.equal(asset.routes.every(r=>r.assetId===asset.assetId),true);

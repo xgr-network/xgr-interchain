@@ -27,6 +27,8 @@ for(const path of forbiddenFiles){
 if(get("runtime/native-relayer/recover-iln.mjs").includes("xgr_getILNInterchainAttestation"))
   errs.push("recovery uses retired attestation RPC");
 const routes=JSON.parse(get("config/assets/a7/XGR/routes.json")).routes;
-if(routes.length!==6||routes.some(r=>r.sourceChain!=="xgrchain"&&r.destinationChain!=="xgrchain"))errs.push("hub routes invalid");
+if(!routes.length||routes.some(r=>r.sourceChain!=="xgrchain"&&r.destinationChain!=="xgrchain")||
+  routes.some(r=>!routes.some(reverse=>reverse.sourceChain===r.destinationChain&&reverse.destinationChain===r.sourceChain)))
+  errs.push("hub routes invalid or missing reciprocal counterpart");
 if(errs.length){for(const e of errs)console.error(e);process.exitCode=1}
 else console.log("PASS: clean XETA routes and runtime invariants");

@@ -1,4 +1,5 @@
-// PR-time review of newly proposed XITA token manifests against live CoinGecko.
+// PR-time review of newly ADDED XITA token manifests against live CoinGecko.
+// Existing accepted assets may be extended with approved spoke representations.
 // No GitHub token, contact email or private application files are needed.
 import {execFileSync} from "node:child_process";
 import {readFileSync,existsSync} from "node:fs";
@@ -42,7 +43,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const base=idx>=0?process.argv[idx+1]:"";
  if(!/^[0-9a-f]{40}$/.test(base||"")){console.error("Pass --base <40-hex SHA>");process.exit(2);}
  try{
-  const changed=execFileSync("git",["diff","--name-only",base+"...HEAD","--","config/assets"],{cwd:root,encoding:"utf8"});
+  const changed=execFileSync("git",["diff","--name-only","--diff-filter=A",base+"...HEAD","--","config/assets"],{cwd:root,encoding:"utf8"});
   const results=await validateJoinChanges(changed);
   console.log("CoinGecko-verified new token manifests: "+results.length);
  }catch(e){console.error("XITA Join PR validation failed: "+e.message);process.exitCode=1;}
