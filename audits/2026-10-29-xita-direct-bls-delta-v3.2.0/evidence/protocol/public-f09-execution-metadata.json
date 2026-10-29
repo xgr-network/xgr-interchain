@@ -1,0 +1,17 @@
+{
+  "kind": "fresh_local_current_module_check",
+  "command": "node audit-work/protocol/phase-b/f09-presentation-check.mjs",
+  "node_version": "v24.22.1",
+  "completed_at_utc": "2026-10-29T09:01:09.580Z",
+  "source_commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+  "result_source": {
+    "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/protocol/phase-b/f09-presentation-result.json",
+    "sha256": "3a67044d03e54e7ea0280d3553d3b4adcbe163d8c07b0cef941aea1538848b8e",
+    "bytes": 725
+  },
+  "scenario_count": 1,
+  "assertions": 5,
+  "exit_code": 0,
+  "fixture_disclosure": "Executable synthetic fixture remains protected; only result and metadata selected for publication.",
+  "limits": "No fresh contract execution, browser E2E, BLS bypass, production transaction or funded wallet. Native deferred-claim contract behavior is inherited and unchanged."
+}

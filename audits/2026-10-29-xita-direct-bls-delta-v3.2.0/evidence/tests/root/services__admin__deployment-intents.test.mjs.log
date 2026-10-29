@@ -1,0 +1,29 @@
+✔ write-ahead wallet intent stores only latest wallet attempt (16.867778ms)
+✔ unapproved chain, malformed nonce and sender mismatch fail before journaling (0.537889ms)
+✔ route Gateway and Router use the SAME persistent write-ahead journal (17.842897ms)
+✔ simulation-generated creation transaction is accepted by persistent journal (4.773835ms)
+✔ new XITA Registry V3 starts with a clean unarchived wallet journal (3.701501ms)
+✔ unexpected journal metadata is rejected rather than retained (0.405451ms)
+✔ successful repository publication deletes the local completion record (10.026672ms)
+✔ first journal read removes old documented Registry entry without manual path cleanup (9.099566ms)
+✔ completed-record cleanup preserves all unresolved router and route transactions (12.192948ms)
+✔ cancel only a matching prepared draft, not a submitted tx (10.788028ms)
+✔ every deployable chain component can be journaled before its FIRST wallet signing (67.955022ms)
+✔ fresh XITA transport bundle intent survives journal transitions and remains non-rebroadcastable (19.676657ms)
+✔ archived Registry V3 record with old two-field reserve schema cannot block a new deployment (6.343483ms)
+✔ old submitted Registry intent is read with original hash, nonce and calldata intact (1.326757ms)
+✔ an old signed Registry intent with unprovable reserve value cannot be silently rewritten (0.393873ms)
+✔ interrupted unused or failed intent is cleared without creating an archive (7.21479ms)
+✔ a confirmed deployment CANNOT be silently retired or replaced (4.611792ms)
+✔ replacement hash can be adopted only for an unchanged, submitted original intent (4.995334ms)
+✔ operator can replace an unrecorded confirmed WAL with a NEW explicitly signed attempt (6.096486ms)
+✔ explicit override replaces only same-wallet undocumented attempt and preserves previous hash (5.995785ms)
+✔ a confirmed but unpublished on-chain deployment cannot be overridden (6.66021ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 228.501635

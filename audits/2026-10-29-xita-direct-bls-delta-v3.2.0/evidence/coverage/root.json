@@ -1,0 +1,51 @@
+[
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/app.js",
+    "review_status": "REVIEWED",
+    "security_relevance": "Spendable added to status allowlist. Traced sourceHash/account/message key reset, refreshed source-evidence gate, render path and current-balance preflight before resumeDelivery signing.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-actions.js",
+    "review_status": "REVIEWED",
+    "security_relevance": "Entire startTransfer and resumeDelivery reviewed: unsigned preview only adjusts preflight gas envelope; canonical route, EIP-712 quote, amount, recipient, chain and real wallet gas checks remain before eth_sendTransaction. Preview outage fallback 1.2m gas retained.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-gas-profile.js",
+    "review_status": "REVIEWED",
+    "security_relevance": "Complete code-hash keyed profile and integer rounding reviewed with quote/protocol tracks. One-sample to twenty-sample margin, bounds, missing sample fallback, state/proof-size dependencies identified.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-gas-profile.test.mjs",
+    "review_status": "REVIEWED",
+    "security_relevance": "Full two-test suite read and executed; boundary samples and code-hash change covered; dynamic validator workload not demonstrated by these tests.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-sponsor-evidence.js",
+    "review_status": "REVIEWED",
+    "security_relevance": "Complete module reviewed. Positive committed grants require ok and confirmed/spendable status; zero-grant path independently exact-bound. Backend spendable liveness weakness cross-referenced sponsor track.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-sponsor-evidence.test.mjs",
+    "review_status": "REVIEWED",
+    "security_relevance": "All 4 tests executed; positive commitment status gates and exact zero-grant source binding reviewed.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  },
+  {
+    "repository": "xgr-network/xgr-interchain",
+    "path": "apps/web/transfer-status-flow.js",
+    "review_status": "REVIEWED",
+    "security_relevance": "Complete flow renderer and mapped stage data inspected; spendable text correctly distinguishes inclusion from finality but depends on backend fresh evidence. Existing flow regression suite31/31 passes.",
+    "evidence": "evidence/root/phase-a.md; evidence/root/test-logs/"
+  }
+]

@@ -1,0 +1,197 @@
+{
+  "kind": "inherited_v3_1_native_executions_not_rerun",
+  "source_public_archive": {
+    "source_path": "/workspace/scratch/b6f9b43360e2/xgr-interchain/audits/2026-10-27-xita-direct-bls-delta-v3.1.0/evidence-public.zip",
+    "sha256": "bb07320e8a15e2fd2a50eb0d30f1dc30978b7423130557e3f8bc60f5aa8d2af2",
+    "bytes": 6654
+  },
+  "protected_source_metadata": {
+    "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/retained-confidential/v3.1.0/native/evidence.json",
+    "sha256": "889439a15dbacb0eae53c200600c82d63e70d24ac773a6a48c5153743adefc16",
+    "bytes": 8077
+  },
+  "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+  "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+  "go_version": "go1.23.11 linux/amd64",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "cgo_enabled": "1",
+  "runs": [
+    {
+      "name": "native-upstream-suite",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:19:11.660655+00:00",
+      "completed_utc": "2026-10-27T15:19:51.993813+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 479
+        },
+        "package": {
+          "pass": 8
+        }
+      },
+      "leaf_counts": {
+        "pass": 422,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "3079cb61155cd51bf9827d6737c1677f46e2316d336c5f75a420468e25b4a7d0",
+      "bytes": 654160,
+      "source": "protected v3.1.0/native/native-upstream-suite.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0",
+      "command": [
+        "/tmp/xgr-native-go/go/bin/go",
+        "test",
+        "-json",
+        "-count=1",
+        "-p",
+        "4",
+        "./state",
+        "./state/immutable-trie",
+        "./blockchain",
+        "./chain",
+        "./consensus/ibft",
+        "./consensus/ibft/pos",
+        "./types",
+        "./txpool"
+      ],
+      "command_disclosure": "Exact command already in retained public v3.1.0 metadata; fixture contents remain protected."
+    },
+    {
+      "name": "native-independent-final",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:25:13.386685+00:00",
+      "completed_utc": "2026-10-27T15:25:17.867631+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 1081
+        },
+        "package": {
+          "pass": 3
+        }
+      },
+      "leaf_counts": {
+        "pass": 1070,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "eb276c6054c821fafb81059b41a58ad0b040553ff66d4bcf9e57787b88ffa345",
+      "bytes": 1202822,
+      "source": "protected v3.1.0/native/native-independent-final.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0",
+      "command": [
+        "/tmp/xgr-native-go/go/bin/go",
+        "test",
+        "-json",
+        "-v",
+        "-count=1",
+        "-p",
+        "4",
+        "-vet=off",
+        "-overlay",
+        "/workspace/scratch/f3201b555787/audit-work/native/candidate-overlay.json",
+        "./state",
+        "./consensus/ibft",
+        "./blockchain",
+        "-run",
+        "^TestAudit"
+      ],
+      "command_disclosure": "Exact command already in retained public v3.1.0 metadata; fixture contents remain protected."
+    },
+    {
+      "name": "native-independent-baseline-replay-v3",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:21:05.880776+00:00",
+      "completed_utc": "2026-10-27T15:21:06.389006+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 49
+        },
+        "package": {
+          "pass": 1
+        }
+      },
+      "leaf_counts": {
+        "pass": 48,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "ff4fade4fb69966babd0f859fb25059f9368c99bc81625438205d9ebb00a4339",
+      "bytes": 65757,
+      "source": "protected v3.1.0/native/native-independent-baseline-replay-v3.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0",
+      "exact_command_sha256": "d1a074fb8586c5367fd381d920d2a01f916fbcd2b6f5cf4f8ef6347838e60e61",
+      "command_disclosure": "Exact baseline diagnostic selector retained only in protected native/evidence.json; public report gives method/result/counts."
+    },
+    {
+      "name": "native-baseline-adversarial-final-expected-fail",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:25:14.716705+00:00",
+      "completed_utc": "2026-10-27T15:25:15.346451+00:00",
+      "returncode": 1,
+      "counts": {
+        "test": {
+          "fail": 2
+        },
+        "package": {
+          "fail": 1
+        }
+      },
+      "leaf_counts": {
+        "pass": 0,
+        "fail": 1,
+        "skip": 0
+      },
+      "sha256": "7f39ad482045273744c1dce46e75f28a46d6716500545deee35cbc910e089564",
+      "bytes": 2964,
+      "source": "protected v3.1.0/native/native-baseline-adversarial-final-expected-fail.jsonl",
+      "classification": "expected baseline diagnostic failure, not a candidate failure",
+      "exact_command_sha256": "718d7155cb49ab99926a0eeb5ddfe7d8541df455c14dc2e548c9ae751b4f4fc5",
+      "command_disclosure": "Exact baseline diagnostic selector retained only in protected native/evidence.json; public report gives method/result/counts."
+    },
+    {
+      "name": "four-validator local E2E",
+      "source": "protected v3.1.0/native/inputs/root/e2e-four-validators.jsonl",
+      "sha256": "956a2d025aafbdea103df805c739bc9b16ca03f98c8a4d6579755c708c418f65",
+      "counts": {
+        "test": {
+          "pass": 1
+        },
+        "package": {
+          "pass": 1
+        }
+      },
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "started_utc": "2026-10-27T15:28:56.300259+00:00",
+      "completed_utc": "2026-10-27T15:30:18.722544+00:00",
+      "scope": "Four actual local validator processes, common generated genesis, epoch8, explicit securityAccounting H24, stakes each validator, waits through34, compares all4 block hashes at23/24/25/32/34 and lowest common head.",
+      "limits": "Unmodified test does not inject invalid network proposals, perform a fresh post-activation sync from genesis, exercise targeted nested SSTORE payloads through H, simulate mixed binaries/configurations, or inspect production hosts. Directly asserts block hashes, not a separate per-field root/gas comparison.",
+      "classification": "inherited executed result; not rerun",
+      "command": [
+        "/tmp/xgr-native-go/go/bin/go",
+        "test",
+        "-json",
+        "-count=1",
+        "-p",
+        "4",
+        "./e2e",
+        "-run",
+        "^TestSecurityAccountingFourValidators$",
+        "-timeout",
+        "8m"
+      ],
+      "command_disclosure": "Exact command already in retained public v3.1.0 metadata; fixture contents remain protected."
+    }
+  ],
+  "active_storage_matrix_cases": 972,
+  "preactivation_vectors": 48,
+  "fresh_go_runs": 0,
+  "fresh_forge_runs": 0,
+  "counts_note": "Test/subtest events include parent tests; leaf counts are separate. Do not sum overlapping suites as independent exploit cases. Expected baseline failure is diagnostic, not a candidate failure."
+}

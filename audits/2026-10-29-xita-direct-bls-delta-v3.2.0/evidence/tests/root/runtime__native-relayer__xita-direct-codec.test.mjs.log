@@ -1,0 +1,12 @@
+✔ Direct BLS bytes bind exactly one message and deployment; no Merkle metadata (21.509826ms)
+✔ ISM metadata is a direct authorization, signer bitmap and BLS signature (9.296663ms)
+✔ canonical Direct-BLS bytes exactly match independently pinned Go/Solidity vector (0.420072ms)
+✔ ISM ABI matches Solidity abi.decode(metadata,(Metadata)) and rejects flattened legacy encoding (3.850296ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54.982409

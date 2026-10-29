@@ -1,0 +1,236 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "created_utc": "2026-10-29T09:21:25.653443+00:00",
+  "status": "PASS",
+  "review_type": "Independent protocol, source-boundary and publication integration quality review",
+  "scope": "Current report/register arithmetic, all historical original cells, protocol/control/release narrative, public evidence selection and audit-only verification scripts. This is not a new product test campaign or an installed-host attestation.",
+  "reviewed_artifacts": [
+    {
+      "path": "report.md",
+      "bytes": 193803,
+      "sha256": "ac8f00e6a1b548ae784d1bcb3e4b8570a4f8a2c8145985d112f60cacb1958604"
+    },
+    {
+      "path": "report.pdf",
+      "bytes": 289247,
+      "sha256": "0a4c218d85bc1504995cfceb520ab8425d91c08945269c630169807ebaeb6d12"
+    },
+    {
+      "path": "findings.csv",
+      "bytes": 115456,
+      "sha256": "a0542df8d14ae0ce4a9ef16251a9f44adebadb9a1b8ba3a05d79a735cd2b5df4"
+    },
+    {
+      "path": "finding-statistics.json",
+      "bytes": 890,
+      "sha256": "6ce1c99806f6660e951761eac3c8485c0335c074b13350267d891ad76b9ec73d"
+    },
+    {
+      "path": "historical-findings-matrix.csv",
+      "bytes": 200847,
+      "sha256": "88c3f184b4c60aa5e155d777084773e50cc78f1caa34408a56a7eebbe8c44ac4"
+    },
+    {
+      "path": "scope-and-baselines.json",
+      "bytes": 1599,
+      "sha256": "6cdfa0c11e89fee7de5632d4b36f04940ccbbf0887020e86ac3573c503c4ec9a"
+    },
+    {
+      "path": "change-inventory.csv",
+      "bytes": 24366,
+      "sha256": "798e676d06b9469d769c79e08ef3d967d83fc6133d86d160ee89b85d3de9dd5a"
+    },
+    {
+      "path": "phase-a-findings.md",
+      "bytes": 71935,
+      "sha256": "c9e3c4045a1f43eef51bc88b7556cb2a71c00b7153c34644d8dd1707cfb871c1"
+    },
+    {
+      "path": "phase-a-freeze.json",
+      "bytes": 25537,
+      "sha256": "37130eaf23a94243344ddf650e9006ae5eb3ffd87db84b63c0d2d970e9ca63e8"
+    },
+    {
+      "path": "phase-a-publication.json",
+      "bytes": 2194,
+      "sha256": "ed09ece07c254afd5ef9d1739c3b7b38cb1b8a8abadb5aa0e5ceb3fec6a2821e"
+    },
+    {
+      "path": "launch-decision.md",
+      "bytes": 8359,
+      "sha256": "b1ff2743bea8ff10ef6e3f71a51a511b5854ad9ecee59a546df451faf673812c"
+    },
+    {
+      "path": "remediation.md",
+      "bytes": 14168,
+      "sha256": "734782c04b84bdf1a99abb4f17783347251ed54514792cfb421de506e4ab0359"
+    },
+    {
+      "path": "verify_artifacts.py",
+      "bytes": 21956,
+      "sha256": "49b3b13e6ce6ed9b1613a975307072a22379de446bd7d915923b2f0768e3b867"
+    },
+    {
+      "path": "reproduce_source_scope.py",
+      "bytes": 7508,
+      "sha256": "da3c75057e9c51d67d40db49e39230e98f25fa195b2f5bbe0696e50301534896"
+    },
+    {
+      "path": "render_report.py",
+      "bytes": 11325,
+      "sha256": "4dc102c9e1b69b9ec413895eb680da6d434d426bb0749ba1a871a5e569a33a95"
+    }
+  ],
+  "registers": {
+    "findings": 35,
+    "severity_counts": {
+      "RESOLVED": 7,
+      "Medium": 14,
+      "Low": 12,
+      "Informational": 2
+    },
+    "dispositions": {
+      "VERIFIED / RESOLVED": 7,
+      "OPEN": 24,
+      "PARTIALLY_MITIGATED": 3,
+      "ACCEPTED_RISK": 1
+    },
+    "inventory_reviewed": 48,
+    "historical_occurrences": 43,
+    "prior_original_cells": {
+      "status": "PASS",
+      "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+      "occurrences": 43,
+      "columns": 16,
+      "cells": 688
+    }
+  },
+  "report_structure_and_pdf_text": {
+    "chapters": 15,
+    "finding_sections": 35,
+    "pdf_pages": 60,
+    "pdf_sha256": "0a4c218d85bc1504995cfceb520ab8425d91c08945269c630169807ebaeb6d12",
+    "markdown_sha256": "ac8f00e6a1b548ae784d1bcb3e4b8570a4f8a2c8145985d112f60cacb1958604",
+    "visible_word_occurrence_coverage": 0.998541,
+    "limit": "Text coverage is a bounded consistency check; it does not replace separate rendered-page visual review."
+  },
+  "phase_a_publication": {
+    "sealed_original_sha256": "8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52",
+    "public_derivative_sha256": "c9e3c4045a1f43eef51bc88b7556cb2a71c00b7153c34644d8dd1707cfb871c1",
+    "limit": "Original bytes are not required in this public package; their external protected/Git checkpoint identity is declared, not re-read here."
+  },
+  "frozen_local_source_scope": {
+    "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+    "limit": "Checks frozen local Git object identity and inventory, not installed production binaries, host configuration, live RPC state or semantic correctness.",
+    "network_or_production_calls": false,
+    "optional": true,
+    "read_only": true,
+    "repositories": [
+      {
+        "all_touched_files": 48,
+        "baseline_commit": "26d1356ce7c92eed67bfdbb91a5a0b19efc25ae3",
+        "baseline_is_ancestor": true,
+        "baseline_tree": "de63f3712463012a9fdb1efdeff81d30524a0ef6",
+        "commits_including_merges": 62,
+        "diff_sha256": "852139e49f3dbd60c58117a350def496437dcc87a1e0c398e26cca1c9db06e70",
+        "frozen_commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+        "frozen_tree": "4b19f296d2791eec0a98b1f0e4e60ca0225963f9",
+        "inventory_blob_hashes_checked": 48,
+        "merge_commits": 3,
+        "net_changed_files": 48,
+        "repository": "xgr-network/xgr-interchain",
+        "status": "PASS"
+      },
+      {
+        "all_touched_files": 0,
+        "baseline_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+        "baseline_is_ancestor": true,
+        "baseline_tree": "3c5d1a0a1e7264b8b7c5787ca390e976fed09b04",
+        "commits_including_merges": 0,
+        "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "frozen_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+        "frozen_tree": "3c5d1a0a1e7264b8b7c5787ca390e976fed09b04",
+        "inventory_blob_hashes_checked": 0,
+        "merge_commits": 0,
+        "net_changed_files": 0,
+        "repository": "xgr-network/xgr-node",
+        "status": "PASS"
+      }
+    ],
+    "status": "PASS",
+    "verifier": "reproduce_source_scope.py"
+  },
+  "protocol_narrative_checks": [
+    {
+      "subject": "Signed fields and source evidence",
+      "result": "PASS",
+      "conclusion": "Per-message signatures bind source block number and message/route/fee domains. Source transaction hash and canonical block hash are verified through receipt evidence and compared by complete external witnesses; neither is represented as a directly signed field."
+    },
+    {
+      "subject": "Destination replay control",
+      "result": "PASS",
+      "conclusion": "Current-set/domain/quorum authentication belongs to the ISM; Mailbox processing enforces replay state."
+    },
+    {
+      "subject": "Two-hop wallet sequence",
+      "result": "PASS",
+      "conclusion": "The report identifies source TX1, hub delivery TX2, onward source TX3 and final delivery TX4."
+    },
+    {
+      "subject": "Native principal and supported recipients",
+      "result": "PASS",
+      "conclusion": "Mailbox completion is distinguished from native payout. The restricted native-recipient scope requires an ordinary code-free recipient or separately verified usable beneficiary claim path; arbitrary contracts are not presumed recoverable."
+    },
+    {
+      "subject": "Source and observed production identity",
+      "result": "PASS",
+      "conclusion": "57 runtime hashes and 57 canonical successful receipts are affirmative deployment checks. The report does not claim two-provider agreement for every address or a new reproducible build."
+    },
+    {
+      "subject": "Native closure and test provenance",
+      "result": "PASS",
+      "conclusion": "Native closures use actual retained logs on the corrected unchanged candidate. The fresh F-09 current-module check is separately identified as one scenario with five assertions. No fresh Go or Foundry run is claimed."
+    },
+    {
+      "subject": "Release and host provenance",
+      "result": "PASS",
+      "conclusion": "Source-to-v3.4 release equivalence, retained artifact identity and currently observed RPC version strings are distinct from per-host binary attestation."
+    },
+    {
+      "subject": "Committee and role observation",
+      "result": "PASS",
+      "conclusion": "The XGR registry observation is three members and threshold two. Distinct owner/service-wallet addresses are attributed to the execution Gateway."
+    },
+    {
+      "subject": "Optional observer result counting",
+      "result": "PASS",
+      "conclusion": "F-35 reports four executed test cases, not four total assertions, and retains the distinction between local defect reproduction and observed production availability."
+    },
+    {
+      "subject": "Three operating decisions",
+      "result": "PASS",
+      "conclusion": "Restricted core and supervised recovery conditions are separated from unattended sponsorship blockers. Missing per-host installation evidence is not used by itself to establish a current source defect or a NO-GO."
+    },
+    {
+      "subject": "Publication and historical provenance",
+      "result": "PASS",
+      "conclusion": "Public Phase A is explicitly a derivative with the sealed original digest. Protected raw evidence and inherited archive paths are identified separately; earlier immutable checkpoints remain an audit trail."
+    }
+  ],
+  "public_evidence_boundaries": {
+    "selection_manifest": "protocol/phase-b/public-evidence-selection.json in protected work records",
+    "selection_entries": 15,
+    "conclusion": "Selected protocol JSON summaries and identities omit raw private fixtures, negative execution payloads, signing material and raw RPC payloads. Public registry BLS keys and deployed addresses are public identifiers, not secrets.",
+    "sealed_original_sha256": "8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52",
+    "private_redaction_ledger_publicly_selected": false
+  },
+  "audit_verifier_self_check": {
+    "status": "PASS",
+    "cases": 7,
+    "script_sha256": "49b3b13e6ce6ed9b1613a975307072a22379de446bd7d915923b2f0768e3b867",
+    "result_sha256": "576cf6f4d3695ba61a6b81b59ffd1a722b5bfcc0fae542c57e911d93c4839ca5"
+  },
+  "verification_boundary": "Archive-manifest/ZIP integrity is checked by a separate final verify_artifacts.py execution. Visual PDF review is separately recorded by the report publisher. This editorial/source review does not certify product deployment, CI completion, pull-request merge or production exploit absence.",
+  "final_pdf_refreshed_utc": "2026-10-29T09:23:55.971093+00:00",
+  "final_pdf_layout_context": "Publisher reported whole table-row retention and standalone-bold-subheading retention with following content. This reviewer reran extracted-text/content/hash checks; rendered-page visual review remains separately recorded by the publisher."
+}

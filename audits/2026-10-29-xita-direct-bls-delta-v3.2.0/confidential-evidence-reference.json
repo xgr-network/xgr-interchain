@@ -1,0 +1,32 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "kind": "protected_evidence_archive",
+  "file_name": "XITA_Delta_Audit_v3.2.0_Confidential_Evidence_2026-10-29.zip",
+  "library_file_id": "libfile_f5e515148b0081918ad4a415eec1d379",
+  "version": 0,
+  "bytes": 2352824,
+  "sha256": "2a5a261d760d22b276f9a56d8150ff66400ba03880033cf204454e464df24c5e",
+  "entries": 382,
+  "crc_verified": true,
+  "all_member_hashes_verified": true,
+  "phase_a_sealed_artifacts_verified": 126,
+  "original_phase_a_master": "phase-a-sealed-master.md",
+  "original_phase_a_sha256": "8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52",
+  "namespace": "Protected: paths are ZIP members. Restore them under audit-work/ for original relative fixture imports.",
+  "contents": "Original Phase A master and126 sealed artifacts, actual current/historical trace metadata, custom negative fixtures and raw evidence, Phase B cause analyses, private redaction ledger. Two note-only early attempts explicitly retain null unknown metadata.",
+  "access": "Owner-authorized persistent file, separate from the public repository. No private keys for real accounts or production credentials are included.",
+  "audit_trail": "The protected archive preserves the original master; earlier immutable public checkpoint prose remains in branch history. Raw custom executable fixtures/logs were not published.",
+  "historical_reference": {
+    "library_file_id": "libfile_07929ce4515c81919e3a740b4f348fa1",
+    "sha256": "0ba1b7c22ad72cbf7b63d865aad92986a47005fff448fdb77ba3761eef2db48c",
+    "bytes": 662434,
+    "entries": 133,
+    "mode": "Previously retained v3.1 package retrieved and verified; referenced rather than duplicated."
+  },
+  "retained_version_readback": {
+    "readback_sha256": "2a5a261d760d22b276f9a56d8150ff66400ba03880033cf204454e464df24c5e",
+    "bytes": 2352824,
+    "entries": 382,
+    "result": "PASS"
+  }
+}

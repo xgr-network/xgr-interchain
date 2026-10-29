@@ -1,0 +1,164 @@
+{
+  "track": "protocol",
+  "completed_at_utc": "2026-10-29T08:54:55.424744+00:00",
+  "historical_findings_read": false,
+  "changed_protocol_files": 0,
+  "reviewed_adjacent_paths": [
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XITADirectProtocol.sol",
+      "lines": "25-50",
+      "method": "static source/control-flow review",
+      "evidence": "Fixed-width domain-separated authorization; compared field ordering with Go serializer."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XITADirectBLSISM.sol",
+      "lines": "45-91",
+      "method": "static source/control-flow review",
+      "evidence": "Current set, message/hash/header and reverse-route binding traced to registry quorum."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XGRInterchainValidatorRegistryV3.sol",
+      "lines": "72-94;164-204;306-460;508-555",
+      "method": "static source/control-flow review",
+      "evidence": "PoP, quorum, transition authorization, membership address-binding boundary and key-load cost."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XGRInterchainBLSVerifier.sol",
+      "lines": "30-89",
+      "method": "static source/control-flow review",
+      "evidence": "Selected-key aggregation and variable membership gas work; fixed-size aggregate signature."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XITAExecutionGateway.sol",
+      "lines": "178-247;256-325",
+      "method": "static source/control-flow review",
+      "evidence": "Quote authorization, exact user value, native/ERC20 principal, two-hop wallet execution and role separation."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XETAGuardedNativeWarpRouter.sol",
+      "lines": "25-37;68-85",
+      "method": "static source/control-flow review",
+      "evidence": "Pending-claim backing, bounded recipient call and beneficiary-only recovery."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "contracts/XETATokenFactoryV315.sol",
+      "lines": "136-229",
+      "method": "static source/control-flow review",
+      "evidence": "Permissionless factory and canonical hub-route constraints; unknown-catalog ProcessId reachability."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "apps/web/route-availability.js",
+      "lines": "19-73",
+      "method": "static source/control-flow review",
+      "evidence": "Catalog-only route exposure; no implication all permissionless routes indexed."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "services/indexer/transfer-index.mjs",
+      "lines": "21-48",
+      "method": "static source/control-flow review",
+      "evidence": "Receipt-backed catalog indexing scope."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "apps/web/transfer-gas-profile.js",
+      "lines": "14-54",
+      "method": "static source/control-flow review",
+      "evidence": "Profile-key current-set omission and learned lower estimates; coordinated with quote track."
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "path": "services/indexer/gas-observer.mjs",
+      "lines": "79-143",
+      "method": "static source/control-flow review",
+      "evidence": "Shared mailbox scan and unknown-operation cursor condition; confirmed architecture reachability."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "consensus/ibft/interchain/xita_direct_message.go",
+      "lines": "38-103",
+      "method": "static source/control-flow review",
+      "evidence": "Canonical encoder/decoder and payload identity; unchanged full bytes."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/config.go",
+      "lines": "47-145",
+      "method": "static source/control-flow review",
+      "evidence": "Compiled chain/finality/operator policy; native XGR has no external source RPC."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/evm/finality.go",
+      "lines": "15-65",
+      "method": "static source/control-flow review",
+      "evidence": "Safe/IBFT heads, numeric canonical hash and source receipt finality."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/evm/rpc_evidence_quorum.go",
+      "lines": "31-113",
+      "method": "static source/control-flow review",
+      "evidence": "Two distinct operator observations; no mixed endpoint proof; exact comparison."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/evm/iln_direct_operation.go",
+      "lines": "15-171",
+      "method": "static source/control-flow review",
+      "evidence": "Receipt event binding, fee allocation and destination ISM/registry checks."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/evm/iln_native_evidence.go",
+      "lines": "32-95",
+      "method": "static source/control-flow review",
+      "evidence": "Local committed-state source evidence and principal-related event authentication."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/runtime/iln_direct_signing.go",
+      "lines": "27-135",
+      "method": "static source/control-flow review",
+      "evidence": "Independent verification, sync checks, current set and persistence-before-gossip."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/runtime/iln_completed_quorum.go",
+      "lines": "43-106",
+      "method": "static source/control-flow review",
+      "evidence": "Bounded aggregate import, metadata reconciliation and cryptographic validation."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/runtime/iln_scan_catchup.go",
+      "lines": "61-130",
+      "method": "static source/control-flow review",
+      "evidence": "Fail-closed catchup and cursor-after-durable-success semantics."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "interchain/runtime/iln_discovery.go",
+      "lines": "93-140",
+      "method": "static source/control-flow review",
+      "evidence": "Permissionless route discovery separate from UI catalog."
+    },
+    {
+      "repository": "xgr-network/xgr-node",
+      "path": "consensus/ibft/security_accounting.go",
+      "lines": "11-61",
+      "method": "static source/control-flow review",
+      "evidence": "Explicit configured fork activation; system transaction/base-fee checks."
+    }
+  ],
+  "identity_manifest": "source-identity.json",
+  "live_deployment_verification": "deployment-identity-checks.json"
+}

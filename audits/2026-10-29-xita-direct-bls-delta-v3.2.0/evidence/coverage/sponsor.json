@@ -1,0 +1,97 @@
+{
+  "phase": "A",
+  "completed_at": "2026-10-29T08:53:56.497657+00:00",
+  "paths": [
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/gas-sponsor.mjs",
+      "sha256": "0d9f47bab149fe87c177fddf5855188a439ce3fccfa11d8135ee0dccf21f5282",
+      "review_status": "REVIEWED",
+      "security_relevance": "Sponsorship authorisation; durable signed-byte journal; bounded RPC/replay; canonical inclusion/finality; expiry witnesses; sweep lifecycle",
+      "review_method": "Full source 1-816 and full per-commit/net diffs; mock adversarial recovery; real PG rollback and nonce concurrency",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/gas-sponsor.test.mjs",
+      "sha256": "051df8d429360f91131bf9b7c5c6efcb1332253ca2b93bd63997412a51e7a445",
+      "review_status": "REVIEWED",
+      "security_relevance": "Existing verification of nonce identity, gas principal separation, receipt finality, restart and witness disagreements",
+      "review_method": "Full source 1-422; all 20 tests executed; vacuous legacy expiry test identified at 328",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/sponsor-obligation-audit.mjs",
+      "sha256": "15249e266878c048d763d6c13012fb61ea770397419c5873758a299f4fef2fd3",
+      "review_status": "REVIEWED",
+      "security_relevance": "Read-only paid-liability aggregation and immutable alert aging",
+      "review_method": "Full source 1-134; actual monitor under restricted role in PostgreSQL",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/sponsor-obligation-audit.test.mjs",
+      "sha256": "598b4e6ef41258d231734c76e7590e1b172b308bdb66e6494c90526cfabb5191",
+      "review_status": "REVIEWED",
+      "security_relevance": "Aggregate query and no-write boundaries",
+      "review_method": "Full source 1-75; all 6 tests executed",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/sponsor-obligation-audit.pg.test.mjs",
+      "sha256": "59dcae3a1a5898b9d1e7402e5e36241f1b41aa52dbd595ba0726c12fb5571469",
+      "review_status": "REVIEWED",
+      "security_relevance": "Real schema atomic journal, monitor age and obligation edge cases",
+      "review_method": "Full source 1-239; root executes existing suite on separate disposable database; child independently tests actual role, concurrency and rollback",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/managed-relay/sponsor-status.test.mjs",
+      "sha256": "9ad0e06829202b5a8d6b460a856377c93d76acedc52493d3b22d01be102a8ef4",
+      "review_status": "REVIEWED",
+      "security_relevance": "Public provisional grant and aggregate stage projections",
+      "review_method": "Full source 1-73; all 7 tests executed; relevant source mapping reviewed with quote agent",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/indexer/sql/013_sponsor_prepared_tx.sql",
+      "sha256": "978c67021dda4edbd4a56c48966661a9340ece7802627de0e52282c626c81f38",
+      "review_status": "REVIEWED",
+      "security_relevance": "Prepared bytes, unique hash, restricted writes, grant lifetime",
+      "review_method": "Full source 1-20; actual schema applied in disposable PG; fault injected and concurrency verified",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/indexer/sql/014_sponsor_overtaken_obligations.sql",
+      "sha256": "46abffbab1aea94402e382ea933b83abc9bce01c0b7d181a8224e1ce31376e4d",
+      "review_status": "REVIEWED",
+      "security_relevance": "Append-only paid obligations and role boundaries",
+      "review_method": "Full source 1-23; actual schema applied; missing status reader grant reproduced",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    },
+    {
+      "repository": "xgr-network/xgr-interchain",
+      "commit": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "path": "services/indexer/sql/015_sponsor_spendable_receipt.sql",
+      "sha256": "dd2fdb200b71a48b4ad7729a13f5b19f728f4104b64271eb6b0669204912fc1b",
+      "review_status": "REVIEWED",
+      "security_relevance": "Separation of provisional inclusion and safe confirmation",
+      "review_method": "Full source 1-6; actual schema applied; recovery and lost receipt transitions reproduced",
+      "review_evidence": "sponsor/phase-a.md; sponsor/test-executions.json"
+    }
+  ],
+  "unreviewed_assigned_paths": []
+}

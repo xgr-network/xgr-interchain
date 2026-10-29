@@ -1,0 +1,22 @@
+✔ same directional route name across different token projects NEVER shares a cursor (2.425771ms)
+✔ unknown target delivered state remains UNKNOWN and never invents successful mint (0.384348ms)
+✔ confirmed first hop with signed onward route stays open, never claims completion (0.264488ms)
+✔ only the exact canonical onward parent message and route completes a two-hop journey (0.662537ms)
+✔ only RPC-observed unconfirmed source hints appear and cannot count as deliveries (1.287599ms)
+✔ wallet history prioritizes older unfinished transfers before newer completed history (0.553073ms)
+✔ wallet joins optional durable proof status only for its canonical indexed messages (0.697129ms)
+✔ wallet API remains available when optional proof migration is missing (0.448665ms)
+✔ aggregate route health reveals no addresses or signing calldata (1.049119ms)
+✔ ambiguous competing onward hops remain visible instead of silently disappearing (0.703729ms)
+✔ transfer health coverage always includes token identity for same-name multi-assets (0.312911ms)
+✔ empty deployment catalog never exposes orphaned pending SQL operations (0.564389ms)
+✔ active deployment routes get priority over retired route backlog (N-11) (0.2528ms)
+✔ canonical wallet projection distinguishes exactly matched zero grants from missing quote (0.607755ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19.022672

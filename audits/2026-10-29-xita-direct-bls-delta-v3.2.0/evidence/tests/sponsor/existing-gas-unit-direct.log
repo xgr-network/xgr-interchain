@@ -1,0 +1,28 @@
+✔ all quoted stages are independently eligible after TX1 and never after TX2 (1.478966ms)
+✔ gas grants may cover gas and validator fee, NEVER a native token principal (0.453653ms)
+✔ durable reserve is committed before any possible payout; duplicate key denied (42.489665ms)
+✔ tampering with nonce, route, amount, beneficiary or quoted fee never unlocks sponsorship (0.516347ms)
+✔ quote lookup requires exact nonce and restricts beneficiary in SQL (0.363327ms)
+✔ L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 constant (0.586433ms)
+✔ N-08 sponsor payout waits for the safe L2 head and canonical block hash (0.460603ms)
+✔ Sponsor inclusion: mined canonical payout is usable before L2 safe finality (0.54477ms)
+✔ F-08: failing RPC on one chain cannot prevent another chain's verified grant (2.159801ms)
+✔ F-08: a stalled read expires without delaying another chain or releasing an obligation (15.830934ms)
+✔ F-08: an unexpected transaction identity is held, not confirmed or retried (0.89717ms)
+✔ F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2 (2.064347ms)
+✔ F-07: prepared signed bytes recover after crash with no user signature and identical tx hash (5.867532ms)
+✔ F-07: a consumed nonce holds the exact signed grant for operator review (6.515806ms)
+✔ N-06 expires only after finalized source nonce evidence, never merely by time (0.61792ms)
+✔ F-16: identical independent finalized hashes and nonce permit expiry release evidence (0.708827ms)
+✔ F-16: mismatched witness, conflicting nonce and reorg never release quote (0.43186ms)
+✔ F-16: lagging finalized witness retains unresolved promise (0.189586ms)
+✔ F-08: expiry work is fairly partitioned across source chains (0.189425ms)
+✔ F-08: stalled reserve balance RPC does not prevent healthy chain monitoring (11.10381ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 99.578544

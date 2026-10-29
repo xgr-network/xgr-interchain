@@ -1,0 +1,51 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "timestamp_utc": "2026-10-29T09:21:25.653443+00:00",
+  "scope": "Audit-only verifier behavior; no product tests or production calls",
+  "script_sha256": "49b3b13e6ce6ed9b1613a975307072a22379de446bd7d915923b2f0768e3b867",
+  "cases": [
+    {
+      "case": "valid",
+      "expected_rejection": false,
+      "observed_rejection": false,
+      "status": "PASS"
+    },
+    {
+      "case": "missing_member",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    },
+    {
+      "case": "digest_mismatch",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    },
+    {
+      "case": "unexpected_member",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    },
+    {
+      "case": "duplicate_member",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    },
+    {
+      "case": "traversal_member",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    },
+    {
+      "case": "crc_corruption",
+      "expected_rejection": true,
+      "observed_rejection": true,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

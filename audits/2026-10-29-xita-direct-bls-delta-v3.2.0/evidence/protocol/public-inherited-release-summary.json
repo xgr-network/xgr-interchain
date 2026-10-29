@@ -1,0 +1,76 @@
+{
+  "kind": "inherited_v3_1_release_artifact_check_with_fresh_source_identity",
+  "release_observed_utc": "2026-10-27T15:30:24.649974+00:00",
+  "tag": "v3.4.0",
+  "release_commit": "cbe6f8a4ae1718429a9924dcf87f0d28591d74e1",
+  "artifact": {
+    "name": "xgrchain-v3.4.0-linux-amd64",
+    "url": "https://github.com/xgr-network/xgr-node/releases/download/v3.4.0/xgrchain-v3.4.0-linux-amd64",
+    "asset_id": 681478806,
+    "size": 73049132,
+    "sha256": "c4b41557ee957f1a1e6487aa7701ae593ae2e657a911a4761627f728a61be85e",
+    "api_digest_verified": true
+  },
+  "product_cli_fields": {
+    "Release version": "v3.4.0",
+    "Git branch": "XGR3.0",
+    "Commit hash": "cbe6f8a",
+    "Build time": "2026-10-27T10:21:38Z"
+  },
+  "artifact_build_go_version": "go1.23.12",
+  "artifact_vcs_revision": "cbe6f8a4ae1718429a9924dcf87f0d28591d74e1",
+  "artifact_vcs_modified": false,
+  "current_source_relation": {
+    "tag": "v3.4.0",
+    "tag_commit": "cbe6f8a4ae1718429a9924dcf87f0d28591d74e1",
+    "frozen_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+    "changed_paths": [
+      "README.md",
+      "docs/ILN_V340_OPERATOR_REFERENCE.md",
+      "interchain/CHAIN_OBSERVER_ACCEPTANCE.md"
+    ],
+    "executable_code_unchanged": true
+  },
+  "retained_source_hashes": [
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/retained-confidential/v3.1.0/native/phaseB/release-artifact-verification.json",
+      "sha256": "2a79789c5375b4080bc4edd35b8f164bbdde3524252dd0d2a49aa7ac53777d28",
+      "bytes": 2557
+    },
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/retained-confidential/v3.1.0/native/phaseB/release/product-version.stdout",
+      "sha256": "cb4189cdd5fb1dbc976cac05edfd7f6ad847135ee11670fc0f85bcbdac7985fe",
+      "bytes": 132
+    },
+    {
+      "source_path": "/workspace/scratch/b6f9b43360e2/audit-work/retained-confidential/v3.1.0/native/phaseB/release/go-buildinfo.stdout",
+      "sha256": "8aa70c3295b9875489143f5d384e185ed257b16ca637983d9732989d3bd395d7",
+      "bytes": 17106
+    }
+  ],
+  "exact_original_version_commands": {
+    "product-version": {
+      "command": [
+        "/workspace/scratch/f3201b555787/audit-work/native/phaseB/release/xgrchain-v3.4.0-linux-amd64",
+        "version"
+      ],
+      "returncode": 0,
+      "stdout_file": "product-version.stdout",
+      "stderr_file": "product-version.stderr"
+    },
+    "go-buildinfo": {
+      "command": [
+        "/tmp/xgr-native-go/go/bin/go",
+        "version",
+        "-m",
+        "/workspace/scratch/f3201b555787/audit-work/native/phaseB/release/xgrchain-v3.4.0-linux-amd64"
+      ],
+      "returncode": 0,
+      "stdout_file": "go-buildinfo.stdout",
+      "stderr_file": "go-buildinfo.stderr"
+    }
+  },
+  "current_binary_download_or_execution": false,
+  "live_rpc_go_version": "go1.23.11",
+  "limits": "Published artifact identities and RPC strings are different observations. No claim of per-host binary-digest identity; documentation-only release/source differences do establish executable-source equivalence."
+}

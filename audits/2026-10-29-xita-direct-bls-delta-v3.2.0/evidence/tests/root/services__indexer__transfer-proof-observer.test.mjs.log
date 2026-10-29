@@ -1,0 +1,17 @@
+✔ prepared proof remains unsigned: the journal never stores calldata (1.907862ms)
+✔ a transient RPC failure is not a failed transfer or missing funds (0.334995ms)
+✔ the observer only enqueues canonically finalized and undelivered messages (0.346942ms)
+✔ concurrent observers claim a transactionally leased, crash-recoverable job (0.482727ms)
+✔ proof process failure persists only classified retry diagnostics and no signing data (0.782158ms)
+✔ bounded queue skips previously observed old events to prevent new-transfer starvation (0.213111ms)
+✔ provisional destination delivery does not suppress future finalized-state checks (1.129309ms)
+✔ pending BLS signatures poll XGR locally without invoking full Base recovery (2.817511ms)
+✔ local quorum availability triggers full independent validation, never automatic signature (1.218534ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 15.822055

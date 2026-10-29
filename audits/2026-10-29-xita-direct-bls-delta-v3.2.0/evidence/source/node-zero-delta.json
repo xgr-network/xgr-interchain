@@ -1,0 +1,10 @@
+{
+  "repository": "xgr-network/xgr-node",
+  "baseline": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+  "frozen_revision": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+  "commits": 0,
+  "changed_files": 0,
+  "diff_bytes": 0,
+  "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "note": "The complete diff is genuinely empty; no empty placeholder artifact is published."
+}

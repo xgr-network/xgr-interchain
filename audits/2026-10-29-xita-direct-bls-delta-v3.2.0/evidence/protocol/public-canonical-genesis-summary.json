@@ -1,0 +1,22 @@
+{
+  "kind": "inherited_archived_configuration_evidence",
+  "source_public_archive": {
+    "source_path": "/workspace/scratch/b6f9b43360e2/xgr-interchain/audits/2026-10-27-xita-direct-bls-delta-v3.1.0/evidence-public.zip",
+    "sha256": "bb07320e8a15e2fd2a50eb0d30f1dc30978b7423130557e3f8bc60f5aa8d2af2",
+    "bytes": 6654
+  },
+  "archive_entry": "evidence/canonical-genesis-evidence.json",
+  "entry_sha256": "622f6f220aa9a1c1ad98949d8170bb28260f5a016f239cdf27d63bae303f075b",
+  "evidence": {
+    "kind": "GitHub connector read",
+    "repository": "xgr-network/XGR",
+    "revision": "70af62db9fe9c197e2e755dae7919baf313a13ca",
+    "path": "genesis/mainnet/genesis.json",
+    "blob": "582e5a3631655bcb68cbc87568f3c04901dfe366",
+    "chainID": 1643,
+    "securityAccounting.block": 12186213,
+    "introduced_by": "f94f71a4429473754c17edcf993efda8ca08b575",
+    "limitation": "Published canonical schedule, not a per-host effective configuration inventory."
+  },
+  "limit": "Archive evidence only; no third repository accessed in this audit and no per-host installed configuration attestation inferred."
+}

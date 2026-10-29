@@ -1,0 +1,125 @@
+{
+  "generated_at_utc": "2026-10-29T09:05:41.272567+00:00",
+  "retained_source": "xgr-interchain/audits/2026-10-27-xita-direct-bls-delta-v3.1.0/historical-findings.csv",
+  "retained_source_sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+  "earlier_source": "xgr-interchain/audits/2026-10-27-xita-direct-bls-final-v3.0.0/historical-findings.csv",
+  "earlier_source_sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235",
+  "retained_columns": [
+    "audit",
+    "id",
+    "original_severity",
+    "current_severity",
+    "disposition",
+    "title",
+    "original_condition",
+    "boundary_prerequisites",
+    "current_assessment",
+    "source_refs",
+    "corrections",
+    "tests",
+    "production",
+    "current_finding",
+    "duplicate_of",
+    "baseline_provenance"
+  ],
+  "retained_column_count": 16,
+  "retained_cell_values_unchanged": true,
+  "same_occurrence_id_set_in_v3_0_and_corrected_v3_1": true,
+  "occurrence_count": 43,
+  "unique_occurrence_count": 43,
+  "legacy_only_occurrences": 13,
+  "occurrences_mapped_to_current_F_ID": 30,
+  "distinct_current_F_IDs_referenced": [
+    "F-03",
+    "F-04",
+    "F-05",
+    "F-09",
+    "F-10",
+    "F-13",
+    "F-14",
+    "F-17",
+    "F-20",
+    "F-21",
+    "F-22",
+    "F-23",
+    "F-24",
+    "F-25",
+    "F-26",
+    "F-27",
+    "F-28",
+    "F-29"
+  ],
+  "complete_current_F01_F32_track_register_seen": true,
+  "complete_current_track_register_count": 32,
+  "duplicate_occurrences": 14,
+  "all_occurrences_have_current_disposition_source_evidence_and_classification": true,
+  "all_original_or_current_Medium_occurrences_have_management_category": true,
+  "source_order_preserved": true,
+  "csv_and_json_readback_verified": true,
+  "missing_ids": [],
+  "duplicate_ids": [],
+  "occurrence_counts_by_disposition": {
+    "OPEN": 26,
+    "VERIFIED / RESOLVED": 16,
+    "PARTIALLY_MITIGATED": 1
+  },
+  "occurrence_counts_by_current_severity": {
+    "Medium": 11,
+    "RESOLVED": 16,
+    "Low": 14,
+    "Informational": 2
+  },
+  "occurrence_counts_by_management_category": {
+    "OFFEN": 11,
+    "SCHLIESSBAR": 9,
+    "not_applicable": 23
+  },
+  "inputs": [
+    {
+      "path": "xgr-interchain/audits/2026-10-27-xita-direct-bls-delta-v3.1.0/historical-findings.csv",
+      "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235"
+    },
+    {
+      "path": "xgr-interchain/audits/2026-10-27-xita-direct-bls-final-v3.0.0/historical-findings.csv",
+      "sha256": "25c0f879b047e74dfd461bc03b2bc97dcbc69ef56720790d3117cd23591e3235"
+    },
+    {
+      "path": "audit-work/root/phase-b/rows.json",
+      "sha256": "f60a2f7b84f85b8151f056ef76412f7fe2f0b3cb0cf8ff0b9f1282d34ba3fa88"
+    },
+    {
+      "path": "audit-work/sponsor/phase-b/rows.json",
+      "sha256": "33b0347f4b118bce3954bfb436f87052880ff35ce4eb5f384d037631bb69a787"
+    },
+    {
+      "path": "audit-work/quote/phase-b/rows.json",
+      "sha256": "2895e259986d1436987ece8988545a1f039277b3c54f84a11248457466cfa570"
+    },
+    {
+      "path": "audit-work/protocol/phase-b/rows.json",
+      "sha256": "1406d49d3ea6e489ea8550ba3640441362c52762453d2e985f680b33f5917356"
+    },
+    {
+      "path": "audit-work/sponsor/phase-b/legacy-rows.json",
+      "sha256": "6562a8dfd6b7571d4371665ac8d89759724122e777d07e995ff8f19a7de13875"
+    },
+    {
+      "path": "audit-work/protocol/phase-b/unmapped-history-rows.json",
+      "sha256": "7ca81735c8bd36e6827fd6755b867191feddc85219e96bf79eb279880ade7d09"
+    }
+  ],
+  "outputs": [
+    {
+      "file": "integrated-historical-findings-matrix.csv",
+      "bytes": 197441,
+      "sha256": "fa8baff3d6e2d39b06ace2946c1c860f5b47c0ea23c8b2fbb2df8408fa3cdf19"
+    },
+    {
+      "file": "integrated-historical-findings-matrix.json",
+      "bytes": 251519,
+      "sha256": "bd44f5038d8fa4b4c6c54478d921061ac2df56b69fabc207fc886ff3486ca4bc"
+    }
+  ],
+  "interpretation": "The 16 original columns retain corrected-v3.1 values, including its older current_* judgments. Only v3_2_* columns are the current audit assessment. Rows count historical occurrences, not unique current findings. All current F01-F32 track rows were loaded; current findings absent from the 43 legacy occurrences are not manufactured into new occurrences.",
+  "evidence_paths": "Relative paths within v3_2_evidence are interpreted against v3_2_evidence_base; v3_2_decision_record identifies the exact owner record. Protected evidence references remain summaries or names, not executable bytes."
+}

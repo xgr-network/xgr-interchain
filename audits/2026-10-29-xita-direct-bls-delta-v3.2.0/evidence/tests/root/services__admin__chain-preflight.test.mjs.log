@@ -1,0 +1,12 @@
+✔ any config-selected compressed verifier gets read-only smoke test (4.373192ms)
+✔ config-selected EIP2537 never probes native address (0.81108ms)
+✔ mismatched chain ID is rejected independently of chain names (0.185919ms)
+✔ EIP-2537 wrong result never approves basic preflight (0.661155ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12.332653

@@ -1,0 +1,57 @@
+[
+  {
+    "command": "python3 audit-work/protocol/verify_source_identity.py",
+    "repository_commits": {
+      "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+    },
+    "start": "2026-10-29T08:50:36.936897+00:00",
+    "end": "2026-10-29T08:50:38.036756+00:00",
+    "evidence": "source-identity.json",
+    "sha256": "e1bb7f57a013054af1290962c4be11993a4b0ec0dc3f3193b113ebe9b1d6eec5"
+  },
+  {
+    "command": "python3 audit-work/protocol/read_only_rpc.py",
+    "repository_commits": {
+      "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+    },
+    "start": "2026-10-29T08:50:46.356181+00:00",
+    "end": "2026-10-29T08:51:00.023329+00:00",
+    "evidence": "rpc-deployment-results.json",
+    "sha256": "67f3e263a91d89c44ae0e1344363a85de2c1aa495be6849bdc6013733fb1b1a2"
+  },
+  {
+    "command": "node audit-work/protocol/verify_deployment_hashes.mjs",
+    "repository_commits": {
+      "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+    },
+    "start": "2026-10-29T08:52:00.926Z",
+    "end": null,
+    "evidence": "deployment-identity-checks.json",
+    "sha256": "32d91267756257385146976c0793a6bed9ca1da0ea94d73bc10abc47614d3a82"
+  },
+  {
+    "command": "python3 audit-work/protocol/probe_registry.py",
+    "repository_commits": {
+      "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+    },
+    "start": "2026-10-29T08:53:23.012091+00:00",
+    "end": "2026-10-29T08:53:24.035950+00:00",
+    "evidence": "registry-rpc-results.json",
+    "sha256": "ba531bd3e4652a82f17691f5b044681772a000092c80f98244cb72a7b1a5c0d1"
+  },
+  {
+    "command": "node audit-work/protocol/registry_plan.mjs analyze",
+    "repository_commits": {
+      "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+    },
+    "start": null,
+    "end": "2026-10-29T08:53:26.492Z",
+    "evidence": "registry-live-checks.json",
+    "sha256": "03741dca64732b9aaffd8bf5114be3fe7e5e07d6d6f8d60cb5ecb51d64e86ba1"
+  }
+]

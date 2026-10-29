@@ -1,0 +1,16 @@
+✔ aggregate fee claim monitor checks periodically, with no per-message claims (0.957521ms)
+✔ unbounded aggressive claim polling is prohibited (0.546643ms)
+✔ invalid claim threshold cannot incur a live transaction (0.52518ms)
+✔ canonical catalog discovers deployed fee gateways and checks actual receipt files (1.616383ms)
+✔ ENV cannot replace the receipt-backed claim adapter and all thresholds validate before any claim (4.395666ms)
+✔ tampered address, hash, receipt path or receipt body abort all automatic claims (2.090988ms)
+✔ deactivated claims do not require a private key, thresholds or RPC (1.031112ms)
+✔ claim refuses wrong deployed runtime before connecting wallet or estimating gas (0.3656ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50.523818

@@ -1,0 +1,11 @@
+✔ source receipt binds Gateway fee, Mailbox Dispatch, route and recipient (7.119706ms)
+✔ failed, spoofed, mismatching or duplicate events fail closed (14.79234ms)
+✔ unrelated Gateway operations do not invalidate an otherwise unique proof (1.505716ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35.893386

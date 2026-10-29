@@ -1,0 +1,15 @@
+✔ sponsor status is not falsely green when no grant journal exists (1.590534ms)
+✔ only journalled stage-specific grants are reported (0.229967ms)
+✔ only a matching immutable wallet-aware quote may prove no sponsor needed (0.202665ms)
+✔ wallet-aware aggregate stays pending until ALL signed stages confirmed (0.206942ms)
+✔ All gas grants become usable when mined; safe finality remains separate (0.78382ms)
+✔ quote signer bounds unauthenticated attempts before reserving capacity (0.607515ms)
+✔ N-05 returns only chain-bound promised stage names (0.141503ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.021682

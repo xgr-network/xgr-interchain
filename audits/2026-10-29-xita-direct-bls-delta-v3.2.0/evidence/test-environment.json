@@ -1,0 +1,18 @@
+{
+  "recorded_at_utc": "2026-10-29T08:52:05.873634+00:00",
+  "node": "v24.22.1",
+  "npm": "11.9.0",
+  "git": "git version 2.51.1",
+  "platform": "Linux x86_64; kernel 6.18.55; disposable audit container",
+  "dependency_manifest": {
+    "dependencies": {
+      "ethers": "6.13.4",
+      "pg": "8.16.3"
+    }
+  },
+  "postgres": "psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "source_commits": {
+    "xgr-interchain": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+    "xgr-node": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671"
+  }
+}

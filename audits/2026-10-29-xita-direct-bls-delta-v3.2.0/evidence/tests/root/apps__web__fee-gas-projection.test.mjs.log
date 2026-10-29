@@ -1,0 +1,12 @@
+✔ two-hop gas buffers each stage by 30 percent, never double counts onward protocol fee (2.252971ms)
+✔ global off and unsupported destination show its full buffered gas and no credit (0.308445ms)
+✔ negative, excessive or unpriced gas stages fail visibly and native protocol principal is excluded (0.587294ms)
+✔ native gas formatting handles sponsored zero and whole or tiny fractional amounts (1.268309ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.25497

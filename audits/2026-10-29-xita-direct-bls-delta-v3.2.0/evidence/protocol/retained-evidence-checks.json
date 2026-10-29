@@ -1,0 +1,440 @@
+{
+  "checked_utc": "2026-10-29T09:01:17.040851+00:00",
+  "fresh_go_or_forge_runs": 0,
+  "protected_archive_sha256_as_verified_by_root": "0ba1b7c22ad72cbf7b63d865aad92986a47005fff448fdb77ba3761eef2db48c",
+  "native_inherited": [
+    {
+      "name": "native-upstream-suite",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:19:11.660655+00:00",
+      "completed_utc": "2026-10-27T15:19:51.993813+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 479
+        },
+        "package": {
+          "pass": 8
+        }
+      },
+      "leaf_counts": {
+        "pass": 422,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "3079cb61155cd51bf9827d6737c1677f46e2316d336c5f75a420468e25b4a7d0",
+      "bytes": 654160,
+      "source": "protected v3.1.0/native/native-upstream-suite.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0"
+    },
+    {
+      "name": "native-independent-final",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:25:13.386685+00:00",
+      "completed_utc": "2026-10-27T15:25:17.867631+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 1081
+        },
+        "package": {
+          "pass": 3
+        }
+      },
+      "leaf_counts": {
+        "pass": 1070,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "eb276c6054c821fafb81059b41a58ad0b040553ff66d4bcf9e57787b88ffa345",
+      "bytes": 1202822,
+      "source": "protected v3.1.0/native/native-independent-final.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0"
+    },
+    {
+      "name": "native-independent-baseline-replay-v3",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:21:05.880776+00:00",
+      "completed_utc": "2026-10-27T15:21:06.389006+00:00",
+      "returncode": 0,
+      "counts": {
+        "test": {
+          "pass": 49
+        },
+        "package": {
+          "pass": 1
+        }
+      },
+      "leaf_counts": {
+        "pass": 48,
+        "fail": 0,
+        "skip": 0
+      },
+      "sha256": "ff4fade4fb69966babd0f859fb25059f9368c99bc81625438205d9ebb00a4339",
+      "bytes": 65757,
+      "source": "protected v3.1.0/native/native-independent-baseline-replay-v3.jsonl",
+      "classification": "inherited executed result; not rerun in v3.2.0"
+    },
+    {
+      "name": "native-baseline-adversarial-final-expected-fail",
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "baseline_commit": "4d341a08baa604c7871e10af8c7c2e2406f4d032",
+      "started_utc": "2026-10-27T15:25:14.716705+00:00",
+      "completed_utc": "2026-10-27T15:25:15.346451+00:00",
+      "returncode": 1,
+      "counts": {
+        "test": {
+          "fail": 2
+        },
+        "package": {
+          "fail": 1
+        }
+      },
+      "leaf_counts": {
+        "pass": 0,
+        "fail": 1,
+        "skip": 0
+      },
+      "sha256": "7f39ad482045273744c1dce46e75f28a46d6716500545deee35cbc910e089564",
+      "bytes": 2964,
+      "source": "protected v3.1.0/native/native-baseline-adversarial-final-expected-fail.jsonl",
+      "classification": "expected baseline diagnostic failure, not a candidate failure"
+    },
+    {
+      "name": "four-validator local E2E",
+      "source": "protected v3.1.0/native/inputs/root/e2e-four-validators.jsonl",
+      "sha256": "956a2d025aafbdea103df805c739bc9b16ca03f98c8a4d6579755c708c418f65",
+      "counts": {
+        "test": {
+          "pass": 1
+        },
+        "package": {
+          "pass": 1
+        }
+      },
+      "candidate_commit": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "started_utc": "2026-10-27T15:28:56.300259+00:00",
+      "completed_utc": "2026-10-27T15:30:18.722544+00:00",
+      "scope": "Four actual local validator processes, common generated genesis, epoch8, explicit securityAccounting H24, stakes each validator, waits through34, compares all4 block hashes at23/24/25/32/34 and lowest common head.",
+      "limits": "Unmodified test does not inject invalid network proposals, perform a fresh post-activation sync from genesis, exercise targeted nested SSTORE payloads through H, simulate mixed binaries/configurations, or inspect production hosts. Directly asserts block hashes, not a separate per-field root/gas comparison.",
+      "classification": "inherited executed result; not rerun"
+    }
+  ],
+  "protocol_inherited": [
+    {
+      "source": "protected v3.1.0/protocol/logs/audit-negatives-vet-disabled.log",
+      "sha256": "534c651baae2b76f83c84e1d67bad111e58d8d2b565e0adde10dbe5b8d9299b6",
+      "bytes": 953,
+      "assigned_finding_ids": [
+        "F-04",
+        "F-32"
+      ],
+      "pass_records": 3,
+      "classification": "negative/control-flow reproduction passes demonstrate the adverse condition, not a fix",
+      "restricted_fixture_payloads_copied": false
+    },
+    {
+      "source": "protected v3.1.0/protocol/phaseB-logs/go-independent-phaseB.log",
+      "sha256": "70b4b8b8d6763aca8e6c153631b58289c0361fc573b240a88846a2b3e51eda95",
+      "bytes": 510,
+      "assigned_finding_ids": [
+        "F-05",
+        "F-20",
+        "F-21"
+      ],
+      "pass_records": 3,
+      "classification": "negative/control-flow reproduction passes demonstrate the adverse condition, not a fix",
+      "restricted_fixture_payloads_copied": false
+    },
+    {
+      "source": "protected v3.1.0/protocol/phaseB-logs/phaseB-independent-js.log",
+      "sha256": "088a9202388c775d72ead1ff293d130efcc37a4f4a56b3054879a293e067bda6",
+      "bytes": 437,
+      "assigned_finding_ids": [
+        "F-09"
+      ],
+      "pass_records": null,
+      "classification": "negative/control-flow reproduction passes demonstrate the adverse condition, not a fix",
+      "restricted_fixture_payloads_copied": false
+    }
+  ],
+  "v30_inherited": [
+    {
+      "source": "v3.0.0/evidence-public.zip!/node/tests-standard.jsonl",
+      "sha256": "c6dd12ee57dbf24fc983df542c93beefdb51fb584525231acaf6ae24d1469049",
+      "bytes": 115287,
+      "counts": {
+        "test": {
+          "pass": 127
+        },
+        "package": {
+          "pass": 5
+        }
+      },
+      "selected_cases": {
+        "TestInterchainSignerEligibilityIsOptInActiveAndMatchingBLS": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:32.068583621+01:00"
+          }
+        ],
+        "TestILNHintQueueCannotStarveValidRouteBehindEightInvalidNames": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:28.98191194+01:00"
+          }
+        ],
+        "TestILNHintQueueTransientRPCFailureRotatesAndPreservesOriginalLease": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:28.984552384+01:00"
+          }
+        ],
+        "TestILNHintDiscoveryRequiresCanonicalRegistryProof": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:28.967249007+01:00"
+          }
+        ],
+        "TestDirectReceiptAcceptsUnrelatedCanonicalDispatches": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:15:28.001707481+01:00"
+          }
+        ],
+        "TestDirectReceiptRejectsSameMessageWithConflictingDispatchTopics": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:15:28.001720431+01:00"
+          }
+        ],
+        "TestDirectReceiptRejectsDuplicatedGatewayOrMailboxEvents": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:15:28.001565526+01:00"
+          }
+        ],
+        "TestDirectReceiptFailsOnMissingOrDuplicateGatewayOperation": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:15:28.001448569+01:00"
+          }
+        ],
+        "TestObserverRetryDurableDedupConflictAndReverification": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:28.987721346+01:00"
+          }
+        ],
+        "TestObserverRetryRejectsCorruptJournalWithoutSigning": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:15:28.989486355+01:00"
+          }
+        ]
+      },
+      "limitation": "race cases overlap standard cases; do not sum unique tests"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/node/tests-race.jsonl",
+      "sha256": "1c5abfe6bca1b1a4cbf3c019e0d8c21e022579b132d4aeee42615d876e5a7ef1",
+      "bytes": 92088,
+      "counts": {
+        "test": {
+          "pass": 102
+        },
+        "package": {
+          "pass": 2
+        }
+      },
+      "selected_cases": {
+        "TestInterchainSignerEligibilityIsOptInActiveAndMatchingBLS": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:35.369313834+01:00"
+          }
+        ],
+        "TestILNHintQueueCannotStarveValidRouteBehindEightInvalidNames": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:32.022560892+01:00"
+          }
+        ],
+        "TestILNHintQueueTransientRPCFailureRotatesAndPreservesOriginalLease": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:32.022623096+01:00"
+          }
+        ],
+        "TestILNHintDiscoveryRequiresCanonicalRegistryProof": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:32.022542625+01:00"
+          }
+        ],
+        "TestDirectReceiptAcceptsUnrelatedCanonicalDispatches": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:16:30.956808576+01:00"
+          }
+        ],
+        "TestDirectReceiptRejectsSameMessageWithConflictingDispatchTopics": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:16:30.956921096+01:00"
+          }
+        ],
+        "TestDirectReceiptRejectsDuplicatedGatewayOrMailboxEvents": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:16:30.956386037+01:00"
+          }
+        ],
+        "TestDirectReceiptFailsOnMissingOrDuplicateGatewayOperation": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/evm",
+            "time": "2026-10-27T08:16:30.955924098+01:00"
+          }
+        ],
+        "TestObserverRetryDurableDedupConflictAndReverification": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:32.022639501+01:00"
+          }
+        ],
+        "TestObserverRetryRejectsCorruptJournalWithoutSigning": [
+          {
+            "action": "pass",
+            "package": "github.com/xgr-network/xgr-node/interchain/runtime",
+            "time": "2026-10-27T08:16:32.022646922+01:00"
+          }
+        ]
+      },
+      "limitation": "race cases overlap standard cases; do not sum unique tests"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/contracts/forge-independent-final.log",
+      "sha256": "8709bc048732d7eeb0daeca09a97625587dd54cdd4e43389602e07ee2b0fdaf5",
+      "bytes": 3748,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/contracts/summary.json",
+      "sha256": "e03580d92426225677f9bd8dcde286cdfe370a395f696c46ce6259e40e438090",
+      "bytes": 995,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/contracts/build-environment.json",
+      "sha256": "2705b73c4b437e26efa0013a975978c843da77c2eef9a3d17c0e5f80cfa4ccb3",
+      "bytes": 957,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/contracts/deferred-native-ui-summary.json",
+      "sha256": "6b3012de0369a268a0258b8333c4106ec24d5ca5ac2bcc20964cb174e19d63f6",
+      "bytes": 1452,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/contracts/runtime-comparison.json",
+      "sha256": "96305fe162c482a53f8206924e0877cbf1f57f0abc6ba2383eaa6d901f8a9779",
+      "bytes": 171975,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    },
+    {
+      "source": "v3.0.0/evidence-public.zip!/node/m04-transport-static.json",
+      "sha256": "10683fcf8e3c4041931713607659f8acc3ef1010adfa98c8d3c0adbf8a1efcc6",
+      "bytes": 6307,
+      "classification": "reviewed inherited evidence; no fresh contract execution or dependency installation"
+    }
+  ],
+  "protected_inputs_reviewed_hashes_only": {
+    "protected v3.1.0/native/evidence.json": {
+      "sha256": "889439a15dbacb0eae53c200600c82d63e70d24ac773a6a48c5153743adefc16",
+      "bytes": 8077
+    },
+    "protected v3.1.0/native/candidate-overlay.json": {
+      "sha256": "314f65067a161c508c8d7c99c7c3050dc782fbf4ce82a616a8a29b6db1ac657b",
+      "bytes": 509
+    },
+    "protected v3.1.0/native/baseline-overlay.json": {
+      "sha256": "cdb83f3b716597528ea95e2e7dce827122c5c32d5371c806fa5b5165b99ab1d8",
+      "bytes": 207
+    },
+    "protected v3.1.0/native/audit_replay_test.go": {
+      "sha256": "770daf1df6ca22417927bf92a2f3ec13db7e0c893a6928a4604f3f9fd7dc2e6c",
+      "bytes": 9545
+    },
+    "protected v3.1.0/native/audit_ibft_test.go": {
+      "sha256": "a3384d1c88b8159f46f0a172c103bc15e3e897167a67614028eb3e3055fd73a8",
+      "bytes": 12164
+    },
+    "protected v3.1.0/native/audit_basefee_test.go": {
+      "sha256": "0164061ec1e281393c57e52da53f6960b4a65860cec0ea9f5787db947524528f",
+      "bytes": 3961
+    },
+    "protected v3.1.0/native/preactivation-differential.json": {
+      "sha256": "245ae9dd62882c879feeb053d23055e6fa1e055ba761eccefa87622898aad16f",
+      "bytes": 11194
+    },
+    "protected v3.1.0/native/phaseB/release-artifact-verification.json": {
+      "sha256": "2a79789c5375b4080bc4edd35b8f164bbdde3524252dd0d2a49aa7ac53777d28",
+      "bytes": 2557
+    },
+    "protected v3.1.0/native/phaseB/release-source-identity.json": {
+      "sha256": "20c14bbe5dccc76d83cf611bc1c3925c0d8942a7774aabac8c221884988ae57b",
+      "bytes": 6547
+    },
+    "protected v3.1.0/native/phaseB/release/product-version.stdout": {
+      "sha256": "cb4189cdd5fb1dbc976cac05edfd7f6ad847135ee11670fc0f85bcbdac7985fe",
+      "bytes": 132
+    },
+    "protected v3.1.0/native/phaseB/release/go-buildinfo.stdout": {
+      "sha256": "8aa70c3295b9875489143f5d384e185ed257b16ca637983d9732989d3bd395d7",
+      "bytes": 17106
+    },
+    "protected v3.1.0/protocol/private-reproduction/runtime_negative_test.go": {
+      "sha256": "e46ff80909d58c1254c2190d41ca6328d9b7b8d8cd8eea0fc2dd16b42adc7f1f",
+      "bytes": 3453
+    },
+    "protected v3.1.0/protocol/private-reproduction/jsonrpc_negative_test.go": {
+      "sha256": "2b96afe832f5e4bb6a8ed374dbca651a6f455d5158bbee5ff065d099d3fb9e1b",
+      "bytes": 949
+    },
+    "protected v3.1.0/protocol/private-reproduction/phaseb_runtime_test.go": {
+      "sha256": "2039a0f0da745942e284e046ebd192c8395de44f15b62e62b4537ca551c5363a",
+      "bytes": 2993
+    },
+    "protected v3.1.0/protocol/private-reproduction/phaseb_witness_test.go": {
+      "sha256": "39abf0ea59b37dc75599fc4e7bd48be5d14d3bf1315f163a6d96f48c5eaf2330",
+      "bytes": 1271
+    },
+    "protected v3.1.0/protocol/private-reproduction/phaseB-checks.mjs": {
+      "sha256": "1b99f41befb85d2fe151b21cd46205a4ec59ddc075bd6150c8a175618bca8361",
+      "bytes": 4316
+    }
+  }
+}

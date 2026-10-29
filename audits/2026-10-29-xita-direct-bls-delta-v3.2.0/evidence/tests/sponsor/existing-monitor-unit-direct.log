@@ -1,0 +1,14 @@
+✔ F-07: only stale unjournaled nonces and review-worthy grants are reported (0.759233ms)
+✔ F-19: only independently indexed paid and quote-matched promises are counted (0.922339ms)
+✔ auditor uses exactly three SELECT queries, no write, keys or customer identities (1.35506ms)
+✔ clear result does not claim audited settlement; invalid aggregates fail closed (0.607785ms)
+✔ risk-audit entrypoint cannot send payments, load signer or touch Join (0.317298ms)
+✔ F-19 overtaken register uses immutable sponsor identity and never settles liabilities (0.195474ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 10.274854

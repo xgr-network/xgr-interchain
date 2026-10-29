@@ -1,0 +1,12 @@
+{
+  "audit_id": "XITA-DBLS-2026-10-29-v3.2.0",
+  "reviewed_at_utc": "2026-10-29T09:19:54.771550+00:00",
+  "review_scope": "Existing public-source tests and reviewed JSON/source/diff metadata; custom negative scripts/raw private traces excluded.",
+  "source_freeze_sha256": "6cdfa0c11e89fee7de5632d4b36f04940ccbbf0887020e86ac3573c503c4ec9a",
+  "phase_a_original_sha256": "8a6651e9ed0167e7605dab9d129a0fa8019833a37bb5bd348373dadc5bf49a52",
+  "phase_a_publication_sha256": "c9e3c4045a1f43eef51bc88b7556cb2a71c00b7153c34644d8dd1707cfb871c1",
+  "no_product_modifications": true,
+  "historical_audits_modified": false,
+  "note_only_attempts_disclosed": 2,
+  "code_and_installation_decisions_separate": true
+}

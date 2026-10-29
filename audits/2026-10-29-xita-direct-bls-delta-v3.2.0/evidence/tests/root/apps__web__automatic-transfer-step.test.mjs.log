@@ -1,0 +1,13 @@
+✔ only verified wallet-ready transitions issue intent (1.453177ms)
+✔ automatic step key binds wallet + original source + exact source message (0.22591ms)
+✔ paid but unsponsored source starts preflight when proof is ready (0.319421ms)
+✔ unsigned wallet preflight retries without consuming a MetaMask intent (1.187318ms)
+✔ MetaMask intent is never automatically retried, even on rejection or slow receipt (0.182745ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8.608127
