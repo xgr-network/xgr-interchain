@@ -328,9 +328,11 @@ export function hubSpokeSegments(a,b,count=48){
  return out;
 }
 function createTopology(model){
- const spokes=model.chains.filter(c=>c.key!==HUB).sort((a,b)=>a.label.localeCompare(b.label));
+ // Only fully receipted chain infrastructure belongs in the public Universe.
+ // An undeployed or partially deployed chain remains available in Admin.
+ const spokes=model.chains.filter(c=>c.key!==HUB&&c.infrastructureDeployed!==false).sort((a,b)=>a.label.localeCompare(b.label));
  const systems=[];
- if(model.hub)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:3.60,portal:true});
+ if(model.hub&&model.hub.infrastructureDeployed!==false)systems.push({system:model.hub,position:[0,0,0],color:chainColor(HUB,0),radius:3.60,portal:true});
  const count=spokes.length;
  for(let i=0;i<count;i++){
   const key=spokes[i].key,orbital=makeChainOrbit(key,i,count);
