@@ -60,6 +60,21 @@ export const PAID_ALERT_SQL=[
  " ORDER BY chain_name,grant_stage,issue"
 ].join(" ");
 
+// F-19: include durable externally overtaken promises in the operator report.
+// Existing records are never paid, deleted or labelled settled by this query.
+export const OVERTAKEN_ALERT_SQL=[
+ "SELECT o.chain_name,o.stage AS grant_stage,",
+ " 'F-19:durable-overtaken-obligation'::text AS issue,",
+ " COUNT(*)::text AS count",
+ " FROM xita_sponsor_overtaken_obligations o",
+ " WHERE o.sponsor_address=$1",
+ " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g",
+ " WHERE g.grant_key=o.grant_key AND g.sponsor_address=o.sponsor_address",
+ " AND g.chain_name=o.chain_name AND g.amount_wei=o.promised_wei",
+ " AND g.status='confirmed')",
+ " GROUP BY o.chain_name,o.stage ORDER BY o.chain_name,o.stage"
+].join(" ");
+
 function normalizedAlerts(rows,source){
  if(!Array.isArray(rows))throw Error("Invalid sponsor audit result");
  return rows.filter(row=>row.issue!==null).map(row=>{
@@ -81,14 +96,17 @@ export async function inspectSponsorObligations({pool,sponsorAddress}={}){
  // Aggregate in PostgreSQL: no customer address, nonce or message ID returned.
  const grants=await pool.query({text:GRANT_ALERT_SQL,values:[address]});
  const paid=await pool.query({text:PAID_ALERT_SQL,values:[address]});
+ const overtaken=await pool.query({text:OVERTAKEN_ALERT_SQL,values:[address]});
  const alerts=[
   ...normalizedAlerts(grants.rows,"grant-journal"),
-  ...normalizedAlerts(paid.rows,"indexed-paid-commitments")
+  ...normalizedAlerts(paid.rows,"indexed-paid-commitments"),
+  ...normalizedAlerts(overtaken.rows,"durable-overtaken-obligations")
  ];
  return {kind:"xita-sponsor-obligation-audit-v1",
   status:alerts.length?"attention":"no-aged-alerts",
   grantAlertGroups:alerts.filter(a=>a.source==="grant-journal").length,
   paidAlertGroups:alerts.filter(a=>a.source==="indexed-paid-commitments").length,
+  overtakenAlertGroups:alerts.filter(a=>a.source==="durable-overtaken-obligations").length,
   alerts};
 }
 export async function inspectSponsorObligationsCLI({env=process.env,print=console.log}={}){

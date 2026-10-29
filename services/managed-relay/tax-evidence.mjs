@@ -94,6 +94,23 @@ export async function saveQuoteEvidence(row,{
     row.issuedAt,row.expiresAt]);
   if(result.rowCount!==1)throw Error("Duplicate signed quote nonce");
   if(quoteReply?.pricing?.walletAware===true){
+   // F-17: persistently bound outstanding quote admission per wallet, even
+   // across signer restarts or multiple signer processes. This is a 90-second
+   // provisional admission limit, not a release of paid liabilities. It never
+   // deletes, shortens or reclassifies any existing signed commitment.
+   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",
+    ["xita-sponsor-wallet-admission:"+row.payer.toLowerCase()]);
+   const pending=await client.query({text:
+    "SELECT COUNT(*)::int AS count FROM xita_sponsor_quote_intents i"+
+    " WHERE i.payer=$1 AND i.quote_expires_at>NOW()"+
+    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_quote_resolutions r"+
+    " WHERE r.source_chain=i.source_chain AND r.execution_adapter=i.execution_adapter"+
+    " AND r.payer=i.payer AND r.quote_nonce=i.quote_nonce)",
+    values:[row.payer.toLowerCase()]});
+   const pendingCount=Number(pending.rows?.[0]?.count);
+   if(!Number.isSafeInteger(pendingCount)||pendingCount<0||pendingCount>=2)
+    throw Error("Outstanding wallet quote limit reached; retry after quote expiry");
+
    const q=quoteReply.quote,grants=quoteReply.pricing.sponsorCommitments;
    if(!q||!Array.isArray(grants)||grants.length>3||
       quoteReply.source!==row.source||q.payer.toLowerCase()!==row.payer||
