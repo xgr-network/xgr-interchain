@@ -21,7 +21,7 @@ test("BSC is available in generic Admin without a contract or active route",()=>
  assert.equal(chain.blsVerifierFormat,"eip2537");
  assert.equal(chain.receiptFinalityTag,"finalized");
  assert.equal(chain.observedInfrastructure,"deployments/chains/bsc.json");
- assert.equal(inventory.routes.some(r=>r.source==="bsc"||r.destination==="bsc"),false);
+ assert.equal(inventory.routes.filter(r=>r.source==="bsc"||r.destination==="bsc").length,4);
  const infrastructure=infrastructureInventory(root,inventory.chains);
  const bsc=infrastructure.find(c=>c.name==="bsc");
  assert.equal(bsc.status,bsc.documented===bsc.required?"documented":"partial");

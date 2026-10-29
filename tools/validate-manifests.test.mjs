@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {loadCatalog,validateCatalog} from "./validate-manifests.mjs";
 const copy=()=>structuredClone(loadCatalog());
 test("XETA four-chain XGR/wXGR plan validates",()=>assert.deepEqual(validateCatalog(copy()),[]));
-test("six directed hub routes exist",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,6)});
+test("eight directed XGR hub routes exist including BSC",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,8)});
 test("rejects missing reverse route",()=>{const x=copy();x.assets.XGR.routes.routes.pop();assert.ok(validateCatalog(x).some(s=>s.includes("missing reverse route")))});
 test("rejects external-to-external direct routes",()=>{const x=copy(),r=x.assets.XGR.routes.routes[0];r.sourceChain="base";r.destinationChain="polygon";assert.ok(validateCatalog(x).some(s=>s.includes("direct external-to-external")))});
 test("rejects phantom chain",()=>{const x=copy();x.assets.XGR.routes.routes[0].destinationChain="unknown";assert.ok(validateCatalog(x).some(s=>s.includes("invalid route endpoints")))});

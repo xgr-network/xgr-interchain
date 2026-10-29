@@ -53,6 +53,6 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(assetDeploymentFolder("XGR",XGR),"deployments/assets/a7/XGR");
  const virtual=loadAssetDeployment(root,"XGR",XGR);
  assert.equal(virtual.present,Boolean(virtual.representations.length||virtual.routeDeployments.length));
- assert.equal(catalog.assets.XGR.routes.routes.length,6);
+ assert.equal(catalog.assets.XGR.routes.routes.length,8);
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
 });

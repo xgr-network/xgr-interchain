@@ -35,6 +35,16 @@
       "name": "xgr_to_polygon",
       "sourceChain": "xgrchain",
       "destinationChain": "polygon"
+    },
+    {
+      "name": "xgr_to_bsc",
+      "sourceChain": "xgrchain",
+      "destinationChain": "bsc"
+    },
+    {
+      "name": "bsc_to_xgr",
+      "sourceChain": "bsc",
+      "destinationChain": "xgrchain"
     }
   ]
 }
