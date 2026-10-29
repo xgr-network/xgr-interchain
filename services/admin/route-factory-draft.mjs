@@ -102,7 +102,7 @@ export function factoryRouteDraft({asset,source,destination,sourceInfrastructure
 export function chainReadyForAssetRoutes(chain){
  const components=chain?.components;
  return chain?.status==="documented"&&Array.isArray(components)&&
-  components.length>0&&components.every(c=>c.optional===true||(c.status==="documented"&&valid(c.address)))&&
+  components.length>0&&components.every(c=>c.status==="documented"&&valid(c.address))&&
   ["factory","sourceRegistry"].every(key=>components.some(c=>
    c.key===key&&c.status==="documented"&&valid(c.address)));
 }
