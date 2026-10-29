@@ -29,6 +29,8 @@ function fakePool({committed="0",taxRowCount=1}={}){
    const sql=typeof req==="string"?req:req.text;
    calls.push({sql,values:req?.values||[]});
    if(sql.includes("COALESCE(SUM("))return {rows:[{amount:committed}]};
+   if(sql.includes("COUNT(*)::int AS count FROM xita_sponsor_quote_intents"))
+    return {rows:[{count:0}]};
    if(sql.startsWith("INSERT INTO xita_tax_quote_evidence"))
     return {rowCount:taxRowCount};
    return {rowCount:1,rows:[]};
@@ -45,7 +47,7 @@ test("fee evidence and all signed quote promises commit in ONE database transact
  assert.equal(queries.at(-1),"COMMIT");
  assert.equal(queries.filter(q=>q.includes("INSERT INTO xita_sponsor_quote_intents")).length,1);
  assert.equal(queries.filter(q=>q.includes("INSERT INTO xita_sponsor_quote_commitments")).length,2);
- assert.equal(queries.filter(q=>q.includes("pg_advisory_xact_lock")).length,2);
+ assert.equal(queries.filter(q=>q.includes("pg_advisory_xact_lock")).length,3);
  assert.ok(queries.indexOf("COMMIT")>queries.findIndex(q=>q.includes("xita_sponsor_quote_commitments")));
 });
 test("over-budget or duplicate nonce never exposes a partially committed grant",async()=>{
