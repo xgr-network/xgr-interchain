@@ -24,7 +24,7 @@ test("BSC is available in generic Admin without a contract or active route",()=>
  assert.equal(inventory.routes.some(r=>r.source==="bsc"||r.destination==="bsc"),false);
  const infrastructure=infrastructureInventory(root,inventory.chains);
  const bsc=infrastructure.find(c=>c.name==="bsc");
- assert.equal(bsc.status,"partial");
+ assert.equal(bsc.status,bsc.documented===bsc.required?"documented":"partial");
  assert.ok(bsc.documented>=1&&bsc.documented<=bsc.required);
  assert.equal(bsc.required,9);
  if(bsc.documented<bsc.required){
