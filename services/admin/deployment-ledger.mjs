@@ -5,6 +5,7 @@
 import {keccak256} from "../../apps/web/keccak.mjs";
 import {isObservedWalletExecutor} from "./wallet-executor.mjs";
 import {rpcCall} from "./inspector.mjs";
+import {readCanonicalFinalizedHead} from "./chain-finality.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
 import {readFileSync,existsSync} from "node:fs";
 import {assetDeploymentFolder,chainDeploymentPath,loadChainDeployment,loadAssetDeployment} from "../../tools/manifest-layout.mjs";
@@ -136,6 +137,9 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
   throw Error("Transaction not successful or not signed by expected deployer");
  const blockNumber=asUint(receipt.blockNumber,"receipt block");
  const currentHead=asUint(head,"head");
+ const finalized=c.receiptFinalityTag==="finalized"?await readCanonicalFinalizedHead({rpc,url}):null;
+ if(finalized&&blockNumber>finalized.number)
+  throw new DeploymentConfirmationsPendingError(txHash,0n,1n);
  const confirmations=currentHead>=blockNumber?currentHead-blockNumber+1n:0n;
  if(confirmations<BigInt(c.confirmations))
   throw new DeploymentConfirmationsPendingError(txHash,confirmations,BigInt(c.confirmations));
@@ -145,6 +149,8 @@ export async function verifyDeploymentReceipt(root,input,{rpc=rpcCall,now=()=>ne
  // archive STATE access. Authenticate creation first, then verify immutable
  // deployed bytecode against the pinned runtime at the CURRENT chain state.
  const block=await rpc(url,"eth_getBlockByNumber",[blockTag,false]);
+ if(finalized&&blockNumber===finalized.number&&!equal(receipt.blockHash,finalized.hash))
+  throw Error("Receipt block differs from canonical finalized head");
  if(!block||!equal(block.hash,receipt.blockHash)||
     asUint(block.number,"block number")!==blockNumber)
   throw Error("Receipt block does not match canonical chain");
