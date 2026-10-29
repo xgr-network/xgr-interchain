@@ -2,7 +2,7 @@
 // Names and actions come exclusively from the catalog's per-chain
 // native/collateral/synthetic representations. UI stages and MetaMask prompts
 // never count as completed locks, burns, mints, or unlocks.
-const CHAINS={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",polygon:"Polygon"};
+const CHAINS={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",bsc:"BNB Smart Chain",polygon:"Polygon"};
 const TYPES=new Set(["native","collateral","synthetic"]);
 const LABEL={burn:"Burn",mint:"Mint",lock:"Lock",unlock:"Unlock"};
 const PAST={burn:"burned",mint:"minted",lock:"locked",unlock:"unlocked"};
@@ -38,7 +38,8 @@ function tokenAction(chain,direction,representations,asset){
 // L2: native safe head, XGRChain: committed IBFT. Neither a MetaMask prompt,
 // an unfinalized receipt nor latest-head "delivery-observed" completes a step.
 export function tokenFinalityName(chain){
- return ["base","arbitrum"].includes(chain)?"safe finality":
+ return chain==="bsc"?"finalized finality":
+  ["base","arbitrum"].includes(chain)?"safe finality":
   chain==="xgrchain"?"IBFT finality":"network finality";
 }
 function deliveryObserved(record,flow,index){
