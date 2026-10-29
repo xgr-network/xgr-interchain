@@ -132,13 +132,13 @@ test("asset operator supplies approved chain inventory for every synthetic route
  assert.match(operator,/representation,action:"deploy-router",chains:inventory\.chains/);
 });
 
-test("optional commercial gateway never blocks complete protocol asset routes",()=>{
+test("XITA admin requires executionGateway before enabling asset route deployment",()=>{
  const complete={name:"bsc",status:"documented",components:[
   {key:"factory",status:"documented",address:addr(3)},
   {key:"sourceRegistry",status:"documented",address:addr(4)},
   {key:"executionGateway",status:"not-deployed",address:null,optional:true}
  ]};
- assert.equal(chainReadyForAssetRoutes(complete),true);
+ assert.equal(chainReadyForAssetRoutes(complete),false);
  const missing={...complete,components:complete.components.map(x=>
   x.key==="sourceRegistry"?{...x,status:"not-deployed",address:null}:x)};
  assert.equal(chainReadyForAssetRoutes(missing),false);
