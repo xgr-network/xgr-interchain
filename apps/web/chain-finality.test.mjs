@@ -9,7 +9,7 @@ function rpc(chainId=8453,{safe=100,mismatch=false,latest=110,delivered=true,hea
   if(method==="eth_chainId")return "0x"+chainId.toString(16);
   if(method==="eth_getBlockByNumber"){
    const tag=args[0];
-   if(headUnavailable&&(tag==="safe"||tag==="finalized"))throw Error("Native finality tag unsupported");
+   if(headUnavailable&&(tag==="safe"||tag==="finalized"))throw Error(tag==="safe"?"Safe tag unsupported":"Finalized tag unsupported");
    if(tag==="safe"||tag==="finalized")return {number:"0x"+safe.toString(16),hash:H};
    if(tag==="latest")return {number:"0x"+latest.toString(16),hash:H};
    const height=Number(BigInt(tag));
