@@ -3,7 +3,8 @@
 import {selector} from "../../apps/web/keccak.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
 import {verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
-import {verifyDeploymentReceipt} from "./deployment-ledger.mjs";
+import {verifyDeploymentReceipt,DeploymentConfirmationsPendingError} from "./deployment-ledger.mjs";
+import {readCanonicalFinalizedHead} from "./chain-finality.mjs";
 import {observeCommittedWalletTransaction} from "./deployment-wallet-transaction.mjs";
 const H32=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -182,6 +183,12 @@ export async function reconcileDeployedContract({
   ? await getter(rpc,url,entry.transaction.to,"registry()").then(asAddr)
   : receipt.contractAddress;
  if(!ADDR.test(address||""))throw Error("No deployed component address");
+ const finalized=chain.receiptFinalityTag==="finalized"?await readCanonicalFinalizedHead({rpc,url}):null;
+ if(finalized&&BigInt(receipt.blockNumber)>finalized.number)
+  return {pending:true,reason:"finalized",txHash:entry.txHash};
+ if(finalized&&BigInt(receipt.blockNumber)===finalized.number&&
+    !same(receipt.blockHash,finalized.hash))
+  throw Error("Deployment receipt conflicts with canonical finalized head");
  const head=await rpc(url,"eth_blockNumber",[]);
  if(BigInt(head)<BigInt(receipt.blockNumber)||
     BigInt(head)-BigInt(receipt.blockNumber)+1n<BigInt(chain.confirmations||1))

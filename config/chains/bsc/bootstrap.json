@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-validator-fee-bootstrap",
+  "chain": "bsc",
+  "chainId": 56,
+  "destinationDomain": 56,
+  "membershipOriginChainId": 1643,
+  "validatorSource": "explicit-interchain-genesis",
+  "verifierFormat": "eip2537",
+  "verifierAddress": null,
+  "validatorSnapshot": {
+    "blockNumber": null,
+    "validators": [],
+    "notes": "Initial Interchain validators are selected from config/validators/initial.json. Their public BLS possession proofs must bind origin 1643 and destination 56 and be verified against the deployed BSC verifier. No PoS snapshot or private key enters the admin."
+  },
+  "reserve": {
+    "minimumWei": null,
+    "maxExecutorReimbursementWei": null,
+    "perValidatorWei": null,
+    "notes": "BNB-denominated validator reserve and executor reimbursement are intentionally unapproved. Set positive reviewed wei values in a later main commit before ValidatorRegistry deployment; do not inherit ETH-spoke economic values without review."
+  },
+  "sourceFee": {
+    "targetWei": null,
+    "governance": "validator-bls-quorum",
+    "ttlSeconds": 300,
+    "initialization": "factory-constructor-no-quorum",
+    "notes": "Initial native BNB-denominated source validator fee requires explicit operator approval. Factory deployment remains blocked until the fee is committed and shown in the wallet preview."
+  },
+  "notes": "Preparation only: BSC EIP-2537 precompiles (BEP-439) and finalized RPC must pass live read-only checks. Wallet deployment starts at the verifier. ValidatorRegistry additionally needs verified public destination-domain BLS proofs and reviewed initial BNB parameters. No contract addresses are inferred or pre-populated.",
+  "genesisValidatorManifest": "config/validators/initial.json"
+}

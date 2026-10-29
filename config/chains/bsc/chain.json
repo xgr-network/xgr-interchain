@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "name": "bsc",
+  "environment": "mainnet",
+  "chainId": 56,
+  "domainId": 56,
+  "rpcUrls": [
+    "https://bsc-rpc.publicnode.com",
+    "https://bsc.drpc.org",
+    "https://bnb.api.onfinality.io/public"
+  ],
+  "explorer": "https://bscscan.com",
+  "nativeCurrency": {
+    "name": "BNB",
+    "symbol": "BNB",
+    "decimals": 18
+  },
+  "confirmations": 1,
+  "receiptFinalityTag": "finalized",
+  "blsVerifierFormat": "eip2537",
+  "observedInfrastructure": "deployments/chains/bsc.json"
+}
