@@ -99,6 +99,29 @@ async function getProvider(catalog,name,map){
  }
  return map.get(name);
 }
+// F-16: never release an external-chain quote reservation from the single
+// RPC used for ordinary sponsor operations. A second configured source with
+// a different endpoint host must agree on the same finalized block and nonce.
+// Distinct hostnames reduce single-endpoint failure; correlated upstreams
+// remain an explicit operator-level trust assumption.
+async function getExpiryWitnessProvider(catalog,chain,map){
+ const config=catalog.chains?.[chain];
+ const urls=config?.rpcUrls;
+ if(!Number.isSafeInteger(config?.chainId)||!Array.isArray(urls)||
+    urls.length<2||!urls[0]||!urls[1]||
+    new URL(urls[0]).hostname===new URL(urls[1]).hostname)
+  throw Error("Independent quote-expiry RPC witness unavailable");
+ const key=chain+":expiry-witness";
+ if(!map.has(key)){
+  const provider=new JsonRpcProvider(urls[1],config.chainId);
+  const network=await provider.getNetwork();
+  if(network.chainId!==BigInt(config.chainId))
+   throw Error("Quote-expiry witness chain identity mismatch");
+  map.set(key,provider);
+ }
+ return map.get(key);
+}
+
 async function checkCandidate({catalog,row,stage,providers,fetcher}){
  // Independently authenticate the finalized TX1 fee receipt and wallet.
  // No sponsorship is authorized once TX2 has already been delivered.
@@ -561,14 +584,21 @@ export async function reconcileSponsorGrants({
  }
  return {checked,confirmed,held,chainFailures,journalErrors};
 }
-export async function reportSponsorReserves({pool,catalog,wallet,policy,providers}){
+export async function reportSponsorReserves({
+ pool,catalog,wallet,policy,providers,readTimeoutMs=12000
+}){
  const states=[];
  for(const [chain,cfg] of Object.entries(policy)){
   try{
-   const p=await getProvider(catalog,chain,providers);
-   const gasPrice=(await p.getFeeData()).maxFeePerGas||
-    (await p.getFeeData()).gasPrice||0n;
-   const balance=await p.getBalance(wallet.address);
+   // F-08: an unavailable provider must not prevent another chain's reserve
+   // state from being refreshed. The timed operation is read-only.
+   const {gasPrice,balance}=await boundedSponsorReconcileRead(async()=>{
+    const p=await getProvider(catalog,chain,providers);
+    const fee=await p.getFeeData();
+    const gasPrice=fee.maxFeePerGas||fee.gasPrice||0n;
+    const balance=await p.getBalance(wallet.address);
+    return {gasPrice,balance};
+   },readTimeoutMs);
    const ready=gasPrice>0n&&balance>=BigInt(cfg.minReserveWei)+
     BigInt(cfg.maxGrantWei)+gasPrice*120000n;
    await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
@@ -590,46 +620,107 @@ export async function reportSponsorReserves({pool,catalog,wallet,policy,provider
  }
  return states;
 }
-// Resolve quotes five minutes AFTER the on-chain EIP-712 expiry, only from a
-// canonical FINALIZED source block (never by TTL alone). The 5-minute
-// grace covers delayed wallet submission and source ingestion; separately
-// finalized redemption evidence is still mandatory on the RPC.
-// A prior execution may create gas obligations; only unequivocally UNUSED
-// expired quotes can release them. Ambiguous RPCs leave promises reserved.
-export async function reconcileExpiredSponsorQuotes({pool,catalog,providers=new Map(),now=Date.now()}){
+// F-16: quote reservations are never released on expiry time alone.
+// For Base/Arbitrum and future external chains, require two configured RPCs
+// to agree at the SAME finalized height and on the SAME contract nonce result.
+// Re-read pinned hashes after the calls to catch changes during observation.
+// XGRChain's committed-IBFT latest remains the documented native policy.
+export async function verifiedExpiredSponsorQuote({
+ item,sourceChain,provider,witness=null,
+ readNonceUsed=async(p,q,height)=>
+  new Contract(q.execution_adapter,
+   ["function nonceUsed(address,uint256) view returns (bool)"],p)
+   .nonceUsed(q.payer,q.quote_nonce,{blockTag:height})
+}={}){
+ const expiresAt=Date.parse(item?.quote_expires_at);
+ if(!Number.isFinite(expiresAt)||!ADDR.test(item?.execution_adapter||"")||
+    !ADDR.test(item?.payer||"")||!positive(item?.quote_nonce))
+  throw Error("Invalid quote expiry identity");
+ const tag=sourceChain==="xgrchain"?"latest":"finalized";
+ const head=await provider.getBlock(tag);
+ if(!head||!Number.isSafeInteger(head.number)||head.number<1||
+    !HASH.test(head.hash||"")||!Number.isSafeInteger(head.timestamp)||
+    head.timestamp<=0)
+  throw Error("Canonical expiry source head unavailable");
+ // A finalized block must itself be newer than the expiry plus the grace.
+ if(head.timestamp*1000<expiresAt+120000)return null;
+ const height=head.number,hash=head.hash.toLowerCase();
+ const matches=block=>block&&block.number===height&&same(block.hash,hash);
+ if(!matches(await provider.getBlock(height)))
+  throw Error("Source expiry head hash changed before nonce read");
+ const used=await readNonceUsed(provider,item,height);
+ if(typeof used!=="boolean")throw Error("Invalid primary expiry nonce evidence");
+ if(!matches(await provider.getBlock(height)))
+  throw Error("Source expiry head hash changed after nonce read");
+ if(sourceChain!=="xgrchain"){
+  if(!witness)throw Error("Second expiry RPC witness required");
+  const secondHead=await witness.getBlock("finalized");
+  if(!secondHead||!Number.isSafeInteger(secondHead.number)||
+     !HASH.test(secondHead.hash||""))
+   throw Error("Finalized expiry witness unavailable");
+  // A lagging finalized witness cannot attest the pinned height yet.
+  if(secondHead.number<height)return null;
+  if(!matches(await witness.getBlock(height)))
+   throw Error("Expiry witnesses disagree on finalized block");
+  const witnessed=await readNonceUsed(witness,item,height);
+  if(typeof witnessed!=="boolean"||witnessed!==used)
+   throw Error("Expiry witnesses disagree on quote nonce");
+  if(!matches(await witness.getBlock(height)))
+   throw Error("Expiry witness block changed after nonce read");
+ }
+ if(!matches(await provider.getBlock(height)))
+  throw Error("Source expiry head changed after witness verification");
+ return {used,blockNumber:height,blockHash:hash};
+}
+// F-08: rotate source chains instead of letting a backlog of broken RPCs
+// monopolize the global LIMIT. The only timed work is RPC reading; PostgreSQL
+// releases happen afterwards and only with fully verified evidence.
+export async function reconcileExpiredSponsorQuotes({
+ pool,catalog,providers=new Map(),readTimeoutMs=12000,
+ readNonceUsed
+}={}){
  const items=await pool.query({text:
-  "SELECT i.source_chain,i.execution_adapter,i.payer,i.quote_nonce::text AS quote_nonce,"+
-  " i.quote_expires_at FROM xita_sponsor_quote_intents i"+
+  "WITH due AS ("+
+  " SELECT i.source_chain,i.execution_adapter,i.payer,"+
+  " i.quote_nonce::text AS quote_nonce,i.quote_expires_at,"+
+  " ROW_NUMBER() OVER (PARTITION BY i.source_chain"+
+  " ORDER BY i.quote_expires_at,i.execution_adapter,i.payer,i.quote_nonce)"+
+  " AS chain_rank FROM xita_sponsor_quote_intents i"+
   " LEFT JOIN xita_sponsor_quote_resolutions r ON"+
   " r.source_chain=i.source_chain AND r.execution_adapter=i.execution_adapter"+
   " AND r.payer=i.payer AND r.quote_nonce=i.quote_nonce"+
-  " WHERE r.quote_nonce IS NULL AND i.quote_expires_at < NOW()-INTERVAL '5 minutes'"+
-  " ORDER BY i.quote_expires_at LIMIT 80"});
+  " WHERE r.quote_nonce IS NULL AND"+
+  " i.quote_expires_at < NOW()-INTERVAL '5 minutes')"+
+  " SELECT source_chain,execution_adapter,payer,quote_nonce,quote_expires_at"+
+  " FROM due WHERE chain_rank<=12 ORDER BY chain_rank,quote_expires_at"+
+  " LIMIT 80"});
  let resolved=0,held=0;
- const abi=["function nonceUsed(address,uint256) view returns (bool)"];
+ const unavailableChains=new Set();
  for(const item of items.rows){
+  if(unavailableChains.has(item.source_chain)){held++;continue;}
   try{
-   const p=await getProvider(catalog,item.source_chain,providers);
-   const tag=item.source_chain==="xgrchain"?"latest":"finalized";
-   const head=await p.getBlock(tag);
-   if(!head||!HASH.test(head.hash||"")||
-      !Number.isSafeInteger(head.timestamp)||head.timestamp<=0||
-      head.timestamp*1000 < new Date(item.quote_expires_at).getTime()+120000||
-      (item.source_chain==="xgrchain"&&
-       (await p.getBlockNumber())-head.number<0))
-    {held++;continue}
-   const contract=new Contract(item.execution_adapter,abi,p);
-   const used=await contract.nonceUsed(item.payer,item.quote_nonce,{blockTag:head.number});
-   // Disagreeing or unavailable finalized evidence never releases the funds.
+   const evidence=await boundedSponsorReconcileRead(async()=>{
+    const provider=await getProvider(catalog,item.source_chain,providers);
+    const witness=item.source_chain==="xgrchain"?null:
+     await getExpiryWitnessProvider(catalog,item.source_chain,providers);
+    return verifiedExpiredSponsorQuote({item,sourceChain:item.source_chain,
+     provider,witness,...(readNonceUsed?{readNonceUsed}:{})});
+   },readTimeoutMs);
+   if(!evidence){held++;continue;}
    const result=await pool.query({text:
     "INSERT INTO xita_sponsor_quote_resolutions"+
     " (source_chain,execution_adapter,payer,quote_nonce,resolution,"+
     " finalized_source_block,finalized_source_hash)"+
     " VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING",
-    values:[item.source_chain,item.execution_adapter,item.payer,item.quote_nonce,
-     used?"used":"expired-unused",head.number,head.hash.toLowerCase()]});
+    values:[item.source_chain,item.execution_adapter,item.payer,
+     item.quote_nonce,evidence.used?"used":"expired-unused",
+     evidence.blockNumber,evidence.blockHash]});
    if(result.rowCount===1)resolved++;
-  }catch{held++}
+  }catch{
+   // Fail closed. No uncertain or single-provider proof releases budget.
+   unavailableChains.add(item.source_chain);
+   held++;
+  }
  }
  return {resolved,held};
 }
