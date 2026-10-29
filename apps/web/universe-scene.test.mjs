@@ -8,15 +8,19 @@ const catalog={chains:{xgrchain:{chainId:1643},base:{chainId:8453},polygon:{chai
  XGR:{metadata:{canonical:{chain:"xgrchain"},representations:[
  {chain:"xgrchain",symbol:"XGR",representation:"native"},
  {chain:"base",symbol:"wXGR",representation:"synthetic"}]}}}};
-test("public Universe hides undeployed Polygon and partial BSC while retaining deployed spokes",()=>{
+test("public Universe hides planned Polygon and includes fully deployed BSC",()=>{
  const live=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  const model=buildExperienceModel(live);
  const topology=createUniverseTopology(model);
  const visible=new Set(topology.systems.map(item=>item.system.key));
- for(const key of ["xgrchain","base","arbitrum"])assert.ok(visible.has(key),key);
- for(const key of ["polygon","bsc"])assert.ok(!visible.has(key),key);
+ for(const key of ["xgrchain","base","arbitrum","bsc"])assert.ok(visible.has(key),key);
+ assert.ok(!visible.has("polygon"));
  assert.ok(model.chains.some(item=>item.key==="bsc"),"Admin and configured chain inventory remain intact");
  assert.ok(topology.links.every(link=>visible.has(link.from.system.key)&&visible.has(link.to.system.key)));
+ const incomplete=structuredClone(live);
+ delete incomplete.infrastructure.bsc.xitaV315.components.sourceRegistry;
+ const blocked=createUniverseTopology(buildExperienceModel(incomplete));
+ assert.equal(blocked.byKey.has("bsc"),false,"incomplete infrastructure must never appear");
 });
 test("Northstar decoration keeps subtle hub dust and no spoke particle clouds",()=>{
  const t=createUniverseTopology(buildExperienceModel(catalog));
