@@ -1,4 +1,4 @@
-import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway} from "./route-availability.js";
+import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway,isDeployedChain} from "./route-availability.js";
 import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
@@ -51,7 +51,7 @@ export function buildExperienceModel(catalog, isVerified = () => false) {
     representations:Array.isArray(entry?.metadata?.representations)?entry.metadata.representations:[]
   }));
   const chains = Object.entries(catalog?.chains||{}).map(([key,entry])=>({
-    key,label:chainLabel(key,entry),chainId:entry?.chainId??null,
+    key,label:chainLabel(key,entry),infrastructureDeployed:isDeployedChain(catalog,key),chainId:entry?.chainId??null,
     domainId:entry?.domainId??null,
     nativeCurrency:entry?.nativeCurrency?.symbol||"native",
     nativeCurrencyDecimals:Number.isInteger(entry?.nativeCurrency?.decimals)&&entry.nativeCurrency.decimals>=0&&entry.nativeCurrency.decimals<=36?entry.nativeCurrency.decimals:18,
