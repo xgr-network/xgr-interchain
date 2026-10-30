@@ -479,11 +479,8 @@ async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers})
   if(confirmedNonce===Number(row.wallet_nonce)){
    const pending=await p.getTransaction(hash);
    if(!pending){
-    try{await p.broadcastTransaction(row.raw_tx)}
-    catch(e){
-     if(!/already known|known transaction|already imported/i.test(String(e?.message||e)))
-      throw e;
-    }
+    // F-33: an RPC inspection raced against a deadline must be read-only.
+    return {kind:"rebroadcast-candidate",provider:p,hash};
    }
   }
   receipt=await p.getTransactionReceipt(hash);
@@ -536,8 +533,29 @@ export async function reconcileSponsorGrants({
   if(unavailableChains.has(row.chain_name)){held++;continue;}
   let lastError=null;
   try{
-   const state=await boundedSponsorReconcileRead(()=>
+   let state=await boundedSponsorReconcileRead(()=>
     inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers}),readTimeoutMs);
+   if(state?.kind==="rebroadcast-candidate"){
+    // Complete all RPC preflight observations before an effect is permitted.
+    // A timed-out inspection cannot broadcast after its caller has returned.
+    const allowed=await boundedSponsorReconcileRead(async()=>{
+     if(await state.provider.getTransactionCount(wallet.address,"latest")!==
+       Number(row.wallet_nonce))return false;
+     if(await state.provider.getTransaction(state.hash))return false;
+     return preparedSponsorReplayAllowed({pool,row,catalog,providers});
+    },readTimeoutMs);
+    if(!allowed){held++;continue;}
+    // No awaited operation separates the final canonical delivery gate
+    // from starting the SAME immutable prepared transaction.
+    try{
+     const tx=await state.provider.broadcastTransaction(row.raw_tx);
+     if(!same(tx.hash,state.hash))throw Error("Prepared replay hash mismatch");
+    }catch(error){
+     if(!/already known|known transaction|already imported/i.test(
+       String(error?.message||error)))throw error;
+    }
+    state="pending";
+   }
    if(state==="pending"){held++;continue;}
    if(state==="spendable"){
     const result=await pool.query({text:

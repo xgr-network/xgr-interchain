@@ -38,6 +38,17 @@ export async function recordVerifiedGas({pool,rpc,chain,chainConfig,txHash,
   values:[profile.key,chain,txHash.toLowerCase(),height,receipt.blockHash.toLowerCase(),gas]});
  return true;
 }
+// Advance only the monotone statistical cursor; it is not a transfer
+// discovery or principal settlement cursor.
+async function advanceOnwardGasCursor(pool,row){
+ await pool.query({text:`INSERT INTO xita_gas_onward_cursors
+    (singleton,indexed_at,source_tx_hash) VALUES(TRUE,$1,$2)
+    ON CONFLICT(singleton) DO UPDATE SET
+    indexed_at=EXCLUDED.indexed_at,source_tx_hash=EXCLUDED.source_tx_hash
+    WHERE (xita_gas_onward_cursors.indexed_at,xita_gas_onward_cursors.source_tx_hash)<
+      (EXCLUDED.indexed_at,EXCLUDED.source_tx_hash)`,
+    values:[row.source_indexed_at,row.source_tx_hash]});
+}
 // Recheck a small set of canonical child-transaction receipts every tick.
 // This captures TX3 burn/forward independently of how its gas was funded.
 export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
@@ -55,7 +66,12 @@ export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
  let measured=0;
  for(const row of rows.rows){
   const profile=gasObservationProfile(catalog,row.source_chain,row.route_id,"hub-onward");
-  if(!profile)break;
+  if(!profile){
+   // F-35: an unprofiled child operation is not a trusted gas sample,
+   // but it must not permanently block later independently verified rows.
+   await advanceOnwardGasCursor(pool,row);
+   continue;
+  }
   try{
    const ok=await recordVerifiedGas({pool,rpc,chain:row.source_chain,
     chainConfig:catalog.chains[row.source_chain],txHash:row.source_tx_hash,
@@ -63,13 +79,7 @@ export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
     expectedBlockHash:row.source_block_hash});
    if(!ok)break;
    measured++;
-   await pool.query({text:`INSERT INTO xita_gas_onward_cursors
-    (singleton,indexed_at,source_tx_hash) VALUES(TRUE,$1,$2)
-    ON CONFLICT(singleton) DO UPDATE SET
-    indexed_at=EXCLUDED.indexed_at,source_tx_hash=EXCLUDED.source_tx_hash
-    WHERE (xita_gas_onward_cursors.indexed_at,xita_gas_onward_cursors.source_tx_hash)<
-      (EXCLUDED.indexed_at,EXCLUDED.source_tx_hash)`,
-    values:[row.source_indexed_at,row.source_tx_hash]});
+   await advanceOnwardGasCursor(pool,row);
   }catch{break}
  }
  return measured;

@@ -420,3 +420,47 @@ test("F-08: stalled reserve balance RPC does not prevent healthy chain monitorin
  assert.deepEqual(result,[{chain:"base",ready:false},{chain:"xgrchain",ready:true}]);
  assert.equal(writes.length,2);
 });
+
+test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
+ const sponsor=new Wallet("0x"+"11".repeat(32)),target=addr("b");
+ const rawTx=await sponsor.signTransaction({chainId:1643,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const digest=Transaction.from(rawTx).hash;
+ const row={grant_key:"base:"+hash("1")+":first-delivery",
+  chain_name:"xgrchain",sponsor_address:sponsor.address.toLowerCase(),
+  recipient:target,amount_wei:"5000",wallet_nonce:7,tx_hash:null,
+  prepared_hash:digest,raw_tx:rawTx};
+ let unblock,entered;
+ const pendingRead=new Promise(resolve=>{unblock=resolve});
+ const enteredRead=new Promise(resolve=>{entered=resolve});
+ let broadcasts=0;
+ const provider={
+  send:async(method)=>{
+   if(method==="eth_chainId")return "0x66b";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("unexpected RPC");
+  },
+  getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>{entered();return pendingRead},
+  getTransaction:async()=>null,
+  broadcastTransaction:async()=>{broadcasts++;return {hash:digest}}
+ };
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows:[row]};
+  if(q.text?.startsWith("SELECT account,delivered"))
+   return {rows:[{account:target,delivered:false,
+    destination_chain:"xgrchain",destination_mailbox:addr("c")}]};
+  return {rowCount:1};
+ }};
+ const run=reconcileSponsorGrants({pool,wallet:sponsor,
+  catalog:reconciliationCatalog,providers:new Map([["xgrchain",provider]]),
+  readTimeoutMs:20});
+ await enteredRead;
+ const result=await run;
+ assert.equal(result.held,1);
+ assert.equal(broadcasts,0);
+ unblock(7);
+ await new Promise(resolve=>setTimeout(resolve,30));
+ assert.equal(broadcasts,0,"deadline-expired callback must never send");
+});
