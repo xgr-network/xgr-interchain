@@ -246,6 +246,29 @@ test("unsigned fee pricing automatically discovers the receipt-backed XGR to Arb
  assert.ok(BigInt(quote.pricing.grossInterchainFeeWei)>0n);
 });
 
+test("XGR to BSC unsigned fee preview prices native BNB without a wallet signature",async()=>{
+ const {catalog}=freshDeployedCatalog({names:["xgrchain","bsc"],routeDestination:"bsc"});
+ const route=deployedRoutes(catalog).find(r=>
+  r.asset==="XGR"&&r.source==="xgrchain"&&r.destination==="bsc");
+ assert.ok(route,"BSC must have its canonical receipt-backed route");
+ const updated={...defaults(),catalog,preview:true,
+  request:{asset:"XGR",source:"xgrchain",destination:"bsc",
+   payer:signer.address,recipient:signer.address,amountRaw:"100000000000000000000"},
+  executionAddress:catalog.infrastructure.xgrchain.xitaV315.components.executionGateway.address,
+  readGatewayQuote:async()=>({bridgeNativeWei:100100000000000000000n,
+   validatorFeeWei:100000000000000000n,tokenAmount:0n}),
+  getCoinGeckoSnapshot:async()=>({...exchange(),
+   binancecoin:{usd:600,last_updated_at:Math.floor(now/1000)-10}})};
+ const q=await buildManagedQuote(updated);
+ assert.equal(q.status,"UNSIGNED_FEE_PREVIEW");
+ assert.equal(q.source,"xgrchain");assert.equal(q.destination,"bsc");
+ assert.equal(q.pricing.destinationNativeCoinGeckoId,"binancecoin");
+ assert.equal(q.pricing.journeyCostStages[0].nativeGasCoin,"binancecoin");
+ assert.equal(q.signature,null);
+ assert.ok(BigInt(q.pricing.grossInterchainFeeWei)>0n);
+ await assert.rejects(()=>buildManagedQuote({...updated,
+  getCoinGeckoSnapshot:async()=>exchange()}),/stale or unavailable: binancecoin/);
+});
 test("wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact",async()=>{
  const base={...defaults(),walletAwareEnabled:true,
   readWalletNativeBalance:async()=>0n};
