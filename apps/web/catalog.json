@@ -567,6 +567,7 @@
           "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-df4289e8037c736955127af53371e1002677b35f.json",
           "deployments/receipts/base/1acb30565f113b983475064a8b84eade35b12a270633483ba96d82fd302e1c8e-eeb21da92aaeca479009346c8f27f2fd4d3571f3.json",
           "deployments/receipts/base/9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a-d7443427ca21ae0907d2aa55446470307c990092.json",
+          "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json",
           "deployments/receipts/xgrchain/3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b-17eb63cc1af0c1a206781e3b4ad7faa1e3c3fbc7.json",
           "deployments/receipts/xgrchain/3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b-d79fca769f7ecd45593411abb905cb93dd0230f7.json",
           "deployments/receipts/xgrchain/b56c020cec2fd1e7d6c0e64859afc4c87f91dee5768a88dcc3f8d4de06ed0b54-7d9354baab0bf308d17e90ee3895609680e355ed.json",
@@ -587,6 +588,13 @@
             "address": "0xd7443427ca21ae0907d2aa55446470307c990092",
             "runtimeCodeKeccak256": "0xdc391e3a115a96cab16bbcbe61065b19e1b7b3897ab4b162f8406412fe88e1f4",
             "receiptPath": "deployments/receipts/base/9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a-d7443427ca21ae0907d2aa55446470307c990092.json"
+          },
+          {
+            "chain": "bsc",
+            "component": "syntheticRouter",
+            "address": "0xd95d7bdab837a36b200f95b4b36e89a5702891c8",
+            "runtimeCodeKeccak256": "0xaa8e7ff3da68beeb031d0a82d65abb1d0191e4017b276931d77a09db290b4dae",
+            "receiptPath": "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json"
           },
           {
             "chain": "xgrchain",

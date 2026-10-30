@@ -19,6 +19,13 @@
       "receiptPath": "deployments/receipts/base/9b840802054acf3ee49a4491544318076f5cb55b00b2b8a49544cd0fc410771a-d7443427ca21ae0907d2aa55446470307c990092.json"
     },
     {
+      "chain": "bsc",
+      "component": "syntheticRouter",
+      "address": "0xd95d7bdab837a36b200f95b4b36e89a5702891c8",
+      "runtimeCodeKeccak256": "0xaa8e7ff3da68beeb031d0a82d65abb1d0191e4017b276931d77a09db290b4dae",
+      "receiptPath": "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json"
+    },
+    {
       "chain": "xgrchain",
       "component": "nativeRouter",
       "address": "0x7d9354baab0bf308d17e90ee3895609680e355ed",
