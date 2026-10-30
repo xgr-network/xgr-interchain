@@ -450,7 +450,9 @@ test("completed Base to XGR delivery is success, never unresolved or repeat-sign
   {account},{items:[completed],selectedTxHash:txHash});
  assert.match(html,/data-transfer-action="new"/);
  assert.match(html,/>New transfer<\/button>/);
- assert.doesNotMatch(html,/Continue transfer · view status|id="xita-flow-reopen"|Transfer costs/);
+ assert.doesNotMatch(html,/Continue transfer · view status|id="xita-flow-reopen"/);
+  assert.match(html,/Transfer costs|id="ux-fee-preview-status"/);
+  assert.doesNotMatch(html,/is-recovery/);
  assert.doesNotMatch(html,/Previous transfer not yet verified|Original transfer has not yet been found/);
  assert.doesNotMatch(html,/Continue transfer · view status/);
  const foreign=renderPlanRoute(m,{origin:"base",destination:"xgrchain",asset:"XGR"},"ready",
@@ -732,7 +734,10 @@ test("completed journey loses stale status CTA and can reset to new transfer",()
   {items:[done],selectedTxHash:txHash,hasFlow:true});
  assert.match(html,/data-transfer-action="new"/);
  assert.match(html,/>New transfer<\/button>/);
- assert.doesNotMatch(html,/id="xita-flow-reopen"|View transfer status|Transfer costs/);
+ assert.doesNotMatch(html,/id="xita-flow-reopen"|View transfer status/);
+  assert.match(html,/id="ux-fee-preview-status"/);
+  assert.match(html,/id="ux-fee-info-trigger"/);
+  assert.doesNotMatch(html,/is-recovery/);
 });
 
 test("outreach FAQ covers finality, recovery and sponsorship",()=>{
