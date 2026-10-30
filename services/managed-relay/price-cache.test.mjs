@@ -7,21 +7,27 @@ import {PRICE_CACHE_KIND,readCachedGasPrices,refreshGasPriceCache} from "./price
 const now=Date.UTC(2026,9,22,7,30),sec=Math.floor(now/1000);
 const body=(age=0)=>({ethereum:{usd:2500,eur:2200,last_updated_at:sec-age},
  xgr:{usd:0.0001,eur:0.00009,last_updated_at:sec-age},
- "polygon-ecosystem-token":{usd:0.35,eur:0.31,last_updated_at:sec-age}});
+ "polygon-ecosystem-token":{usd:0.35,eur:0.31,last_updated_at:sec-age},
+ binancecoin:{usd:600,eur:550,last_updated_at:sec-age}});
 test("one backend refresh persists one shared quote-safe snapshot",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"xita-price-")),path=join(dir,"prices.json");
  try{
   let requests=0;
   const fetcher=async(url)=>{requests++;assert.match(url,/simple\/price/);
-   assert.match(url,/ethereum/);return {ok:true,json:async()=>body()}};
+   assert.match(url,/ethereum/);
+   assert.match(decodeURIComponent(url),/binancecoin/);
+   return {ok:true,json:async()=>body()}};
   const updated=await refreshGasPriceCache({path,now,fetcher});
   assert.equal(requests,1);
-  assert.equal(updated.coins.length,3);
+  assert.equal(updated.coins.length,4);
+  assert.ok(updated.coins.includes("binancecoin"));
   const saved=JSON.parse(await readFile(path,"utf8"));
   assert.equal(saved.kind,PRICE_CACHE_KIND);
   assert.equal(saved.prices.ethereum.eur,2200);
+  assert.equal(saved.prices.binancecoin.usd,600);
   assert.equal((await readCachedGasPrices({path,now:now+5*60000})).ethereum.usd,2500);
   assert.equal((await readCachedGasPrices({path,now:now+5*60000})).ethereum.eur,2200);
+  assert.equal((await readCachedGasPrices({path,now:now+5*60000})).binancecoin.usd,600);
   await assert.rejects(()=>readCachedGasPrices({path,now:now+16*60000}),/stale/);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
@@ -45,5 +51,6 @@ test("partial refresh keeps only independent timestamp-valid coins",async()=>{
   })});
   const r=await readCachedGasPrices({path,now:now+180000});
   assert.equal(r.ethereum.usd,2550);assert.equal(r.xgr.usd,0.0001);
+  assert.equal(r.binancecoin.usd,600);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
