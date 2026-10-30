@@ -10,7 +10,7 @@ import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./walle
 import {metaMaskTokenSpec,injectedMetaMask,requestMetaMaskToken,metaMaskFailure} from "./metamask-token.js";
 import {readNativeGasBalances} from "./wallet-gas.js";
 import {findWalletSourceTx,configuredGatewayRoutes} from "./wallet-transfers.js";
-import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
+import {selectedRecovery,openWalletTransfers,blocksUnverifiedSourceRepeat,canPreviewNewTransfer} from "./wallet-transfer-selection.js";
 import {renderMyTransfers,validWalletAddress} from "./transfer-page.js";
 import {startTransfer,startVerifiedOnwardHop,resumeDelivery,waitForWalletReceipt,amountToUnits} from "./transfer-actions.js";
 import {readWalletTokenBalances} from "./wallet-token-balances.js";
@@ -1277,7 +1277,7 @@ function render(){
   // select values after a render. All dependent UI must share this state.
   if(!transferActivity.selectedTxHash)
    Object.assign(state.experience,normalizeTransferSelection(universe,state.experience));
-  if(!transferActivity.selectedTxHash){void refreshSponsorship();scheduleFeePreview();}
+  if(canPreviewNewTransfer(transferActivity.items,state.account,transferActivity.selectedTxHash)){void refreshSponsorship();scheduleFeePreview();}
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
