@@ -267,6 +267,8 @@
           "deployments/receipts/base/96627a097fd66348fea3dfc4d9bb8607e5d75eb4cb1b0bbfc41e8dac90838fa8-c78929dc2d877ced57034319c3f162407cd605b9.json",
           "deployments/receipts/base/c1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd-a2785616b468a92829c48806fbd2cd22be37ffb4.json",
           "deployments/receipts/base/c1a6e617a92def381a8364c1a6ef0be260f0fa5a9ff9847917f3583dc76bffbd-c1349b7c7bef9e49e314716d1e28f2b5a4aced04.json",
+          "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-b8e9eacb6858065e42a159061342504d82501edf.json",
+          "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-f338451ecb756133dc0fe19d9c6d3f78c22ddbe7.json",
           "deployments/receipts/bsc/aa2d5568b1bb0b6e738c8a3782b1fa5c20d4a60866cea3107e892a6d621254d0-308b4084273a94c639264a87241ac66a2b0e0a04.json",
           "deployments/receipts/xgrchain/69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b-731dd9a0417810013b2958555c79038dfb93aa90.json",
           "deployments/receipts/xgrchain/69d1f6864834ca3634d2b95d03aaaa0e5c12e3e6f92559e1b90dbe921e184a0b-c60375387eb571e0fd58e518b89619eaec4a8da3.json",
@@ -409,6 +411,32 @@
             "receiptPaths": [
               "deployments/receipts/xgrchain/f467780abedc36fa6f95f10b0e2150474784e1c0d4db30ab440fb84c17adf1f2-85ab076e3a8dc4074239d8437fa880a671a57cad.json",
               "deployments/receipts/xgrchain/f467780abedc36fa6f95f10b0e2150474784e1c0d4db30ab440fb84c17adf1f2-d2ee35af42b9d96afea8fca3dd837f2bbc285755.json"
+            ]
+          },
+          {
+            "schemaVersion": 1,
+            "kind": "asset-route-deployment",
+            "asset": "ARB",
+            "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+            "routeId": "0x9e3c7bb56da0ac104e87c3f7bce5e2151e842f7b4e224916985470d9b7d13560",
+            "routeName": "bsc_to_xgr",
+            "sourceChain": "bsc",
+            "destinationChain": "xgrchain",
+            "components": {
+              "gateway": {
+                "address": "0xb8e9eacb6858065e42a159061342504d82501edf",
+                "runtimeCodeKeccak256": "0x9986cff59cfbddcec45f5d02a32b6f61f29d5cfdf78535b3b4ca37d9967785fe",
+                "receiptPath": "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-b8e9eacb6858065e42a159061342504d82501edf.json"
+              },
+              "feeVault": {
+                "address": "0xf338451ecb756133dc0fe19d9c6d3f78c22ddbe7",
+                "runtimeCodeKeccak256": "0x112d8dacb0d5820b4e14e8ec69b8724e28def9a10a4d3c96a78b35ed239a8484",
+                "receiptPath": "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-f338451ecb756133dc0fe19d9c6d3f78c22ddbe7.json"
+              }
+            },
+            "receiptPaths": [
+              "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-b8e9eacb6858065e42a159061342504d82501edf.json",
+              "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-f338451ecb756133dc0fe19d9c6d3f78c22ddbe7.json"
             ]
           },
           {
