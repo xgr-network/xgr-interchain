@@ -1,7 +1,7 @@
 import {blocksUnverifiedSourceRepeat} from "./wallet-transfer-selection.js";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
+import {openWalletTransfers,selectedRecovery,completedWalletTransfer,canPreviewNewTransfer} from "./wallet-transfer-selection.js";
 const owner="0x"+"a".repeat(40),other="0x"+"b".repeat(40),tx="0x"+"1".repeat(64);
 const pending={account:owner,txHash:tx,sourceChain:"xgrchain",destinationChain:"base",status:"awaiting-proof"};
 test("unfinished historical delivery never hijacks a new transfer implicitly",()=>{
@@ -27,4 +27,15 @@ test("safe-head or RPC-unavailable wallet transfers remain resumable by original
   const item={...pending,status,confirmed:false};
   assert.deepEqual(selectedRecovery([item],owner,tx),item);
  }
+});
+
+test("only wallet-owned fully delivered resume hashes restore fresh transfer fee preview",()=>{
+ const complete={...pending,confirmed:true,delivered:true,status:"delivered"};
+ assert.equal(completedWalletTransfer([complete],owner,tx),complete);
+ assert.equal(canPreviewNewTransfer([complete],owner,tx),true);
+ assert.equal(canPreviewNewTransfer([complete],other,tx),false);
+ assert.equal(canPreviewNewTransfer([pending],owner,tx),false);
+ assert.equal(canPreviewNewTransfer([],owner,tx),false);
+ assert.equal(canPreviewNewTransfer([complete],owner,null),true);
+ assert.equal(canPreviewNewTransfer([{...complete,delivered:false}],owner,tx),false);
 });
