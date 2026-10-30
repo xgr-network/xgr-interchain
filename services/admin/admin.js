@@ -7,6 +7,7 @@ import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 import {chainDeploymentIntent,hasOutstandingWalletTransaction} from "./chain-intent-view.mjs";
 import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
+import {advanceDeploymentBeforeSignature} from "./deployment-resume-gate.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
 async function postJSON(p,data){return apiJSON(fetch,p,{method:"POST",data});}
@@ -339,6 +340,23 @@ async function executeAssetDeployment(){
  wallet=await currentWalletState();
  if(!wallet||wallet.chainId!==chain.chainId)throw Error("Falsche Wallet-Chain");
  el("modal-deploy").disabled=true;
+ // Reconcile/retire the previous attempt first. A prepared draft without a
+ // consumed wallet nonce is not a deployment, even with a different wallet.
+ const previous=await advanceDeploymentBeforeSignature({
+  post:postJSON,type:"asset",target:task.asset
+ });
+ if(previous.stage==="pending"){
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Vorherige Transaktion wird geprüft ("+(previous.reason||"pending")+
+   ")"+(previous.txHash?" · "+previous.txHash:"")+". Keine zweite Signatur.","warn");
+  return;
+ }
+ if(previous.stage==="documented"){
+  await waitForDeploymentSync(previous);
+  el("modal-deploy").disabled=false;
+  presentModalStatus("Vorheriger Router oder Route wurde verifiziert und dokumentiert.","success");
+  return;
+ }
  const prepared=await postJSON("/admin/api/asset-deploy/prepare",{
   taskId:task.id,wallet:wallet.address});
  if(prepared.stage==="documented"){
@@ -705,27 +723,27 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
    }
    let prepared=null,txHash=null;
    try{
-    if(core){
-     // Reconcile an existing Factory/SourceRegistry receipt before any new
-     // wallet prompt. An unfinished confirmation is never a deploy failure.
-     const previous=await postJSON("/admin/api/deploy/advance",{type:"chain",target:chain.name});
-     if(previous.result?.stage==="pending"){
-      const status=previous.result;
-      const reason=status.reason==="confirmations"?
-       "wartet auf "+(status.requiredConfirmations||"erforderliche")+" Blockbestätigungen":
-       "muss anhand des ursprünglichen Wallet-Journals geprüft werden ("+
-         (status.reason||"unknown")+")";
-      presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+
-       " · alter/ungeklärter Vorgang "+(status.txHash||"")+
-       " "+reason+"; keine neue Wallet-Signatur.","warn");
-      break;
-     }
-     if(previous.result?.stage==="documented"){
-      await waitForDeploymentSync(previous.result);
-      continue;
-     }
+    // Chain AND asset batches must advance the durable wallet journal before
+    // any new signature. The old wallet may have been gasless or rejected.
+    const previous=await advanceDeploymentBeforeSignature({
+     post:postJSON,type:core?"chain":"asset",target:core?chain.name:target
+    });
+    if(previous.stage==="pending"){
+     const reason=previous.reason==="confirmations"?
+      "wartet auf "+(previous.requiredConfirmations||"erforderliche")+" Blockbestätigungen":
+      "wird anhand des Wallet-Journals geprüft ("+(previous.reason||"unknown")+")";
+     presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+
+      " · vorheriger Vorgang "+(previous.txHash||"")+
+      " "+reason+"; keine neue Wallet-Signatur.","warn");
+     break;
     }
-    presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Vertragsdaten und Gas geprüft; MetaMask-Bestätigung …");
+    if(previous.stage==="documented"){
+     await waitForDeploymentSync(previous);
+     continue;
+    }
+    presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+
+     " · "+(previous.warning?"Warnung: "+previous.warning+" · ":"")+
+     "Vertragsdaten und Gas geprüft; MetaMask-Bestätigung …",previous.warning?"warn":undefined);
     prepared=core?
      await postJSON("/admin/api/chain-deploy/prepare",{
       chain:chain.name,component:next.component,wallet:wallet.address,parameters:params,

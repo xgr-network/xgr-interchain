@@ -140,6 +140,7 @@ const staticFiles=new Map([
  ["/admin/api-client.mjs",["api-client.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-poll.mjs",["deployment-poll.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-batch.mjs",["deployment-batch.mjs","text/javascript; charset=utf-8"]],
+ ["/admin/deployment-resume-gate.mjs",["deployment-resume-gate.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-sync-wait.mjs",["deployment-sync-wait.mjs","text/javascript; charset=utf-8"]],
  ["/admin/factory-defaults.mjs",["factory-defaults.mjs","text/javascript; charset=utf-8"]],
  ["/admin/chain-intent-view.mjs",["chain-intent-view.mjs","text/javascript; charset=utf-8"]],
