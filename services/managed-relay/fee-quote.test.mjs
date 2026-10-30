@@ -6,6 +6,7 @@ test("native source fee price maps XGR to CoinGecko xgr and Base gas to ETH",()=
  assert.equal(COINGECKO_GAS_COIN_IDS.xgrchain,"xgr");
  assert.equal(COINGECKO_GAS_COIN_IDS.base,"ethereum");
  assert.equal(COINGECKO_GAS_COIN_IDS.arbitrum,"ethereum");
+ assert.equal(COINGECKO_GAS_COIN_IDS.bsc,"binancecoin");
 });
 test("tiny native gas coin prices preserve precision and reject zero",()=>{
  assert.equal(usdPrice12(0.0001),100000000n);
@@ -62,6 +63,28 @@ test("single CoinGecko ETH price can support Base and Arbitrum without duplicate
  const p=verifiedCoinGeckoPrices({ethereum:{usd:2600,last_updated_at:sec}},
   "base","arbitrum",{now});
  assert.equal(p.sourceUsd,2600);assert.equal(p.destinationUsd,2600);
+});
+test("XGR to BSC prices native BNB with a fresh CoinGecko snapshot",()=>{
+ const now=1729000000000,sec=Math.floor(now/1000);
+ const prices={xgr:{usd:0.0001,last_updated_at:sec-3},
+  binancecoin:{usd:600,last_updated_at:sec-5}};
+ const p=verifiedCoinGeckoPrices(prices,"xgrchain","bsc",{now});
+ assert.equal(p.sourceId,"xgr");
+ assert.equal(p.destinationId,"binancecoin");
+ assert.equal(p.destinationUsd,600);
+ const q=costInSourceWei({sourcePriceUsd:p.sourceUsd,
+  destinationPriceUsd:p.destinationUsd,destinationGasPriceWei:1000000000n,
+  destinationGasUnits:100000n,vatBps:GERMAN_STANDARD_VAT_BPS});
+ assert.equal(q.estimatedDestinationCostWei,"100000000000000");
+ assert.ok(BigInt(q.quotedServiceFeeWei)>0n);
+ assert.throws(()=>verifiedCoinGeckoPrices({xgr:prices.xgr},"xgrchain","bsc",{now}),/stale or unavailable: binancecoin/);
+ assert.throws(()=>verifiedCoinGeckoPrices({...prices,binancecoin:{...prices.binancecoin,last_updated_at:sec-901}},"xgrchain","bsc",{now}),/stale or unavailable: binancecoin/);
+});
+test("BSC to XGR uses BNB as the source gas coin",()=>{
+ const now=1729000000000,sec=Math.floor(now/1000);
+ const p=verifiedCoinGeckoPrices({xgr:{usd:0.0001,last_updated_at:sec},
+  binancecoin:{usd:600,last_updated_at:sec}},"bsc","xgrchain",{now});
+ assert.equal(p.sourceId,"binancecoin");assert.equal(p.destinationId,"xgr");
 });
 test("integer ceil division never rounds under cost",()=>{
  assert.equal(ceilDiv(101n,10n),11n);

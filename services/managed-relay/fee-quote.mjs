@@ -6,6 +6,7 @@ export const COINGECKO_GAS_COIN_IDS = Object.freeze({
  xgrchain:"xgr",
  base:"ethereum",
  arbitrum:"ethereum",
+ bsc:"binancecoin", // Native BNB on BNB Smart Chain (CoinGecko API coin ID).
  polygon:"polygon-ecosystem-token",
 });
 const nonnegative=x=>typeof x==="bigint"&&x>=0n;
