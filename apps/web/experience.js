@@ -2,7 +2,7 @@ import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedE
 import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
-import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
+import {openWalletTransfers,selectedRecovery,completedWalletTransfer} from "./wallet-transfer-selection.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
@@ -587,11 +587,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const currentWork=selectedRecovery(progress.items,wallet.account,progress.selectedTxHash);
  // Completed source TXs are excluded from actionable recovery, but a resume
  // deep link must report canonical successful delivery, never "not verified".
- const completedWork=(progress.items||[]).find(item=>
-  item?.account?.toLowerCase()===wallet.account?.toLowerCase()&&
-  item.txHash?.toLowerCase()===progress.selectedTxHash?.toLowerCase()&&
-  item.confirmed===true&&item.delivered===true&&
-  ["delivered","journey-delivered"].includes(item.status))||null;
+ const completedWork=completedWalletTransfer(progress.items,wallet.account,progress.selectedTxHash);
  // Recovery must remain usable even if the old Gateway route predates the
  // deployment of the commercial Execution Gateway contracts.
  const recoveryChains=new Set(currentWork?[
@@ -627,7 +623,7 @@ export function renderPlanRoute(model,selection={},apiState="not-deployed",walle
  const resumeRequested=/^0x[0-9a-f]{64}$/i.test(progress.selectedTxHash||"");
  const recoveryUnresolved=connected&&resumeRequested&&!selected&&!completedWork;
  // Completed delivery is history, not another pending wallet action or a fresh quote.
- const recoveryMode=Boolean(selected||completedWork||recoveryUnresolved);
+ const recoveryMode=Boolean(selected||recoveryUnresolved);
  const amount=/^(?:\d+)?(?:\.\d*)?$/.test(selection.amount||"")?selection.amount||"":"";
  const isDirect=path.path.length===2;
  const proofCheck=selected?.status==="awaiting-final-proof"?
