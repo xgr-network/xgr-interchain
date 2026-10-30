@@ -41,3 +41,21 @@ test("observer never records unsuccessful or non-finalized receipts",async()=>{
  assert.equal(pending,false);
  assert.equal(writes,0);
 });
+
+test("F-35: unprofiled child does not stall the next statistical observation",async()=>{
+ const unknown={source_chain:"unconfigured",route_id:h("1"),source_tx_hash:h("2"),
+  source_block_number:90,source_block_hash:h("3"),source_indexed_at:new Date().toISOString()};
+ const writes=[];
+ const pool={query:async q=>{
+  const sql=typeof q==="string"?q:q.text;
+  if(sql.startsWith("SELECT indexed_at"))return {rows:[]};
+  if(sql.includes("FROM xita_transfer_operations"))return {rows:[unknown]};
+  writes.push(q);return {rows:[],rowCount:1};
+ }};
+ const total=await observeOnwardGas({catalog:{chains:{},routes:[]},
+  pool,rpc:async()=>{throw Error("unprofiled must not use RPC")}});
+ assert.equal(total,0);
+ assert.equal(writes.length,1);
+ assert.match(writes[0].text,/xita_gas_onward_cursors/);
+ assert.deepEqual(writes[0].values,[unknown.source_indexed_at,unknown.source_tx_hash]);
+});

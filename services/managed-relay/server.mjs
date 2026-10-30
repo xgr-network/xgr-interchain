@@ -93,6 +93,7 @@ async function paidQuoteDatabaseReady(){
    current_user LIKE 'xita_%' AS named,
    has_table_privilege(current_user,'public.xita_tax_quote_evidence','INSERT') AS tax_write,
    has_table_privilege(current_user,'public.xita_sponsor_quote_intents','INSERT') AS intent_write,
+   has_table_privilege(current_user,'public.xita_sponsor_quote_intents','SELECT') AS intent_read,
    has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','INSERT') AS promise_write,
    has_table_privilege(current_user,'public.xita_sponsor_quote_commitments','SELECT') AS promise_read,
    has_table_privilege(current_user,'public.xita_sponsor_grants','SELECT') AS grants_read,

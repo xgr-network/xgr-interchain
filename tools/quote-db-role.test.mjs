@@ -34,14 +34,16 @@ test("role repair retains exact privilege boundaries and is wired before signer 
  assert.match(sql,/has_table_privilege\(writer,'public\.xita_tax_quote_evidence','INSERT'\)/);
  assert.match(sql,/GRANT INSERT ON TABLE public\.xita_sponsor_quote_intents, public\.xita_sponsor_quote_commitments/);
  assert.match(sql,/GRANT SELECT ON TABLE public\.xita_sponsor_quote_commitments, public\.xita_sponsor_grants/);
- assert.match(sql,/public\.xita_sponsor_quote_resolutions, public\.xita_transfer_operations TO %I/);
+ assert.match(sql,/public\.xita_sponsor_quote_resolutions, public\.xita_transfer_operations, public\.xita_sponsor_quote_intents TO %I/);
  assert.match(sql,/has_table_privilege\(writer,'public\.xita_transfer_operations','SELECT'\)/);
  assert.match(sql,/has_table_privilege\(writer,'public\.xita_sponsor_quote_resolutions','SELECT'\)/);
+ assert.match(sql,/has_table_privilege\(writer,'public\.xita_sponsor_quote_intents','SELECT'\)/);
  const server=readFileSync(new URL("../services/managed-relay/server.mjs",import.meta.url),"utf8");
  const readiness=server.split("async function paidQuoteDatabaseReady(){")[1]?.split("\nconst previewMemo=")[0];
  assert.ok(readiness);
  assert.match(readiness,/has_table_privilege\(current_user,'public\.xita_transfer_operations','SELECT'\)/);
  assert.match(readiness,/has_table_privilege\(current_user,'public\.xita_sponsor_quote_resolutions','SELECT'\)/);
+ assert.match(readiness,/has_table_privilege\(current_user,'public\.xita_sponsor_quote_intents','SELECT'\)/);
  assert.doesNotMatch(sql,/GRANT ALL|TO PUBLIC|GRANT UPDATE|GRANT DELETE/);
 });
 
