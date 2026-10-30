@@ -2,7 +2,7 @@ import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedE
 import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
 import {verifiedSyntheticContract,walletRepresentationBalance,tokenExplorerUrl} from "./token-inventory.js";
-import {openWalletTransfers,selectedRecovery} from "./wallet-transfer-selection.js";
+import {openWalletTransfers,selectedRecovery,completedWalletTransfer} from "./wallet-transfer-selection.js";
 import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leaderboard-data.js";
 // XITA Universe and Dashboard: present verified inventory without inventing live state.
 // This module is deliberately pure and does not sign, quote or submit transfers.
