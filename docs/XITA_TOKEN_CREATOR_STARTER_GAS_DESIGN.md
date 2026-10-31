@@ -1,51 +1,25 @@
-# XITA token creation, starter gas and Join — staged design
+# XITA Token Creator — XGR-funded ERC-20 creation and XITA Join
+Status: **code review / deployment inactive**. Supersedes the initial user-gas and starter-microgrant prototype.
 
-Status: **prototype only** (not deployed; no sponsorship enabled).
+## Product intent
+- Private preview URL: https://xita.xgr.network/createtoken, deliberately not linked from the main navigation.
+- Applicant enters fixed token name, uppercase symbol, integer initial supply (18 decimals), **separate nonzero project owner wallet**, HTTPS project URL, descriptions, categories, PNG logo, contact email, and acknowledgement.
+- After email confirmation, store an immutable owner-bound pending creator request privately; a separate, explicitly enabled XGR signer deploys the standard ERC-20 on **XGRChain ID 1643**, paying gas with its own dedicated funded wallet.
+- The project's specified owner receives **100% of the initial supply** and the ERC-20 Ownable `owner()` role in its constructor. Neither XGR operator nor factory obtains an ERC-20 balance or special token controls. The owner may later transfer or renounce ownership. There is **no privileged mint, tax, upgrade, freeze or blacklist**.
+- Once the actual factory receipt and token runtime are verified from two XGR RPC nodes, generate a normal XITA **Draft Join PR** containing all main-approved, deployed spoke chains and both directions through the XGR hub. A creator-origin XGR token requires **no CoinGecko ID**. The PR does not bypass human Join review, route deployment or public listing rules.
+- Logo publication is gated by email verification; private contacts are never sent to GitHub.
 
-## Product boundary
+## Deployment separation
+The public HTTP Join/Creator service never receives a private signing key. The separate opt-in `creator-operator.mjs` worker alone can access the deployment wallet. It requires an audited, receipt-pinned Creator Factory in `config/creator/factory.json` on GitHub main, runtime code hashes, validated chain ID and identity from two XGR RPC nodes, explicit per-transaction gas and daily funds/count caps.
+The deployment request is **signed and the signed raw transaction is committed to owner-only storage before broadcast**. If a process crashes or RPC broadcasting becomes uncertain, the worker may rebroadcast ONLY the same signed transaction and nonce. A revert or identity mismatch requires operator investigation; never silently create a second token.
+Once the source receipt and `owner(), totalSupply(), balanceOf(owner), name(), symbol(), decimals()` match the immutable application and pinned audited token runtime, the worker records an on-chain proof and publishes an idempotent GitHub Draft PR. Any GitHub outage is retried without redeploying the token.
 
-- Private URL: `https://xita.xgr.network/createtoken`, deliberately absent from the navigation.
-- Original chain XGRChain (chain ID 1643). Creation uses only the wallet's explicit MetaMask transaction. The web service does not custody tokens or private keys.
-- The default v1 template is a standard OpenZeppelin ERC-20 with immutable name, uppercase symbol, 18 decimals and exactly one initial mint to the creator's wallet. No owner, mint, burn authority, freeze, pause, blacklist, upgrade, proxy, transfer tax or service fee.
-- A successful TokenCreated receipt establishes *creation*, not XITA route eligibility or publication. The GmbH must never imply automatic CoinGecko listing.
+## Activation / remaining gates
+1. Audit the revised Ownable ERC-20 and factory creation code, its pinned OpenZeppelin 4.9.3 closure and realistic gas requirements.
+2. Deploy the factory once with an explicitly reviewed transaction, verify its on-chain bytecode, transaction receipt, operator address, and emitted token implementation/runtime hash. Add reviewed `config/creator/factory.json` to main.
+3. Configure the dedicated minimally funded XGR operator wallet, root-only `/etc/xita/creator.env`, hard limits and separated systemd timer. Install deliberately with `./manage.sh install-creator` after reviewed factory deployment.
+4. Before making /createtoken publicly discoverable, address Sybil abuse and unauthorized third-party project submissions. Email verification is **not** cryptographic wallet-ownership verification. Confirm ownership/address consent and token-issuer disclosures.
+5. Test on a non-production network and then a tightly bounded Mainnet canary; verify constructor ownership, full supply, duplicate suppression, restart recovery, and standard Join PR validation.
+6. Creator ERC-20 deployed ≠ XITA routes deployed ≠ publicly listed. Keep these stages visible in UI and notifications.
 
-## Verified factory activation gate
-
-1. Audit `contracts/XITAStarterTokenCreator.sol` and its pinned OpenZeppelin import closure; check runtime bytecode and creation gas on XGR Mainnet (no optimistic estimation).
-2. Deploy with explicit operator-signed transaction using a dedicated, separately reviewed Admin flow. Capture canonical receipt, deployed contract address, chain ID 1643, runtime code hash and deployer.
-3. Check two independent XGR node views or local chain verification, as applicable, and pin receipt and code hash in a GitHub-backed creator manifest.
-4. Only then set `CREATOR_STATUS.available=true` in a follow-up release. The browser must check `eth_chainId=0x66b`, `eth_getCode` against the pinned hash, wallet balance, `eth_call` simulation and `eth_estimateGas`; fail closed when ambiguous.
-5. Serialize an immutable wallet intent before MetaMask prompts, persist the hash once the provider reports submission, reconcile replaced/pending/confirmed transaction receipts before showing another sign action.
-6. Parse only the factory's TokenCreated event from the canonical receipt; verify `creator`, token address, factory address, immutable symbol and full supply using chain RPC. A generic transaction success is insufficient.
-
-## Optional starter XGR — separate service, not bridge gas sponsor
-
-- **Zero XGR up-front hurdle** is the goal, but gas is not literally free. XGR funds an opt-in microgrant strictly bounded to *one* standard token-creation transaction after a validated request.
-- No bridge/XITA managed quote/sponsor commitment may be reused. The creator service has its own budget, ledger, accounting and risk limits. It cannot sign a user's create transaction.
-- One normalized wallet-ownership challenge (EIP-712; chain ID 1643, creator factory, wallet, nonce, expiry) must be checked by the sponsor. The server must reserve the nonce and a wallet grant *atomically* before sending sponsor funds.
-- Per-wallet one-time limit, per-contact verification, per-IP rate limiting, daily total and per-period budget, independently verified wallet and source chain, short-lived intent, explicit replay prevention and a reconciliation job are required. Email/IP alone do not prevent Sybil abuse; maintain a tightly bounded budget and abuse pause switch.
-- Payout is `min(verified estimate + safety reserve, configured per-request cap)`. On recipient failure, the granted amount is not treated as unused; a reconcilable recipient transaction hash remains in durable storage.
-- Sponsor never receives creator tokens, ERC-20 approvals or unlimited allowances, and receives no refund automatically. Do not request any private key or seed phrase.
-
-## Join / post-creation lifecycle
-
-The current Join application is for a CoinGecko-indexed *external-chain* original ERC-20, with confirmed email and a distinct audited GitHub PR workflow. A newly created XGRChain-original token cannot pass those rules automatically.
-
-Use a separate, opt-in creator-to-Join bridge:
-
-1. Canonical TokenCreated event and subsequent read-only `totalSupply`, `symbol` and `balanceOf` verification produce a locked creator receipt (no hidden review by the UI).
-2. Prefill token name, symbol, chain 1643, exact token address and creator wallet in a **draft**; prompt user for contact details, project description and approval for email.
-3. Prove wallet control and confirm email; protect private contact details outside public PRs, just like existing Join.
-4. Create an `origin-xgrchain` pending-review application; no bypass of token review, and no fabricated CoinGecko ID.
-5. Operator independently accepts the asset and configures routes only toward *deployed* spokes; XGRChain remains the hub. Deployment is funded subject to existing Alliance terms, verified by receipts.
-6. Public discovery follows the standard indexer/TVL rules; creation or application alone never causes listing.
-
-## Launch and test gates
-
-- Focused Foundry tests: exact minted supply, creator isolation, nonpayability, no admin mint, negative input, event identity, cap.
-- UI tests: `/createtoken` direct-only route, no navbar entry, valid Unicode/HTML escaping, integer precision and disabled wallet actions without receipt.
-- Starter-gas tests (separate PR): concurrent idempotency, wallet challenge replay, daily budget exhaustion, chain mismatch, sponsor nonce contention, fund insufficiency, RPC split evidence, wallet receipt reconciliation and service pause.
-- Integration tests before launch: original token deployment and gas microgrant on XGR testnet, wallet switch, rejected signature, reverted create, grant retry, receipt finality, accurate Join draft, duplicate application protection.
-- No automatic production deployment, factory activation, sponsor grants or Join submission occurs in this prototype PR.
-
-The successful Polygon-removal and Optimism configuration are independent and must not change this security gate.
+Read `config/creator/README.md` for full configuration and operator constraints.
