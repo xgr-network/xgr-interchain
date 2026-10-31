@@ -40,6 +40,7 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
   check(c.kind==="chain-config"&&c.schemaVersion===1&&c.name===name&&c.environment==="mainnet",p+": invalid identity");
   check(Number.isSafeInteger(c.chainId)&&c.chainId>0&&Number.isSafeInteger(c.domainId)&&c.domainId>0,p+": invalid chain/domain");
   check(c.displayName===undefined||(typeof c.displayName==="string"&&c.displayName.length>=2&&c.displayName.length<=60&&c.displayName.trim()===c.displayName),p+": invalid chain display name");
+  check(c.coingeckoAssetPlatform===undefined||(typeof c.coingeckoAssetPlatform==="string"&&/^[a-z0-9][a-z0-9-]{0,99}$/.test(c.coingeckoAssetPlatform)),p+": invalid CoinGecko asset platform");
   check(!ids.has(c.chainId)&&!domains.has(c.domainId),p+": duplicate chainId or domainId");ids.add(c.chainId);domains.add(c.domainId);
   check(Array.isArray(c.rpcUrls)&&c.rpcUrls.length>0&&c.rpcUrls.every(x=>typeof x==="string"&&x.startsWith("https://")),p+": invalid RPC");
   check(Number.isSafeInteger(c.confirmations)&&c.confirmations>=1,p+": invalid confirmations");
