@@ -164,7 +164,7 @@ export async function handleCreator(req,res,{env=process.env,clock=Date.now,
   const pendingIds=new Set(records.filter(x=>x.kind==="token-creator"&&
    x.phase==="pending-email").map(x=>x.id));
   for(const file of readdirSync(loc.pending)){
-   const match=/^([0-9a-f-]{36})\\.png$/.exec(file);
+   const match=/^([0-9a-f-]{36})\.png$/.exec(file);
    if(match&&!pendingIds.has(match[1]))removeOptional(join(loc.pending,file));
   }
   if(records.some(x=>x.kind==="token-creator"&&x.phase==="pending-email"&&
