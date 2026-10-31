@@ -60,6 +60,26 @@ export function canonicalWalletSnapshot({account,rows,previous=[],activeSourceHa
     secondHopMessageId:parent.secondHopMessageId,finalDelivered:parent.finalDelivered,
     status:parent.status});
  }
+ // A delayed or paginated SQL page must not silently erase independently
+ // confirmed, still-open original wallet operations. Keeping their existing
+ // immutable evidence is read-only: the signing path rechecks canonical chain
+ // proof, nonce and destination delivery before asking the wallet again.
+ for(const previousOpen of previous){
+  if(previousOpen?.account?.toLowerCase()!==owner||
+     previousOpen.confirmed!==true||
+     !HASH.test(previousOpen.txHash||"")||
+     !HASH.test(previousOpen.messageId||"")||
+     !HASH.test(previousOpen.routeId||"")||
+     !ADDRESS.test(previousOpen.gateway||""))continue;
+  const ongoing=previousOpen.delivered!==true||
+    (HASH.test(previousOpen.onwardRouteId||"")&&
+     previousOpen.status!=="journey-delivered"&&
+     previousOpen.finalDelivered!==true);
+  if(!ongoing||byKey.has(key(previousOpen)))continue;
+  if(indexed.some(row=>row?.secondHopTxHash?.toLowerCase()===
+    previousOpen.txHash.toLowerCase()))continue;
+  byKey.set(key(previousOpen),previousOpen);
+ }
  // The active wallet operation must not disappear when its receipt is mined
  // but the finalized SQL index has not yet observed the source log.
  const provisional=HASH.test(activeSourceHash||"")?

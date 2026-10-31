@@ -73,3 +73,25 @@ test("finalized direct BSC delivery stays complete while SQL row lags; unrelated
   rows:[direct],previous:[{...done,finalityVerified:false}]});
  assert.equal(notFinalized[0].status,"awaiting-proof");
 });
+
+test("pending source parent must survive an incomplete, stale or paginated SQL result",()=>{
+ const last={...parent,sourceChain:"arbitrum",destinationChain:"xgrchain",
+  finalDestinationChain:"bsc",onwardRouteId:h("5"),
+  routeId:h("6"),gateway:"0x"+"8".repeat(40),
+  status:"awaiting-onward",delivered:true,confirmed:true};
+ const gone=canonicalWalletSnapshot({account:a,rows:[],previous:[last]});
+ assert.deepEqual(gone,[last]);
+ assert.deepEqual(openWalletTransfers(gone,a),[last]);
+ const unrelated={...staleChild,txHash:h("9"),messageId:h("8")};
+ const withOther=canonicalWalletSnapshot({account:a,rows:[unrelated],previous:[last]});
+ assert.ok(withOther.some(row=>row.txHash===last.txHash));
+ assert.ok(openWalletTransfers(withOther,a).some(row=>row.txHash===last.txHash));
+ const finished={...last,status:"journey-delivered",finalDelivered:true};
+ assert.deepEqual(canonicalWalletSnapshot({account:a,rows:[],previous:[finished]}),[]);
+});
+test("never invent a pending transfer for a different wallet or unconfirmed operation",()=>{
+ const last={...parent,status:"awaiting-onward"};
+ const foreign={...last,account:"0x"+"b".repeat(40)};
+ const unverified={...last,confirmed:false};
+ assert.deepEqual(canonicalWalletSnapshot({account:a,rows:[],previous:[foreign,unverified]}),[]);
+});

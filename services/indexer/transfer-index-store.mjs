@@ -160,7 +160,7 @@ export async function readWalletTransferIndex(catalog,account,{
   values:[lowercase(account),onlyPending,limit,activeKeys]
  });
  const totals=await connected.query({text:`SELECT
-   COUNT(*) FILTER (WHERE p.delivered IS FALSE OR
+   COUNT(*) FILTER (WHERE p.delivered IS DISTINCT FROM TRUE OR
      (p.delivered IS TRUE AND p.onward_route_id IS NOT NULL
       AND NOT ${completedChildPredicate}))::text AS open,
    COUNT(*) FILTER (WHERE p.delivered IS NULL)::text AS unknown

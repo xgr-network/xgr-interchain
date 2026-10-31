@@ -1471,6 +1471,16 @@ window.addEventListener("ethereum#initialized",()=>{
  bindWalletEvents();
  if(state.catalog&&!state.account)void restoreAuthorizedWallet();
 });
+// A temporarily unavailable/locked wallet may return no authorized account at
+// startup. Recheck on user focus/visibility without ever opening MetaMask or
+// prompting for new permissions; reconnecting restores indexed pending work.
+window.addEventListener("focus",()=>{
+ if(state.catalog&&!state.account)void restoreAuthorizedWallet();
+});
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible"&&state.catalog&&!state.account)
+  void restoreAuthorizedWallet();
+});
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("submit",event=>{
  if(event.target?.id!=="ja-application-form"||path()!=="/join")return;

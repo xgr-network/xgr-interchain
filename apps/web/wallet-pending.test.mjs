@@ -16,14 +16,12 @@ test("header alert only counts genuine confirmed locks without delivery",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[],indexedOpenCount:-1}),0);
 });
 
-test("completed indexed wallet worklist clears stale aggregate badge without hiding active transfers",()=>{
+test("indexed pending count cannot be suppressed by stale or incomplete wallet rows",()=>{
  const done={...open,status:"delivered",delivered:true,finalityVerified:true};
- // Old openCount is a lagging aggregate; a complete returned wallet page
- // gives the exact live, wallet-owned actionable rows.
  assert.equal(pendingDeliveryCount({account:wallet,items:[done],
-  indexedOpenCount:1,indexedRowsComplete:true}),0);
+  indexedOpenCount:1,indexedRowsComplete:true}),1);
  assert.equal(pendingDeliveryCount({account:wallet,items:[done,open],
-  indexedOpenCount:2,indexedRowsComplete:true}),1);
+  indexedOpenCount:2,indexedRowsComplete:true}),2);
  assert.equal(pendingDeliveryCount({account:wallet,items:[done],
   indexedOpenCount:1,indexedRowsComplete:false}),1);
  assert.equal(pendingDeliveryCount({account:wallet,items:[open],
