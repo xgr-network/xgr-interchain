@@ -77,6 +77,7 @@ test("finalized direct BSC delivery stays complete while SQL row lags; unrelated
 test("pending source parent must survive an incomplete, stale or paginated SQL result",()=>{
  const last={...parent,sourceChain:"arbitrum",destinationChain:"xgrchain",
   finalDestinationChain:"bsc",onwardRouteId:h("5"),
+  routeId:h("6"),gateway:"0x"+"8".repeat(40),
   status:"awaiting-onward",delivered:true,confirmed:true};
  const gone=canonicalWalletSnapshot({account:a,rows:[],previous:[last]});
  assert.deepEqual(gone,[last]);
