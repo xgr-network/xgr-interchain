@@ -26,6 +26,13 @@
       "receiptPath": "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json"
     },
     {
+      "chain": "optimism",
+      "component": "syntheticRouter",
+      "address": "0xdb6ef221548bdc64bd733911362d3fd815af6bf7",
+      "runtimeCodeKeccak256": "0xcfa84ea3c10da86edfe5b1a3765cae3dd56a91c4705ae76d437dcce8696f516b",
+      "receiptPath": "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json"
+    },
+    {
       "chain": "xgrchain",
       "component": "nativeRouter",
       "address": "0x7d9354baab0bf308d17e90ee3895609680e355ed",

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "0d7f1026c5e8f0ca552339ff649546eeaa7ebb20"
+  },
+  "chain": "optimism",
+  "chainId": 10,
+  "domainId": 10,
+  "component": "syntheticRouter",
+  "asset": "XGR",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+  "routeName": null,
+  "address": "0xdb6ef221548bdc64bd733911362d3fd815af6bf7",
+  "runtimeCodeKeccak256": "0xcfa84ea3c10da86edfe5b1a3765cae3dd56a91c4705ae76d437dcce8696f516b",
+  "transactionHash": "0xe68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966",
+  "blockNumber": 158932322,
+  "blockHash": "0xcd5564321ab21aaf80c5ce7099c96540d957b8da606ce6169621f12128a4985d",
+  "confirmations": 13,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-router",
+    "factory": "0x3b83687d77170d42feddfe221629cc21e771e021",
+    "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-31T16:17:25.837Z"
+}
