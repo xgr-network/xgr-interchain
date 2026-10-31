@@ -54,7 +54,10 @@ test("every approved chain has the same native finality in relayer as in GitHub 
   const provider=fake(config.chainId);
   assert.equal(await sourceFinalityHead(provider,config.chainId),100,name);
   const used=provider.calls.find(c=>c[0]==="eth_getBlockByNumber");
-  assert.equal(used?.[1]?.[0],config.receiptFinalityTag,name+" finality policy mismatch");
+  const legacy={xgrchain:"latest",base:"safe",arbitrum:"safe"};
+  const policy=config.receiptFinalityTag??legacy[name];
+  assert.ok(policy,name+" must specify a reviewed finality policy");
+  assert.equal(used?.[1]?.[0],policy,name+" finality policy mismatch");
  }
 });
 test("OP source receipt can be finalized by safe but never by a missing safe tag",async()=>{
