@@ -44,7 +44,17 @@ export function patchXitaJoinNginx(config){
  const missing=routes.filter(r=>!existingLocation(config,r));
  // Upgrade only the already validated exact Join confirmation location.
  // Do not alter unrelated nginx location blocks or operator settings.
- const current=existingLocation(config,routes[3])?config.replace(/(location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout )15s;/, (_,prefix)=>prefix+"120s;"):config;
+ let current=config;
+ if(existingLocation(config,routes[3])){
+  // Restrict the timeout migration to this block. The historical broad
+  // expression crossed the closing brace and kept modifying later routes.
+  const start=config.indexOf("location = /api/xita/join/confirm {");
+  const stop=config.indexOf("\n    }",start);
+  if(start<0||stop<start)throw Error("Unclosed Join confirmation location");
+  const block=config.slice(start,stop);
+  current=config.slice(0,start)+block.replace("proxy_read_timeout 15s;",
+   "proxy_read_timeout 120s;")+config.slice(stop);
+ }
  const logoMarker="location ^~ /token-logos/ {";
  const priorLogo=(current.match(/location\s+\^~\s+\/token-logos\/\s*\{/g)||[]);
  if(priorLogo.length>1)throw Error("Duplicate creator logo proxy");
