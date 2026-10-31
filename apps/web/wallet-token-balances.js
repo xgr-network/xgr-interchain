@@ -16,9 +16,21 @@ export async function readWalletTokenBalances({catalog,account,rpc=publicRead,ch
   if(!byAsset.has(key))byAsset.set(key,route);
  }
  const results=await Promise.all([...byAsset].map(async ([key,route])=>{
-  const chain=catalog.chains[route.source],decimals=catalog.assets[route.asset].metadata.decimals;
-  if(!chain||!Number.isInteger(decimals)||decimals<0||decimals>36)
-   return [key,{status:"unavailable"}];
+  const chain=catalog.chains[route.source],metadata=catalog.assets?.[route.asset]?.metadata,
+   decimals=metadata?.decimals;
+  const representations=metadata?.representations?.filter(rep=>rep.chain===route.source)||[];
+  const representation=representations.length===1?representations[0]:null;
+  const symbol=representation?.symbol;
+  const address=representation?.representation==="collateral"?representation.assetAddress:
+   representation?.representation==="synthetic"?route.sourceRouter:null;
+  // A verified source route is required. Do not label a collateral balance as
+  // wrapped or query a router instead of the original asset contract.
+  const identityValid=representation&&typeof symbol==="string"&&symbol.length>0&&
+   (representation.representation==="native"?route.sourceToken===null:
+    representation.representation==="collateral"||representation.representation==="synthetic"?
+     ADDRESS.test(address||"")&&route.sourceToken?.toLowerCase()===address.toLowerCase():false);
+  if(!chain||!Number.isInteger(decimals)||decimals<0||decimals>36||!identityValid)
+   return [key,{status:"unavailable",chain:route.source}];
   try{
    const url=chain.rpcUrls?.[0];
    const id=await rpc(url,"eth_chainId",[]);
@@ -33,7 +45,7 @@ export async function readWalletTokenBalances({catalog,account,rpc=publicRead,ch
     if(!QTY.test(raw||""))throw Error("Invalid native balance");
    }
    return [key,{status:"ready",balanceRaw:BigInt(raw).toString(),decimals,
-    symbol:route.sourceToken?"w"+route.asset:route.asset,chain:route.source}];
+    symbol,chain:route.source,representation:representation.representation}];
   }catch{return [key,{status:"unavailable",chain:route.source}]}
  }));
  return Object.fromEntries(results);

@@ -24,7 +24,7 @@ export function walletRepresentationBalance(wallet,assetId,representation,{token
  if(!ADDRESS.test(wallet?.account||""))return null;
  if(wallet.loading)return {status:"loading",label:"Checking balance…"};
  const native=representation?.representation==="native";
- if(!native&&representation?.representation!=="synthetic")
+ if(!native&&!["synthetic","collateral"].includes(representation?.representation))
   return {status:"unavailable",label:"Balance not available for this representation"};
  const key=representation.chain;
  const result=native?wallet.balances?.[key]:wallet.tokenBalances?.[assetId+":"+key];

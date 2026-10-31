@@ -50,6 +50,14 @@ test("wallet balances are read-only, represent zero honestly and never invent mi
  assert.equal(walletRepresentationBalance({...state,tokenBalances:{"XGR:base":{status:"ready",balanceRaw:"1"}}},"XGR",rep).label,"< 0.00000001 wXGR");
 });
 
+test("wallet inventory shows original ARB balance without a synthetic prefix",()=>{
+ const original={chain:"arbitrum",representation:"collateral",symbol:"ARB",
+  assetAddress:"0x912ce59144191c1204e64559fe8253a0e49e6548"};
+ const state={account,tokenBalances:{"ARB:arbitrum":{status:"ready",
+  balanceRaw:"40504711910000000000",decimals:18,symbol:"ARB"}}};
+ assert.deepEqual(walletRepresentationBalance(state,"ARB",original),
+  {status:"ready",label:"40.50471191 ARB"});
+});
 test("explorer links have vetted chain origins and validated contract address",()=>{
  assert.equal(tokenExplorerUrl("base",token),"https://basescan.org/token/"+token);
  assert.equal(tokenExplorerUrl("invalid",token),null);
