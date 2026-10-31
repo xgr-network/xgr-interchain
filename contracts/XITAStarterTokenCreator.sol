@@ -17,10 +17,10 @@ contract XITAFixedSupplyToken is ERC20, Ownable {
     }
 }
 
-/// @notice Permissionless XGRChain token creation, paid exclusively by the
-///         caller's standard wallet gas. No XGR protocol creation fee.
-/// @dev Optional starter-gas is delivered BEFORE the call by an independent,
-///      limited-budget opt-in service; the factory never controls the sponsor.
+/// @notice Factory deployment paid by a dedicated, strictly budgeted XGR
+///         operator wallet. The nominated owner is independent of msg.sender.
+/// @dev No creation fee, owner approvals, custody or protocol admin powers.
+///      Factory remains permissionless; operator controls only its gas budget.
 contract XITAStarterTokenCreator {
     uint256 public constant MAX_BASE_UNIT_SUPPLY = 1e36;
 
