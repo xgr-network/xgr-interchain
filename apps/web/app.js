@@ -2,7 +2,7 @@ import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
-import {tokenCreatorMarkup,creatorDraft,creatorPreview,validateCreatorDraft,CREATOR_STATUS} from "./token-creator.js";
+import {tokenCreatorMarkup,creatorDraft,creatorPreview,creatorRegistrationPayload,creatorConfirmMarkup,CREATOR_STATUS} from "./token-creator.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
@@ -1057,6 +1057,26 @@ function token(){
 }
 const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false};
 const tokenCreatorState=creatorDraft();
+const creatorEmailState={phase:"pending",error:"",logoUrl:"",key:"",working:false};
+async function confirmCreatorEmail(){
+ const fragment=location.hash.slice(1),m=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(fragment);
+ if(path()!=="/createtoken/confirm"||creatorEmailState.working||
+  creatorEmailState.phase==="email-verified"||creatorEmailState.key===fragment)return;
+ if(!m){creatorEmailState.error="Invalid confirmation link.";creatorEmailState.key=fragment;render();return}
+ creatorEmailState.key=fragment;creatorEmailState.working=true;
+ try{
+  const res=await fetch("/api/xita/creator/confirm",{method:"POST",
+   headers:{"Content-Type":"application/json"},credentials:"omit",
+   cache:"no-store",body:JSON.stringify({id:m[1],token:m[2]})});
+  const answer=await res.json();
+  if(!res.ok||answer?.status!=="email-verified"||!/^https:\/\/xita\.xgr\.network\/token-logos\/[a-f0-9]{64}\.png$/.test(answer.logoUrl||""))
+   throw Error(answer.error||"Email confirmation unavailable");
+  creatorEmailState.phase="email-verified";creatorEmailState.logoUrl=answer.logoUrl;
+  history.replaceState(null,"",location.pathname);
+ }catch(error){creatorEmailState.error=String(error.message||error).slice(0,180)}
+ finally{creatorEmailState.working=false;if(path()==="/createtoken/confirm")render()}
+}
+
 async function checkJoinAvailability(){
  if(joinState.checking||joinState.available!==null)return;
  joinState.checking=true;
@@ -1292,7 +1312,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):p==="/createtoken/confirm"?creatorConfirmMarkup(creatorEmailState):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
@@ -1302,6 +1322,7 @@ function render(){
   document.querySelector("#xita-flow-open")?.addEventListener("click",openFlowModal);
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
+ if(p==="/createtoken/confirm")void confirmCreatorEmail();
  if(p==="/join"&&joinState.available===null)void checkJoinAvailability();
  if(p==="/join"){
   const submit=document.querySelector('[data-join-action="submit"]');
@@ -1483,35 +1504,73 @@ document.addEventListener("visibilitychange",()=>{
  if(document.visibilityState==="visible"&&state.catalog&&!state.account)
   void restoreAuthorizedWallet();
 });
-// The creator URL is deliberately not advertised in the main navigation.
-// This prototype is receipt-gated and cannot request an unverified wallet TX.
+// The creator page has no site-menu entry; no contract signing is enabled.
 el.addEventListener("input",event=>{
  if(path()!=="/createtoken")return;
- const input=event.target.closest("[data-creator]");
- if(!input)return;
- const key=input.dataset.creator;
- if(!["name","symbol","initialSupply","accepted"].includes(key))return;
- tokenCreatorState[key]=key==="accepted"?input.checked:input.value;
+ const target=event.target.closest("[data-creator]");
+ if(!target)return;
+ const key=target.dataset.creator;
+ if(["accepted","projectConfirmed"].includes(key))tokenCreatorState[key]=target.checked;
+ else if(key.startsWith("link-"))tokenCreatorState.links[key.slice(5)]=target.value;
+ else if(Object.hasOwn(tokenCreatorState,key))tokenCreatorState[key]=target.value;
  const preview=creatorPreview(tokenCreatorState);
  for(const name of ["name","symbol","amount"]){
-  const target=el.querySelector('[data-creator-preview="'+name+'"]');
-  if(target)target.textContent=preview.ready?preview[name]:"—";
+  const node=el.querySelector('[data-creator-preview="'+name+'"]');
+  if(node)node.textContent=preview.ready?preview[name]:"—";
  }
- const button=el.querySelector("#xita-creator-deploy");
- if(button)button.disabled=!(CREATOR_STATUS.available&&preview.ready&&tokenCreatorState.accepted);
 });
 el.addEventListener("change",event=>{
  if(path()!=="/createtoken")return;
- if(event.target?.matches?.('[data-creator="accepted"]'))
-  tokenCreatorState.accepted=event.target.checked;
+ const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"]');
+ if(checkbox)tokenCreatorState[checkbox.dataset.creator]=checkbox.checked;
+ const file=event.target.closest("[data-creator-logo]")?.files?.[0];
+ if(!file)return;
+ const status=el.querySelector("#tc-registration-status");
+ if(file.type!=="image/png"||file.size>128*1024||file.size<67){
+  tokenCreatorState.logoPngBase64="";tokenCreatorState.logoName="";
+  if(status)status.textContent="Please select a PNG logo of at most 128 KB.";
+  event.target.value="";return;
+ }
+ const reader=new FileReader();
+ reader.onload=()=>{
+  if(path()!=="/createtoken"||typeof reader.result!=="string")return;
+  const data=reader.result.split(",");
+  tokenCreatorState.logoPngBase64=data.length===2?data[1]:"";
+  tokenCreatorState.logoName=file.name.slice(0,120);
+  const label=el.querySelector("#tc-logo-file");
+  if(label)label.textContent=tokenCreatorState.logoName;
+  const preview=el.querySelector("#tc-logo-preview");
+  if(preview){preview.src=reader.result;preview.hidden=false}
+  if(status)status.textContent="Logo ready for verification. It is not public until your email is confirmed.";
+ };
+ reader.onerror=()=>{tokenCreatorState.logoPngBase64="";
+  if(status)status.textContent="Unable to read the selected logo."};
+ reader.readAsDataURL(file);
 });
+let creatorRegistrationBusy=false;
 el.addEventListener("submit",event=>{
  if(event.target?.id!=="xita-token-creator-form"||path()!=="/createtoken")return;
  event.preventDefault();
- const errors=validateCreatorDraft(tokenCreatorState);
- const status=el.querySelector("#tc-status");
- if(status)status.textContent=errors.length?errors.join(". "):
-  "Factory deployment is not yet verified. No wallet transaction was requested.";
+ if(creatorRegistrationBusy)return;
+ const status=el.querySelector("#tc-registration-status");
+ let payload;
+ try{payload=creatorRegistrationPayload(tokenCreatorState)}
+ catch(error){if(status)status.textContent=String(error.message||error);return}
+ creatorRegistrationBusy=true;
+ const submit=el.querySelector("#xita-creator-register");
+ if(submit)submit.disabled=true;
+ if(status)status.textContent="Sending a verification email…";
+ void (async()=>{
+  try{
+   const res=await fetch("/api/xita/creator/register",{
+    method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",
+    credentials:"omit",body:JSON.stringify(payload)});
+   const body=await res.json();
+   if(!res.ok||body?.status!=="pending-email")throw Error(body?.error||"Registration unavailable");
+   if(status)status.textContent="Confirmation email sent. Verify your email before starter gas or token creation.";
+  }catch(error){if(status)status.textContent=String(error.message||error).slice(0,250)}
+  finally{creatorRegistrationBusy=false;if(submit)submit.disabled=false}
+ })();
 });
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("submit",event=>{
