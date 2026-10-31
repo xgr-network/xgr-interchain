@@ -1,6 +1,6 @@
 // A protocol-defined native finality rule, not operator-configured block depth.
 // Mirrors the XGR Node v3.4.1 chain policy; no fallback from safe/finalized to latest.
-const TAGS=new Map([[1643,"latest"],[8453,"safe"],[42161,"safe"],[56,"finalized"]]);
+const TAGS=new Map([[1643,"latest"],[10,"safe"],[8453,"safe"],[42161,"safe"],[56,"finalized"]]);
 const HASH=/^0x[0-9a-f]{64}$/i;
 export async function sourceFinalityHead(rpc,chainId){
  const id=Number(chainId),tag=TAGS.get(id);

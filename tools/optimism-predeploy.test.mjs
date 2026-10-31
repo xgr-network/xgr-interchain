@@ -18,7 +18,7 @@ test("OP Mainnet chain 10 has operator-independent RPCs and native safe/EIP-2537
  assert.equal(COINGECKO_GAS_COIN_IDS.optimism,"ethereum");
  assert.deepEqual(validateCatalog(catalog),[]);
 });
-test("deployed OP infrastructure is distinct from still-undeployed asset routes",()=>{
+test("deployed OP infrastructure and XGR hub routes remain separately receipt-backed",()=>{
  const catalog=loadCatalog();
  assert.equal(Object.hasOwn(catalog.chains,"polygon"),false);
  assert.equal(Object.hasOwn(catalog.infrastructure,"polygon"),false);
@@ -30,6 +30,7 @@ test("deployed OP infrastructure is distinct from still-undeployed asset routes"
  assert.ok(Object.keys(catalog.infrastructure.optimism.xitaV315.components).length>=12);
  assert.equal(isDeployedChain(catalog,"optimism"),true);
  assert.equal(joinHomeChains(catalog).includes("optimism"),true);
- assert.ok(deployedRoutes(catalog).every(route=>route.source!=="optimism"&&route.destination!=="optimism"));
+ assert.ok(deployedRoutes(catalog).some(route=>route.asset==="XGR"&&route.source==="xgrchain"&&route.destination==="optimism"));
+ assert.ok(deployedRoutes(catalog).some(route=>route.asset==="XGR"&&route.source==="optimism"&&route.destination==="xgrchain"));
  assert.equal(JSON.parse(readFileSync(new URL("../apps/web/catalog.json",import.meta.url),"utf8")).infrastructure.optimism.present,true);
 });

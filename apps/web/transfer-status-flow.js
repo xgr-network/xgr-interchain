@@ -1,7 +1,7 @@
 import {describeTokenJourney,tokenFinalityName} from "./transfer-token-journey.js";
 // Transfer status is a view of canonical wallet/Gateway/Mailbox evidence.
 // Transient UI stages never establish chain finality or authorize another source TX.
-const NAMES={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",polygon:"Polygon"};
+const NAMES={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",optimism:"Optimism",bsc:"BNB Smart Chain",polygon:"Polygon"};
 const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const name=key=>NAMES[key]||key||"Unknown network";
 const HASH=/^0x[0-9a-f]{64}$/i;
