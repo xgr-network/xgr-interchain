@@ -99,27 +99,6 @@
       "observedInfrastructure": "deployments/chains/optimism.json",
       "configurationStatus": "planned-unverified"
     },
-    "polygon": {
-      "schemaVersion": 1,
-      "kind": "chain-config",
-      "environment": "mainnet",
-      "name": "polygon",
-      "coingeckoAssetPlatform": "polygon-pos",
-      "chainId": 137,
-      "domainId": 137,
-      "rpcUrls": [
-        "https://polygon-bor-rpc.publicnode.com"
-      ],
-      "nativeCurrency": {
-        "name": "POL",
-        "symbol": "POL",
-        "decimals": 18
-      },
-      "confirmations": 128,
-      "blsVerifierFormat": "eip2537",
-      "observedInfrastructure": "deployments/chains/polygon.json",
-      "configurationStatus": "planned-unverified"
-    },
     "xgrchain": {
       "schemaVersion": 1,
       "kind": "chain-config",
@@ -1152,20 +1131,6 @@
       "chain": "optimism",
       "chainId": 10,
       "domainId": 10,
-      "xitaV315": {
-        "schemaVersion": 1,
-        "components": {},
-        "receiptPaths": []
-      },
-      "present": false
-    },
-    "polygon": {
-      "schemaVersion": 1,
-      "kind": "infrastructure-deployment",
-      "network": "mainnet",
-      "chain": "polygon",
-      "chainId": 137,
-      "domainId": 137,
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},
