@@ -17,10 +17,16 @@
         "address": "0x70f5752326735b31641f21d174ba035e904db93c",
         "runtimeCodeKeccak256": "0x70b47ff607b3527322df20f3ef2d01193f8704f663d8943e7a4c66028cb5debb",
         "receiptPath": "deployments/receipts/optimism/93178b2146f22a362febb59b03fca3df4cf8599e07ffd011b9adcba76918b582-70f5752326735b31641f21d174ba035e904db93c.json"
+      },
+      "ism": {
+        "address": "0x3d2add3a7dacb82c11338b6731b22d2afed4e1cc",
+        "runtimeCodeKeccak256": "0xbd3b982722790aa68ff02f90bdf5c4a845b6ac9c0b56fb716142826d9816acf5",
+        "receiptPath": "deployments/receipts/optimism/a8ab18bfdcc827dea9abe0f050521cff5c85ecf8149f4382f1ca12549b28acc2-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json"
       }
     },
     "receiptPaths": [
       "deployments/receipts/optimism/93178b2146f22a362febb59b03fca3df4cf8599e07ffd011b9adcba76918b582-70f5752326735b31641f21d174ba035e904db93c.json",
+      "deployments/receipts/optimism/a8ab18bfdcc827dea9abe0f050521cff5c85ecf8149f4382f1ca12549b28acc2-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
       "deployments/receipts/optimism/bf3f3c57f88a29dfdb928b1cf27f2c4c51f848a3c62a18fe783738776847aad5-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
     ]
   }
