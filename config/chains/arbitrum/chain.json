@@ -3,6 +3,7 @@
   "kind": "chain-config",
   "environment": "mainnet",
   "name": "arbitrum",
+  "coingeckoAssetPlatform": "arbitrum-one",
   "chainId": 42161,
   "domainId": 42161,
   "rpcUrls": [
