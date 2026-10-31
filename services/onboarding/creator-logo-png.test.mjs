@@ -38,6 +38,6 @@ test("reject malicious uploads and unsupported metadata, size and pixel formats"
   Buffer.concat([png(),Buffer.from("evil")]).toString("base64"),
   Buffer.from("a".repeat(130000)).toString("base64")
  ])assert.throws(()=>normalizeLogoPng(bad));
- const checksum=png();checksum[checksum.length-10]^=1;
+ const checksum=png();checksum[checksum.length-1]^=1; // Damage only the IEND CRC, not the length.
  assert.throws(()=>normalizeLogoPng(checksum.toString("base64")),/checksum/);
 });
