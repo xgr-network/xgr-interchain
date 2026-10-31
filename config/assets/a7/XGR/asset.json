@@ -24,12 +24,6 @@
       "assetAddress": null
     },
     {
-      "chain": "polygon",
-      "representation": "synthetic",
-      "symbol": "wXGR",
-      "assetAddress": null
-    },
-    {
       "chain": "arbitrum",
       "representation": "synthetic",
       "symbol": "wXGR",
