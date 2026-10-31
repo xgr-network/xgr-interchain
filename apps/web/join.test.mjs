@@ -14,9 +14,9 @@ const valid=()=>({
  coingeckoId:"arbitrum",contactEmail:"holder@example.org",applicantRole:"holder",confirmed:true
 });
 test("join home-chain options follow deployed receipt-backed inventory, not planned chains",()=>{
- assert.deepEqual(joinHomeChains(catalog).sort(),["arbitrum","base","bsc"]);
+ assert.deepEqual(joinHomeChains(catalog).sort(),["arbitrum","base","bsc","optimism"]);
  const html=joinMarkup(catalog,valid());
- for(const key of ["arbitrum","base","bsc"])assert.match(html,new RegExp('<option value="'+key+'"'));
+ for(const key of ["arbitrum","base","bsc","optimism"])assert.match(html,new RegExp('<option value="'+key+'"'));
  assert.match(html,/>BNB Smart Chain<\/option>/);
  assert.doesNotMatch(html,/<option value="polygon"/);
  assert.doesNotMatch(html,/<option value="xgrchain"/);
@@ -24,7 +24,7 @@ test("join home-chain options follow deployed receipt-backed inventory, not plan
  assert.deepEqual(validateStep({...valid(),canonicalChain:"polygon"},1,catalog),["Canonical chain"]);
  const plan=structuredClone(catalog);
  plan.infrastructure.bsc.present=false;
- assert.deepEqual(joinHomeChains(plan).sort(),["arbitrum","base"]);
+ assert.deepEqual(joinHomeChains(plan).sort(),["arbitrum","base","optimism"]);
  assert.deepEqual(validateStep({...valid(),canonicalChain:"bsc"},1,plan),["Canonical chain"]);
 });
 test("Join has one form and retains every validation and privacy requirement",()=>{
