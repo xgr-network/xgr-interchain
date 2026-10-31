@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "af5bdf78b1bcef76adccd05f1fba09a884b90459"
+  },
+  "chain": "optimism",
+  "chainId": 10,
+  "domainId": 10,
+  "component": "syntheticRouter",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeName": null,
+  "address": "0x2d1edc54b6d02dfa15d4cedef27637011934154f",
+  "runtimeCodeKeccak256": "0xcfa84ea3c10da86edfe5b1a3765cae3dd56a91c4705ae76d437dcce8696f516b",
+  "transactionHash": "0xc549ee95eef161a9d112ee91cccceb08f32e4914cc71543b3609f6311d3dcf1f",
+  "blockNumber": 158932421,
+  "blockHash": "0x46f805000b149298b0af9c619b083bf3550effb008ed6fe03a5426aabd595cf5",
+  "confirmations": 12,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-router",
+    "factory": "0x3b83687d77170d42feddfe221629cc21e771e021",
+    "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-31T16:20:42.522Z"
+}
