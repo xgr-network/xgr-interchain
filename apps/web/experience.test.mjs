@@ -21,19 +21,20 @@ const catalog={
     ]}}}
 };
 test("fee display uses real chain names and native gas denominations from the published catalog",()=>{
+ const published=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  for(const [key,label,coin] of [
   ["xgrchain","XGRChain","XGR"],["base","Base","ETH"],
   ["arbitrum","Arbitrum","ETH"],["bsc","BNB Smart Chain","BNB"]
  ]){
-  assert.deepEqual(chainFeeIdentity(catalog,key),{label,coin});
+  assert.deepEqual(chainFeeIdentity(published,key),{label,coin});
  }
- assert.notEqual(chainFeeIdentity(catalog,"bsc").coin,"bsc");
- const broken=structuredClone(catalog);
+ assert.notEqual(chainFeeIdentity(published,"bsc").coin,"bsc");
+ const broken=structuredClone(published);
  delete broken.chains.bsc.nativeCurrency.symbol;
  assert.throws(()=>chainFeeIdentity(broken,"bsc"),/Fee denomination unavailable/);
  delete broken.chains.bsc;
  assert.throws(()=>chainFeeIdentity(broken,"bsc"),/Fee denomination unavailable/);
- const unnamed=structuredClone(catalog);
+ const unnamed=structuredClone(published);
  unnamed.chains.bsc.displayName="";
  assert.throws(()=>chainFeeIdentity(unnamed,"bsc"),/Fee network name unavailable/);
 });
