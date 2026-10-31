@@ -2,6 +2,7 @@ import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
+import {tokenCreatorMarkup,creatorDraft,creatorPreview,validateCreatorDraft,CREATOR_STATUS} from "./token-creator.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
@@ -1055,6 +1056,7 @@ function token(){
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
 const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false};
+const tokenCreatorState=creatorDraft();
 async function checkJoinAvailability(){
  if(joinState.checking||joinState.available!==null)return;
  joinState.checking=true;
@@ -1290,7 +1292,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
@@ -1480,6 +1482,36 @@ window.addEventListener("focus",()=>{
 document.addEventListener("visibilitychange",()=>{
  if(document.visibilityState==="visible"&&state.catalog&&!state.account)
   void restoreAuthorizedWallet();
+});
+// The creator URL is deliberately not advertised in the main navigation.
+// This prototype is receipt-gated and cannot request an unverified wallet TX.
+el.addEventListener("input",event=>{
+ if(path()!=="/createtoken")return;
+ const input=event.target.closest("[data-creator]");
+ if(!input)return;
+ const key=input.dataset.creator;
+ if(!["name","symbol","initialSupply","accepted"].includes(key))return;
+ tokenCreatorState[key]=key==="accepted"?input.checked:input.value;
+ const preview=creatorPreview(tokenCreatorState);
+ for(const name of ["name","symbol","amount"]){
+  const target=el.querySelector('[data-creator-preview="'+name+'"]');
+  if(target)target.textContent=preview.ready?preview[name]:"—";
+ }
+ const button=el.querySelector("#xita-creator-deploy");
+ if(button)button.disabled=!(CREATOR_STATUS.available&&preview.ready&&tokenCreatorState.accepted);
+});
+el.addEventListener("change",event=>{
+ if(path()!=="/createtoken")return;
+ if(event.target?.matches?.('[data-creator="accepted"]'))
+  tokenCreatorState.accepted=event.target.checked;
+});
+el.addEventListener("submit",event=>{
+ if(event.target?.id!=="xita-token-creator-form"||path()!=="/createtoken")return;
+ event.preventDefault();
+ const errors=validateCreatorDraft(tokenCreatorState);
+ const status=el.querySelector("#tc-status");
+ if(status)status.textContent=errors.length?errors.join(". "):
+  "Factory deployment is not yet verified. No wallet transaction was requested.";
 });
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("submit",event=>{
