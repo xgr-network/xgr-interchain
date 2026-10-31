@@ -121,6 +121,9 @@ test("wallet history prioritizes older unfinished transfers before newer complet
  assert.ok(sql,"wallet query must have a deterministic worklist ordering");
  assert.match(sql,/ORDER BY CASE WHEN/);
  assert.match(sql,/p.delivered IS DISTINCT FROM TRUE/);
+ const countSQL=calls.find(x=>x.includes("COUNT(*) FILTER"));
+ assert.match(countSQL,/p.delivered IS DISTINCT FROM TRUE/,
+  "Unknown destination delivery is still an unfinished obligation");
  assert.match(sql,/p.onward_route_id IS NOT NULL AND NOT/);
  assert.match(sql,/p.source_indexed_at DESC,p.source_tx_hash DESC LIMIT/);
 });
