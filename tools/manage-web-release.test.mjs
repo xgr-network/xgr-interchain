@@ -111,3 +111,22 @@ test("DB repair uses idempotent additive migrations and plain SQL checks without
  assert.match(part,/GRANT SELECT, UPDATE, DELETE/);
  assert.match(part,/systemctl restart xita-transfer-indexer\.service/);
 });
+
+test("Join restart waits for actual HTTP socket before installing nginx and publishing website",()=>{
+ const wait=shell.split("\nwait_xita_join() {")[1]?.split("\n}\n")[0];
+ assert.ok(wait,"missing Join readiness function");
+ assert.match(wait,/i<=20/);
+ assert.match(wait,/127\\.0\\.0\\.1:4090\\/api\\/xita\\/join\\/status/);
+ assert.match(wait,/systemctl is-failed --quiet xita-join\\.service/);
+ assert.match(wait,/journalctl -u xita-join\\.service/);
+ assert.doesNotMatch(wait,/systemctl restart/);
+ const update=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(update.indexOf("systemctl restart xita-join.service")<
+  update.indexOf("wait_xita_join || return 1"));
+ assert.ok(update.indexOf("wait_xita_join || return 1")<
+  update.indexOf("install-join-nginx.mjs"));
+ assert.ok(update.indexOf("install-join-nginx.mjs")<
+  update.indexOf("publish_web"));
+ const installer=shell.split("install_join() (")[1]?.split("\n)\n")[0];
+ assert.match(installer,/systemctl enable --now xita-join\\.service[\\s\\S]*?wait_xita_join/);
+});
