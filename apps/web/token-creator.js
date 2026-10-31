@@ -6,6 +6,7 @@ const clean=s=>String(s??"").replace(/[&<>"']/g,ch=>ESCAPE[ch]);
 const SYMBOL=/^[A-Z][A-Z0-9]{1,10}$/;
 const NAME=/^[\p{L}\p{N}][\p{L}\p{N} ._()'-]{1,79}$/u;
 const SUPPLY=/^(?:0|[1-9][0-9]{0,18})$/;
+const OWNER=/^0x[0-9a-f]{40}$/i;
 export const CREATOR_STATUS=Object.freeze({
  chainId:1643,
  factory:null,
@@ -13,7 +14,7 @@ export const CREATOR_STATUS=Object.freeze({
  available:false,
  starterGasAvailable:false
 });
-export function creatorDraft(){return {name:"",symbol:"",initialSupply:"1000000",
+export function creatorDraft(){return {name:"",symbol:"",initialSupply:"1000000",ownerAddress:"",
  shortDescription:"",description:"",website:"",category:"DeFi",contactEmail:"",
  applicantRole:"founder",links:{x:"",telegram:"",discord:"",github:"",docs:""},
  logoPngBase64:"",logoName:"",accepted:false,projectConfirmed:false};}
@@ -44,7 +45,7 @@ export function validateCreatorApplication(d){
 export function creatorRegistrationPayload(d){
  const problems=validateCreatorApplication(d);
  if(problems.length)throw Error(problems.join(". "));
- return {name:d.name.trim(),symbol:d.symbol.trim(),initialSupply:d.initialSupply.trim(),
+ return {name:d.name.trim(),symbol:d.symbol.trim(),initialSupply:d.initialSupply.trim(),ownerAddress:d.ownerAddress.trim(),
   shortDescription:d.shortDescription.trim(),description:d.description.trim(),
   website:d.website.trim(),categories:[d.category],tags:[],contactEmail:d.contactEmail.trim(),
   applicantRole:d.applicantRole,links:d.links,logoPngBase64:d.logoPngBase64,confirmed:true};
@@ -53,6 +54,8 @@ export function validateCreatorDraft(d){
  const errors=[];
  if(!NAME.test(String(d?.name||"").trim()))errors.push("Token name must have 2–80 permitted characters");
  if(!SYMBOL.test(String(d?.symbol||"").trim()))errors.push("Token symbol must use 2–11 uppercase letters or digits, starting with a letter");
+ const owner=String(d?.ownerAddress||"").trim();
+ if(!OWNER.test(owner)||/^0x0{40}$/i.test(owner))errors.push("A valid project owner wallet address is required");
  const supply=String(d?.initialSupply||"").trim();
  if(!SUPPLY.test(supply)||BigInt(SUPPLY.test(supply)?supply:"0")<1n||
     BigInt(SUPPLY.test(supply)?supply:"0")>10n**18n)
@@ -68,7 +71,7 @@ export function creatorPreview(d){
  return {ready:true,name:String(d.name).trim(),symbol:String(d.symbol).trim(),
   amount:String(d.initialSupply).trim(),decimals:18,
   initialSupplyBaseUnits:baseUnits.toString(),chain:"XGRChain",
-  recipient:"Creator's connected wallet",fixedSupply:true};
+  recipient:String(d.ownerAddress).trim(),owner:String(d.ownerAddress).trim(),fixedSupply:true};
 }
 export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
  const p=creatorPreview(d);
@@ -96,8 +99,9 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   field("name","Token name *",d.name,"Example Token")+
   field("symbol","Token symbol *",d.symbol,"EXM")+
   field("initialSupply","Fixed initial supply *",d.initialSupply,"1000000")+
+  field("ownerAddress","Project owner wallet address *",d.ownerAddress,"0x...")+
   '<div class="ja-field"><span>Original network</span><strong>XGRChain · Chain ID 1643</strong>'+
-  '<small>18 decimals · total supply minted once to your wallet</small></div></div>'+
+  '<small>18 decimals · complete supply and owner() role assigned to the specified project wallet; XGR pays the deployment gas</small></div></div>'+
   '<label class="ja-consent"><input type="checkbox" data-creator="accepted"'+
   (d.accepted?' checked':'')+'><span>I understand the initial token supply and parameters are permanent.</span></label></section>'+
   '<section class="ux-panel"><div class="ux-kicker">02 · PROJECT & BRANDING</div>'+
@@ -136,18 +140,19 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '<div class="pair"><span>Token name</span><strong data-creator-preview="name">'+clean(p.ready?p.name:"—")+'</strong></div>'+
   '<div class="pair"><span>Symbol</span><strong data-creator-preview="symbol">'+clean(p.ready?p.symbol:"—")+'</strong></div>'+
   '<div class="pair"><span>Initial supply</span><strong data-creator-preview="amount">'+clean(p.ready?p.amount:"—")+'</strong></div>'+
+  '<div class="pair"><span>Project owner</span><strong data-creator-preview="owner">'+clean(p.ready?p.owner:"—")+'</strong></div>'+
   '<div class="pair"><span>Network</span><strong>XGRChain, with future eligible Interchain routes</strong></div>'+
-  '<p class="ux-small">After email confirmation you receive an XITA-hosted logo URL. Factory deployment, sponsored gas and Join enrollment will be enabled after independent verification.</p>'+
+  '<p class="ux-small">After email confirmation your XGR-funded deployment is queued. Once the reviewed Creator service is activated, XGR deploys the token directly to the nominated project owner. The verified ERC-20 is then proposed to XITA by a standard Join Draft PR.</p>'+
   '<button class="ux-button" id="xita-creator-deploy" type="button"'+
   (!canCreate?' disabled':'')+'>'+(canCreate?'Create token in MetaMask':'Token creation not yet activated')+'</button>'+
   '<p class="ux-small" id="tc-status" role="status">'+
-  (canCreate?'Factory deployment available after verification.':'The token factory is not yet deployed and receipt-verified on XGRChain. No transaction will be requested.')+
+  (canCreate?'Factory deployment available after verification.':'The XGR-funded Creator service is awaiting verified factory activation. No transaction will be requested from your wallet.')+
   '</p></section></div>';
 }
 export function creatorConfirmMarkup(state){
  if(state?.phase==="email-verified")return '<div class="ux-app ux-join ux-token-creator">'+
   '<h1>Email verified</h1><section class="ux-panel"><h2>Your XITA logo URL</h2>'+
-  '<p>Your project registration is verified. Your token has not yet been created.</p>'+
+  '<p>Your email is verified. Your XGR-funded token creation has been queued; contract deployment and the subsequent XITA Join Draft PR require the reviewed production service.</p>'+
   '<p><a href="'+clean(state.logoUrl)+'" target="_blank" rel="noopener noreferrer">'+clean(state.logoUrl)+'</a></p>'+
   '<img class="tc-confirmed-logo" src="'+clean(state.logoUrl)+'" alt="Verified token logo"></section></div>';
  return '<div class="ux-app ux-join ux-token-creator"><h1>Confirm your email</h1>'+

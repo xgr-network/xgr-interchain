@@ -23,9 +23,11 @@ jobs:
         run: |
           node tools/validate-manifests.mjs
           node tools/build-xeta-web-catalog.mjs --check
-      - name: Verify new public token proposals against CoinGecko platform and ERC-20 contract
+      - name: Install pinned read-only creator verifier
+        run: npm install --prefix services/onboarding --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Verify new public token proposals against CoinGecko or receipt-pinned XGR creator
         env:
           XITA_COINGECKO_API_KEY: ${{ secrets.XITA_COINGECKO_API_KEY }}
         run: node tools/validate-join-pr.mjs --base "${{ github.event.pull_request.base.sha }}"
-      - name: Validate Join contact separation, role and CoinGecko identity invariants
+      - name: Validate Join contact separation, role and on-chain creator identity invariants
         run: node --test services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs tools/validate-join-pr.test.mjs

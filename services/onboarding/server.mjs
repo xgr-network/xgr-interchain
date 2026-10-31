@@ -81,9 +81,12 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
    throw Error("Existing application PR requires operator review");
   return {number:priorPR.number,url:priorPR.html_url,status:"draft"};
  }
+ const creator=bundle.kind==="origin-xgrchain";
  const pr=await githubCall("/pulls","POST",{title:"Join XITA: "+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
   body:"Public directory proposal — applicant role: "+bundle.summary.applicantRole+
-    ". CoinGecko original-chain contract verified before submission; required CI repeats the check. No approval, deployment or live transfer is implied. Review token representations before merging. No applicant email is present."});
+    (creator?". XGRChain original contract independently verified against the audited factory receipt; required CI repeats the on-chain owner, supply, creation and bytecode checks. No CoinGecko ID is required.":
+      ". CoinGecko original-chain contract verified before submission; required CI repeats the check.")+
+    " No approval, deployment of XITA routes or live transfer is implied. Review token representations before merging. No applicant email is present."});
  return {number:pr.number,url:pr.html_url,status:"draft"};
 }
 // The private contact record is not authoritative about whether a GitHub PR

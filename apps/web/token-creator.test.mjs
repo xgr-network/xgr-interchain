@@ -5,25 +5,25 @@ import {creatorDraft,creatorPreview,validateCreatorDraft,validateCreatorApplicat
  from "./token-creator.js";
 
 test("creator preview uses 18 precise decimals, full fixed supply and no admin privileges",()=>{
- const d={name:"Example Token",symbol:"EXM",initialSupply:"1000000",accepted:true};
+ const d={name:"Example Token",symbol:"EXM",initialSupply:"1000000",ownerAddress:"0x1234567890123456789012345678901234567890",accepted:true};
  const x=creatorPreview(d);
  assert.equal(x.ready,true);
  assert.equal(x.chain,"XGRChain");
  assert.equal(x.decimals,18);
  assert.equal(x.initialSupplyBaseUnits,"1000000000000000000000000");
- assert.equal(x.recipient,"Creator's connected wallet");
+ assert.equal(x.recipient,"0x1234567890123456789012345678901234567890");
  assert.equal(x.fixedSupply,true);
  assert.deepEqual(validateCreatorDraft(d),[]);
  assert.equal(creatorPreview({...d,initialSupply:"1000000000000000000"}).initialSupplyBaseUnits,
   "1000000000000000000000000000000000000");
 });
 test("invalid or unsafe names, symbols, supply values and acknowledgments are rejected",()=>{
- const d={name:"Example Token",symbol:"EXM",initialSupply:"1",accepted:true};
+ const d={name:"Example Token",symbol:"EXM",initialSupply:"1",ownerAddress:"0x1234567890123456789012345678901234567890",accepted:true};
  for(const bad of [
   {...d,name:"A"},{...d,name:"<script>alert(1)</script>"},
   {...d,symbol:"lower"},{...d,symbol:"2USD"},{...d,symbol:"EXM_TOO_LONG"},
   {...d,initialSupply:"0"},{...d,initialSupply:"1.5"},
-  {...d,initialSupply:"9999999999999999999"},{...d,accepted:false}
+  {...d,initialSupply:"9999999999999999999"},{...d,ownerAddress:"0x"+"0".repeat(40)},{...d,accepted:false}
  ])assert.ok(validateCreatorDraft(bad).length>0);
 });
 test("page is directly routable yet absent from navigation, with no unverified deploy request",()=>{
@@ -34,7 +34,7 @@ test("page is directly routable yet absent from navigation, with no unverified d
  assert.deepEqual(CREATOR_STATUS,{chainId:1643,factory:null,
   verifiedReceipt:null,available:false,starterGasAvailable:false});
  const markup=tokenCreatorMarkup({name:'<img src=x onerror=alert(1)>',
-  symbol:"EXM",initialSupply:"99",accepted:true});
+  symbol:"EXM",initialSupply:"99",ownerAddress:"0x1234567890123456789012345678901234567890",accepted:true});
  assert.doesNotMatch(markup,/<img src=x onerror/);
  assert.match(markup,/Token creation not yet activated/);
  assert.match(markup,/\sdisabled/);
@@ -45,7 +45,7 @@ test("page is directly routable yet absent from navigation, with no unverified d
 });
 
 test("creator enrollment collects private email, complete Join project metadata and uploaded logo",()=>{
- const d={...creatorDraft(),name:"Example Token",symbol:"EXM",initialSupply:"1000000",
+ const d={...creatorDraft(),name:"Example Token",symbol:"EXM",initialSupply:"1000000",ownerAddress:"0x1234567890123456789012345678901234567890",
   shortDescription:"Example decentralized token.",description:
    "A community project exploring wallet-owned tokens and sponsored Interchain launches on XGRChain.",
   website:"https://example.org",category:"DeFi",contactEmail:"contact@example.org",
@@ -56,8 +56,10 @@ test("creator enrollment collects private email, complete Join project metadata 
  assert.equal(payload.logoPngBase64,"aGVsbG8=");
  assert.equal(payload.contactEmail,"contact@example.org");
  assert.equal(payload.confirmed,true);
+ assert.equal(payload.ownerAddress,d.ownerAddress);
  const html=tokenCreatorMarkup(d);
  assert.match(html,/data-creator-logo/);
+ assert.match(html,/data-creator="ownerAddress"/);
  assert.match(html,/id="xita-creator-register"/);
  assert.match(html,/data-creator="contactEmail"/);
  assert.match(html,/data-creator="description"/);

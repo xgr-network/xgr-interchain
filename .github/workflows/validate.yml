@@ -83,11 +83,13 @@ jobs:
           node tools/check-hub-route-expansion.mjs
           node --test tools/auto-hub-routes.test.mjs
 
+      - name: Install pinned creator verifier
+        run: npm install --prefix services/onboarding --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Validate manifest and onboarding generation tests
         shell: bash
         run: |
           set -euo pipefail
-          node --test tools/optimism-predeploy.test.mjs tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs apps/web/token-slug.test.mjs apps/web/join.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/status-notifier.integration.test.mjs services/onboarding/server.test.mjs services/onboarding/creator-logo-png.test.mjs services/onboarding/creator-registration.test.mjs tools/join-nginx.test.mjs tools/validate-join-pr.test.mjs
+          node --test services/onboarding/creator-manifests.test.mjs services/onboarding/creator-chain-proof.test.mjs services/onboarding/creator-operator.test.mjs tools/optimism-predeploy.test.mjs tools/manifest-layout.test.mjs tools/validate-manifests.test.mjs services/onboarding/manifests.test.mjs apps/web/token-slug.test.mjs apps/web/join.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/status-notifier.integration.test.mjs services/onboarding/server.test.mjs services/onboarding/creator-logo-png.test.mjs services/onboarding/creator-registration.test.mjs tools/join-nginx.test.mjs tools/validate-join-pr.test.mjs
 
       - name: Validate read-only mainnet roundtrip audit
         run: node --test tools/verify-xita-roundtrip.test.mjs

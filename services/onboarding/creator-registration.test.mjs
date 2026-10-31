@@ -15,7 +15,7 @@ function png(){
  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk("IHDR",h),
   chunk("IDAT",deflateSync(Buffer.from([0,255,0,0,255]))),chunk("IEND",Buffer.alloc(0))]).toString("base64");
 }
-const input={name:"Example Token",symbol:"EXM",initialSupply:"1000000",
+const input={name:"Example Token",symbol:"EXM",initialSupply:"1000000",ownerAddress:"0x1234567890123456789012345678901234567890",
  shortDescription:"A community-governed ERC20 sample project.",description:
  "Example Token is a small community project testing XGRChain token creation and future Interchain integrations.",
  website:"https://example.org",categories:["DeFi"],tags:[],applicantRole:"founder",
@@ -36,6 +36,7 @@ test("unverified logo is private; confirmed email publishes sanitized permanent 
   assert.equal(unverified.status,202);assert.equal(unverified.body.status,"pending-email");
   const record=listPrivate(dir,{now})[0];assert.equal(record.kind,"token-creator");
   assert.equal(record.phase,"pending-email");assert.ok(!record.logoUrl);
+  assert.equal(record.input.ownerAddress,input.ownerAddress);
   assert.equal(emails.length,1);
   assert.equal(JSON.stringify(emails).includes(input.logoPngBase64),false);
   const match=/\/createtoken\/confirm#([0-9a-f-]{36})\.([a-f0-9]{64})/.exec(emails[0].text);
@@ -48,6 +49,7 @@ test("unverified logo is private; confirmed email publishes sanitized permanent 
   assert.equal(bad.status,422);assert.equal((await fetch(url+logoPath)).status,404);
   const confirmed=await post("/api/xita/creator/confirm",{id:match[1],token:match[2]});
   assert.equal(confirmed.status,200);assert.equal(confirmed.body.status,"email-verified");
+  assert.equal(confirmed.body.deploymentStatus,"queued");
   assert.equal(confirmed.body.logoUrl,"https://xita.xgr.network"+logoPath);
   const logo=await fetch(url+logoPath);
   assert.equal(logo.status,200);assert.equal(logo.headers.get("content-type"),"image/png");
@@ -55,7 +57,7 @@ test("unverified logo is private; confirmed email publishes sanitized permanent 
   assert.equal((await logo.arrayBuffer()).byteLength>60,true);
   const repeated=await post("/api/xita/creator/confirm",{id:match[1],token:match[2]});
   assert.deepEqual(repeated.body,confirmed.body);
-  assert.equal(listPrivate(dir,{now})[0].phase,"email-verified");
+  assert.equal(listPrivate(dir,{now})[0].phase,"deployment-queued");
   assert.equal(listPrivate(dir,{now})[0].input.contactEmail,input.contactEmail);
   assert.equal(JSON.stringify(confirmed.body).includes(input.contactEmail),false);
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true})}
@@ -90,7 +92,9 @@ test("server rejects forged HTML/SVG logos and incorrect project relationships",
    {...input,applicantRole:"anonymous"},
    {...input,website:"http://localhost"},
    {...input,initialSupply:"999999999999999999999"},
-   {...input,contactEmail:"not-an-email"}
+   {...input,contactEmail:"not-an-email"},
+   {...input,ownerAddress:"0x"+"0".repeat(40)},
+   {...input,ownerAddress:"garbage"}
   ]){
    const reply=await fetch(url+"/api/xita/creator/register",{method:"POST",
     headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});

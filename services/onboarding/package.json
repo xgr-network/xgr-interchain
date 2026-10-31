@@ -1,16 +1,9 @@
 {
-  "name": "xita-join-onboarding",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@xgr-network/xita-join-creator",
+  "version": "1.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=20"
-  },
-  "scripts": {
-    "start": "node server.mjs",
-    "test": "node --test *.test.mjs"
-  },
+  "private": true,
   "dependencies": {
-    "nodemailer": "10.0.13"
+    "ethers": "6.13.4"
   }
 }
