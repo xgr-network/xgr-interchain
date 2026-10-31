@@ -68,7 +68,9 @@ export function canonicalWalletSnapshot({account,rows,previous=[],activeSourceHa
   if(previousOpen?.account?.toLowerCase()!==owner||
      previousOpen.confirmed!==true||
      !HASH.test(previousOpen.txHash||"")||
-     !HASH.test(previousOpen.messageId||""))continue;
+     !HASH.test(previousOpen.messageId||"")||
+     !HASH.test(previousOpen.routeId||"")||
+     !ADDRESS.test(previousOpen.gateway||""))continue;
   const ongoing=previousOpen.delivered!==true||
     (HASH.test(previousOpen.onwardRouteId||"")&&
      previousOpen.status!=="journey-delivered"&&
