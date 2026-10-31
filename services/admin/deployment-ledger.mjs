@@ -8,10 +8,11 @@ import {rpcCall} from "./inspector.mjs";
 import {readCanonicalFinalizedHead} from "./chain-finality.mjs";
 import {approvedWorkInventory,assertCurrentMain} from "./main-gate.mjs";
 import {readFileSync,existsSync} from "node:fs";
-import {assetDeploymentFolder,chainDeploymentPath,loadChainDeployment,loadAssetDeployment} from "../../tools/manifest-layout.mjs";
+import {assetConfigFolder,assetDeploymentFolder,chainDeploymentPath,loadChainDeployment,loadAssetDeployment} from "../../tools/manifest-layout.mjs";
 import {join} from "node:path";
 import {isDeepStrictEqual} from "node:util";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
+import {deriveMissingHubRoutes} from "../../tools/auto-hub-routes.mjs";
 
 // Too few canonical deployment confirmations is a retryable state, not a
 // failed contract or permission to sign/broadcast a replacement transaction.
@@ -189,7 +190,7 @@ function encodeJSON(o){return JSON.stringify(o,null,2)+"\n";}
  * Fail closed when the checked-out main already has a stale generated catalog.
  */
 export function updatedDeploymentWebCatalog(root,{
-  assets=new Map(),infrastructure=new Map()
+  assets=new Map(),infrastructure=new Map(),assetConfigs=new Map()
 }={}){
  const canonical=loadCatalog(root);
  const baseline={schemaVersion:1,...canonical};
@@ -203,6 +204,11 @@ export function updatedDeploymentWebCatalog(root,{
  for(const [chain,index] of infrastructure){
   if(!Object.hasOwn(canonical.infrastructure,chain))throw Error("Unknown deployment chain "+chain);
   canonical.infrastructure[chain]=index;
+ }
+ for(const [asset,config] of assetConfigs){
+  if(!Object.hasOwn(canonical.assets,asset))throw Error("Unknown desired route asset "+asset);
+  canonical.assets[asset].metadata=config.metadata;
+  canonical.assets[asset].routes=config.routes;
  }
  const errors=validateCatalog(canonical);
  if(errors.length)throw Error("Deployment-generated web catalog invalid: "+errors.join("; "));
@@ -390,13 +396,26 @@ export async function publishDeploymentBatch(root,inputs,{
   entries.push({path,mode:"100644",type:"blob",content:encodeJSON(value)});
   updatedInfrastructure.set(chain,{...value,present:true});
  }
+ // Complete receipt-backed spoke infrastructure must also expand the desired
+ // reciprocal asset graph in THIS SAME commit. A separate operator edit or
+ // route-specific code release is not required for every new chain.
+ const approvedCatalog=loadCatalog(root);
+ for(const [chain,index] of updatedInfrastructure)approvedCatalog.infrastructure[chain]=index;
+ const assetConfigs=deriveMissingHubRoutes(approvedCatalog);
+ for(const [asset,config] of assetConfigs){
+  const info=inventory.assets[asset];
+  if(!info)throw Error("Unapproved asset during route expansion: "+asset);
+  const path=assetConfigFolder(asset,info.assetId);
+  entries.push({path:path+"/asset.json",mode:"100644",type:"blob",content:encodeJSON(config.metadata)});
+  entries.push({path:path+"/routes.json",mode:"100644",type:"blob",content:encodeJSON(config.routes)});
+ }
  // Same immutable receipt commit must include the rebuilt public snapshot.
  // Otherwise the next ./manage.sh update fails --check, blocking UI publication.
- if(updatedAssets.size||updatedInfrastructure.size){
+ if(updatedAssets.size||updatedInfrastructure.size||assetConfigs.size){
   entries.push({
    path:"apps/web/catalog.json",mode:"100644",type:"blob",
    content:updatedDeploymentWebCatalog(root,{
-    assets:updatedAssets,infrastructure:updatedInfrastructure
+    assets:updatedAssets,infrastructure:updatedInfrastructure,assetConfigs
    })
   });
  }

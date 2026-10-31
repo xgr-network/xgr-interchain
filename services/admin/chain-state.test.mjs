@@ -11,7 +11,7 @@ test("all main-approved chains derive deployment progress from documented compon
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);
  assert.equal(chains.length,inv.chains.length);
  assert.equal(chains.find(c=>c.name==="optimism")?.chainId,10);
- assert.equal(chains.find(c=>c.name==="optimism")?.status,"not-deployed");
+ assert.equal(chains.find(c=>c.name==="optimism")?.status,"documented");
  assert.equal(chains.find(c=>c.name==="bsc").chainId,56);
  assert.equal(chains.find(c=>c.name==="bsc").status,"documented");
  assert.equal(chains.find(c=>c.name==="xgrchain").chainId,1643);
