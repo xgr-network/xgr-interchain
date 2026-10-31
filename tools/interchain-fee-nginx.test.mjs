@@ -55,7 +55,7 @@ test("exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whiteliste
  for(const uri of [
   "https://gateway.tenderly.co",
   "https://base.gateway.tenderly.co",
-  "https://polygon-bor-rpc.publicnode.com",
+  "https://bsc-rpc.publicnode.com",
   "https://arbitrum-one-rpc.publicnode.com"
  ]){
   assert.ok(a.config.includes(uri));
