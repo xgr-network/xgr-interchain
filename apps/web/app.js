@@ -32,7 +32,7 @@ const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,tr
 // browser-cached experience.js must NEVER break the entire SPA via a newly
 // introduced named export during a rolling static-site publication.
 const displayNames={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",
- polygon:"Polygon",bsc:"BNB Smart Chain"};
+ bsc:"BNB Smart Chain"};
 function chainIdentity(key){
  const chain=state.catalog?.chains?.[key],coin=chain?.nativeCurrency?.symbol;
  if(!chain||!Number.isSafeInteger(chain.chainId)||
