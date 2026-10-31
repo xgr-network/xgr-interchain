@@ -43,6 +43,15 @@ test("canonical catalog discovers deployed fee gateways and checks actual receip
   assert.match(row.runtimeCodeKeccak256,/^0x[0-9a-f]{64}$/i);
  }
 });
+test("receipt-backed BSC is eligible and undeployed OP is never considered a fee-claim target",()=>{
+ const fixture=freshDeployedCatalog({names:["base","xgrchain","bsc"]});
+ fixture.catalog.chains.optimism={chainId:10,configurationStatus:"planned-unverified",
+  rpcUrls:["https://mainnet.optimism.io"]};
+ fixture.catalog.infrastructure.optimism={present:false,xitaV315:{components:{},receiptPaths:[]}};
+ const result=documentedFeeClaimAdapters(fixture.catalog,{readReceipt:fixture.readReceipt});
+ assert.deepEqual(result.map(x=>x.name).sort(),["base","bsc","xgrchain"]);
+ assert.equal(result.find(x=>x.name==="bsc").chain.chainId,56);
+});
 test("ENV cannot replace the receipt-backed claim adapter and all thresholds validate before any claim",async()=>{
  const fixture=catalog(),c=fixture.catalog,targets=documentedFeeClaimAdapters(c,{readReceipt:fixture.readReceipt}),seen=[];
  const env={
