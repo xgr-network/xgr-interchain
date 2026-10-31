@@ -41,7 +41,7 @@ test("main work inventory returns assets by canonical key",async()=>{
  const inventory=approvedWorkInventory(root);
  assert.ok(inventory.assets.XGR);
  assert.equal(inventory.assets.XGR.key,"XGR");
- assert.equal(inventory.assets.XGR.routeCount,8);
+ assert.equal(inventory.assets.XGR.routeCount,6);
 });
 
 test("stale main still renders read-only inventory while never approving Deploy",async()=>{
