@@ -1080,7 +1080,7 @@ async function processJoinEmailConfirmation(){
 function join(){
  // /join always displays a form. The receipt belongs only to /join/submitted.
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog.chains,joinState.data,joinState.status,joinState.busy);
+ return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy);
 }
 function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
@@ -1105,7 +1105,7 @@ async function runJoin(action){
   a.href=url;a.download="xita-alliance-application.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
  }
- const problems=[0,1,2].flatMap(step=>validateStep(d,step,state.catalog.chains));
+ const problems=[0,1,2].flatMap(step=>validateStep(d,step,state.catalog));
  if(problems.length){
    joinState.status="Please complete the required fields.";
    const fields={name:"name",symbol:"symbol",website:"website",
