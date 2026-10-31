@@ -10,6 +10,32 @@ export function canonicalWalletSnapshot({account,rows,previous=[],activeSourceHa
  const indexed=rows.filter(row=>row?.account?.toLowerCase()===owner&&
   HASH.test(row.txHash||"")&&row.confirmed===true);
  const byKey=new Map(indexed.map(row=>[key(row),row]));
+ // An independently finalized Mailbox delivery can reach the browser before
+ // the eventual SQL projection has refreshed. Preserve ONLY its positive
+ // proof for the exact same canonical route/message, never an unrelated local
+ // status or a chain with conflicting finalized evidence.
+ for(const verified of previous){
+  if(verified?.account?.toLowerCase()!==owner||
+     verified.confirmed!==true||verified.delivered!==true||
+     verified.finalityVerified!==true||verified.status!=="delivered"||
+     !HASH.test(verified.messageId||""))continue;
+  const current=byKey.get(key(verified));
+  if(!current||current.confirmed!==true||
+     current.messageId?.toLowerCase()!==verified.messageId.toLowerCase()||
+     current.routeId?.toLowerCase()!==verified.routeId?.toLowerCase()||
+     current.gateway?.toLowerCase()!==verified.gateway?.toLowerCase()||
+     current.asset!==verified.asset||
+     current.destinationChain!==verified.destinationChain||
+     current.onwardRouteId||verified.onwardRouteId||
+     current.delivered===true||
+     (current.finalityVerified===true&&current.destinationFinalityHash&&
+      verified.destinationFinalityHash&&
+      current.destinationFinalityHash.toLowerCase()!==verified.destinationFinalityHash.toLowerCase()))
+   continue;
+  byKey.set(key(verified),{...current,delivered:true,status:"delivered",
+   finalityVerified:true,destinationFinalityBlock:verified.destinationFinalityBlock,
+   destinationFinalityHash:verified.destinationFinalityHash});
+ }
  // An independently confirmed on-chain child already associated with the
  // exact indexed parent may arrive before its SQL projection. Preserve only
  // that cryptographic linkage, never guess from a shared amount or wallet.

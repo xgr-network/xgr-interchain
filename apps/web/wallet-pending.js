@@ -6,7 +6,7 @@ const ACCOUNT=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;
 const ONWARD=new Set(["awaiting-onward","awaiting-final-proof",
  "final-delivery-unknown","journey-ambiguous"]);
-export function pendingDeliveryCount({account,items=[],indexedOpenCount=0}={}){
+export function pendingDeliveryCount({account,items=[],indexedOpenCount=0,indexedRowsComplete=false}={}){
  if(!ACCOUNT.test(account||"")||!Array.isArray(items))return 0;
  const seen=new Set;
  for(const item of walletJourneys(items)){
@@ -21,7 +21,12 @@ export function pendingDeliveryCount({account,items=[],indexedOpenCount=0}={}){
  }
  const indexed=Number.isSafeInteger(indexedOpenCount)&&indexedOpenCount>=0?
   indexedOpenCount:0;
- return Math.max(seen.size,indexed);
+ // A fully returned SQL wallet page already contains every indexed pending
+ // journey. An older aggregate count must not resurrect a delivery that the
+ // browser has since independently verified against a finalized Mailbox.
+ // Retain the aggregate as a lower bound only when the result was truncated
+ // or the full wallet list could not be verified.
+ return indexedRowsComplete===true?seen.size:Math.max(seen.size,indexed);
 }
 
 // Only an EXACT active wallet-broadcast session may get an interim UI notice.

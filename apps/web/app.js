@@ -271,7 +271,7 @@ function scheduleAutomaticWalletStep(){
   void performTransferAction({automaticStepKey:key});
  });
 }
-const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""};
+const transferActivity={items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,indexRowsComplete:false,report:null,notice:"",error:""};
 let broadcastHints=[];
 function loadBroadcastHints(account){
  broadcastHints=account?listSourceTxHints(account).filter(h=>Boolean(state.catalog?.chains?.[h.sourceChain])):[];
@@ -302,7 +302,8 @@ function refreshTransferLink(){
   "/transfer?token="+encodeURIComponent(single.asset||"XGR")+"&resume="+encodeURIComponent(single.txHash):null;
  alert.href=signing?.href||direct||provisional?.href||"/my-transfers";
  const pending=connected?pendingDeliveryCount({account:state.account,
-  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount}):0;
+  items:transferActivity.items,indexedOpenCount:transferActivity.indexOpenCount,
+  indexedRowsComplete:transferActivity.indexRowsComplete}):0;
  alert.hidden=pending===0&&!signing&&!provisional;
  if(signing){
   alert.textContent=signing.label;alert.title=signing.title;
@@ -332,7 +333,7 @@ function setConnectedAccount(next){
   transferBalancePending.clear();
   if(transferBalanceTimer!==null){clearTimeout(transferBalanceTimer);transferBalanceTimer=null;}
   transferRequest++;
-  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,report:null,notice:"",error:""});
+  Object.assign(transferActivity,{items:[],scanned:false,scanning:false,working:false,selectedTxHash:null,indexCoverage:null,indexOpenCount:0,indexRowsComplete:false,report:null,notice:"",error:""});
   resumeProbed.clear();
   autoWalletAttempts.reset();clearAutomaticWalletRetryTimer();
    flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;flowView.account=null;flowView.stage="";
@@ -389,6 +390,7 @@ async function scanWalletHistory(){
  transferActivity.scanning=true;
  transferActivity.scanned=true;
  transferActivity.indexCoverage=null;transferActivity.indexOpenCount=0;
+ transferActivity.indexRowsComplete=false;
  if(path()==="/my-transfers")render();
  // PostgreSQL history queries may need the configured 8-second statement budget.
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
@@ -420,6 +422,7 @@ async function scanWalletHistory(){
    Math.max(0,data.openCount):0;
   transferActivity.indexCoverage=data.coverage||null;
   const complete=data.status==="complete"&&data.coverage?.complete===true&&data.truncated!==true;
+  transferActivity.indexRowsComplete=complete;
   transferActivity.report={source:"indexer",lookback:null,
    scannedRoutes:data.coverage?.requiredRoutes||0,limited:data.truncated===true};
   transferActivity.notice=complete?
@@ -435,6 +438,7 @@ async function scanWalletHistory(){
   // Manual source-TX verification still works without PostgreSQL.
   transferActivity.report=null;
   transferActivity.indexCoverage=null;
+  transferActivity.indexRowsComplete=false;
   transferActivity.notice="Wallet history index unavailable or timed out. "+
    "Previously sent transfers remain on-chain. XITA will retry automatically "+
    "while the wallet is connected. The indexer may need repair; never rebroadcast "+
@@ -1573,7 +1577,8 @@ setInterval(async()=>{
       flowView.sourceTxHash:null
    });
    scheduleTransferBalanceRefresh(previousTransfers,transferActivity.items,account);
-   if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=data.openCount;
+   if(Number.isSafeInteger(data.openCount))transferActivity.indexOpenCount=Math.max(0,data.openCount);
+   transferActivity.indexRowsComplete=data.status==="complete"&&data.coverage?.complete===true&&data.truncated!==true;
    refreshTransferLink();
   }
   if(path()==="/transfer")render();
