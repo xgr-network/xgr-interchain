@@ -49,3 +49,27 @@ test("verified onward receipt survives lagging SQL parent, without creating dupl
  const conflicting=canonicalWalletSnapshot({account:a,rows:[{...stale,routeId:h("9")}],previous:[confirmed]});
  assert.equal(conflicting[0].secondHopTxHash,undefined);
 });
+
+test("finalized direct BSC delivery stays complete while SQL row lags; unrelated or conflicting rows do not",()=>{
+ const direct={account:a,asset:"XGR",sourceChain:"xgrchain",
+  destinationChain:"bsc",txHash:h("a"),messageId:h("b"),
+  routeId:h("c"),gateway:"0x"+"1".repeat(40),
+  confirmed:true,delivered:false,status:"awaiting-proof",
+  finalityVerified:true,destinationFinalityHash:h("e")};
+ const done={...direct,delivered:true,status:"delivered",
+  destinationFinalityBlock:1234};
+ const projected=canonicalWalletSnapshot({account:a,rows:[direct],previous:[done]});
+ assert.equal(projected.length,1);
+ assert.equal(projected[0].status,"delivered");
+ assert.equal(projected[0].delivered,true);
+ assert.equal(openWalletTransfers(projected,a).length,0);
+ const conflict=canonicalWalletSnapshot({account:a,
+  rows:[{...direct,destinationFinalityHash:h("f")}],previous:[done]});
+ assert.equal(conflict[0].status,"awaiting-proof");
+ const otherRoute=canonicalWalletSnapshot({account:a,
+  rows:[{...direct,routeId:h("d")}],previous:[done]});
+ assert.equal(otherRoute[0].status,"awaiting-proof");
+ const notFinalized=canonicalWalletSnapshot({account:a,
+  rows:[direct],previous:[{...done,finalityVerified:false}]});
+ assert.equal(notFinalized[0].status,"awaiting-proof");
+});
