@@ -4,7 +4,7 @@ import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory,chainFeeIdentity} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {metaMaskTokenSpec,injectedMetaMask,requestMetaMaskToken,metaMaskFailure} from "./metamask-token.js";
@@ -28,7 +28,8 @@ import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js"
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
-const names={xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum"};
+const chainIdentity=key=>chainFeeIdentity(state.catalog,key);
+const chainName=key=>chainIdentity(key).label;
 const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 const sponsorTransfer={key:"",status:"unavailable",grants:[],upfrontRequired:null,checkedAt:0,loading:false};
 async function refreshSponsorship(){
@@ -59,7 +60,7 @@ async function refreshSponsorship(){
 let previewRevision=0,previewTimer=null;
 const feePreviewCache=new Map(); // UI only renders backend quotes; browser never contacts CoinGecko.
 const feePreviewPending=new Map(); // Deduplicate concurrent re-renders of one quote.
-function sourceFeeCoin(chain){return {xgrchain:"XGR",base:"ETH",arbitrum:"ETH",polygon:"POL"}[chain]||chain;}
+function sourceFeeCoin(chain){return chainIdentity(chain).coin;}
 
 function updatePreviewState(status,details=""){
  const element=document.getElementById("ux-fee-preview-status");
@@ -148,7 +149,7 @@ async function refreshFeePreview(){
     const stages=Array.isArray(allocation)?allocation.filter(x=>x.chain===r.chain):null;
     const paid=stages?.reduce((sum,x)=>sum+BigInt(x.walletCoveredWei),0n);
     const sponsored=stages?.reduce((sum,x)=>sum+BigInt(x.shortfallWei),0n);
-    return {...r,coin:sourceFeeCoin(r.chain),label:names[r.chain]||r.chain,
+    return {...r,...chainIdentity(r.chain),
      ...(stages?{conditionalNetWei:paid,potentialSponsorWei:sponsored,
        eligible:sponsored>0n}:{})};
    });
@@ -893,7 +894,7 @@ async function performTransferAction({automaticStepKey=null}={}){
   }
  }
 }
-const routeName=r=>(names[r.sourceChain]||r.sourceChain)+" → "+(names[r.destinationChain]||r.destinationChain);
+const routeName=r=>chainName(r.sourceChain)+" → "+chainName(r.destinationChain);
 const x=raw=>String(raw??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const asset=()=>state.catalog.assets[state.assetId]||state.catalog.assets.XGR;
 const profile=id=>state.catalog.assets[id]?.profile||{name:id,slug:id.toLowerCase(),shortDescription:"",description:"",categories:[],tags:[],links:{},branding:{}};
@@ -1021,10 +1022,10 @@ function token(){
  const stage=listingStatus(a,state.visibility?.assets?.[id],state.catalog);
  const chips=(p.categories||[]).map(cat=>'<span class="category-chip">'+x(cat)+'</span>').join(" ");
  return '<div class="columns"><article><a href="/markets" data-nav class="muted">← All tokens</a>'+
- '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(names[canonical]||canonical)+' · Canonical asset</div>'+
+ '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(chainName(canonical))+' · Canonical asset</div>'+
  '<h1>'+x(p.name)+' <small>'+x(id)+'</small></h1><span class="tag">'+x(stage)+'</span></div></div>'+
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
- '<div class="pair"><span>Canonical network</span><b>'+x(names[canonical]||canonical)+'</b></div>'+
+ '<div class="pair"><span>Canonical network</span><b>'+x(chainName(canonical))+'</b></div>'+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
  '<div class="pair"><span>Documented ILN routes</span><b>'+
   (a.deployment?.routeDeployments?.length||0)+'</b></div>'+

@@ -13,7 +13,20 @@ const POSITIONS = [
   {x:23,y:25},{x:77,y:27},{x:78,y:75},{x:22,y:74},{x:50,y:11},{x:50,y:91}
 ];
 const esc = value => String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const chainLabel = (key,chain) => typeof chain?.displayName==="string" && chain.displayName.trim() ? chain.displayName : LABELS[key] || chain?.name || key;
+export const chainLabel = (key,chain) => typeof chain?.displayName==="string" && chain.displayName.trim() ? chain.displayName : LABELS[key] || chain?.name || key;
+// Fee display must use the approved network's NATIVE currency, never the
+// internal chain slug. Missing/malformed denominations fail closed rather
+// than presenting a misleading payable amount (for example "0.00006 bsc").
+export function chainFeeIdentity(catalog,key){
+ const chain=catalog?.chains?.[key],coin=chain?.nativeCurrency?.symbol;
+ if(!chain||!Number.isSafeInteger(chain.chainId)||!Number.isSafeInteger(chain.domainId)||
+   !/^[A-Z][A-Z0-9]{0,11}$/.test(coin||""))
+  throw Error("Fee denomination unavailable for "+String(key));
+ const label=chainLabel(key,chain);
+ if(typeof label!=="string"||!label.trim()||label===key)
+  throw Error("Fee network name unavailable for "+String(key));
+ return {label,coin};
+}
 const tokenLink = token => "/token/"+encodeURIComponent(token.slug);
 const pill = (isActive) => '<span class="ux-badge '+(isActive?"is-verified":"is-pending")+'">'+(isActive?"Verified active":"Not verified")+"</span>";
 const valueOrDash = value => value===null||value===undefined ? "—" : String(value);
