@@ -162,6 +162,11 @@ publish_web() {
   privileged cp -a "$ROOT/apps/web/." "$release/"
   # Stamp the release HTML against the exact CSS file before it goes live.
   privileged node "$ROOT/tools/stamp-xita-web-style.mjs" "$release"
+  privileged node "$ROOT/tools/stamp-xita-web-modules.mjs" "$release" "$sha"
+  # Validate the ACTUAL staged JS modules, not only unmodified Git source.
+  while IFS= read -r -d "" script; do
+    node --check "$script" || { echo "ERROR: invalid staged JavaScript $script" >&2; return 1; }
+  done < <(find "$release" -maxdepth 1 -type f -name "*.js" -print0)
   privileged chmod -R a+rX "$release"
   prepare_catalog_store
   privileged rm -f "$release/catalog.json"
