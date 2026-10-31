@@ -42,7 +42,7 @@ test("Join proposals exclude undeployed Polygon and accept BSC as original chain
  assert.equal(selected.summary.chains.includes("polygon"),false);
  const routes=JSON.parse(Object.entries(selected.files).find(([k])=>k.endsWith("/routes.json"))[1]);
  assert.ok(routes.routes.every(r=>r.sourceChain!=="polygon"&&r.destinationChain!=="polygon"));
- assert.throws(()=>buildManifestBundle({...application,canonicalChain:"polygon"},catalog),/not yet deployed/);
+ assert.throws(()=>buildManifestBundle({...application,canonicalChain:"polygon"},catalog),/Unknown canonical chain/);
 });
 test("reject direct bridge and duplicate canonical token",()=>{
  const expected=buildManifestBundle(application,catalog).files;
