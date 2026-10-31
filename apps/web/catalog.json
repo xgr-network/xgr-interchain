@@ -72,6 +72,33 @@
       "blsVerifierFormat": "eip2537",
       "observedInfrastructure": "deployments/chains/bsc.json"
     },
+    "optimism": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "name": "optimism",
+      "displayName": "OP Mainnet",
+      "coingeckoAssetPlatform": "optimistic-ethereum",
+      "environment": "mainnet",
+      "chainId": 10,
+      "domainId": 10,
+      "rpcUrls": [
+        "https://mainnet.optimism.io",
+        "https://optimism-rpc.publicnode.com",
+        "https://optimism.drpc.org",
+        "https://optimism.gateway.tenderly.co"
+      ],
+      "explorer": "https://optimistic.etherscan.io",
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "confirmations": 12,
+      "receiptFinalityTag": "safe",
+      "blsVerifierFormat": "eip2537",
+      "observedInfrastructure": "deployments/chains/optimism.json",
+      "configurationStatus": "planned-unverified"
+    },
     "polygon": {
       "schemaVersion": 1,
       "kind": "chain-config",
@@ -1117,6 +1144,20 @@
         ]
       },
       "present": true
+    },
+    "optimism": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "optimism",
+      "chainId": 10,
+      "domainId": 10,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {},
+        "receiptPaths": []
+      },
+      "present": false
     },
     "polygon": {
       "schemaVersion": 1,
