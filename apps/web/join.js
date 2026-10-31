@@ -1,10 +1,21 @@
 const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 import {normalizeJoinDescription} from "./join-description.js";
+import {isDeployedChain} from "./route-availability.js";
 const url=s=>/^https:\/\/[^@\s/]+/.test(s||"");
+// A home chain is eligible only with documented deployed infrastructure AND
+// an independently known CoinGecko asset-platform identity. Planned chains
+// never appear merely because they exist in the desired route catalog.
+export function joinHomeChains(catalog){
+ const chains=catalog?.chains||{};
+ return Object.keys(chains).filter(key=>key!=="xgrchain"&&
+  isDeployedChain(catalog,key)&&
+  /^[a-z0-9][a-z0-9-]{0,99}$/.test(chains[key]?.coingeckoAssetPlatform||""));
+}
 export function draft(chains){
  return {name:"",symbol:"",shortDescription:"",description:"",website:"",canonicalChain:"",canonicalAddress:"",decimals:18,categories:["DeFi"],tags:[],logoUrl:"",links:{},priceSource:"coingecko",coingeckoId:"",contactEmail:"",applicantRole:"",confirmed:false};
 }
-export function validateStep(d,step,chains){
+export function validateStep(d,step,catalog){
+ const chains=catalog?.chains||{};
  const missing=[];
  if(step===0){
   if(d.name.trim().length<2||d.name.length>80)missing.push("Project name");
@@ -14,7 +25,7 @@ export function validateStep(d,step,chains){
   if(!normalizeJoinDescription(d.description,40,5000))missing.push("Full description (40–5000 characters)");
   if(!url(d.logoUrl))missing.push("HTTPS logo URL");
  }else if(step===1){
-  if(!d.canonicalChain||!["base","polygon","arbitrum"].includes(d.canonicalChain)||!Object.hasOwn(chains,d.canonicalChain))missing.push("Canonical chain");
+  if(!joinHomeChains(catalog).includes(d.canonicalChain))missing.push("Canonical chain");
   if(d.priceSource!=="coingecko"||!/^[a-z0-9][a-z0-9-]{0,99}$/.test(d.coingeckoId||""))missing.push("CoinGecko coin ID");
   if(!/^0x[0-9a-f]{40}$/i.test(d.canonicalAddress)||/^0x0{40}$/i.test(d.canonicalAddress))missing.push("ERC-20 contract address");
   if(d.decimals===null||d.decimals===""||!Number.isInteger(Number(d.decimals))||Number(d.decimals)<0||Number(d.decimals)>36)missing.push("Decimals");
@@ -26,10 +37,11 @@ export function validateStep(d,step,chains){
  return missing;
 }
 
-export function validateApplication(d,chains){
- return [0,1,2].flatMap(step=>validateStep(d,step,chains));
+export function validateApplication(d,catalog){
+ return [0,1,2].flatMap(step=>validateStep(d,step,catalog));
 }
-export function joinMarkup(chains,d,status="",busy=false){
+export function joinMarkup(catalog,d,status="",busy=false){
+ const chains=catalog?.chains||{};
  const field=(key,label,opts={})=>{
   const id="ja-"+key,type=opts.type||"text";
   const rules=type==="number"?' min="0" max="36" step="1"':' maxlength="'+(opts.max||500)+'"';
@@ -42,9 +54,9 @@ export function joinMarkup(chains,d,status="",busy=false){
   '<textarea id="ja-'+key+'" data-join="'+key+'" required maxlength="'+max+
   '" rows="'+rows+'" placeholder="'+escape(key==="description"?"What does your project do, and what is its token used for?":"A short introduction to your project")+'">'+
   escape(d[key]||"")+'</textarea></label>';
- const chainOptions=Object.entries(chains).filter(([key])=>["base","polygon","arbitrum"].includes(key))
+ const chainOptions=joinHomeChains(catalog).map(key=>[key,chains[key]])
   .map(([key,c])=>'<option value="'+escape(key)+'"'+(key===d.canonicalChain?' selected':'')+'>'+
-   escape(c.name||key)+'</option>').join("");
+   escape(c.displayName||c.name||key)+'</option>').join("");
  const chain='<label class="ja-field" for="ja-canonicalChain"><span>Original blockchain *</span>'+
   '<select id="ja-canonicalChain" data-join="canonicalChain" required><option value="">Select home chain…</option>'+
   chainOptions+'</select></label>';
@@ -126,7 +138,7 @@ export function joinPendingMarkup(data){
   '<ol class="ja-outcome-steps"><li>Open the email with the subject “Confirm your XITA Network application”.</li>'+
   '<li>Click the private confirmation link within <strong>24 hours</strong>.</li>'+
   '<li>After confirmation, XITA revalidates the token and attempts to create a GitHub Draft PR for XGR review.</li></ol>'+
-  '<p class="ja-info">You can close this page now. If you cannot find the email, check your spam folder. No GitHub PR, public listing or contract deployment has been created yet. Please do not submit the same application again.</p>'+
+  '<p class="ja-info">You can close this page now. If you cannot find the email, check your spam folder. No GitHub PR, public listing or contract deployment has been created yet.</p>'+
   '<a class="ux-outline-button ja-outcome-link" href="/markets" data-nav>Browse tokens</a>'+
   '</div></section>';
 }
