@@ -26,7 +26,12 @@ export function pendingDeliveryCount({account,items=[],indexedOpenCount=0,indexe
  // browser has since independently verified against a finalized Mailbox.
  // Retain the aggregate as a lower bound only when the result was truncated
  // or the full wallet list could not be verified.
- return indexedRowsComplete===true?seen.size:Math.max(seen.size,indexed);
+ // A "complete" cursor only means the indexed route heads have been scanned;
+ // it does NOT prove the returned wallet page and its route metadata contain
+ // every unfinished two-hop obligation. SQL openCount is computed independently
+ // from full stored operations. Never hide a confirmed pending transfer because
+ // a browser worklist projected zero rows (regression in PR #373).
+ return Math.max(seen.size,indexed);
 }
 
 // Only an EXACT active wallet-broadcast session may get an interim UI notice.
