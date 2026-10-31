@@ -22,6 +22,5 @@
   "confirmations": 12,
   "receiptFinalityTag": "safe",
   "blsVerifierFormat": "eip2537",
-  "observedInfrastructure": "deployments/chains/optimism.json",
-  "configurationStatus": "planned-unverified"
+  "observedInfrastructure": "deployments/chains/optimism.json"
 }

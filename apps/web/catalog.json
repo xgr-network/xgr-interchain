@@ -96,8 +96,7 @@
       "confirmations": 12,
       "receiptFinalityTag": "safe",
       "blsVerifierFormat": "eip2537",
-      "observedInfrastructure": "deployments/chains/optimism.json",
-      "configurationStatus": "planned-unverified"
+      "observedInfrastructure": "deployments/chains/optimism.json"
     },
     "xgrchain": {
       "schemaVersion": 1,
@@ -156,6 +155,12 @@
           },
           {
             "chain": "bsc",
+            "representation": "synthetic",
+            "symbol": "wARB",
+            "assetAddress": null
+          },
+          {
+            "chain": "optimism",
             "representation": "synthetic",
             "symbol": "wARB",
             "assetAddress": null
@@ -243,6 +248,16 @@
           {
             "name": "bsc_to_xgr",
             "sourceChain": "bsc",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_optimism",
+            "sourceChain": "xgrchain",
+            "destinationChain": "optimism"
+          },
+          {
+            "name": "optimism_to_xgr",
+            "sourceChain": "optimism",
             "destinationChain": "xgrchain"
           }
         ]
@@ -500,6 +515,12 @@
             "representation": "synthetic",
             "symbol": "wXGR",
             "assetAddress": null
+          },
+          {
+            "chain": "optimism",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
           }
         ],
         "bridgeModel": "lock-mint-burn-unlock",
@@ -591,6 +612,16 @@
           {
             "name": "bsc_to_xgr",
             "sourceChain": "bsc",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_optimism",
+            "sourceChain": "xgrchain",
+            "destinationChain": "optimism"
+          },
+          {
+            "name": "optimism_to_xgr",
+            "sourceChain": "optimism",
             "destinationChain": "xgrchain"
           }
         ]

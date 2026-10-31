@@ -34,6 +34,12 @@
       "representation": "synthetic",
       "symbol": "wXGR",
       "assetAddress": null
+    },
+    {
+      "chain": "optimism",
+      "representation": "synthetic",
+      "symbol": "wXGR",
+      "assetAddress": null
     }
   ],
   "bridgeModel": "lock-mint-burn-unlock",

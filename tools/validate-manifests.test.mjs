@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {loadCatalog,validateCatalog} from "./validate-manifests.mjs";
 const copy=()=>structuredClone(loadCatalog());
 test("XITA configured XGR/wXGR plan validates",()=>assert.deepEqual(validateCatalog(copy()),[]));
-test("six directed XGR hub routes exist for deployed spokes",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,6);assert.ok(x.assets.XGR.routes.routes.every(r=>r.sourceChain!=="polygon"&&r.destinationChain!=="polygon"))});
+test("eight directed XGR hub routes exist for four deployed spokes",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,8);assert.ok(x.assets.XGR.routes.routes.every(r=>r.sourceChain!=="polygon"&&r.destinationChain!=="polygon"))});
 test("rejects missing reverse route",()=>{const x=copy();x.assets.XGR.routes.routes.pop();assert.ok(validateCatalog(x).some(s=>s.includes("missing reverse route")))});
 test("rejects external-to-external direct routes",()=>{const x=copy(),r=x.assets.XGR.routes.routes[0];r.sourceChain="base";r.destinationChain="arbitrum";assert.ok(validateCatalog(x).some(s=>s.includes("direct external-to-external")))});
 test("rejects phantom chain",()=>{const x=copy();x.assets.XGR.routes.routes[0].destinationChain="unknown";assert.ok(validateCatalog(x).some(s=>s.includes("invalid route endpoints")))});

@@ -35,6 +35,12 @@
       "representation": "synthetic",
       "symbol": "wARB",
       "assetAddress": null
+    },
+    {
+      "chain": "optimism",
+      "representation": "synthetic",
+      "symbol": "wARB",
+      "assetAddress": null
     }
   ],
   "bridgeModel": "lock-mint-burn-unlock",

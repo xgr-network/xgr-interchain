@@ -79,6 +79,8 @@ jobs:
           set -euo pipefail
           node tools/validate-manifests.mjs
           node tools/build-xeta-web-catalog.mjs --check
+          node tools/check-hub-route-expansion.mjs
+          node --test tools/auto-hub-routes.test.mjs
 
       - name: Validate manifest and onboarding generation tests
         shell: bash
