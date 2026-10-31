@@ -1542,3 +1542,17 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 .ux-token-creator #xita-creator-deploy:disabled{opacity:.65;cursor:not-allowed}
 .ux-token-creator #tc-status{max-width:700px}
 @media(max-width:600px){.ux-token-creator .ja-fields{grid-template-columns:1fr}.ux-token-creator .ux-panel{padding:17px}}
+
+/* Creator project enrollment: keep checkbox, upload and labels aligned. */
+.ux-token-creator .ja-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ux-token-creator .ja-field-full{grid-column:1/-1!important}
+.ux-token-creator .ja-consent{display:flex;align-items:flex-start;gap:12px;max-width:730px;font-size:13px;line-height:1.6}
+.ux-token-creator .ja-consent input[type="checkbox"]{width:21px;min-width:21px;height:21px;flex:0 0 21px;margin:2px 0 0;accent-color:#98c7f4}
+.ux-token-creator .ja-consent span{flex:1;min-width:0}
+.ux-token-creator input[type="file"]{font-size:13px;max-width:100%;color:#c0d5ec}
+.ux-token-creator #tc-logo-preview,.ux-token-creator .tc-confirmed-logo{display:block;width:90px;height:90px;object-fit:contain;background:#0b1c31;border:1px solid #4a6482;border-radius:12px;padding:8px}
+.ux-token-creator #tc-logo-preview[hidden]{display:none}
+.ux-token-creator #tc-logo-file{overflow-wrap:anywhere}
+.ux-token-creator .ux-panel .pair{display:flex;justify-content:space-between;gap:18px;max-width:740px}
+.ux-token-creator .ux-panel .pair strong{text-align:right}
+@media(max-width:600px){.ux-token-creator .ja-fields{grid-template-columns:1fr}}
