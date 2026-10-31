@@ -142,17 +142,17 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '<div class="pair"><span>Initial supply</span><strong data-creator-preview="amount">'+clean(p.ready?p.amount:"—")+'</strong></div>'+
   '<div class="pair"><span>Project owner</span><strong data-creator-preview="owner">'+clean(p.ready?p.owner:"—")+'</strong></div>'+
   '<div class="pair"><span>Network</span><strong>XGRChain, with future eligible Interchain routes</strong></div>'+
-  '<p class="ux-small">After email confirmation XGR deploys the ERC-20 to your nominated owner wallet at our expense. The verified on-chain token is then proposed to XITA via a normal Join Draft PR. Deployment requires the production service safety gate.</p>'+
+  '<p class="ux-small">After email confirmation your XGR-funded deployment is queued. Once the reviewed Creator service is activated, XGR deploys the token directly to the nominated project owner. The verified ERC-20 is then proposed to XITA by a standard Join Draft PR.</p>'+
   '<button class="ux-button" id="xita-creator-deploy" type="button"'+
   (!canCreate?' disabled':'')+'>'+(canCreate?'Create token in MetaMask':'Token creation not yet activated')+'</button>'+
   '<p class="ux-small" id="tc-status" role="status">'+
-  (canCreate?'Factory deployment available after verification.':'The token factory is not yet deployed and receipt-verified on XGRChain. No transaction will be requested.')+
+  (canCreate?'Factory deployment available after verification.':'The XGR-funded Creator service is awaiting verified factory activation. This website never requests an ERC-20 deployment transaction.')+
   '</p></section></div>';
 }
 export function creatorConfirmMarkup(state){
  if(state?.phase==="email-verified")return '<div class="ux-app ux-join ux-token-creator">'+
   '<h1>Email verified</h1><section class="ux-panel"><h2>Your XITA logo URL</h2>'+
-  '<p>Your project registration is verified. Your token has not yet been created.</p>'+
+  '<p>Your email is verified. Your XGR-funded token creation has been queued; contract deployment and the subsequent XITA Join Draft PR require the reviewed production service.</p>'+
   '<p><a href="'+clean(state.logoUrl)+'" target="_blank" rel="noopener noreferrer">'+clean(state.logoUrl)+'</a></p>'+
   '<img class="tc-confirmed-logo" src="'+clean(state.logoUrl)+'" alt="Verified token logo"></section></div>';
  return '<div class="ux-app ux-join ux-token-creator"><h1>Confirm your email</h1>'+

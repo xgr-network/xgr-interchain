@@ -1057,7 +1057,7 @@ function token(){
 }
 const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false};
 const tokenCreatorState=creatorDraft();
-const creatorEmailState={phase:"pending",error:"",logoUrl:"",key:"",working:false};
+const creatorEmailState={phase:"pending",error:"",logoUrl:"",deploymentStatus:"",key:"",working:false};
 async function confirmCreatorEmail(){
  const fragment=location.hash.slice(1),m=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(fragment);
  if(path()!=="/createtoken/confirm"||creatorEmailState.working||
