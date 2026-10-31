@@ -70,8 +70,13 @@ test("native-safe delivery reorg during eth_call is rejected and not persisted",
 test("all GitHub-main chain finality policies are supported by the web/indexer verifier",()=>{
  const catalog=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
  for(const [name,chain] of Object.entries(catalog.chains)){
-  assert.equal(nativeFinalityTag(chain.chainId),chain.receiptFinalityTag,
-   name+" must use the reviewed chain-config finality tag");
+  // Older canonical chains predate receiptFinalityTag in their chain manifest.
+  // New chains must declare the tag explicitly; do not infer safe/latest from confirmations.
+  const legacy={xgrchain:"latest",base:"safe",arbitrum:"safe"};
+  const policy=chain.receiptFinalityTag??legacy[name];
+  assert.ok(policy,name+" must specify a reviewed finality policy");
+  assert.equal(nativeFinalityTag(chain.chainId),policy,
+   name+" must use the reviewed finality policy");
  }
 });
 test("Optimism destination Mailbox state is read at a pinned safe block",async()=>{
