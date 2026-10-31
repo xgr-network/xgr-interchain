@@ -9,6 +9,7 @@ import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
+import {handleCreator} from "./creator-registration.mjs";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const REPO="xgr-network/xgr-interchain";
 const reply=(res,status,data)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});res.end(JSON.stringify(data));};
@@ -181,6 +182,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   readPR=number=>github("/pulls/"+number),
   getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
  const url=new URL(req.url,"http://localhost"),path=url.pathname;
+ if(path.startsWith("/api/xita/creator/")||path.startsWith("/token-logos/"))
+  return handleCreator(req,res,{env,clock,deliver});
  if(req.method==="GET"&&path==="/api/xita/join/status")
   return reply(res,200,{ok:true,...joinReadiness(env,sourceCatalog)});
  if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm"].includes(path))
