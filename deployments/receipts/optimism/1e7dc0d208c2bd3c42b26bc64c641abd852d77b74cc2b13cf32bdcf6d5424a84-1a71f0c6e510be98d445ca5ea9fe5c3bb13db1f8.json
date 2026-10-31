@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "876c5402ac0d786ab5f7caae140b1fbbb9f9bffa"
+  },
+  "chain": "optimism",
+  "chainId": 10,
+  "domainId": 10,
+  "component": "gateway",
+  "asset": "XGR",
+  "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+  "routeName": "optimism_to_xgr",
+  "address": "0x1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8",
+  "runtimeCodeKeccak256": "0xde381f6d358dc4d318eecc299ed3d6cfb44f2e4a861e26d6ec3111cbcf9f863c",
+  "transactionHash": "0x1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84",
+  "blockNumber": 158932385,
+  "blockHash": "0x0319e6f01e485eda11f3de36dbd4bbf5bf267f7fc4c51ffe73a78b0fbbb34083",
+  "confirmations": 12,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "factory-gateway",
+    "factory": "0x3b83687d77170d42feddfe221629cc21e771e021",
+    "routeId": "0x07026f934ab71fe55e3c19d8930be45cad8b61e2b10c06a1965c1e9f4331ad09"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-31T16:19:31.041Z"
+}

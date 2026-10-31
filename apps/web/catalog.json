@@ -643,6 +643,8 @@
           "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json",
           "deployments/receipts/bsc/46071d914c77a3bd8b8263828a872f13ba97da3151924766da51b914996a72b9-3a193b88b8dfc860bcc0c3253f991b48428bc07d.json",
           "deployments/receipts/bsc/46071d914c77a3bd8b8263828a872f13ba97da3151924766da51b914996a72b9-5d2072ccf177eb1525ae2f9d9b8378de8091d260.json",
+          "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8.json",
+          "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-8a8e1d955641a78494d1fce2579050dd9b9c5f73.json",
           "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json",
           "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-b14587fcd381e04835d5408fc11be3a29aa0ac68.json",
           "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-e54de3b0b51f5d02957a3791f18fb3fe253517f7.json",
@@ -692,6 +694,32 @@
           }
         ],
         "routeDeployments": [
+          {
+            "schemaVersion": 1,
+            "kind": "asset-route-deployment",
+            "asset": "XGR",
+            "assetId": "0xa7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0",
+            "routeId": "0x07026f934ab71fe55e3c19d8930be45cad8b61e2b10c06a1965c1e9f4331ad09",
+            "routeName": "optimism_to_xgr",
+            "sourceChain": "optimism",
+            "destinationChain": "xgrchain",
+            "components": {
+              "gateway": {
+                "address": "0x1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8",
+                "runtimeCodeKeccak256": "0xde381f6d358dc4d318eecc299ed3d6cfb44f2e4a861e26d6ec3111cbcf9f863c",
+                "receiptPath": "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8.json"
+              },
+              "feeVault": {
+                "address": "0x8a8e1d955641a78494d1fce2579050dd9b9c5f73",
+                "runtimeCodeKeccak256": "0x09b8b4824be7f74b3bc82646488f54eac61e87e676ce2bdc662e05e13b9d9112",
+                "receiptPath": "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-8a8e1d955641a78494d1fce2579050dd9b9c5f73.json"
+              }
+            },
+            "receiptPaths": [
+              "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8.json",
+              "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-8a8e1d955641a78494d1fce2579050dd9b9c5f73.json"
+            ]
+          },
           {
             "schemaVersion": 1,
             "kind": "asset-route-deployment",
