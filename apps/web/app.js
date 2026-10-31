@@ -4,7 +4,7 @@ import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
-import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory,chainFeeIdentity} from "./experience.js";
+import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
 import {loadXetaOverview,loadXetaAsset,loadXetaTransfers,loadMarketPrice,aggregate,displayPrice,displayUnix} from "./ui-data.js";
 import {connectWallet,authorizedWalletAccount,shorten,formatUnits} from "./wallet-core.js";
 import {metaMaskTokenSpec,injectedMetaMask,requestMetaMaskToken,metaMaskFailure} from "./metamask-token.js";
@@ -28,7 +28,21 @@ import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js"
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
-const chainIdentity=key=>chainFeeIdentity(state.catalog,key);
+// Keep the fee-identity resolver local to the entry module. A previously
+// browser-cached experience.js must NEVER break the entire SPA via a newly
+// introduced named export during a rolling static-site publication.
+const displayNames={xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",
+ polygon:"Polygon",bsc:"BNB Smart Chain"};
+function chainIdentity(key){
+ const chain=state.catalog?.chains?.[key],coin=chain?.nativeCurrency?.symbol;
+ if(!chain||!Number.isSafeInteger(chain.chainId)||
+  !/^[A-Z][A-Z0-9]{0,11}$/.test(coin||""))
+  throw Error("Fee denomination unavailable for "+String(key));
+ const label=typeof chain.displayName==="string"&&chain.displayName.trim()?
+  chain.displayName:displayNames[key]||chain.name||key;
+ if(!label||label===key)throw Error("Fee network name unavailable for "+String(key));
+ return {label,coin};
+}
 const chainName=key=>chainIdentity(key).label;
 const sponsorship={enabled:false,available:false,walletAware:false,chains:{},status:"unknown",checkedAt:0,loading:false};
 const sponsorTransfer={key:"",status:"unavailable",grants:[],upfrontRequired:null,checkedAt:0,loading:false};

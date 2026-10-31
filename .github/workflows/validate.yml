@@ -97,7 +97,7 @@ jobs:
         run: node tools/probe-base-rpc.mjs
 
       - name: Prevent accidental XITA website rollback
-        run: node --test tools/stamp-xita-web-style.test.mjs tools/manage-web-release.test.mjs tools/quote-db-role.test.mjs tools/verify-iln-route-catalog.test.mjs
+        run: node --test tools/stamp-xita-web-modules.test.mjs tools/stamp-xita-web-style.test.mjs tools/manage-web-release.test.mjs tools/quote-db-role.test.mjs tools/verify-iln-route-catalog.test.mjs
 
       - name: Validate read-only transfer Nginx install and repair
         run: node --test tools/transfer-recovery-nginx.test.mjs
