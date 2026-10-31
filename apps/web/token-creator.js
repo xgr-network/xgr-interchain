@@ -25,14 +25,14 @@ export function validateCreatorApplication(d){
    d.description.trim().length>5000)errors.push("Project description must contain 40–5000 characters");
  const validUrl=s=>{try{const u=new URL(s);return u.protocol==="https:"&&
   !u.username&&!u.password&&u.hostname.includes(".")&&!u.hostname.endsWith(".local")&&
-  !u.hostname.endsWith(".internal")&&!/^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(u.hostname)}catch{return false}};
+  !u.hostname.endsWith(".internal")&&!/^\d+\.\d+\.\d+\.\d+$/.test(u.hostname)}catch{return false}};
  if(!validUrl(d.website))errors.push("Project website must use HTTPS");
  for(const link of ["x","telegram","discord","github","docs"])
   if(d.links?.[link]&&!validUrl(d.links[link]))
    errors.push("Invalid HTTPS "+link+" link");
  if(!["DeFi","Gaming","Infrastructure","Payments","Community","Other"].includes(d.category))
   errors.push("Select a valid project category");
- if(!/^[^\\s@<>]{1,64}@[^\\s@<>]{1,189}\\.[^\\s@<>]{2,}$/.test(d.contactEmail||""))
+ if(!/^[^\s@<>]{1,64}@[^\s@<>]{1,189}\.[^\s@<>]{2,}$/.test(d.contactEmail||""))
   errors.push("Valid private contact email required");
  if(!["founder","core-team","authorized-representative"].includes(d.applicantRole))
   errors.push("Select your project relationship");
