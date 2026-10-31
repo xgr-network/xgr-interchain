@@ -1514,7 +1514,7 @@ el.addEventListener("input",event=>{
  else if(key.startsWith("link-"))tokenCreatorState.links[key.slice(5)]=target.value;
  else if(Object.hasOwn(tokenCreatorState,key))tokenCreatorState[key]=target.value;
  const preview=creatorPreview(tokenCreatorState);
- for(const name of ["name","symbol","amount"]){
+ for(const name of ["name","symbol","amount","owner"]){
   const node=el.querySelector('[data-creator-preview="'+name+'"]');
   if(node)node.textContent=preview.ready?preview[name]:"—";
  }

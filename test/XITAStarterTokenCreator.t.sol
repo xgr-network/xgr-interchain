@@ -19,7 +19,7 @@ contract XITAStarterTokenCreatorTest is Test {
 
     function testOnlyWalletOwnsEntireFixedSupply() public {
         vm.prank(user);
-        address created = factory.createToken("Example Project", "EXM", SUPPLY);
+        address created = factory.createToken("Example Project", "EXM", SUPPLY, user);
         XITAFixedSupplyToken token = XITAFixedSupplyToken(created);
         assertEq(token.name(), "Example Project");
         assertEq(token.symbol(), "EXM");
@@ -28,6 +28,7 @@ contract XITAStarterTokenCreatorTest is Test {
         assertEq(token.balanceOf(user), SUPPLY);
         assertEq(token.balanceOf(address(factory)), 0);
         assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.owner(), user);
         vm.prank(user);
         token.transfer(other, 125 ether);
         assertEq(token.balanceOf(other), 125 ether);
@@ -36,9 +37,9 @@ contract XITAStarterTokenCreatorTest is Test {
 
     function testManyCreatorsHaveIndependentTokens() public {
         vm.prank(user);
-        address a = factory.createToken("Example Project", "EXM", SUPPLY);
+        address a = factory.createToken("Example Project", "EXM", SUPPLY, user);
         vm.prank(other);
-        address b = factory.createToken("Example Project", "EXM", SUPPLY);
+        address b = factory.createToken("Example Project", "EXM", SUPPLY, other);
         assertTrue(a != b);
         assertEq(ERC20(a).balanceOf(other), 0);
         assertEq(ERC20(b).balanceOf(other), SUPPLY);
@@ -47,13 +48,13 @@ contract XITAStarterTokenCreatorTest is Test {
 
     function testInvalidNameAndSymbolAreRejected() public {
         vm.expectRevert(XITAStarterTokenCreator.InvalidName.selector);
-        factory.createToken("A", "ABC", SUPPLY);
+        factory.createToken("A", "ABC", SUPPLY, user);
         vm.expectRevert(XITAStarterTokenCreator.InvalidSymbol.selector);
-        factory.createToken("Example Project", "Abc", SUPPLY);
+        factory.createToken("Example Project", "Abc", SUPPLY, user);
         vm.expectRevert(XITAStarterTokenCreator.InvalidSymbol.selector);
-        factory.createToken("Example Project", "2ABC", SUPPLY);
+        factory.createToken("Example Project", "2ABC", SUPPLY, user);
         vm.expectRevert(XITAStarterTokenCreator.InvalidSymbol.selector);
-        factory.createToken("Example Project", "ABC_DEF", SUPPLY);
+        factory.createToken("Example Project", "ABC_DEF", SUPPLY, user);
     }
 
     function testEmitsWalletBoundCreationEvidence() public {
@@ -61,9 +62,9 @@ contract XITAStarterTokenCreatorTest is Test {
         // verify emitted fields with the recorded logs and returned receipt.
         vm.recordLogs();
         vm.prank(user);
-        address deployed = factory.createToken("Example Project", "EXM", SUPPLY);
+        address deployed = factory.createToken("Example Project", "EXM", SUPPLY, user);
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        bytes32 sig = keccak256("TokenCreated(address,address,bytes32,string,string,uint256)");
+        bytes32 sig = keccak256("TokenCreated(address,address,address,string,string,uint256)");
         bool verified;
         for (uint256 i = 0; i < entries.length; ++i) {
             Vm.Log memory log = entries[i];
@@ -71,7 +72,7 @@ contract XITAStarterTokenCreatorTest is Test {
                 log.topics[0] != sig) continue;
             assertEq(log.topics[1], bytes32(uint256(uint160(user))));
             assertEq(log.topics[2], bytes32(uint256(uint160(deployed))));
-            assertEq(log.topics[3], keccak256(bytes("EXM")));
+            assertEq(log.topics[3], bytes32(uint256(uint160(user))));
             (string memory name, string memory symbol, uint256 supply) =
                 abi.decode(log.data, (string,string,uint256));
             assertEq(name, "Example Project");
@@ -92,22 +93,49 @@ contract XITAStarterTokenCreatorTest is Test {
 
     function testInvalidSupplyCannotCreateToken() public {
         vm.expectRevert(XITAStarterTokenCreator.InvalidSupply.selector);
-        factory.createToken("Example Project", "ABC", 0);
+        factory.createToken("Example Project", "ABC", 0, user);
         vm.expectRevert(XITAStarterTokenCreator.InvalidSupply.selector);
-        factory.createToken("Example Project", "ABC", 1e36+1);
+        factory.createToken("Example Project", "ABC", 1e36+1, user);
     }
 
     function testNoAdminMintOrFeeWithdrawalInterface() public {
         vm.prank(user);
-        address token = factory.createToken("Example Project", "ABC", SUPPLY);
+        address token = factory.createToken("Example Project", "ABC", SUPPLY, user);
         (bool mintOk,) = token.call(abi.encodeWithSignature("mint(address,uint256)",other,100));
-        (bool ownerOk,) = token.staticcall(abi.encodeWithSignature("owner()"));
+        (bool ownerOk,bytes memory ownerData) = token.staticcall(abi.encodeWithSignature("owner()"));
         (bool proxyOk,) = token.staticcall(abi.encodeWithSignature("implementation()"));
         (bool claimOk,) = address(factory).call(abi.encodeWithSignature("claimFees()"));
         assertFalse(mintOk);
-        assertFalse(ownerOk);
+        assertTrue(ownerOk);
+        assertEq(abi.decode(ownerData,(address)),user);
         assertFalse(proxyOk);
         assertFalse(claimOk);
         assertEq(ERC20(token).totalSupply(),SUPPLY);
     }
+}
+
+contract XITAOperatorCreatorSeparationTest is Test {
+ XITAStarterTokenCreator factory;
+ address operator=address(0xDEED);
+ address project=address(0xBEEF);
+ function setUp() public {factory=new XITAStarterTokenCreator();}
+ function testXGRPaysGasButProjectReceivesOwnershipAndSupply() public {
+  vm.prank(operator);
+  address deployed=factory.createToken("Project","PRJ",123 ether,project);
+  XITAFixedSupplyToken token=XITAFixedSupplyToken(deployed);
+  assertEq(token.owner(),project);
+  assertEq(token.balanceOf(project),123 ether);
+  assertEq(token.balanceOf(operator),0);
+  assertEq(token.balanceOf(address(factory)),0);
+  vm.prank(operator);
+  vm.expectRevert("Ownable: caller is not the owner");
+  token.transferOwnership(operator);
+  vm.prank(project);
+  token.transferOwnership(address(0xF00));
+  assertEq(token.owner(),address(0xF00));
+ }
+ function testZeroOwnerRejected() public {
+  vm.expectRevert(XITAStarterTokenCreator.InvalidOwner.selector);
+  factory.createToken("Project","PRJ",123 ether,address(0));
+ }
 }

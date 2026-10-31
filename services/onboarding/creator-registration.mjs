@@ -16,6 +16,7 @@ const EMAIL=/^[^\s@<>\r\n]{1,64}@[^\s@<>\r\n]{1,189}\.[^\s@<>\r\n]{2,}$/;
 const NAME=/^[\p{L}\p{N}][\p{L}\p{N} ._()'-]{1,79}$/u;
 const SYMBOL=/^[A-Z][A-Z0-9]{1,10}$/;
 const SUPPLY=/^[1-9][0-9]{0,18}$/;
+const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const ROLES=new Set(["founder","core-team","authorized-representative"]);
 const LINKS=["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"];
 const response=(res,status,value)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8",
@@ -33,7 +34,8 @@ function safeUrl(value){
 export function normalizeCreatorApplication(data){
  if(!data||typeof data!=="object"||Array.isArray(data))throw Error("Invalid creator application");
  const name=String(data.name||"").trim(),symbol=String(data.symbol||"").trim(),
-  initialSupply=String(data.initialSupply||"").trim(),contactEmail=String(data.contactEmail||"").trim().toLowerCase();
+  initialSupply=String(data.initialSupply||"").trim(),ownerAddress=String(data.ownerAddress||"").trim().toLowerCase(),contactEmail=String(data.contactEmail||"").trim().toLowerCase();
+ if(!ADDRESS.test(ownerAddress)||/^0x0{40}$/i.test(ownerAddress))throw Error("Valid project owner wallet address required");
  if(!NAME.test(name)||!SYMBOL.test(symbol)||!SUPPLY.test(initialSupply)||
    BigInt(SUPPLY.test(initialSupply)?initialSupply:"0")>10n**18n)
   throw Error("Invalid token name, symbol or fixed supply");
@@ -56,7 +58,7 @@ export function normalizeCreatorApplication(data){
  const links={};
  for(const key of LINKS)links[key]=safeUrl(data.links?.[key]||"");
  const logo=normalizeLogoPng(data.logoPngBase64);
- const record={name,symbol,initialSupply,contactEmail,applicantRole:data.applicantRole,
+ const record={name,symbol,initialSupply,ownerAddress,contactEmail,applicantRole:data.applicantRole,
   shortDescription,description,website,categories,tags,links,confirmed:true};
  return {record,logo};
 }
@@ -142,15 +144,15 @@ export async function handleCreator(req,res,{env=process.env,clock=Date.now,
    const loc=locations(env);
    const result=await lockedRecord(loc.base,input.id,async record=>{
     if(record.kind!=="token-creator")throw Error("Not a creator application");
-    if(record.phase==="email-verified"&&matchesToken(record.receiptHash,input.token))
-     return {ok:true,status:"email-verified",logoUrl:creatorLogoPublicUrl(record.logoHash)};
+    if(["email-verified","deployment-queued","deployment-submitted","deployed","pr-published"].includes(record.phase)&&matchesToken(record.receiptHash,input.token))
+     return {ok:true,status:"email-verified",deploymentStatus:record.deployment?.status||"queued",logoUrl:creatorLogoPublicUrl(record.logoHash)};
     if(record.phase!=="pending-email"||!matchesToken(record.tokenHash,input.token)||
       Date.parse(record.confirmBefore)<clock())throw Error("Expired or invalid confirmation");
     const logoUrl=provisionPublicLogo(pendingPath(loc.pending,input.id),loc.publicDir,record.logoHash);
-    record.phase="email-verified";record.receiptHash=record.tokenHash;
+    record.phase="deployment-queued";record.deployment={status:"queued",ownerAddress:record.input.ownerAddress,chainId:1643,txHash:null,tokenAddress:null};record.receiptHash=record.tokenHash;
     record.tokenHash=null;record.logoUrl=logoUrl;record.verifiedAt=new Date(clock()).toISOString();
     savePrivate(loc.base,record);
-    return {ok:true,status:"email-verified",logoUrl};
+    return {ok:true,status:"email-verified",deploymentStatus:"queued",logoUrl};
    });
    return response(res,200,result);
   }
@@ -167,7 +169,7 @@ export async function handleCreator(req,res,{env=process.env,clock=Date.now,
    const match=/^([0-9a-f-]{36})\.png$/.exec(file);
    if(match&&!pendingIds.has(match[1]))removeOptional(join(loc.pending,file));
   }
-  if(records.some(x=>x.kind==="token-creator"&&x.phase==="pending-email"&&
+  if(records.some(x=>x.kind==="token-creator"&&["pending-email","deployment-queued","deployment-submitted","deployed","pr-published"].includes(x.phase)&&
       x.input.contactEmail===record.contactEmail&&x.input.symbol===record.symbol))
    return response(res,409,{ok:false,error:"Email confirmation already pending"});
   const {id,token}=createPending(loc.base,record,"creator:"+logo.hash,{now});
