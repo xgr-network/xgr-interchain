@@ -82,7 +82,7 @@ function patchFeeRoutes(config,paths){
  const required=[
   "https://gateway.tenderly.co",
   "https://base.gateway.tenderly.co",
-  "https://polygon-bor-rpc.publicnode.com",
+  "https://bsc-rpc.publicnode.com",
   "https://arbitrum-one-rpc.publicnode.com"
  ];
  const policy=next.match(/connect-src\s+([^;"]*)/);
