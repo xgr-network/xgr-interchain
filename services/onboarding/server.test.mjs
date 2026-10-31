@@ -89,7 +89,7 @@ test("email confirmation is private, single-use and required before public GitHu
   const preview=await post("/api/xita/join/preview",input);
   assert.equal(preview.status,200);
   assert.equal(preview.body.assetId.length,66);
-  assert.deepEqual(preview.body.summary.chains.sort(),Object.keys(catalog.chains).sort());
+  assert.deepEqual(preview.body.summary.chains.sort(),Object.keys(catalog.chains).filter(name=>name==="xgrchain"||isDeployedChain(catalog,name)).sort());
   assert.equal(preview.body.summary.routeCount,Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&isDeployedChain(catalog,name)).length*2);
   assert.equal(JSON.stringify(preview.body).includes(input.contactEmail),false);
   const result=await post("/api/xita/join/submit",input);
