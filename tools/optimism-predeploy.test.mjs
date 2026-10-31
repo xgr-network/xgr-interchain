@@ -20,6 +20,12 @@ test("OP Mainnet chain 10 has operator-independent RPCs and native safe/EIP-2537
 });
 test("undeployed OP Mainnet is excluded from user routes, Join and real transfer/gas eligibility",()=>{
  const catalog=loadCatalog();
+ assert.equal(Object.hasOwn(catalog.chains,"polygon"),false);
+ assert.equal(Object.hasOwn(catalog.infrastructure,"polygon"),false);
+ for(const asset of Object.values(catalog.assets)){
+  assert.ok(asset.metadata.representations.every(rep=>rep.chain!=="polygon"));
+  assert.ok(asset.routes.routes.every(route=>route.sourceChain!=="polygon"&&route.destinationChain!=="polygon"));
+ }
  assert.equal(catalog.infrastructure.optimism.present,false);
  assert.deepEqual(Object.keys(catalog.infrastructure.optimism.xitaV315.components),[]);
  assert.equal(isDeployedChain(catalog,"optimism"),false);
