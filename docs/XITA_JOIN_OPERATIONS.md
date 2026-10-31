@@ -1,7 +1,7 @@
 # XITA Join — secure operator deployment and contact privacy
 
 ## Eligibility and review
-Only new ERC-20 token proposals with a CoinGecko **coin profile identifying the same original-chain token contract** may be submitted. Validate the CoinGecko ID, platform, address, token symbol and decimals at preview, email confirmation, and in the GitHub PR CI. Original-chain eligibility follows the deployed chain inventory and its declarative CoinGecko asset-platform identity. A planned but undeployed chain (currently Polygon) is not offered or accepted; BNB Smart Chain uses `binance-smart-chain`. An original XGRChain token remains excluded. Do not bypass the original-contract verification gate.
+Only new ERC-20 token proposals with a CoinGecko **coin profile identifying the same original-chain token contract** may be submitted. Validate the CoinGecko ID, platform, address, token symbol and decimals at preview, email confirmation, and in the GitHub PR CI. Original-chain eligibility follows the deployed chain inventory and its declarative CoinGecko asset-platform identity. A planned but undeployed chain is not offered or accepted; BNB Smart Chain uses `binance-smart-chain`. An original XGRChain token remains excluded. Do not bypass the original-contract verification gate.
 
 A verified applicant email does **not** verify ownership, founding status or authority. A holder/community applicant is a proposer, not an authorized project representative. XGR manually reviews the GitHub **draft** PR before approving any funding or deployment. A PR is **not** a deployed route or a public token listing.
 

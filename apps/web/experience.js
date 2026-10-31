@@ -8,7 +8,7 @@ import {verifiedMetrics,formatUsd,rankAssets,buildLeaderboardRows} from "./leade
 // This module is deliberately pure and does not sign, quote or submit transfers.
 // The token detail page remains the only bridge execution entry point.
 export const HUB = "xgrchain";
-const LABELS = {xgrchain:"XGRChain",base:"Base",polygon:"Polygon",arbitrum:"Arbitrum",xdc:"XDC"};
+const LABELS = {xgrchain:"XGRChain",base:"Base",arbitrum:"Arbitrum",xdc:"XDC"};
 const POSITIONS = [
   {x:23,y:25},{x:77,y:27},{x:78,y:75},{x:22,y:74},{x:50,y:11},{x:50,y:91}
 ];
@@ -50,7 +50,7 @@ const chainTokenExplorer=(chain,address)=>{
 const chainAddressExplorer=(chain,address)=>{
  if(!tokenAddress(address))return null;
  const roots={xgrchain:"https://explorer.xgr.network/address/",
-  base:"https://basescan.org/address/",polygon:"https://polygonscan.com/address/",
+  base:"https://basescan.org/address/",
   arbitrum:"https://arbiscan.io/address/"};
  return roots[chain]?roots[chain]+address:null;
 };

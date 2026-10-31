@@ -17,16 +17,6 @@
       "destinationChain": "xgrchain"
     },
     {
-      "name": "xgr_to_polygon",
-      "sourceChain": "xgrchain",
-      "destinationChain": "polygon"
-    },
-    {
-      "name": "polygon_to_xgr",
-      "sourceChain": "polygon",
-      "destinationChain": "xgrchain"
-    },
-    {
       "name": "xgr_to_arbitrum",
       "sourceChain": "xgrchain",
       "destinationChain": "arbitrum"

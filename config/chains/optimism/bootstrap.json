@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-validator-fee-bootstrap",
+  "chain": "optimism",
+  "chainId": 10,
+  "destinationDomain": 10,
+  "membershipOriginChainId": 1643,
+  "validatorSource": "explicit-interchain-genesis",
+  "verifierFormat": "eip2537",
+  "verifierAddress": null,
+  "validatorSnapshot": {
+    "blockNumber": null,
+    "validators": [],
+    "notes": "Public Direct-BLS possession proofs for origin chain 1643, destination domain 10 are required for exactly the approved three initial Interchain validators; generated and checked by the Admin proof preflight after EIP-2537 positive and negative vectors."
+  },
+  "reserve": {
+    "minimumWei": "50000000000000",
+    "maxExecutorReimbursementWei": "30000000000000",
+    "perValidatorWei": "100000000000000",
+    "notes": "PROPOSED initial ETH reserve policy copied from Base pending independent operator economic approval. Never regard as authorized without explicit operator review: 0.00005 ETH minimum, 0.00003 ETH maximum reimbursement, 0.0001 ETH per validator. This is not an auto-adjusting gas-price oracle."
+  },
+  "sourceFee": {
+    "targetWei": "100000000000",
+    "governance": "validator-bls-quorum",
+    "ttlSeconds": 300,
+    "initialization": "factory-constructor-no-quorum",
+    "notes": "PROPOSED 0.0000001 ETH initial source validator fee, matching Base. Must be operator-reviewed before the first Factory construction; later changes require BLS quorum."
+  },
+  "notes": "PREDEPLOY only. OP Mainnet chain 10 uses EIP-2537 after Isthmus and Ethereum safe-tag source finality (no latest fallback). The Admin must validate chain IDs, multiple independent RPC witnesses and positive/negative precompile vectors. No deployed Registry, ISM or Factory is implied by this configuration. No validator node may enable this chain until immutable receipt-pinned ValidatorRegistry and SourceRegistry addresses and source activation block are merged in an audited v3.4.3 light release.",
+  "genesisValidatorManifest": "config/validators/initial.json"
+}

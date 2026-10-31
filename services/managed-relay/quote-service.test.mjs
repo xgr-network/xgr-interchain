@@ -124,37 +124,37 @@ test("refuses invalid source timestamp before signing",async()=>{
 
 function multiHopFixture(){
  const cat=fixture();
- cat.chains.polygon={chainId:137,domainId:137,rpcUrls:["https://rpc.example/polygon"]};
+ cat.chains.bsc={chainId:137,domainId:137,rpcUrls:["https://rpc.example/bsc"]};
  const comps={},receiptPaths=[];
  for(const name of ["factory","sourceRegistry","mailbox","ism","validatorRegistry"]){
-  comps[name]=record("polygon",Object.keys(comps).length+100);
+  comps[name]=record("bsc",Object.keys(comps).length+100);
   receiptPaths.push(comps[name].receiptPath);
  }
- cat.infrastructure.polygon={present:true,chainId:137,xitaV315:{receiptPaths,components:comps}};
+ cat.infrastructure.bsc={present:true,chainId:137,xitaV315:{receiptPaths,components:comps}};
  const asset=cat.assets.XGR;
  const baseGateway=record("base",30),baseVault=record("base",31);
- const polygonGateway=record("xgrchain",32),polygonVault=record("xgrchain",33);
- const polyRouter=record("polygon",34);
+ const bscGateway=record("xgrchain",32),bscVault=record("xgrchain",33);
+ const polyRouter=record("bsc",34);
  asset.routes.routes.push(
   {name:"base_to_xgr",sourceChain:"base",destinationChain:"xgrchain"},
-  {name:"xgr_to_polygon",sourceChain:"xgrchain",destinationChain:"polygon"}
+  {name:"xgr_to_bsc",sourceChain:"xgrchain",destinationChain:"bsc"}
  );
- asset.deployment.representations.push({chain:"polygon",component:"syntheticRouter",...polyRouter});
+ asset.deployment.representations.push({chain:"bsc",component:"syntheticRouter",...polyRouter});
  asset.deployment.routeDeployments.push(
   {routeName:"base_to_xgr",routeId:hash("e"),sourceChain:"base",destinationChain:"xgrchain",
    components:{gateway:baseGateway,feeVault:baseVault}},
-  {routeName:"xgr_to_polygon",routeId:hash("a"),sourceChain:"xgrchain",destinationChain:"polygon",
-   components:{gateway:polygonGateway,feeVault:polygonVault}}
+  {routeName:"xgr_to_bsc",routeId:hash("a"),sourceChain:"xgrchain",destinationChain:"bsc",
+   components:{gateway:bscGateway,feeVault:bscVault}}
  );
  asset.deployment.receiptPaths.push(
   baseGateway.receiptPath,baseVault.receiptPath,
-  polygonGateway.receiptPath,polygonVault.receiptPath,polyRouter.receiptPath);
+  bscGateway.receiptPath,bscVault.receiptPath,polyRouter.receiptPath);
  return cat;
 }
 test("two-hop quote includes both deliveries, XGR bridge gas and its native validator fee",async()=>{
  const sources=[];
  const opts={...defaults(),catalog:multiHopFixture(),request:{
-  ...request,source:"base",destination:"polygon"
+  ...request,source:"base",destination:"bsc"
  },readGatewayQuote:async({source,route})=>{
   sources.push(source+":"+route.destination);
   return source==="base"?
@@ -166,7 +166,7 @@ test("two-hop quote includes both deliveries, XGR bridge gas and its native vali
   gasPriceWei:destination==="xgrchain"?1000000000000n:30000000000n,
   availableWei:0n // Optional sponsorship absent must not block a quote.
  }),getCoinGeckoSnapshot:async()=>({
-  ...exchange(),"polygon-ecosystem-token":{
+  ...exchange(),"binancecoin":{
    usd:0.35,last_updated_at:Math.floor(now/1000)-11
   }
  })};
@@ -177,7 +177,7 @@ test("two-hop quote includes both deliveries, XGR bridge gas and its native vali
  assert.equal(result.pricing.onwardProtocolFeeWei,"100000000000000000");
  assert.deepEqual(result.pricing.journeyCostStages.map(s=>s.kind),
   ["first-delivery","onward-bridge-gas","onward-protocol-fee","final-delivery"]);
- assert.deepEqual(sources,["base:xgrchain","xgrchain:polygon"]);
+ assert.deepEqual(sources,["base:xgrchain","xgrchain:bsc"]);
  assert.equal(result.pricing.grossInterchainFeeWei,result.quote.interchainFeeWei);
  assert.ok(BigInt(result.quote.interchainFeeWei)>0n);
  await assert.rejects(()=>buildManagedQuote({...opts,readGatewayQuote:async({source})=>
@@ -330,7 +330,7 @@ test("only committed wallet gas deficits increase the signed service fee",async(
 
 test("wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI charge",async()=>{
  const options={...defaults(),catalog:multiHopFixture(),
-  request:{...request,source:"base",destination:"polygon",recipient:request.payer},
+  request:{...request,source:"base",destination:"bsc",recipient:request.payer},
   walletAwareEnabled:true,readWalletNativeBalance:async()=>10n**22n,
   readGatewayQuote:async({source})=>source==="base"?
    {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
@@ -338,7 +338,7 @@ test("wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI c
    {bridgeNativeWei:1100000000000000000n,validatorFeeWei:100000000000000000n,
     tokenAmount:0n},
   getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:0n}),
-  getCoinGeckoSnapshot:async()=>({...exchange(),"polygon-ecosystem-token":{
+  getCoinGeckoSnapshot:async()=>({...exchange(),"binancecoin":{
    usd:0.35,last_updated_at:Math.floor(now/1000)-11}})};
  const result=await buildManagedQuote(options);
  assert.equal(result.quote.interchainFeeWei,"1000000000000");
@@ -408,7 +408,7 @@ test("two-hop pre-commits all three individually learned stage grants",async()=>
  const catalog=multiHopFixture();
  catalog.infrastructure.xgrchain.xitaV315.components.executionGateway=record("xgrchain",90);
  const o={...defaults(),catalog,
-  request:{...request,source:"base",destination:"polygon",recipient:request.payer},
+  request:{...request,source:"base",destination:"bsc",recipient:request.payer},
   walletAwareEnabled:true,readWalletNativeBalance:async()=>0n,
   readGatewayQuote:async({source})=>source==="base"?
    {bridgeNativeWei:100000000000000n,validatorFeeWei:100000000000000n,
@@ -416,7 +416,7 @@ test("two-hop pre-commits all three individually learned stage grants",async()=>
    {bridgeNativeWei:1100000000000000000n,validatorFeeWei:100000000000000000n,
     tokenAmount:0n},
   getDestinationGasQuote:async()=>({gasPriceWei:1000000000n,availableWei:0n}),
-  getCoinGeckoSnapshot:async()=>({...exchange(),"polygon-ecosystem-token":{
+  getCoinGeckoSnapshot:async()=>({...exchange(),"binancecoin":{
    usd:0.35,last_updated_at:Math.floor(now/1000)-11}})};
  const baseline=await buildManagedQuote(o);
  const learned=await buildManagedQuote({...o,readGasProfile:async()=>({

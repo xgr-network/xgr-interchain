@@ -15,7 +15,7 @@ const addressWord=address=>"0x"+address.slice(2).padStart(64,"0");
 const code="0x60006000";
 const makeCatalog=()=>{
  const c=structuredClone(catalog);
- for(const name of ["xgrchain","polygon","arbitrum"]){
+ for(const name of ["xgrchain","optimism","arbitrum"]){
   c.infrastructure[name].xitaV315={components:{}};
  }
  c.infrastructure.base.xitaV315.components.executionGateway={

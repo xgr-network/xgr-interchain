@@ -41,7 +41,7 @@ test("main work inventory returns assets by canonical key",async()=>{
  const inventory=approvedWorkInventory(root);
  assert.ok(inventory.assets.XGR);
  assert.equal(inventory.assets.XGR.key,"XGR");
- assert.equal(inventory.assets.XGR.routeCount,8);
+ assert.equal(inventory.assets.XGR.routeCount,6);
 });
 
 test("stale main still renders read-only inventory while never approving Deploy",async()=>{
@@ -55,7 +55,9 @@ test("stale main still renders read-only inventory while never approving Deploy"
  assert.equal(snapshot.readOnly,true);
  assert.equal(snapshot.githubApproved,false);
  assert.ok(snapshot.inventory.assets.XGR);
- assert.equal(snapshot.inventory.chains.length,5);
+ const {approvedWorkInventory}=await import("./main-gate.mjs");
+ const expected=approvedWorkInventory(root).chains.map(chain=>chain.name).sort();
+ assert.deepEqual(snapshot.inventory.chains.map(chain=>chain.name).sort(),expected);
 });
 test("GitHub outage still allows a local read-only inventory but denies authorization",async()=>{
  const {readOnlyWorkQueue}=await import("./main-gate.mjs");

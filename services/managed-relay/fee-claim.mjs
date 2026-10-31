@@ -12,7 +12,6 @@ const ABI=[
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const POSITIVE=/^[1-9][0-9]*$/;
 const CODE_HASH=/^0x[0-9a-f]{64}$/i;
-const DEPLOYMENT_CHAINS=["base","polygon","arbitrum","xgrchain"];
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 // Only receipt-backed gateway deployments are eligible for automatic claims.
 // Undeployed chains are skipped. Partial, malformed or contradictory
@@ -20,7 +19,9 @@ const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 export function documentedFeeClaimAdapters(catalog,{readReceipt=path=>JSON.parse(
  readFileSync(new URL("../../"+path,import.meta.url),"utf8"))}={}){
  const targets=[];
- for(const name of DEPLOYMENT_CHAINS){
+ // Evaluate every explicitly configured chain; receipt validation excludes
+ // undeployed and forged targets without a static chain allowlist.
+ for(const name of Object.keys(catalog?.infrastructure||{}).sort()){
   const gateway=catalog?.infrastructure?.[name]?.xitaV315?.components?.executionGateway;
   if(gateway===undefined||gateway===null)continue;
   const chain=catalog?.chains?.[name];

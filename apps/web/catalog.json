@@ -72,25 +72,31 @@
       "blsVerifierFormat": "eip2537",
       "observedInfrastructure": "deployments/chains/bsc.json"
     },
-    "polygon": {
+    "optimism": {
       "schemaVersion": 1,
       "kind": "chain-config",
+      "name": "optimism",
+      "displayName": "OP Mainnet",
+      "coingeckoAssetPlatform": "optimistic-ethereum",
       "environment": "mainnet",
-      "name": "polygon",
-      "coingeckoAssetPlatform": "polygon-pos",
-      "chainId": 137,
-      "domainId": 137,
+      "chainId": 10,
+      "domainId": 10,
       "rpcUrls": [
-        "https://polygon-bor-rpc.publicnode.com"
+        "https://mainnet.optimism.io",
+        "https://optimism-rpc.publicnode.com",
+        "https://optimism.drpc.org",
+        "https://optimism.gateway.tenderly.co"
       ],
+      "explorer": "https://optimistic.etherscan.io",
       "nativeCurrency": {
-        "name": "POL",
-        "symbol": "POL",
+        "name": "Ether",
+        "symbol": "ETH",
         "decimals": 18
       },
-      "confirmations": 128,
+      "confirmations": 12,
+      "receiptFinalityTag": "safe",
       "blsVerifierFormat": "eip2537",
-      "observedInfrastructure": "deployments/chains/polygon.json",
+      "observedInfrastructure": "deployments/chains/optimism.json",
       "configurationStatus": "planned-unverified"
     },
     "xgrchain": {
@@ -144,12 +150,6 @@
           },
           {
             "chain": "base",
-            "representation": "synthetic",
-            "symbol": "wARB",
-            "assetAddress": null
-          },
-          {
-            "chain": "polygon",
             "representation": "synthetic",
             "symbol": "wARB",
             "assetAddress": null
@@ -234,16 +234,6 @@
             "name": "xgr_to_base",
             "sourceChain": "xgrchain",
             "destinationChain": "base"
-          },
-          {
-            "name": "polygon_to_xgr",
-            "sourceChain": "polygon",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_polygon",
-            "sourceChain": "xgrchain",
-            "destinationChain": "polygon"
           },
           {
             "name": "xgr_to_bsc",
@@ -500,12 +490,6 @@
             "assetAddress": null
           },
           {
-            "chain": "polygon",
-            "representation": "synthetic",
-            "symbol": "wXGR",
-            "assetAddress": null
-          },
-          {
             "chain": "arbitrum",
             "representation": "synthetic",
             "symbol": "wXGR",
@@ -587,16 +571,6 @@
           {
             "name": "base_to_xgr",
             "sourceChain": "base",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_polygon",
-            "sourceChain": "xgrchain",
-            "destinationChain": "polygon"
-          },
-          {
-            "name": "polygon_to_xgr",
-            "sourceChain": "polygon",
             "destinationChain": "xgrchain"
           },
           {
@@ -1118,13 +1092,13 @@
       },
       "present": true
     },
-    "polygon": {
+    "optimism": {
       "schemaVersion": 1,
       "kind": "infrastructure-deployment",
       "network": "mainnet",
-      "chain": "polygon",
-      "chainId": 137,
-      "domainId": 137,
+      "chain": "optimism",
+      "chainId": 10,
+      "domainId": 10,
       "xitaV315": {
         "schemaVersion": 1,
         "components": {},

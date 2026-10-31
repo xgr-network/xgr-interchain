@@ -11,13 +11,13 @@ import {executableTransferRoutes} from "./route-availability.js";
 const catalog={
   chains:{xgrchain:{chainId:1643,domainId:1643,nativeCurrency:{symbol:"XGR"}},
     base:{chainId:8453,domainId:8453,nativeCurrency:{symbol:"ETH"}},
-    polygon:{chainId:137,domainId:137,nativeCurrency:{symbol:"POL"}}},
+    bsc:{chainId:56,domainId:56,displayName:"BNB Smart Chain",nativeCurrency:{symbol:"BNB"}}},
   assets:{XGR:{profile:{name:"XGR",slug:"xgr"},metadata:{canonical:{chain:"xgrchain"},
-    representations:[{chain:"xgrchain"},{chain:"base"},{chain:"polygon"}]},
+    representations:[{chain:"xgrchain"},{chain:"base"},{chain:"bsc"}]},
     routes:{routes:[
       {name:"base_to_xgr",sourceChain:"base",destinationChain:"xgrchain"},
-      {name:"xgr_to_polygon",sourceChain:"xgrchain",destinationChain:"polygon"},
-      {name:"base_to_polygon",sourceChain:"base",destinationChain:"polygon"}
+      {name:"xgr_to_bsc",sourceChain:"xgrchain",destinationChain:"bsc"},
+      {name:"base_to_bsc",sourceChain:"base",destinationChain:"bsc"}
     ]}}}
 };
 test("fee display uses real chain names and native gas denominations from the published catalog",()=>{
@@ -42,7 +42,7 @@ test("universe always includes the hub and filters forbidden direct spoke routes
   const model=buildExperienceModel(catalog,()=>true);
   assert.equal(model.hub.key,"xgrchain");
   assert.equal(model.routes.length,2);
-  assert.ok(!model.routes.some(r=>r.name==="base_to_polygon"));
+  assert.ok(!model.routes.some(r=>r.name==="base_to_bsc"));
   assert.ok(renderUniverse(model).includes("XGRChain"));
 });
 test("BSC shows its configured public name on the planet while preserving the chain slug",()=>{
@@ -56,16 +56,16 @@ test("BSC shows its configured public name on the planet while preserving the ch
 });
 test("spoke-to-spoke paths are exactly two directed operations",()=>{
   const model=buildExperienceModel(catalog,()=>true);
-  const plan=previewRoute(model,"base","polygon","XGR");
-  assert.deepEqual(plan.path,["base","xgrchain","polygon"]);
+  const plan=previewRoute(model,"base","bsc","XGR");
+  assert.deepEqual(plan.path,["base","xgrchain","bsc"]);
   assert.equal(plan.hops.length,2);
   assert.equal(plan.active,true);
   assert.match(plan.reason,/approval in the connected wallet/);
 });
 test("unknown or unverified routes never become executable",()=>{
   const model=buildExperienceModel(catalog,()=>{throw Error("Missing deployment evidence")});
-  assert.equal(previewRoute(model,"base","polygon","XGR").active,false);
-  assert.equal(previewRoute(model,"polygon","base","XGR").configured,false);
+  assert.equal(previewRoute(model,"base","bsc","XGR").active,false);
+  assert.equal(previewRoute(model,"bsc","base","XGR").configured,false);
   assert.equal(previewRoute(model,"base","base","XGR").configured,false);
 });
 test("dashboard and inventory do not invent real-time operational metrics",()=>{
@@ -95,7 +95,7 @@ test("selected chain details distinguish native and wrapped asset symbols",()=>{
  canonical:{chain:"xgrchain"},representations:[
  {chain:"xgrchain",representation:"native",symbol:"XGR"},
  {chain:"base",representation:"synthetic",symbol:"wXGR"},
- {chain:"polygon",representation:"synthetic",symbol:"wXGR"}]}}}};
+ {chain:"bsc",representation:"synthetic",symbol:"wXGR"}]}}}};
  const html=renderUniverse(buildExperienceModel(rich),"base");
  assert.match(html,/wXGR/);
  assert.match(html,/Wrapped/);
@@ -106,12 +106,12 @@ test("CoinGecko market cap in Universe is asset-wide and independent of route ac
  const snapshot={schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:{assetId:"XGR",verified:false,
   market:{status:"market-data",source:"coingecko",marketCapUsd:10351.53,priceUsd:0.0001144,circulating:90485400,asOf:"2026-10-10T17:00:00Z"},
   custody:{status:"unavailable"},movement:{status:"unavailable"}}}};
- const html=renderUniverse(model,"polygon",snapshot);
+ const html=renderUniverse(model,"bsc",snapshot);
  assert.match(html,/10,351.53/);
  assert.match(html,/Asset-wide market cap/);
- assert.match(html,/not Polygon TVL/);
+ assert.match(html,/not BNB Smart Chain TVL/);
  assert.match(html,/Verified active routes/);
- const without=renderUniverse(model,"polygon");
+ const without=renderUniverse(model,"bsc");
  assert.doesNotMatch(without,/ux-market-card/);
 });
 
@@ -137,7 +137,7 @@ test("Northstar home and Universe share the immersive stage without changing rou
  assert.match(universe,/Explore configured worlds/);
  assert.doesNotMatch(home,/99\.9%|~11s|REAL-TIME UNIVERSE|3 active routes/);
  assert.doesNotMatch(home,/XDC/);
- assert.match(home,/Polygon/);
+ assert.match(home,/BNB Smart Chain/);
 });
 
 test("Transfer Tokens and FAQ use a single canonical transaction UI",()=>{

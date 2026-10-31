@@ -2,14 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {loadCatalog,validateCatalog} from "./validate-manifests.mjs";
 const copy=()=>structuredClone(loadCatalog());
-test("XETA four-chain XGR/wXGR plan validates",()=>assert.deepEqual(validateCatalog(copy()),[]));
-test("eight directed XGR hub routes exist including BSC",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,8)});
+test("XITA configured XGR/wXGR plan validates",()=>assert.deepEqual(validateCatalog(copy()),[]));
+test("six directed XGR hub routes exist for deployed spokes",()=>{const x=copy();assert.equal(x.assets.XGR.routes.routes.length,6);assert.ok(x.assets.XGR.routes.routes.every(r=>r.sourceChain!=="polygon"&&r.destinationChain!=="polygon"))});
 test("rejects missing reverse route",()=>{const x=copy();x.assets.XGR.routes.routes.pop();assert.ok(validateCatalog(x).some(s=>s.includes("missing reverse route")))});
-test("rejects external-to-external direct routes",()=>{const x=copy(),r=x.assets.XGR.routes.routes[0];r.sourceChain="base";r.destinationChain="polygon";assert.ok(validateCatalog(x).some(s=>s.includes("direct external-to-external")))});
+test("rejects external-to-external direct routes",()=>{const x=copy(),r=x.assets.XGR.routes.routes[0];r.sourceChain="base";r.destinationChain="arbitrum";assert.ok(validateCatalog(x).some(s=>s.includes("direct external-to-external")))});
 test("rejects phantom chain",()=>{const x=copy();x.assets.XGR.routes.routes[0].destinationChain="unknown";assert.ok(validateCatalog(x).some(s=>s.includes("invalid route endpoints")))});
 test("asset deployment manifest is keyed by original asset ID",()=>{const x=copy();x.assets.XGR.deployment.assetId="0x"+"1".repeat(64);assert.ok(validateCatalog(x).some(s=>s.includes("canonical asset ID mismatch")))});
 test("rejects legacy infrastructure metadata",()=>{
- const x=copy();x.infrastructure.polygon.ilnV314={status:"unverified-not-activated"};
+ const x=copy();x.infrastructure.optimism.ilnV314={status:"unverified-not-activated"};
  assert.ok(validateCatalog(x).some(s=>s.includes("legacy infrastructure block forbidden")));
 });
 test("legacy Hyperlane addresses cannot enter a fresh XITA deployment manifest",()=>{

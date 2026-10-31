@@ -92,7 +92,7 @@ test("CSP allows all reviewed browser RPC origins, not just old Base endpoint",(
  const old=base.replace("https://explorer.xgr.network","https://explorer.xgr.network https://base-rpc.publicnode.com");
  const patched=patchXitaTransferNginx(old);
  for(const host of ["https://gateway.tenderly.co","https://base.gateway.tenderly.co",
- "https://polygon-bor-rpc.publicnode.com","https://arbitrum-one-rpc.publicnode.com"]){
+ "https://bsc-rpc.publicnode.com","https://arbitrum-one-rpc.publicnode.com"]){
   assert.ok(patched.config.includes(host),"missing CSP origin "+host);
   assert.equal(patched.config.split(host).length-1,1,"duplicate CSP origin "+host);
  }
