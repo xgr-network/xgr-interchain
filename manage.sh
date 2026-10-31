@@ -116,6 +116,26 @@ wait_xita_indexer() {
   return 1
 }
 
+# systemd Type=simple only confirms process start, not an open HTTP socket.
+wait_xita_join() {
+  local i
+  for ((i=1; i<=20; i++)); do
+    if curl --fail --silent --connect-timeout 1 --max-time 2 \
+      http://127.0.0.1:4090/api/xita/join/status >/dev/null 2>&1; then
+      return 0
+    fi
+    if systemctl is-failed --quiet xita-join.service 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+  echo "ERROR: XITA Join did not become HTTP-ready on 127.0.0.1:4090." >&2
+  echo "Website publication is blocked; diagnose Join service startup." >&2
+  privileged systemctl status xita-join.service --no-pager --lines=18 >&2 || true
+  privileged journalctl -u xita-join.service -n 45 --no-pager >&2 || true
+  return 1
+}
+
 prepare_solidity_runtime() {
   local forge_bin
   echo "Verifying complete pinned Solidity dependency tree ..."
@@ -302,7 +322,7 @@ install_join() (
   privileged install -m 0644 "$ROOT/deploy/systemd/xita-join-notifier.timer.in" /etc/systemd/system/xita-join-notifier.timer
   privileged systemctl daemon-reload
   privileged systemctl enable --now xita-join.service
-  privileged systemctl is-active --quiet xita-join.service || return 1
+  wait_xita_join || return 1
   curl --fail --silent --show-error --max-time 8 http://127.0.0.1:4090/api/xita/join/status
   echo
   # Global Nginx http rate-limit zone must be configured by operator.
@@ -701,7 +721,7 @@ complete_update() {
   # Join service and exact public logo routes are ready. No chain side effects.
   if systemctl is-active --quiet xita-join.service 2>/dev/null; then
     privileged systemctl restart xita-join.service || return 1
-    curl --fail --silent --show-error --max-time 8 http://127.0.0.1:4090/api/xita/join/status > /dev/null || return 1
+    wait_xita_join || return 1
     privileged "$(command -v node)" "$ROOT/tools/install-join-nginx.mjs" || return 1
   fi
   publish_web
