@@ -16,6 +16,19 @@ test("header alert only counts genuine confirmed locks without delivery",()=>{
  assert.equal(pendingDeliveryCount({account:wallet,items:[],indexedOpenCount:-1}),0);
 });
 
+test("completed indexed wallet worklist clears stale aggregate badge without hiding active transfers",()=>{
+ const done={...open,status:"delivered",delivered:true,finalityVerified:true};
+ // Old openCount is a lagging aggregate; a complete returned wallet page
+ // gives the exact live, wallet-owned actionable rows.
+ assert.equal(pendingDeliveryCount({account:wallet,items:[done],
+  indexedOpenCount:1,indexedRowsComplete:true}),0);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[done,open],
+  indexedOpenCount:2,indexedRowsComplete:true}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[done],
+  indexedOpenCount:1,indexedRowsComplete:false}),1);
+ assert.equal(pendingDeliveryCount({account:wallet,items:[open],
+  indexedOpenCount:0,indexedRowsComplete:true}),1);
+});
 test("confirmed XGR transit delivery remains visibly unfinished until final journey proof",()=>{
  const onward={...open,sourceChain:"base",status:"awaiting-onward",
   delivered:true,onwardRouteId:"0x"+"e".repeat(64)};
