@@ -1,8 +1,8 @@
 // Shared protocol-defined chain native finality. No operator-chosen confirmation
-// fallback: Base/Arbitrum use safe, BSC uses finalized, committed-IBFT XGRChain uses latest.
+// fallback: OP/Base/Arbitrum use safe, BSC uses finalized, committed-IBFT XGRChain uses latest.
 // JSON-RPC responses are revalidated against the canonical block at that height.
 // A single untrusted provider remains an independent H-01 architectural risk.
-const TAGS=new Map([[1643,"latest"],[8453,"safe"],[42161,"safe"],[56,"finalized"]]);
+const TAGS=new Map([[1643,"latest"],[10,"safe"],[8453,"safe"],[42161,"safe"],[56,"finalized"]]);
 const HASH=/^0x[0-9a-f]{64}$/i;
 const NUMBER=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const parseHeight=v=>{

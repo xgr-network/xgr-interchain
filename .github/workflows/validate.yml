@@ -79,6 +79,7 @@ jobs:
           set -euo pipefail
           node tools/validate-manifests.mjs
           node tools/build-xeta-web-catalog.mjs --check
+          node --test apps/web/chain-finality.test.mjs runtime/native-relayer/source-finality.test.mjs
           node tools/check-hub-route-expansion.mjs
           node --test tools/auto-hub-routes.test.mjs
 
