@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity,normalizeTransferSelection,executableDestinations} from "./experience.js";
+import {buildExperienceModel,previewRoute,renderDashboard,renderUniverse,renderRoutes,renderPlanRoute,renderFAQ,renderTokenBridge,dashboardMarketRows,transferTokenIdentity,normalizeTransferSelection,executableDestinations,chainFeeIdentity} from "./experience.js";
 import {deployedFixture,visibilityFixture} from "./deployed-test-fixture.mjs";
 import {freshDeployedCatalog} from "../../services/managed-relay/test-deployments.mjs";
 import {executableTransferRoutes} from "./route-availability.js";
@@ -20,6 +20,23 @@ const catalog={
       {name:"base_to_polygon",sourceChain:"base",destinationChain:"polygon"}
     ]}}}
 };
+test("fee display uses real chain names and native gas denominations from the published catalog",()=>{
+ for(const [key,label,coin] of [
+  ["xgrchain","XGRChain","XGR"],["base","Base","ETH"],
+  ["arbitrum","Arbitrum","ETH"],["bsc","BNB Smart Chain","BNB"]
+ ]){
+  assert.deepEqual(chainFeeIdentity(catalog,key),{label,coin});
+ }
+ assert.notEqual(chainFeeIdentity(catalog,"bsc").coin,"bsc");
+ const broken=structuredClone(catalog);
+ delete broken.chains.bsc.nativeCurrency.symbol;
+ assert.throws(()=>chainFeeIdentity(broken,"bsc"),/Fee denomination unavailable/);
+ delete broken.chains.bsc;
+ assert.throws(()=>chainFeeIdentity(broken,"bsc"),/Fee denomination unavailable/);
+ const unnamed=structuredClone(catalog);
+ unnamed.chains.bsc.displayName="";
+ assert.throws(()=>chainFeeIdentity(unnamed,"bsc"),/Fee network name unavailable/);
+});
 test("universe always includes the hub and filters forbidden direct spoke routes",()=>{
   const model=buildExperienceModel(catalog,()=>true);
   assert.equal(model.hub.key,"xgrchain");
