@@ -6,7 +6,9 @@ const routes=[
  {path:"/api/xita/join/status",method:"GET"},
  {path:"/api/xita/join/preview",method:"POST",maxBody:"480k"},
  {path:"/api/xita/join/submit",method:"POST",maxBody:"480k",rate:true},
- {path:"/api/xita/join/confirm",method:"POST",maxBody:"1k",rate:true,timeout:"120s"}
+ {path:"/api/xita/join/confirm",method:"POST",maxBody:"1k",rate:true,timeout:"120s"},
+ {path:"/api/xita/creator/register",method:"POST",maxBody:"185k",rate:true},
+ {path:"/api/xita/creator/confirm",method:"POST",maxBody:"1k",rate:true}
 ];
 function existingLocation(config,item){
  const pattern=new RegExp("(?:^|\\n)\\s*location\\s*=\\s*"+item.path+"\\s*\\{","g");
@@ -43,7 +45,19 @@ export function patchXitaJoinNginx(config){
  // Upgrade only the already validated exact Join confirmation location.
  // Do not alter unrelated nginx location blocks or operator settings.
  const current=existingLocation(config,routes[3])?config.replace(/(location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout )15s;/, (_,prefix)=>prefix+"120s;"):config;
- if(!missing.length)return {config:current,changed:current!==config,added:[]};
+ const logoMarker="location ^~ /token-logos/ {";
+ const priorLogo=(current.match(/location\\s+\\^~\\s+\\/token-logos\\/\\s*\\{/g)||[]);
+ if(priorLogo.length>1)throw Error("Duplicate creator logo proxy");
+ if(priorLogo.length===1){
+  const pos=current.indexOf(logoMarker),end=current.indexOf("}",pos);
+  const body=current.slice(pos,end);
+  if(!/limit_except GET\\s*\\{ deny all; \\}/.test(body)||
+     !/proxy_pass http:\\/\\/127\\.0\\.0\\.1:4090;/.test(body)||
+     !/add_header X-Content-Type-Options nosniff always;/.test(body))
+   throw Error("Unsafe creator logo proxy");
+ }
+ const missingLogo=priorLogo.length===0;
+ if(!missing.length&&!missingLogo)return {config:current,changed:current!==config,added:[]};
  if(config.split(marker).length!==2)
   throw Error("Expected exactly one XITA fail-closed API fallback location");
  const blocks=missing.map(r=>
@@ -58,6 +72,15 @@ export function patchXitaJoinNginx(config){
   "        add_header Cache-Control \"no-store\" always;\n"+
   "        add_header X-Content-Type-Options nosniff always;\n"+
   "    }\n\n").join("");
- const next=current.replace(marker,blocks+"    "+marker);
- return {config:next,changed:true,added:missing.map(r=>r.path)};
+ const logoBlock=missingLogo?
+  "    location ^~ /token-logos/ {\\n"+
+  "        limit_except GET { deny all; }\\n"+
+  "        proxy_pass "+upstream+";\\n"+
+  "        proxy_connect_timeout 2s;\\n"+
+  "        proxy_read_timeout 5s;\\n"+
+  "        proxy_set_header Host $host;\\n"+
+  "        add_header X-Content-Type-Options nosniff always;\\n"+
+  "    }\\n\\n":"";
+ const next=current.replace(marker,blocks+logoBlock+"    "+marker);
+ return {config:next,changed:true,added:[...missing.map(r=>r.path),...(missingLogo?["/token-logos/"]:[])]};
 }
