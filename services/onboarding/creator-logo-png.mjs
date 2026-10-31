@@ -84,5 +84,6 @@ export function normalizeLogoPng(b64){
  ihdr.writeUInt32BE(height,4);ihdr[8]=8;ihdr[9]=bpp===4?6:2;
  const bytes=Buffer.concat([SIG,chunk("IHDR",ihdr),
   chunk("IDAT",deflateSync(output,{level:9})),chunk("IEND",Buffer.alloc(0))]);
+ if(bytes.length>MAX_BYTES)throw Error("Normalized PNG exceeds the 128 KB logo limit");
  return {bytes,hash:createHash("sha256").update(bytes).digest("hex"),width,height};
 }
