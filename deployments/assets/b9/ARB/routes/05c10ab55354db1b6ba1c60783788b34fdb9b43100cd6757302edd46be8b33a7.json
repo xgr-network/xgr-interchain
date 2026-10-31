@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-route-deployment",
+  "asset": "ARB",
+  "assetId": "0xb913a68b77dc8b9df32e6e7d6158dfd4abb3b2c57fd127321c2727a17c207528",
+  "routeId": "0x05c10ab55354db1b6ba1c60783788b34fdb9b43100cd6757302edd46be8b33a7",
+  "routeName": "optimism_to_xgr",
+  "sourceChain": "optimism",
+  "destinationChain": "xgrchain",
+  "components": {
+    "gateway": {
+      "address": "0x54731f4ca1d7e981d80d4cdd117c80063defe929",
+      "runtimeCodeKeccak256": "0xce06c3f62d0795a0260027e4925c4ce62b6e111679080922a498ea4bdca397bc",
+      "receiptPath": "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-54731f4ca1d7e981d80d4cdd117c80063defe929.json"
+    },
+    "feeVault": {
+      "address": "0x326ff8ba9af8e5719181079afa93577617406c75",
+      "runtimeCodeKeccak256": "0x42e3cc816ac5aa232246235484d1fcc4616eba50b55428b0d7a8504d90c485c2",
+      "receiptPath": "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-326ff8ba9af8e5719181079afa93577617406c75.json"
+    }
+  },
+  "receiptPaths": [
+    "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-326ff8ba9af8e5719181079afa93577617406c75.json",
+    "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-54731f4ca1d7e981d80d4cdd117c80063defe929.json"
+  ]
+}
