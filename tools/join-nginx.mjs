@@ -46,13 +46,14 @@ export function patchXitaJoinNginx(config){
  // Do not alter unrelated nginx location blocks or operator settings.
  const current=existingLocation(config,routes[3])?config.replace(/(location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout )15s;/, (_,prefix)=>prefix+"120s;"):config;
  const logoMarker="location ^~ /token-logos/ {";
- const priorLogo=(current.match(/location\\s+\\^~\\s+\\/token-logos\\/\\s*\\{/g)||[]);
+ const priorLogo=(current.match(/location\s+\^~\s+\/token-logos\/\s*\{/g)||[]);
  if(priorLogo.length>1)throw Error("Duplicate creator logo proxy");
  if(priorLogo.length===1){
-  const pos=current.indexOf(logoMarker),end=current.indexOf("}",pos);
+  const pos=current.indexOf(logoMarker);
+  const end=current.indexOf("}",current.indexOf("}",pos)+1);
   const body=current.slice(pos,end);
-  if(!/limit_except GET\\s*\\{ deny all; \\}/.test(body)||
-     !/proxy_pass http:\\/\\/127\\.0\\.0\\.1:4090;/.test(body)||
+  if(!/limit_except GET\s*\{\s*deny all;\s*\}/.test(body)||
+     !/proxy_pass http:\/\/127\.0\.0\.1:4090;/.test(body)||
      !/add_header X-Content-Type-Options nosniff always;/.test(body))
    throw Error("Unsafe creator logo proxy");
  }
@@ -73,13 +74,13 @@ export function patchXitaJoinNginx(config){
   "        add_header X-Content-Type-Options nosniff always;\n"+
   "    }\n\n").join("");
  const logoBlock=missingLogo?
-  "    location ^~ /token-logos/ {\\n"+
-  "        limit_except GET { deny all; }\\n"+
-  "        proxy_pass "+upstream+";\\n"+
-  "        proxy_connect_timeout 2s;\\n"+
-  "        proxy_read_timeout 5s;\\n"+
-  "        proxy_set_header Host $host;\\n"+
-  "        add_header X-Content-Type-Options nosniff always;\\n"+
+  "    location ^~ /token-logos/ {\n"+
+  "        limit_except GET { deny all; }\n"+
+  "        proxy_pass "+upstream+";\n"+
+  "        proxy_connect_timeout 2s;\n"+
+  "        proxy_read_timeout 5s;\n"+
+  "        proxy_set_header Host $host;\n"+
+  "        add_header X-Content-Type-Options nosniff always;\n"+
   "    }\\n\\n":"";
  const next=current.replace(marker,blocks+logoBlock+"    "+marker);
  return {config:next,changed:true,added:[...missing.map(r=>r.path),...(missingLogo?["/token-logos/"]:[])]};
