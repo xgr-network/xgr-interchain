@@ -10,13 +10,13 @@ test("install only exact Join methods and rate-limited write paths",()=>{
   "/api/xita/join/status","/api/xita/join/preview",
   "/api/xita/join/submit","/api/xita/join/confirm",
   "/api/xita/creator/register","/api/xita/creator/confirm","/token-logos/"]);
- for(const endpoint of p.added)assert.ok(p.config.includes("location = "+endpoint+" {"));
+ for(const endpoint of p.added)assert.ok(p.config.includes("location "+(endpoint==="/token-logos/"?"^~ ":"= ")+endpoint+" {"));
  assert.equal((p.config.match(/proxy_pass http:\/\/127\.0\.0\.1:4090;/g)||[]).length,4);
  assert.equal((p.config.match(/limit_req zone=xita_join_submit burst=3 nodelay;/g)||[]).length,2);
  assert.match(p.config,/location = \/api\/xita\/join\/status \{\n\s+limit_except GET/);
  assert.match(p.config,/location = \/api\/xita\/join\/confirm \{\n\s+limit_except POST \{ deny all; \}\n\s+client_max_body_size 1k/);
  assert.match(p.config,/location = \/api\/xita\/join\/confirm \{[\s\S]*?proxy_read_timeout 120s;/);
- assert.match(p.config,/location \\^~ \\/token-logos\\/ \\{/);
+ assert.ok(p.config.includes("location ^~ /token-logos/ {"));
  assert.match(p.config,/client_max_body_size 185k/);
  assert.deepEqual(patchXitaJoinNginx(p.config),{config:p.config,changed:false,added:[]});
 });
