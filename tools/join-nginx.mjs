@@ -50,7 +50,7 @@ export function patchXitaJoinNginx(config){
  if(priorLogo.length>1)throw Error("Duplicate creator logo proxy");
  if(priorLogo.length===1){
   const pos=current.indexOf(logoMarker);
-  const end=current.indexOf("}",current.indexOf("}",pos)+1);
+  const end=current.indexOf("\n    }",pos)+6;
   const body=current.slice(pos,end);
   if(!/limit_except GET\s*\{\s*deny all;\s*\}/.test(body)||
      !/proxy_pass http:\/\/127\.0\.0\.1:4090;/.test(body)||
@@ -81,7 +81,7 @@ export function patchXitaJoinNginx(config){
   "        proxy_read_timeout 5s;\n"+
   "        proxy_set_header Host $host;\n"+
   "        add_header X-Content-Type-Options nosniff always;\n"+
-  "    }\\n\\n":"";
+  "    }\n\n":"";
  const next=current.replace(marker,blocks+logoBlock+"    "+marker);
  return {config:next,changed:true,added:[...missing.map(r=>r.path),...(missingLogo?["/token-logos/"]:[])]};
 }
