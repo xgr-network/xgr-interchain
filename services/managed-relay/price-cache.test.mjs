@@ -7,7 +7,6 @@ import {PRICE_CACHE_KIND,readCachedGasPrices,refreshGasPriceCache} from "./price
 const now=Date.UTC(2026,9,22,7,30),sec=Math.floor(now/1000);
 const body=(age=0)=>({ethereum:{usd:2500,eur:2200,last_updated_at:sec-age},
  xgr:{usd:0.0001,eur:0.00009,last_updated_at:sec-age},
- "polygon-ecosystem-token":{usd:0.35,eur:0.31,last_updated_at:sec-age},
  binancecoin:{usd:600,eur:550,last_updated_at:sec-age}});
 test("one backend refresh persists one shared quote-safe snapshot",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"xita-price-")),path=join(dir,"prices.json");
@@ -19,7 +18,7 @@ test("one backend refresh persists one shared quote-safe snapshot",async()=>{
    return {ok:true,json:async()=>body()}};
   const updated=await refreshGasPriceCache({path,now,fetcher});
   assert.equal(requests,1);
-  assert.equal(updated.coins.length,4);
+  assert.equal(updated.coins.length,3);
   assert.ok(updated.coins.includes("binancecoin"));
   const saved=JSON.parse(await readFile(path,"utf8"));
   assert.equal(saved.kind,PRICE_CACHE_KIND);
