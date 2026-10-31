@@ -146,7 +146,7 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '<button class="ux-button" id="xita-creator-deploy" type="button"'+
   (!canCreate?' disabled':'')+'>'+(canCreate?'Create token in MetaMask':'Token creation not yet activated')+'</button>'+
   '<p class="ux-small" id="tc-status" role="status">'+
-  (canCreate?'Factory deployment available after verification.':'The XGR-funded Creator service is awaiting verified factory activation. This website never requests an ERC-20 deployment transaction.')+
+  (canCreate?'Factory deployment available after verification.':'The XGR-funded Creator service is awaiting verified factory activation. No transaction will be requested from your wallet.')+
   '</p></section></div>';
 }
 export function creatorConfirmMarkup(state){
