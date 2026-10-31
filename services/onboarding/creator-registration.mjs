@@ -1,7 +1,7 @@
 // Separate creator enrollment: verify email and publish a normalized logo,
 // without invoking external-CoinGecko Join or any wallet/sponsor transaction.
 import {createHash,timingSafeEqual} from "node:crypto";
-import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync,openSync,closeSync,statSync} from "node:fs";
+import {readFileSync,writeFileSync,unlinkSync,existsSync,readdirSync} from "node:fs";
 import {join} from "node:path";
 import {privateLocation,preparePrivateDir,createPending,readPrivate,
  lockedRecord,savePrivate,removePrivate,matchesToken,listPrivate} from "./private-store.mjs";
@@ -81,7 +81,7 @@ function pendingPath(dir,id){if(!ID.test(id||""))throw Error("Invalid creator re
 function removeOptional(path){try{unlinkSync(path)}catch(e){if(e.code!=="ENOENT")throw e}}
 function provisionPublicLogo(pending,publicDir,hash){
  const bytes=readFileSync(pending);
- if(!createHash("sha256").update(bytes).digest("hex").startsWith(hash)||bytes.length>128*1024+256)
+ if(createHash("sha256").update(bytes).digest("hex")!==hash||bytes.length>128*1024)
   throw Error("Logo integrity verification failed");
  const dest=logoPath(publicDir,hash);
  if(!existsSync(dest)){
@@ -159,6 +159,14 @@ export async function handleCreator(req,res,{env=process.env,clock=Date.now,
   if(!rateEmail(record.contactEmail,now))
    return response(res,429,{ok:false,error:"Registration rate limit exceeded"});
   const loc=locations(env),records=listPrivate(loc.base,{now});
+  // Expired pending records are pruned by listPrivate. Remove their private
+  // image blobs too; never retain unverified user uploads indefinitely.
+  const pendingIds=new Set(records.filter(x=>x.kind==="token-creator"&&
+   x.phase==="pending-email").map(x=>x.id));
+  for(const file of readdirSync(loc.pending)){
+   const match=/^([0-9a-f-]{36})\\.png$/.exec(file);
+   if(match&&!pendingIds.has(match[1]))removeOptional(join(loc.pending,file));
+  }
   if(records.some(x=>x.kind==="token-creator"&&x.phase==="pending-email"&&
       x.input.contactEmail===record.contactEmail&&x.input.symbol===record.symbol))
    return response(res,409,{ok:false,error:"Email confirmation already pending"});
