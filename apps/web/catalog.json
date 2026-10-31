@@ -155,12 +155,6 @@
             "assetAddress": null
           },
           {
-            "chain": "polygon",
-            "representation": "synthetic",
-            "symbol": "wARB",
-            "assetAddress": null
-          },
-          {
             "chain": "bsc",
             "representation": "synthetic",
             "symbol": "wARB",
@@ -240,16 +234,6 @@
             "name": "xgr_to_base",
             "sourceChain": "xgrchain",
             "destinationChain": "base"
-          },
-          {
-            "name": "polygon_to_xgr",
-            "sourceChain": "polygon",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_polygon",
-            "sourceChain": "xgrchain",
-            "destinationChain": "polygon"
           },
           {
             "name": "xgr_to_bsc",
@@ -506,12 +490,6 @@
             "assetAddress": null
           },
           {
-            "chain": "polygon",
-            "representation": "synthetic",
-            "symbol": "wXGR",
-            "assetAddress": null
-          },
-          {
             "chain": "arbitrum",
             "representation": "synthetic",
             "symbol": "wXGR",
@@ -593,16 +571,6 @@
           {
             "name": "base_to_xgr",
             "sourceChain": "base",
-            "destinationChain": "xgrchain"
-          },
-          {
-            "name": "xgr_to_polygon",
-            "sourceChain": "xgrchain",
-            "destinationChain": "polygon"
-          },
-          {
-            "name": "polygon_to_xgr",
-            "sourceChain": "polygon",
             "destinationChain": "xgrchain"
           },
           {
