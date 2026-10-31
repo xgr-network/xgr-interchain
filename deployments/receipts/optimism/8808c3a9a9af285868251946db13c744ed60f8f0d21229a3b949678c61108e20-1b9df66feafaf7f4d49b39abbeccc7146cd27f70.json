@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "d41612bc00b6ef1ccc95957981b86835e6abbeb4"
+  },
+  "chain": "optimism",
+  "chainId": 10,
+  "domainId": 10,
+  "component": "dispatchHook",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
+  "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+  "transactionHash": "0x8808c3a9a9af285868251946db13c744ed60f8f0d21229a3b949678c61108e20",
+  "blockNumber": 158929101,
+  "blockHash": "0xf35836baa81be95f18479a9039d3da8b3409c77648793cb45f143ac186580acb",
+  "confirmations": 13,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "transport-dispatch-hook",
+    "factory": "0x119f5533d40889b23769b3c2d507cdfc90fff8ca"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-10-31T14:30:05.051Z"
+}
