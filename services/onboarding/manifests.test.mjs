@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {buildManifestBundle} from "./manifests.mjs";
+import {isDeployedChain} from "../../apps/web/route-availability.js";
 const catalog=loadCatalog();
 const application={
  name:"Example Protocol",symbol:"EXMP",slug:"example-protocol",
@@ -20,10 +21,10 @@ test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const routes=JSON.parse(b.files[base+"/routes.json"]);
  assert.equal(asset.canonical.tokenAddress,application.canonicalAddress);
  assert.match(asset.assetId,/^0x[0-9a-f]{64}$/);
- const spokes=Object.keys(catalog.chains).filter(chain=>chain!=="xgrchain");
+ const spokes=Object.keys(catalog.chains).filter(chain=>chain!=="xgrchain"&&isDeployedChain(catalog,chain));
  assert.equal(routes.routes.length,spokes.length*2);
  assert.deepEqual([...new Set(asset.representations.map(r=>r.chain))].sort(),
-  Object.keys(catalog.chains).sort());
+  Object.keys(catalog.chains).filter(chain=>chain==="xgrchain"||isDeployedChain(catalog,chain)).sort());
  assert.deepEqual([...new Set(routes.routes.filter(r=>r.sourceChain!=="xgrchain").map(r=>r.sourceChain))].sort(),spokes.sort());
  assert.equal(b.summary.routeCount,spokes.length*2);
  assert.ok(routes.routes.every(x=>[x.sourceChain,x.destinationChain].includes("xgrchain")));
@@ -33,6 +34,15 @@ test("route bundle matches authoritative main schemas and transits XGR",()=>{
  const newCat=JSON.parse(b.files["apps/web/catalog.json"]);
  assert.deepEqual(validateCatalog(newCat),[]);
  assert.equal(newCat.assets.EXMP.profile.slug,"example-protocol");
+});
+test("Join proposals exclude undeployed Polygon and accept BSC as original chain",()=>{
+ const selected=buildManifestBundle({...application,canonicalChain:"bsc"},catalog);
+ assert.equal(selected.summary.canonicalChain,"bsc");
+ assert.ok(selected.summary.chains.includes("bsc"));
+ assert.equal(selected.summary.chains.includes("polygon"),false);
+ const routes=JSON.parse(Object.entries(selected.files).find(([k])=>k.endsWith("/routes.json"))[1]);
+ assert.ok(routes.routes.every(r=>r.sourceChain!=="polygon"&&r.destinationChain!=="polygon"));
+ assert.throws(()=>buildManifestBundle({...application,canonicalChain:"polygon"},catalog),/not yet deployed/);
 });
 test("reject direct bridge and duplicate canonical token",()=>{
  const expected=buildManifestBundle(application,catalog).files;

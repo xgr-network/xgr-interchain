@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "kind": "chain-config",
   "name": "base",
+  "coingeckoAssetPlatform": "base",
   "environment": "mainnet",
   "chainId": 8453,
   "domainId": 8453,

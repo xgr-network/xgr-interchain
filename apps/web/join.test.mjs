@@ -1,13 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {draft,validateStep,validateApplication,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
-const chains={
- xgrchain:{name:"XGRChain",nativeCurrency:{symbol:"XGR"}},
- base:{name:"Base",nativeCurrency:{symbol:"ETH"}},
- polygon:{name:"Polygon",nativeCurrency:{symbol:"POL"}},
- arbitrum:{name:"Arbitrum",nativeCurrency:{symbol:"ETH"}}
-};
+import {draft,validateStep,validateApplication,joinMarkup,joinPendingMarkup,joinConfirmationMarkup,joinHomeChains} from "./join.js";
+const catalog=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+const chains=catalog.chains;
 const valid=()=>({
  ...draft(chains),
  name:"Example Protocol",symbol:"EXMP",
@@ -17,9 +13,23 @@ const valid=()=>({
  canonicalChain:"arbitrum",canonicalAddress:"0x912ce59144191c1204e64559fe8253a0e49e6548",
  coingeckoId:"arbitrum",contactEmail:"holder@example.org",applicantRole:"holder",confirmed:true
 });
+test("join home-chain options follow deployed receipt-backed inventory, not planned chains",()=>{
+ assert.deepEqual(joinHomeChains(catalog).sort(),["arbitrum","base","bsc"]);
+ const html=joinMarkup(catalog,valid());
+ for(const key of ["arbitrum","base","bsc"])assert.match(html,new RegExp('<option value="'+key+'"'));
+ assert.match(html,/>BNB Smart Chain<\/option>/);
+ assert.doesNotMatch(html,/<option value="polygon"/);
+ assert.doesNotMatch(html,/<option value="xgrchain"/);
+ assert.deepEqual(validateStep({...valid(),canonicalChain:"bsc"},1,catalog),[]);
+ assert.deepEqual(validateStep({...valid(),canonicalChain:"polygon"},1,catalog),["Canonical chain"]);
+ const plan=structuredClone(catalog);
+ plan.infrastructure.bsc.present=false;
+ assert.deepEqual(joinHomeChains(plan).sort(),["arbitrum","base"]);
+ assert.deepEqual(validateStep({...valid(),canonicalChain:"bsc"},1,plan),["Canonical chain"]);
+});
 test("Join has one form and retains every validation and privacy requirement",()=>{
- const d=valid(),html=joinMarkup(chains,d);
- assert.deepEqual(validateApplication(d,chains),[]);
+ const d=valid(),html=joinMarkup(catalog,d);
+ assert.deepEqual(validateApplication(d,catalog),[]);
  assert.match(html,/id="ja-application-form" novalidate/);
  assert.match(html,/data-join-action="submit"/);
  assert.match(html,/Submit free application/);
@@ -39,7 +49,7 @@ test("Join has one form and retains every validation and privacy requirement",()
  assert.doesNotMatch(html,/Suggested token profile/);
 });
 test("CoinGecko help is an accessible dialog with an API ID example and matching fields",()=>{
- const html=joinMarkup(chains,valid());
+ const html=joinMarkup(catalog,valid());
  assert.match(html,/id="ja-coingecko-help" aria-haspopup="dialog"/);
  assert.match(html,/aria-controls="ja-coingecko-dialog"/);
  assert.match(html,/id="ja-coingecko-dialog" class="ux-fee-dialog/);
@@ -52,16 +62,16 @@ test("CoinGecko help is an accessible dialog with an API ID example and matching
 });
 test("Single page validates all three underlying security groups before submitting",()=>{
  const d=valid();
- assert.deepEqual(validateApplication({...d,name:"",coingeckoId:"",contactEmail:""},chains),
+ assert.deepEqual(validateApplication({...d,name:"",coingeckoId:"",contactEmail:""},catalog),
   ["Project name","CoinGecko coin ID","Contact email"]);
- assert.deepEqual(validateApplication({...d,confirmed:false},chains),["Project confirmation"]);
- assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"x"},chains),["HTTPS logo URL"]);
- assert.deepEqual(validateStep(d,0,chains),[]);
- assert.deepEqual(validateStep(d,1,chains),[]);
- assert.deepEqual(validateStep(d,2,chains),[]);
+ assert.deepEqual(validateApplication({...d,confirmed:false},catalog),["Project confirmation"]);
+ assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"x"},catalog),["HTTPS logo URL"]);
+ assert.deepEqual(validateStep(d,0,catalog),[]);
+ assert.deepEqual(validateStep(d,1,catalog),[]);
+ assert.deepEqual(validateStep(d,2,catalog),[]);
 });
 test("Single-page join never requires chain target selection or a manually chosen URL",()=>{
- const html=joinMarkup(chains,valid());
+ const html=joinMarkup(catalog,valid());
  assert.doesNotMatch(html,/data-join-target|New worlds|Token URL/);
  assert.match(html,/XITA handles the complete technical integration/);
  assert.match(html,/Privacy Policy/);
@@ -99,8 +109,8 @@ test("confirmation page distinguishes email verification from receipt",()=>{
 
 test("Join accepts only HTTPS logo URLs, not uploaded images",()=>{
  const d=valid();
- assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"abc"},chains),["HTTPS logo URL"]);
- const html=joinMarkup(chains,d);
+ assert.deepEqual(validateApplication({...d,logoUrl:"",logoPngBase64:"abc"},catalog),["HTTPS logo URL"]);
+ const html=joinMarkup(catalog,d);
  assert.match(html,/data-join="logoUrl"/);
  assert.doesNotMatch(html,/type="file"|upload a PNG/i);
 });
@@ -109,7 +119,7 @@ test("Join navigation is separate from submitted receipt and can start a second 
  const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
  const joinFn=app.split("function join(){")[1]?.split("\n}")[0];
  assert.ok(joinFn,"Join renderer exists");
- assert.match(joinFn,/return joinMarkup\(state\.catalog\.chains,joinState\.data,joinState\.status,joinState\.busy\)/);
+ assert.match(joinFn,/return joinMarkup\(state\.catalog,joinState\.data,joinState\.status,joinState\.busy\)/);
  assert.doesNotMatch(joinFn,/joinPendingMarkup|joinState\.accepted/);
  assert.match(app,/p==="\/join"\?join\(\):p==="\/join\/submitted"\?joinPendingMarkup\(joinState\.accepted\?joinState\.data:null\)/);
  assert.match(app,/if\(a\.pathname==="\/join"&&path\(\)!=="\/join"\)\{/);
@@ -118,7 +128,7 @@ test("Join navigation is separate from submitted receipt and can start a second 
 });
 
 test("Join layout keeps every input and form action after preview is removed",()=>{
- const html=joinMarkup(chains,valid());
+ const html=joinMarkup(catalog,valid());
  for(const key of ["name","symbol","website","logoUrl","shortDescription","description","canonicalChain","canonicalAddress","decimals","coingeckoId","contactEmail","applicantRole","confirmed"])
   assert.match(html,new RegExp('data-join="'+key+'"'));
  assert.equal((html.match(/id="ja-application-form"/g)||[]).length,1);

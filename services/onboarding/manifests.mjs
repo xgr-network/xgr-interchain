@@ -4,6 +4,7 @@
 import {canonicalAssetId} from "../admin/asset-state.mjs";
 import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
 import {normalizeJoinDescription} from "../../apps/web/join-description.js";
+import {isDeployedChain} from "../../apps/web/route-availability.js";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 
@@ -57,6 +58,9 @@ export function normalizeApplication(raw,inventory){
  if(!website)note("Project website must use HTTPS");
  const canonicalChain=raw.canonicalChain;
  if(!Object.hasOwn(inventory.chains,canonicalChain))note("Unknown canonical chain");
+ if(canonicalChain==="xgrchain"||!isDeployedChain(inventory,canonicalChain)||
+    !inventory.chains[canonicalChain]?.coingeckoAssetPlatform)
+  note("Original blockchain is not yet deployed or CoinGecko-verifiable");
  const address=String(raw.canonicalAddress||"").toLowerCase();
  if(!HEX.test(address)||ZERO.test(address))note("Original ERC-20 contract address required");
  if(!Number.isInteger(raw.decimals)||raw.decimals<0||raw.decimals>36)
@@ -66,7 +70,7 @@ export function normalizeApplication(raw,inventory){
  // Ignore any legacy or forged browser "targets" field: it must never reduce
  // or expand the GitHub-approved route graph.
  const chosen=Object.keys(inventory.chains).filter(key=>
-  key!==canonicalChain&&key!=="xgrchain").sort();
+  key!==canonicalChain&&key!=="xgrchain"&&isDeployedChain(inventory,key)).sort();
  const categories=raw.categories;
  if(!Array.isArray(categories)||categories.length<1||categories.length>8||
     new Set(categories).size!==categories.length||

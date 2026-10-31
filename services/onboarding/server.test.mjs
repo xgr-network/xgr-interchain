@@ -7,6 +7,7 @@ import {join} from "node:path";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {handleJoin,hasBlockingJoinApplication,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
+import {isDeployedChain} from "../../apps/web/route-availability.js";
 const catalog=loadCatalog();
 const input={
  name:"Example Protocol",symbol:"EXMP",
@@ -71,8 +72,8 @@ test("email confirmation is private, single-use and required before public GitHu
    proposals++;assert.equal(expectedMain,"a".repeat(40));
    assert.equal(bundle.summary.applicantRole,"holder");
    assert.equal(bundle.summary.routeCount,
-    Object.keys(catalog.chains).filter(name=>name!=="xgrchain").length*2);
-   assert.deepEqual(bundle.summary.chains.sort(),Object.keys(catalog.chains).sort());
+    Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&isDeployedChain(catalog,name)).length*2);
+   assert.deepEqual(bundle.summary.chains.sort(),Object.keys(catalog.chains).filter(name=>name==="xgrchain"||isDeployedChain(catalog,name)).sort());
    assert.equal(JSON.stringify(bundle.files).includes("partner@example.org"),false);
    return {number:271,url:"https://github.com/xgr-network/xgr-interchain/pull/271",status:"draft"};
   }
@@ -88,8 +89,8 @@ test("email confirmation is private, single-use and required before public GitHu
   const preview=await post("/api/xita/join/preview",input);
   assert.equal(preview.status,200);
   assert.equal(preview.body.assetId.length,66);
-  assert.deepEqual(preview.body.summary.chains.sort(),Object.keys(catalog.chains).sort());
-  assert.equal(preview.body.summary.routeCount,(Object.keys(catalog.chains).length-1)*2);
+  assert.deepEqual(preview.body.summary.chains.sort(),Object.keys(catalog.chains).filter(name=>name==="xgrchain"||isDeployedChain(catalog,name)).sort());
+  assert.equal(preview.body.summary.routeCount,Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&isDeployedChain(catalog,name)).length*2);
   assert.equal(JSON.stringify(preview.body).includes(input.contactEmail),false);
   const result=await post("/api/xita/join/submit",input);
   assert.equal(result.status,202);
@@ -122,6 +123,22 @@ test("email confirmation is private, single-use and required before public GitHu
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true});}
 });
 
+test("unconfirmed email expires and permits a new application after 24 hours",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-join-expiry-"));
+ const now=Date.UTC(2026,9,31,8);
+ try{
+  const {createPending}=await import("./private-store.mjs");
+  const id="0x"+"a".repeat(64);
+  const a=createPending(dir,{contactEmail:"mail@example.org"},id,{now});
+  assert.equal(listPrivate(dir,{now:now+86400000-1}).length,1);
+  assert.equal(await hasBlockingJoinApplication(listPrivate(dir,{now:now+86400000-1}),id,{readPR:async()=>{throw Error("not called")}}),true);
+  assert.equal(listPrivate(dir,{now:now+86400000+1}).length,0);
+  assert.equal(await hasBlockingJoinApplication(listPrivate(dir,{now:now+86400000+1}),id),false);
+  const second=createPending(dir,{contactEmail:"mail@example.org"},id,{now:now+86400000+2});
+  assert.notEqual(second.id,a.id);
+  assert.notEqual(second.token,a.token);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
 test("closed or deleted unmerged PR allows reapplication; open or merged PR blocks",async()=>{
  const assetId="0x"+"a".repeat(64);
  const record={assetId,phase:"under-review",pr:{number:271}};

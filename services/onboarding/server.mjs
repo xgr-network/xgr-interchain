@@ -205,7 +205,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
         throw Error("Expired or invalid confirmation token");
       // Rebuild against current checkout; block a stale or displaced main revision.
       const bundle=buildManifestBundle(record.input,checkedJoinCatalog(sourceCatalog));
-      const identity=await verify(record.input);
+      const identity=await verify(record.input,{catalog:checkedJoinCatalog(sourceCatalog)});
       const expectedMain=await getMainSha();
       const pr=await publisher(bundle,{expectedMain,applicationId:record.id});
       record.phase="under-review";record.pr=pr;
@@ -227,7 +227,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
     return reply(res,503,{ok:false,error:"Private email confirmation and GitHub writer are not configured; use Export draft"});
   const input=await readBody(req);
   const bundle=buildManifestBundle(input,checkedJoinCatalog(sourceCatalog));
-  const identity=await verify(input); // fail-closed live CoinGecko identity check
+  const identity=await verify(input,{catalog:checkedJoinCatalog(sourceCatalog)}); // fail-closed live CoinGecko identity check
   if(path.endsWith("/preview"))
     return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),
       assetId:bundle.assetId,identity:{platform:identity.platform,address:identity.address}});
