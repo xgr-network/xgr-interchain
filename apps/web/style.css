@@ -1526,3 +1526,19 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
  .ja-onepage .ja-form-section{padding:23px 0}
  .ja-onepage .ja-section-title h3{font-size:25px}
 }
+
+/* Deliberately unlisted XITA token-creation preview (/createtoken). */
+.ux-token-creator{max-width:1040px;margin:0 auto;display:grid;gap:22px}
+.ux-token-creator h1{margin:0;font-weight:400}
+.ux-token-creator .ux-lead{max-width:780px;margin:0}
+.ux-token-creator .ux-panel{padding:26px;display:grid;gap:15px}
+.ux-token-creator .ux-panel h2{font-weight:450;margin:0}
+.ux-token-creator .ja-fields .ja-field{grid-column:auto}
+.ux-token-creator .ja-field strong{font-size:14px;color:#f1f7ff}
+.ux-token-creator .ja-field small{color:#9eb4ce}
+.ux-token-creator .ja-checkbox{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;color:#b7cbe1;margin:17px 0}
+.ux-token-creator .ja-checkbox input{flex-shrink:0;margin-top:4px;accent-color:#a7c8f3}
+.ux-token-creator #xita-creator-deploy{width:100%;max-width:480px}
+.ux-token-creator #xita-creator-deploy:disabled{opacity:.65;cursor:not-allowed}
+.ux-token-creator #tc-status{max-width:700px}
+@media(max-width:600px){.ux-token-creator .ja-fields{grid-template-columns:1fr}.ux-token-creator .ux-panel{padding:17px}}
