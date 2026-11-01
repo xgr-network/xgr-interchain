@@ -52,3 +52,15 @@ test("ambiguous route names and missing canonical collateral are not silently ac
  origin.assets.ARB.metadata.canonical.chain="optimism";
  assert.throws(()=>deriveMissingHubRoutes(origin),/Cannot invent canonical collateral/);
 });
+
+test("receipt-verified XGR Creator originals without any Join route remain route-free",()=>{
+ const catalog=structuredClone(loadCatalog());
+ const candidate=catalog.assets.XITACAN;
+ assert.equal(candidate.metadata.creation.kind,"xgrchain-creator-v1");
+ assert.deepEqual(candidate.metadata.representations.map(x=>x.chain),["xgrchain"]);
+ assert.deepEqual(candidate.routes.routes,[]);
+ assert.equal(deriveMissingHubRoutes(catalog).size,0);
+ const unjoined=structuredClone(catalog);
+ delete unjoined.assets.XITACAN.metadata.creation;
+ assert.ok(deriveMissingHubRoutes(unjoined).has("XITACAN"));
+});
