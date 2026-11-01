@@ -1641,7 +1641,7 @@ el.addEventListener("click",event=>{
    const panel=document.querySelector("#ja-integration-panel");
    panel?.scrollIntoView({behavior:"smooth",block:"start"});
    document.querySelector("#ja-coingeckoId")?.focus({preventScroll:true});
-  }else entry.focus();
+  }else document.querySelector('[data-join-entry="integrate"]')?.focus();
   return;
  }
  const joinButton=event.target.closest('[data-join-action="preview"]');
