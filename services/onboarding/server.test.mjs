@@ -113,7 +113,7 @@ test("email confirmation is private, single-use and required before public GitHu
   assert.equal(invalid.status,422);
   assert.equal(proposals,0);
   const confirmed=await post("/api/xita/join/confirm",token);
-  assert.equal(confirmed.status,200);
+  assert.equal(confirmed.status,200,JSON.stringify(confirmed.body));
   assert.equal(confirmed.body.prNumber,271);
   assert.equal(proposals,1);
   assert.equal(mail.length,2);
