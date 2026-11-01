@@ -101,6 +101,54 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
  try{visibility=await readVisibility();}catch{/* preserve prior state on unavailable independent proofs */}
  const results=[];
  for(const item of records){
+  // Token creation is final at the independently verified XGRChain receipt.
+  // Deliver its confirmation regardless of GitHub PR or public profile status.
+  // Historical verified deployments must also receive this mail exactly once.
+  if(item.kind==="token-creator"&&
+     item.deployment?.status==="verified"&&
+     !(item.sent||[]).includes("creator-deployed")){
+   await lockedRecord(dir,item.id,async record=>{
+    const d=record.deployment,proof=d?.verifiedProof;
+    const address=/^0x[0-9a-f]{40}$/i,hash=/^0x[0-9a-f]{64}$/i;
+    if((record.sent||[]).includes("creator-deployed")||
+       d?.status!=="verified"||!proof||
+       proof.chainId!==1643||
+       !address.test(d.tokenAddress||"")||
+       !hash.test(d.txHash||"")||
+       !address.test(record.input?.ownerAddress||"")||
+       String(proof.tokenAddress||"").toLowerCase()!==d.tokenAddress.toLowerCase()||
+       String(proof.txHash||"").toLowerCase()!==d.txHash.toLowerCase()||
+       String(proof.ownerAddress||"").toLowerCase()!==record.input.ownerAddress.toLowerCase()||
+       proof.symbol!==record.input?.symbol||
+       proof.name!==record.input?.name)
+     return;
+    const key="creator-deployed",title="Your XGRChain token has been created";
+    const mail=applicationMail({title,
+     subtitle:record.input.name+" ("+record.input.symbol+")",
+     paragraphs:[
+      "Your ERC-20 token has been successfully deployed and independently verified on XGRChain Mainnet (chain ID 1643).",
+      "Token contract: "+d.tokenAddress,
+      "Deployment transaction: "+d.txHash,
+      "Initial supply: "+record.input.initialSupply+" "+record.input.symbol,
+      "Owner wallet: "+record.input.ownerAddress,
+      "Your token exists on XGRChain now. Publishing its XITA profile or adding Interchain routes is a separate process."
+     ],
+     action:{label:"View token contract",url:"https://explorer.xgr.network/address/"+d.tokenAddress}
+    });
+    try{
+     await deliver({to:record.input.contactEmail,subject:title,...mail,
+      idempotencyKey:record.id+":"+key},{env});
+     record.sent=[...new Set([...(record.sent||[]),key])];
+     savePrivate(dir,record);
+     results.push({id:record.id,status:key,sent:true,tokenAddress:d.tokenAddress});
+    }catch{
+     results.push({id:record.id,status:key,sent:false});
+    }
+   });
+   // The later optional profile-live mail is an independent notification.
+   // Do not send both mails in the same run.
+   continue;
+  }
   if(!item.pr?.number)continue;
   await lockedRecord(dir,item.id,async record=>{
    // Creator and metadata-only proposals must NOT receive generic route,
