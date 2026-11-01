@@ -1,6 +1,9 @@
 // Read-only, token-agnostic escrow snapshot producer. Requires SELECT-only DB.
 // One snapshot iteration; no custody keys, writes to EVM or DB, or transfer ops.
 import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync} from "node:fs";
+import {createHash} from "node:crypto";
+import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
+import {verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {indexedRoutes} from "./transfer-index.mjs";
@@ -98,6 +101,33 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return verifiedEvidence(catalog,proofs,now,flows);
 }
+// A single missed external RPC observation must not overwrite a fresh,
+// previously complete snapshot with all-null TVL. A retained snapshot keeps
+// its ORIGINAL observation time and is rejected by the HTTP reader after 2m.
+// Never carry evidence across a catalog/route change, nor invent a new sample
+// in the append-only historical series.
+export function choosePublishedTvlEvidence(catalog,current,previous,{now=Date.now(),
+ maxHoldMs=90000}={}){
+ const active=Object.keys(catalog?.assets||{}).filter(id=>
+  isDeployedAsset(catalog.assets[id],catalog));
+ const complete=s=>active.length>0&&s?.kind==="xita-asset-metrics-v1"&&
+  s.schemaVersion===1&&active.every(id=>verifiedMetrics(s,id)?.lockedUsd!==null);
+ if(complete(current))return {snapshot:current,retained:false};
+ const timestamp=Date.parse(previous?.asOf);
+ const age=now-timestamp;
+ if(complete(previous)&&current?.catalogHash&&
+   previous?.catalogHash===current.catalogHash&&
+   Number.isFinite(age)&&age>=0&&age<=maxHoldMs)
+  return {snapshot:previous,retained:true,ageMs:age};
+ return {snapshot:current,retained:false};
+}
+export function evidenceCatalogHash(catalog){
+ // The hash identifies the exact receipt-backed route and network inventory,
+ // not a browser-supplied publication setting.
+ const source={chains:catalog?.chains,infrastructure:catalog?.infrastructure,
+  assets:catalog?.assets};
+ return createHash("sha256").update(JSON.stringify(source)).digest("hex");
+}
 function atomic(path,payload){
  const tmp=path+".tmp."+process.pid;
  try{writeFileSync(tmp,JSON.stringify(payload)+"\n",{mode:0o600});renameSync(tmp,path);}
@@ -111,13 +141,27 @@ export async function runTVL({interval=60000}={}){
   try{
    const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
    const snap=await tvlSnapshot({catalog,pool});
-   // Persist only snapshots whose COMPLETE TVL reconciles to verified vaults.
-   // Retention, deduplication and monotone timestamps live in tvl-history.mjs.
-   const history=appendVerifiedTvlHistory(HISTORY,snap,catalog);
-   atomic(RESULT,snap);
+   snap.catalogHash=evidenceCatalogHash(catalog);
+   // Never add historic points for the temporarily retained previous snapshot.
+   // Every history sample must come from a NEW complete observation.
+   appendVerifiedTvlHistory(HISTORY,snap,catalog);
+   let previous=null;
+   try{if(existsSync(RESULT))previous=JSON.parse(readFileSync(RESULT,"utf8"));}
+   catch{/* Partial/malformed old local evidence is never reused. */}
+   const published=choosePublishedTvlEvidence(catalog,snap,previous);
+   atomic(RESULT,published.snapshot);
+   const reasons=Object.entries(snap.custodyEvidence?.statuses||{})
+    .filter(([,status])=>status!=="verified")
+    .map(([asset,status])=>asset+":"+status).join(", ");
+   if(published.retained)
+    console.warn("[xita-tvl] transient verification gap; retaining last complete "+
+     "observation "+Math.round(published.ageMs/1000)+"s old; "+reasons);
+   else if(reasons)
+    console.warn("[xita-tvl] unavailable evidence:",reasons);
    console.log("[xita-tvl] verified assets:",Object.keys(snap.assets).join(",")||"none");
   }catch(e){
-   if(existsSync(RESULT))unlinkSync(RESULT);
+   // Last valid on-disk proof expires automatically in the HTTP reader (120s);
+   // a temporary CoinGecko/RPC/database failure must not erase it early.
    console.error("[xita-tvl] evidence unavailable",String(e.message||e).slice(0,160));
   }
   if(run)await new Promise(done=>setTimeout(done,interval));
