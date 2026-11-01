@@ -276,7 +276,7 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       profile:updating?JSON.parse(Object.values(bundle.files).find((v,i)=>Object.keys(bundle.files)[i].endsWith("/metadata.json"))):
        material.profile,choices:updating?[]:material.choices});
   // Per-email throttle; proxies normally share loopback as socket address.
-  if(typeof input.contactEmail!=="string"||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(input.contactEmail)||
+  if(typeof input.contactEmail!=="string"||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)||
      input.contactEmail.length>254||input.confirmed!==true)
    throw Error("Email and acknowledgement required");
   if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))
