@@ -20,6 +20,8 @@ import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
 import {pendingLiveRouteTasks} from "./route-live.mjs";
 import {createChainOperator} from "./chain-operator.mjs";
 import {createAssetOperator} from "./asset-operator.mjs";
+import {creatorFactoryDeployment} from "./creator-factory-deploy.mjs";
+import {publishCreatorFactoryPR} from "./creator-factory-github.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 import {collectOperationsHealth} from "./operations-health.mjs";
@@ -117,6 +119,7 @@ async function preflight(catalog){
 }
 
 const assetOperator=createAssetOperator({root,stateDir:dataDir});
+const creatorFactory=creatorFactoryDeployment({root,stateDir:dataDir,publish:publishCreatorFactoryPR});
 const operator=createChainOperator({
  root,stateDir:dataDir,publicEvidenceDir:process.env.XITA_PUBLIC_BOOTSTRAP_DIR||
  resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
@@ -156,6 +159,20 @@ http.createServer(async(req,res)=>{
  try{
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
+  if(req.method==="GET"&&path==="/admin/api/creator-factory/status")
+   return reply(res,200,{ok:true,...await creatorFactory.status()});
+  if(req.method==="POST"&&path.startsWith("/admin/api/creator-factory/")){
+   const body=await bodyJSON(req);
+   if(path==="/admin/api/creator-factory/prepare")
+    return reply(res,200,{ok:true,result:await creatorFactory.prepare(body)});
+   if(path==="/admin/api/creator-factory/hash")
+    return reply(res,200,{ok:true,result:await creatorFactory.hash(body)});
+   if(path==="/admin/api/creator-factory/reconcile")
+    return reply(res,200,{ok:true,result:await creatorFactory.reconcile()});
+   if(path==="/admin/api/creator-factory/cancel")
+    return reply(res,200,{ok:true,result:await creatorFactory.cancel(body)});
+   return reply(res,404,{ok:false,error:"Unknown Creator Factory operation"});
+  }
   if(req.method==="GET"&&path==="/admin/api/operations/health"){
    return reply(res,200,await collectOperationsHealth({catalog:load("apps/web/catalog.json")}));
   }

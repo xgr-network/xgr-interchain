@@ -6,7 +6,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {checkedLocalMain} from "./main-gate.mjs";
 
-export const NAMES=Object.freeze(["XETANativeRouterDeployer","XETASyntheticRouterDeployer","XETACollateralRouterDeployer","XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XITADirectBLSISM","XETATokenFactoryV315","XGRILNRegistryV315","XETAGuardedNativeWarpRouter","XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315","ILNGateway","XGRILNFeeVault","XITADirectTransport","Mailbox","ProtocolFee","XITAExecutionGateway"]);
+export const NAMES=Object.freeze(["XETANativeRouterDeployer","XETASyntheticRouterDeployer","XETACollateralRouterDeployer","XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XITADirectBLSISM","XETATokenFactoryV315","XGRILNRegistryV315","XETAGuardedNativeWarpRouter","XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315","ILNGateway","XGRILNFeeVault","XITADirectTransport","Mailbox","ProtocolFee","XITAExecutionGateway","XITAStarterTokenCreator"]);
 const SHA=/^[a-f0-9]{40}$/i;
 const HASH=/^[a-f0-9]{64}$/i;
 const STORE="runtime-state/xita-compiled-artifacts";
@@ -23,6 +23,10 @@ export function deploymentSourceFingerprint(root){
     !paths.some(p=>p.startsWith("contracts/")&&p.endsWith(".sol")))
   throw Error("Tracked Solidity sources, Foundry settings or pinned vendor declaration missing");
  const hash=createHash("sha256");
+ // Adding a newly deployable audited contract is a new seal generation,
+ // even when Solidity source files are unchanged. Old seals must not fail
+ // or get silently mixed with the new Creator artifact inventory.
+ hash.update("sealed-contract-names:"+NAMES.join(",")+"\\0");
  for(const path of paths){
   const file=join(root,path),stat=lstatSync(file);
   if(!stat.isFile()||stat.isSymbolicLink())throw Error("Invalid tracked Solidity source: "+path);

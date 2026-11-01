@@ -59,3 +59,31 @@ The builder does not guess the factory's address. The admin review and independe
 - After confirmation: the verified request is queued in private storage. **No second email is sent yet.**
 - Second email: **Your XGR token profile is live**, with the canonical `https://xita.xgr.network/token/<slug>` link. The notifier requires a merged GitHub Join PR, the actual published web catalog, the original factory-verified contract address/owner/creation hash and public listing eligibility. The email is deduplicated by private application ID and safely retried if delivery fails.
 - Profile-only CoinGecko refreshes similarly send one updated-profile link only after the *exact expected profile snapshot* is published. These mails never activate interchain routes.
+
+## Token Creator Factory — Admin-UI deployment
+
+After `./manage.sh update`, open `https://xita.xgr.network/admin/`,
+choose **Chains & Onboarding**, and use the separate **Token Creator Factory**
+panel below the Interchain chain infrastructure. The XITA Interchain
+`factory` is a different contract and must not be used here.
+
+The interface checks the current approved GitHub main, validates the no-argument
+`XITAStarterTokenCreator` build from the sealed server artifact, verifies
+XGRChain (chain ID 1643) against two independent RPCs, simulates the constructor,
+quotes gas, and requests one MetaMask / EIP-1193 signature. No factory owner or
+backend signer is required for this one-time deployment. Ordinary automated
+ERC-20 issuance *afterwards* uses the existing XITA Sponsoring wallet.
+
+The browser stores the returned hash in the server's durable factory journal.
+If MetaMask or the browser is interrupted, use the **same original transaction
+hash** in the recovery input; never press Deploy again. Receipt, canonical
+block, contract address and exact runtime must match both RPCs with at least
+two confirmations. Only then does the backend create a Draft PR containing
+`config/creator/factory.json` (and no arbitrary browser-supplied paths).
+Review and merge this PR before enabling the Creator worker.
+
+The local journal remains authoritative over in-flight attempts; a GitHub
+writer outage cannot cause a second deployment. The panel reports a pending
+transaction instead of re-broadcasting. Factory activation remains a separate,
+explicit systemd operation via `./manage.sh install-creator` after the
+reviewed manifest appears on main.
