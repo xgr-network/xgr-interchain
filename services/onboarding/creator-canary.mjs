@@ -4,12 +4,12 @@
 import {readFileSync,statSync} from "node:fs";
 import {resolve,sep} from "node:path";
 import {createServer} from "node:http";
+import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {handleCreator,normalizeCreatorApplication} from "./creator-registration.mjs";
 import {privateLocation} from "./private-store.mjs";
 import {mailConfigured} from "./mail-gateway.mjs";
 
-const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const usage="Usage: node services/onboarding/creator-canary.mjs /var/lib/xita/join/canary-request.json [--send-confirmation]";
 const fail=message=>{throw Error(message)};
 export function readCanaryInput(path,env=process.env){
@@ -59,6 +59,14 @@ async function main(args){
  const [path,option]=args;
  if(option&&option!=="--send-confirmation")fail(usage);
  const {input,record}=readCanaryInput(path);
+ // Do not queue a canary while an active periodic signer could pick it up.
+ try{
+  execFileSync("systemctl",["is-active","--quiet","xita-creator-operator.timer"],
+   {timeout:2500,stdio:"ignore"});
+  fail("Creator timer is active; stop the signer before a canary registration");
+ }catch(e){
+  if(String(e.message||e).includes("Creator timer is active"))throw e;
+ }
  if(process.env.XITA_CREATOR_ENABLED==="true")
   fail("Refusing to run internal canary while Creator signing is enabled");
  const preview={token:record.name,symbol:record.symbol,owner:record.ownerAddress,
