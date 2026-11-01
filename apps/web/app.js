@@ -1,7 +1,7 @@
 import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
-import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup} from "./join.js";
+import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup,profileUpdateMarkup} from "./join.js";
 import {tokenCreatorMarkup,creatorDraft,creatorPreview,creatorRegistrationPayload,creatorConfirmMarkup,CREATOR_STATUS} from "./token-creator.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
@@ -1045,7 +1045,8 @@ function token(){
  '<div class="pair"><span>Documented ILN routes</span><b>'+
   (a.deployment?.routeDeployments?.length||0)+'</b></div>'+
  '<div class="pair"><span>Market price</span><b>'+x(state.leaderboard?.assets?.[id]?.market?.source==="coingecko"?formatUsd(state.leaderboard.assets[id].market.priceUsd):displayPrice(state.prices[id]))+'</b></div>'+tokenMarketMarkup(id)+
- '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div></div>'+
+ '<h3>Project links</h3><div class="project-links">'+projectLinks(id)+'</div>'+
+ '<p class="ux-small"><a data-nav href="/profile-update?token='+encodeURIComponent(id)+'">Request profile update</a></p></div>'+
  '<section class="section"><h2>Network representations</h2><p class="ux-small">Contract addresses from documented deployment receipts.</p><div class="routes">'+(a.metadata.representations||[]).map(rep=>
  renderRepresentationInventory(model,id,rep.chain,walletGasView())).join("")+'</div></section>'+
  '<section class="section"><h2>Deployed interchain routes</h2><div class="routes">'+
@@ -1055,9 +1056,10 @@ function token(){
   '<p class="ux-small">No routes deployed yet.</p>')+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
-const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false};
+const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false,preview:null};
+const profileState={data:{symbol:"",coingeckoId:"",contactEmail:"",confirmed:false},status:"",busy:false,preview:null};
 const tokenCreatorState=creatorDraft();
-const creatorEmailState={phase:"pending",error:"",logoUrl:"",key:"",working:false};
+const creatorEmailState={phase:"pending",error:"",logoUrl:"",deploymentStatus:"",key:"",working:false};
 async function confirmCreatorEmail(){
  const fragment=location.hash.slice(1),m=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(fragment);
  if(path()!=="/createtoken/confirm"||creatorEmailState.working||
@@ -1084,7 +1086,7 @@ async function checkJoinAvailability(){
   const body=await response.json();joinState.available=response.ok&&body?.ok===true&&body.available===true;
  }catch{joinState.available=false;}
  joinState.checking=false;
- if(path()==="/join")drawJoin();
+ if(path()==="/join"||path()==="/profile-update")render();
 }
 const joinConfirmation={phase:"idle",message:"",prNumber:null,prUrl:null};
 let joinConfirmationProcessed=false;
@@ -1117,79 +1119,94 @@ async function processJoinEmailConfirmation(){
 function join(){
  // /join always displays a form. The receipt belongs only to /join/submitted.
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy);
+ return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy,joinState.preview);
 }
 function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
  const d=joinState.data;
- document.querySelectorAll("[data-join]").forEach(el=>{
-  const key=el.dataset.join;
-  if(el.type==="checkbox")d[key]=el.checked;
-  else if(key==="decimals")d[key]=el.value===""?null:Number(el.value);
-  else d[key]=el.value;
+ document.querySelectorAll("[data-join]").forEach(field=>{
+  if(field.type==="checkbox")d[field.dataset.join]=field.checked;
+  else d[field.dataset.join]=field.value;
  });
- d.symbol=d.symbol.trim().toUpperCase();
+ d.coingeckoId=String(d.coingeckoId||"").trim().toLowerCase();
 }
 async function runJoin(action){
  if(joinState.busy||joinState.accepted)return;
  captureJoin();
  const d=joinState.data;
- 
- if(action==="export"){
-  const {contactEmail,...publicDraft}=d;
-   const blob=new Blob([JSON.stringify({...publicDraft,kind:"xita-alliance-application-draft"},null,2)+"\n"],{type:"application/json"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="xita-alliance-application.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  joinState.status="Downloaded locally; no data was submitted.";drawJoin();return;
- }
- const problems=[0,1,2].flatMap(step=>validateStep(d,step,state.catalog));
- if(problems.length){
-   joinState.status="Please complete the required fields.";
-   const fields={name:"name",symbol:"symbol",website:"website",
-     "Short description (15–280 characters)":"shortDescription",
-     "Full description (40–5000 characters)":"description",
-     "CoinGecko coin ID":"coingeckoId","Contact email":"contactEmail","Relationship to token":"applicantRole",
-     "ERC-20 contract address":"canonicalAddress",
-     "Canonical chain":"canonicalChain",Decimals:"decimals",
-     "HTTPS logo URL":"logoUrl","HTTPS website":"website",
-     "Project confirmation":"confirmed"};
-   drawJoin();
-   const errors=[];
-   for(const problem of problems){
-     const key=fields[problem]||fields[Object.keys(fields).find(k=>problem.startsWith(k))];
-     const field=key?document.querySelector('[data-join="'+key+'"]'):null;
-     if(field){
-       field.setAttribute("aria-invalid","true");
-       field.closest(".ja-field")?.classList.add("is-invalid");
-       const msg=document.createElement("span");msg.className="ja-field-error";msg.textContent=problem+" is required or invalid";
-       field.closest(".ja-field")?.appendChild(msg);errors.push(field);
-     }
-   }
-   const status=el.querySelector("#ja-status");
-   if(status)status.textContent="Please complete: "+problems.join(", ");
-   errors[0]?.focus({preventScroll:true});
-   return;
- }
- 
+ const validId=/^[a-z0-9][a-z0-9-]{0,99}$/.test(d.coingeckoId||"");
+ if(!validId){joinState.status="Enter a valid CoinGecko API ID.";drawJoin();return;}
  if(action==="submit"){
-  if(joinState.available!==true){joinState.status="Applications are temporarily unavailable. Your information is still on this page; you can export a draft.";drawJoin();return;}
-  joinState.busy=true;
-  joinState.status="Validating public token manifests…";drawJoin();
-  try{
-   const response=await fetch("/api/xita/join/preview",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
-   const body=await response.json();
-   if(!response.ok||!body.ok)throw Error(body.error||"Backend preview unavailable");
-   joinState.status="CoinGecko identity validated. Sending confirmation email…";drawJoin();
-   const submission=await fetch("/api/xita/join/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)});
-   const result=await submission.json();
-   if(!submission.ok||!result.ok)throw Error(result.error||"Submit unavailable");
-   joinState.accepted=true;
-   joinState.status="";
-   history.replaceState(null,"","/join/submitted");
-  }catch(e){joinState.status="Application could not be completed: "+e.message+". No second submission was made.";}
-  joinState.busy=false;
-  drawJoin();
+  const problems=[1,2].flatMap(step=>validateStep(d,step,state.catalog,joinState.preview));
+  if(problems.length){joinState.status="Please complete: "+problems.join(", ");drawJoin();return;}
+  if(!joinState.preview){joinState.status="Load the CoinGecko profile first.";drawJoin();return;}
+  if(joinState.available!==true){joinState.status="Application service is currently unavailable.";drawJoin();return;}
  }
+ joinState.busy=true;
+ joinState.status=action==="preview"?"Loading CoinGecko metadata…":"Verifying CoinGecko identity…";
+ drawJoin();
+ try{
+  const resp=await fetch("/api/xita/join/preview",{
+   method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store",
+   body:JSON.stringify(d)});
+  const loaded=await resp.json();
+  if(!resp.ok||!loaded.ok)throw Error(loaded.error||"CoinGecko lookup failed");
+  joinState.preview=loaded;
+  if(loaded.choices?.length===1)d.canonicalChain=loaded.choices[0].chain;
+  if(loaded.choices?.length>1&&!loaded.choices.some(c=>c.chain===d.canonicalChain)){
+   joinState.status="Select the original blockchain. CoinGecko lists this token on multiple networks.";
+   return;
+  }
+  if(action==="preview"){joinState.status="Verified CoinGecko profile loaded.";return;}
+  joinState.status="Sending your confirmation email…";drawJoin();
+  const submission=await fetch("/api/xita/join/submit",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(d)});
+  const result=await submission.json();
+  if(!submission.ok||!result.ok)throw Error(result.error||"Application failed");
+  joinState.accepted=true;joinState.status="";
+  history.replaceState(null,"","/join/submitted");
+ }catch(e){joinState.status="Could not complete request: "+String(e.message||e).slice(0,180);}
+ finally{joinState.busy=false;drawJoin();}
+}
+function captureProfile(){
+ const d=profileState.data;
+ document.querySelectorAll("[data-profile]").forEach(field=>{
+  if(field.type==="checkbox")d[field.dataset.profile]=field.checked;
+  else d[field.dataset.profile]=field.value;
+ });
+ d.coingeckoId=String(d.coingeckoId||"").trim().toLowerCase();
+}
+async function runProfile(action){
+ if(profileState.busy)return;
+ captureProfile();
+ const d=profileState.data;
+ if(!state.catalog.assets?.[d.symbol]){profileState.status="Choose an existing token.";render();return;}
+ if(action==="submit"){
+  if(!d.confirmed||!/^\S+@\S+\.\S+$/.test(d.contactEmail||"")){
+   profileState.status="Contact email and acknowledgement are required.";render();return;
+  }
+  if(!profileState.preview){profileState.status="Preview the CoinGecko update first.";render();return;}
+  if(joinState.available!==true){profileState.status="Profile update service is unavailable.";render();return;}
+ }
+ profileState.busy=true;profileState.status=action==="preview"?"Loading CoinGecko profile…":"Submitting for email confirmation…";
+ render();
+ try{
+  const url=action==="preview"?"/api/xita/profile/preview":"/api/xita/profile/submit";
+  const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+   cache:"no-store",body:JSON.stringify(d)});
+  const body=await response.json();
+  if(!response.ok||!body.ok)throw Error(body.error||"Profile update unavailable");
+  if(action==="preview"){
+   profileState.preview=body;
+   profileState.status="Profile imported. After email confirmation, a profile-only Draft PR will be created.";
+  }else{
+   joinState.data={contactEmail:d.contactEmail};
+   joinState.accepted=true;
+   history.replaceState(null,"","/join/submitted");
+  }
+ }catch(e){profileState.status=String(e.message||e).slice(0,180);}
+ finally{profileState.busy=false;render();}
 }
 // Targeted refresh after independently verified transfer progress. Debounce
 // several indexer events into one read per affected chain; no gas/wallet prompts.
@@ -1312,7 +1329,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):p==="/createtoken/confirm"?creatorConfirmMarkup(creatorEmailState):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/profile-update"?profileUpdateMarkup(state.catalog,profileState.data,profileState.status,profileState.busy,profileState.preview):p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):p==="/createtoken/confirm"?creatorConfirmMarkup(creatorEmailState):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
@@ -1323,7 +1340,13 @@ function render(){
  }
  if(p==="/join/confirm")void processJoinEmailConfirmation();
  if(p==="/createtoken/confirm")void confirmCreatorEmail();
- if(p==="/join"&&joinState.available===null)void checkJoinAvailability();
+ if(["/join","/profile-update"].includes(p)&&joinState.available===null)void checkJoinAvailability();
+ if(p==="/profile-update"){
+  const query=new URLSearchParams(location.search),requested=query.get("token");
+  if(!profileState.data.symbol&&requested&&state.catalog.assets?.[requested]){
+   profileState.data.symbol=requested;render();return;
+  }
+ }
  if(p==="/join"){
   const submit=document.querySelector('[data-join-action="submit"]');
   if(submit){submit.disabled=joinState.busy||joinState.available!==true;submit.title=joinState.available===false?"Application service unavailable":"";}
@@ -1505,24 +1528,31 @@ document.addEventListener("visibilitychange",()=>{
   void restoreAuthorizedWallet();
 });
 // The creator page has no site-menu entry; no contract signing is enabled.
+el.addEventListener("click",event=>{
+ if(path()!=="/createtoken")return;
+ const summary=event.target.closest("summary[data-creator-advanced]");
+ if(summary)tokenCreatorState.advancedOpen=!summary.parentElement.open;
+});
 el.addEventListener("input",event=>{
  if(path()!=="/createtoken")return;
  const target=event.target.closest("[data-creator]");
  if(!target)return;
  const key=target.dataset.creator;
- if(["accepted","projectConfirmed"].includes(key))tokenCreatorState[key]=target.checked;
+ if(["accepted","projectConfirmed","permit"].includes(key))tokenCreatorState[key]=target.checked;
  else if(key.startsWith("link-"))tokenCreatorState.links[key.slice(5)]=target.value;
  else if(Object.hasOwn(tokenCreatorState,key))tokenCreatorState[key]=target.value;
  const preview=creatorPreview(tokenCreatorState);
- for(const name of ["name","symbol","amount"]){
+ for(const name of ["name","symbol","amount","owner","tokenType","decimals","maxSupply","permit"]){
   const node=el.querySelector('[data-creator-preview="'+name+'"]');
-  if(node)node.textContent=preview.ready?preview[name]:"—";
+  if(node)node.textContent=preview.ready?(name==="permit"?(preview.permit?"Enabled":"Disabled"):preview[name]):"—";
  }
 });
 el.addEventListener("change",event=>{
  if(path()!=="/createtoken")return;
- const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"]');
+ const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"],[data-creator="permit"]');
  if(checkbox)tokenCreatorState[checkbox.dataset.creator]=checkbox.checked;
+ const variant=event.target.closest('[data-creator="tokenType"]');
+ if(variant){tokenCreatorState.tokenType=variant.value;tokenCreatorState.advancedOpen=true;render();return;}
  const file=event.target.closest("[data-creator-logo]")?.files?.[0];
  if(!file)return;
  const status=el.querySelector("#tc-registration-status");
@@ -1574,33 +1604,37 @@ el.addEventListener("submit",event=>{
 });
 // Persistent listeners: repainting the wizard never discards its controls.
 el.addEventListener("submit",event=>{
- if(event.target?.id!=="ja-application-form"||path()!=="/join")return;
- event.preventDefault();void runJoin("submit");
-});
-el.addEventListener("click",event=>{
- const button=event.target.closest("[data-join-action]");
- if(!button||!el.contains(button)||path()!=="/join"||button.dataset.joinAction==="submit")return;
- event.preventDefault();
- void runJoin(button.dataset.joinAction);
-});
-el.addEventListener("input",event=>{
- const field=event.target.closest("[data-join]");
- if(!field||path()!=="/join"||!joinState.data)return;
- captureJoin();
- field.removeAttribute("aria-invalid");
- field.closest(".ja-field")?.classList.remove("is-invalid");
- field.closest(".ja-field")?.querySelectorAll(".ja-field-error").forEach(n=>n.remove());
- const d=joinState.data;
- for(const [k,value] of Object.entries({name:d.name||"Your Token",symbol:d.symbol||"—"})){
-  const target=el.querySelector('[data-join-preview="'+k+'"]');
-  if(target)target.textContent=value;
+ if(event.target?.id==="ja-application-form"&&path()==="/join"){
+  event.preventDefault();void runJoin("submit");
+ }
+ if(event.target?.id==="xita-profile-update-form"&&path()==="/profile-update"){
+  event.preventDefault();void runProfile("submit");
  }
 });
+el.addEventListener("click",event=>{
+ const joinButton=event.target.closest('[data-join-action="preview"]');
+ if(joinButton&&path()==="/join"){event.preventDefault();void runJoin("preview");}
+ const profileButton=event.target.closest('[data-profile-action="preview"]');
+ if(profileButton&&path()==="/profile-update"){event.preventDefault();void runProfile("preview");}
+});
+el.addEventListener("input",event=>{
+ const joinField=event.target.closest("[data-join]");
+ if(joinField&&path()==="/join"){
+  const previous=joinState.data?.coingeckoId;
+  captureJoin();
+  if(joinField.dataset.join==="coingeckoId"&&joinState.data.coingeckoId!==previous){
+   joinState.preview=null;joinState.data.canonicalChain="";
+  }
+ }
+ const profileField=event.target.closest("[data-profile]");
+ if(profileField&&path()==="/profile-update")captureProfile();
+});
 el.addEventListener("change",event=>{
- if(path()!=="/join"||!joinState.data)return;
- const field=event.target;
- if(field.matches('[data-join="canonicalChain"],[data-join="priceSource"]')){
+ if(path()==="/join"&&event.target.matches('[data-join="canonicalChain"]')){
   captureJoin();drawJoin();
+ }
+ if(path()==="/profile-update"&&event.target.matches('[data-profile="symbol"]')){
+  captureProfile();profileState.data.coingeckoId="";profileState.preview=null;profileState.status="";render();
  }
 });
 document.addEventListener("click",e=>{
@@ -1610,6 +1644,7 @@ document.addEventListener("click",e=>{
  if(a.pathname==="/join"&&path()!=="/join"){
   // A new Join click starts a fresh form, never the previous receipt.
   joinState.data=draft(state.catalog.chains);
+  joinState.preview=null;
   joinState.status="";
   joinState.accepted=false;
   joinState.busy=false;

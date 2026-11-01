@@ -1,7 +1,7 @@
 // Publication is a pure derived view of receipt-backed deployments and
 // separately verified, finalized net escrow valuations. Null means no TVL
 // threshold; numeric zero requires strictly positive TVL.
-import {isDeployedAsset,validPublicationPolicy,usdUnits} from "../../apps/web/listing-visibility.js";
+import {isDeployedAsset,isReviewedXgrCreator,validPublicationPolicy,usdUnits} from "../../apps/web/listing-visibility.js";
 
 const HASH=/^0x[0-9a-f]{64}$/i;
 const nowIso=n=>new Date(n).toISOString();
@@ -23,6 +23,11 @@ export function derivedVisibility(catalog,positions=null,{now=Date.now()}={}){
  const assets={};
  for(const [key,entry] of Object.entries(catalog?.assets||{})){
   const assetId=entry?.metadata?.assetId||null;
+  if(isReviewedXgrCreator(entry)){
+   assets[key]={assetId,status:"public",deployment:isDeployedAsset(entry,catalog)?"deployed":"origin-verified",
+    lockedUsd:null,asOf:null};
+   continue;
+  }
   if(!isDeployedAsset(entry,catalog)){
    assets[key]={assetId,status:"prospect",deployment:"prospect",lockedUsd:null,asOf:null};
    continue;

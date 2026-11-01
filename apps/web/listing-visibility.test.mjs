@@ -2,6 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {isDeployedAsset,isPublicAsset,publicDirectoryCatalog,listingStatus} from "./listing-visibility.js";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
+
+const creatorOrigin=()=>{
+ const e=deployedFixture("XTK","xgrchain");
+ e.metadata.canonical={chain:"xgrchain",tokenAddress:"0x1234567890123456789012345678901234567890"};
+ e.metadata.creation={kind:"xgrchain-creator-v1",
+  ownerAddress:"0x1234567890123456789012345678901234567890",factory:"0x2234567890123456789012345678901234567890",
+  transactionHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",tokenRuntimeCodeHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",blockNumber:123};
+ e.profile={name:"XGR Created Token",slug:"xgr-created-token",market:{priceSource:"none",coingeckoId:null}};
+ e.deployment.present=false;
+ return e;
+};
 const asset=()=>deployedFixture("ABC");
 const view=(status,assetId=asset().metadata.assetId,minimum=1,lockedUsd=status==="public"?2:0)=>({schemaVersion:1,kind:"xita-visibility-v1",minimumLockedUsd:minimum,assets:{ABC:{status,assetId,lockedUsd}}});
 const catalog=minimum=>({assets:{ABC:asset()},publication:{schemaVersion:1,kind:"xita-publication-policy",minimumLockedUsd:minimum,maxEvidenceAgeSeconds:900}});
@@ -42,4 +53,16 @@ test("legacy no-policy catalogs still require explicit matching public snapshot"
  const c={assets:{ABC:asset()}};
  assert.deepEqual(Object.keys(publicDirectoryCatalog(c,null).assets),[]);
  assert.deepEqual(Object.keys(publicDirectoryCatalog(c,view("public")).assets),["ABC"]);
+});
+test("reviewed XGR creator enters public token directory even before ILN route deployment",()=>{
+ const e=creatorOrigin();
+ const c={assets:{XTK:e},publication:{schemaVersion:1,kind:"xita-publication-policy",minimumLockedUsd:null,maxEvidenceAgeSeconds:900}};
+ assert.equal(isDeployedAsset(e,c),false);
+ assert.equal(isPublicAsset("XTK",e,null,c),true);
+ assert.equal(listingStatus(e,null,c),"public");
+ assert.deepEqual(Object.keys(publicDirectoryCatalog(c,null).assets),["XTK"]);
+ assert.ok(publicDirectoryCatalog(c,null).assets.XTK.metadata.representations.some(x=>x.chain==="xgrchain"));
+ const bad=structuredClone(e);
+ delete bad.metadata.creation.transactionHash;
+ assert.equal(isPublicAsset("XTK",bad,null,c),false);
 });

@@ -1556,3 +1556,14 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 .ux-token-creator .ux-panel .pair{display:flex;justify-content:space-between;gap:18px;max-width:740px}
 .ux-token-creator .ux-panel .pair strong{text-align:right}
 @media(max-width:600px){.ux-token-creator .ja-fields{grid-template-columns:1fr}}
+
+/* Token Creator: progressive disclosure for advanced token rights. */
+.tc-advanced{border:1px solid #344762;border-radius:10px;margin:12px 0 18px;background:#091729;padding:0 16px}
+.tc-advanced>summary{cursor:pointer;padding:15px 0;list-style:none;font-size:13px;font-weight:700;color:#e4efff;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.tc-advanced>summary::-webkit-details-marker{display:none}
+.tc-advanced>summary:after{content:"+";font-size:20px;line-height:1;color:#a6c7f4}
+.tc-advanced[open]>summary:after{content:"-"}
+.tc-advanced>summary span{font-size:11px;font-weight:400;color:#94accb}
+.tc-advanced>.ja-fields{padding-top:12px;border-top:1px solid #30435e}
+.tc-advanced>p{margin:4px 0 16px}
+@media(max-width:680px){.tc-advanced>summary{flex-wrap:wrap}}

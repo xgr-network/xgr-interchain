@@ -6,6 +6,8 @@ import {readFileSync,existsSync} from "node:fs";
 import {resolve,dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyCoinGecko} from "../services/onboarding/coingecko-identity.mjs";
+import {creatorSettings} from "../apps/web/creator-token-config.js";
+import {verifyCreatorAcrossRPCs,loadReviewedCreatorFactory,CREATOR_VERIFY_RPC_URLS} from "../services/onboarding/creator-chain-proof.mjs";
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const EMAIL=/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 export function proposedJoinFiles(changes){
@@ -17,7 +19,7 @@ export function proposedJoinFiles(changes){
  }
  return [...folders];
 }
-export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSync(join(root,p),"utf8")),check=verifyCoinGecko}={}){
+export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSync(join(root,p),"utf8")),check=verifyCoinGecko,checkCreator=async(opts)=>verifyCreatorAcrossRPCs({...opts,urls:CREATOR_VERIFY_RPC_URLS})}={}){
  const candidates=proposedJoinFiles(paths);
  const verified=[];
  for(const folder of candidates){
@@ -25,15 +27,53 @@ export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSy
   if(asset?.kind!=="asset-config"||profile?.kind!=="xeta-token-profile"||
     routes?.kind!=="asset-routes"||asset.symbol!==profile.asset||asset.symbol!==routes.asset)
     throw Error("Inconsistent XITA onboarding manifests: "+folder);
-  if(!asset.canonical?.chain||!asset.canonical?.tokenAddress||profile.market?.priceSource!=="coingecko")
-    throw Error("CoinGecko original-chain contract is required: "+folder);
+  if(!asset.canonical?.chain||!asset.canonical?.tokenAddress)
+    throw Error("Missing original-chain contract: "+folder);
+  const creator=asset.canonical.chain==="xgrchain";
+  if(creator ? (asset.creation?.kind!=="xgrchain-creator-v1"||profile.market?.priceSource!=="none"||
+    profile.market.coingeckoId!==null||!/^0x[0-9a-f]{64}$/i.test(asset.creation?.transactionHash||"")) :
+    (profile.market?.priceSource!=="coingecko"))
+    throw Error("CoinGecko or verified XGR Creator provenance required: "+folder);
   for(const [path,data] of [["asset.json",asset],["metadata.json",profile],["routes.json",routes]]){
     if(EMAIL.test(JSON.stringify(data))||/contactEmail|privateEmail|applicantEmail/.test(JSON.stringify(data)))
       throw Error("Applicant email or contact identifiers must not be in public manifests: "+folder+"/"+path);
   }
-  const proof=await check({coingeckoId:profile.market.coingeckoId,
+  let proof;
+  if(creator){
+   const pinned=loadReviewedCreatorFactory();
+   if(asset.creation.factory?.toLowerCase()!==pinned.address.toLowerCase()||
+      asset.creation.transactionHash?.toLowerCase()!==profile.verification?.proof?.toLowerCase())
+
+    throw Error("Unreviewed creator factory or proof identity");
+   const settings=creatorSettings({
+    tokenType:asset.creation.tokenType,decimals:asset.decimals,
+    permit:asset.creation.permit,initialSupply:
+     String(BigInt(profile.supply.total)/(10n**BigInt(asset.decimals))),
+    ownerAddress:asset.creation.ownerAddress,
+    maxSupply:String(BigInt(profile.supply.max)/(10n**BigInt(asset.decimals))),
+    minterAddress:asset.creation.minterAddress
+   });
+   if(settings.initialSupplyBaseUnits!==profile.supply.total||
+      settings.maxSupplyBaseUnits!==profile.supply.max)
+    throw Error("Creator supply not exactly representable in declared decimals");
+   proof=await checkCreator({factory:pinned,txHash:asset.creation.transactionHash,
+    input:{name:asset.name,symbol:asset.symbol,...settings}});
+   if(proof.tokenAddress?.toLowerCase()!==asset.canonical.tokenAddress?.toLowerCase()||
+      proof.operator?.toLowerCase()!==asset.creation.operator?.toLowerCase()||
+      proof.blockNumber!==asset.creation.blockNumber||
+      proof.tokenCodeHash?.toLowerCase()!==asset.creation.tokenRuntimeCodeHash?.toLowerCase()||
+      proof.initialSupplyBaseUnits!==profile.supply.total||
+      proof.maxSupplyBaseUnits!==profile.supply.max||
+      proof.decimals!==asset.decimals||
+      proof.tokenType!==settings.tokenTypeId||
+      proof.permit!==settings.permit||
+      String(proof.minterAddress||"").toLowerCase()!==settings.minterAddress)
+    throw Error("XGR creator receipt differs from public Join manifest");
+  }else{
+   proof=await check({coingeckoId:profile.market.coingeckoId,
     canonicalChain:asset.canonical.chain,canonicalAddress:asset.canonical.tokenAddress,
     symbol:asset.symbol,decimals:asset.decimals});
+  }
   verified.push({symbol:asset.symbol,proof});
  }
  return verified;

@@ -5,6 +5,7 @@ import {fileURLToPath} from "node:url";
 import {execFileSync} from "node:child_process";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
+import {fetchCoinDetails,joinFromCoin,profileUpdateFromCoin,checkedUpdateAsset} from "./coingecko-profile.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
@@ -39,9 +40,12 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
  const head=await githubCall("/git/ref/heads/main");
  if(head.object?.sha!==expectedMain)throw Error("Main changed; request new preview");
  const base=await githubCall("/git/commits/"+expectedMain);
+ const update=bundle.kind==="profile-update";
  const entries=[];
  for(const [path,content] of Object.entries(bundle.files)){
-  if(path!=="apps/web/catalog.json"&&!path.startsWith("config/assets/"+bundle.assetId.slice(2,4)+"/"+bundle.key+"/"))
+  if(path!=="apps/web/catalog.json"&&
+     (update?path!=="config/assets/"+bundle.assetId.slice(2,4)+"/"+bundle.key+"/metadata.json":
+       !path.startsWith("config/assets/"+bundle.assetId.slice(2,4)+"/"+bundle.key+"/")))
    throw Error("Unsafe path");
   if(path!=="apps/web/catalog.json"){
    // If an asset has already been admitted since the preview, the server
@@ -50,11 +54,12 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
     if(e.message.includes("(404)"))return null;
     throw e;
    });
-   if(file)throw Error("Asset manifest already exists");
+   if(update?!file:Boolean(file))throw Error(update?
+    "Approved token profile is missing":"Asset manifest already exists");
   }
   entries.push({path,mode:"100644",type:"blob",content});
  }
- const branch="alliance/"+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
+ const branch=(update?"profile/":"alliance/")+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
  const tree=await githubCall("/git/trees","POST",{base_tree:base.tree.sha,tree:entries});
  // This branch name is unique to the private confirmed application, not each
  // HTTP request. A lost proxy response or partial GitHub write can be resumed.
@@ -68,7 +73,7 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
      commit.parents[0]?.sha!==expectedMain)
    throw Error("Existing application branch differs from validated manifest");
  }else{
-  const commit=await githubCall("/git/commits","POST",{message:"onboard: propose "+bundle.key,tree:tree.sha,parents:[expectedMain]});
+  const commit=await githubCall("/git/commits","POST",{message:(update?"profile: refresh ":"onboard: propose ")+bundle.key,tree:tree.sha,parents:[expectedMain]});
   await githubCall("/git/refs","POST",{ref:"refs/heads/"+branch,sha:commit.sha});
  }
  const current=await githubCall("/pulls?state=all&head="+encodeURIComponent("xgr-network:"+branch));
@@ -81,9 +86,13 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
    throw Error("Existing application PR requires operator review");
   return {number:priorPR.number,url:priorPR.html_url,status:"draft"};
  }
- const pr=await githubCall("/pulls","POST",{title:"Join XITA: "+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
-  body:"Public directory proposal — applicant role: "+bundle.summary.applicantRole+
-    ". CoinGecko original-chain contract verified before submission; required CI repeats the check. No approval, deployment or live transfer is implied. Review token representations before merging. No applicant email is present."});
+ const creator=bundle.kind==="origin-xgrchain";
+ const pr=await githubCall("/pulls","POST",{title:(update?"Refresh XITA profile: ":"Join XITA: ")+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
+  body:(update?"Profile-only CoinGecko update: existing canonical asset, routes, deployments and supply metadata remain unchanged. CoinGecko identity reverified at confirmation and in PR CI. Email verified; no applicant contact information is committed.":
+  "Public directory proposal — applicant role: "+bundle.summary.applicantRole+
+    (creator?". XGRChain original contract independently verified against the audited factory receipt; required CI repeats the on-chain owner, supply, creation and bytecode checks. No CoinGecko ID is required.":
+      ". CoinGecko original-chain contract verified before submission; required CI repeats the check.")+
+    " No approval, deployment of XITA routes or live transfer is implied. Review token representations before merging. No applicant email is present.")});
  return {number:pr.number,url:pr.html_url,status:"draft"};
 }
 // The private contact record is not authoritative about whether a GitHub PR
@@ -178,7 +187,7 @@ function httpError(error){
   return {status:/(unavailable|HTTP 429|HTTP 50\d|gateway|GitHub rejected|service unavailable|Git revision)/i.test(message)?503:422,
     error:message.replace(/[^\x20-\x7e]/g," ").slice(0,220)};
 }
-export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCoinGecko,deliver=sendMail,
+export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCoinGecko,fetchCoin=fetchCoinDetails,deliver=sendMail,
   readPR=number=>github("/pulls/"+number),
   getMainSha=localMainSha,env=process.env,sourceCatalog=()=>loadCatalog(root),clock=Date.now}={}){
  const url=new URL(req.url,"http://localhost"),path=url.pathname;
@@ -186,7 +195,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   return handleCreator(req,res,{env,clock,deliver});
  if(req.method==="GET"&&path==="/api/xita/join/status")
   return reply(res,200,{ok:true,...joinReadiness(env,sourceCatalog)});
- if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm"].includes(path))
+ if(req.method!=="POST"||!["/api/xita/join/preview","/api/xita/join/submit","/api/xita/join/confirm",
+    "/api/xita/profile/preview","/api/xita/profile/submit"].includes(path))
   return reply(res,404,{ok:false});
  try{
   // Never accept client-supplied credentials or a contact address from a URL.
@@ -206,11 +216,36 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       }
       if(Date.parse(record.confirmBefore)<clock()||!matchesToken(record.tokenHash,token))
         throw Error("Expired or invalid confirmation token");
-      // Rebuild against current checkout; block a stale or displaced main revision.
-      const bundle=buildManifestBundle(record.input,checkedJoinCatalog(sourceCatalog));
-      const identity=await verify(record.input,{catalog:checkedJoinCatalog(sourceCatalog)});
+      // Never trust a browser-submitted profile or stale CoinGecko snapshot.
+      const catalog=checkedJoinCatalog(sourceCatalog);
+      let bundle,identity;
+      if(record.kind==="profile-update"){
+       const current=checkedUpdateAsset(catalog,record.input.symbol);
+       const currentId=current.profile.market?.coingeckoId||record.input.coingeckoId;
+       const coin=await fetchCoin(currentId);
+       bundle=profileUpdateFromCoin(record.input,coin,catalog);
+       identity={checkedAt:new Date(clock()).toISOString()};
+      }else if(record.kind==="coingecko-join"){
+       const coin=await fetchCoin(record.input.coingeckoId);
+       const fresh=joinFromCoin(record.input,coin,catalog);
+       if(fresh.normalized.canonicalAddress!==record.input.canonicalAddress||
+          fresh.normalized.canonicalChain!==record.input.canonicalChain||
+          fresh.normalized.symbol!==record.input.symbol||
+          fresh.normalized.decimals!==record.input.decimals)
+        throw Error("CoinGecko original token identity changed since application");
+       bundle=buildManifestBundle(fresh.normalized,catalog);
+       identity={checkedAt:new Date(clock()).toISOString()};
+      }else{
+       bundle=buildManifestBundle(record.input,catalog);
+       identity=await verify(record.input,{catalog});
+      }
       const expectedMain=await getMainSha();
       const pr=await publisher(bundle,{expectedMain,applicationId:record.id});
+      if(record.kind==="profile-update"){
+       const path=Object.keys(bundle.files).find(x=>x.endsWith("/metadata.json"));
+       if(!path)throw Error("Missing verified profile metadata for notification");
+       record.expectedProfile=JSON.parse(bundle.files[path]);
+      }
       record.phase="under-review";record.pr=pr;
       record.receiptHash=record.tokenHash;record.tokenHash=null;
       record.coinGeckoVerifiedAt=identity.checkedAt;
@@ -218,7 +253,10 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       // A notification failure must not undo an already-created GitHub PR.
       try{
         await deliver({to:record.input.contactEmail,subject:"XITA application received for review",
-          ...applicationMail({title:"Your email is confirmed",subtitle:"Your token proposal is under review",paragraphs:["Your XITA application for "+record.input.name+" ("+record.input.symbol+") has been verified and created as GitHub Draft PR #"+pr.number+".","No token route has been approved or deployed yet."],action:{label:"View your proposal",url:pr.url}}),
+          ...applicationMail({title:"Your email is confirmed",subtitle:"Your proposal is under review",
+       paragraphs:["A GitHub Draft PR #"+pr.number+" was created for "+record.input.symbol+".",
+        "Profile updates never change routes, token contracts or ownership permissions."],
+       action:{label:"View proposal",url:pr.url}}),
           idempotencyKey:record.id+":submitted"},{env});
         record.sent.push("submitted");savePrivate(dir,record);
       }catch{record.pendingNotification="submitted";savePrivate(dir,record);}
@@ -229,21 +267,57 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   if(path.endsWith("/submit")&&!joinAvailable(env))
     return reply(res,503,{ok:false,error:"Private email confirmation and GitHub writer are not configured; use Export draft"});
   const input=await readBody(req);
-  const bundle=buildManifestBundle(input,checkedJoinCatalog(sourceCatalog));
-  const identity=await verify(input,{catalog:checkedJoinCatalog(sourceCatalog)}); // fail-closed live CoinGecko identity check
+  const catalog=checkedJoinCatalog(sourceCatalog);
+  const updating=path.startsWith("/api/xita/profile/");
+  const coinId=updating?(checkedUpdateAsset(catalog,input.symbol).profile.market?.coingeckoId||input.coingeckoId):input.coingeckoId;
+  const coin=await fetchCoin(coinId);
+  const material=updating?null:joinFromCoin(input,coin,catalog,{requireContact:!path.endsWith("/preview")});
+  const bundle=updating?profileUpdateFromCoin(input,coin,catalog):buildManifestBundle(material.normalized,catalog);
+  const identity={platform:updating?"profile-update":material.normalized.canonicalChain,
+   address:updating?catalog.assets[input.symbol].metadata.canonical.tokenAddress:material.normalized.canonicalAddress};
   if(path.endsWith("/preview"))
     return reply(res,200,{ok:true,summary:bundle.summary,files:Object.keys(bundle.files),
-      assetId:bundle.assetId,identity:{platform:identity.platform,address:identity.address}});
+      assetId:bundle.assetId,identity,
+      profile:updating?JSON.parse(Object.values(bundle.files).find((v,i)=>Object.keys(bundle.files)[i].endsWith("/metadata.json"))):
+       material.profile,choices:updating?[]:material.choices});
   // Per-email throttle; proxies normally share loopback as socket address.
-  if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
+  if(typeof input.contactEmail!=="string"||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)||
+     input.contactEmail.length>254||input.confirmed!==true)
+   throw Error("Email and acknowledgement required");
+  if(!allowed(confirmationHash(input.contactEmail.toLowerCase()),clock()))
+   return reply(res,429,{ok:false,error:"Rate limit exceeded; retry later"});
   const dir=preparePrivateDir(privateLocation(env));
-  if(await hasBlockingJoinApplication(listPrivate(dir,{now:clock()}),bundle.assetId,{readPR}))
+  const active=listPrivate(dir,{now:clock()});
+  if(updating){
+   for(const record of active.filter(x=>x.kind==="profile-update"&&x.assetId===bundle.assetId)){
+    if(record.phase==="pending-email")
+     return reply(res,409,{ok:false,error:"Profile update already awaiting email confirmation"});
+    if(record.pr?.number){
+     const pr=await readPR(record.pr.number);
+     if(!pr||!["open","closed"].includes(pr.state))
+      throw Error("GitHub profile update status unavailable");
+     if(pr.state==="open")return reply(res,409,{ok:false,error:"Profile update proposal already open"});
+    }
+   }
+  }else if(await hasBlockingJoinApplication(active,bundle.assetId,{readPR}))
     return reply(res,409,{ok:false,error:"An active application or approved token already exists for this original token"});
-  const {id,token}=createPending(dir,input,bundle.assetId,{now:clock()});
+  const cleanInput=updating?
+    {symbol:input.symbol,coingeckoId:coinId,contactEmail:input.contactEmail.toLowerCase(),confirmed:true}:
+    {...material.normalized,coingeckoId:coinId,contactEmail:input.contactEmail.toLowerCase(),
+     canonicalChain:material.normalized.canonicalChain,confirmed:true};
+  const {id,token}=createPending(dir,cleanInput,bundle.assetId,{now:clock()});
+  const record=readPrivate(dir,id);
+  record.kind=updating?"profile-update":"coingecko-join";
+  savePrivate(dir,record);
   // No email, token, or role holder contact is ever written to GitHub here.
   try{
     await deliver({to:input.contactEmail,subject:"Confirm your XITA Network application",
-      ...applicationMail({title:"Confirm your XITA application",subtitle:"One more step to submit your project",paragraphs:["Thank you for submitting "+input.name+" ("+input.symbol+") to XITA.","Confirm your email within 24 hours to begin the independent XGR review.","If you did not submit this application, ignore this email. No GitHub proposal has been created yet."],action:{label:"Confirm your email",url:publicConfirmUrl(id,token,env)}}),
+      ...applicationMail({title:updating?"Confirm your XITA profile update":"Confirm your XITA application",
+       subtitle:"One more step to submit your proposal",
+       paragraphs:["Please confirm the "+(updating?"profile update for "+input.symbol:"XITA Join application for "+material.normalized.name)+".",
+        "After confirmation, XITA will prepare a GitHub Draft PR for review.",
+        "If you did not submit this request, ignore the email."],
+       action:{label:"Confirm your email",url:publicConfirmUrl(id,token,env)}}),
       idempotencyKey:id+":confirm"},{env});
   }catch{
     // A failed delivery is not an application: delete its private record.

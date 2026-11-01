@@ -1,0 +1,11 @@
+[Unit]
+Description=XITA receipt-verified creator deployment and Join PR reconciliation
+
+[Timer]
+OnCalendar=*:0/1
+Persistent=true
+RandomizedDelaySec=5
+Unit=xita-creator-operator.service
+
+[Install]
+WantedBy=timers.target

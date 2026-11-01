@@ -1,4 +1,4 @@
-import {isPublicAsset} from "./listing-visibility.js";
+import {isPublicAsset,isReviewedXgrCreator} from "./listing-visibility.js";
 // XITA verified asset metrics projection. Never infer collateral from wrapped supply.
 // Snapshot schema: xita-asset-metrics-v1, data only from verified finalised ledger facts.
 // Missing or incomplete metrics remain null, not zero.
@@ -55,10 +55,12 @@ export const formatUsd=(v)=>finite(v)?new Intl.NumberFormat("en-US",{style:"curr
 export function buildLeaderboardRows(catalog,snapshot,{includeUnlisted=false}={}){
  return Object.entries(catalog?.assets||{}).filter(([id,asset])=>includeUnlisted||isPublicAsset(id,asset,snapshot?.visibility,catalog)).map(([id,asset])=>{
   const facts=verifiedMetrics(snapshot,id);
+  const zeroPlaceholder=isReviewedXgrCreator(asset)&&facts?.marketCapUsd==null;
   return {id,name:asset.profile?.name||asset.metadata?.name||id,
    slug:asset.profile?.slug||id.toLowerCase(),
    logo:asset.profile?.branding?.logoUrl||null,
-   marketCapUsd:facts?.marketCapUsd??null,
+   marketCapUsd:zeroPlaceholder?0:(facts?.marketCapUsd??null),
+   marketCapPlaceholder:zeroPlaceholder,
    lockedUsd:facts?.lockedUsd??null,movedUsd:facts?.movedUsd??null,
    asOf:facts?.asOf||null,
    configuredRoutes:asset.routes?.routes?.length||0};

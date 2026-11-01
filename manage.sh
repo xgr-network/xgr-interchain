@@ -333,6 +333,36 @@ install_join() (
   echo "XITA Join installed; check available:true before live applicant submission"
 )
 
+
+install_creator() (
+  require_clean_main
+  [[ "$(id -un)" != "root" ]] || { echo "Run as checkout owner" >&2; return 1; }
+  local user group node_bin tmp unit
+  user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
+  privileged test -f /etc/xita/join.env || { echo "Missing Join env" >&2; return 1; }
+  privileged test -f /etc/xita/creator.env || { echo "Missing dedicated /etc/xita/creator.env" >&2; return 1; }
+  [[ "$(privileged stat -c '%a' /etc/xita/creator.env)" == "600" ]] || {
+    echo "creator.env must be mode 600" >&2; return 1;
+  }
+  [[ -f "$ROOT/config/creator/factory.json" ]] || {
+    echo "Creator factory has not passed on-chain review; missing main-pinned factory.json" >&2; return 1;
+  }
+  npm install --prefix "$ROOT/services/onboarding" --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false
+  node --test "$ROOT/services/onboarding/creator-operator.test.mjs" "$ROOT/services/onboarding/creator-chain-proof.test.mjs"
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  for unit in xita-creator-operator.service; do
+    sed -e "s|@SERVICE_USER@|$user|g" -e "s|@SERVICE_GROUP@|$group|g" \
+        -e "s|@ROOT@|$ROOT|g" -e "s|@NODE_BIN@|$node_bin|g" \
+        "$ROOT/deploy/systemd/$unit.in" > "$tmp/$unit"
+    privileged install -m 0644 "$tmp/$unit" "/etc/systemd/system/$unit"
+  done
+  privileged install -m 0644 "$ROOT/deploy/systemd/xita-creator-operator.timer.in" /etc/systemd/system/xita-creator-operator.timer
+  privileged systemctl daemon-reload
+  privileged systemctl enable --now xita-creator-operator.timer
+  echo "XGR creator operator installed. On-chain creation requires a reviewed factory and ENABLED configuration."
+)
+
 install_transfer_api() (
   require_clean_main
   [[ "$(id -un)" != "root" ]] || { echo "Run as repository checkout owner." >&2; return 1; }
@@ -720,6 +750,7 @@ complete_update() {
   # The web must not advertise creator email verification before its existing
   # Join service and exact public logo routes are ready. No chain side effects.
   if systemctl is-active --quiet xita-join.service 2>/dev/null; then
+    npm install --prefix "$ROOT/services/onboarding" --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false || return 1
     privileged systemctl restart xita-join.service || return 1
     wait_xita_join || return 1
     privileged "$(command -v node)" "$ROOT/tools/install-join-nginx.mjs" || return 1
@@ -851,6 +882,7 @@ case "${1:-help}" in
   hard-reset-dev) exec bash "$ROOT/runtime/hard-reset-dev-state.sh" --apply-hard-reset ;;
   install-sync) install_sync ;;
   install-join) install_join ;;
+  install-creator) install_creator ;;
   repair-transfer-db) repair_transfer_db ;;
   install-transfer-intake)
     install_transfer_intake

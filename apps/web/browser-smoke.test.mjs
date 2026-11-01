@@ -58,7 +58,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   if(pathname==="/api/xita/join/preview"||pathname==="/api/xita/join/submit"){
    response.writeHead(200,{"Content-Type":"application/json"});
    response.end(pathname.endsWith("/preview")?
-    '{"ok":true,"summary":{"name":"Example Token","symbol":"EXMP"},"files":[]}':
+    '{"ok":true,"summary":{"name":"Example Token","symbol":"EXMP"},"files":[],"choices":[{"chain":"base","label":"Base","contract":"0x1234567890123456789012345678901234567890","decimals":18}],"profile":{"name":"Example Token","symbol":"EXMP","shortDescription":"A verified sample project imported from CoinGecko.","logoUrl":"https://example.org/logo.png"}}':
     '{"ok":true,"status":"pending-email"}');
    return;
   }
@@ -67,7 +67,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    response.end('{"ok":false,"error":"Not deployed"}');
    return;
   }
-  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/contact"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/join/confirm"||pathname==="/my-transfers";
+  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/contact"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/profile-update"||pathname==="/join/confirm"||pathname==="/my-transfers";
   const target=isPage?"index.html":pathname.slice(1);
   const full=resolve(root,target);
   if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
@@ -78,58 +78,44 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    if(pathname==="/join"&&new URL(request.url,"http://localhost").searchParams.has("test-interaction")){
     const probe=`<script>
      (function(){
-       const task=setInterval(()=>{
-        const app=document.querySelector("#app");
-        if(app?.dataset.ready!=="1")return;
-        const button=app.querySelector('[data-join-action="submit"]');
-        if(!button||button.disabled)return;
-        clearInterval(task);
-        button.click();
-        const invalid=app.querySelector("#ja-status")?.textContent.includes("Please complete:")&&app.querySelector('[aria-invalid="true"]');
-        document.body.dataset.joinValidation=invalid?"pass":"fail";
-        if(!invalid)return;
-        const values={name:"Example Token",symbol:"EXMP",slug:"example-token",website:"https://example.org",logoUrl:"https://example.org/logo.png",shortDescription:"An example cross-chain network asset.",description:"A sufficiently detailed test project description for checking wizard step navigation and form validation."};
-        for(const [key,value] of Object.entries(values)){
-          const input=app.querySelector('[data-join="'+key+'"]');if(input){input.value=value;input.dispatchEvent(new Event("input",{bubbles:true}));}
-        }
-        const stillOnePage=app.querySelectorAll("#ja-application-form").length===1 &&
-          app.querySelectorAll(".ja-form-section").length===3 &&
-          app.querySelector('[data-join="coingeckoId"]') &&
-          app.querySelector('[data-join="contactEmail"]');
-        document.body.dataset.joinAdvance=stillOnePage?"pass":"fail";
-        // Simulate a *successful* submission using only the local fake
-        // endpoints, then click Join for Free in the SAME JavaScript session.
-        const more={
-         canonicalChain:"base",
-         canonicalAddress:"0x1234567890123456789012345678901234567890",
-         coingeckoId:"example-token",
-         contactEmail:"qa@example.org",
-         applicantRole:"holder"
-        };
-        for(const [key,value] of Object.entries(more)){
-         const control=app.querySelector('[data-join="'+key+'"]');
-         if(!control)continue;
-         control.value=value;
-         control.dispatchEvent(new Event("input",{bubbles:true}));
-        }
-        const consent=app.querySelector('[data-join="confirmed"]');
-        if(consent){consent.checked=true;consent.dispatchEvent(new Event("input",{bubbles:true}));}
+      const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+      const task=setInterval(async()=>{
+       const app=document.querySelector("#app"),form=app?.querySelector("#ja-application-form");
+       if(app?.dataset.ready!=="1"||!form||!app.querySelector('[data-join-action="submit"]:not(:disabled)'))return;
+       clearInterval(task);
+       form.querySelector('[data-join-action="submit"]').click();
+       await sleep(70);
+       document.body.dataset.joinValidation=app.querySelector("#ja-status")?.textContent.includes("CoinGecko API ID")?"pass":"fail";
+       const fill=(key,value)=>{
+        const field=app.querySelector('[data-join="'+key+'"]');
+        if(field){field.value=value;field.dispatchEvent(new Event("input",{bubbles:true}));}
+       };
+       fill("coingeckoId","example-token");
+       fill("contactEmail","qa@example.org");
+       const check=app.querySelector('[data-join="confirmed"]');
+       if(check){check.checked=true;check.dispatchEvent(new Event("input",{bubbles:true}));}
+       document.body.dataset.joinAdvance=app.querySelectorAll("#ja-application-form").length===1&&
+        app.querySelector('[data-join="coingeckoId"]')&&
+        app.querySelector('[data-join="contactEmail"]')&&
+        !app.querySelector('[data-join="canonicalAddress"]')?"pass":"fail";
+       app.querySelector('[data-join-action="preview"]')?.click();
+       const poll=setInterval(async()=>{
+        if(!app.textContent.includes("Imported from CoinGecko"))return;
+        clearInterval(poll);
         app.querySelector('[data-join-action="submit"]')?.click();
-        const receiptCheck=setInterval(()=>{
+        const receipt=setInterval(()=>{
          if(location.pathname!=="/join/submitted")return;
-         clearInterval(receiptCheck);
+         clearInterval(receipt);
          document.body.dataset.joinReceipt=app.textContent.includes("One more step: confirm your email")?"pass":"fail";
          document.querySelector('a[aria-label="Join XITA for free"]')?.click();
-         const empty=app.querySelector('#ja-name')?.value===""&&
-          app.querySelector('#ja-symbol')?.value===""&&
-          app.querySelector('#ja-contactEmail')?.value===""&&
-          app.querySelector('#ja-confirmed')?.checked===false;
-         const form=app.querySelectorAll("#ja-application-form").length===1;
-         const receiptGone=!app.textContent.includes("One more step: confirm your email");
-         document.body.dataset.joinReturn=location.pathname==="/join"&&
-          form&&empty&&receiptGone?"pass":"fail";
+         const fresh=app.querySelector("#ja-application-form");
+         const empty=app.querySelector("#ja-coingeckoId")?.value===""&&
+          app.querySelector("#ja-contactEmail")?.value===""&&
+          app.querySelector('[data-join="confirmed"]')?.checked===false;
+         document.body.dataset.joinReturn=location.pathname==="/join"&&fresh&&empty?"pass":"fail";
         },25);
        },25);
+      },25);
      })();
      </script>`;
     data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
@@ -157,7 +143,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    }
    if(path==="/transfer"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/id="xita-transfer-primary"/);assert.doesNotMatch(html,/id="ux-token-origin"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
-   if(path==="/join"){assert.match(html,/data-join-action="submit"/);assert.match(html,/ja-coingecko-help/);assert.match(html,/XITA handles the complete technical integration/);assert.doesNotMatch(html,/ja-preview|PROJECT PREVIEW/);assert.match(html,/ONE SIMPLE APPLICATION/);assert.match(html,/Free integration &amp; deployment if approved/);assert.match(html,/Confirm your email/);assert.match(html,/id="ja-coingecko-dialog"/);assert.doesNotMatch(html,/ja-visual|ja-gate|ja-origin/);}
+   if(path==="/join"){assert.match(html,/data-join-action="submit"/);assert.match(html,/Load from CoinGecko/);assert.match(html,/data-join="coingeckoId"/);assert.match(html,/data-join="contactEmail"/);assert.match(html,/Update Token Profile/);assert.doesNotMatch(html,/data-join="description"|id="ja-coingecko-dialog"/);}
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");

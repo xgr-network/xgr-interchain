@@ -5,6 +5,7 @@ import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {routeMilestones} from "./route-milestones.mjs";
+import {isPublicAsset} from "../../apps/web/listing-visibility.js";
 const REPO="xgr-network/xgr-interchain";
 const STATUS={
  "approved":["XITA proposal approved","Your proposal was merged into the approved XITA token inventory. This is not yet a live transfer or public listing."],
@@ -57,13 +58,43 @@ async function publicPR(number,env){
  return jsonGet("https://api.github.com/repos/"+REPO+"/pulls/"+number,
    (env.XITA_JOIN_WRITER_TOKEN||env.XITA_GITHUB_TOKEN)?{"Authorization":"Bearer "+(env.XITA_JOIN_WRITER_TOKEN||env.XITA_GITHUB_TOKEN)}:{});
 }
+// Read the ACTUAL published web catalog, not just a merged Git branch.
+// Joining an asset on GitHub is not proof that /token/<slug> is live.
+export async function publishedCatalog(){
+ const catalog=await jsonGet("https://xita.xgr.network/catalog.json");
+ if(catalog?.schemaVersion!==1||!catalog.assets||typeof catalog.assets!=="object")
+  throw Error("Public XITA token catalog is unavailable");
+ return catalog;
+}
+export function verifiedProfileLink(record,catalog){
+ const symbol=record?.input?.symbol,asset=catalog?.assets?.[symbol],slug=asset?.profile?.slug;
+ if(!/^[A-Z][A-Z0-9]{1,11}$/.test(symbol||"")||
+    !/^[a-z0-9-]{1,80}$/.test(slug||"")||
+    asset?.metadata?.assetId?.toLowerCase()!==record?.assetId?.toLowerCase())
+  return null;
+ if(record.kind==="token-creator"){
+  const source=asset.metadata?.canonical,created=asset.metadata?.creation;
+  if(record.deployment?.status!=="verified"||
+     created?.kind!=="xgrchain-creator-v1"||
+     source?.chain!=="xgrchain"||
+     source?.tokenAddress?.toLowerCase()!==record.deployment.tokenAddress?.toLowerCase()||
+     created.transactionHash?.toLowerCase()!==record.deployment.txHash?.toLowerCase()||
+     created.ownerAddress?.toLowerCase()!==record.input.ownerAddress?.toLowerCase()||
+     !isPublicAsset(symbol,asset,null,catalog))return null;
+ }else if(record.kind==="profile-update"){
+  const id=record.input.coingeckoId;
+  if(!id||asset.profile.market?.coingeckoId!==id||
+     !record.expectedProfile||JSON.stringify(asset.profile)!==JSON.stringify(record.expectedProfile))return null;
+ }else return null;
+ return "https://xita.xgr.network/token/"+encodeURIComponent(slug);
+}
 async function visibilitySnapshot(){
  // Only read from the on-host, read-only XITA indexer; never trust the applicant or browser.
  return jsonGet("http://127.0.0.1:4088/api/xeta/v1/visibility");
 }
 export async function notifyApplications({env=process.env,readPR=publicPR,readVisibility=visibilitySnapshot,
   readCatalog=loadCatalog,readMilestones=(record)=>routeMilestones(readCatalog(),record.input.symbol,record.assetId),
-  deliver=sendMail}={}){
+  readPublicCatalog=publishedCatalog,deliver=sendMail}={}){
  if(!mailConfigured(env))throw Error("Mail gateway required for applicant status notifications");
  const dir=privateLocation(env),records=listPrivate(dir);
  let visibility=null;
@@ -72,6 +103,45 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
  for(const item of records){
   if(!item.pr?.number)continue;
   await lockedRecord(dir,item.id,async record=>{
+   // Creator and metadata-only proposals must NOT receive generic route,
+   // TVL or creator-approval notifications. In particular, a newly minted
+   // ERC-20 does not imply XITA route deployment.
+   if(record.kind==="token-creator"||record.kind==="profile-update"){
+    const creator=record.kind==="token-creator",key=creator?"creator-profile-live":"profile-update-live";
+    if((record.sent||[]).includes(key))return;
+    let merged=false;
+    try{merged=Boolean((await readPR(record.pr.number,env))?.merged_at);}catch{return;}
+    // The creator's SECOND mail must be the public profile URL. Suppress
+    // historical PR-submitted queue notifications until that URL is live.
+    if(creator&&(record.notificationQueue||[]).includes("submitted")){
+     record.notificationQueue=record.notificationQueue.filter(x=>x!=="submitted");
+     savePrivate(dir,record);
+    }
+    // Keep mailing idempotent across merge, web deployment and re-runs.
+    // A merged GitHub PR alone is not a published token profile.
+    if(!merged)return;
+    let page;
+    try{page=verifiedProfileLink(record,await readPublicCatalog());}catch{return;}
+    if(!page)return;
+    const title=creator?"Your XGR token profile is live":"Your XITA token profile is updated";
+    const message=creator?
+      ["Your XGRChain ERC-20 is deployed and your public token profile is now available.",
+       "Your nominated project owner holds the initial supply. Additional XITA routes require separate approval and deployment."]:
+      ["Your CoinGecko-based profile update has been published on XITA.",
+       "Your token contract, permissions, supply and interchain routes remain unchanged."];
+    try{
+     await deliver({to:record.input.contactEmail,subject:title,
+      ...applicationMail({title,subtitle:record.input.name||record.input.symbol+" on XITA",
+       paragraphs:message,action:{label:"View your token profile",url:page}}),
+      idempotencyKey:record.id+":"+key},{env});
+     record.sent=[...new Set([...(record.sent||[]),key])];
+     record.phase=creator?"profile-live":"profile-updated";
+     record.notificationQueue=[];
+     savePrivate(dir,record);
+     results.push({id:record.id,status:key,sent:true,url:page});
+    }catch{results.push({id:record.id,status:key,sent:false});}
+    return;
+   }
    let desired=record.phase,merged=false;
    let milestones={firstRoute:null,allComplete:false,completedNetworks:[],plannedNetworks:[]};
    try{
