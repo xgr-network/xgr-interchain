@@ -18,7 +18,7 @@ export const CREATOR_STATUS=Object.freeze({
 export function creatorDraft(){return {name:"",symbol:"",initialSupply:"1000000",ownerAddress:"",tokenType:"burnable",decimals:"18",maxSupply:"10000000",minterAddress:"",permit:false,advancedOpen:false,
  shortDescription:"",description:"",website:"",category:"DeFi",contactEmail:"",
  applicantRole:"founder",links:{x:"",telegram:"",discord:"",github:"",docs:""},
- logoPngBase64:"",logoName:"",accepted:false,projectConfirmed:false};}
+ logoPngBase64:"",logoName:""};}
 export function validateCreatorApplication(d){
  const errors=validateCreatorDraft(d);
  if(typeof d.shortDescription!=="string"||d.shortDescription.trim().length<15||
@@ -36,11 +36,8 @@ export function validateCreatorApplication(d){
   errors.push("Select a valid project category");
  if(!/^[^\s@<>]{1,64}@[^\s@<>]{1,189}\.[^\s@<>]{2,}$/.test(d.contactEmail||""))
   errors.push("Valid private contact email required");
- if(!["founder","core-team","authorized-representative"].includes(d.applicantRole))
-  errors.push("Select your project relationship");
  if(!/^[A-Za-z0-9+/]+={0,2}$/.test(d.logoPngBase64||"")||
   (d.logoPngBase64||"").length>175000)errors.push("Upload a PNG logo (max 128 KB)");
- if(d.projectConfirmed!==true)errors.push("Confirm your project application");
  return errors;
 }
 export function creatorRegistrationPayload(d){
@@ -52,7 +49,7 @@ export function creatorRegistrationPayload(d){
   permit:d.permit===true,
   shortDescription:d.shortDescription.trim(),description:d.description.trim(),
   website:d.website.trim(),categories:[d.category],tags:[],contactEmail:d.contactEmail.trim(),
-  applicantRole:d.applicantRole,links:d.links,logoPngBase64:d.logoPngBase64,confirmed:true};
+  links:d.links,logoPngBase64:d.logoPngBase64};
 }
 export function validateCreatorDraft(d){
  const errors=[];
@@ -61,11 +58,10 @@ export function validateCreatorDraft(d){
  const owner=String(d?.ownerAddress||"").trim();
  if(!OWNER.test(owner)||/^0x0{40}$/i.test(owner))errors.push("A valid project owner wallet address is required");
  try{creatorSettings(d)}catch(error){errors.push(String(error.message||error))}
- if(d?.accepted!==true)errors.push("Please confirm that you understand the token parameters are permanent");
  return errors;
 }
 export function creatorPreview(d){
- const err=validateCreatorDraft({...d,accepted:true});
+ const err=validateCreatorDraft(d);
  if(err.length)return {ready:false,errors:err};
  const config=creatorSettings(d);
  return {ready:true,name:String(d.name).trim(),symbol:String(d.symbol).trim(),
@@ -120,8 +116,7 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '</details><div class="ja-fields">'+
   '<div class="ja-field"><span>Original network</span><strong>XGRChain · Chain ID 1643</strong>'+
   '<small>Project owner receives full initial supply and owner() role; XGR pays deployment gas, never receives token rights</small></div></div>'+
-  '<label class="ja-consent"><input type="checkbox" data-creator="accepted"'+
-  (d.accepted?' checked':'')+'><span>I understand the selected token capabilities, decimals and lifetime issuance limit are permanent. Owner and minter may be transferred by project authority.</span></label></section>'+
+  '<p class="ux-small">Token type, decimals and supply caps are permanent after deployment. The nominated wallet receives the initial supply and controls ownership.</p></section>'+
   '<section class="ux-panel"><div class="ux-kicker">02 · PROJECT & BRANDING</div>'+
   '<h2>Present your project</h2><div class="ja-fields">'+
   area("shortDescription","Short description *",d.shortDescription,"What does your token do?",280)+
@@ -145,13 +140,9 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '<section class="ux-panel"><div class="ux-kicker">03 · VERIFY YOUR PROJECT</div>'+
   '<h2>Contact and email confirmation</h2><div class="ja-fields">'+
   field("contactEmail","Contact email (private) *",d.contactEmail,"you@project.org","email")+
-  choices("applicantRole","Your relationship *",[
-   ["founder","Founder"],["core-team","Core team"],["authorized-representative","Authorized representative"]],d.applicantRole)+
-  '</div><p class="ux-small">Your email is used only for verification and application updates. It will not appear in GitHub.</p>'+
-  '<label class="ja-consent"><input type="checkbox" data-creator="projectConfirmed"'+
-  (d.projectConfirmed?' checked':'')+'><span>I am authorized to submit this token and confirm the project information is accurate.</span></label>'+
+  '</div><p class="ux-small">We will email you a confirmation link. Your address stays private and will not appear in GitHub.</p>'+
   '<button class="ux-button" id="xita-creator-register" type="submit">Verify email and prepare launch</button>'+
-  '<p class="ux-small" role="status" id="tc-registration-status">Email verification is required before sponsored starter gas or Interchain deployment.</p>'+
+  '<p class="ux-small tc-registration-feedback" role="alert" id="tc-registration-status" tabindex="-1" hidden></p>'+
   '</section></form>'+
   '<section class="ux-panel"><div class="ux-kicker">04 · TOKEN & INTERCHAIN LAUNCH</div>'+
   '<h2>Your launch preview</h2>'+
@@ -169,6 +160,19 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   'There is no wallet deployment transaction. XGR creates the ERC-20 after verified email and audited factory activation.'+
 
   '</p></section></div>';
+}
+export function creatorSubmittedMarkup(state){
+ const email=clean(state?.email||"");
+ return '<div class="ux-app ux-join ux-token-creator tc-submitted-page">'+
+  '<div class="ux-kicker">XITA · TOKEN LAUNCHPAD</div>'+
+  '<section class="ux-panel tc-submitted-receipt" role="status">'+
+  '<div class="tc-receipt-icon" aria-hidden="true">✓</div>'+
+  '<h1>Check your email.</h1>'+
+  '<p class="ux-lead">We sent a confirmation link'+(email?' to <strong>'+email+'</strong>':'')+'.</p>'+
+  '<p>Open the email and confirm your address to start token creation. No token has been deployed yet.</p>'+
+  '<p class="ux-small">Please also check your spam folder. Your link expires after 24 hours.</p>'+
+  '<a class="ux-ns-secondary" data-nav href="/join">Back to XITA Join</a>'+
+  '</section></div>';
 }
 export function creatorConfirmMarkup(state){
  if(state?.phase==="email-verified")return '<div class="ux-app ux-join ux-token-creator">'+
