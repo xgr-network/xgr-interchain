@@ -291,7 +291,8 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
      profile:coinProfile(coin),choices});
   }
   const material=updating?null:joinFromCoin(input,coin,catalog,{requireContact:!path.endsWith("/preview")});
-  const bundle=updating?profileUpdateFromCoin(input,coin,catalog):buildManifestBundle(material.normalized,catalog);
+  const bundle=updating?profileUpdateFromCoin(input,coin,catalog):
+    buildManifestBundle(material.normalized,catalog,{preview:path.endsWith("/preview")});
   const identity={platform:updating?"profile-update":material.normalized.canonicalChain,
    address:updating?catalog.assets[input.symbol].metadata.canonical.tokenAddress:material.normalized.canonicalAddress};
   if(path.endsWith("/preview"))
