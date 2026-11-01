@@ -4,15 +4,20 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {Interface,keccak256} from "ethers";
+import {creatorSettings} from "../../apps/web/creator-token-config.js";
 const root=resolve(fileURLToPath(new URL("../../",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i,HASH=/^0x[0-9a-f]{64}$/i;
 const FACTORY_ABI=[
- "function createToken(string name_,string symbol_,uint256 initialSupplyBaseUnits,address owner_) returns(address)",
- "event TokenCreated(address indexed deployer,address indexed token,address indexed owner,string name,string symbol,uint256 initialSupply)"
+ "function createTokenConfigured(string name_,string symbol_,uint256 initialSupplyBaseUnits,address owner_,uint8 type_,uint8 decimals_,uint256 lifetimeCapBaseUnits,bool permitEnabled_,address minter_) returns(address)",
+ "event TokenCreated(address indexed deployer,address indexed token,address indexed owner,string name,string symbol,uint256 initialSupply)",
+ "event TokenConfigured(address indexed token,uint8 indexed tokenType,uint8 decimals,uint256 lifetimeCap,bool permitEnabled,address minter,bytes32 runtimeCodeHash)"
 ];
 const TOKEN_ABI=["function owner() view returns(address)","function totalSupply() view returns(uint256)",
  "function balanceOf(address) view returns(uint256)","function name() view returns(string)",
- "function symbol() view returns(string)","function decimals() view returns(uint8)"];
+ "function symbol() view returns(string)","function decimals() view returns(uint8)",
+ "function tokenType() view returns(uint8)","function lifetimeCap() view returns(uint256)",
+ "function lifetimeMinted() view returns(uint256)",
+ "function permitEnabled() view returns(bool)","function minter() view returns(address)"];
 export const creatorFactoryInterface=new Interface(FACTORY_ABI);
 export const creatorTokenInterface=new Interface(TOKEN_ABI);
 const same=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
@@ -37,11 +42,13 @@ export async function creatorRPC(url,method,params){
  return data.result;
 }
 function eqBytes(actual,expected){return same(actual,expected)}
-async function checkToken(rpc,address,signature,args,expected){
+async function checkToken(rpc,address,signature,args,expected,blockTag){
  const data=creatorTokenInterface.encodeFunctionData(signature,args);
- const result=await rpc("eth_call",[{to:address,data},"latest"]);
+ const result=await rpc("eth_call",[{to:address,data},blockTag]);
  const parsed=creatorTokenInterface.decodeFunctionResult(signature,result)[0];
- if(typeof parsed==="bigint"||typeof expected==="bigint"){
+ if(typeof parsed==="boolean"||typeof expected==="boolean"){
+  if(parsed!==expected)throw Error("Created token permit mismatch");
+ }else if(typeof parsed==="bigint"||typeof expected==="bigint"){
   if(BigInt(parsed)!==BigInt(expected))throw Error("Created token supply/decimals mismatch: "+signature);
  }else if(typeof parsed!=="string"||!eqBytes(parsed,expected))
   throw Error("Created token identity/owner mismatch: "+signature);
@@ -66,43 +73,66 @@ export async function verifyCreatorReceiptOnRPC({rpc,input,txHash,factory,confir
  const block=Number(BigInt(receipt.blockNumber||0));
  if(!Number.isSafeInteger(block)||block<=0||BigInt(head)<BigInt(block)+BigInt(confirmations))
   throw Error("Creator transaction still awaiting XGR confirmation");
+ const cfg=creatorSettings(input);
  const invoked=creatorFactoryInterface.parseTransaction({data:tx.input||tx.data,value:tx.value});
- if(invoked?.name!=="createToken"||invoked.args.length!==4||
+ if(invoked?.name!=="createTokenConfigured"||invoked.args.length!==9||
     invoked.args[0]!==input.name||invoked.args[1]!==input.symbol||
-    invoked.args[2]!==BigInt(input.initialSupply)*10n**18n||
-    !same(invoked.args[3],input.ownerAddress))
+    invoked.args[2]!==BigInt(cfg.initialSupplyBaseUnits)||
+    !same(invoked.args[3],cfg.ownerAddress)||
+    Number(invoked.args[4])!==cfg.tokenTypeId||
+    Number(invoked.args[5])!==cfg.decimals||
+    invoked.args[6]!==BigInt(cfg.maxSupplyBaseUnits)||
+    invoked.args[7]!==cfg.permit||!same(invoked.args[8],cfg.minterAddress))
   throw Error("Creator transaction parameters differ from verified application");
- const matches=[];
+ const matches=[],configured=[];
  for(const log of receipt.logs||[]){
   if(!same(log.address,factory.address))continue;
   try{
    const item=creatorFactoryInterface.parseLog(log);
    if(item?.name==="TokenCreated")matches.push(item);
+   if(item?.name==="TokenConfigured")configured.push(item);
   }catch{/* other factory events cannot prove creation */}
  }
- if(matches.length!==1)throw Error("Expected exactly one canonical TokenCreated event");
+ if(matches.length!==1||configured.length!==1)throw Error("Expected one canonical TokenCreated and TokenConfigured event");
  const e=matches[0],token=String(e.args.token||"");
  if(!ADDRESS.test(token)||/^0x0{40}$/i.test(token)||
     !same(e.args.deployer,receipt.from)||!same(e.args.owner,input.ownerAddress)||
     e.args.name!==input.name||e.args.symbol!==input.symbol||
-    e.args.initialSupply!==BigInt(input.initialSupply)*10n**18n)
+    e.args.initialSupply!==BigInt(cfg.initialSupplyBaseUnits))
   throw Error("Creator event does not match signed request");
+ const setup=configured[0];
+ if(!same(setup.args.token,token)||Number(setup.args.tokenType)!==cfg.tokenTypeId||
+    Number(setup.args.decimals)!==cfg.decimals||
+    setup.args.lifetimeCap!==BigInt(cfg.maxSupplyBaseUnits)||
+    setup.args.permitEnabled!==cfg.permit||
+    !same(setup.args.minter,cfg.minterAddress))
+  throw Error("Created token configuration event mismatch");
  const code=await rpc("eth_getCode",[token,"latest"]);
- if(code==="0x"||!same(keccak256(code),factory.tokenRuntimeCodeKeccak256))
+ if(code==="0x"||!same(keccak256(code),factory.tokenRuntimeCodeKeccak256)||
+    !same(keccak256(code),setup.args.runtimeCodeHash))
   throw Error("Created ERC20 runtime differs from audited token template");
+ const deployedAt="0x"+block.toString(16);
+ // Snapshot at creation: project owners may legitimately transfer tokens later.
  await Promise.all([
-  checkToken(rpc,token,"owner",[],input.ownerAddress),
-  checkToken(rpc,token,"name",[],input.name),
-  checkToken(rpc,token,"symbol",[],input.symbol),
-  checkToken(rpc,token,"decimals",[],18n),
-  checkToken(rpc,token,"totalSupply",[],BigInt(input.initialSupply)*10n**18n),
-  checkToken(rpc,token,"balanceOf",[input.ownerAddress],BigInt(input.initialSupply)*10n**18n),
-  checkToken(rpc,token,"balanceOf",[factory.address],0n)
+  checkToken(rpc,token,"owner",[],cfg.ownerAddress,deployedAt),
+  checkToken(rpc,token,"name",[],input.name,deployedAt),
+  checkToken(rpc,token,"symbol",[],input.symbol,deployedAt),
+  checkToken(rpc,token,"decimals",[],BigInt(cfg.decimals),deployedAt),
+  checkToken(rpc,token,"tokenType",[],BigInt(cfg.tokenTypeId),deployedAt),
+  checkToken(rpc,token,"lifetimeCap",[],BigInt(cfg.maxSupplyBaseUnits),deployedAt),
+  checkToken(rpc,token,"lifetimeMinted",[],BigInt(cfg.initialSupplyBaseUnits),deployedAt),
+  checkToken(rpc,token,"permitEnabled",[],cfg.permit,deployedAt),
+  checkToken(rpc,token,"minter",[],cfg.minterAddress,deployedAt),
+  checkToken(rpc,token,"totalSupply",[],BigInt(cfg.initialSupplyBaseUnits),deployedAt),
+  checkToken(rpc,token,"balanceOf",[cfg.ownerAddress],BigInt(cfg.initialSupplyBaseUnits),deployedAt),
+  checkToken(rpc,token,"balanceOf",[factory.address],0n,deployedAt)
  ]);
  return {chainId:1643,txHash:txHash.toLowerCase(),factory:factory.address.toLowerCase(),
    operator:String(receipt.from).toLowerCase(),ownerAddress:String(input.ownerAddress).toLowerCase(),
    tokenAddress:token.toLowerCase(),name:input.name,symbol:input.symbol,
-   initialSupplyBaseUnits:(BigInt(input.initialSupply)*10n**18n).toString(),blockNumber:block,
+   initialSupplyBaseUnits:cfg.initialSupplyBaseUnits,tokenType:cfg.tokenTypeId,
+   decimals:cfg.decimals,maxSupplyBaseUnits:cfg.maxSupplyBaseUnits,
+   permit:cfg.permit,minterAddress:cfg.minterAddress,blockNumber:block,
    factoryCodeHash:factory.runtimeCodeKeccak256,tokenCodeHash:factory.tokenRuntimeCodeKeccak256};
 }
 export async function verifyCreatorAcrossRPCs({input,txHash,factory,urls,call=creatorRPC}){
