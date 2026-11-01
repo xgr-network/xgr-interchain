@@ -5,7 +5,7 @@ import {fileURLToPath} from "node:url";
 import {execFileSync} from "node:child_process";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {verifyCoinGecko} from "./coingecko-identity.mjs";
-import {fetchCoinDetails,joinFromCoin,profileUpdateFromCoin,checkedUpdateAsset} from "./coingecko-profile.mjs";
+import {fetchCoinDetails,joinFromCoin,joinCandidates,coinProfile,profileUpdateFromCoin,checkedUpdateAsset} from "./coingecko-profile.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {privateLocation,preparePrivateDir,createPending,readPrivate,savePrivate,lockedRecord,matchesToken,confirmationHash,listPrivate,removePrivate} from "./private-store.mjs";
@@ -153,12 +153,23 @@ function checkedJoinCatalog(sourceCatalog){
 }
 export function joinReadiness(env=process.env,sourceCatalog=()=>loadCatalog(root)){
  if(!joinAvailable(env))
-  return {available:false,note:"Email confirmation or GitHub writer not configured"};
+  return {available:false,creatorAvailable:false,note:"Email confirmation or GitHub writer not configured"};
  try{
   checkedJoinCatalog(sourceCatalog);
-  return {available:true,note:"Email-confirmed applications supported"};
+  // The public Creator link is a separate operator go-live decision. The Join
+  // service must not inherit /etc/xita/creator.env or the signing wallet.
+  let creatorAvailable=false;
+  if(env.XITA_CREATOR_PUBLIC_ENABLED==="true"){
+   try{
+    const factory=JSON.parse(readFileSync(resolve(root,"config/creator/factory.json"),"utf8"));
+    creatorAvailable=factory.chainId===1643&&factory.status==="receipt-verified"&&
+     /^0x[0-9a-f]{40}$/i.test(factory.address||"")&&
+     /^0x[0-9a-f]{64}$/i.test(factory.runtimeCodeKeccak256||"");
+   }catch{/* Never advertise an unverified factory. */}
+  }
+  return {available:true,creatorAvailable,note:"Email-confirmed applications supported"};
  }catch{
-  return {available:false,note:"Join inventory unavailable; operator verification required"};
+  return {available:false,creatorAvailable:false,note:"Join inventory unavailable; operator verification required"};
  }
 }
 export function localMainSha(){
@@ -271,6 +282,14 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
   const updating=path.startsWith("/api/xita/profile/");
   const coinId=updating?(checkedUpdateAsset(catalog,input.symbol).profile.market?.coingeckoId||input.coingeckoId):input.coingeckoId;
   const coin=await fetchCoin(coinId);
+  // Chain choice is discovered in preview before a canonical chain is provided.
+  // Never attempt manifest generation (which requires a chosen original) first.
+  if(!updating&&path.endsWith("/preview")&&!input.canonicalChain){
+   const choices=joinCandidates(coin,catalog);
+   if(choices.length>1)
+    return reply(res,200,{ok:true,selectionRequired:true,
+     profile:coinProfile(coin),choices});
+  }
   const material=updating?null:joinFromCoin(input,coin,catalog,{requireContact:!path.endsWith("/preview")});
   const bundle=updating?profileUpdateFromCoin(input,coin,catalog):buildManifestBundle(material.normalized,catalog);
   const identity={platform:updating?"profile-update":material.normalized.canonicalChain,
