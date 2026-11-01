@@ -1631,3 +1631,62 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
  .ja-onepage .ja-entry-icon{margin-bottom:4px}
  .ja-onepage .ja-entry-card h2{font-size:31px}
 }
+
+/* Small-screen Northstar: static cosmos art in the normal page flow.
+   No interactive canvas, touch interception or absolute hero-text overlap. */
+.ux-ns-mobile-art{display:none}
+@media (max-width:700px){
+ .ux-ns-stage,.ux-universe-page .ux-ns-stage,.ux-3d-stage.ux-ns-stage:not(.is-compact){
+  height:auto;min-height:0;max-height:none;display:flex;flex-direction:column;
+  overflow:hidden;padding:34px 18px 24px;
+  background-color:#020815;
+  background-image:linear-gradient(180deg,#010611d9 0%,#030a19d9 55%,#030a17 100%),
+   url("/northstar-sky.svg");
+  background-size:cover,cover;background-position:center,center;
+ }
+ .ux-ns-stage::before,.ux-ns-stage::after{display:none}
+ .ux-ns-stage .ux-3d-canvas,
+ .ux-ns-stage .ux-3d-labels,
+ .ux-ns-stage .ux-3d-controls,
+ .ux-ns-stage .ux-3d-focus,
+ .ux-ns-stage .ux-3d-hint,
+ .ux-ns-stage .ux-3d-status{display:none!important}
+ .ux-ns-stage .ux-ns-hero-copy{
+  position:relative;inset:auto;left:auto;right:auto;top:auto;transform:none;
+  z-index:3;display:flex;flex-direction:column;align-items:flex-start;
+  width:100%;max-width:none;min-width:0;max-height:none;opacity:1;visibility:visible;
+  pointer-events:auto
+ }
+ .ux-ns-stage .ux-ns-hero-copy h1{font-size:clamp(44px,11.4vw,70px);line-height:1.04;max-width:100%;overflow-wrap:normal}
+ .ux-ns-stage .ux-ns-hero-copy .ux-ns-subline{max-width:520px}
+ .ux-ns-stage .ux-ns-actions{width:100%;align-items:stretch;gap:9px}
+ .ux-ns-stage .ux-ns-actions a{min-width:0}
+ .ux-ns-stage .ux-ns-signature{margin-top:0;padding-top:24px}
+ .ux-ns-stage .ux-ns-mobile-art{
+  position:relative;z-index:2;display:block;flex:0 0 auto;
+  height:clamp(175px,53vw,285px);width:min(100%,440px);
+  margin:12px auto 0;pointer-events:none;
+  background-image:radial-gradient(ellipse 56% 40% at 50% 52%,#35638b29,transparent 100%),
+    url("/subpage-planet.svg");
+  background-size:cover,contain;background-repeat:no-repeat;
+  background-position:center,center
+ }
+ .ux-ns-stage .ux-ns-network-status{
+  position:relative;z-index:3;inset:auto;top:auto;right:auto;bottom:auto;left:auto;
+  opacity:1;align-self:stretch;width:100%;min-width:0;max-width:440px;
+  margin:0 auto;padding:12px 15px;pointer-events:none
+ }
+ .ux-ns-stage[data-mode="system"] .ux-ns-hero-copy{
+  opacity:1;transform:none;visibility:visible;pointer-events:auto
+ }
+ .ux-ns-deck{margin-top:16px}
+}
+@media (max-width:400px){
+ .ux-ns-stage .ux-ns-hero-copy h1{font-size:clamp(41px,11.1vw,52px)}
+ .ux-ns-stage .ux-ns-actions{flex-direction:column}
+ .ux-ns-stage .ux-ns-actions a{width:100%}
+ .ux-ns-stage .ux-ns-mobile-art{height:190px}
+}
+@media (pointer:coarse){
+ .ux-3d-canvas{touch-action:pan-y;cursor:default}
+}
