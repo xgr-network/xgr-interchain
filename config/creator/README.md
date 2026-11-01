@@ -12,26 +12,22 @@
 
 ## Bootstrap the isolated worker (no on-chain signing)
 
-The operator configuration is intentionally **not** tracked in Git. On a clean
-host, provision the root-owned config before `./manage.sh install-creator`:
+There are only two privileged XITA settings files for Creator onboarding:
+`/etc/xita/join.env` (Join API, email, GitHub writer, and the public
+`XITA_CREATOR_PUBLIC_ENABLED` switch) and the **existing**
+`/etc/xita/interchain-fee.env` (the shared fee/sponsor wallet, Creator
+signing enablement and hard deployment budgets). The Join HTTP service MUST
+NOT inherit interchain-fee.env or its private key. The Creator oneshot
+service loads both restricted files; a third `creator.env` is not used.
 
-```sh
-sudo install -d -m 0700 /etc/xita
-sudo install -m 0600 /dev/null /etc/xita/creator.env
-printf '%s\\n' 'XITA_CREATOR_ENABLED=false' | sudo tee /etc/xita/creator.env >/dev/null
-./manage.sh install-creator
-```
+With `XITA_CREATOR_ENABLED` absent or set to `false`, run
+`./manage.sh install-creator` from a clean, up-to-date main checkout.
+It installs systemd units and durable sponsor-wallet nonce guards but
+leaves the Creator timer **disabled**. No contract is deployed by installation.
 
-The installer still deploys **no contracts**. It installs the shared sponsorship
-nonce barriers and systemd units, but leaves the Creator timer disabled while
-`XITA_CREATOR_ENABLED=false`. The public registration endpoint also refuses
-new requests until `XITA_CREATOR_PUBLIC_ENABLED=true` has been set in the
-**Join service** environment, independent of the signing worker. Do not set
-either flag yet.
-
-Before activation, review actual gas estimation from a canary deployment and
-configure all required worker limits in the root-only creator.env. An illustrative
-one-token-per-day trial with deliberately bounded gas is:
+The first controlled XGRChain Mainnet canary requires explicitly reviewed
+limits in the **existing** root-only `/etc/xita/interchain-fee.env`.
+Append them without replacing the existing wallet/DB credentials:
 
 ```ini
 XITA_CREATOR_ENABLED=false
@@ -42,25 +38,31 @@ XITA_CREATOR_GAS_PRICE_CAP_WEI=50000000
 XITA_CREATOR_BROADCAST_RPC=https://rpc.xgr.network
 ```
 
-These numbers are **trial ceilings**, not guaranteed to cover the actual
-deployment. At the stated gas and gas-limit ceilings, the maximum cost per
-transaction is 0.0001 XGR (100,000,000,000,000 wei). A real deployment may
-require different caps. The worker also needs its existing shared-wallet fee
-credentials, private Join storage and sponsor SQL journal access in its systemd
-environment. Do not copy private credentials into creator.env or the repo.
-Check service status and journal before the first controlled canary; do not
-enable the public switch until its on-chain receipt, child owner/supply and
-subsequent Draft PR are verified.
+These figures are **illustrative trial ceilings**, not verified deployment
+requirements. The maximum permitted price multiplied by the maximum allowed
+gas limit yields 100000000000000 wei (0.0001 XGR) per transaction. The
+worker fails closed if actual estimated gas or gas price is higher.
+
+Ensure interchain-fee.env remains mode 0600 and owner root. Do not paste
+the file's contents into GitHub issues, logs, chats or CI output.
+Only after auditing gas estimates, signed nonce barriers, available
+balance, canary ownership and deployment receipts should the operator set
+`XITA_CREATOR_ENABLED=true`, rerun `./manage.sh install-creator` and
+verify systemd status. Keep `XITA_CREATOR_PUBLIC_ENABLED=false` (or
+unset) in join.env until the controlled canary and subsequent Draft PR
+have succeeded. A previous `/etc/xita/creator.env` is ignored after the
+updated service template has been installed; remove that obsolete file only
+after verifying the running unit no longer references it.
 
 ## Production activation — explicit manual review gate
 
 The factory and deployment worker are **not** automatically live after a code merge.
 - Audit token/factory contracts and bytecode, then deploy the factory once with a reviewed operator transaction. Independently verify deployment Tx, runtime code and token-specific runtime code on XGR Mainnet.
 - Add `config/creator/factory.json` via reviewed GitHub PR (never supplied by applicants), with fields below. It must be in `main` before the creator worker can sign.
-- Reuse the existing XITA **gas sponsorship / fee claim wallet** from root-controlled `/etc/xita/interchain-fee.env`, with `XITA_INTERCHAIN_FEE_PRIVATE_KEY` and `XITA_INTERCHAIN_FEE_ADDRESS`. No second Creator private key or wallet exists. The Join HTTP service must never inherit that file. The Creator `/etc/xita/creator.env` contains only opt-in budget/cost switches.
+- Reuse the existing XITA **gas sponsorship / fee claim wallet** from root-controlled `/etc/xita/interchain-fee.env`, with `XITA_INTERCHAIN_FEE_PRIVATE_KEY` and `XITA_INTERCHAIN_FEE_ADDRESS`. No second Creator private key or wallet exists. The Join HTTP service must never inherit that file. Creator limits and activation live in that same root-protected interchain-fee.env.
 - Creator timer, fee claimant and sponsor all acquire `/run/lock/xita-fee-wallet.lock` prior to using the common wallet. Sponsor/claim services install a read-only private Creator journal gate and reject any unresolved Creator signed transaction even when RPC `pending` returns the same nonce as `latest`. Creator checks the durable sponsor SQL journal before signing. These barriers prevent irreversible same-nonce replacement on a disappearing mempool tx.
 - In case of an unresolved signed Creator TX, sponsor payouts are safely paused until exact-tx reconciliation. Do not delete private journal evidence to force sponsorship.
-- Set `XITA_CREATOR_ENABLED=true`, `XITA_CREATOR_DAILY_LIMIT`, `XITA_CREATOR_DAILY_BUDGET_WEI`, `XITA_CREATOR_GAS_LIMIT_CAP`, `XITA_CREATOR_GAS_PRICE_CAP_WEI`, `XITA_CREATOR_BROADCAST_RPC` as reviewed hard caps. Also provide `XITA_JOIN_PRIVATE_DIR` and GitHub writer credentials in worker service environment. The Join HTTP service must **not** use creator.env.
+- Set `XITA_CREATOR_ENABLED=true`, `XITA_CREATOR_DAILY_LIMIT`, `XITA_CREATOR_DAILY_BUDGET_WEI`, `XITA_CREATOR_GAS_LIMIT_CAP`, `XITA_CREATOR_GAS_PRICE_CAP_WEI`, `XITA_CREATOR_BROADCAST_RPC` as reviewed hard caps. Also provide `XITA_JOIN_PRIVATE_DIR` and GitHub writer credentials in worker service environment. The Join HTTP service must **not** read interchain-fee.env.
 - Production operator must use mutually exclusive queue runner. One outstanding tx blocks any new signing. A crashed lock file or failed verification is fail-closed and requires operator diagnosis; never delete raw signed evidence as a means of retrying.
 - E-mail verification and hard gas caps reduce obvious abuse but are not an anti-Sybil mechanism. Before public launch perform an abuse, funding and authorization review; consider ownership proof and per-project controls.
 
