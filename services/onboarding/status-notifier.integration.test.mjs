@@ -98,6 +98,9 @@ test("XGR Creator second email contains working public token page, not a prematu
   assert.equal(done[0].url,"https://xita.xgr.network/token/creator-example");
   assert.equal(sent.length,1,"Exactly one second message after initial email confirmation");
   assert.match(sent[0].text,/https:\/\/xita.xgr.network\/token\/creator-example/);
+  assert.ok(sent[0].text.includes("Token contract (XGRChain Mainnet, chain ID 1643): "+token));
+  assert.ok(sent[0].text.includes("Deployment transaction: "+tx));
+  assert.ok(sent[0].html.includes(token));
   assert.match(sent[0].html,/View your token profile/);
   assert.equal(sent[0].to,"creator@example.org");
   assert.deepEqual(await run(),[]);

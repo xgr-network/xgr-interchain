@@ -127,3 +127,11 @@ test("Creator submission navigates to a dedicated confirmation receipt and visib
  assert.equal(creatorRegistrationPayload(d).applicantRole,undefined);
  assert.equal(creatorRegistrationPayload(d).confirmed,undefined);
 });
+
+test("published XGRChain Creator profiles display their verified original token address",()=>{
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ assert.match(app,/a\.metadata\?\.creation\?\.kind==="xgrchain-creator-v1"/);
+ assert.match(app,/a\.metadata\?\.canonical\?\.tokenAddress/);
+ assert.match(app,/XGRChain token contract/);
+ assert.match(app,/verifiedContractRow\+/);
+});

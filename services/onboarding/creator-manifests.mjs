@@ -7,6 +7,7 @@ import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
 import {creatorSettings} from "../../apps/web/creator-token-config.js";
+import {normalizeJoinDescription} from "../../apps/web/join-description.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const valid=s=>typeof s==="string"&&s.length>0&&!/[<>\x00-\x1f]/.test(s);
 export function buildCreatorJoinBundle(record,proof,catalog){
@@ -70,7 +71,13 @@ export function buildCreatorJoinBundle(record,proof,catalog){
  const noContacts=JSON.stringify({metadata,profile,routes});
  if(/contactEmail|privateEmail|applicantEmail|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(noContacts))
   throw Error("Personal contact information must never enter public GitHub");
- if(!valid(a.name)||!valid(a.shortDescription)||!valid(a.description))
+ // The public creator registration explicitly permits paragraph breaks.
+ // Apply the SAME canonical description rules here; the earlier generic
+ // control-character ban incorrectly rejected legitimate multi-line text
+ // only AFTER the immutable on-chain token deployment had succeeded.
+ if(!valid(a.name)||
+    normalizeJoinDescription(a.shortDescription,15,280)!==a.shortDescription||
+    normalizeJoinDescription(a.description,40,5000)!==a.description)
   throw Error("Invalid public profile fields");
  const errors=validateCatalog(candidate);
  if(errors.length)throw Error("Invalid creator Join bundle: "+errors.join("; "));

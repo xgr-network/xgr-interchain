@@ -55,3 +55,20 @@ test("mintable creator PR publishes exact on-chain cap, minter, decimals and per
  assert.deepEqual(validateCatalog(JSON.parse(output.files["apps/web/catalog.json"])),[]);
  assert.throws(()=>buildCreatorJoinBundle(custom,{...checked,maxSupplyBaseUnits:"25000000001"},catalog),/proof/);
 });
+
+test("email-verified multiline descriptions survive receipt-backed Join PR creation without reducing validation",()=>{
+ const original={...record,input:{...record.input,
+  shortDescription:"An XGRChain-native test token.\nCreated using the XITA Creator.",
+  description:"XITA Canary demonstrates real ERC-20 creation.\n\nThis second paragraph explains the approved supply, owner and future Interchain expansion."}};
+ const bundle=buildCreatorJoinBundle(original,proof,catalog);
+ const profile=JSON.parse(Object.entries(bundle.files).find(([path])=>path.endsWith("/metadata.json"))[1]);
+ assert.equal(profile.shortDescription,original.input.shortDescription);
+ assert.equal(profile.description,original.input.description);
+ assert.equal(JSON.parse(Object.entries(bundle.files).find(([path])=>path.endsWith("/asset.json"))[1]).canonical.tokenAddress,token);
+ assert.deepEqual(validateCatalog(JSON.parse(bundle.files["apps/web/catalog.json"])),[]);
+ for(const bad of ["Markup <script>alert(1)</script>\nAnother line of otherwise legitimate text.",
+   "A string with control character \u0007 is unsafe.",
+   "Invalid tab\tinside prose."]){
+  assert.throws(()=>buildCreatorJoinBundle({...original,input:{...original.input,description:bad}},proof,catalog),/Invalid public profile fields/);
+ }
+});

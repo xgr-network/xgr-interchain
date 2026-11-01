@@ -126,6 +126,8 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
     const title=creator?"Your XGR token profile is live":"Your XITA token profile is updated";
     const message=creator?
       ["Your XGRChain ERC-20 is deployed and your public token profile is now available.",
+       "Token contract (XGRChain Mainnet, chain ID 1643): "+record.deployment.tokenAddress,
+       "Deployment transaction: "+record.deployment.txHash,
        "Your nominated project owner holds the initial supply. Additional XITA routes require separate approval and deployment."]:
       ["Your CoinGecko-based profile update has been published on XITA.",
        "Your token contract, permissions, supply and interchain routes remain unchanged."];

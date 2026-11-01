@@ -1052,12 +1052,17 @@ function token(){
  const id=state.assetId,a=asset(),p=profile(id),canonical=a.metadata.canonical?.chain||"unknown";
  const model=buildExperienceModel(state.catalog,()=>false);
  const stage=listingStatus(a,state.visibility?.assets?.[id],state.catalog);
+ const creatorAddress=a.metadata?.creation?.kind==="xgrchain-creator-v1"?
+  a.metadata?.canonical?.tokenAddress:null;
+ const verifiedContractRow=/^0x[0-9a-f]{40}$/i.test(creatorAddress||"")?
+  '<div class="pair"><span>XGRChain token contract</span><b class="ux-break-anywhere">'+x(creatorAddress)+'</b></div>':"";
  const chips=(p.categories||[]).map(cat=>'<span class="category-chip">'+x(cat)+'</span>').join(" ");
  return '<div class="columns"><article><a href="/markets" data-nav class="muted">← All tokens</a>'+
  '<div class="token-link section">'+projectLogo(id)+'<div><div class="eyebrow">'+x(chainName(canonical))+' · Canonical asset</div>'+
  '<h1>'+x(p.name)+' <small>'+x(id)+'</small></h1><span class="tag">'+x(stage)+'</span></div></div>'+
  '<div class="card"><h2>Project overview</h2><p class="lead" style="font-size:16px">'+x(p.shortDescription)+'</p><p class="muted">'+x(p.description)+'</p>'+chips+
  '<div class="pair"><span>Canonical network</span><b>'+x(chainName(canonical))+'</b></div>'+
+ verifiedContractRow+
  '<div class="pair"><span>Token decimals</span><b>'+a.metadata.decimals+'</b></div>'+
  '<div class="pair"><span>Documented ILN routes</span><b>'+
   (a.deployment?.routeDeployments?.length||0)+'</b></div>'+
