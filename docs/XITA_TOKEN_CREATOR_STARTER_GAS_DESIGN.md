@@ -23,3 +23,7 @@ Once the source receipt and `owner(), totalSupply(), balanceOf(owner), name(), s
 6. Creator ERC-20 deployed ≠ XITA routes deployed ≠ publicly listed. Keep these stages visible in UI and notifications.
 
 Read `config/creator/README.md` for full configuration and operator constraints.
+
+## Creator notification contract
+
+The XGR Token Creator sends the first message only to verify the email. Its follow-up message is the **public token profile URL** after the operator-funded ERC-20 is verified, the normal XITA Join PR has been reviewed/merged and the actual website serves that profile. This is deliberately **not** sent when the email confirmation merely queues deployment: neither a draft PR nor a newly deployed ERC-20 guarantees a live token page. A per-application idempotency key prevents duplicate mail; delivery outages retry without further token creation.
