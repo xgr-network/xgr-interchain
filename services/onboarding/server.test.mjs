@@ -99,7 +99,7 @@ test("email confirmation is private, single-use and required before public GitHu
   assert.equal(preview.body.summary.routeCount,Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&isDeployedChain(catalog,name)).length*2);
   assert.equal(JSON.stringify(preview.body).includes(input.contactEmail),false);
   const result=await post("/api/xita/join/submit",input);
-  assert.equal(result.status,202);
+  assert.equal(result.status,202,JSON.stringify(result.body));
   assert.equal(result.body.status,"pending-email");
   assert.equal(proposals,0);
   assert.equal(mail.length,1);
@@ -199,7 +199,7 @@ test("profile update requires verified email, writes metadata-only Draft PR and 
   assert.equal(preview.status,200);
   assert.equal(preview.body.summary.symbol,"ARB");
   const submit=await post("/api/xita/profile/submit",form);
-  assert.equal(submit.status,202);
+  assert.equal(submit.status,202,JSON.stringify(submit.body));
   assert.equal(drafts,0);
   const duplicate=await post("/api/xita/profile/submit",form);
   assert.equal(duplicate.status,409);
