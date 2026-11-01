@@ -1292,6 +1292,12 @@ async function updateWalletGas(){
  }
 }
 let cosmos=null;
+// Mobile uses a static Universe illustration. Do not create WebGL or its
+// requestAnimationFrame loop on narrow viewports.
+const mobileUniverse=window.matchMedia("(max-width: 700px)");
+mobileUniverse.addEventListener?.("change",()=>{
+ if(state.catalog&&path()==="/")render();
+});
 function contactPage(){
  return '<section class="ux-app ux-faq-page ux-contact-page">'+
   '<span class="ux-kicker">XITA · CONTACT</span><h1>Get in touch.</h1>'+
@@ -1391,7 +1397,11 @@ function render(){
  }
  if(p==="/"){
   const host=document.querySelector("#xita-3d");
-  if(host)cosmos=mountUniverse3D({root:host,model:universe,compact:false,selected:state.experience.system,onFocus:key=>{
+  if(host&&mobileUniverse.matches){
+   host.dataset.mobileUniverse="static";
+   host.dataset.renderer="static";
+  }
+  if(host&&!mobileUniverse.matches)cosmos=mountUniverse3D({root:host,model:universe,compact:false,selected:state.experience.system,onFocus:key=>{
    state.experience.system=key;
    const details=document.querySelector("#ux-selected-details");
    if(details)details.innerHTML=renderUniverse(universe,key,state.leaderboard,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
