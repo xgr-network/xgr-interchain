@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {keccak256} from "ethers";
 import {createPending,savePrivate,readPrivate} from "./private-store.mjs";
-import {processCreatorQueue,creatorLimits,creatorDailyBudget} from "./creator-operator.mjs";
+import {processCreatorQueue,creatorLimits,creatorDailyBudget,assertSponsorJournalClear,sponsorWalletCredentials} from "./creator-operator.mjs";
 import {loadCatalog} from "../../tools/validate-manifests.mjs";
 const owner="0x1234567890123456789012345678901234567890";
 const operator="0x2222222222222222222222222222222222222222";
@@ -17,8 +17,8 @@ const input={name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAdd
 const factory={address:"0x1111111111111111111111111111111111111111",runtimeCodeKeccak256:keccak256("0x6001"),
  tokenRuntimeCodeKeccak256:keccak256("0x6002")};
 const now=Date.UTC(2026,9,31,21),signed="0x010203",txHash=keccak256(signed);
-const env=dir=>({XITA_CREATOR_ENABLED:"true",XITA_CREATOR_OPERATOR_KEY:"0x"+"1".repeat(64),
- XITA_CREATOR_OPERATOR_ADDRESS:operator,XITA_JOIN_PRIVATE_DIR:dir,
+const env=dir=>({XITA_CREATOR_ENABLED:"true",XITA_INTERCHAIN_FEE_PRIVATE_KEY:"0x"+"1".repeat(64),
+ XITA_INTERCHAIN_FEE_ADDRESS:operator,XITA_SPONSOR_DATABASE_URL:"postgresql://tester:test@localhost:5432/xita",XITA_JOIN_PRIVATE_DIR:dir,
  XITA_CREATOR_DAILY_LIMIT:"3",XITA_CREATOR_DAILY_BUDGET_WEI:"1000000000000000000",
  XITA_CREATOR_GAS_LIMIT_CAP:"2000000",XITA_CREATOR_GAS_PRICE_CAP_WEI:"10000000000",
  XITA_CREATOR_BROADCAST_RPC:"https://rpc.xgr.network"});
@@ -40,7 +40,7 @@ test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exac
   if(method==="eth_getCode")return "0x6001";
   if(method==="eth_getTransactionReceipt")return mined?{status:"0x1"}:null;
   if(method==="eth_gasPrice")return "0x3b9aca00";
-  if(method==="eth_getTransactionCount")return "0x01";
+  if(method==="eth_getTransactionCount")return params[1]==="latest"?"0x01":"0x01";
   if(method==="eth_getBalance")return "0x3635c9adc5dea00000";
   if(method==="eth_estimateGas")return "0x7a120";
   if(method==="eth_sendRawTransaction"){broadcasts.push(params[0]);return txHash;}
@@ -48,7 +48,7 @@ test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exac
  };
  const run=()=>processCreatorQueue({env:env(x.dir),now,call,loadFactory:()=>factory,
   walletFactory:()=>({address:operator,signTransaction:async()=>{signs++;return signed}}),
-  verify,loadInventory:loadCatalog,mainSha:()=> "a".repeat(40),
+  verify,checkSponsorJournal:async()=>{},loadInventory:loadCatalog,mainSha:()=> "a".repeat(40),
   publisher:async(bundle)=>{published++;return {number:777,url:"https://github.com/xgr-network/xgr-interchain/pull/777",status:"draft",kind:bundle.kind}}});
  try{
   const first=await run();
@@ -77,7 +77,24 @@ test("explicit daily gas caps and signer segregation reject unsafe deployment",a
   assert.equal(creatorDailyBudget([{kind:"token-creator",deployment:{signedAt:new Date(now).toISOString(),reservedWei:"123"}}],now).reservedWei,123n);
   await assert.rejects(()=>processCreatorQueue({env:{...settings,XITA_CREATOR_ENABLED:"false"}}),/disabled/);
   await assert.rejects(()=>processCreatorQueue({env:{...settings,XITA_CREATOR_DAILY_LIMIT:"0"}}),/limit|configured/);
-  await assert.rejects(()=>processCreatorQueue({env:{...settings,XITA_CREATOR_OPERATOR_ADDRESS:owner},
+  await assert.rejects(()=>processCreatorQueue({env:{...settings,XITA_INTERCHAIN_FEE_ADDRESS:owner},
    loadFactory:()=>factory,walletFactory:()=>({address:operator})}),/identity mismatch/);
  }finally{x.cleanup()}
+});
+
+test("shared Sponsor wallet must be exactly configured; no separate Creator key",()=>{
+ const settings=env("/var/lib/xita/join");
+ assert.equal(sponsorWalletCredentials(settings).address,operator);
+ assert.throws(()=>sponsorWalletCredentials({...settings,XITA_INTERCHAIN_FEE_PRIVATE_KEY:undefined}),/Existing XITA sponsor wallet/);
+});
+test("creator fails closed when XGR sponsor has durable unresolved nonce",async()=>{
+ const settings=env("/var/lib/xita/join"),calls=[];
+ const make=async()=>({query:async q=>{calls.push(q);return {rows:[{pending:1}]};},end:async()=>{}});
+ await assert.rejects(()=>assertSponsorJournalClear({env:settings,poolFactory:make,account:operator}),/Unresolved XGR sponsor nonce/);
+ assert.equal(calls.length,1);
+ assert.match(calls[0].text,/status IN \('reserved','submitted','needs-review'\)/);
+ assert.equal(calls[0].values[0],operator.toLowerCase());
+ const healthy=async()=>({query:async()=>({rows:[{pending:0}]}),end:async()=>{}});
+ await assert.doesNotReject(()=>assertSponsorJournalClear({env:settings,poolFactory:healthy,account:operator}));
+ await assert.rejects(()=>assertSponsorJournalClear({env:{...settings,XITA_SPONSOR_DATABASE_URL:""},account:operator}),/journal database/);
 });

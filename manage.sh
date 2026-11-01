@@ -340,7 +340,8 @@ install_creator() (
   local user group node_bin tmp unit
   user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
   privileged test -f /etc/xita/join.env || { echo "Missing Join env" >&2; return 1; }
-  privileged test -f /etc/xita/creator.env || { echo "Missing dedicated /etc/xita/creator.env" >&2; return 1; }
+  privileged test -f /etc/xita/creator.env || { echo "Missing Creator limits /etc/xita/creator.env" >&2; return 1; }
+  privileged test -f /etc/xita/interchain-fee.env || { echo "Missing EXISTING sponsor-wallet /etc/xita/interchain-fee.env" >&2; return 1; }
   [[ "$(privileged stat -c '%a' /etc/xita/creator.env)" == "600" ]] || {
     echo "creator.env must be mode 600" >&2; return 1;
   }
@@ -351,6 +352,15 @@ install_creator() (
   node --test "$ROOT/services/onboarding/creator-operator.test.mjs" "$ROOT/services/onboarding/creator-chain-proof.test.mjs"
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' EXIT
+  # Both pre-existing sponsor entrypoints (timer + DB event listener) run
+  # gas-sponsor.mjs. This drop-in activates a durable Creator nonce guard on
+  # THAT SAME wallet. Fee claim uses the same shared wallet and guard.
+  # Install guards BEFORE enabling the new Creator timer.
+  for unit in xita-gas-sponsor.service xita-interchain-fee-claim.service xita-gas-sponsor-listener.service; do
+    privileged install -d -m 0755 "/etc/systemd/system/$unit.d"
+    printf '[Service]\nEnvironment="XITA_CREATOR_SHARED_WALLET=true"\nEnvironment="XITA_CREATOR_PRIVATE_DIR=/var/lib/xita/join"\n' > "$tmp/creator-shared-wallet.conf"
+    privileged install -m 0644 "$tmp/creator-shared-wallet.conf" "/etc/systemd/system/$unit.d/creator-shared-wallet.conf"
+  done
   for unit in xita-creator-operator.service; do
     sed -e "s|@SERVICE_USER@|$user|g" -e "s|@SERVICE_GROUP@|$group|g" \
         -e "s|@ROOT@|$ROOT|g" -e "s|@NODE_BIN@|$node_bin|g" \
@@ -359,6 +369,9 @@ install_creator() (
   done
   privileged install -m 0644 "$ROOT/deploy/systemd/xita-creator-operator.timer.in" /etc/systemd/system/xita-creator-operator.timer
   privileged systemctl daemon-reload
+  if systemctl is-active --quiet xita-gas-sponsor-listener.service 2>/dev/null; then
+    privileged systemctl restart xita-gas-sponsor-listener.service || return 1
+  fi
   privileged systemctl enable --now xita-creator-operator.timer
   echo "XGR creator operator installed. On-chain creation requires a reviewed factory and ENABLED configuration."
 )
