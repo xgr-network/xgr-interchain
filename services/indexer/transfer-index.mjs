@@ -1,4 +1,4 @@
-import {verifiedNativeMailboxState,readNativeFinalityHead} from "../../apps/web/chain-finality.js";
+import {verifiedNativeMailboxState,readNativeFinalityHead,nativeFinalityTag} from "../../apps/web/chain-finality.js";
 // Persistent XITA transfer event index: only canonical chain observations.
 // PostgreSQL contains a rebuildable, non-authoritative query accelerator. This
 // module NEVER signs, mints, unlocks, computes custody TVL or sets activation.
@@ -142,9 +142,17 @@ export function rpcCandidates(chain,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_
 export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
  const validated=new Map(),retryByProvider=new Map();
- return async(chain,method,params)=>{
+ return async(chain,method,params,options=null)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid canonical chain config");
+  // An indexed route may already be ahead of a lagging L2 RPC's "safe" tag.
+  // Qualify the provider INSIDE failover, not after accepting its response.
+  const minBlock=options?.minimumBlockNumber;
+  if(minBlock!==undefined&&
+     (!Number.isSafeInteger(minBlock)||minBlock<0||
+      method!=="eth_getBlockByNumber"||
+      params?.[0]!==nativeFinalityTag(chain.chainId)))
+   throw Error("Invalid safe-head provider qualification");
   let last=null,skipped=0;
   for(const url of rpcCandidates(chain,{baseUrls})){
    const key=String(chain.chainId)+"|"+url;
@@ -168,6 +176,14 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
     // Canonical completeness is checked by the caller. Never reinterpret
     // an eth_getLogs failure or unsupported range as an empty log set.
     const value=await publicRead(url,method,params,fetcher);
+    if(minBlock!==undefined){
+     const height=value?.number;
+     if(typeof height!=="string"||!/^0x(?:0|[1-9a-f][0-9a-f]*)$/i.test(height)||
+        BigInt(height)<BigInt(minBlock)||!/^0x[0-9a-f]{64}$/i.test(value.hash||""))
+      throw Error("Provider safe head behind finalized cursor");
+    }
+    if(value===null&&method==="eth_getBlockByNumber")
+     throw Error("Provider missing requested block");
     retryByProvider.delete(key);
     return value;
    }catch(error){
@@ -316,8 +332,12 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
   positions.set(route.routeId,prior);
   from=Math.min(from,prior+1);
  }
+ const requiredSafeHeight=Math.max(...positions.values());
+ const safeTag=nativeFinalityTag(source.chainId);
  const confirmed=finality||await readNativeFinalityHead(
-  (method,args)=>rpc(source,method,args),source.chainId);
+  (method,args)=>rpc(source,method,args,
+   method==="eth_getBlockByNumber"&&args?.[0]===safeTag?
+    {minimumBlockNumber:requiredSafeHeight}:null),source.chainId);
  if(!Number.isSafeInteger(confirmed?.number)||confirmed.number<1||
    !HASH.test(confirmed.hash||""))
   throw Error("Unverified shared source safe head");
