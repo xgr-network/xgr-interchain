@@ -106,7 +106,8 @@
       "chainId": 1643,
       "domainId": 1643,
       "rpcUrls": [
-        "https://rpc.xgr.network"
+        "https://rpc.xgr.network",
+        "https://rpc2.xgr.network"
       ],
       "explorer": "https://explorer.xgr.network",
       "nativeCurrency": {
