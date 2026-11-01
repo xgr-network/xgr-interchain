@@ -1,5 +1,5 @@
 const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const url=x=>{try{const u=new URL(x);return u.protocol==="https:"&&u.hostname==="xita.xgr.network"||u.protocol==="https:"&&u.hostname==="github.com"&&u.pathname.startsWith("/xgr-network/xgr-interchain/pull/")?u.href:null}catch{return null}};
+const url=x=>{try{const u=new URL(x);return u.protocol==="https:"&&(u.hostname==="xita.xgr.network"||u.hostname==="explorer.xgr.network"&&/^\/address\/0x[0-9a-f]{40}$/i.test(u.pathname))||u.protocol==="https:"&&u.hostname==="github.com"&&u.pathname.startsWith("/xgr-network/xgr-interchain/pull/")?u.href:null}catch{return null}};
 export function applicationMail({title,subtitle,paragraphs=[],action=null,footer="This email concerns your XITA application, not marketing."}){
  const text=[title,subtitle,...paragraphs,action?.url?((action.label||"View details")+": "+action.url):"",footer].filter(Boolean).join("\n\n");
  const link=action&&url(action.url);
