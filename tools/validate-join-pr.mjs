@@ -6,6 +6,7 @@ import {readFileSync,existsSync} from "node:fs";
 import {resolve,dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyCoinGecko} from "../services/onboarding/coingecko-identity.mjs";
+import {loadCatalog} from "./validate-manifests.mjs";
 import {creatorSettings} from "../apps/web/creator-token-config.js";
 import {verifyCreatorAcrossRPCs,loadReviewedCreatorFactory,CREATOR_VERIFY_RPC_URLS} from "../services/onboarding/creator-chain-proof.mjs";
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
@@ -19,7 +20,7 @@ export function proposedJoinFiles(changes){
  }
  return [...folders];
 }
-export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSync(join(root,p),"utf8")),check=verifyCoinGecko,checkCreator=async(opts)=>verifyCreatorAcrossRPCs({...opts,urls:CREATOR_VERIFY_RPC_URLS})}={}){
+export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSync(join(root,p),"utf8")),check=verifyCoinGecko,checkCreator=async(opts)=>verifyCreatorAcrossRPCs({...opts,urls:CREATOR_VERIFY_RPC_URLS}),catalog=loadCatalog()}={}){
  const candidates=proposedJoinFiles(paths);
  const verified=[];
  for(const folder of candidates){
@@ -72,7 +73,7 @@ export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSy
   }else{
    proof=await check({coingeckoId:profile.market.coingeckoId,
     canonicalChain:asset.canonical.chain,canonicalAddress:asset.canonical.tokenAddress,
-    symbol:asset.symbol,decimals:asset.decimals});
+    symbol:asset.symbol,decimals:asset.decimals},{catalog});
   }
   verified.push({symbol:asset.symbol,proof});
  }
