@@ -87,3 +87,16 @@ writer outage cannot cause a second deployment. The panel reports a pending
 transaction instead of re-broadcasting. Factory activation remains a separate,
 explicit systemd operation via `./manage.sh install-creator` after the
 reviewed manifest appears on main.
+
+## Public Creator entry point
+
+The Join page exposes the **Create a token on XGRChain** choice only when
+the Join HTTP service reports `creatorAvailable: true`. This requires the
+reviewed Creator Factory manifest in `main` and a deliberate
+`XITA_CREATOR_PUBLIC_ENABLED=true` in the **Join service** environment.
+This flag does not enable the signer, grant private-key access to Join, or
+replace the separate `./manage.sh install-creator` and
+`XITA_CREATOR_ENABLED=true` operator activation. Set the public flag only
+after checking the Creator timer, wallet nonce interlocks, funding caps,
+email delivery, canary deployment and security/abuse review. Disable the
+public flag immediately if the worker is paused.
