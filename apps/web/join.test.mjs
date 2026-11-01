@@ -101,7 +101,7 @@ test("CoinGecko matching is explained using only receipt-deployed XITA chains",(
  assert.match(html,/currently available XITA networks/);
  assert.match(html,/Arbitrum/);
  assert.match(html,/BNB Smart Chain/);
- assert.match(html,/Optimism/);
+ assert.match(html,/OP Mainnet/);
  assert.doesNotMatch(html,/Polygon/);
  assert.match(html,/CoinGecko contract matches on Base/);
  assert.match(html,/Original blockchain selected automatically/);
