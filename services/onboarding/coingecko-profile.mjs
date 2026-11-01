@@ -38,6 +38,8 @@ export async function fetchCoinDetails(id,{fetcher=fetch,apiKey=process.env.XITA
  try{response=await fetcher(url,{method:"GET",redirect:"error",signal:AbortSignal.timeout(10000),
    headers:{Accept:"application/json",...(apiKey?{"x-cg-demo-api-key":apiKey}:{})}});}
  catch{throw Error("CoinGecko API unavailable; try again later");}
+ if(response.status===404)
+  throw Error("Token not found on CoinGecko. Please enter its CoinGecko API ID, not the ticker symbol (for example, optimism instead of OP).");
  if(!response.ok)throw Error("CoinGecko HTTP "+response.status);
  if(Number(response.headers?.get?.("content-length")||0)>1000000)throw Error("Oversized CoinGecko response");
  const body=await response.text();

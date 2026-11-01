@@ -139,6 +139,11 @@ export async function handleCreator(req,res,{env=process.env,clock=Date.now,
  if(req.method!=="POST"||!["/api/xita/creator/register","/api/xita/creator/confirm"].includes(path))
   return response(res,404,{ok:false});
  try{
+  // A hidden UI link is not an API access control. Until the reviewed
+  // creator operator is ready, refuse new public registrations server-side.
+  // Existing confirmation links remain valid after the switch is disabled.
+  if(path.endsWith("/register")&&env.XITA_CREATOR_PUBLIC_ENABLED!=="true")
+   return response(res,503,{ok:false,error:"Token Creator registration is not yet available"});
   if(!mailConfigured(env))return response(res,503,{ok:false,error:"Email verification unavailable"});
   if(path.endsWith("/confirm")){
    const input=await readBody(req,1024);

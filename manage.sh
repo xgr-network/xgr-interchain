@@ -27,6 +27,7 @@ Usage: ./manage.sh <command>
   hard-reset-dev  Destructive XITA-only development reset (services must be stopped)
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-join  Install private Join API and status mail timer (no chain changes)
+  install-creator Install Creator service and shared-wallet guards (inactive unless explicitly enabled)
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
   repair-transfer-db  Apply missing additive SQL 005/006 to local XITA database and verify schema
@@ -372,8 +373,15 @@ install_creator() (
   if systemctl is-active --quiet xita-gas-sponsor-listener.service 2>/dev/null; then
     privileged systemctl restart xita-gas-sponsor-listener.service || return 1
   fi
-  privileged systemctl enable --now xita-creator-operator.timer
-  echo "XGR creator operator installed. On-chain creation requires a reviewed factory and ENABLED configuration."
+  # Install nonce locks even when the creator is disabled. Avoid a failing
+  # oneshot timer every minute until the operator explicitly opts in.
+  if privileged grep -Eq '^XITA_CREATOR_ENABLED=true$' /etc/xita/creator.env; then
+    privileged systemctl enable --now xita-creator-operator.timer
+    echo "Creator timer enabled. Production limits must be reviewed before accepting requests."
+  else
+    privileged systemctl disable --now xita-creator-operator.timer
+    echo "Creator installed with shared-wallet locks; timer remains disabled."
+  fi
 )
 
 install_transfer_api() (
