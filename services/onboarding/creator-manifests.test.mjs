@@ -10,7 +10,7 @@ const record={kind:"token-creator",phase:"deployed",logoUrl:"https://xita.xgr.ne
  categories:["DeFi"],tags:[],website:"https://example.org",links:{},contactEmail:"private@example.org",applicantRole:"founder"}};
 const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:"Creator Example",symbol:"CREA",
  initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:"0x1234567890123456789012345678901234567891",
- operator:"0x1234567890123456789012345678901234567892",txHash:"0x"+"a".repeat(64),blockNumber:12345678};
+ operator:"0x1234567890123456789012345678901234567892",txHash:"0x"+"a".repeat(64),tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12345678};
 test("verified creator deployment creates ordinary XITA bidirectional hub Draft PR manifests",()=>{
  const output=buildCreatorJoinBundle(record,proof,catalog);
  assert.equal(output.kind,"origin-xgrchain");
