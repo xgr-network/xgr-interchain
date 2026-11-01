@@ -294,3 +294,24 @@ test("CoinGecko Join scans only receipt-deployed XITA original chains and filter
  noChains.infrastructure.base.present=false;
  assert.deepEqual(joinCandidates(candidates,noChains),[]);
 });
+
+test("CoinGecko-only token on unsupported chains returns a clear 422 with supported XITA networks",async()=>{
+ const unsupported=makeCoin("polygon-only");
+ unsupported.platforms={"polygon-pos":"0x1234567890123456789012345678901234567890"};
+ unsupported.detail_platforms={"polygon-pos":{
+  contract_address:"0x1234567890123456789012345678901234567890",decimal_place:18}};
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+  sourceCatalog:()=>catalog,fetchCoin:async()=>unsupported
+ })});
+ await new Promise(done=>server.listen(0,"127.0.0.1",done));
+ try{
+  const response=await fetch("http://127.0.0.1:"+server.address().port+"/api/xita/join/preview",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({coingeckoId:"polygon-only"})});
+  const body=await response.json();
+  assert.equal(response.status,422);
+  assert.match(body.error,/currently available XITA networks/);
+  assert.match(body.error,/Base/);
+  assert.doesNotMatch(body.error,/Polygon/);
+ }finally{await new Promise(done=>server.close(done))}
+});
