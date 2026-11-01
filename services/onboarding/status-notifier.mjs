@@ -106,6 +106,7 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
   // Historical verified deployments must also receive this mail exactly once.
   if(item.kind==="token-creator"&&
      item.deployment?.status==="verified"&&
+     item.deployment?.verifiedProof&&
      !(item.sent||[]).includes("creator-deployed")){
    await lockedRecord(dir,item.id,async record=>{
     const d=record.deployment,proof=d?.verifiedProof;
