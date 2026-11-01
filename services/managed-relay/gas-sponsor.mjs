@@ -5,6 +5,7 @@ import {readFileSync} from "node:fs";
 import {Wallet,JsonRpcProvider,Contract,Transaction,keccak256,Interface} from "ethers";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
+import {assertNoUnresolvedCreatorNonce} from "./creator-wallet-guard.mjs";
 import {verifiedNativeMailboxState} from "../../apps/web/chain-finality.js";
 import {readCachedGasPrices} from "./price-cache.mjs";
 import {sponsorPoliciesForCatalog} from "./sponsor-policy.mjs";
@@ -772,6 +773,7 @@ export async function recordOvertakenSponsorObligations({pool,wallet}){
  return {recorded:r.rowCount||0};
 }
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
+ assertNoUnresolvedCreatorNonce(env);
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
  const required=k=>{
   const v=String(env[k]||"").trim();if(!v)throw Error("Missing sponsor "+k);return v;

@@ -4,6 +4,7 @@
 // signer pays the chain gas. Use the same wallet for claims and sponsorship.
 import {Wallet,JsonRpcProvider,Contract,keccak256} from "ethers";
 import {readFileSync} from "node:fs";
+import {assertNoUnresolvedCreatorNonce} from "./creator-wallet-guard.mjs";
 const ABI=[
  "function interchainFeeRecipient() view returns (address)",
  "function pendingInterchainFeesWei() view returns (uint256)",
@@ -109,6 +110,7 @@ export async function runConfiguredFeeClaims({
 }={}){
  // Separate claims from transfers and sponsorship; opt-in after deployment.
  if(env.XITA_INTERCHAIN_CLAIM_ENABLED!=="true")return {status:"disabled"};
+ assertNoUnresolvedCreatorNonce(env);
  const value=k=>{const v=String(env[k]||"").trim();if(!v)throw Error("Missing "+k);return v;};
  const wallet=new Wallet(value("XITA_INTERCHAIN_FEE_PRIVATE_KEY"));
  if(!eq(wallet.address,value("XITA_INTERCHAIN_FEE_ADDRESS")))

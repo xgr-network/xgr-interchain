@@ -1,9 +1,11 @@
-// Standalone, opt-in XGR-funded deployment service. NEVER loaded by public
-// Join HTTP server. Only root-owned /etc/xita/creator.env can supply the
-// dedicated deployment key. No signing occurs on request or email confirmation.
+// Opt-in XGR-funded token creation. Uses the EXISTING XITA fee/sponsor wallet.
+// The public Join HTTP service never gets signing credentials. Deployments
+// share /run/lock/xita-fee-wallet.lock with sponsor and fee-claim processes.
+// The sponsor worker must not allocate an XGR nonce while a durable Creator
+// signed transaction is unresolved. No signing in email confirmation.
 import {openSync,closeSync,unlinkSync} from "node:fs";
 import {join} from "node:path";
-import {Wallet,JsonRpcProvider,keccak256} from "ethers";
+import {Wallet,keccak256} from "ethers";
 import {privateLocation,listPrivate,savePrivate,readPrivate,lockedRecord} from "./private-store.mjs";
 import {loadReviewedCreatorFactory,verifyCreatorAcrossRPCs,CREATOR_VERIFY_RPC_URLS,creatorFactoryInterface} from "./creator-chain-proof.mjs";
 import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
@@ -28,6 +30,32 @@ export function creatorLimits(env){
  };
 }
 function same(a,b){return typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();}
+export function sponsorWalletCredentials(env){
+ const key=env.XITA_INTERCHAIN_FEE_PRIVATE_KEY,address=env.XITA_INTERCHAIN_FEE_ADDRESS;
+ if(!KEY.test(key||"")||!ADDR.test(address||""))
+  throw Error("Existing XITA sponsor wallet key/address must be configured in the privileged worker environment");
+ return {key,address};
+}
+// A permanently reserved sponsor nonce cannot be recovered from latest/pending
+// account nonces alone (e.g. network RPC lost its mempool). Ask the EXISTING
+// sponsor DB before signing a new Creator transaction. Read-only check.
+export async function assertSponsorJournalClear({env,poolFactory,account}){
+ if(!/^postgres(?:ql)?:\/\//.test(env.XITA_SPONSOR_DATABASE_URL||""))
+  throw Error("Shared-wallet Creator requires sponsor journal database access");
+ const make=poolFactory|| (async()=>{const {Pool}=await import("pg");return new Pool({
+  connectionString:env.XITA_SPONSOR_DATABASE_URL,max:1,
+  connectionTimeoutMillis:3000,statement_timeout:10000});});
+ const pool=await make();
+ try{
+  const rows=await pool.query({
+   text:"SELECT COUNT(*)::integer AS pending FROM xita_sponsor_grants "+
+    "WHERE chain_name='xgrchain' AND sponsor_address=$1 "+
+    "AND status IN ('reserved','submitted','needs-review')",
+   values:[account.toLowerCase()]});
+  if(Number(rows.rows?.[0]?.pending)!==0)
+   throw Error("Unresolved XGR sponsor nonce is reserved; Creator must not sign");
+ }finally{await pool.end();}
+}
 export function creatorDailyBudget(records,now=Date.now()){
  const day=new Date(now).toISOString().slice(0,10);
  const used=records.filter(x=>x.kind==="token-creator"&&x.deployment?.signedAt?.slice(0,10)===day);
@@ -56,15 +84,14 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   loadFactory=loadReviewedCreatorFactory,call,
   walletFactory=key=>new Wallet(key),
   publisher=publishDraft,loadInventory=loadCatalog,
-  verify=verifyCreatorAcrossRPCs,mainSha=localMainSha}={}){
+  verify=verifyCreatorAcrossRPCs,mainSha=localMainSha,
+  checkSponsorJournal=assertSponsorJournalClear}={}){
  const limit=creatorLimits(env);
- if(!KEY.test(env.XITA_CREATOR_OPERATOR_KEY||""))
-  throw Error("Separate operator key required; never reuse Join HTTP credentials");
+ const {key,address}=sponsorWalletCredentials(env);
  const factory=loadFactory();
- const wallet=walletFactory(env.XITA_CREATOR_OPERATOR_KEY);
- if(!ADDR.test(wallet.address||"")||
-    !same(wallet.address,env.XITA_CREATOR_OPERATOR_ADDRESS))
-  throw Error("Dedicated XGR creator operator wallet identity mismatch");
+ const wallet=walletFactory(key);
+ if(!ADDR.test(wallet.address||"")||!same(wallet.address,address))
+  throw Error("XITA sponsor wallet key/address identity mismatch");
  const urls=CREATOR_VERIFY_RPC_URLS;
  const rpc=call||((url,method,params)=>import("./creator-chain-proof.mjs").then(mod=>mod.creatorRPC(url,method,params)));
  const path=privateLocation(env),records=listPrivate(path,{now});
@@ -125,6 +152,10 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
  if(use.count>=limit.dailyCount||use.reservedWei>=limit.dailyWei)
   return {phase:"budget-exhausted"};
  await checkFactoryAcrossRPCs(factory,rpc,urls);
+ // Reconciliation/nonce ownership is shared with the sponsor worker and
+ // fee-claim service through a single systemd flock on the same wallet.
+ // DB journal disallows creator signing over a missing-mempool sponsor tx.
+ await checkSponsorJournal({env,account:wallet.address});
  const catalog=loadInventory();
  if(validateCatalog(catalog).length)throw Error("Main inventory is invalid");
  if(Object.hasOwn(catalog.assets,target.input.symbol)||
@@ -140,6 +171,9 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   rpc(url,"eth_getBalance",[wallet.address,"latest"])
  ]);
  if(BigInt(chain)!==1643n)throw Error("Creator operator RPC chain mismatch");
+ const confirmedNonce=BigInt(await rpc(url,"eth_getTransactionCount",[wallet.address,"latest"]));
+ if(BigInt(nonceHex)!==confirmedNonce)
+  return {phase:"wallet-nonce-pending"};
  const gasPrice=BigInt(gasPriceHex);
  if(gasPrice<=0n||gasPrice>limit.gasPrice)throw Error("Creator gas price cap exceeded");
  const settings=creatorSettings(target.input);
