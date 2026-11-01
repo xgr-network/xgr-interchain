@@ -54,6 +54,65 @@ have succeeded. A previous `/etc/xita/creator.env` is ignored after the
 updated service template has been installed; remove that obsolete file only
 after verifying the running unit no longer references it.
 
+## Restricted internal email canary (before enabling public registration)
+
+Use the local canary harness for the **first** Mainnet test. The operator
+prepares one private `XITA Canary` application using an **independent project
+owner wallet**, an operator-controlled mailbox and an ordinary RGB/RGBA PNG.
+The canary cannot create a transaction itself: it only sends the normal
+verification mail and creates an application that remains `pending-email`
+until the recipient follows the standard confirmation link.
+
+**Prerequisites:** the factory is receipt-verified; the shared fee/sponsor
+wallet has enough native XGR; Creator signing timer is **disabled**; and
+`XITA_CREATOR_PUBLIC_ENABLED` stays unset/false in `join.env`.
+The owner address must not be the fee/sponsor wallet. Never supply a private key.
+
+From the repo root, substitute the actual PUBLIC owner address, the canary
+mailbox and the local logo file path in the following command:
+
+```sh
+XITA_JOIN_PRIVATE_DIR=/var/lib/xita/join node services/onboarding/creator-canary-request.mjs \
+  0xYOUR_SEPARATE_OWNER_ADDRESS canary@your-domain.example /path/to/logo.png
+```
+
+The generated `/var/lib/xita/join/canary-request.json` has mode 0600.
+It contains personal contact data and must **not** be committed, pasted into
+support chats or served by nginx. If the file already exists, the preparation
+command refuses to overwrite it.
+
+To preview the record (no email or signing), launch the one-shot Node
+process with ONLY the existing Join service environment:
+
+```sh
+sudo systemd-run --quiet --wait --pipe --collect \
+  -p User=xgradmin -p Group=xgradmin \
+  -p WorkingDirectory=/home/xgradmin/repos/xgr-interchain \
+  -p EnvironmentFile=/etc/xita/join.env \
+  /usr/bin/node /home/xgradmin/repos/xgr-interchain/services/onboarding/creator-canary.mjs \
+  /var/lib/xita/join/canary-request.json
+```
+
+After reviewing the output, repeat the same command with
+`--send-confirmation` as the final argument to send **one real email**.
+The harness temporarily overrides `XITA_CREATOR_PUBLIC_ENABLED` *only in
+its loopback, single-request process*. It never changes the Join service,
+its ENV files, the public registration switch, the signer timer or the
+network. It refuses to start if the Creator timer is already active.
+The recipient completes the normal `/createtoken/confirm#...` link. That
+step will queue one immutable `deployment-queued` request; the token is
+**not created** until the operator later explicitly enables the signer.
+
+Before enabling signing, inspect the private queue using a **redacted**
+status query (only IDs, phases and symbols), check the token owner and
+daily gas caps, check the sponsor journal and pending nonce, and ensure
+only the intended canary request is queued. The worker runs under the
+shared wallet lock; never run `node creator-operator.mjs` manually in
+parallel with sponsor services. After the confirmed canary is deployed,
+verify receipt/runtime, owner and supply from both RPCs, then review the
+generated Draft Join PR. Only after success is the public flag turned on.
+No extra environment file or RPC credential is required.
+
 ## Production activation — explicit manual review gate
 
 The factory and deployment worker are **not** automatically live after a code merge.
