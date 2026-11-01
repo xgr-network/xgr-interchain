@@ -412,6 +412,17 @@ function northstarCards(model,metrics=null,period="24h"){
  const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
  const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
  const tvlChange=tvlChange24h(safeMetrics);
+ // A verified partial 24h movement is an explicit lower bound, NEVER the
+ // all-asset total. Never show a fabricated zero for unverified assets.
+ const movementTotal=safeMetrics?.totals?.movedUsd;
+ const partial=safeMetrics?.partialMovement;
+ const partialReady=!Number.isFinite(movementTotal)&&
+  typeof partial?.verifiedMinimumUsd==="number"&&
+  Number.isFinite(partial.verifiedMinimumUsd)&&partial.verifiedMinimumUsd>=0&&
+  Number.isSafeInteger(partial.verifiedAssets)&&Number.isSafeInteger(partial.requiredAssets)&&
+  partial.verifiedAssets>0&&partial.verifiedAssets<partial.requiredAssets;
+ const shownMovement=Number.isFinite(movementTotal)?movementTotal:
+  partialReady?partial.verifiedMinimumUsd:null;
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
  const activeChains=new Set((model.transferRoutes||[]).flatMap(r=>[r.source,r.destination]));
@@ -438,9 +449,12 @@ function northstarCards(model,metrics=null,period="24h"){
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
-   '<strong class="ux-ns-value">'+esc(formatUsd(safeMetrics?.totals?.movedUsd))+'</strong>'+
+   '<strong class="ux-ns-value">'+esc(formatUsd(shownMovement))+'</strong>'+
+   (partialReady?'<span class="ux-ns-tvl-last">Partial · verified minimum ('+
+    partial.verifiedAssets+' of '+partial.requiredAssets+' tokens)</span>':'')+
    '<p class="ux-small">Gross confirmed lock/unlock activity observed by the finalized indexer over 24h, priced in USD. Backfills are observations, not historical block times.</p>'+
-   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.movedUsd==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
+   '<span class="ux-ns-evidence">'+(partialReady?"Partially verified indexed evidence":
+    movementTotal==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
 }
 
 function allianceIntro(){
