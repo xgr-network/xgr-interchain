@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync} from "node:fs";
+import {mkdtempSync,rmSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {keccak256} from "ethers";
@@ -97,4 +97,14 @@ test("creator fails closed when XGR sponsor has durable unresolved nonce",async(
  const healthy=async()=>({query:async()=>({rows:[{pending:0}]}),end:async()=>{}});
  await assert.doesNotReject(()=>assertSponsorJournalClear({env:settings,poolFactory:healthy,account:operator}));
  await assert.rejects(()=>assertSponsorJournalClear({env:{...settings,XITA_SPONSOR_DATABASE_URL:""},account:operator}),/journal database/);
+});
+
+test("Creator service loads only the two existing privileged env files",()=>{
+ const unit=readFileSync(new URL("../../deploy/systemd/xita-creator-operator.service.in",import.meta.url),"utf8");
+ assert.match(unit,/EnvironmentFile=\/etc\/xita\/join\.env/);
+ assert.match(unit,/EnvironmentFile=\/etc\/xita\/interchain-fee\.env/);
+ assert.doesNotMatch(unit,/EnvironmentFile=\/etc\/xita\/creator\.env/);
+ const script=readFileSync(new URL("../../manage.sh",import.meta.url),"utf8");
+ assert.doesNotMatch(script,/Missing Creator limits \/etc\/xita\/creator\.env/);
+ assert.match(script,/XITA_CREATOR_ENABLED=true\$' \/etc\/xita\/interchain-fee\.env/);
 });
