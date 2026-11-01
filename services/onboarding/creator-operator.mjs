@@ -125,8 +125,13 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   });
   return {phase:"deployed",id:inFlight.id,txHash:verified.txHash,tokenAddress:verified.tokenAddress};
  }
- const ready=records.find(x=>x.kind==="token-creator"&&x.phase==="deployed"&&
-   x.deployment?.verifiedProof&&!x.pr);
+ // Existing Creator records can already have the former combined Join Draft PR
+ // (e.g. XITA Canary #400). Migrate their publication to a separate
+ // receipt-verified, route-free profile PR. Never merge or reuse the broad PR.
+ const ready=records.find(x=>x.kind==="token-creator"&&x.deployment?.verifiedProof&&(
+   (x.phase==="deployed"&&!x.pr)||
+   (x.phase==="pr-published"&&Number.isSafeInteger(x.pr?.number)&&
+    x.pr?.kind!=="xgrchain-profile")));
  if(ready){
   const catalog=loadInventory();
   if(validateCatalog(catalog).length)throw Error("Cannot publish Creator profile against invalid GitHub inventory");
@@ -136,9 +141,14 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   const bundle=buildCreatorProfileBundle(ready,verified,catalog);
   const pr=await publisher(bundle,{expectedMain:mainSha(),applicationId:ready.id});
   await lockedRecord(path,ready.id,async record=>{
-   if(record.phase!=="deployed"||!same(record.deployment.txHash,verified.txHash))
+   const migrating=record.phase==="pr-published"&&
+    Number.isSafeInteger(record.pr?.number)&&record.pr?.kind!=="xgrchain-profile";
+   if((record.phase!=="deployed"&&!migrating)||
+      !same(record.deployment.txHash,verified.txHash))
     throw Error("Creator profile application state changed");
-   record.assetId=bundle.assetId;record.phase="pr-published";record.pr=pr;
+   if(migrating)record.supersededInterchainPr=record.pr;
+   record.assetId=bundle.assetId;record.phase="pr-published";
+   record.pr={...pr,kind:"xgrchain-profile"};
    // The project's second email is the actual public token profile link,
    // not a premature PR link while the profile is still under review.
    savePrivate(path,record);
