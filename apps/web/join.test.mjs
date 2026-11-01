@@ -84,8 +84,46 @@ test("Join landing has two equally prominent paths and integration is progressiv
  assert.match(initial,/aria-expanded="false"/);
  assert.doesNotMatch(initial,/id="ja-application-form"/);
  const expanded=joinMarkup(catalog,draft(),"",false,null,{creatorAvailable:true,mode:"integrate"});
- assert.match(expanded,/aria-expanded="true"/);
+ assert.doesNotMatch(expanded,/class="ja-entry-grid"/,"choice cards disappear in the integration step");
+ assert.doesNotMatch(expanded,/href="\/createtoken"/,"the Create Token choice is not repeated");
+ assert.doesNotMatch(expanded,/data-join-entry="integrate"/);
+ assert.match(expanded,/data-join-entry="back"/);
  assert.match(expanded,/id="ja-integration-panel"/);
  assert.match(expanded,/id="ja-application-form"/);
  assert.doesNotMatch(expanded,/ja-creator-entry/);
+});
+
+test("CoinGecko matching is explained using only receipt-deployed XITA chains",()=>{
+ const d={...draft(),coingeckoId:"example",canonicalChain:"base"};
+ const matching=[{chain:"base",label:"Base",contract:"0x1234567890123456789012345678901234567890"}];
+ const profile={name:"Example",symbol:"EXMP",shortDescription:"A verified token description."};
+ const html=joinMarkup(catalog,d,"",false,{choices:matching,profile},{mode:"integrate"});
+ assert.match(html,/currently available XITA networks/);
+ assert.match(html,/Arbitrum/);
+ assert.match(html,/BNB Smart Chain/);
+ assert.match(html,/Optimism/);
+ assert.doesNotMatch(html,/Polygon/);
+ assert.match(html,/CoinGecko contract matches on Base/);
+ assert.match(html,/Original blockchain selected automatically/);
+ assert.doesNotMatch(html,/data-join="canonicalChain"/);
+ assert.deepEqual(validateStep(d,1,catalog,{choices:matching}),[]);
+ assert.deepEqual(validateStep({...d,canonicalChain:"polygon"},1,catalog,{choices:matching}),
+  ["Original blockchain"]);
+ const many=joinMarkup(catalog,d,"",false,{choices:[...matching,
+  {chain:"arbitrum",label:"Arbitrum",contract:"0x2345678901234567890123456789012345678901"}],
+  profile},{mode:"integrate"});
+ assert.match(many,/Choose the original blockchain from these supported networks/);
+ assert.match(many,/data-join="canonicalChain"/);
+ assert.doesNotMatch(many,/value="polygon"/);
+});
+test("Join integrates in an exclusive screen with a functional Back action",()=>{
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ assert.match(app,/entry\.dataset\.joinEntry==="integrate"/);
+ assert.match(app,/entry\.dataset\.joinEntry==="back"/);
+ assert.match(app,/joinState\.mode=null;/);
+ const landing=joinMarkup(catalog,draft(),"",false,null,{creatorAvailable:true,mode:null});
+ const form=joinMarkup(catalog,draft(),"",false,null,{creatorAvailable:true,mode:"integrate"});
+ assert.equal((landing.match(/ja-entry-card/g)||[]).length>=2,true);
+ assert.equal((form.match(/ja-entry-card/g)||[]).length,0);
+ assert.match(form,/Back to options/);
 });
