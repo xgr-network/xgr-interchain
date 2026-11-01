@@ -1624,6 +1624,13 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 .ja-onepage .ja-entry-existing a{color:#c9e3fd;text-decoration:underline;text-underline-offset:3px}
 .ja-onepage .ja-integration-panel{scroll-margin-top:94px}
 .ja-onepage .ja-integration-panel:empty{display:none}
+.ja-onepage .ja-join-back{margin:4px 0 18px}
+.ja-onepage .ja-join-back .ux-outline-button{display:inline-flex;align-items:center;min-height:42px;font-size:12px}
+.ja-onepage .ja-chain-hint,.ja-onepage .ja-chain-match{
+ font:12px/1.65 var(--xita-type);color:#b5cee8;margin:15px 0
+}
+.ja-onepage .ja-chain-match{color:#c4e8ce;margin-top:6px}
+
 @media(max-width:660px){
  .ja-onepage .ja-entry-grid{grid-template-columns:minmax(0,1fr);gap:13px}
  .ja-onepage .ja-entry-card{min-height:0;padding:22px;gap:9px}
