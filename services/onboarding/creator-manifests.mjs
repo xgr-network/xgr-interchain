@@ -17,7 +17,7 @@ export function buildCreatorJoinBundle(record,proof,catalog){
   throw Error("Verified XGR token creation is required before Join");
  const token=String(proof.tokenAddress||"").toLowerCase(),owner=String(a.ownerAddress||"").toLowerCase();
  if(!ADDRESS.test(token)||/^0x0{40}$/.test(token)||!ADDRESS.test(owner)||
-    /^0x0{40}$/.test(owner)||!TX.test(proof.txHash||"")||
+    /^0x0{40}$/.test(owner)||!TX.test(proof.txHash||"")||!TX.test(proof.tokenCodeHash||"")||
     String(proof.ownerAddress||"").toLowerCase()!==owner||
     String(proof.name)!==a.name||String(proof.symbol)!==a.symbol||
     String(proof.initialSupplyBaseUnits)!==cfg.initialSupplyBaseUnits||
@@ -47,6 +47,7 @@ export function buildCreatorJoinBundle(record,proof,catalog){
   bridgeModel:"lock-mint-burn-unlock",assetId,
   creation:{kind:"xgrchain-creator-v1",factory:proof.factory.toLowerCase(),operator:proof.operator.toLowerCase(),
    ownerAddress:owner,transactionHash:proof.txHash.toLowerCase(),blockNumber:proof.blockNumber,
+   tokenRuntimeCodeHash:proof.tokenCodeHash,
    tokenType:cfg.tokenType,decimals:cfg.decimals,maxSupplyBaseUnits:cfg.maxSupplyBaseUnits,
    minterAddress:cfg.minterAddress,permit:cfg.permit},
   notes:"Verified factory-created XGRChain original; Join requires independent PR review and route deployments."};

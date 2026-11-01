@@ -26,7 +26,7 @@ export function loadReviewedCreatorFactory(repo=root){
  const f=JSON.parse(readFileSync(path,"utf8"));
  if(f.schemaVersion!==1||f.kind!=="xita-creator-factory-v1"||f.chainId!==1643||
   !ADDRESS.test(f.address||"")||!HASH.test(f.runtimeCodeKeccak256||"")||
-  !HASH.test(f.tokenRuntimeCodeKeccak256||"")||!HASH.test(f.deploymentTxHash||"")||
+  !HASH.test(f.deploymentTxHash||"")||
   f.status!=="receipt-verified")throw Error("Unapproved or missing creator factory receipt");
  return f;
 }
@@ -108,8 +108,10 @@ export async function verifyCreatorReceiptOnRPC({rpc,input,txHash,factory,confir
     !same(setup.args.minter,cfg.minterAddress))
   throw Error("Created token configuration event mismatch");
  const code=await rpc("eth_getCode",[token,"latest"]);
- if(code==="0x"||!same(keccak256(code),factory.tokenRuntimeCodeKeccak256)||
-    !same(keccak256(code),setup.args.runtimeCodeHash))
+ // EIP712 includes token-specific immutable data; one globally pinned
+ // token codehash cannot represent all names and deployed addresses.
+ // Factory code itself is pinned; each TokenConfigured event pins its child.
+ if(code==="0x"||!same(keccak256(code),setup.args.runtimeCodeHash))
   throw Error("Created ERC20 runtime differs from audited token template");
  const deployedAt="0x"+block.toString(16);
  // Snapshot at creation: project owners may legitimately transfer tokens later.
@@ -133,7 +135,7 @@ export async function verifyCreatorReceiptOnRPC({rpc,input,txHash,factory,confir
    initialSupplyBaseUnits:cfg.initialSupplyBaseUnits,tokenType:cfg.tokenTypeId,
    decimals:cfg.decimals,maxSupplyBaseUnits:cfg.maxSupplyBaseUnits,
    permit:cfg.permit,minterAddress:cfg.minterAddress,blockNumber:block,
-   factoryCodeHash:factory.runtimeCodeKeccak256,tokenCodeHash:factory.tokenRuntimeCodeKeccak256};
+   factoryCodeHash:factory.runtimeCodeKeccak256,tokenCodeHash:keccak256(code)};
 }
 export async function verifyCreatorAcrossRPCs({input,txHash,factory,urls,call=creatorRPC}){
  if(!Array.isArray(urls)||urls.length<2||new Set(urls).size!==urls.length)

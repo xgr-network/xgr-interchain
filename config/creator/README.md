@@ -12,7 +12,7 @@
 ## Production activation — explicit manual review gate
 
 The factory and deployment worker are **not** automatically live after a code merge.
-- Audit token/factory contracts and bytecode, then deploy the factory once with a reviewed operator transaction. Independently verify deployment Tx, runtime code and token-template runtime code on XGR Mainnet.
+- Audit token/factory contracts and bytecode, then deploy the factory once with a reviewed operator transaction. Independently verify deployment Tx, runtime code and token-specific runtime code on XGR Mainnet.
 - Add `config/creator/factory.json` via reviewed GitHub PR (never supplied by applicants), with fields below. It must be in `main` before the creator worker can sign.
 - Install a dedicated, minimally funded operator wallet (not a validator/service/treasury key); store its 32-byte private key only in root-owned `/etc/xita/creator.env` (mode 0600). NEVER put it in Join HTTP environment, Git, logs or browsers.
 - Set `XITA_CREATOR_ENABLED=true`, `XITA_CREATOR_OPERATOR_KEY`, `XITA_CREATOR_OPERATOR_ADDRESS`, `XITA_CREATOR_DAILY_LIMIT`, `XITA_CREATOR_DAILY_BUDGET_WEI`, `XITA_CREATOR_GAS_LIMIT_CAP`, `XITA_CREATOR_GAS_PRICE_CAP_WEI`, `XITA_CREATOR_BROADCAST_RPC` as reviewed hard caps. Also provide `XITA_JOIN_PRIVATE_DIR` and GitHub writer credentials in worker service environment. The Join HTTP service must **not** use creator.env.
@@ -28,7 +28,6 @@ Example manifest schema (not an active deployed address):
   "chainId": 1643,
   "address": "0x...40 hex chars...",
   "runtimeCodeKeccak256": "0x...64 hex chars...",
-  "tokenRuntimeCodeKeccak256": "0x...64 hex chars...",
   "deploymentTxHash": "0x...64 hex chars..."
 }
 ```

@@ -61,6 +61,7 @@ export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSy
    if(proof.tokenAddress?.toLowerCase()!==asset.canonical.tokenAddress?.toLowerCase()||
       proof.operator?.toLowerCase()!==asset.creation.operator?.toLowerCase()||
       proof.blockNumber!==asset.creation.blockNumber||
+      proof.tokenCodeHash?.toLowerCase()!==asset.creation.tokenRuntimeCodeHash?.toLowerCase()||
       proof.initialSupplyBaseUnits!==profile.supply.total||
       proof.maxSupplyBaseUnits!==profile.supply.max||
       proof.decimals!==asset.decimals||
