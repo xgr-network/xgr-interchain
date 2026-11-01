@@ -12,7 +12,7 @@ const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:"Creator Ex
  initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:"0x1234567890123456789012345678901234567891",
  operator:"0x1234567890123456789012345678901234567892",txHash:"0x"+"a".repeat(64),tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12345678};
 test("verified creator deployment creates a standalone XGR token profile with NO Interchain routes",()=>{
- const output=buildCreatorJoinBundle(record,proof,catalog);
+ const output=buildCreatorProfileBundle(record,proof,catalog);
  assert.equal(output.kind,"xgrchain-profile");
  const asset=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/asset.json"))[1]);
  const routes=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/routes.json"))[1]);
@@ -32,11 +32,11 @@ test("verified creator deployment creates a standalone XGR token profile with NO
  assert.ok(!JSON.stringify(output.files).includes(record.input.contactEmail));
 });
 test("cannot create PR from unverified, forged, or still queued creator receipt",()=>{
- assert.throws(()=>buildCreatorJoinBundle({...record,phase:"deployment-queued"},proof,catalog),/Verified/);
- assert.throws(()=>buildCreatorJoinBundle(record,{...proof,ownerAddress:"0x"+"b".repeat(40)},catalog),/proof/);
- assert.throws(()=>buildCreatorJoinBundle(record,{...proof,tokenAddress:"0x"+"0".repeat(40)},catalog),/proof/);
- assert.throws(()=>buildCreatorJoinBundle(record,{...proof,initialSupplyBaseUnits:"1"},catalog),/proof/);
- assert.throws(()=>buildCreatorJoinBundle(record,proof,{...catalog,assets:{...catalog.assets,CREA:catalog.assets.XGR}}),/Duplicate/);
+ assert.throws(()=>buildCreatorProfileBundle({...record,phase:"deployment-queued"},proof,catalog),/Verified/);
+ assert.throws(()=>buildCreatorProfileBundle(record,{...proof,ownerAddress:"0x"+"b".repeat(40)},catalog),/proof/);
+ assert.throws(()=>buildCreatorProfileBundle(record,{...proof,tokenAddress:"0x"+"0".repeat(40)},catalog),/proof/);
+ assert.throws(()=>buildCreatorProfileBundle(record,{...proof,initialSupplyBaseUnits:"1"},catalog),/proof/);
+ assert.throws(()=>buildCreatorProfileBundle(record,proof,{...catalog,assets:{...catalog.assets,CREA:catalog.assets.XGR}}),/Duplicate/);
 });
 
 test("mintable creator PR publishes exact on-chain cap, minter, decimals and permit",()=>{
@@ -45,7 +45,7 @@ test("mintable creator PR publishes exact on-chain cap, minter, decimals and per
   initialSupply:"10000",maxSupply:"25000",minterAddress:minter,permit:true}};
  const checked={...proof,initialSupplyBaseUnits:"10000000000",maxSupplyBaseUnits:"25000000000",
   tokenType:2,decimals:6,minterAddress:minter,permit:true};
- const output=buildCreatorJoinBundle(custom,checked,catalog);
+ const output=buildCreatorProfileBundle(custom,checked,catalog);
  const asset=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/asset.json"))[1]);
  const profile=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/metadata.json"))[1]);
  assert.equal(asset.decimals,6);
@@ -56,14 +56,14 @@ test("mintable creator PR publishes exact on-chain cap, minter, decimals and per
  assert.equal(profile.supply.total,checked.initialSupplyBaseUnits);
  assert.equal(profile.supply.max,checked.maxSupplyBaseUnits);
  assert.deepEqual(validateCatalog(JSON.parse(output.files["apps/web/catalog.json"])),[]);
- assert.throws(()=>buildCreatorJoinBundle(custom,{...checked,maxSupplyBaseUnits:"25000000001"},catalog),/proof/);
+ assert.throws(()=>buildCreatorProfileBundle(custom,{...checked,maxSupplyBaseUnits:"25000000001"},catalog),/proof/);
 });
 
 test("email-verified multiline descriptions survive receipt-backed Join PR creation without reducing validation",()=>{
  const original={...record,input:{...record.input,
   shortDescription:"An XGRChain-native test token.\nCreated using the XITA Creator.",
   description:"XITA Canary demonstrates real ERC-20 creation.\n\nThis second paragraph explains the approved supply, owner and future Interchain expansion."}};
- const bundle=buildCreatorJoinBundle(original,proof,catalog);
+ const bundle=buildCreatorProfileBundle(original,proof,catalog);
  const profile=JSON.parse(Object.entries(bundle.files).find(([path])=>path.endsWith("/metadata.json"))[1]);
  assert.equal(profile.shortDescription,original.input.shortDescription);
  assert.equal(profile.description,original.input.description);
@@ -72,7 +72,7 @@ test("email-verified multiline descriptions survive receipt-backed Join PR creat
  for(const bad of ["Markup <script>alert(1)</script>\nAnother line of otherwise legitimate text.",
    "A string with control character \u0007 is unsafe.",
    "Invalid tab\tinside prose."]){
-  assert.throws(()=>buildCreatorJoinBundle({...original,input:{...original.input,description:bad}},proof,catalog),/Invalid public profile fields/);
+  assert.throws(()=>buildCreatorProfileBundle({...original,input:{...original.input,description:bad}},proof,catalog),/Invalid public profile fields/);
  }
 });
 
