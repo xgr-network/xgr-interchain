@@ -14,13 +14,13 @@ const executable=browsers.find(name=>{
  const result=spawnSync(name,["--version"],{encoding:"utf8",timeout:3000});
  return result.status===0;
 });
-function visit(browser,url){
+function visit(browser,url,{mobile=false}={}){
  return new Promise((ok,fail)=>{
   // This smoke test verifies boot/navigation; the separate 3D snapshot tests
   // validate WebGL. Do not drive a perpetual software-GPU render loop here.
   const args=["--headless","--no-sandbox","--disable-gpu","--disable-webgl","--disable-dev-shm-usage",
     "--disable-extensions","--no-first-run","--disable-background-networking",
-    "--virtual-time-budget=5000","--dump-dom",url];
+    "--virtual-time-budget=5000",...(mobile?["--window-size=390,844"]:[]),"--dump-dom",url];
   const child=spawn(browser,args,{stdio:["ignore","pipe","pipe"]});
   let output="",errors="";
   const timer=setTimeout(()=>{child.kill();fail(new Error("Chromium did not render page within 18 seconds: "+errors.slice(-1000)))},18000);
@@ -174,6 +174,13 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
     assert.match(html,/data-renderer="(webgl|fallback)"/,path+" did not initialize WebGL or graceful fallback");
    }
   }
+  const mobile=await visit(executable,origin+"/",{mobile:true});
+  assert.match(mobile,/data-mobile-universe="static"/,
+   "Phone viewport must never initialize the interactive WebGL Universe");
+  assert.match(mobile,/data-renderer="static"/,
+   "Mobile Universe is a static illustration, not a WebGL fallback");
+  assert.match(mobile,/ux-ns-mobile-art/,
+   "Mobile hero must include a decorative, noninteractive visual");
   const joinProbe=await visit(executable,origin+"/join?test-interaction=1");
   assert.match(joinProbe,/data-join-validation="pass"/,"Submit must show inline field errors for invalid inputs");
   assert.match(joinProbe,/data-join-advance="pass"/,"Single-page sections must persist after valid inputs");
