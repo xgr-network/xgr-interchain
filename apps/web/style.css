@@ -1706,3 +1706,6 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 }
 .ux-token-creator .tc-submitted-receipt h1{font-size:clamp(33px,5vw,58px)}
 .ux-token-creator .tc-submitted-receipt .ux-lead{overflow-wrap:anywhere}
+
+/* Long EVM addresses remain readable on narrow token profile cards. */
+.ux-break-anywhere{overflow-wrap:anywhere;word-break:break-word;text-align:right}
