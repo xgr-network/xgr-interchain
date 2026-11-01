@@ -1621,7 +1621,7 @@ el.addEventListener("change",event=>{
      (raw.charCodeAt(offset+1)<<16)+(raw.charCodeAt(offset+2)<<8)+
      raw.charCodeAt(offset+3))>>>0;
     const signature=raw.slice(0,8);
-    if(signature==="\\x89PNG\\r\\n\\x1a\\n"&&raw.length>=33&&
+    if(signature==="\x89PNG\r\n\x1a\n"&&raw.length>=33&&
        raw.slice(12,16)==="IHDR"&&raw.charCodeAt(24)===8&&
        [2,6].includes(raw.charCodeAt(25))&&
        u32(16)>=1&&u32(16)<=512&&u32(20)>=1&&u32(20)<=512){
