@@ -775,3 +775,17 @@ test("live TVL without an evidence timestamp never borrows an old history timest
  assert.equal(tvlChange24h({asOf:"2026-10-22T10:00:00Z",totals:{lockedUsd:120},history}),20);
  assert.equal(tvlChange24h({totals:{lockedUsd:null},history}),5);
 });
+
+test("mobile Northstar uses a static illustration without changing desktop 3D stage",()=>{
+ const model=buildExperienceModel(catalog,()=>false);
+ const html=renderDashboard(model,{},"not-deployed");
+ assert.match(html,/ux-ns-mobile-art" aria-hidden="true"/);
+ assert.match(html,/<canvas class="ux-3d-canvas"/);
+ const css=readFileSync(new URL("./style.css",import.meta.url),"utf8");
+ assert.match(css,/@media \(max-width:700px\)/);
+ assert.match(css,/\.ux-ns-stage \.ux-3d-canvas,/);
+ assert.match(css,/url\("\/subpage-planet\.svg"\)/);
+ const source=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ assert.match(source,/if\(host&&!mobileUniverse\.matches\)cosmos=mountUniverse3D/);
+ assert.match(source,/host\.dataset\.mobileUniverse="static"/);
+});
