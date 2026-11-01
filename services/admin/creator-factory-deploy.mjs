@@ -88,7 +88,8 @@ export async function verifyCreatorFactoryReceipt({rpc=rpcCall,urls,txHash,init,
 }
 export function creatorFactoryDeployment({root,stateDir,main=assertCurrentMain,
  rpc=rpcCall,publish,artifactForCommit=commit=>creatorFactoryArtifact(
-  readSealedArtifacts(root,commit).raws.XITAStarterTokenCreator)}){
+  readSealedArtifacts(root,commit).raws.XITAStarterTokenCreator),
+ factoryInMain=()=>localFactory(root)}){
  let busy=false;
  const atomic=async fn=>{if(busy)throw Error("Factory operation already in progress");
   busy=true;try{return await fn()}finally{busy=false}};
@@ -107,7 +108,7 @@ export function creatorFactoryDeployment({root,stateDir,main=assertCurrentMain,
   return {commit,urls,artifact:build(commit)};
  };
  async function status(){
-  const last=readJournal(stateDir),documented=localFactory(root);
+  const last=readJournal(stateDir),documented=factoryInMain();
   return {phase:documented?"documented":last?.phase||"ready",
    documented,txHash:last?.txHash||null,pr:last?.pr||null,
    createdAt:last?.createdAt||null,wallet:last?.wallet||null};
@@ -116,7 +117,7 @@ export function creatorFactoryDeployment({root,stateDir,main=assertCurrentMain,
   return atomic(async()=>{
    if(!A.test(wallet||""))throw Error("Connect a valid EVM wallet");
    const {commit,urls,artifact}=await check();
-   if(localFactory(root))throw Error("Creator Factory already deployed in main");
+   if(factoryInMain())throw Error("Creator Factory already deployed in main");
    const last=readJournal(stateDir);
    if(last&&!["cancelled"].includes(last.phase))
     throw Error("Existing Creator Factory intent must be reconciled, never sign a second deployment");
@@ -168,7 +169,7 @@ export function creatorFactoryDeployment({root,stateDir,main=assertCurrentMain,
    const row=readJournal(stateDir);
    if(!row||!["submitted","verified","pr-created"].includes(row.phase))
     throw Error("No Creator Factory transaction awaiting reconciliation");
-   const current=await check(),documented=localFactory(root);
+   const current=await check(),documented=factoryInMain();
    if(documented)return {phase:"documented",documented};
    if(!same(current.artifact.runtimeHash,row.buildHash)||
       !same(current.artifact.init,row.transaction.data))
