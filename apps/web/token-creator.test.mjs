@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {creatorDraft,creatorPreview,validateCreatorDraft,validateCreatorApplication,creatorRegistrationPayload,tokenCreatorMarkup,creatorConfirmMarkup,CREATOR_STATUS}
+import {creatorDraft,creatorPreview,validateCreatorDraft,validateCreatorApplication,creatorRegistrationPayload,tokenCreatorMarkup,creatorSubmittedMarkup,creatorConfirmMarkup,CREATOR_STATUS}
  from "./token-creator.js";
 
 test("creator preview uses 18 precise decimals, full fixed supply and no admin privileges",()=>{
@@ -17,13 +17,13 @@ test("creator preview uses 18 precise decimals, full fixed supply and no admin p
  assert.equal(creatorPreview({...d,initialSupply:"1000000000000000000"}).initialSupplyBaseUnits,
   "1000000000000000000000000000000000000");
 });
-test("invalid or unsafe names, symbols, supply values and acknowledgments are rejected",()=>{
+test("invalid or unsafe names, symbols, supplies and owner addresses are rejected",()=>{
  const d={name:"Example Token",symbol:"EXM",initialSupply:"1",ownerAddress:"0x1234567890123456789012345678901234567890",accepted:true};
  for(const bad of [
   {...d,name:"A"},{...d,name:"<script>alert(1)</script>"},
   {...d,symbol:"lower"},{...d,symbol:"2USD"},{...d,symbol:"EXM_TOO_LONG"},
   {...d,initialSupply:"0"},{...d,initialSupply:"1.5"},
-  {...d,initialSupply:"9999999999999999999"},{...d,ownerAddress:"0x"+"0".repeat(40)},{...d,accepted:false}
+  {...d,initialSupply:"9999999999999999999"},{...d,ownerAddress:"0x"+"0".repeat(40)}
  ])assert.ok(validateCreatorDraft(bad).length>0);
 });
 test("page is directly routable yet absent from navigation, with no unverified deploy request",()=>{
@@ -54,7 +54,7 @@ test("creator enrollment collects private email, complete Join project metadata 
  assert.deepEqual(payload.categories,["DeFi"]);
  assert.equal(payload.logoPngBase64,"aGVsbG8=");
  assert.equal(payload.contactEmail,"contact@example.org");
- assert.equal(payload.confirmed,true);
+ assert.equal(payload.confirmed,undefined);
  assert.equal(payload.ownerAddress,d.ownerAddress);
  const html=tokenCreatorMarkup(d);
  assert.match(html,/data-creator-logo/);
@@ -63,6 +63,10 @@ test("creator enrollment collects private email, complete Join project metadata 
  assert.match(html,/data-creator="contactEmail"/);
  assert.match(html,/data-creator="description"/);
  assert.match(html,/id="tc-logo-preview"/);
+ assert.doesNotMatch(html,/data-creator="accepted"|data-creator="projectConfirmed"|data-creator="applicantRole"|Your relationship/);
+ assert.match(html,/id="tc-registration-status"[^>]*hidden/);
+ assert.match(creatorSubmittedMarkup({email:"contact@example.org"}),/Check your email/);
+ assert.match(creatorSubmittedMarkup({email:"contact@example.org"}),/contact@example.org/);
  assert.match(creatorConfirmMarkup({phase:"email-verified",
   logoUrl:"https://xita.xgr.network/token-logos/"+"a".repeat(64)+".png"}),/Email verified/);
  assert.deepEqual(validateCreatorApplication({...d,logoPngBase64:""}).includes("Upload a PNG logo (max 128 KB)"),true);
@@ -108,4 +112,18 @@ test("creator defaults are safe; advanced section stays collapsed without explic
  assert.equal(creatorPreview(sample).tokenType,"burnable");
  assert.equal(creatorPreview(sample).maxSupply,"1000");
  assert.equal(creatorPreview({...sample,tokenType:"mintable",maxSupply:"2000"}).maxSupply,"2000");
+});
+
+test("Creator submission navigates to a dedicated confirmation receipt and visible errors",()=>{
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ assert.match(app,/p==="\/createtoken\/submitted"\?creatorSubmittedMarkup/);
+ assert.match(app,/history\.pushState\(null,"","\/createtoken\/submitted"\)/);
+ assert.match(app,/status\.scrollIntoView\(\{behavior:"smooth",block:"center"\}\)/);
+ const d={...creatorDraft(),name:"Test Token",symbol:"TST",initialSupply:"1000",
+  ownerAddress:"0x1234567890123456789012345678901234567890",
+  shortDescription:"Example decentralized token.",description:"A community project exploring wallet owned tokens on XGRChain.",
+  website:"https://example.org",category:"DeFi",contactEmail:"contact@example.org",logoPngBase64:"aGVsbG8="};
+ assert.deepEqual(validateCreatorApplication(d),[]);
+ assert.equal(creatorRegistrationPayload(d).applicantRole,undefined);
+ assert.equal(creatorRegistrationPayload(d).confirmed,undefined);
 });
