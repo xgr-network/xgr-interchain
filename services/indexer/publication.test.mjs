@@ -2,6 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {derivedVisibility} from "./publication.mjs";
 import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
+
+const creatorOrigin=()=>{
+ const e=deployedFixture("XTK","xgrchain");
+ e.metadata.canonical={chain:"xgrchain",tokenAddress:"0x1234567890123456789012345678901234567890"};
+ e.metadata.creation={kind:"xgrchain-creator-v1",
+  ownerAddress:"0x1234567890123456789012345678901234567890",factory:"0x2234567890123456789012345678901234567890",
+  transactionHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",tokenRuntimeCodeHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",blockNumber:123};
+ e.profile={name:"XGR Created Token",slug:"xgr-created-token",market:{priceSource:"none",coingeckoId:null}};
+ e.deployment.present=false;
+ return e;
+};
+
 const NOW=Date.parse("2026-10-11T12:00:00Z");
 const good=(lockedUsd,asset="ABC")=>({assetId:deployedFixture(asset).metadata.assetId,
  lockedUsd:String(lockedUsd),verified:true,complete:true,valuationVerified:true,
@@ -49,4 +61,15 @@ test("one complete route publishes even if future spokes remain planned",()=>{
 test("invalid publication policy does not silently remove TVL restrictions",()=>{
  const c=catalog(-1);
  assert.equal(derivedVisibility(c,{ABC:good(50)},{now:NOW}).assets.ABC.status,"unknown");
+});
+test("approved XGR creator origin stays published without DB, TVL or route receipts",()=>{
+ const c={assets:{XTK:creatorOrigin()},
+  publication:{schemaVersion:1,kind:"xita-publication-policy",minimumLockedUsd:null,maxEvidenceAgeSeconds:900}};
+ const row=derivedVisibility(c,null,{now:NOW}).assets.XTK;
+ assert.equal(row.status,"public");
+ assert.equal(row.deployment,"origin-verified");
+ assert.equal(row.lockedUsd,null);
+ const invalid=structuredClone(c);
+ delete invalid.assets.XTK.metadata.creation;
+ assert.equal(derivedVisibility(invalid,null,{now:NOW}).assets.XTK.status,"prospect");
 });

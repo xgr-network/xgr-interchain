@@ -2,6 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {verifiedMetrics,rankAssets,buildLeaderboardRows,formatUsd} from "./leaderboard-data.js";
 import {deployedFixture} from "./deployed-test-fixture.mjs";
+
+const creatorOrigin=()=>{
+ const e=deployedFixture("XTK","xgrchain");
+ e.metadata.canonical={chain:"xgrchain",tokenAddress:"0x1234567890123456789012345678901234567890"};
+ e.metadata.creation={kind:"xgrchain-creator-v1",
+  ownerAddress:"0x1234567890123456789012345678901234567890",factory:"0x2234567890123456789012345678901234567890",
+  transactionHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",tokenRuntimeCodeHash:"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",blockNumber:123};
+ e.profile={name:"XGR Created Token",slug:"xgr-created-token",market:{priceSource:"none",coingeckoId:null}};
+ e.deployment.present=false;
+ return e;
+};
+
 const proof={
  schemaVersion:1,kind:"xita-asset-metrics-v1",
  assets:{XGR:{
@@ -50,4 +62,18 @@ test("only DB-qualified deployed tokens appear; no fabricated metrics",()=>{
  assert.equal(rows[0].lockedUsd,null);assert.equal(rows[0].marketCapUsd,null);
  assert.deepEqual(buildLeaderboardRows(catalog,null),[]);
  assert.equal(formatUsd(null),"—");
+});
+
+test("unknown XGR Creator market cap is $0 display placeholder without inventing a verified metric",()=>{
+ const c={assets:{XTK:creatorOrigin()},publication:{schemaVersion:1,kind:"xita-publication-policy",minimumLockedUsd:null,maxEvidenceAgeSeconds:900}};
+ const rows=buildLeaderboardRows(c,null);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].marketCapUsd,0);
+ assert.equal(rows[0].marketCapPlaceholder,true);
+ assert.equal(rows[0].lockedUsd,null);
+ assert.equal(rows[0].movedUsd,null);
+ assert.equal(verifiedMetrics(null,"XTK"),null);
+ const ordinary=structuredClone(c);
+ delete ordinary.assets.XTK.metadata.creation;
+ assert.deepEqual(buildLeaderboardRows(ordinary,null),[]);
 });
