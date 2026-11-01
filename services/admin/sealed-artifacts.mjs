@@ -6,7 +6,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {checkedLocalMain} from "./main-gate.mjs";
 
-export const NAMES=Object.freeze(["XETANativeRouterDeployer","XETASyntheticRouterDeployer","XETACollateralRouterDeployer","XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XITADirectBLSISM","XETATokenFactoryV315","XGRILNRegistryV315","XETAGuardedNativeWarpRouter","XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315","ILNGateway","XGRILNFeeVault","XITADirectTransport","Mailbox","ProtocolFee","XITAExecutionGateway"]);
+export const NAMES=Object.freeze(["XETANativeRouterDeployer","XETASyntheticRouterDeployer","XETACollateralRouterDeployer","XGRInterchainBLSVerifier","XGRInterchainValidatorRegistryV3","XITADirectBLSISM","XETATokenFactoryV315","XGRILNRegistryV315","XETAGuardedNativeWarpRouter","XETAGuardedSyntheticWarpRouter","XETAGuardedCollateralWarpRouterV315","ILNGateway","XGRILNFeeVault","XITADirectTransport","Mailbox","ProtocolFee","XITAExecutionGateway","XITAStarterTokenCreator"]);
 const SHA=/^[a-f0-9]{40}$/i;
 const HASH=/^[a-f0-9]{64}$/i;
 const STORE="runtime-state/xita-compiled-artifacts";

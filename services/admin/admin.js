@@ -819,6 +819,7 @@ async function loadMainWorkqueue(){
   try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];eligibleAssetRoutes=tasks.eligibleRoutes||[];}
   catch{assetTasks=[];eligibleAssetRoutes=[];}
   renderAssets();renderInfrastructure();
+  void updateCreatorFactory();
   // Read-only evidence status lives independently from incomplete GitHub config.
   await Promise.all((data.infrastructure||[]).map(async chain=>{
    try{
@@ -946,6 +947,75 @@ el("connect-wallet").addEventListener("click",async()=>{
   currentWallet=state;await refreshWalletBalances();
  }catch(e){el("wallet-status").textContent=e.message;}
 });
+let creatorFactoryBusy=false;
+async function updateCreatorFactory(){
+ const status=el("creator-factory-status"),details=el("creator-factory-details");
+ try{
+  const d=await get("/admin/api/creator-factory/status");
+  const phase=d.phase||"ready",tx=d.txHash;
+  status.textContent=({
+   ready:"Factory noch nicht deployed",prepared:"Wallet-Signatur vorbereitet – nichts doppelt senden",
+   submitted:"Transaktion gesendet – Receipt prüfen",verified:"Contract verifiziert – GitHub-PR ausstehend",
+   "pr-created":"Factory bestätigt – GitHub-PR prüfen und mergen",
+   documented:"Factory in GitHub main dokumentiert",cancelled:"Vorbereitung abgebrochen"})[phase]||phase;
+  details.textContent=(d.documented?.address?"Factory: "+d.documented.address+" · ":"")+
+   (tx?"TX: "+tx+" · ":"")+(d.pr?.url?"PR: "+d.pr.url:"");
+  el("creator-factory-deploy").disabled=creatorFactoryBusy||phase!=="ready"&&phase!=="cancelled"||workqueue?.readOnly!==false;
+  el("creator-factory-check").disabled=creatorFactoryBusy||!["submitted","verified","pr-created"].includes(phase);
+  el("creator-factory-recover").disabled=creatorFactoryBusy||phase!=="prepared";
+ }catch(error){
+  status.textContent="Factory-Status nicht verfügbar: "+error.message;
+  el("creator-factory-deploy").disabled=true;
+ }
+}
+async function runCreatorFactory(action){
+ if(creatorFactoryBusy)return;
+ creatorFactoryBusy=true;
+ const status=el("creator-factory-status"),btn=el("creator-factory-deploy");
+ btn.disabled=true;
+ try{
+  if(action==="deploy"){
+   if(workqueue?.readOnly!==false)throw Error("GitHub-main-Checkout ist nicht aktuell");
+   let wallet=await currentWalletState();
+   if(!wallet)throw Error("Bitte zuerst MetaMask / Browser-Wallet verbinden");
+   const chain=workqueue.inventory.chains.find(c=>c.name==="xgrchain");
+   if(!chain||chain.chainId!==1643)throw Error("XGRChain fehlt in GitHub main");
+   if(wallet.chainId!==1643)await switchDeploymentChain(chain);
+   wallet=await currentWalletState();
+   if(wallet?.chainId!==1643)throw Error("Wallet-Chain ist nicht XGRChain");
+   if(!window.confirm("Einmalige XITA Token Creator Factory auf XGRChain deployen? Gasgebühren bestätigt die Wallet. Nach TX-Broadcast darf nicht erneut deployed werden."))return;
+   status.textContent="Server prüft versiegelten Factory-Build und berechnet Gas…";
+   const prep=(await postJSON("/admin/api/creator-factory/prepare",{wallet:wallet.address})).result;
+   if(prep.chainId!==1643||prep.transaction?.to!==null||
+      prep.transaction?.from?.toLowerCase()!==wallet.address.toLowerCase())
+    throw Error("Creator Factory-Entwurf passt nicht zur Wallet");
+   status.textContent="Bitte einmalige Contract-Erstellung in der Wallet bestätigen…";
+   // Journal exists BEFORE any wallet interaction. Rejected or unknown TX
+   // remains locked; operator can inspect or recover by the original tx hash.
+   const hash=await broadcastDeploymentIntent(prep);
+   await postJSON("/admin/api/creator-factory/hash",{txHash:hash});
+   status.textContent="TX "+hash+" gesichert. Vertrag wird geprüft…";
+  }else if(action==="recover"){
+   const hash=el("creator-factory-hash").value.trim();
+   if(!/^0x[a-f0-9]{64}$/i.test(hash))throw Error("Gültiger gesendeter TX-Hash erforderlich");
+   await postJSON("/admin/api/creator-factory/hash",{txHash:hash});
+  }
+  if(["deploy","recover","check"].includes(action)){
+   const d=await postJSON("/admin/api/creator-factory/reconcile",{});
+   status.textContent=d.result.phase==="pending"?
+    "Original-TX noch ausstehend. Keine weitere Wallet-Signatur; später erneut prüfen.":
+    d.result.phase==="pr-created"?
+    "Factory verifiziert. Draft-PR #"+d.result.pr.number+" erstellt: "+d.result.pr.url:
+    "Factory-Status: "+d.result.phase;
+  }
+ }catch(error){status.textContent="Factory: "+String(error.message||error)+
+  ". Falls eine TX gesendet wurde, niemals erneut deployen; Original-Hash zur Wiederherstellung nutzen.";}
+ finally{creatorFactoryBusy=false;await updateCreatorFactory();}
+}
+el("creator-factory-deploy").addEventListener("click",()=>void runCreatorFactory("deploy"));
+el("creator-factory-check").addEventListener("click",()=>void runCreatorFactory("check"));
+el("creator-factory-recover").addEventListener("click",()=>void runCreatorFactory("recover"));
+
 async function checkLiveInfrastructure(){
  try{
   const data=await get("/admin/api/infrastructure");
