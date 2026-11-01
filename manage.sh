@@ -27,7 +27,7 @@ Usage: ./manage.sh <command>
   hard-reset-dev  Destructive XITA-only development reset (services must be stopped)
   install-sync  Install one-shot GitHub deployment receipt auto-sync service
   install-join  Install private Join API and status mail timer (no chain changes)
-  install-creator Install Creator service and shared-wallet guards (inactive unless explicitly enabled)
+  install-creator Install Creator worker using interchain-fee.env (no new env file)
   install-transfer-api  Install read-only unsigned destination recovery endpoint and Nginx proxy
   install-transfer-intake  Install restricted staging service for unverified broadcast TX hashes
   repair-transfer-db  Apply missing additive SQL 005/006 to local XITA database and verify schema
@@ -341,10 +341,9 @@ install_creator() (
   local user group node_bin tmp unit
   user="$(id -un)"; group="$(id -gn)"; node_bin="$(command -v node)"
   privileged test -f /etc/xita/join.env || { echo "Missing Join env" >&2; return 1; }
-  privileged test -f /etc/xita/creator.env || { echo "Missing Creator limits /etc/xita/creator.env" >&2; return 1; }
   privileged test -f /etc/xita/interchain-fee.env || { echo "Missing EXISTING sponsor-wallet /etc/xita/interchain-fee.env" >&2; return 1; }
-  [[ "$(privileged stat -c '%a' /etc/xita/creator.env)" == "600" ]] || {
-    echo "creator.env must be mode 600" >&2; return 1;
+  [[ "$(privileged stat -c '%a' /etc/xita/interchain-fee.env)" == "600" ]] || {
+    echo "interchain-fee.env must be mode 600 (holds the existing wallet key)" >&2; return 1;
   }
   [[ -f "$ROOT/config/creator/factory.json" ]] || {
     echo "Creator factory has not passed on-chain review; missing main-pinned factory.json" >&2; return 1;
@@ -375,7 +374,7 @@ install_creator() (
   fi
   # Install nonce locks even when the creator is disabled. Avoid a failing
   # oneshot timer every minute until the operator explicitly opts in.
-  if privileged grep -Eq '^XITA_CREATOR_ENABLED=true$' /etc/xita/creator.env; then
+  if privileged grep -Eq '^XITA_CREATOR_ENABLED=true$' /etc/xita/interchain-fee.env; then
     privileged systemctl enable --now xita-creator-operator.timer
     echo "Creator timer enabled. Production limits must be reviewed before accepting requests."
   else

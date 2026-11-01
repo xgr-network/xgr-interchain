@@ -157,7 +157,7 @@ export function joinReadiness(env=process.env,sourceCatalog=()=>loadCatalog(root
  try{
   checkedJoinCatalog(sourceCatalog);
   // The public Creator link is a separate operator go-live decision. The Join
-  // service must not inherit /etc/xita/creator.env or the signing wallet.
+  // service must never inherit the signing wallet /etc/xita/interchain-fee.env.
   let creatorAvailable=false;
   if(env.XITA_CREATOR_PUBLIC_ENABLED==="true"){
    try{

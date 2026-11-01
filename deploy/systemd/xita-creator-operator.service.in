@@ -9,7 +9,6 @@ User=@SERVICE_USER@
 Group=@SERVICE_GROUP@
 WorkingDirectory=@ROOT@
 EnvironmentFile=/etc/xita/join.env
-EnvironmentFile=/etc/xita/creator.env
 EnvironmentFile=/etc/xita/interchain-fee.env
 ExecStart=/usr/bin/flock -n /run/lock/xita-fee-wallet.lock @NODE_BIN@ @ROOT@/services/onboarding/creator-operator.mjs
 TimeoutStartSec=90
