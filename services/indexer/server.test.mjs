@@ -19,10 +19,12 @@ test("fully verified unique assets produce totals only with complete coverage",(
   XGR:verified("XGR"),ABC:{...verified("ABC"),custody:{...verified("ABC").custody,vaults:[{...verified("ABC").custody.vaults[0],router:"0xbbb"}]},movement:{...verified("ABC").movement,journeys:[{...verified("ABC").movement.journeys[0],id:"v2"}]}}
  }});
  assert.deepEqual(result.totals,{lockedUsd:40,movedUsd:16});
+ assert.equal(result.partialMovement,null,"complete totals must not also be presented as partial");
 });
 test("a single unverifiable asset invalidates aggregate totals",()=>{
  const result=projectMetrics(catalog,{schemaVersion:1,kind:"xita-asset-metrics-v1",assets:{XGR:verified("XGR")}});
  assert.deepEqual(result.totals,{lockedUsd:null,movedUsd:null});
+ assert.deepEqual(result.partialMovement,{verifiedMinimumUsd:8,verifiedAssets:1,requiredAssets:2});
  assert.equal(result.assets.ABC.verified,false);
 });
 
@@ -69,4 +71,31 @@ test("fresh verified TVL exposes its own observation timestamp for 24h compariso
  assert.equal(result.totals.lockedUsd,20);
  assert.equal(result.asOf,asOf);
  assert.equal(projectMetrics(c,null).asOf,null);
+});
+
+test("verified partial 24h volume is an explicitly incomplete lower bound while TVL remains complete",()=>{
+ const arb={...verified("ABC"),custody:{...verified("ABC").custody,
+  vaults:[{...verified("ABC").custody.vaults[0],router:"0xbbb"}]},
+  movement:{status:"unavailable"}};
+ const result=projectMetrics(catalog,{schemaVersion:1,kind:"xita-asset-metrics-v1",
+  assets:{XGR:verified("XGR"),ABC:arb}});
+ assert.deepEqual(result.totals,{lockedUsd:40,movedUsd:null});
+ assert.equal(result.status,"incomplete");
+ assert.deepEqual(result.partialMovement,{verifiedMinimumUsd:8,verifiedAssets:1,requiredAssets:2});
+ assert.equal(result.assets.ABC.movement.status,"unavailable");
+ assert.equal(result.assets.XGR.movement.movedUsd,8);
+});
+
+test("partial 24h volume never invents a value without independently verified movement",()=>{
+ const c={assets:{XGR:deployedFixture("XGR","xgrchain")}};
+ const missing=projectMetrics(c,null);
+ assert.deepEqual(missing.totals,{lockedUsd:null,movedUsd:null});
+ assert.equal(missing.partialMovement,null);
+ const suspicious={...verified("XGR"),movement:{status:"verified",complete:true,
+  movedUsd:13,metric:"escrow-gross-24h",windowStart:"invalid",windowEnd:"invalid",
+  proofDigest:"0x"+"1".repeat(64),inflowRaw:"4",outflowRaw:"0"}};
+ const bad=projectMetrics(c,{schemaVersion:1,kind:"xita-asset-metrics-v1",
+  assets:{XGR:suspicious}});
+ assert.equal(bad.totals.movedUsd,null);
+ assert.equal(bad.partialMovement,null);
 });
