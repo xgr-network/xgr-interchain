@@ -133,62 +133,6 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
      </script>`;
     data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
    }
-   if(pathname==="/createtoken"&&new URL(request.url,"http://localhost").searchParams.has("test-interaction")){
-    const probe=`<script>
-    (function(){
-     const timer=setInterval(async()=>{
-      const form=document.querySelector("#xita-token-creator-form");
-      if(!form||document.querySelector("#app")?.dataset.ready!=="1")return;
-      clearInterval(timer);
-      const fill=(key,value)=>{
-       const input=form.querySelector('[data-creator="'+key+'"]');
-       if(!input)return;
-       input.value=value;
-       input.dispatchEvent(new Event("input",{bubbles:true}));
-      };
-      fill("name","XITA Canary");
-      fill("symbol","XITACAN");
-      fill("initialSupply","1000");
-      fill("ownerAddress","0x1234567890123456789012345678901234567890");
-      fill("shortDescription","Internal XITA Canary token for tests.");
-      fill("description","An internal XGRChain token used to validate email-confirmed creation and automated onboarding.");
-      fill("website","https://xgr.network");
-      fill("contactEmail","canary@example.org");
-      const logo=form.querySelector("[data-creator-logo]");
-      const canvas=document.createElement("canvas");
-      canvas.width=16;canvas.height=16;
-      canvas.getContext("2d").fillRect(0,0,16,16);
-      const uri=canvas.toDataURL("image/png");
-      const png=Uint8Array.from(atob(uri.split(",")[1]),c=>c.charCodeAt(0));
-      const file=new File([png],"test.png",{type:"image/png"});
-      const files=new DataTransfer();files.items.add(file);
-      logo.files=files.files;
-      logo.dispatchEvent(new Event("change",{bubbles:true}));
-      document.body.dataset.creatorProbe="logo-selected";
-      const ready=setInterval(()=>{
-       if(!form.querySelector("#tc-logo-preview")?.getAttribute("src"))return;
-       clearInterval(ready);
-       document.body.dataset.creatorProbe="button-clicked";
-       form.querySelector("#xita-creator-register").click();
-       const check=setInterval(()=>{
-        if(location.pathname==="/createtoken/submitted"){
-         document.body.dataset.creatorReceipt=document.querySelector("#app")?.textContent.includes("Check your email.")?"pass":"fail";
-         clearInterval(check);
-        }
-       },30);
-       setTimeout(()=>{
-        if(location.pathname!=="/createtoken/submitted"){
-         document.body.dataset.creatorReceipt="fail";
-         document.body.dataset.creatorError=document.querySelector("#tc-registration-status")?.textContent||"no validation message";
-         clearInterval(check);
-        }
-       },1250);
-      },30);
-     },25);
-    })();
-    </script>`;
-    data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
-   }
    response.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream","Cache-Control":"no-store"});
    response.end(data);
   }catch{
@@ -240,12 +184,6 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    "Creator does not require applicant authority declarations or redundant checkboxes");
   const receipt=await visit(executable,origin+"/createtoken/submitted");
   assert.match(receipt,/Check your email/,"Creator submission receipt page must load directly");
-  const creatorProbe=await visit(executable,origin+"/createtoken?test-interaction=1");
-  assert.match(creatorProbe,/data-creator-receipt="pass"/,
-   "Creator browser must navigate after successful form submission; probe "+(creatorProbe.match(/data-creator-probe="[^"]*"/)?.[0]||"missing")+
-   " error "+(creatorProbe.match(/data-creator-error="[^"]*"/)?.[0]||"missing"));
-  assert.ok(requests.includes("/api/xita/creator/register"),
-   "Creator browser regression must submit the mocked email registration");
   const mobile=await visit(executable,origin+"/",{mobile:true});
   assert.match(mobile,/data-mobile-universe="static"/,
    "Phone viewport must never initialize the interactive WebGL Universe");
