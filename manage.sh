@@ -311,6 +311,7 @@ install_join() (
   [[ "$(privileged stat -c '%a' /etc/xita/join.env)" == "600" ]] || { echo "Join env needs mode 600" >&2; return 1; }
   privileged install -d -m 0700 -o "$user" -g "$group" /var/lib/xita/join
   npm install --prefix "$ROOT/services/onboarding" --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false
+  node -e 'require(process.argv[1])' "$ROOT/services/onboarding/node_modules/nodemailer"
   node --test "$ROOT"/services/onboarding/*.test.mjs "$ROOT/tools/join-nginx.test.mjs"
   tmp="$(mktemp -d)"
   trap 'rm -rf "$tmp"' EXIT
@@ -771,6 +772,7 @@ complete_update() {
   # Join service and exact public logo routes are ready. No chain side effects.
   if systemctl is-active --quiet xita-join.service 2>/dev/null; then
     npm install --prefix "$ROOT/services/onboarding" --omit=dev --ignore-scripts --no-audit --no-fund --package-lock=false || return 1
+    node -e 'require(process.argv[1])' "$ROOT/services/onboarding/node_modules/nodemailer" || return 1
     privileged systemctl restart xita-join.service || return 1
     wait_xita_join || return 1
     privileged "$(command -v node)" "$ROOT/tools/install-join-nginx.mjs" || return 1
