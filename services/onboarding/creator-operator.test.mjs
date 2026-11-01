@@ -34,7 +34,7 @@ test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exac
  const x=fixture();let mined=false,signs=0,published=0;const broadcasts=[];
  const verify=async()=>({chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
   symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:factory.address,
-  operator,txHash,blockNumber:12000000});
+  operator,txHash,tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12000000});
  const call=async(url,method,params)=>{
   if(method==="eth_chainId")return "0x66b";
   if(method==="eth_getCode")return "0x6001";
