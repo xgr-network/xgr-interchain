@@ -81,7 +81,12 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
       const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       const task=setInterval(async()=>{
        const app=document.querySelector("#app"),form=app?.querySelector("#ja-application-form");
-       if(app?.dataset.ready!=="1"||!form||!app.querySelector('[data-join-action="submit"]:not(:disabled)'))return;
+        if(app?.dataset.ready!=="1")return;
+        if(!form){
+         app.querySelector('[data-join-entry="integrate"]')?.click();
+         return;
+        }
+        if(!app.querySelector('[data-join-action="submit"]:not(:disabled)'))return;
        clearInterval(task);
        form.querySelector('[data-join-action="submit"]').click();
        await sleep(70);
@@ -108,11 +113,15 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
          clearInterval(receipt);
          document.body.dataset.joinReceipt=app.textContent.includes("One more step: confirm your email")?"pass":"fail";
          document.querySelector('a[aria-label="Join XITA for free"]')?.click();
-         const fresh=app.querySelector("#ja-application-form");
-         const empty=app.querySelector("#ja-coingeckoId")?.value===""&&
-          app.querySelector("#ja-contactEmail")?.value===""&&
-          app.querySelector('[data-join="confirmed"]')?.checked===false;
-         document.body.dataset.joinReturn=location.pathname==="/join"&&fresh&&empty?"pass":"fail";
+         const landing=location.pathname==="/join"&&
+           app.querySelector('[data-join-entry="integrate"]')&&
+           !app.querySelector("#ja-application-form");
+          app.querySelector('[data-join-entry="integrate"]')?.click();
+          const fresh=app.querySelector("#ja-application-form");
+          const empty=app.querySelector("#ja-coingeckoId")?.value===""&&
+           app.querySelector("#ja-contactEmail")?.value===""&&
+           app.querySelector('[data-join="confirmed"]')?.checked===false;
+          document.body.dataset.joinReturn=landing&&fresh&&empty?"pass":"fail";
         },25);
        },25);
       },25);
@@ -143,7 +152,14 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
    }
    if(path==="/transfer"){assert.match(html,/id="ux-origin"/);assert.match(html,/id="ux-asset"/);assert.match(html,/id="ux-destination"/);assert.match(html,/id="xita-transfer-primary"/);assert.doesNotMatch(html,/id="ux-token-origin"/);}
    if(path==="/faq"){assert.match(html,/ux-faq-list/);assert.match(html,/configured/i);}
-   if(path==="/join"){assert.match(html,/data-join-action="submit"/);assert.match(html,/Load from CoinGecko/);assert.match(html,/data-join="coingeckoId"/);assert.match(html,/data-join="contactEmail"/);assert.match(html,/Update Token Profile/);assert.doesNotMatch(html,/data-join="description"|id="ja-coingecko-dialog"/);}
+   if(path==="/join"){
+     assert.match(html,/data-join-entry="integrate"/);
+     assert.match(html,/Integrate a Token/);
+     assert.match(html,/Create a Token/);
+     assert.match(html,/Update Token Profile/);
+     assert.doesNotMatch(html,/id="ja-application-form"|data-join-action="submit"/,
+      "The integration form must not appear before choosing a path");
+    }
    if(path==="/markets"){assert.match(html,/data-leader-sort="lockedUsd"/);assert.match(html,/data-leader-sort="movedUsd"/);assert.match(html,/data-leader-sort="marketCapUsd"/);assert.match(html,/Explore Tokens|Explore <span>Tokens<\/span>/); }
    if(path==="/"){
     assert.match(html,/<canvas[^>]+ux-3d-canvas/,path+" missing 3D scene");
@@ -162,7 +178,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   assert.match(joinProbe,/data-join-validation="pass"/,"Submit must show inline field errors for invalid inputs");
   assert.match(joinProbe,/data-join-advance="pass"/,"Single-page sections must persist after valid inputs");
   assert.match(joinProbe,/data-join-receipt="pass"/,"Mocked submission must reach the email-confirmation receipt");
-  assert.match(joinProbe,/data-join-return="pass"/,"Join for Free must open a NEW blank form without reloading after a successful submission");
+  assert.match(joinProbe,/data-join-return="pass"/,"Join for Free must reset to the two-path landing, then offer a new blank form");
   assert.ok(requests.includes("/api/xita/join/preview")&&requests.includes("/api/xita/join/submit"),
    "Browser regression must actually exercise the mocked preview and submit endpoints");
   assert.ok(requests.filter(x=>x==="/catalog.json").length>=3,"Local catalog.json not requested for each direct URL");

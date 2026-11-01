@@ -7,7 +7,11 @@ test("CoinGecko Join shows only ID, email, consent and conditional origin choice
  const d={...draft(),coingeckoId:"arbitrum",contactEmail:"holder@example.org",confirmed:true};
  assert.deepEqual(joinHomeChains(catalog).sort(),["arbitrum","base","bsc","optimism"]);
  assert.deepEqual(validateApplication(d,catalog),[]);
- const html=joinMarkup(catalog,d);
+ const landing=joinMarkup(catalog,d);
+ assert.doesNotMatch(landing,/id="ja-application-form"/);
+ assert.match(landing,/Integrate a Token/);
+ assert.match(landing,/Create a Token/);
+ const html=joinMarkup(catalog,d,"",false,null,{mode:"integrate"});
  assert.match(html,/id="ja-application-form"/);
  for(const key of ["coingeckoId","contactEmail","confirmed"])
   assert.match(html,new RegExp('data-join="'+key+'"'));
@@ -24,7 +28,7 @@ test("no arbitrary original chain selection without verified multiple CoinGecko 
   {chain:"base",label:"Base",contract:"0x2234567890123456789012345678901234567890"}];
  assert.deepEqual(validateStep(d,1,catalog,{choices}),["Original blockchain"]);
  assert.deepEqual(validateStep({...d,canonicalChain:"base"},1,catalog,{choices}),[]);
- const html=joinMarkup(catalog,d,"",false,{choices,profile:{name:"Test Protocol",symbol:"TST",shortDescription:"A verified short description."}});
+ const html=joinMarkup(catalog,d,"",false,{choices,profile:{name:"Test Protocol",symbol:"TST",shortDescription:"A verified short description."}},{mode:"integrate"});
  assert.match(html,/data-join="canonicalChain"/);
  assert.match(html,/Test Protocol/);
  assert.doesNotMatch(html,/data-join="canonicalAddress"/);
@@ -61,10 +65,27 @@ test("Creator launch link is rendered only after explicit readiness",()=>{
  assert.equal(joinMarkup(catalog,data).includes('href="/createtoken"'),false);
  const html=joinMarkup(catalog,data,"",false,null,{creatorAvailable:true});
  assert.equal(html.includes('href="/createtoken"'),true);
- assert.match(html,/Create your own token/);
+ assert.match(html,/Create a Token/);
+ assert.match(html,/Create for Free/);
+ assert.equal((html.match(/class="ja-entry-card /g)||[]).length,2);
+ assert.equal((html.match(/href="\/createtoken"/g)||[]).length,1);
 });
 test("mobile navigation exposes an accessible collapsed menu control",()=>{
  const html=readFileSync(new URL("./index.html",import.meta.url),"utf8");
  assert.match(html,/id="site-menu-toggle"[^>]*aria-controls="site-main-nav"[^>]*aria-expanded="false"/);
  assert.match(html,/id="site-main-nav" aria-label="Main navigation"/);
+});
+
+test("Join landing has two equally prominent paths and integration is progressive",()=>{
+ const initial=joinMarkup(catalog,draft(),"",false,null,{creatorAvailable:true});
+ const button=initial.indexOf('data-join-entry="integrate"');
+ const creator=initial.indexOf('href="/createtoken"');
+ assert.ok(button>=0&&creator>button);
+ assert.match(initial,/aria-expanded="false"/);
+ assert.doesNotMatch(initial,/id="ja-application-form"/);
+ const expanded=joinMarkup(catalog,draft(),"",false,null,{creatorAvailable:true,mode:"integrate"});
+ assert.match(expanded,/aria-expanded="true"/);
+ assert.match(expanded,/id="ja-integration-panel"/);
+ assert.match(expanded,/id="ja-application-form"/);
+ assert.doesNotMatch(expanded,/ja-creator-entry/);
 });

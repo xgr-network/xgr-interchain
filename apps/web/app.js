@@ -1073,7 +1073,7 @@ function token(){
   '<p class="ux-small">No routes deployed yet.</p>')+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
-const joinState={data:null,status:"",busy:false,accepted:false,available:null,creatorAvailable:false,checking:false,preview:null};
+const joinState={data:null,status:"",busy:false,accepted:false,available:null,creatorAvailable:false,checking:false,preview:null,mode:null};
 const profileState={data:{symbol:"",coingeckoId:"",contactEmail:"",confirmed:false},status:"",busy:false,preview:null};
 const tokenCreatorState=creatorDraft();
 const creatorEmailState={phase:"pending",error:"",logoUrl:"",deploymentStatus:"",key:"",working:false};
@@ -1137,7 +1137,7 @@ async function processJoinEmailConfirmation(){
 function join(){
  // /join always displays a form. The receipt belongs only to /join/submitted.
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy,joinState.preview,{creatorAvailable:joinState.creatorAvailable});
+ return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy,joinState.preview,{creatorAvailable:joinState.creatorAvailable,mode:joinState.mode});
 }
 function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
@@ -1631,6 +1631,19 @@ el.addEventListener("submit",event=>{
  }
 });
 el.addEventListener("click",event=>{
+ const entry=event.target.closest('[data-join-entry="integrate"]');
+ if(entry&&path()==="/join"){
+  event.preventDefault();
+  if(joinState.busy)return;
+  joinState.mode=joinState.mode==="integrate"?null:"integrate";
+  render();
+  if(joinState.mode==="integrate"){
+   const panel=document.querySelector("#ja-integration-panel");
+   panel?.scrollIntoView({behavior:"smooth",block:"start"});
+   document.querySelector("#ja-coingeckoId")?.focus({preventScroll:true});
+  }else document.querySelector('[data-join-entry="integrate"]')?.focus();
+  return;
+ }
  const joinButton=event.target.closest('[data-join-action="preview"]');
  if(joinButton&&path()==="/join"){event.preventDefault();void runJoin("preview");}
  const profileButton=event.target.closest('[data-profile-action="preview"]');
@@ -1667,6 +1680,7 @@ document.addEventListener("click",e=>{
   joinState.status="";
   joinState.accepted=false;
   joinState.busy=false;
+  joinState.mode=null;
  }
  closeSiteMenu();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });

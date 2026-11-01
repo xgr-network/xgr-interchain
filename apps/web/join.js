@@ -25,13 +25,26 @@ export function validateApplication(d,catalog,preview=null){
 }
 const field=(id,label,val,placeholder,type="text")=>'<label class="ja-field" for="ja-'+id+'"><span>'+label+'</span>'+
  '<input id="ja-'+id+'" data-join="'+id+'" type="'+type+'" maxlength="254" placeholder="'+placeholder+'" value="'+escape(val||"")+'"></label>';
-export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{creatorAvailable=false}={}){
+export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{creatorAvailable=false,mode=null}={}){
  const choices=preview?.choices||[];
  const accepted=preview?.profile;
- const creator=creatorAvailable?
-  '<aside class="ja-creator-entry"><div><span class="ux-kicker">START ON XGRCHAIN</span><h2>Create your own token</h2>'+
-  '<p>New project? Create a standard ERC-20 on XGRChain and apply for XITA routes in one process.</p></div>'+
-  '<a class="ux-outline-button" data-nav href="/createtoken">Create a token <span aria-hidden="true">→</span></a></aside>':"";
+ const showIntegration=mode==="integrate";
+ const entryCards='<section class="ja-entry-grid" aria-label="Choose how to join XITA">'+
+  '<article class="ja-entry-card ja-entry-integrate'+(showIntegration?' is-selected':'')+'">'+
+  '<div class="ja-entry-icon" aria-hidden="true">⇄</div>'+
+  '<span class="ux-kicker">EXISTING PROJECT</span><h2>Integrate a Token</h2>'+
+  '<p>Already have a token? Connect it to XITA using your CoinGecko profile.</p>'+
+  '<button type="button" class="ux-button ja-entry-action" data-join-entry="integrate"'+
+  ' aria-expanded="'+(showIntegration?'true':'false')+'" aria-controls="ja-integration-panel">'+
+  'Join for Free <span aria-hidden="true">→</span></button></article>'+
+  '<article class="ja-entry-card ja-entry-create'+(creatorAvailable?'':' is-unavailable')+'">'+
+  '<div class="ja-entry-icon" aria-hidden="true">＋</div>'+
+  '<span class="ux-kicker">START ON XGRCHAIN</span><h2>Create a Token</h2>'+
+  '<p>Launch your own ERC-20 on XGRChain and join the XITA ecosystem.</p>'+
+  (creatorAvailable?
+   '<a href="/createtoken" data-nav class="ux-button ja-entry-action">Create for Free <span aria-hidden="true">→</span></a>':
+   '<span class="ja-entry-soon" role="status">Available soon</span>')+
+  '</article></section>';
  const choice=choices.length>1?
  '<label class="ja-field ja-field-full"><span>Original blockchain *</span><select data-join="canonicalChain" id="ja-canonicalChain">'+
  '<option value="">Select the original blockchain</option>'+
@@ -43,8 +56,12 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  escape(accepted.shortDescription||"")+'</p></div></div><p class="ux-small">Metadata, descriptions, project links and the selected ERC-20 address are imported and verified server-side. You cannot edit them in this form.</p></section>':"";
  return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
  '<h1>Bring your token into the <span>Universe.</span></h1>'+
- '<p class="ux-lead">Free token integration and initial route deployment after review. Just provide your CoinGecko ID and verify your email.</p></div>'+
- '<div class="ja-layout"><section class="ux-panel ja-wizard"><div class="ja-form-head"><h2>Join XITA</h2>'+
+ '<p class="ux-lead">Join the XITA ecosystem. Free integration and initial route deployment after review.</p></div>'+
+ entryCards+
+ '<p class="ja-entry-existing">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p>'+
+ '<section class="ja-integration-panel" id="ja-integration-panel">'+(showIntegration?
+ '<div class="ja-layout"><section class="ux-panel ja-wizard" aria-labelledby="ja-form-title">'+
+ '<div class="ja-form-head"><h2 id="ja-form-title">Integrate your token</h2>'+
  '<p class="ja-info">Your public project information comes directly from CoinGecko.</p></div>'+
  '<form id="ja-application-form" novalidate><div class="ja-fields">'+
  field("coingeckoId","CoinGecko API ID *",d.coingeckoId,"e.g. arbitrum")+
@@ -58,8 +75,7 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  '<div class="ja-status" id="ja-status" role="alert" aria-live="polite">'+escape(status)+'</div>'+
  '<div class="ja-actions"><button type="submit" data-join-action="submit" class="ux-button"'+
  (busy?' disabled':'')+'>Submit free application</button></div></form>'+
- '<p class="ja-info">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p>'+
- '</section></div>'+creator+'</div>';
+ '</section></div>':'')+'</section></div>';
 }
 export function profileUpdateMarkup(catalog,form={},status="",busy=false,preview=null){
  const assets=Object.entries(catalog?.assets||{}).filter(([,a])=>a?.profile?.market).sort((a,b)=>a[0].localeCompare(b[0]));
