@@ -108,7 +108,7 @@ export function joinFromCoin(input,coin,catalog,{requireContact=true}={}){
  const choices=joinCandidates(coin,catalog);
  if(!choices.length){
   const supported=Object.entries(catalog?.chains||{}).filter(([key])=>verifiedAssetPlatform(catalog,key))
-   .map(([,chain])=>chain.displayName||chain.name).join(", ");
+   .map(([,chain])=>{const name=String(chain.displayName||chain.name);return name.charAt(0).toUpperCase()+name.slice(1)}).join(", ");
   throw Error("No verified, deployed EVM original contract with decimals on CoinGecko for the currently available XITA networks: "+supported);
  }
  const chosen=input.canonicalChain|| (choices.length===1?choices[0].chain:null);
