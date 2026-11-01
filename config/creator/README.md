@@ -10,6 +10,48 @@
 6. Only now does it create a normal **Draft** XITA Join PR from the real XGRChain token address, including every available XGR hub↔spoke route. No CoinGecko ID is required for this XGRChain-native original. Standard operator review/merge and optional asset-route deployments remain separate from creation.
 7. Once the reviewed proposal is **merged**, and the verified XGR original token profile is **actually published on xita.xgr.network/token/<slug>**, the low-privilege status notifier sends a **single second email** with the direct public profile URL. GitHub merge alone, token deployment alone or an unapproved routing draft must **not** trigger this profile URL mail. Failed mail delivery is retried idempotently without creating another ERC-20.
 
+## Bootstrap the isolated worker (no on-chain signing)
+
+The operator configuration is intentionally **not** tracked in Git. On a clean
+host, provision the root-owned config before `./manage.sh install-creator`:
+
+```sh
+sudo install -d -m 0700 /etc/xita
+sudo install -m 0600 /dev/null /etc/xita/creator.env
+printf '%s\\n' 'XITA_CREATOR_ENABLED=false' | sudo tee /etc/xita/creator.env >/dev/null
+./manage.sh install-creator
+```
+
+The installer still deploys **no contracts**. It installs the shared sponsorship
+nonce barriers and systemd units, but leaves the Creator timer disabled while
+`XITA_CREATOR_ENABLED=false`. The public registration endpoint also refuses
+new requests until `XITA_CREATOR_PUBLIC_ENABLED=true` has been set in the
+**Join service** environment, independent of the signing worker. Do not set
+either flag yet.
+
+Before activation, review actual gas estimation from a canary deployment and
+configure all required worker limits in the root-only creator.env. An illustrative
+one-token-per-day trial with deliberately bounded gas is:
+
+```ini
+XITA_CREATOR_ENABLED=false
+XITA_CREATOR_DAILY_LIMIT=1
+XITA_CREATOR_DAILY_BUDGET_WEI=100000000000000
+XITA_CREATOR_GAS_LIMIT_CAP=2000000
+XITA_CREATOR_GAS_PRICE_CAP_WEI=50000000
+XITA_CREATOR_BROADCAST_RPC=https://rpc.xgr.network
+```
+
+These numbers are **trial ceilings**, not guaranteed to cover the actual
+deployment. At the stated gas and gas-limit ceilings, the maximum cost per
+transaction is 0.0001 XGR (100,000,000,000,000 wei). A real deployment may
+require different caps. The worker also needs its existing shared-wallet fee
+credentials, private Join storage and sponsor SQL journal access in its systemd
+environment. Do not copy private credentials into creator.env or the repo.
+Check service status and journal before the first controlled canary; do not
+enable the public switch until its on-chain receipt, child owner/supply and
+subsequent Draft PR are verified.
+
 ## Production activation — explicit manual review gate
 
 The factory and deployment worker are **not** automatically live after a code merge.
