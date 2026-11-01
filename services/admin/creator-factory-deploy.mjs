@@ -38,7 +38,9 @@ function writeJournal(stateDir,s){
  mkdirSync(stateDir,{mode:0o700,recursive:true});
  const f=journalPath(stateDir),tmp=f+"."+randomUUID()+".tmp";
  writeFileSync(tmp,JSON.stringify(s,null,2)+"\n",{flag:"wx",mode:0o600});
+ const fd=openSync(tmp,"r");try{fsyncSync(fd)}finally{closeSync(fd)}
  renameSync(tmp,f);
+ const dirFd=openSync(stateDir,"r");try{fsyncSync(dirFd)}finally{closeSync(dirFd)}
  return s;
 }
 function localFactory(root){
