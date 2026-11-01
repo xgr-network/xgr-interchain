@@ -341,6 +341,7 @@ function northstarStage(model,{universe=false}={}){
   '<p class="ux-ns-subline">Discover interconnected blockchain ecosystems. Bring your project to XITA or explore verified token routes through XGRChain.</p>'+
   '<div class="ux-ns-actions">'+introActions+'</div>'+
   '<div class="ux-ns-signature"><span class="ux-ns-signature-mark" aria-hidden="true">✧</span><span>ONE HUB · MANY ECOSYSTEMS<br>AN OPEN INTERCHAIN FUTURE</span></div></div>'+
+  '<div class="ux-ns-mobile-art" aria-hidden="true"></div>'+ 
   '<div class="ux-ns-network-status"><span class="ux-ns-overline">NETWORK INVENTORY</span>'+
   '<strong>'+systems+' configured systems</strong>'+
   '<small>'+active+' active directed routes</small>'+
