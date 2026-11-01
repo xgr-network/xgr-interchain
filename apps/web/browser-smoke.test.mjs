@@ -158,7 +158,11 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
       const file=new File([new Uint8Array(80).fill(42)],"test.png",{type:"image/png"});
       const files=new DataTransfer();files.items.add(file);
       logo.files=files.files;logo.dispatchEvent(new Event("change",{bubbles:true}));
-      setTimeout(()=>{
+      document.body.dataset.creatorProbe="logo-selected";
+      const ready=setInterval(()=>{
+       if(!form.querySelector("#tc-logo-preview")?.getAttribute("src"))return;
+       clearInterval(ready);
+       document.body.dataset.creatorProbe="button-clicked";
        form.querySelector("#xita-creator-register").click();
        const check=setInterval(()=>{
         if(location.pathname==="/createtoken/submitted"){
@@ -166,7 +170,14 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
          clearInterval(check);
         }
        },30);
-      },200);
+       setTimeout(()=>{
+        if(location.pathname!=="/createtoken/submitted"){
+         document.body.dataset.creatorReceipt="fail";
+         document.body.dataset.creatorError=document.querySelector("#tc-registration-status")?.textContent||"no validation message";
+         clearInterval(check);
+        }
+       },1250);
+      },30);
      },25);
     })();
     </script>`;
@@ -225,7 +236,8 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
   assert.match(receipt,/Check your email/,"Creator submission receipt page must load directly");
   const creatorProbe=await visit(executable,origin+"/createtoken?test-interaction=1");
   assert.match(creatorProbe,/data-creator-receipt="pass"/,
-   "Creator real browser must submit valid fields and navigate to the email receipt");
+   "Creator browser must navigate after successful form submission; probe "+(creatorProbe.match(/data-creator-probe="[^"]*"/)?.[0]||"missing")+
+   " error "+(creatorProbe.match(/data-creator-error="[^"]*"/)?.[0]||"missing"));
   assert.ok(requests.includes("/api/xita/creator/register"),
    "Creator browser regression must submit the mocked email registration");
   const mobile=await visit(executable,origin+"/",{mobile:true});
