@@ -8,6 +8,7 @@ import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {handleJoin,hasBlockingJoinApplication,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 import {isDeployedChain} from "../../apps/web/route-availability.js";
+import {joinCandidates} from "./coingecko-profile.mjs";
 test("CoinGecko 404 explains the difference between API ID and ticker",async()=>{
  const missing=async()=>({ok:false,status:404});
  await assert.rejects(()=>fetchCoinDetails("opt",{fetcher:missing,cacheResults:false}),
@@ -269,4 +270,48 @@ test("Creator public CTA stays off until the operator deliberately enables it",(
  const flagged=joinReadiness({...env,XITA_CREATOR_PUBLIC_ENABLED:"true"},()=>catalog);
  assert.equal(flagged.available,true);
  assert.equal(flagged.creatorAvailable,true,"main contains the receipt-verified Factory");
+});
+
+test("CoinGecko Join scans only receipt-deployed XITA original chains and filters unsupported platforms",()=>{
+ const token="0x1234567890123456789012345678901234567890";
+ const candidates={
+  id:"chain-coverage",name:"Multi-chain token",symbol:"multi",
+  platforms:{base:token,arbitrum:token,"polygon-pos":token,"unknown-platform":token},
+  detail_platforms:{
+   base:{contract_address:token,decimal_place:18},
+   "arbitrum-one":{contract_address:token,decimal_place:18},
+   "polygon-pos":{contract_address:token,decimal_place:18},
+   "unknown-platform":{contract_address:token,decimal_place:18}}
+ };
+ candidates.platforms["arbitrum-one"]=token;
+ const original=joinCandidates(candidates,catalog).map(c=>c.chain);
+ assert.deepEqual(original.sort(),["arbitrum","base"]);
+ const noBase=structuredClone(catalog);
+ noBase.infrastructure.base.present=false;
+ assert.deepEqual(joinCandidates(candidates,noBase).map(c=>c.chain),["arbitrum"]);
+ const noChains=structuredClone(catalog);
+ noChains.infrastructure.arbitrum.present=false;
+ noChains.infrastructure.base.present=false;
+ assert.deepEqual(joinCandidates(candidates,noChains),[]);
+});
+
+test("CoinGecko-only token on unsupported chains returns a clear 422 with supported XITA networks",async()=>{
+ const unsupported=makeCoin("polygon-only");
+ unsupported.platforms={"polygon-pos":"0x1234567890123456789012345678901234567890"};
+ unsupported.detail_platforms={"polygon-pos":{
+  contract_address:"0x1234567890123456789012345678901234567890",decimal_place:18}};
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+  sourceCatalog:()=>catalog,fetchCoin:async()=>unsupported
+ })});
+ await new Promise(done=>server.listen(0,"127.0.0.1",done));
+ try{
+  const response=await fetch("http://127.0.0.1:"+server.address().port+"/api/xita/join/preview",{
+   method:"POST",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({coingeckoId:"polygon-only"})});
+  const body=await response.json();
+  assert.equal(response.status,422);
+  assert.match(body.error,/currently available XITA networks/);
+  assert.match(body.error,/Base/);
+  assert.doesNotMatch(body.error,/Polygon/);
+ }finally{await new Promise(done=>server.close(done))}
 });

@@ -12,7 +12,7 @@ export function draft(){
 export function validateStep(d,step,catalog,preview=null){
  const missing=[];
  if(step===0&&!ID.test(d.coingeckoId||""))missing.push("CoinGecko API ID");
- if(step===1&&preview?.choices?.length>1&&!preview.choices.some(x=>x.chain===d.canonicalChain))
+ if(step===1&&preview?.choices?.length>0&&!preview.choices.some(x=>x.chain===d.canonicalChain))
   missing.push("Original blockchain");
  if(step===2){
   if(!EMAIL.test(d.contactEmail||"")||d.contactEmail.length>254)missing.push("Contact email");
@@ -29,6 +29,19 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  const choices=preview?.choices||[];
  const accepted=preview?.profile;
  const showIntegration=mode==="integrate";
+ const supported=joinHomeChains(catalog).map(key=>{
+  const name=String(catalog.chains[key].displayName||catalog.chains[key].name||key);
+  return name.charAt(0).toUpperCase()+name.slice(1);
+ });
+ const chainHint='<p class="ja-chain-hint">We check CoinGecko contract addresses against currently available XITA networks: '+
+  escape(supported.join(", "))+
+  '. Networks without a verified matching contract are not selectable.</p>';
+ const chainMatch=accepted&&choices.length?
+  '<p class="ja-chain-match" role="status">CoinGecko contract matches on '+
+  escape(choices.map(c=>c.label).join(", "))+
+  '. '+(choices.length===1?
+   'Original blockchain selected automatically.':
+   'Choose the original blockchain from these supported networks.')+'</p>':"";
  const entryCards='<section class="ja-entry-grid" aria-label="Choose how to join XITA">'+
   '<article class="ja-entry-card ja-entry-integrate'+(showIntegration?' is-selected':'')+'">'+
   '<div class="ja-entry-icon" aria-hidden="true">⇄</div>'+
@@ -57,8 +70,9 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
  '<h1>Bring your token into the <span>Universe.</span></h1>'+
  '<p class="ux-lead">Join the XITA ecosystem. Free integration and initial route deployment after review.</p></div>'+
- entryCards+
- '<p class="ja-entry-existing">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p>'+
+ (showIntegration?
+  '<div class="ja-join-back"><button type="button" class="ux-outline-button" data-join-entry="back">← Back to options</button></div>':
+  entryCards)+
  '<section class="ja-integration-panel" id="ja-integration-panel">'+(showIntegration?
  '<div class="ja-layout"><section class="ux-panel ja-wizard" aria-labelledby="ja-form-title">'+
  '<div class="ja-form-head"><h2 id="ja-form-title">Integrate your token</h2>'+
@@ -66,7 +80,7 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  '<form id="ja-application-form" novalidate><div class="ja-fields">'+
  field("coingeckoId","CoinGecko API ID *",d.coingeckoId,"e.g. arbitrum")+
  '<div class="ja-field"><span>Load project information</span><button type="button" class="ux-button" data-join-action="preview"'+(busy?' disabled':'')+'>Load from CoinGecko</button></div>'+
- choice+'</div>'+summary+
+ choice+'</div>'+chainHint+chainMatch+summary+
  '<section class="ja-form-section"><h3>Email verification</h3><div class="ja-fields">'+
  field("contactEmail","Contact email *",d.contactEmail,"you@project.org","email")+
  '</div><label class="ja-consent"><input data-join="confirmed" type="checkbox"'+(d.confirmed?' checked':'')+'>'+
@@ -75,7 +89,8 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  '<div class="ja-status" id="ja-status" role="alert" aria-live="polite">'+escape(status)+'</div>'+
  '<div class="ja-actions"><button type="submit" data-join-action="submit" class="ux-button"'+
  (busy?' disabled':'')+'>Submit free application</button></div></form>'+
- '</section></div>':'')+'</section></div>';
+ '</section></div>':'')+'</section>'+
+ '<p class="ja-entry-existing">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p></div>';
 }
 export function profileUpdateMarkup(catalog,form={},status="",busy=false,preview=null){
  const assets=Object.entries(catalog?.assets||{}).filter(([,a])=>a?.profile?.market).sort((a,b)=>a[0].localeCompare(b[0]));
