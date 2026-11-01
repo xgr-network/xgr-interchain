@@ -789,3 +789,37 @@ test("mobile Northstar uses a static illustration without changing desktop 3D st
  assert.match(source,/if\(host&&!mobileUniverse\.matches\)cosmos=mountUniverse3D/);
  assert.match(source,/host\.dataset\.mobileUniverse="static"/);
 });
+
+test("dashboard displays verified partial 24h movement with explicit incomplete coverage",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const snapshot={kind:"xita-asset-metrics-v1",schemaVersion:1,
+  totals:{lockedUsd:null,movedUsd:null},
+  partialMovement:{verifiedMinimumUsd:0.002285,verifiedAssets:1,requiredAssets:2}};
+ const html=renderDashboard(model,{},"ready",snapshot);
+ const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
+ assert.match(moved,/\$0\.002285/);
+ assert.match(moved,/Partial · verified minimum \(1 of 2 tokens\)/);
+ assert.match(moved,/Partially verified indexed evidence/);
+ assert.doesNotMatch(moved,/Verified indexed evidence<\/span>/);
+ assert.match(html,/Awaiting complete verified evidence/,"partial volume must not fake TVL");
+ const complete=renderDashboard(model,{},"ready",{
+  ...snapshot,totals:{lockedUsd:100,movedUsd:20}});
+ const completed=complete.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
+ assert.match(completed,/\$20\.00/);
+ assert.doesNotMatch(completed,/Partial · verified minimum/);
+});
+test("dashboard refuses unverified or internally inconsistent partial movement objects",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ for(const partialMovement of [
+  {verifiedMinimumUsd:22,verifiedAssets:0,requiredAssets:2},
+  {verifiedMinimumUsd:22,verifiedAssets:2,requiredAssets:2},
+  {verifiedMinimumUsd:-1,verifiedAssets:1,requiredAssets:2},
+  {verifiedMinimumUsd:NaN,verifiedAssets:1,requiredAssets:2}
+ ]){
+  const html=renderDashboard(model,{},"ready",{
+   totals:{lockedUsd:30,movedUsd:null},partialMovement});
+  const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
+  assert.doesNotMatch(moved,/Partial · verified minimum/);
+  assert.match(moved,/Awaiting complete verified evidence/);
+ }
+});
