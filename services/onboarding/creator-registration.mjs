@@ -18,7 +18,7 @@ const NAME=/^[\p{L}\p{N}][\p{L}\p{N} ._()'-]{1,79}$/u;
 const SYMBOL=/^[A-Z][A-Z0-9]{1,10}$/;
 const SUPPLY=/^[1-9][0-9]{0,18}$/;
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
-const ROLES=new Set(["founder","core-team","authorized-representative"]);
+const ROLES=new Set(["founder","core-team","authorized-representative","community"]);
 const LINKS=["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"];
 const response=(res,status,value)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8",
  "Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});res.end(JSON.stringify(value));};
@@ -41,13 +41,11 @@ export function normalizeCreatorApplication(data){
   throw Error("Invalid token name, symbol or initial supply");
  const config=creatorSettings({...data,initialSupply,ownerAddress});
  if(!EMAIL.test(contactEmail)||contactEmail.length>254)throw Error("Valid contact email required");
- if(!ROLES.has(data.applicantRole))throw Error("Authorized project relationship required");
  const shortDescription=normalizeJoinDescription(data.shortDescription,15,280),
   description=normalizeJoinDescription(data.description,40,5000);
  if(!shortDescription||!description)throw Error("Project descriptions must meet Join requirements");
  const website=safeUrl(data.website);
  if(!website)throw Error("Project website must be HTTPS");
- if(data.confirmed!==true)throw Error("Applicant acknowledgement required");
  const categories=data.categories;
  if(!Array.isArray(categories)||categories.length<1||categories.length>8||
   categories.some(c=>typeof c!=="string"||!/^[-\p{L}\p{N} &.]{1,60}$/u.test(c))||
@@ -61,7 +59,7 @@ export function normalizeCreatorApplication(data){
  const logo=normalizeLogoPng(data.logoPngBase64);
  const record={name,symbol,initialSupply,ownerAddress,tokenType:config.tokenType,
   decimals:config.decimals,maxSupply:config.maxSupply,minterAddress:config.minterAddress,
-  permit:config.permit,contactEmail,applicantRole:data.applicantRole,
+  permit:config.permit,contactEmail,applicantRole:ROLES.has(data.applicantRole)?data.applicantRole:"community",
   shortDescription,description,website,categories,tags,links,confirmed:true};
  return {record,logo};
 }
