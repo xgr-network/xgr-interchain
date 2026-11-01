@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
-import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
+import {buildCreatorProfileBundle} from "./creator-manifests.mjs";
 const catalog=loadCatalog(),owner="0x1234567890123456789012345678901234567890",token="0x4564567890123456789012345678901234567890";
 const record={kind:"token-creator",phase:"deployed",logoUrl:"https://xita.xgr.network/token-logos/"+"a".repeat(64)+".png",
  input:{name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,tokenType:"fixed",decimals:18,maxSupply:"10000",permit:false,minterAddress:"0x0000000000000000000000000000000000000000",
@@ -11,9 +11,9 @@ const record={kind:"token-creator",phase:"deployed",logoUrl:"https://xita.xgr.ne
 const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:"Creator Example",symbol:"CREA",
  initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:"0x1234567890123456789012345678901234567891",
  operator:"0x1234567890123456789012345678901234567892",txHash:"0x"+"a".repeat(64),tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12345678};
-test("verified creator deployment creates ordinary XITA bidirectional hub Draft PR manifests",()=>{
+test("verified creator deployment creates a standalone XGR token profile with NO Interchain routes",()=>{
  const output=buildCreatorJoinBundle(record,proof,catalog);
- assert.equal(output.kind,"origin-xgrchain");
+ assert.equal(output.kind,"xgrchain-profile");
  const asset=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/asset.json"))[1]);
  const routes=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/routes.json"))[1]);
  const profile=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/metadata.json"))[1]);
@@ -23,9 +23,12 @@ test("verified creator deployment creates ordinary XITA bidirectional hub Draft 
  assert.equal(asset.creation.transactionHash,proof.txHash);
  assert.equal(profile.market.priceSource,"none");
  assert.equal(profile.market.coingeckoId,null);
- assert.equal(routes.routes.length,8);
- assert.ok(routes.routes.every(r=>r.sourceChain==="xgrchain"||r.destinationChain==="xgrchain"));
+ assert.equal(routes.routes.length,0);
+ assert.deepEqual(asset.representations.map(r=>r.chain),["xgrchain"]);
+ assert.equal(output.summary.routeCount,0);
+ assert.deepEqual(output.summary.chains,["xgrchain"]);
  assert.deepEqual(validateCatalog(JSON.parse(output.files["apps/web/catalog.json"])),[]);
+ assert.equal(JSON.parse(output.files["apps/web/catalog.json"]).assets.CREA.routes.routes.length,0);
  assert.ok(!JSON.stringify(output.files).includes(record.input.contactEmail));
 });
 test("cannot create PR from unverified, forged, or still queued creator receipt",()=>{
@@ -71,4 +74,16 @@ test("email-verified multiline descriptions survive receipt-backed Join PR creat
    "Invalid tab\tinside prose."]){
   assert.throws(()=>buildCreatorJoinBundle({...original,input:{...original.input,description:bad}},proof,catalog),/Invalid public profile fields/);
  }
+});
+
+test("unverified chain-native tokens and synthetic routes cannot qualify as no-route creator profiles",()=>{
+ const output=buildCreatorProfileBundle(record,proof,catalog);
+ const published=JSON.parse(output.files["apps/web/catalog.json"]);
+ assert.deepEqual(validateCatalog(published),[]);
+ const unverified=structuredClone(published);
+ delete unverified.assets.CREA.metadata.creation;
+ assert.match(validateCatalog(unverified).join(" "),/missing representations/);
+ const withRoute=structuredClone(published);
+ withRoute.assets.CREA.routes.routes.push({name:"xgr_to_base",sourceChain:"xgrchain",destinationChain:"base"});
+ assert.match(validateCatalog(withRoute).join(" "),/missing representations|invalid route endpoints/);
 });
