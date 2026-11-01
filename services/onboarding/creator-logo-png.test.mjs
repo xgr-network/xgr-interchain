@@ -29,10 +29,9 @@ test("canonical PNG is immutable, content-addressed, stripped and always safe RG
  assert.deepEqual(normalizeLogoPng(x.bytes.toString("base64")).bytes,x.bytes);
  assert.deepEqual(normalizeLogoPng(x.bytes.toString("base64")).hash,x.hash);
 });
-test("reject malicious uploads and unsupported metadata, size and pixel formats",()=>{
+test("reject malicious uploads, animation, size and unsupported pixel formats",()=>{
  for(const bad of [
   "",Buffer.from("<svg onload=alert(1)/>").toString("base64"),
-  png({extra:true}).toString("base64"),
   png({width:513}).toString("base64"),
   png({type:0}).toString("base64"),
   Buffer.concat([png(),Buffer.from("evil")]).toString("base64"),
@@ -40,4 +39,26 @@ test("reject malicious uploads and unsupported metadata, size and pixel formats"
  ])assert.throws(()=>normalizeLogoPng(bad));
  const checksum=png();checksum[checksum.length-1]^=1; // Damage only the IEND CRC, not the length.
  assert.throws(()=>normalizeLogoPng(checksum.toString("base64")),/checksum/);
+});
+
+test("valid ordinary PNG metadata is stripped and pixels remain unchanged",()=>{
+ const original=png({extra:true});
+ const a=normalizeLogoPng(original.toString("base64"));
+ const b=normalizeLogoPng(png().toString("base64"));
+ assert.deepEqual(a.bytes,b.bytes);
+ assert.equal(a.hash,b.hash);
+ assert.equal(a.bytes.includes(Buffer.from("Copyright")),false);
+ for(const type of ["iCCP","sRGB","gAMA","pHYs","eXIf","tIME","iTXt","zTXt"]){
+  const base=png(),ihdrEnd=8+25;
+  const withChunk=Buffer.concat([base.subarray(0,ihdrEnd),
+    part(type,Buffer.from("arbitrary metadata")),base.subarray(ihdrEnd)]);
+  const image=normalizeLogoPng(withChunk.toString("base64"));
+  assert.deepEqual(image.bytes,b.bytes,type+" metadata must not alter public logo");
+ }
+ for(const type of ["acTL","fcTL","fdAT"]){
+  const base=png(),ihdrEnd=8+25;
+  const animated=Buffer.concat([base.subarray(0,ihdrEnd),
+    part(type,Buffer.from("frame")),base.subarray(ihdrEnd)]);
+  assert.throws(()=>normalizeLogoPng(animated.toString("base64")),/Animated PNG/);
+ }
 });

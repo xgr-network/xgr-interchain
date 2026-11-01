@@ -51,6 +51,9 @@ export function normalizeLogoPng(b64){
       body[8]!==8||![2,6].includes(body[9])||body[10]||body[11]||body[12])
     throw Error("Only non-interlaced RGB or RGBA PNG logos up to 512 x 512 are supported");
    bpp=body[9]===6?4:3;
+  }else if(["acTL","fcTL","fdAT"].includes(kind)){
+   // Never silently turn an animated PNG into a static token logo.
+   throw Error("Animated PNG is not supported; upload a static PNG");
   }else if(kind==="IDAT"){
    if(seenEND)throw Error("Invalid PNG sequence");
    seenIDAT=true;parts.push(body);
@@ -58,7 +61,12 @@ export function normalizeLogoPng(b64){
    if(n!==0||seenEND||!seenIDAT||end!==original.length)
     throw Error("Invalid PNG ending");
    seenEND=true;
-  }else throw Error("PNG metadata, animation and unknown chunks are not permitted");
+  }else if(kind[0]===kind[0].toLowerCase()&&
+     /^(?:tEXt|iTXt|zTXt|iCCP|sRGB|gAMA|cHRM|pHYs|eXIf|tIME|bKGD|sBIT|hIST|sPLT)$/.test(kind)&&
+     !seenEND){
+   // Recognized ancillary metadata has validated CRC and length, but is
+   // discarded. None of it enters the content-addressed public logo.
+  }else throw Error("Unsupported or unsafe PNG chunk");
   off=end;
  }
  if(!seenEND)throw Error("Incomplete PNG");

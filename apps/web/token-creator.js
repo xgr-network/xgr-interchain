@@ -125,7 +125,7 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   choices("category","Project category *",[["DeFi","DeFi"],["Gaming","Gaming"],
     ["Infrastructure","Infrastructure"],["Payments","Payments"],
     ["Community","Community"],["Other","Other"]],d.category)+
-  '<label class="ja-field ja-field-full" for="tc-logo"><span>Token logo * · PNG, max 128 KB, up to 512 × 512 px</span>'+
+  '<label class="ja-field ja-field-full" for="tc-logo"><span>Token logo * · PNG, up to 4 MB (automatically optimized)</span>'+
   '<input id="tc-logo" data-creator-logo type="file" accept="image/png" required>'+
   '<small>After email verification, XITA hosts your logo and provides a permanent logo URL.</small>'+
   '<span id="tc-logo-file">'+clean(d.logoName||"No logo selected")+'</span>'+
