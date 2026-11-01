@@ -8,6 +8,14 @@ import {loadCatalog} from "../../tools/validate-manifests.mjs";
 import {handleJoin,hasBlockingJoinApplication,joinAvailable,joinGithubToken,joinReadiness} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
 import {isDeployedChain} from "../../apps/web/route-availability.js";
+test("CoinGecko 404 explains the difference between API ID and ticker",async()=>{
+ const missing=async()=>({ok:false,status:404});
+ await assert.rejects(()=>fetchCoinDetails("opt",{fetcher:missing,cacheResults:false}),
+  /Token not found on CoinGecko.*API ID.*not the ticker symbol.*optimism instead of OP/);
+ await assert.rejects(()=>fetchCoinDetails("opt",{fetcher:async()=>({ok:false,status:429}),cacheResults:false}),
+  /CoinGecko HTTP 429/);
+});
+import {fetchCoinDetails} from "./coingecko-profile.mjs";
 const catalog=loadCatalog();
 const makeCoin=(id="example-token")=>({id,name:"Example Protocol",symbol:"exmp",
  description:{en:"A sample project with valid fields for testing the XITA onboarding manifest generation process and independently verified contract identity."},
