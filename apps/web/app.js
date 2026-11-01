@@ -1977,13 +1977,39 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
+let metricsRefreshPending=false;
+async function loadLeaderboard(){
+ if(metricsRefreshPending)return;
+ metricsRefreshPending=true;
+ try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;
+ const previous=state.leaderboard;
+ const changed=previous?.asOf!==body.asOf||previous?.status!==body.status||
+  previous?.totals?.lockedUsd!==body.totals?.lockedUsd||
+  previous?.totals?.movedUsd!==body.totals?.movedUsd||
+  previous?.partialMovement?.verifiedMinimumUsd!==body.partialMovement?.verifiedMinimumUsd;
+ state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;
+ // Do not disrupt an active wallet flow, chart interaction or token search.
+ const page=path();
+ if(changed&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
    details.innerHTML=renderUniverse(model,state.experience.system,body,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
- }}catch{ /* Unavailable is not zero */ }}
+ }}catch{ /* Unavailable is not zero */ }
+ finally{metricsRefreshPending=false;}}
+
+// Refresh only read-only display metrics. A startup snapshot can be transiently
+// incomplete while the restarted TVL worker catches up; the browser must not
+// keep that stale state until a manual reload. Never request transaction work.
+setInterval(()=>{
+ if(document.visibilityState!=="visible"||!state.catalog)return;
+ if(path()==="/"||path()==="/markets")void loadLeaderboard();
+},60000);
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible"&&state.catalog&&
+   (path()==="/"||path()==="/markets"))void loadLeaderboard();
+});
 
 // The dialog is deliberately outside #app: repainting the planner must not close
 // an active MetaMask/proof status view or reset its scroll/focus state.
