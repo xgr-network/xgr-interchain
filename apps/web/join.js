@@ -29,8 +29,10 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{
  const choices=preview?.choices||[];
  const accepted=preview?.profile;
  const showIntegration=mode==="integrate";
- const supported=joinHomeChains(catalog).map(key=>catalog.chains[key].displayName||
-  catalog.chains[key].name||key);
+ const supported=joinHomeChains(catalog).map(key=>{
+  const name=String(catalog.chains[key].displayName||catalog.chains[key].name||key);
+  return name.charAt(0).toUpperCase()+name.slice(1);
+ });
  const chainHint='<p class="ja-chain-hint">We check CoinGecko contract addresses against currently available XITA networks: '+
   escape(supported.join(", "))+
   '. Networks without a verified matching contract are not selectable.</p>';
