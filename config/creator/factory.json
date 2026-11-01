@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-creator-factory-v1",
+  "status": "receipt-verified",
+  "chainId": 1643,
+  "address": "0x713c1ad65e0246520307e7c720d01b24a80f300c",
+  "runtimeCodeKeccak256": "0x325208b9e151e5d33dd2d2bd2184b64beb292d829eecbb96bd7086240a39a923",
+  "deploymentTxHash": "0x375bbc2299b2a155731832c73ace1a8abc398e3645841fd5816ef4fa13124b7f"
+}
