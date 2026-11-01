@@ -1604,6 +1604,38 @@ el.addEventListener("change",event=>{
  void (async()=>{
   let image;
   try{
+   // Ordinary small 8-bit RGB/RGBA PNGs can go straight to the server,
+   // whose verified decoder removes ancillary metadata before publication.
+   // Avoid unnecessary asynchronous canvas conversion and losing input when
+   // the SPA rerenders. Paletted/16-bit/oversized logos use the converter.
+   if(chosen.size<=128*1024){
+    const sourceUrl=await new Promise((resolve,reject)=>{
+     const r=new FileReader();
+     r.onload=()=>resolve(r.result);
+     r.onerror=()=>reject(Error("Could not read PNG"));
+     r.readAsDataURL(chosen);
+    });
+    const parts=String(sourceUrl).split(",");
+    const raw=parts.length===2?atob(parts[1]):"";
+    const u32=offset=>((raw.charCodeAt(offset)*16777216)+
+     (raw.charCodeAt(offset+1)<<16)+(raw.charCodeAt(offset+2)<<8)+
+     raw.charCodeAt(offset+3))>>>0;
+    const signature=raw.slice(0,8);
+    if(signature==="\\x89PNG\\r\\n\\x1a\\n"&&raw.length>=33&&
+       raw.slice(12,16)==="IHDR"&&raw.charCodeAt(24)===8&&
+       [2,6].includes(raw.charCodeAt(25))&&
+       u32(16)>=1&&u32(16)<=512&&u32(20)>=1&&u32(20)<=512){
+     if(path()!=="/createtoken"||event.target?.files?.[0]!==chosen)return;
+     tokenCreatorState.logoPngBase64=parts[1];
+     tokenCreatorState.logoName=chosen.name.slice(0,120);
+     const label=el.querySelector("#tc-logo-file");
+     if(label)label.textContent=tokenCreatorState.logoName;
+     const preview=el.querySelector("#tc-logo-preview");
+     if(preview){preview.src=sourceUrl;preview.hidden=false}
+     if(status){status.hidden=true;status.textContent=""}
+     return;
+    }
+   }
    image=await createImageBitmap(chosen);
    if(!image.width||!image.height||image.width>8192||image.height>8192)
     throw Error("Invalid logo dimensions");
