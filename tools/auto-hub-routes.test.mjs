@@ -16,7 +16,11 @@ test("all approved current deployed spokes have reciprocal desired hub routes",(
 });
 test("repository evidence automatically proposes both OP directions for every existing hub asset",()=>{
  const catalog=withoutOP(),updates=deriveMissingHubRoutes(catalog);
- assert.deepEqual([...updates.keys()].sort(),["ARB","XGR"]);
+ assert.deepEqual([...updates.keys()].sort(),
+  Object.keys(catalog.assets).filter(key=>
+   catalog.assets[key].metadata.representations.some(rep=>rep.chain==="xgrchain")&&
+   !(catalog.assets[key].metadata.creation?.kind==="xgrchain-creator-v1"&&
+     catalog.assets[key].routes.routes.length===0)).sort());
  for(const [name,update] of updates){
   const op=update.metadata.representations.filter(x=>x.chain==="optimism");
   assert.deepEqual(op,[{chain:"optimism",representation:"synthetic",
