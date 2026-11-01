@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-routes",
+  "asset": "XITACAN",
+  "network": "mainnet",
+  "protocol": "XITA-v3.1.5",
+  "routingHub": "xgrchain",
+  "routes": []
+}
