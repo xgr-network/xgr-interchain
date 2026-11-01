@@ -26,3 +26,18 @@ test("Join CI rejects unlisted price sources",async()=>{
   {...configs[p],market:{priceSource:"none"}}:configs[p];
  await assert.rejects(validateJoinChanges(changed,{read,check:async()=>({})}),/CoinGecko/);
 });
+
+test("Join CI revalidates new CoinGecko ERC-20 against deployed chain inventory",async()=>{
+ const changed=dir+"/asset.json";
+ let inventory=null;
+ const done=await validateJoinChanges(changed,{
+  read:p=>configs[p],check:async(input,context)=>{
+   inventory=context?.catalog;
+   assert.equal(input.canonicalChain,"base");
+   assert.equal(input.canonicalAddress,address);
+   return {platform:"base"};
+  }});
+ assert.equal(done.length,1);
+ assert.equal(inventory?.chains?.base?.chainId,8453);
+ assert.equal(inventory?.infrastructure?.base?.present,true);
+});
