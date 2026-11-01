@@ -8,7 +8,7 @@ import {keccak256} from "../../apps/web/keccak.mjs";
 const root=resolve(new URL("../../",import.meta.url).pathname),wallet="0x"+"a".repeat(40),
  address="0x"+"b".repeat(40),tx="0x"+"f".repeat(64),blockHash="0x"+"e".repeat(64);
 const init="0x"+"60".repeat(120),code="0x"+"61".repeat(120);
-const artifact={init,code,runtimeHash:keccak256(code)};
+const artifact={init,code,runtimeHash:keccak256(Buffer.from(code.slice(2),"hex"))};
 test("Factory artifact accepts sealed no-constructor bytecode only",()=>{
  const raw={abi:[{type:"constructor",inputs:[]}],bytecode:{object:init},
   deployedBytecode:{object:code,immutableReferences:{}}};
@@ -42,7 +42,7 @@ test("Two independent RPCs prove the exact tx, creation receipt and matching run
  assert.equal(checked.proof.address,address);
  assert.deepEqual(creatorFactoryManifest(checked.proof),{
   schemaVersion:1,kind:"xita-creator-factory-v1",status:"receipt-verified",chainId:1643,
-  address,runtimeCodeKeccak256:keccak256(code),deploymentTxHash:tx});
+  address,runtimeCodeKeccak256:keccak256(Buffer.from(code.slice(2),"hex")),deploymentTxHash:tx});
  assert.equal((await verifyCreatorFactoryReceipt({rpc:mockRpc({mined:false}),urls,txHash:tx,init,code,wallet})).phase,"pending");
  await assert.rejects(()=>verifyCreatorFactoryReceipt({rpc:mockRpc({corrupt:true}),urls,txHash:tx,init,code,wallet}),/runtime/);
 });
