@@ -9,6 +9,12 @@ import {handleJoin,hasBlockingJoinApplication,joinAvailable,joinGithubToken,join
 import {listPrivate} from "./private-store.mjs";
 import {isDeployedChain} from "../../apps/web/route-availability.js";
 const catalog=loadCatalog();
+const makeCoin=(id="example-token")=>({id,name:"Example Protocol",symbol:"exmp",
+ description:{en:"A sample project with valid fields for testing the XITA onboarding manifest generation process and independently verified contract identity."},
+ links:{homepage:["https://example.org"],twitter_screen_name:"exampleprotocol"},
+ image:{large:"https://example.org/logo.png"},categories:["DeFi"],
+ platforms:{base:"0x1234567890123456789012345678901234567890"},
+ detail_platforms:{base:{contract_address:"0x1234567890123456789012345678901234567890",decimal_place:18}}});
 const input={
  name:"Example Protocol",symbol:"EXMP",
  website:"https://example.org",shortDescription:"A sample test token for cross-chain routing.",
@@ -65,12 +71,12 @@ test("email confirmation is private, single-use and required before public GitHu
  let proposals=0;
  const deliver=async arg=>{mail.push(arg);return true;};
  const handler={env,deliver,sourceCatalog:()=>catalog,
-  verify:async()=>({platform:"base",address:input.canonicalAddress,checkedAt:new Date().toISOString()}),
+  fetchCoin:async id=>makeCoin(id),
   getMainSha:async()=>"a".repeat(40),
   publisher:async(bundle,{expectedMain,applicationId})=>{
    assert.match(applicationId,/^[0-9a-f-]{36}$/);
    proposals++;assert.equal(expectedMain,"a".repeat(40));
-   assert.equal(bundle.summary.applicantRole,"holder");
+   assert.equal(bundle.summary.applicantRole,"community");
    assert.equal(bundle.summary.routeCount,
     Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&isDeployedChain(catalog,name)).length*2);
    assert.deepEqual(bundle.summary.chains.sort(),Object.keys(catalog.chains).filter(name=>name==="xgrchain"||isDeployedChain(catalog,name)).sort());
@@ -152,4 +158,59 @@ test("closed or deleted unmerged PR allows reapplication; open or merged PR bloc
  assert.equal(await check([{...record,phase:"approved"}],async()=>{throw Error("should not be called")}),true);
  await assert.rejects(()=>check([record],async()=>{throw Error("GitHub rejected request (503)")}),/status unavailable/);
  await assert.rejects(()=>check([record],async()=>null),/status unavailable/);
+});
+
+test("profile update requires verified email, writes metadata-only Draft PR and is idempotent",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-profile-update-"));
+ const env={XITA_JOIN_WRITER_TOKEN:"writer",XITA_JOIN_PRIVATE_DIR:dir,
+  XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
+  XITA_JOIN_MAIL_API_TOKEN:"mail",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
+ const mail=[];let drafts=0;
+ const arb="0x912ce59144191c1204e64559fe8253a0e49e6548";
+ const coin={id:"arbitrum",symbol:"arb",name:"Arbitrum",description:{en:
+  "Arbitrum is an Ethereum layer two scaling ecosystem with governance and decentralized operations, including open community proposal creation."},
+  categories:["DeFi"],image:{large:"https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg"},
+  links:{homepage:["https://arbitrum.foundation/"]},
+  platforms:{"arbitrum-one":arb},detail_platforms:{"arbitrum-one":{contract_address:arb,decimal_place:18}}};
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+  env,sourceCatalog:()=>catalog,fetchCoin:async()=>coin,
+  getMainSha:()=> "a".repeat(40),
+  deliver:async input=>{mail.push(input);return true},
+  publisher:async bundle=>{
+   drafts++;
+   assert.equal(bundle.kind,"profile-update");
+   assert.equal(Object.keys(bundle.files).length,2);
+   assert.ok(Object.keys(bundle.files).every(p=>p.endsWith("/metadata.json")||p==="apps/web/catalog.json"));
+   const latest=JSON.parse(bundle.files["apps/web/catalog.json"]);
+   assert.deepEqual(latest.assets.ARB.metadata,catalog.assets.ARB.metadata);
+   assert.deepEqual(latest.assets.ARB.routes,catalog.assets.ARB.routes);
+   assert.deepEqual(latest.assets.ARB.deployment,catalog.assets.ARB.deployment);
+   return {number:456,url:"https://github.com/xgr-network/xgr-interchain/pull/456",status:"draft"};
+  }
+ })});
+ await new Promise(ok=>server.listen(0,"127.0.0.1",ok));
+ try{
+  const origin="http://127.0.0.1:"+server.address().port;
+  const post=async(path,body)=>{const response=await fetch(origin+path,{method:"POST",
+   headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+   return {status:response.status,body:await response.json()};};
+  const form={symbol:"ARB",contactEmail:"profile@example.org",confirmed:true};
+  const preview=await post("/api/xita/profile/preview",form);
+  assert.equal(preview.status,200);
+  assert.equal(preview.body.summary.symbol,"ARB");
+  const submit=await post("/api/xita/profile/submit",form);
+  assert.equal(submit.status,202);
+  assert.equal(drafts,0);
+  const duplicate=await post("/api/xita/profile/submit",form);
+  assert.equal(duplicate.status,409);
+  const code=/\/join\/confirm#([0-9a-f-]{36})\.([a-f0-9]{64})/.exec(mail[0].text);
+  assert.ok(code);
+  const confirm=await post("/api/xita/join/confirm",{id:code[1],token:code[2]});
+  assert.equal(confirm.status,200);assert.equal(drafts,1);
+  const again=await post("/api/xita/join/confirm",{id:code[1],token:code[2]});
+  assert.equal(again.status,200);assert.equal(drafts,1);
+  const row=listPrivate(dir).find(v=>v.kind==="profile-update");
+  assert.equal(row.pr.number,456);
+  assert.equal(JSON.stringify(row).includes(coin.description.en),false);
+ }finally{await new Promise(ok=>server.close(ok));rmSync(dir,{recursive:true,force:true});}
 });
