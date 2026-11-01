@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-config",
+  "asset": "AERO",
+  "name": "Aerodrome Finance",
+  "symbol": "AERO",
+  "decimals": 18,
+  "canonical": {
+    "chain": "base",
+    "representation": "collateral",
+    "symbol": "AERO",
+    "tokenAddress": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+  },
+  "representations": [
+    {
+      "chain": "base",
+      "representation": "collateral",
+      "symbol": "AERO",
+      "assetAddress": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+    },
+    {
+      "chain": "xgrchain",
+      "representation": "synthetic",
+      "symbol": "wAERO",
+      "assetAddress": null
+    },
+    {
+      "chain": "arbitrum",
+      "representation": "synthetic",
+      "symbol": "wAERO",
+      "assetAddress": null
+    },
+    {
+      "chain": "bsc",
+      "representation": "synthetic",
+      "symbol": "wAERO",
+      "assetAddress": null
+    },
+    {
+      "chain": "optimism",
+      "representation": "synthetic",
+      "symbol": "wAERO",
+      "assetAddress": null
+    }
+  ],
+  "bridgeModel": "lock-mint-burn-unlock",
+  "assetId": "0xaf7a4d225f47f0b70047494a8b03ce18fad693634dddc4807f41ac74aa1e76f7",
+  "notes": "Public directory application; no route or deployment is active without independent safety verification."
+}
