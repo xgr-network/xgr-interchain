@@ -55,3 +55,16 @@ test("email confirmation remains single-use and XGR-reviewed, with no direct rou
  const unsafe=joinConfirmationMarkup({phase:"failed",message:"<script>alert(1)</script>"});
  assert.doesNotMatch(unsafe,/<script>/);
 });
+
+test("Creator launch link is rendered only after explicit readiness",()=>{
+ const data=draft();
+ assert.equal(joinMarkup(catalog,data).includes('href="/createtoken"'),false);
+ const html=joinMarkup(catalog,data,"",false,null,{creatorAvailable:true});
+ assert.equal(html.includes('href="/createtoken"'),true);
+ assert.match(html,/Create your own token/);
+});
+test("mobile navigation exposes an accessible collapsed menu control",()=>{
+ const html=readFileSync(new URL("./index.html",import.meta.url),"utf8");
+ assert.match(html,/id="site-menu-toggle"[^>]*aria-controls="site-main-nav"[^>]*aria-expanded="false"/);
+ assert.match(html,/id="site-main-nav" aria-label="Main navigation"/);
+});

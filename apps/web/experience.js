@@ -363,9 +363,12 @@ export function tvlChange24h(metrics){
  const points=validTvlPoints(metrics);
  const current=metrics?.totals?.lockedUsd;
  const last=points.at(-1);
- const value=Number.isFinite(current)&&current>=0?current:last?.lockedUsd;
- const at=Number.isFinite(current)&&current>=0&&Number.isFinite(Date.parse(metrics?.asOf))?
-  Date.parse(metrics.asOf):Date.parse(last?.asOf);
+ const hasCurrent=typeof current==="number"&&Number.isFinite(current)&&current>=0;
+ const hasCurrentTime=typeof metrics?.asOf==="string"&&Number.isFinite(Date.parse(metrics.asOf));
+ // Never pair a live TVL amount with a historic observation timestamp.
+ if(hasCurrent&&!hasCurrentTime)return null;
+ const value=hasCurrent?current:last?.lockedUsd;
+ const at=hasCurrent?Date.parse(metrics.asOf):Date.parse(last?.asOf);
  if(!Number.isFinite(value)||!Number.isFinite(at))return null;
  const target=at-86400000;
  const baseline=points.filter(p=>Date.parse(p.asOf)<=target).at(-1);

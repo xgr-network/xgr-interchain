@@ -36,7 +36,7 @@ function normalizeLinks(value){
  }
  return result;
 }
-export function normalizeApplication(raw,inventory){
+export function normalizeApplication(raw,inventory,{preview=false}={}){
  if(!raw||typeof raw!=="object"||Array.isArray(raw))note("Invalid application");
  if(!inventory?.chains?.xgrchain||inventory.chains.xgrchain.chainId!==1643||inventory.chains.xgrchain.domainId!==1643)
   note("Canonical XGRChain inventory unavailable");
@@ -81,8 +81,11 @@ export function normalizeApplication(raw,inventory){
  if(raw.logoPngBase64!==undefined)note("Logo uploads are not accepted; use a HTTPS URL");
  const logoUrl=safeUrl(raw.logoUrl);
  if(!logoUrl)note("Provide a valid HTTPS logo URL");
- if(raw.confirmed!==true)note("Applicant acknowledgement required");
- if(!EMAIL.test(String(raw.contactEmail||""))||String(raw.contactEmail).length>254)note("Valid private contact email required");
+ // Preview validates public identity and the complete proposed manifest without
+ // requiring private contact details, which are mandatory again on submission.
+ if(!preview&&raw.confirmed!==true)note("Applicant acknowledgement required");
+ if(!preview&&(!EMAIL.test(String(raw.contactEmail||""))||String(raw.contactEmail).length>254))
+  note("Valid private contact email required");
  if(!ROLES.has(raw.applicantRole))note("Applicant relationship required");
  const representations=[canonicalChain,"xgrchain",...chosen].filter((key,i,arr)=>arr.indexOf(key)===i);
  if(representations.length<2)note("An XGRChain spoke is required");
@@ -97,8 +100,8 @@ export function normalizeApplication(raw,inventory){
   logoUrl,links:linkMap,priceSource,coingeckoId,confirmed:true};
  return {normalized};
 }
-export function buildManifestBundle(raw,catalog){
- const {normalized:a}=normalizeApplication(raw,catalog);
+export function buildManifestBundle(raw,catalog,{preview=false}={}){
+ const {normalized:a}=normalizeApplication(raw,catalog,{preview});
  const key=a.symbol;
  const candidate={asset:key,canonical:{chain:a.canonicalChain,representation:"collateral",tokenAddress:a.canonicalAddress}};
  const assetId=canonicalAssetId(candidate,catalog.chains);

@@ -764,3 +764,14 @@ test("outreach FAQ covers finality, recovery and sponsorship",()=>{
   assert.ok(faq.includes(needle),needle);
  assert.doesNotMatch(faq,/must be confirmed by the user in MetaMask/);
 });
+
+test("live TVL without an evidence timestamp never borrows an old history timestamp",async()=>{
+ const {tvlChange24h}=await import("./experience.js");
+ const history={points:[
+  {asOf:"2026-10-21T10:00:00Z",lockedUsd:100},
+  {asOf:"2026-10-22T10:00:00Z",lockedUsd:105}
+ ]};
+ assert.equal(tvlChange24h({totals:{lockedUsd:120},history}),null);
+ assert.equal(tvlChange24h({asOf:"2026-10-22T10:00:00Z",totals:{lockedUsd:120},history}),20);
+ assert.equal(tvlChange24h({totals:{lockedUsd:null},history}),5);
+});

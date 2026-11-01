@@ -28,6 +28,23 @@ import {transferSponsorVisible,sponsorAllowsContinuation,verifiedZeroGrantSource
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
+const siteMenuToggle=document.querySelector("#site-menu-toggle");
+const siteMenu=document.querySelector("#site-main-nav");
+function closeSiteMenu(){
+ siteMenuToggle?.setAttribute("aria-expanded","false");
+ siteMenu?.classList.remove("is-open");
+}
+siteMenuToggle?.addEventListener("click",()=>{
+ const open=siteMenuToggle.getAttribute("aria-expanded")!=="true";
+ siteMenuToggle.setAttribute("aria-expanded",String(open));
+ siteMenu?.classList.toggle("is-open",open);
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSiteMenu()});
+document.addEventListener("click",e=>{
+ if(siteMenu?.classList.contains("is-open")&&
+ !siteMenu.contains(e.target)&&!siteMenuToggle?.contains(e.target))closeSiteMenu();
+});
+globalThis.matchMedia?.("(min-width: 1101px)")?.addEventListener?.("change",closeSiteMenu);
 const state={catalog:null,assetId:"XGR",account:null,quote:null,quoteKey:null,transfer:null,walletChainId:null,walletGas:null,walletBalances:null,walletTokenBalances:null,walletGasCheckedAt:null,walletGasLoading:false,busy:false,indexed:null,assetStats:{},transfers:{},prices:{},apiState:"not-deployed",experience:{system:"xgrchain",origin:"xgrchain",destination:"base",asset:"XGR",tvlPeriod:"24h"},leaderboard:null,visibility:null,leaderboardSort:"lockedUsd",leaderboardDir:"desc",leaderboardSearch:"",universeSort:"lockedUsd",universeQuery:""};
 // Keep the fee-identity resolver local to the entry module. A previously
 // browser-cached experience.js must NEVER break the entire SPA via a newly
@@ -1056,7 +1073,7 @@ function token(){
   '<p class="ux-small">No routes deployed yet.</p>')+'</div></section>'+
  '</article><aside class="card ux-token-aside">'+renderTokenBridge(model,id,state.experience,walletGasView())+'</aside></div>';
 }
-const joinState={data:null,status:"",busy:false,accepted:false,available:null,checking:false,preview:null};
+const joinState={data:null,status:"",busy:false,accepted:false,available:null,creatorAvailable:false,checking:false,preview:null};
 const profileState={data:{symbol:"",coingeckoId:"",contactEmail:"",confirmed:false},status:"",busy:false,preview:null};
 const tokenCreatorState=creatorDraft();
 const creatorEmailState={phase:"pending",error:"",logoUrl:"",deploymentStatus:"",key:"",working:false};
@@ -1084,6 +1101,7 @@ async function checkJoinAvailability(){
  joinState.checking=true;
  try{const response=await fetch("/api/xita/join/status",{cache:"no-store",credentials:"omit"});
   const body=await response.json();joinState.available=response.ok&&body?.ok===true&&body.available===true;
+  joinState.creatorAvailable=joinState.available&&body?.creatorAvailable===true;
  }catch{joinState.available=false;}
  joinState.checking=false;
  if(path()==="/join"||path()==="/profile-update")render();
@@ -1119,7 +1137,7 @@ async function processJoinEmailConfirmation(){
 function join(){
  // /join always displays a form. The receipt belongs only to /join/submitted.
  if(!joinState.data)joinState.data=draft(state.catalog.chains);
- return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy,joinState.preview);
+ return joinMarkup(state.catalog,joinState.data,joinState.status,joinState.busy,joinState.preview,{creatorAvailable:joinState.creatorAvailable});
 }
 function drawJoin(){if(path()==="/join"||path()==="/join/submitted")render();}
 function captureJoin(){
@@ -1157,7 +1175,8 @@ async function runJoin(action){
    joinState.status="Select the original blockchain. CoinGecko lists this token on multiple networks.";
    return;
   }
-  if(action==="preview"){joinState.status="Verified CoinGecko profile loaded.";return;}
+  if(action==="preview"){joinState.status=loaded.selectionRequired?"Choose the original blockchain shown above to continue.":"Verified CoinGecko profile loaded.";return;}
+  if(loaded.selectionRequired)throw Error("Choose the original blockchain first");
   joinState.status="Sending your confirmation email…";drawJoin();
   const submission=await fetch("/api/xita/join/submit",{
    method:"POST",headers:{"Content-Type":"application/json"},
@@ -1631,7 +1650,7 @@ el.addEventListener("input",event=>{
 });
 el.addEventListener("change",event=>{
  if(path()==="/join"&&event.target.matches('[data-join="canonicalChain"]')){
-  captureJoin();drawJoin();
+  captureJoin();joinState.status="Original blockchain selected. Submit to verify its contract.";drawJoin();
  }
  if(path()==="/profile-update"&&event.target.matches('[data-profile="symbol"]')){
   captureProfile();profileState.data.coingeckoId="";profileState.preview=null;profileState.status="";render();
@@ -1649,7 +1668,7 @@ document.addEventListener("click",e=>{
   joinState.accepted=false;
   joinState.busy=false;
  }
- history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
+ closeSiteMenu();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
 });
 document.addEventListener("click",e=>{
  const copy=e.target.closest("button[data-xita-copy-address]");

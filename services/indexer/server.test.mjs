@@ -60,3 +60,13 @@ test("undeployed post-reset asset cannot inherit verified TVL or movement",()=>{
  assert.equal(got.assets.XGR.custody.status,"unavailable");
  assert.deepEqual(got.totals,{lockedUsd:null,movedUsd:null});
 });
+
+test("fresh verified TVL exposes its own observation timestamp for 24h comparisons",()=>{
+ const asOf="2026-11-01T10:01:00.000Z";
+ const c={assets:{XGR:deployedFixture("XGR","xgrchain")}};
+ const result=projectMetrics(c,{schemaVersion:1,kind:"xita-asset-metrics-v1",asOf,
+  assets:{XGR:verified("XGR")}});
+ assert.equal(result.totals.lockedUsd,20);
+ assert.equal(result.asOf,asOf);
+ assert.equal(projectMetrics(c,null).asOf,null);
+});
