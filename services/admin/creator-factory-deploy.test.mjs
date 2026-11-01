@@ -50,7 +50,7 @@ test("Creator Factory admin never signs twice, journals hash before publication 
  const dir=mkdtempSync(join(tmpdir(),"factory-admin-")),sourceCommit="a".repeat(40);
  let published=0,shouldPublish=true;
  const work=creatorFactoryDeployment({root,stateDir:dir,main:async()=>sourceCommit,
-  artifactForCommit:()=>artifact,rpc:mockRpc(),
+  artifactForCommit:()=>artifact,factoryInMain:()=>null,rpc:mockRpc(),
   publish:async({manifest})=>{
    published++;assert.equal(manifest.deploymentTxHash,tx);
    if(!shouldPublish)throw Error("GitHub temporary outage");
@@ -82,7 +82,7 @@ test("Creator Factory admin never signs twice, journals hash before publication 
 test("Only exact unsent Factory preparation can be cancelled; no silent reset of signed TX",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"factory-cancel-"));
  const work=creatorFactoryDeployment({root,stateDir:dir,main:async()=>"c".repeat(40),
-  artifactForCommit:()=>artifact,rpc:mockRpc(),publish:async()=>{throw Error("no publication")}});
+  artifactForCommit:()=>artifact,factoryInMain:()=>null,rpc:mockRpc(),publish:async()=>{throw Error("no publication")}});
  try{
   const prepared=await work.prepare({wallet});
   await assert.rejects(()=>work.cancel({createdAt:"wrong"}),/exact/);
@@ -90,5 +90,19 @@ test("Only exact unsent Factory preparation can be cancelled; no silent reset of
   assert.equal((await work.prepare({wallet})).phase,"prepared");
   await work.hash({txHash:tx});
   await assert.rejects(()=>work.cancel({createdAt:prepared.createdAt}),/unsigned/);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("factory already documented in main blocks a second creation",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"factory-existing-"));
+ const proof={address,deploymentTxHash:tx,runtimeCodeKeccak256:artifact.runtimeHash};
+ const documented=creatorFactoryManifest(proof);
+ const work=creatorFactoryDeployment({root,stateDir:dir,main:async()=>"c".repeat(40),
+  artifactForCommit:()=>artifact,factoryInMain:()=>documented,rpc:mockRpc(),
+  publish:async()=>{throw Error("must not publish twice")}});
+ try{
+  assert.equal((await work.status()).phase,"documented");
+  assert.deepEqual((await work.status()).documented,documented);
+  await assert.rejects(()=>work.prepare({wallet}),/already deployed in main/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
