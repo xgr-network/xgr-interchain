@@ -21,9 +21,24 @@ const input={name:"Example Token",symbol:"EXM",initialSupply:"1000000",ownerAddr
  "Example Token is a small community project testing XGRChain token creation and future Interchain integrations.",
  website:"https://example.org",categories:["DeFi"],tags:[],applicantRole:"founder",
  links:{x:"https://x.com/example"},contactEmail:"partner@example.org",confirmed:true,logoPngBase64:png()};
-const config=dir=>({XITA_JOIN_PRIVATE_DIR:dir,
+const config=dir=>({XITA_CREATOR_PUBLIC_ENABLED:"true",XITA_JOIN_PRIVATE_DIR:dir,
  XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
  XITA_JOIN_MAIL_API_TOKEN:"test-secret",XITA_JOIN_MAIL_FROM:"contact@xgr.network"});
+test("Creator registration fails closed until separately enabled in Join service",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-creator-disabled-")),emails=[];
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+   env:{...config(dir),XITA_CREATOR_PUBLIC_ENABLED:"false"},
+   deliver:async mail=>{emails.push(mail)}})});
+ await new Promise(done=>server.listen(0,"127.0.0.1",done));
+ try{
+  const response=await fetch("http://127.0.0.1:"+server.address().port+"/api/xita/creator/register",{
+   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
+  assert.equal(response.status,503);
+  assert.match((await response.json()).error,/not yet available/);
+  assert.equal(emails.length,0);
+  assert.deepEqual(listPrivate(dir),[]);
+ }finally{await new Promise(done=>server.close(done));rmSync(dir,{recursive:true,force:true})}
+});
 test("unverified logo is private; confirmed email publishes sanitized permanent XITA URL exactly once",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-creator-test-")),emails=[];
  let now=Date.UTC(2026,9,31,10);
