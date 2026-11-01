@@ -252,3 +252,13 @@ test("profile update requires verified email, writes metadata-only Draft PR and 
   assert.equal(JSON.stringify(row.expectedProfile).includes("profile@example.org"),false);
  }finally{await new Promise(ok=>server.close(ok));rmSync(dir,{recursive:true,force:true});}
 });
+
+test("Creator public CTA stays off until the operator deliberately enables it",()=>{
+ const env={XITA_JOIN_WRITER_TOKEN:"writer",XITA_JOIN_PRIVATE_DIR:"/tmp/xita-join-qa",
+  XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
+  XITA_JOIN_MAIL_API_TOKEN:"mail",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
+ assert.equal(joinReadiness(env,()=>catalog).creatorAvailable,false);
+ const flagged=joinReadiness({...env,XITA_CREATOR_PUBLIC_ENABLED:"true"},()=>catalog);
+ assert.equal(flagged.available,true);
+ assert.equal(flagged.creatorAvailable,true,"main contains the receipt-verified Factory");
+});
