@@ -823,3 +823,13 @@ test("dashboard refuses unverified or internally inconsistent partial movement o
   assert.match(moved,/Awaiting complete verified evidence/);
  }
 });
+
+test("dashboard asynchronously refreshes read-only evidence after startup without modifying transfers",()=>{
+ const app=readFileSync(new URL("./app.js",import.meta.url),"utf8");
+ assert.match(app,/setInterval\(\(\)=>\{\s*if\(document\.visibilityState!=="visible"\|\|!state\.catalog\)return;\s*if\(path\(\)==="\/"\|\|path\(\)==="\/markets"\)void loadLeaderboard\(\);\s*\},60000\)/);
+ assert.match(app,/previous\?\.totals\?\.lockedUsd==null&&/);
+ assert.match(app,/previous\?\.totals\?\.lockedUsd===0&&body\.totals\?\.lockedUsd>0/);
+ assert.match(app,/if\(metricsRefreshPending\)return/);
+ assert.match(app,/finally\{metricsRefreshPending=false;/);
+ assert.doesNotMatch(app,/setInterval\([\s\S]*?systemctl/);
+});

@@ -1977,13 +1977,44 @@ el.addEventListener("change",e=>{
 el.addEventListener("input",e=>{
  if(e.target.id==="ux-orbit-search"){state.universeQuery=e.target.value;cosmos?.searchTokens(state.universeQuery);void loadSystemRanking(state.experience.system);}
 });
-async function loadLeaderboard(){try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;if(path()==="/markets"||path()==="/"||path()==="/transfer"||path()==="/plan-route"||path().startsWith("/token/"))render();
+let metricsRefreshPending=false;
+async function loadLeaderboard(){
+ if(metricsRefreshPending)return;
+ metricsRefreshPending=true;
+ try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;
+ const previous=state.leaderboard;
+ // Avoid rebuilding the costly interactive 3D dashboard every minute.
+ // Repaint only once data that was initially absent/unavailable becomes
+ // verifiable; periodic polling still refreshes the in-memory snapshot.
+ const improved=(previous?.totals?.lockedUsd==null&&
+   typeof body.totals?.lockedUsd==="number")||
+  (previous?.totals?.lockedUsd===0&&body.totals?.lockedUsd>0)||
+  (previous?.totals?.movedUsd==null&&
+   (typeof body.totals?.movedUsd==="number"||
+    typeof body.partialMovement?.verifiedMinimumUsd==="number"));
+ state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;
+ // Do not disrupt an active wallet flow, chart interaction or token search.
+ const page=path();
+ if((!previous||improved)&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
    details.innerHTML=renderUniverse(model,state.experience.system,body,walletGasView()).match(/<aside class="ux-panel ux-details"[^>]*>([\s\S]*?)<\/aside>/)?.[1]||"";
   }
- }}catch{ /* Unavailable is not zero */ }}
+ }}catch{ /* Unavailable is not zero */ }
+ finally{metricsRefreshPending=false;}}
+
+// Refresh only read-only display metrics. A startup snapshot can be transiently
+// incomplete while the restarted TVL worker catches up; the browser must not
+// keep that stale state until a manual reload. Never request transaction work.
+setInterval(()=>{
+ if(document.visibilityState!=="visible"||!state.catalog)return;
+ if(path()==="/"||path()==="/markets")void loadLeaderboard();
+},60000);
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="visible"&&state.catalog&&
+   (path()==="/"||path()==="/markets"))void loadLeaderboard();
+});
 
 // The dialog is deliberately outside #app: repainting the planner must not close
 // an active MetaMask/proof status view or reset its scroll/focus state.
