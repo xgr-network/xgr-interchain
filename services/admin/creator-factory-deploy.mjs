@@ -1,6 +1,6 @@
 // Exactly-once, wallet-signed deployment of the zero-constructor XGR Creator Factory.
 // Separate from the ILN router factory; backend has no private key.
-import {readFileSync,writeFileSync,renameSync,mkdirSync,existsSync} from "node:fs";
+import {readFileSync,writeFileSync,renameSync,mkdirSync,existsSync,openSync,closeSync,fsyncSync} from "node:fs";
 import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 import {readSealedArtifacts} from "./sealed-artifacts.mjs";
@@ -9,6 +9,7 @@ import {rpcCall} from "./inspector.mjs";
 import {keccak256} from "../../apps/web/keccak.mjs";
 const A=/^0x[a-f0-9]{40}$/i,T=/^0x[a-f0-9]{64}$/i,S=/^[a-f0-9]{40}$/i,H=/^0x(?:[a-f0-9]{2})+$/i;
 const same=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
+const shaCode=hex=>keccak256(Buffer.from(hex.slice(2),"hex"));
 export function creatorFactoryArtifact(raw){
  const ctor=raw?.abi?.find(x=>x.type==="constructor");
  const init=raw?.bytecode?.object,code=raw?.deployedBytecode?.object;
@@ -18,7 +19,7 @@ export function creatorFactoryArtifact(raw){
   throw Error("Invalid, unlinked or constructor-bearing Creator Factory artifact");
  const initSize=(init.length-2)/2,codeSize=(code.length-2)/2;
  if(initSize>49152||codeSize>24576)throw Error("Creator Factory exceeds EVM initcode/runtime limits");
- return {init,code,runtimeHash:keccak256(code)};
+ return {init,code,runtimeHash:shaCode(code)};
 }
 export function creatorFactoryManifest(proof){
  if(!A.test(proof?.address||"")||!T.test(proof?.deploymentTxHash||"")||
@@ -53,7 +54,7 @@ export async function verifyCreatorFactoryReceipt({rpc=rpcCall,urls,txHash,init,
  if(!T.test(txHash||"")||!A.test(wallet||"")||!H.test(init||"")||
     !H.test(code||"")||!Array.isArray(urls)||urls.length!==2)
   throw Error("Creator Factory evidence inputs invalid");
- const expected=keccak256(code);
+ const expected=shaCode(code);
  const results=await Promise.all(urls.map(async url=>{
   const [chain,receipt,transaction,head]=await Promise.all([
    rpc(url,"eth_chainId",[]),rpc(url,"eth_getTransactionReceipt",[txHash]),
@@ -72,7 +73,7 @@ export async function verifyCreatorFactoryReceipt({rpc=rpcCall,urls,txHash,init,
    rpc(url,"eth_getBlockByNumber",[receipt.blockNumber,false]),
    rpc(url,"eth_getCode",[receipt.contractAddress,"latest"])]);
   if(!same(canonical?.hash,receipt.blockHash)||!same(installed,code)||
-     !same(keccak256(installed||"0x"),expected))
+     !same(shaCode(installed||"0x"),expected))
    throw Error("Creator Factory block or deployed runtime does not match audited build");
   return {address:receipt.contractAddress.toLowerCase(),
    deploymentTxHash:txHash.toLowerCase(),runtimeCodeKeccak256:expected.toLowerCase(),
