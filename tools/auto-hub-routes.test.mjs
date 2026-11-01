@@ -52,3 +52,19 @@ test("ambiguous route names and missing canonical collateral are not silently ac
  origin.assets.ARB.metadata.canonical.chain="optimism";
  assert.throws(()=>deriveMissingHubRoutes(origin),/Cannot invent canonical collateral/);
 });
+
+test("unjoined verified XGR originals are excluded from automatic hub routes",()=>{
+ const catalog=structuredClone(loadCatalog());
+ const original=structuredClone(catalog.assets.XGR);
+ original.metadata.asset="CANARY";
+ original.metadata.symbol="CANARY";
+ original.metadata.name="Canary original";
+ original.metadata.canonical={chain:"xgrchain",representation:"collateral",symbol:"CANARY",tokenAddress:"0x3333333333333333333333333333333333333333"};
+ original.metadata.creation={kind:"xgrchain-creator-v1"};
+ original.metadata.representations=[{chain:"xgrchain",representation:"collateral",symbol:"CANARY",assetAddress:"0x3333333333333333333333333333333333333333"}];
+ original.routes={...original.routes,asset:"CANARY",routes:[]};
+ catalog.assets.CANARY=original;
+ assert.equal(deriveMissingHubRoutes(catalog).size,0);
+ delete catalog.assets.CANARY.metadata.creation;
+ assert.equal(deriveMissingHubRoutes(catalog).has("CANARY"),true);
+});
