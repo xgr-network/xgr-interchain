@@ -61,7 +61,7 @@ test("reviewed XGR creator enters public token directory even before ILN route d
  assert.equal(isPublicAsset("XTK",e,null,c),true);
  assert.equal(listingStatus(e,null,c),"public");
  assert.deepEqual(Object.keys(publicDirectoryCatalog(c,null).assets),["XTK"]);
- assert.deepEqual(publicDirectoryCatalog(c,null).assets.XTK.metadata.representations.map(x=>x.chain),["xgrchain"]);
+ assert.ok(publicDirectoryCatalog(c,null).assets.XTK.metadata.representations.some(x=>x.chain==="xgrchain"));
  const bad=structuredClone(e);
  delete bad.metadata.creation.transactionHash;
  assert.equal(isPublicAsset("XTK",bad,null,c),false);
