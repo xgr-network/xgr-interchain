@@ -1690,3 +1690,19 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 @media (pointer:coarse){
  .ux-3d-canvas{touch-action:pan-y;cursor:default}
 }
+
+/* Token Creator: clear field errors and a dedicated email-confirmation receipt. */
+.ux-token-creator .tc-registration-feedback:not([hidden]){
+ display:block;padding:13px 16px;margin:0;border-radius:8px;
+ border:1px solid #d99668;background:#2d211b;color:#ffd4b8;
+ font-size:13px;line-height:1.5;outline-offset:4px
+}
+.ux-token-creator .tc-submitted-receipt{
+ align-content:start;justify-items:start;padding:clamp(24px,4vw,54px);gap:18px
+}
+.ux-token-creator .tc-submitted-receipt .tc-receipt-icon{
+ display:grid;place-items:center;width:52px;height:52px;border-radius:50%;
+ border:1px solid #5898a3;background:#0b303b;color:#a8e5ef;font-size:27px
+}
+.ux-token-creator .tc-submitted-receipt h1{font-size:clamp(33px,5vw,58px)}
+.ux-token-creator .tc-submitted-receipt .ux-lead{overflow-wrap:anywhere}

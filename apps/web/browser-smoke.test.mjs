@@ -62,12 +62,16 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
     '{"ok":true,"status":"pending-email"}');
    return;
   }
+  if(pathname==="/api/xita/creator/register"){
+   response.writeHead(202,{"Content-Type":"application/json"});
+   response.end('{"ok":true,"status":"pending-email"}');return;
+  }
   if(pathname.startsWith("/api/")){
    response.writeHead(503,{"Content-Type":"application/json"});
    response.end('{"ok":false,"error":"Not deployed"}');
    return;
   }
-  const isPage=pathname==="/"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/contact"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/profile-update"||pathname==="/join/confirm"||pathname==="/my-transfers";
+  const isPage=pathname==="/"||pathname==="/createtoken"||pathname==="/createtoken/submitted"||pathname==="/universe"||pathname==="/plan-route"||pathname==="/transfer"||pathname==="/faq"||pathname==="/contact"||pathname==="/token/xgr"||pathname==="/markets"||pathname==="/join"||pathname==="/profile-update"||pathname==="/join/confirm"||pathname==="/my-transfers";
   const target=isPage?"index.html":pathname.slice(1);
   const full=resolve(root,target);
   if(!full.startsWith(root.endsWith(sep)?root:root+sep)){
@@ -129,6 +133,56 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
      </script>`;
     data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
    }
+   if(pathname==="/createtoken"&&new URL(request.url,"http://localhost").searchParams.has("test-interaction")){
+    const probe=`<script>
+    (function(){
+     const timer=setInterval(async()=>{
+      const form=document.querySelector("#xita-token-creator-form");
+      if(!form||document.querySelector("#app")?.dataset.ready!=="1")return;
+      clearInterval(timer);
+      const fill=(key,value)=>{
+       const input=form.querySelector('[data-creator="'+key+'"]');
+       if(!input)return;
+       input.value=value;
+       input.dispatchEvent(new Event("input",{bubbles:true}));
+      };
+      fill("name","XITA Canary");
+      fill("symbol","XITACAN");
+      fill("initialSupply","1000");
+      fill("ownerAddress","0x1234567890123456789012345678901234567890");
+      fill("shortDescription","Internal XITA Canary token for tests.");
+      fill("description","An internal XGRChain token used to validate email-confirmed creation and automated onboarding.");
+      fill("website","https://xgr.network");
+      fill("contactEmail","canary@example.org");
+      const logo=form.querySelector("[data-creator-logo]");
+      const file=new File([new Uint8Array(80).fill(42)],"test.png",{type:"image/png"});
+      const files=new DataTransfer();files.items.add(file);
+      logo.files=files.files;logo.dispatchEvent(new Event("change",{bubbles:true}));
+      document.body.dataset.creatorProbe="logo-selected";
+      const ready=setInterval(()=>{
+       if(!form.querySelector("#tc-logo-preview")?.getAttribute("src"))return;
+       clearInterval(ready);
+       document.body.dataset.creatorProbe="button-clicked";
+       form.querySelector("#xita-creator-register").click();
+       const check=setInterval(()=>{
+        if(location.pathname==="/createtoken/submitted"){
+         document.body.dataset.creatorReceipt=document.querySelector("#app")?.textContent.includes("Check your email.")?"pass":"fail";
+         clearInterval(check);
+        }
+       },30);
+       setTimeout(()=>{
+        if(location.pathname!=="/createtoken/submitted"){
+         document.body.dataset.creatorReceipt="fail";
+         document.body.dataset.creatorError=document.querySelector("#tc-registration-status")?.textContent||"no validation message";
+         clearInterval(check);
+        }
+       },1250);
+      },30);
+     },25);
+    })();
+    </script>`;
+    data=Buffer.from(data.toString("utf8").replace("</body>",probe+"</body>"));
+   }
    response.writeHead(200,{"Content-Type":types[extname(full)]||"application/octet-stream","Cache-Control":"no-store"});
    response.end(data);
   }catch{
@@ -174,6 +228,18 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
     assert.match(html,/data-renderer="(webgl|fallback)"/,path+" did not initialize WebGL or graceful fallback");
    }
   }
+  const creatorPage=await visit(executable,origin+"/createtoken");
+  assert.match(creatorPage,/id="xita-creator-register"/,"Creator form must load");
+  assert.doesNotMatch(creatorPage,/data-creator="applicantRole"|data-creator="projectConfirmed"|data-creator="accepted"/,
+   "Creator does not require applicant authority declarations or redundant checkboxes");
+  const receipt=await visit(executable,origin+"/createtoken/submitted");
+  assert.match(receipt,/Check your email/,"Creator submission receipt page must load directly");
+  const creatorProbe=await visit(executable,origin+"/createtoken?test-interaction=1");
+  assert.match(creatorProbe,/data-creator-receipt="pass"/,
+   "Creator browser must navigate after successful form submission; probe "+(creatorProbe.match(/data-creator-probe="[^"]*"/)?.[0]||"missing")+
+   " error "+(creatorProbe.match(/data-creator-error="[^"]*"/)?.[0]||"missing"));
+  assert.ok(requests.includes("/api/xita/creator/register"),
+   "Creator browser regression must submit the mocked email registration");
   const mobile=await visit(executable,origin+"/",{mobile:true});
   assert.match(mobile,/data-mobile-universe="static"/,
    "Phone viewport must never initialize the interactive WebGL Universe");

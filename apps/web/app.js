@@ -2,7 +2,7 @@ import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
 import {draft,validateStep,joinMarkup,joinPendingMarkup,joinConfirmationMarkup,profileUpdateMarkup} from "./join.js";
-import {tokenCreatorMarkup,creatorDraft,creatorPreview,creatorRegistrationPayload,creatorConfirmMarkup,CREATOR_STATUS} from "./token-creator.js";
+import {tokenCreatorMarkup,creatorDraft,creatorPreview,creatorRegistrationPayload,creatorSubmittedMarkup,creatorConfirmMarkup,CREATOR_STATUS} from "./token-creator.js";
 import {buildLeaderboardRows,rankAssets,formatUsd,verifiedMetrics} from "./leaderboard-data.js";
 import {mountUniverse3D} from "./universe-3d.js";
 import {buildExperienceModel,renderDashboard,renderUniverse,renderPlanRoute,normalizeTransferSelection,renderFAQ,renderTokenBridge,renderRepresentationInventory} from "./experience.js";
@@ -1076,6 +1076,7 @@ function token(){
 const joinState={data:null,status:"",busy:false,accepted:false,available:null,creatorAvailable:false,checking:false,preview:null,mode:null};
 const profileState={data:{symbol:"",coingeckoId:"",contactEmail:"",confirmed:false},status:"",busy:false,preview:null};
 const tokenCreatorState=creatorDraft();
+const creatorReceiptState={email:""};
 const creatorEmailState={phase:"pending",error:"",logoUrl:"",deploymentStatus:"",key:"",working:false};
 async function confirmCreatorEmail(){
  const fragment=location.hash.slice(1),m=/^([0-9a-f-]{36})\.([a-f0-9]{64})$/.exec(fragment);
@@ -1354,7 +1355,7 @@ function render(){
   renderMyTransfers({account:state.account,catalog:state.catalog,
    items:transferActivity.items,broadcastHints:pendingBroadcastHints(),scanning:transferActivity.scanning,
    scanReport:transferActivity.report,indexCoverage:transferActivity.indexCoverage,
-   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/profile-update"?profileUpdateMarkup(state.catalog,profileState.data,profileState.status,profileState.busy,profileState.preview):p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):p==="/createtoken/confirm"?creatorConfirmMarkup(creatorEmailState):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
+   notice:transferActivity.notice,error:transferActivity.error}):detailPublic?token():detailRequested&&detailDeployed?'<div class="ux-app ux-start-error"><h1>Token not publicly listed</h1><p>The deployed token does not currently meet the minimumLockedUsd publication policy. Existing transfers and permissionless recovery remain available.</p></div>':detailRequested?'<div class="ux-app ux-start-error"><h1>Token deployment pending</h1><p>The asset is configured but its complete verified XITA route deployments are not yet documented.</p></div>':p==="/join"?join():p==="/profile-update"?profileUpdateMarkup(state.catalog,profileState.data,profileState.status,profileState.busy,profileState.preview):p==="/join/submitted"?joinPendingMarkup(joinState.accepted?joinState.data:null):p==="/join/confirm"?joinConfirmationMarkup(joinConfirmation):p==="/createtoken"?tokenCreatorMarkup(tokenCreatorState,CREATOR_STATUS):p==="/createtoken/submitted"?creatorSubmittedMarkup(creatorReceiptState):p==="/createtoken/confirm"?creatorConfirmMarkup(creatorEmailState):'<h1>Page not found</h1>'+btn("/markets","Browse tokens");
  if(p==="/transfer"){
   // Retain the planner's validated pair, NEVER re-import stale native
   // select values after a render. All dependent UI must share this state.
@@ -1567,7 +1568,7 @@ el.addEventListener("input",event=>{
  const target=event.target.closest("[data-creator]");
  if(!target)return;
  const key=target.dataset.creator;
- if(["accepted","projectConfirmed","permit"].includes(key))tokenCreatorState[key]=target.checked;
+ if(key==="permit")tokenCreatorState[key]=target.checked;
  else if(key.startsWith("link-"))tokenCreatorState.links[key.slice(5)]=target.value;
  else if(Object.hasOwn(tokenCreatorState,key))tokenCreatorState[key]=target.value;
  const preview=creatorPreview(tokenCreatorState);
@@ -1578,7 +1579,7 @@ el.addEventListener("input",event=>{
 });
 el.addEventListener("change",event=>{
  if(path()!=="/createtoken")return;
- const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"],[data-creator="permit"]');
+ const checkbox=event.target.closest('[data-creator="permit"]');
  if(checkbox)tokenCreatorState[checkbox.dataset.creator]=checkbox.checked;
  const variant=event.target.closest('[data-creator="tokenType"]');
  if(variant){tokenCreatorState.tokenType=variant.value;tokenCreatorState.advancedOpen=true;render();return;}
@@ -1612,13 +1613,20 @@ el.addEventListener("submit",event=>{
  event.preventDefault();
  if(creatorRegistrationBusy)return;
  const status=el.querySelector("#tc-registration-status");
+ const feedback=(message)=>{
+  if(!status)return;
+  status.hidden=false;
+  status.textContent=message;
+  status.scrollIntoView({behavior:"smooth",block:"center"});
+  status.focus({preventScroll:true});
+ };
  let payload;
  try{payload=creatorRegistrationPayload(tokenCreatorState)}
- catch(error){if(status)status.textContent=String(error.message||error);return}
+ catch(error){feedback(String(error.message||error));return}
  creatorRegistrationBusy=true;
  const submit=el.querySelector("#xita-creator-register");
  if(submit)submit.disabled=true;
- if(status)status.textContent="Sending a verification email…";
+ if(status){status.hidden=false;status.textContent="Sending a verification email…"}
  void (async()=>{
   try{
    const res=await fetch("/api/xita/creator/register",{
@@ -1626,8 +1634,11 @@ el.addEventListener("submit",event=>{
     credentials:"omit",body:JSON.stringify(payload)});
    const body=await res.json();
    if(!res.ok||body?.status!=="pending-email")throw Error(body?.error||"Registration unavailable");
-   if(status)status.textContent="Confirmation email sent. Verify your email before starter gas or token creation.";
-  }catch(error){if(status)status.textContent=String(error.message||error).slice(0,250)}
+   creatorReceiptState.email=payload.contactEmail;
+   history.pushState(null,"","/createtoken/submitted");
+   render();
+   scrollTo({top:0,behavior:"instant"});
+  }catch(error){feedback(String(error.message||error).slice(0,250))}
   finally{creatorRegistrationBusy=false;if(submit)submit.disabled=false}
  })();
 });

@@ -97,7 +97,7 @@ test("expired confirmation is rejected and no public logo appears",async()=>{
   assert.equal((await fetch(url+"/token-logos/"+record.logoHash+".png")).status,404);
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true})}
 });
-test("server rejects forged HTML/SVG logos and incorrect project relationships",async()=>{
+test("server rejects invalid logos and unsafe token/application parameters",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-creator-invalid-"));
  const server=createServer((req,res)=>{void handleJoin(req,res,{env:config(dir),deliver:async()=>true})});
  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
@@ -105,7 +105,6 @@ test("server rejects forged HTML/SVG logos and incorrect project relationships",
   const url="http://127.0.0.1:"+server.address().port;
   for(const payload of [
    {...input,logoPngBase64:Buffer.from("<svg onload=alert(1)/>").toString("base64")},
-   {...input,applicantRole:"anonymous"},
    {...input,website:"http://localhost"},
    {...input,initialSupply:"999999999999999999999"},
    {...input,contactEmail:"not-an-email"},
@@ -138,4 +137,28 @@ test("server normalization retains each immutable token option and rejects inval
  assert.equal(fixed.decimals,18);
  assert.equal(fixed.maxSupply,input.initialSupply);
  assert.equal(fixed.permit,false);
+ const minimal=normalizeCreatorApplication({...input,applicantRole:undefined,confirmed:undefined}).record;
+ assert.equal(minimal.applicantRole,"community");
+ assert.equal(minimal.confirmed,true);
+});
+
+test("real Creator registration accepts no relationship selection or duplicate acknowledgement checkbox",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-creator-minimal-")),emails=[];
+ const server=createServer((req,res)=>{void handleJoin(req,res,{env:config(dir),
+  deliver:async email=>{emails.push(email);return true}})});
+ await new Promise(done=>server.listen(0,"127.0.0.1",done));
+ try{
+  const payload={...input};
+  delete payload.applicantRole;
+  delete payload.confirmed;
+  const reply=await fetch("http://127.0.0.1:"+server.address().port+"/api/xita/creator/register",{
+   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  assert.equal(reply.status,202);
+  assert.equal((await reply.json()).status,"pending-email");
+  assert.equal(emails.length,1);
+  const stored=listPrivate(dir)[0];
+  assert.equal(stored.kind,"token-creator");
+  assert.equal(stored.input.applicantRole,"community");
+  assert.equal(stored.input.confirmed,true);
+ }finally{await new Promise(done=>server.close(done));rmSync(dir,{recursive:true,force:true})}
 });
