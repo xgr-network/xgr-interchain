@@ -3,15 +3,17 @@ import assert from "node:assert/strict";
 import {Interface,keccak256} from "ethers";
 import {creatorFactoryInterface,creatorTokenInterface,verifyCreatorReceiptOnRPC,verifyCreatorAcrossRPCs} from "./creator-chain-proof.mjs";
 const owner="0x1234567890123456789012345678901234567890",factoryAddress="0x1111111111111111111111111111111111111111",operator="0x2222222222222222222222222222222222222222",token="0x3333333333333333333333333333333333333333";
-const hash="0x"+"a".repeat(64),input={name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner};
+const hash="0x"+"a".repeat(64),input={name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,tokenType:"fixed",decimals:18,maxSupply:"10000",permit:false,minterAddress:"0x0000000000000000000000000000000000000000"};
 const f={address:factoryAddress,runtimeCodeKeccak256:keccak256("0x60016000"),tokenRuntimeCodeKeccak256:keccak256("0x60026000")};
 const supply=10000n*10n**18n;
 function mock({badOwner=false,badFactory=false,unfinalized=false}={}){
- const data=creatorFactoryInterface.encodeFunctionData("createToken",[input.name,input.symbol,supply,owner]);
+ const data=creatorFactoryInterface.encodeFunctionData("createTokenConfigured",[input.name,input.symbol,supply,owner,0,18,supply,false,input.minterAddress]);
  const event=creatorFactoryInterface.encodeEventLog(creatorFactoryInterface.getEvent("TokenCreated"),[operator,token,owner,input.name,input.symbol,supply]);
+ const settings=creatorFactoryInterface.encodeEventLog(creatorFactoryInterface.getEvent("TokenConfigured"),
+  [token,0,18,supply,false,input.minterAddress,keccak256("0x60026000")]);
  const tx={to:factoryAddress,from:operator,hash,input:data,value:"0x0",blockHash:"0x"+"9".repeat(64)};
  const receipt={to:factoryAddress,from:operator,transactionHash:hash,status:"0x1",
-  blockHash:tx.blockHash,blockNumber:"0x64",logs:[{address:factoryAddress,topics:event.topics,data:event.data}]};
+  blockHash:tx.blockHash,blockNumber:"0x64",logs:[{address:factoryAddress,topics:event.topics,data:event.data},{address:factoryAddress,topics:settings.topics,data:settings.data}]};
  return async(method,params)=>{
   if(method==="eth_chainId")return "0x66b";
   if(method==="eth_getCode")return params[0].toLowerCase()===factoryAddress.toLowerCase()?
@@ -28,6 +30,11 @@ function mock({badOwner=false,badFactory=false,unfinalized=false}={}){
    else if(fn.name==="name")val=input.name;
    else if(fn.name==="symbol")val=input.symbol;
    else if(fn.name==="decimals")val=18;
+   else if(fn.name==="tokenType")val=0;
+   else if(fn.name==="lifetimeCap")val=supply;
+   else if(fn.name==="lifetimeMinted")val=supply;
+   else if(fn.name==="permitEnabled")val=false;
+   else if(fn.name==="minter")val=input.minterAddress;
    return creatorTokenInterface.encodeFunctionResult(fn.name,[val]);
   }
   throw Error("Unexpected RPC "+method);

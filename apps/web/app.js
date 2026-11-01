@@ -1510,19 +1510,21 @@ el.addEventListener("input",event=>{
  const target=event.target.closest("[data-creator]");
  if(!target)return;
  const key=target.dataset.creator;
- if(["accepted","projectConfirmed"].includes(key))tokenCreatorState[key]=target.checked;
+ if(["accepted","projectConfirmed","permit"].includes(key))tokenCreatorState[key]=target.checked;
  else if(key.startsWith("link-"))tokenCreatorState.links[key.slice(5)]=target.value;
  else if(Object.hasOwn(tokenCreatorState,key))tokenCreatorState[key]=target.value;
  const preview=creatorPreview(tokenCreatorState);
- for(const name of ["name","symbol","amount","owner"]){
+ for(const name of ["name","symbol","amount","owner","tokenType","decimals","maxSupply","permit"]){
   const node=el.querySelector('[data-creator-preview="'+name+'"]');
-  if(node)node.textContent=preview.ready?preview[name]:"—";
+  if(node)node.textContent=preview.ready?(name==="permit"?(preview.permit?"Enabled":"Disabled"):preview[name]):"—";
  }
 });
 el.addEventListener("change",event=>{
  if(path()!=="/createtoken")return;
- const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"]');
+ const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"],[data-creator="permit"]');
  if(checkbox)tokenCreatorState[checkbox.dataset.creator]=checkbox.checked;
+ const variant=event.target.closest('[data-creator="tokenType"]');
+ if(variant){tokenCreatorState.tokenType=variant.value;render();return;}
  const file=event.target.closest("[data-creator-logo]")?.files?.[0];
  if(!file)return;
  const status=el.querySelector("#tc-registration-status");

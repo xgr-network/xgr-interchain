@@ -6,6 +6,7 @@ import {readFileSync,existsSync} from "node:fs";
 import {resolve,dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyCoinGecko} from "../services/onboarding/coingecko-identity.mjs";
+import {creatorSettings} from "../apps/web/creator-token-config.js";
 import {verifyCreatorAcrossRPCs,loadReviewedCreatorFactory,CREATOR_VERIFY_RPC_URLS} from "../services/onboarding/creator-chain-proof.mjs";
 const root=resolve(fileURLToPath(new URL("../",import.meta.url)));
 const EMAIL=/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
@@ -41,15 +42,31 @@ export async function validateJoinChanges(paths,{read=(p)=>JSON.parse(readFileSy
   if(creator){
    const pinned=loadReviewedCreatorFactory();
    if(asset.creation.factory?.toLowerCase()!==pinned.address.toLowerCase()||
-      asset.decimals!==18||asset.creation.transactionHash?.toLowerCase()!==profile.verification?.proof?.toLowerCase())
+      asset.creation.transactionHash?.toLowerCase()!==profile.verification?.proof?.toLowerCase())
+
     throw Error("Unreviewed creator factory or proof identity");
+   const settings=creatorSettings({
+    tokenType:asset.creation.tokenType,decimals:asset.decimals,
+    permit:asset.creation.permit,initialSupply:
+     String(BigInt(profile.supply.total)/(10n**BigInt(asset.decimals))),
+    ownerAddress:asset.creation.ownerAddress,
+    maxSupply:String(BigInt(profile.supply.max)/(10n**BigInt(asset.decimals))),
+    minterAddress:asset.creation.minterAddress
+   });
+   if(settings.initialSupplyBaseUnits!==profile.supply.total||
+      settings.maxSupplyBaseUnits!==profile.supply.max)
+    throw Error("Creator supply not exactly representable in declared decimals");
    proof=await checkCreator({factory:pinned,txHash:asset.creation.transactionHash,
-    input:{name:asset.name,symbol:asset.symbol,ownerAddress:asset.creation.ownerAddress,
-     initialSupply:String(BigInt(profile.supply.total)/10n**18n)}});
+    input:{name:asset.name,symbol:asset.symbol,...settings}});
    if(proof.tokenAddress?.toLowerCase()!==asset.canonical.tokenAddress?.toLowerCase()||
       proof.operator?.toLowerCase()!==asset.creation.operator?.toLowerCase()||
       proof.blockNumber!==asset.creation.blockNumber||
-      proof.initialSupplyBaseUnits!==profile.supply.total)
+      proof.initialSupplyBaseUnits!==profile.supply.total||
+      proof.maxSupplyBaseUnits!==profile.supply.max||
+      proof.decimals!==asset.decimals||
+      proof.tokenType!==settings.tokenTypeId||
+      proof.permit!==settings.permit||
+      String(proof.minterAddress||"").toLowerCase()!==settings.minterAddress)
     throw Error("XGR creator receipt differs from public Join manifest");
   }else{
    proof=await check({coingeckoId:profile.market.coingeckoId,

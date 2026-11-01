@@ -10,7 +10,7 @@ import {loadCatalog} from "../../tools/validate-manifests.mjs";
 const owner="0x1234567890123456789012345678901234567890";
 const operator="0x2222222222222222222222222222222222222222";
 const token="0x3333333333333333333333333333333333333333";
-const input={name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,
+const input={name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,tokenType:"fixed",decimals:18,maxSupply:"10000",permit:false,minterAddress:"0x0000000000000000000000000000000000000000",
  contactEmail:"creator@example.org",shortDescription:"A verified XGR token by a project.",
  description:"A full project description proving metadata survives ERC20 owner deployment and automatic XITA Join.",
  website:"https://example.org",categories:["DeFi"],tags:[],applicantRole:"founder",links:{},confirmed:true};
@@ -33,7 +33,7 @@ function fixture(){
 test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE Join PR",async()=>{
  const x=fixture();let mined=false,signs=0,published=0;const broadcasts=[];
  const verify=async()=>({chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
-  symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",factory:factory.address,
+  symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:factory.address,
   operator,txHash,blockNumber:12000000});
  const call=async(url,method,params)=>{
   if(method==="eth_chainId")return "0x66b";

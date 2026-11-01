@@ -4,12 +4,12 @@ import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
 const catalog=loadCatalog(),owner="0x1234567890123456789012345678901234567890",token="0x4564567890123456789012345678901234567890";
 const record={kind:"token-creator",phase:"deployed",logoUrl:"https://xita.xgr.network/token-logos/"+"a".repeat(64)+".png",
- input:{name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,
+ input:{name:"Creator Example",symbol:"CREA",initialSupply:"10000",ownerAddress:owner,tokenType:"fixed",decimals:18,maxSupply:"10000",permit:false,minterAddress:"0x0000000000000000000000000000000000000000",
  shortDescription:"A project-created, independent XGR token.",
  description:"Example XGR token with owner-controlled token identity and verified XITA onboarding.",
  categories:["DeFi"],tags:[],website:"https://example.org",links:{},contactEmail:"private@example.org",applicantRole:"founder"}};
 const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:"Creator Example",symbol:"CREA",
- initialSupplyBaseUnits:"10000000000000000000000",factory:"0x1234567890123456789012345678901234567891",
+ initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:"0x1234567890123456789012345678901234567891",
  operator:"0x1234567890123456789012345678901234567892",txHash:"0x"+"a".repeat(64),blockNumber:12345678};
 test("verified creator deployment creates ordinary XITA bidirectional hub Draft PR manifests",()=>{
  const output=buildCreatorJoinBundle(record,proof,catalog);
