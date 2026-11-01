@@ -64,7 +64,11 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
   lockedUsd:completeTVL?activeFacts.reduce((s,x)=>s+x.lockedUsd,0):null,
   movedUsd:completeMoved?activeFacts.reduce((s,x)=>s+x.movedUsd,0):null
  };
- return {schemaVersion:1,kind:"xita-asset-metrics-v1",assets,totals,
+ // The 24h comparison must be anchored to the timestamp of these verified
+ // totals, not the timestamp of an unrelated (potentially stale) history point.
+ const asOf=typeof evidence?.asOf==="string"&&Number.isFinite(Date.parse(evidence.asOf))?
+  evidence.asOf:null;
+ return {schemaVersion:1,kind:"xita-asset-metrics-v1",asOf,assets,totals,
   status:completeTVL&&completeMoved?"verified":"incomplete",
   metadata:{configuredAssets:keys.length,deployedAssets:activeKeys.length,
    verifiedAssets:activeFacts.filter(f=>f.lockedUsd!==null&&f.movedUsd!==null).length,
