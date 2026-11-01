@@ -29,5 +29,9 @@ jobs:
         env:
           XITA_COINGECKO_API_KEY: ${{ secrets.XITA_COINGECKO_API_KEY }}
         run: node tools/validate-join-pr.mjs --base "${{ github.event.pull_request.base.sha }}"
+      - name: Verify profile-only changes against live CoinGecko records
+        env:
+          XITA_COINGECKO_API_KEY: ${{ secrets.XITA_COINGECKO_API_KEY }}
+        run: node tools/validate-profile-pr.mjs --base "${{ github.event.pull_request.base.sha }}"
       - name: Validate Join contact separation, role and on-chain creator identity invariants
-        run: node --test services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs tools/validate-join-pr.test.mjs
+        run: node --test tools/validate-profile-pr.test.mjs services/onboarding/coingecko-profile.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs tools/validate-join-pr.test.mjs
