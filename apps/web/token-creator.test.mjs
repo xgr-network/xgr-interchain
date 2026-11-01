@@ -93,3 +93,19 @@ test("creator variants have exact 6/8/18 decimals and irrecoverable lifetime cap
   maxSupply:"1500"}),/data-creator="minterAddress"/);
  assert.match(tokenCreatorMarkup({...creatorDraft(),...base,tokenType:"fixed"}),/Enable EIP-2612 Permit signatures/);
 });
+
+test("creator defaults are safe; advanced section stays collapsed without explicit user action",()=>{
+ const d=creatorDraft();
+ assert.equal(d.tokenType,"burnable");assert.equal(d.decimals,"18");assert.equal(d.permit,false);
+ const html=tokenCreatorMarkup(d);
+ assert.match(html,/<details class="tc-advanced" id="tc-advanced">/);
+ assert.match(html,/Advanced Settings/);
+ assert.match(html,/Standard settings: Fixed Supply \+ Burnable/);
+ assert.match(html,/data-creator="ownerAddress"/);
+ assert.match(tokenCreatorMarkup({...d,advancedOpen:true}),/<details class="tc-advanced" id="tc-advanced" open>/);
+ const sample={...d,name:"Test Token",symbol:"TST",ownerAddress:"0x1234567890123456789012345678901234567890",
+ initialSupply:"1000",accepted:true};
+ assert.equal(creatorPreview(sample).tokenType,"burnable");
+ assert.equal(creatorPreview(sample).maxSupply,"1000");
+ assert.equal(creatorPreview({...sample,tokenType:"mintable",maxSupply:"2000"}).maxSupply,"2000");
+});

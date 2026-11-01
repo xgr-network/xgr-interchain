@@ -15,7 +15,7 @@ export const CREATOR_STATUS=Object.freeze({
  available:false,
  starterGasAvailable:false
 });
-export function creatorDraft(){return {name:"",symbol:"",initialSupply:"1000000",ownerAddress:"",tokenType:"fixed",decimals:"18",maxSupply:"10000000",minterAddress:"",permit:false,
+export function creatorDraft(){return {name:"",symbol:"",initialSupply:"1000000",ownerAddress:"",tokenType:"burnable",decimals:"18",maxSupply:"10000000",minterAddress:"",permit:false,advancedOpen:false,
  shortDescription:"",description:"",website:"",category:"DeFi",contactEmail:"",
  applicantRole:"founder",links:{x:"",telegram:"",discord:"",github:"",docs:""},
  logoPngBase64:"",logoName:"",accepted:false,projectConfirmed:false};}
@@ -101,16 +101,23 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   field("name","Token name *",d.name,"Example Token")+
   field("symbol","Token symbol *",d.symbol,"EXM")+
   field("initialSupply","Initial supply *",d.initialSupply,"1000000")+
-  choices("tokenType","Token capabilities *",[
-   ["fixed","Fixed Supply"],["burnable","Fixed Supply + Burnable"],
-   ["mintable","Controlled Mint + Burn"]],d.tokenType)+
-  choices("decimals","Decimals *",[["6","6"],["8","8"],["18","18"]],String(d.decimals))+
-  (d.tokenType==="mintable"?
-   field("maxSupply","Lifetime maximum supply *",d.maxSupply,"10000000")+
-   field("minterAddress","Minter wallet (defaults to owner)",d.minterAddress,"0x..."): "")+
-  '<label class="ja-consent"><input type="checkbox" data-creator="permit"'+
-   (d.permit?' checked':'')+'><span>Enable EIP-2612 Permit signatures</span></label>'+
   field("ownerAddress","Project owner wallet address *",d.ownerAddress,"0x...")+
+  '<div class="ja-field ja-field-full"><strong>Standard settings: Fixed Supply + Burnable · 18 decimals</strong>'+
+   '<small>No additional minting, no transfer fees, no pause, no blacklist. XGR covers deployment gas.</small></div></div>'+
+  '<details class="tc-advanced" id="tc-advanced"'+(d.advancedOpen?' open':'')+'>'+
+   '<summary data-creator-advanced>Advanced Settings <span>Token features &amp; permissions</span></summary>'+
+   '<div class="ja-fields">'+
+   choices("tokenType","Token capabilities",[
+    ["fixed","Fixed Supply (no burn)"],["burnable","Fixed Supply + Burnable"],
+    ["mintable","Controlled Mint + Burn"]],d.tokenType)+
+   choices("decimals","Decimals",[["6","6"],["8","8"],["18","18"]],String(d.decimals))+
+   (d.tokenType==="mintable"?
+    field("maxSupply","Lifetime maximum supply *",d.maxSupply,"10000000")+
+    field("minterAddress","Minter wallet (defaults to owner)",d.minterAddress,"0x..."): "")+
+   '<label class="ja-consent ja-field-full"><input type="checkbox" data-creator="permit"'+
+    (d.permit?' checked':'')+'><span>Enable EIP-2612 Permit signatures</span></label>'+
+   '</div><p class="ux-small">Minting is only permitted for the selected project minter. Burning never restores the lifetime cap.</p>'+
+  '</details><div class="ja-fields">'+
   '<div class="ja-field"><span>Original network</span><strong>XGRChain · Chain ID 1643</strong>'+
   '<small>Project owner receives full initial supply and owner() role; XGR pays deployment gas, never receives token rights</small></div></div>'+
   '<label class="ja-consent"><input type="checkbox" data-creator="accepted"'+

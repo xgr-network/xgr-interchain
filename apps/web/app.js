@@ -1505,6 +1505,11 @@ document.addEventListener("visibilitychange",()=>{
   void restoreAuthorizedWallet();
 });
 // The creator page has no site-menu entry; no contract signing is enabled.
+el.addEventListener("click",event=>{
+ if(path()!=="/createtoken")return;
+ const summary=event.target.closest("summary[data-creator-advanced]");
+ if(summary)tokenCreatorState.advancedOpen=!summary.parentElement.open;
+});
 el.addEventListener("input",event=>{
  if(path()!=="/createtoken")return;
  const target=event.target.closest("[data-creator]");
@@ -1524,7 +1529,7 @@ el.addEventListener("change",event=>{
  const checkbox=event.target.closest('[data-creator="accepted"],[data-creator="projectConfirmed"],[data-creator="permit"]');
  if(checkbox)tokenCreatorState[checkbox.dataset.creator]=checkbox.checked;
  const variant=event.target.closest('[data-creator="tokenType"]');
- if(variant){tokenCreatorState.tokenType=variant.value;render();return;}
+ if(variant){tokenCreatorState.tokenType=variant.value;tokenCreatorState.advancedOpen=true;render();return;}
  const file=event.target.closest("[data-creator-logo]")?.files?.[0];
  if(!file)return;
  const status=el.querySelector("#tc-registration-status");
