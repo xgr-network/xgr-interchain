@@ -72,8 +72,9 @@ export function isReviewedXgrCreator(entry){
   ADDRESS.test(m.canonical.tokenAddress||"")&&ADDRESS.test(c.ownerAddress||"")&&
   ADDRESS.test(c.factory||"")&&HASH.test(c.transactionHash||"")&&
   HASH.test(c.tokenRuntimeCodeHash||"")&&
-  Number.isSafeInteger(c.blockNumber)&&c.blockNumber>0&&
-  entry?.profile?.market?.coingeckoId===null&&entry.profile.market.priceSource==="none";
+  Number.isSafeInteger(c.blockNumber)&&c.blockNumber>0;
+  // Subsequent optional CoinGecko association must never unlist a verified
+  // original XGR token or affect the independent route-deployment boundary.
 }
 export function listingStatus(entry,visibilityRow,catalog=null){
  if(isReviewedXgrCreator(entry))return "public";
