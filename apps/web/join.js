@@ -1,131 +1,90 @@
-const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-import {normalizeJoinDescription} from "./join-description.js";
+// Minimal, server-authoritative CoinGecko Join and reviewed profile management.
 import {isDeployedChain} from "./route-availability.js";
-const url=s=>/^https:\/\/[^@\s/]+/.test(s||"");
-// A home chain is eligible only with documented deployed infrastructure AND
-// an independently known CoinGecko asset-platform identity. Planned chains
-// never appear merely because they exist in the desired route catalog.
+const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ID=/^[a-z0-9][a-z0-9-]{0,99}$/,EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function joinHomeChains(catalog){
- const chains=catalog?.chains||{};
- return Object.keys(chains).filter(key=>key!=="xgrchain"&&
-  isDeployedChain(catalog,key)&&
-  /^[a-z0-9][a-z0-9-]{0,99}$/.test(chains[key]?.coingeckoAssetPlatform||""));
+ return Object.keys(catalog?.chains||{}).filter(key=>key!=="xgrchain"&&isDeployedChain(catalog,key)&&
+ /^[a-z0-9][a-z0-9-]{0,99}$/.test(catalog.chains[key].coingeckoAssetPlatform||""));
 }
-export function draft(chains){
- return {name:"",symbol:"",shortDescription:"",description:"",website:"",canonicalChain:"",canonicalAddress:"",decimals:18,categories:["DeFi"],tags:[],logoUrl:"",links:{},priceSource:"coingecko",coingeckoId:"",contactEmail:"",applicantRole:"",confirmed:false};
+export function draft(){
+ return {coingeckoId:"",canonicalChain:"",contactEmail:"",confirmed:false};
 }
-export function validateStep(d,step,catalog){
- const chains=catalog?.chains||{};
+export function validateStep(d,step,catalog,preview=null){
  const missing=[];
- if(step===0){
-  if(d.name.trim().length<2||d.name.length>80)missing.push("Project name");
-  if(!/^[A-Z][A-Z0-9]{1,11}$/.test(d.symbol))missing.push("Token symbol");
-  if(!url(d.website))missing.push("HTTPS website");
-  if(!normalizeJoinDescription(d.shortDescription,15,280))missing.push("Short description (15–280 characters)");
-  if(!normalizeJoinDescription(d.description,40,5000))missing.push("Full description (40–5000 characters)");
-  if(!url(d.logoUrl))missing.push("HTTPS logo URL");
- }else if(step===1){
-  if(!joinHomeChains(catalog).includes(d.canonicalChain))missing.push("Canonical chain");
-  if(d.priceSource!=="coingecko"||!/^[a-z0-9][a-z0-9-]{0,99}$/.test(d.coingeckoId||""))missing.push("CoinGecko coin ID");
-  if(!/^0x[0-9a-f]{40}$/i.test(d.canonicalAddress)||/^0x0{40}$/i.test(d.canonicalAddress))missing.push("ERC-20 contract address");
-  if(d.decimals===null||d.decimals===""||!Number.isInteger(Number(d.decimals))||Number(d.decimals)<0||Number(d.decimals)>36)missing.push("Decimals");
- }else if(step===2){
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.contactEmail||"")||String(d.contactEmail||"").length>254)missing.push("Contact email");
-  if(!["founder","core-team","authorized-representative","holder","community","other"].includes(d.applicantRole))missing.push("Relationship to token");
-  if(!d.confirmed)missing.push("Project confirmation");
+ if(step===0&&!ID.test(d.coingeckoId||""))missing.push("CoinGecko API ID");
+ if(step===1&&preview?.choices?.length>1&&!preview.choices.some(x=>x.chain===d.canonicalChain))
+  missing.push("Original blockchain");
+ if(step===2){
+  if(!EMAIL.test(d.contactEmail||"")||d.contactEmail.length>254)missing.push("Contact email");
+  if(d.confirmed!==true)missing.push("Project confirmation");
  }
  return missing;
 }
-
-export function validateApplication(d,catalog){
- return [0,1,2].flatMap(step=>validateStep(d,step,catalog));
+export function validateApplication(d,catalog,preview=null){
+ return [0,1,2].flatMap(i=>validateStep(d,i,catalog,preview));
 }
-export function joinMarkup(catalog,d,status="",busy=false){
- const chains=catalog?.chains||{};
- const field=(key,label,opts={})=>{
-  const id="ja-"+key,type=opts.type||"text";
-  const rules=type==="number"?' min="0" max="36" step="1"':' maxlength="'+(opts.max||500)+'"';
-  return '<label class="ja-field'+(opts.full?' ja-field-full':'')+'" for="'+id+'"><span>'+escape(label)+'</span>'+
-   '<input id="'+id+'" data-join="'+key+'" type="'+type+'" value="'+escape(d[key]??"")+'" required'+
-   rules+' placeholder="'+escape(opts.placeholder||"")+'"></label>';
- };
- const area=(key,label,max,rows)=>
-  '<label class="ja-field ja-field-full" for="ja-'+key+'"><span>'+escape(label)+'</span>'+
-  '<textarea id="ja-'+key+'" data-join="'+key+'" required maxlength="'+max+
-  '" rows="'+rows+'" placeholder="'+escape(key==="description"?"What does your project do, and what is its token used for?":"A short introduction to your project")+'">'+
-  escape(d[key]||"")+'</textarea></label>';
- const chainOptions=joinHomeChains(catalog).map(key=>[key,chains[key]])
-  .map(([key,c])=>'<option value="'+escape(key)+'"'+(key===d.canonicalChain?' selected':'')+'>'+
-   escape(c.displayName||c.name||key)+'</option>').join("");
- const chain='<label class="ja-field" for="ja-canonicalChain"><span>Original blockchain *</span>'+
-  '<select id="ja-canonicalChain" data-join="canonicalChain" required><option value="">Select home chain…</option>'+
-  chainOptions+'</select></label>';
- const coin='<div class="ja-field ja-coingecko-field">'+
-  '<div class="ja-field-title"><label for="ja-coingeckoId">CoinGecko API ID *</label>'+
-  '<button type="button" class="ux-fee-help" id="ja-coingecko-help" aria-haspopup="dialog"'+
-  ' aria-controls="ja-coingecko-dialog" aria-label="Where do I find my CoinGecko API ID?"'+
-  ' title="What is the CoinGecko API ID?">?</button></div>'+
-  '<input id="ja-coingeckoId" data-join="coingeckoId" type="text" required maxlength="100"'+
-  ' placeholder="e.g. arbitrum" value="'+escape(d.coingeckoId||"")+'">'+
-  '<small>Use the CoinGecko API ID, not the token symbol.</small></div>';
- const roles=[["founder","Founder"],["core-team","Core team"],["authorized-representative","Authorized representative"],
-  ["holder","Token holder"],["community","Community member"],["other","Other"]]
-  .map(([key,label])=>'<option value="'+key+'"'+(d.applicantRole===key?' selected':'')+'>'+label+'</option>').join("");
- const relationship='<label class="ja-field" for="ja-applicantRole"><span>Your relationship to the token *</span>'+
-  '<select id="ja-applicantRole" data-join="applicantRole" required>'+
-  '<option value="">Choose your role…</option>'+roles+'</select></label>';
- const dialog='<dialog id="ja-coingecko-dialog" class="ux-fee-dialog ja-coingecko-dialog" aria-labelledby="ja-coingecko-title">'+
-  '<div class="ux-fee-dialog-header"><div><span class="ux-kicker">XITA · TOKEN IDENTITY</span>'+
-  '<h2 id="ja-coingecko-title">Where is my CoinGecko API ID?</h2></div>'+
-  '<button type="button" id="ja-coingecko-close" aria-label="Close CoinGecko help">×</button></div>'+
-  '<p>Open <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">CoinGecko</a> and search for your token. Select its <strong>own coin page</strong>, not a similarly named asset.</p>'+
-  '<ol><li>Find the <strong>Info</strong> section on the coin page.</li>'+
-  '<li>Copy the field labeled <strong>API ID</strong> (for example <code>arbitrum</code> for ARB).</li>'+
-  '<li>Enter that ID here. Do not use the ticker symbol, contract address or full website link.</li></ol>'+
-  '<p>XITA checks this ID against CoinGecko and verifies that the listed token symbol, original blockchain and ERC-20 contract address match your application. A GeckoTerminal-only listing is not sufficient.</p>'+
-  '<p>If the CoinGecko listing does not show your original-chain contract, the application cannot be verified yet.</p>'+
-  '<button type="button" class="ux-fee-dialog-done" data-join-help-close>Got it</button></dialog>';
+const field=(id,label,val,placeholder,type="text")=>'<label class="ja-field" for="ja-'+id+'"><span>'+label+'</span>'+
+ '<input id="ja-'+id+'" data-join="'+id+'" type="'+type+'" maxlength="254" placeholder="'+placeholder+'" value="'+escape(val||"")+'"></label>';
+export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null){
+ const choices=preview?.choices||[];
+ const accepted=preview?.profile;
+ const choice=choices.length>1?
+ '<label class="ja-field ja-field-full"><span>Original blockchain *</span><select data-join="canonicalChain" id="ja-canonicalChain">'+
+ '<option value="">Select the original blockchain</option>'+
+ choices.map(c=>'<option value="'+escape(c.chain)+'"'+(d.canonicalChain===c.chain?' selected':'')+'>'+
+ escape(c.label)+' · '+escape(c.contract)+'</option>').join("")+'</select></label>':"";
+ const summary=accepted?'<section class="ja-form-section"><h3>Imported from CoinGecko</h3><div class="ja-import-preview">'+
+ (accepted.logoUrl?'<img src="'+escape(accepted.logoUrl)+'" alt="" width="52" height="52">':"")+
+ '<div><strong>'+escape(accepted.name)+' ('+escape(accepted.symbol)+')</strong><p>'+
+ escape(accepted.shortDescription||"")+'</p></div></div><p class="ux-small">Metadata, descriptions, project links and the selected ERC-20 address are imported and verified server-side. You cannot edit them in this form.</p></section>':"";
  return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · JOIN THE ALLIANCE</div>'+
-  '<h1>Bring your token into the <span>Universe.</span></h1>'+
-  '<p class="ux-lead">Join XITA for free. For accepted CoinGecko-listed ERC-20 tokens, XITA handles the complete technical integration and XGR funds deployment of the approved interchain routes. No wallet connection or payment is needed to apply.</p></div>'+
-  '<div class="ja-application-journey" aria-label="XITA partner onboarding">'+
-  '<span><b>01</b> Free application</span><span><b>02</b> Confirm your email</span>'+
-  '<span><b>03</b> XGR review</span><span><b>04</b> Free integration &amp; deployment if approved</span></div>'+
-  '<div class="ja-layout"><section class="ux-panel ja-wizard">'+
-  '<div class="ja-form-head"><span class="ux-kicker">ONE SIMPLE APPLICATION</span>'+
-  '<h2>Tell us about your token.</h2>'+
-  '<p class="ja-info">All required details are on this page. We verify the public token identity before sending your confirmation email.</p></div>'+
-  '<form id="ja-application-form" novalidate>'+
-  '<section class="ja-form-section" aria-labelledby="ja-section-project"><div class="ja-section-title">'+
-  '<span class="ux-kicker">01 · PROJECT</span><h3 id="ja-section-project">Project details</h3></div>'+
-  '<div class="ja-fields">'+field("name","Project name *",{max:80})+
-  field("symbol","Token symbol *",{max:12,placeholder:"e.g. ARB"})+
-  field("website","Project website *",{type:"url",placeholder:"https://project.example"})+
-  field("logoUrl","Logo image URL (HTTPS) *",{type:"url",placeholder:"https://project.example/logo.png"})+
-  area("shortDescription","Short description * (15–280 characters)",280,2)+
-  area("description","Project description * (40–5000 characters)",5000,3)+'</div></section>'+
-  '<section class="ja-form-section" aria-labelledby="ja-section-token"><div class="ja-section-title">'+
-  '<span class="ux-kicker">02 · TOKEN</span><h3 id="ja-section-token">Original token identity</h3></div>'+
-  '<div class="ja-fields">'+chain+
-  field("canonicalAddress","Original ERC-20 contract *",{max:42,placeholder:"0x…" })+
-  field("decimals","Token decimals *",{type:"number"})+coin+'</div>'+
-  '<p class="ja-info">The original contract must also be listed for this chain on CoinGecko. XGRChain acts as the hub; you do not need to select destination networks.</p></section>'+
-  '<section class="ja-form-section" aria-labelledby="ja-section-contact"><div class="ja-section-title">'+
-  '<span class="ux-kicker">03 · CONTACT</span><h3 id="ja-section-contact">Confirm your application</h3></div>'+
-  '<div class="ja-fields">'+field("contactEmail","Your email (private) *",{type:"email",max:254,placeholder:"you@project.example"})+
-  relationship+'</div>'+
-  '<p class="ja-private-contact">We use your email only for verification and application updates, not marketing. It stays outside public GitHub proposals. See our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> for storage and retention details.</p>'+
-  '<label class="ja-consent"><input id="ja-confirmed" data-join="confirmed" type="checkbox"'+(d.confirmed?' checked':'')+'>'+
-  '<span>I confirm the public project information is accurate to the best of my knowledge and declare my relationship to the token. Holder or community submissions are proposals, not claims of project authority. I understand that applying does not guarantee acceptance, deployment or a public listing. *</span></label></section>'+
-  '<div class="ja-status" id="ja-status" role="alert" aria-live="polite">'+escape(status)+'</div>'+
-  '<div class="ja-actions"><p class="ja-info">No fees or blockchain transactions. We will email you a link to confirm your application.</p>'+
-  '<button type="submit" class="ux-button" data-join-action="submit"'+
-  (busy?' disabled aria-busy="true"':'')+'>'+
-  (busy?'Checking application…':'Submit free application →')+'</button></div></form>'+
-  '<button class="ja-export" type="button" data-join-action="export">Export a local draft instead</button>'+
-  '</section></div>'+dialog+'</div>';
+ '<h1>Bring your token into the <span>Universe.</span></h1>'+
+ '<p class="ux-lead">Free token integration and initial route deployment after review. Just provide your CoinGecko ID and verify your email.</p></div>'+
+ '<div class="ja-layout"><section class="ux-panel ja-wizard"><div class="ja-form-head"><h2>Join XITA</h2>'+
+ '<p class="ja-info">Your public project information comes directly from CoinGecko.</p></div>'+
+ '<form id="ja-application-form" novalidate><div class="ja-fields">'+
+ field("coingeckoId","CoinGecko API ID *",d.coingeckoId,"e.g. arbitrum")+
+ '<div class="ja-field"><span>Load project information</span><button type="button" class="ux-button" data-join-action="preview"'+(busy?' disabled':'')+'>Load from CoinGecko</button></div>'+
+ choice+'</div>'+summary+
+ '<section class="ja-form-section"><h3>Email verification</h3><div class="ja-fields">'+
+ field("contactEmail","Contact email *",d.contactEmail,"you@project.org","email")+
+ '</div><label class="ja-consent"><input data-join="confirmed" type="checkbox"'+(d.confirmed?' checked':'')+'>'+
+ '<span>I confirm this is a legitimate project proposal. An email verification does not imply project ownership. Integration and public listing require independent review.</span></label>'+
+ '<p class="ja-private-contact">Your contact email stays private and will never enter a public GitHub PR.</p></section>'+
+ '<div class="ja-status" id="ja-status" role="alert" aria-live="polite">'+escape(status)+'</div>'+
+ '<div class="ja-actions"><button type="submit" data-join-action="submit" class="ux-button"'+
+ (busy?' disabled':'')+'>Submit free application</button></div></form>'+
+ '<p class="ja-info">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p>'+
+ '</section></div></div>';
 }
-// The accepted request is no longer an editable form. No additional submission is possible.
+export function profileUpdateMarkup(catalog,form={},status="",busy=false,preview=null){
+ const assets=Object.entries(catalog?.assets||{}).filter(([,a])=>a?.profile?.market).sort((a,b)=>a[0].localeCompare(b[0]));
+ const e=catalog?.assets?.[form.symbol];
+ const currentId=e?.profile?.market?.coingeckoId||null;
+ const select='<label class="ja-field ja-field-full"><span>Existing token *</span>'+
+ '<select id="pu-symbol" data-profile="symbol"><option value="">Choose a listed token</option>'+
+ assets.map(([key,a])=>'<option value="'+escape(key)+'"'+(key===form.symbol?' selected':'')+'>'+
+ escape(a.profile?.name||key)+' ('+escape(key)+')</option>').join("")+'</select></label>';
+ const id=currentId?'<div class="ja-field ja-field-full"><span>CoinGecko ID</span><strong>'+escape(currentId)+'</strong>'+
+ '<small>Already linked. The published CoinGecko profile will be reloaded.</small></div>':
+ e?field("coingeckoId","Add CoinGecko ID *",form.coingeckoId||"","e.g. token-id").replaceAll('data-join="coingeckoId"','data-profile="coingeckoId"'):"";
+ const manual=e&&!currentId?'<p class="ja-info">For individual changes without CoinGecko, contact <a href="mailto:xita@xgr.network">xita@xgr.network</a>. Self-service updates only add a CoinGecko ID and import its profile.</p>':"";
+ const summary=preview?'<div class="ja-form-section"><strong>CoinGecko profile ready for review</strong>'+
+ '<p>'+escape(preview.profile?.name||"")+'</p><small>Only description, name, logo, categories, project links and CoinGecko association may change. Contracts, supply, routes and deployment records remain unchanged.</small></div>':"";
+ return '<div class="ja-page ja-onepage"><div class="ja-hero"><div class="ux-kicker">XITA · PROFILE MANAGEMENT</div>'+
+ '<h1>Update Token <span>Profile.</span></h1>'+
+ '<p class="ux-lead">Reload CoinGecko metadata for a listed token, or link a CoinGecko ID for the first time.</p></div>'+
+ '<div class="ja-layout"><section class="ux-panel ja-wizard"><form id="xita-profile-update-form" novalidate>'+
+ '<div class="ja-fields">'+select+id+'</div>'+manual+
+ '<button class="ux-button" type="button" data-profile-action="preview"'+(busy?' disabled':'')+'>Preview update</button>'+
+ summary+'<div class="ja-fields">'+field("contactEmail","Contact email *",form.contactEmail||"","you@project.org","email").replaceAll('data-join="contactEmail"','data-profile="contactEmail"')+'</div>'+
+ '<label class="ja-consent"><input type="checkbox" data-profile="confirmed"'+(form.confirmed?' checked':'')+'>'+
+ '<span>I request a CoinGecko-based profile refresh. This is a proposal and requires XGR review.</span></label>'+
+ '<div class="ja-status" id="pu-status" role="alert">'+escape(status)+'</div>'+
+ '<div class="ja-actions"><button type="submit" class="ux-button"'+(busy||!e?' disabled':'')+'>Submit profile update</button></div>'+
+ '</form></section></div></div>';
+}
+
 export function joinPendingMarkup(data){
  const accepted=typeof data?.contactEmail==="string"&&data.contactEmail.length>0;
  const heading=accepted?"Thank you for submitting your project!":"Check your email to complete your application";
