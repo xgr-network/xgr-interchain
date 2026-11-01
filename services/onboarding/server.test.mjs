@@ -63,6 +63,42 @@ test("Join preview blocks bad operator inventory before calling CoinGecko",async
   assert.equal(verifies,0);
  }finally{await new Promise(resolve=>server.close(resolve));}
 });
+test("multi-contract CoinGecko preview offers a chain choice before manifest validation",async()=>{
+ const second=Object.entries(catalog.chains).find(([key,chain])=>key!=="base"&&
+  key!=="xgrchain"&&isDeployedChain(catalog,key)&&chain.coingeckoAssetPlatform);
+ assert.ok(second,"test inventory must contain another deployed CoinGecko-enabled chain");
+ const [key,chain]=second;
+ const coin=makeCoin("based-brett"),other="0x2345678901234567890123456789012345678901";
+ coin.platforms[chain.coingeckoAssetPlatform]=other;
+ coin.detail_platforms[chain.coingeckoAssetPlatform]={contract_address:other,decimal_place:18};
+ const server=createServer((req,res)=>{void handleJoin(req,res,{
+  sourceCatalog:()=>catalog,fetchCoin:async()=>coin
+ })});
+ await new Promise(done=>server.listen(0,"127.0.0.1",done));
+ const origin="http://127.0.0.1:"+server.address().port;
+ const post=async body=>{
+  const res=await fetch(origin+"/api/xita/join/preview",{
+   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  return {status:res.status,data:await res.json()};
+ };
+ try{
+  const choice=await post({coingeckoId:"based-brett"});
+  assert.equal(choice.status,200,JSON.stringify(choice.data));
+  assert.equal(choice.data.selectionRequired,true);
+  assert.deepEqual(choice.data.choices.map(c=>c.chain).sort(),["base",key].sort());
+  assert.equal(choice.data.profile.name,"Example Protocol");
+  assert.equal(choice.data.identity,undefined,"no canonical identity is selected yet");
+  const picked=await post({coingeckoId:"based-brett",canonicalChain:key});
+  assert.equal(picked.status,200,JSON.stringify(picked.data));
+  assert.equal(picked.data.selectionRequired,undefined);
+  assert.equal(picked.data.identity.platform,key);
+  assert.equal(picked.data.identity.address,other);
+  const forged=await post({coingeckoId:"based-brett",canonicalChain:"not-deployed"});
+  assert.equal(forged.status,422);
+  assert.match(forged.data.error,/selected original contract/i);
+ }finally{await new Promise(done=>server.close(done))}
+});
+
 test("email confirmation is private, single-use and required before public GitHub Draft PR",async()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-join-integration-")),mail=[];
  const env={XITA_JOIN_WRITER_TOKEN:"secret-test",XITA_JOIN_PRIVATE_DIR:dir,
