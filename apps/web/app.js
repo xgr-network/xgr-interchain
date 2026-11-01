@@ -1586,26 +1586,67 @@ el.addEventListener("change",event=>{
  const file=event.target.closest("[data-creator-logo]")?.files?.[0];
  if(!file)return;
  const status=el.querySelector("#tc-registration-status");
- if(file.type!=="image/png"||file.size>128*1024||file.size<67){
-  tokenCreatorState.logoPngBase64="";tokenCreatorState.logoName="";
-  if(status)status.textContent="Please select a PNG logo of at most 128 KB.";
+ const report=message=>{
+  if(status){status.hidden=false;status.textContent=message}
+ };
+ tokenCreatorState.logoPngBase64="";tokenCreatorState.logoName="";
+ if(file.type!=="image/png"||file.size>4*1024*1024||file.size<67){
+  report("Please select a PNG image smaller than 4 MB. XITA will optimize it automatically.");
   event.target.value="";return;
  }
- const reader=new FileReader();
- reader.onload=()=>{
-  if(path()!=="/createtoken"||typeof reader.result!=="string")return;
-  const data=reader.result.split(",");
-  tokenCreatorState.logoPngBase64=data.length===2?data[1]:"";
-  tokenCreatorState.logoName=file.name.slice(0,120);
-  const label=el.querySelector("#tc-logo-file");
-  if(label)label.textContent=tokenCreatorState.logoName;
-  const preview=el.querySelector("#tc-logo-preview");
-  if(preview){preview.src=reader.result;preview.hidden=false}
-  if(status)status.textContent="Logo ready for verification. It is not public until your email is confirmed.";
- };
- reader.onerror=()=>{tokenCreatorState.logoPngBase64="";
-  if(status)status.textContent="Unable to read the selected logo."};
- reader.readAsDataURL(file);
+ // Decode pixels in the browser, then re-encode a clean static RGBA PNG.
+ // This strips metadata/ICC/EXIF, normalizes palette and 16-bit PNGs, and
+ // scales down oversized logos before the strict server-side PNG verification.
+ const chosen=file;
+ const holder=el.querySelector("#tc-logo-preview");
+ if(holder){holder.hidden=true;holder.removeAttribute("src")}
+ report("Optimizing your logo…");
+ void (async()=>{
+  let image;
+  try{
+   image=await createImageBitmap(chosen);
+   if(!image.width||!image.height||image.width>8192||image.height>8192)
+    throw Error("Invalid logo dimensions");
+   const scale=Math.min(1,512/Math.max(image.width,image.height));
+   let w=Math.max(1,Math.round(image.width*scale));
+   let h=Math.max(1,Math.round(image.height*scale));
+   let blob=null;
+   for(let attempt=0;attempt<7;attempt++){
+    const canvas=document.createElement("canvas");
+    canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext("2d",{willReadFrequently:false});
+    if(!ctx)throw Error("Cannot prepare PNG logo");
+    ctx.drawImage(image,0,0,w,h);
+    blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
+    if(!blob)throw Error("PNG conversion failed");
+    if(blob.size>=67&&blob.size<=128*1024)break;
+    w=Math.max(1,Math.floor(w*.75));h=Math.max(1,Math.floor(h*.75));
+   }
+   if(!blob||blob.size>128*1024||blob.size<67)
+    throw Error("Could not optimize logo below 128 KB");
+   const reader=new FileReader();
+   const dataUrl=await new Promise((resolve,reject)=>{
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(Error("Unable to read optimized PNG"));
+    reader.readAsDataURL(blob);
+   });
+   if(path()!=="/createtoken"||event.target?.files?.[0]!==chosen)return;
+   const parts=String(dataUrl).split(",");
+   if(parts.length!==2)throw Error("Invalid optimized logo");
+   tokenCreatorState.logoPngBase64=parts[1];
+   tokenCreatorState.logoName=chosen.name.slice(0,120);
+   const label=el.querySelector("#tc-logo-file");
+   if(label)label.textContent=tokenCreatorState.logoName;
+   const preview=el.querySelector("#tc-logo-preview");
+   if(preview){preview.src=dataUrl;preview.hidden=false}
+   if(status){status.hidden=true;status.textContent=""}
+  }catch(error){
+   if(event.target?.files?.[0]===chosen){
+    event.target.value="";
+    report("Could not process PNG logo: "+String(error.message||error).slice(0,120));
+   }
+  }finally{image?.close?.()}
+ })();
 });
 let creatorRegistrationBusy=false;
 el.addEventListener("submit",event=>{
@@ -1621,7 +1662,13 @@ el.addEventListener("submit",event=>{
   status.focus({preventScroll:true});
  };
  let payload;
- try{payload=creatorRegistrationPayload(tokenCreatorState)}
+ try{
+  if(el.querySelector("#tc-logo-file")?.textContent==="No logo selected")
+   throw Error("Please upload a PNG logo.");
+  if(!tokenCreatorState.logoPngBase64)
+   throw Error("Logo optimization is not finished yet. Please try again.");
+  payload=creatorRegistrationPayload(tokenCreatorState);
+ }
  catch(error){feedback(String(error.message||error));return}
  creatorRegistrationBusy=true;
  const submit=el.querySelector("#xita-creator-register");
