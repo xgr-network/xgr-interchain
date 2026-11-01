@@ -158,10 +158,9 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   '<div class="pair"><span>Permit</span><strong data-creator-preview="permit">'+(p.ready?(p.permit?"Enabled":"Disabled"):"—")+'</strong></div>'+
   '<div class="pair"><span>Network</span><strong>XGRChain, with future eligible Interchain routes</strong></div>'+
   '<p class="ux-small">After email confirmation your XGR-funded deployment is queued. Once the reviewed Creator service is activated, XGR deploys the token directly to the nominated project owner. The verified ERC-20 is then proposed to XITA by a standard Join Draft PR.</p>'+
-  '<button class="ux-button" id="xita-creator-deploy" type="button"'+
-  (!canCreate?' disabled':'')+'>'+(canCreate?'XGR creates your token':'Token creation not yet activated')+'</button>'+
   '<p class="ux-small" id="tc-status" role="status">'+
-  (canCreate?'Factory deployment available after verification.':'The XGR-funded Creator service is awaiting verified factory activation. No transaction will be requested from your wallet.')+
+  'There is no wallet deployment transaction. XGR creates the ERC-20 after verified email and audited factory activation.'+
+
   '</p></section></div>';
 }
 export function creatorConfirmMarkup(state){

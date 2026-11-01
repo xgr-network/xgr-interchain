@@ -7,6 +7,7 @@ import {join} from "node:path";
 import {deflateSync} from "node:zlib";
 import {handleJoin} from "./server.mjs";
 import {listPrivate} from "./private-store.mjs";
+import {normalizeCreatorApplication} from "./creator-registration.mjs";
 
 function crc(data){let c=0xffffffff;for(const b of data){c^=b;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^0xffffffff)>>>0;}
 function chunk(type,data){const name=Buffer.from(type),n=Buffer.alloc(4),sum=Buffer.alloc(4);n.writeUInt32BE(data.length);sum.writeUInt32BE(crc(Buffer.concat([name,data])));return Buffer.concat([n,name,data,sum]);}
@@ -101,4 +102,25 @@ test("server rejects forged HTML/SVG logos and incorrect project relationships",
    assert.equal(reply.status,422);
   }
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true})}
+});
+
+test("server normalization retains each immutable token option and rejects invalid mint caps",()=>{
+ const owner=input.ownerAddress,other="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+ const submitted={...input,tokenType:"mintable",decimals:6,initialSupply:"1000",
+  maxSupply:"5000",minterAddress:other,permit:true};
+ const result=normalizeCreatorApplication(submitted).record;
+ assert.equal(result.ownerAddress,owner);
+ assert.equal(result.minterAddress,other);
+ assert.equal(result.maxSupply,"5000");
+ assert.equal(result.decimals,6);
+ assert.equal(result.tokenType,"mintable");
+ assert.equal(result.permit,true);
+ assert.throws(()=>normalizeCreatorApplication({...submitted,maxSupply:"999"}),/supply|cap/i);
+ assert.throws(()=>normalizeCreatorApplication({...submitted,decimals:4}),/decimals/);
+ assert.throws(()=>normalizeCreatorApplication({...submitted,minterAddress:"0x"+"0".repeat(40)}),/minter/);
+ const fixed=normalizeCreatorApplication(input).record;
+ assert.equal(fixed.tokenType,"fixed");
+ assert.equal(fixed.decimals,18);
+ assert.equal(fixed.maxSupply,input.initialSupply);
+ assert.equal(fixed.permit,false);
 });

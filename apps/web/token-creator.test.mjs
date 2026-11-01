@@ -36,9 +36,8 @@ test("page is directly routable yet absent from navigation, with no unverified d
  const markup=tokenCreatorMarkup({name:'<img src=x onerror=alert(1)>',
   symbol:"EXM",initialSupply:"99",ownerAddress:"0x1234567890123456789012345678901234567890",accepted:true});
  assert.doesNotMatch(markup,/<img src=x onerror/);
- assert.match(markup,/Token creation not yet activated/);
- assert.match(markup,/\sdisabled/);
- assert.match(markup,/No transaction will be requested/);
+ assert.doesNotMatch(markup,/id="xita-creator-deploy"/);
+ assert.match(markup,/There is no wallet deployment transaction/);
  const form=tokenCreatorMarkup(creatorDraft());
  assert.match(form,/id="xita-token-creator-form"/);
  assert.doesNotMatch(form,/data-nav/);
@@ -67,4 +66,30 @@ test("creator enrollment collects private email, complete Join project metadata 
  assert.match(creatorConfirmMarkup({phase:"email-verified",
   logoUrl:"https://xita.xgr.network/token-logos/"+"a".repeat(64)+".png"}),/Email verified/);
  assert.deepEqual(validateCreatorApplication({...d,logoPngBase64:""}).includes("Upload a PNG logo (max 128 KB)"),true);
+});
+
+test("creator variants have exact 6/8/18 decimals and irrecoverable lifetime cap",()=>{
+ const base={name:"Project Token",symbol:"PRJ",ownerAddress:"0x1234567890123456789012345678901234567890",
+  initialSupply:"1000",accepted:true};
+ const fixed=creatorPreview({...base,tokenType:"fixed",decimals:18});
+ assert.equal(fixed.ready,true);
+ assert.equal(fixed.initialSupplyBaseUnits,"1000000000000000000000");
+ assert.equal(fixed.fixedSupply,true);
+ const burn=creatorPreview({...base,tokenType:"burnable",decimals:6,permit:true});
+ assert.equal(burn.ready,true);
+ assert.equal(burn.initialSupplyBaseUnits,"1000000000");
+ assert.equal(burn.tokenType,"burnable");
+ const minted=creatorPreview({...base,tokenType:"mintable",decimals:8,
+  maxSupply:"1500",minterAddress:"0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"});
+ assert.equal(minted.ready,true);
+ assert.equal(minted.decimals,8);
+ assert.equal(minted.maxSupply,"1500");
+ assert.equal(minted.fixedSupply,false);
+ assert.ok(validateCreatorDraft({...base,tokenType:"mintable",decimals:8,maxSupply:"999"}).length>0);
+ assert.ok(validateCreatorDraft({...base,tokenType:"mintable",decimals:8,maxSupply:"1500",minterAddress:"0x0"}).length>0);
+ assert.ok(validateCreatorDraft({...base,tokenType:"mintable",decimals:7,maxSupply:"1500"}).length>0);
+ assert.ok(validateCreatorDraft({...base,tokenType:"INVALID"}).length>0);
+ assert.match(tokenCreatorMarkup({...creatorDraft(),...base,tokenType:"mintable",decimals:"8",
+  maxSupply:"1500"}),/data-creator="minterAddress"/);
+ assert.match(tokenCreatorMarkup({...creatorDraft(),...base,tokenType:"fixed"}),/Enable EIP-2612 Permit signatures/);
 });

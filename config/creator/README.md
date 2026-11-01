@@ -5,8 +5,8 @@
 1. Applicant supplies verified project metadata, nonzero project wallet (Owner) and a PNG logo. Email verification is an application identity check, **not wallet possession proof**.
 2. Confirmation queues an immutable, private project application. Neither the public web service nor its email confirmation handler can access the separate operator signing key.
 3. The opt-in creator-operator timer verifies the audited, receipt-pinned XGRChain factory and its bytecode from two distinct XGR RPC endpoints; checks the explicit daily gas and deployment-count budgets, candidate symbol, dedicated funding wallet and chain ID 1643.
-4. The operator signs exactly one factory `createToken(name,symbol,supply,ownerAddress)` transaction. It persists the signed raw transaction/hash **before broadcast**. A failed RPC, reboot or unknown transaction status can only rebroadcast the same bytes, never silently submit a second mint. A revert requires manual incident review.
-5. After an independently verified receipt, the worker checks the factory event, token runtime hash, token `owner()`, exact supply, owner balance and token parameters on both RPCs.
+4. The operator signs exactly one factory `createTokenConfigured(name,symbol,supply,owner,type,decimals,lifetimeCap,permit,minter)` transaction. It persists the signed raw transaction/hash **before broadcast**. A failed RPC, reboot or unknown transaction status can only rebroadcast the same bytes, never silently submit a second mint. A revert requires manual incident review.
+5. After an independently verified receipt, the worker checks the factory event, token runtime hash, token `owner()`, exact initial supply and balance, decimals, token type, lifetime minted/cap, minter and optional Permit flag at the creation block from both RPCs.
 6. Only now does it create a normal **Draft** XITA Join PR from the real XGRChain token address, including every available XGR hub↔spoke route. No CoinGecko ID is required for this XGRChain-native original. Standard operator review/merge and optional asset-route deployments remain separate from creation.
 
 ## Production activation — explicit manual review gate
@@ -33,3 +33,19 @@ Example manifest schema (not an active deployed address):
 ```
 
 The builder does not guess the factory's address. The admin review and independent deployment receipts must populate it. The public XITA Creator page remains a restricted preview until activation. No paid token deployments are performed by tests or GitHub CI.
+
+## Standard token modes (immutable)
+
+| Mode | Burning | Project minting | Lifetime cap |
+| --- | --- | --- | --- |
+| Fixed Supply | Disabled | Disabled | Initial Supply |
+| Fixed Supply + Burnable | Holder / allowance burn | Disabled | Initial Supply |
+| Controlled Mint + Burn | Holder / allowance burn | Only nominated Minter, rotatable by project Owner | Explicit lifetime issuance maximum |
+
+- 6, 8 and 18 decimals are supported, default 18. Initial Supply and Cap are whole-token input values; the contract receives exact base units.
+- Permit is optional EIP-2612; the contract's method rejects signatures if disabled.
+- The configured lifetime maximum counts **all mints ever made**; burning does not restore capacity.
+- Owner is the nominated project address. Only Owner can rotate the Minter. XGR operator is never Owner/Minter and receives no token balance.
+- Multiple ERC20Permit token names result in different runtime hashes because EIP-712 contains token-specific immutables. Pin **the reviewed Factory bytecode** once, then verify each creator transaction's own `TokenConfigured.runtimeCodeHash` against its deployed ERC-20 runtime. There is no valid globally fixed child token codehash.
+- A token's Owner or Minter may legitimately change after initial issuance. Receipt verification checks configuration at the source creation block; publishing a Join PR does not freeze the project's future token governance.
+

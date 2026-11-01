@@ -35,3 +35,23 @@ test("cannot create PR from unverified, forged, or still queued creator receipt"
  assert.throws(()=>buildCreatorJoinBundle(record,{...proof,initialSupplyBaseUnits:"1"},catalog),/proof/);
  assert.throws(()=>buildCreatorJoinBundle(record,proof,{...catalog,assets:{...catalog.assets,CREA:catalog.assets.XGR}}),/Duplicate/);
 });
+
+test("mintable creator PR publishes exact on-chain cap, minter, decimals and permit",()=>{
+ const minter="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd";
+ const custom={...record,input:{...record.input,tokenType:"mintable",decimals:6,
+  initialSupply:"10000",maxSupply:"25000",minterAddress:minter,permit:true}};
+ const checked={...proof,initialSupplyBaseUnits:"10000000000",maxSupplyBaseUnits:"25000000000",
+  tokenType:2,decimals:6,minterAddress:minter,permit:true};
+ const output=buildCreatorJoinBundle(custom,checked,catalog);
+ const asset=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/asset.json"))[1]);
+ const profile=JSON.parse(Object.entries(output.files).find(([p])=>p.endsWith("/metadata.json"))[1]);
+ assert.equal(asset.decimals,6);
+ assert.equal(asset.creation.tokenType,"mintable");
+ assert.equal(asset.creation.minterAddress,minter);
+ assert.equal(asset.creation.permit,true);
+ assert.equal(asset.creation.tokenRuntimeCodeHash,checked.tokenCodeHash);
+ assert.equal(profile.supply.total,checked.initialSupplyBaseUnits);
+ assert.equal(profile.supply.max,checked.maxSupplyBaseUnits);
+ assert.deepEqual(validateCatalog(JSON.parse(output.files["apps/web/catalog.json"])),[]);
+ assert.throws(()=>buildCreatorJoinBundle(custom,{...checked,maxSupplyBaseUnits:"25000000001"},catalog),/proof/);
+});
