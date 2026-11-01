@@ -1983,14 +1983,19 @@ async function loadLeaderboard(){
  metricsRefreshPending=true;
  try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;
  const previous=state.leaderboard;
- const changed=previous?.asOf!==body.asOf||previous?.status!==body.status||
-  previous?.totals?.lockedUsd!==body.totals?.lockedUsd||
-  previous?.totals?.movedUsd!==body.totals?.movedUsd||
-  previous?.partialMovement?.verifiedMinimumUsd!==body.partialMovement?.verifiedMinimumUsd;
+ // Avoid rebuilding the costly interactive 3D dashboard every minute.
+ // Repaint only once data that was initially absent/unavailable becomes
+ // verifiable; periodic polling still refreshes the in-memory snapshot.
+ const improved=(previous?.totals?.lockedUsd==null&&
+   typeof body.totals?.lockedUsd==="number")||
+  (previous?.totals?.lockedUsd===0&&body.totals?.lockedUsd>0)||
+  (previous?.totals?.movedUsd==null&&
+   (typeof body.totals?.movedUsd==="number"||
+    typeof body.partialMovement?.verifiedMinimumUsd==="number"));
  state.leaderboard=body;state.visibility=body.visibility?.kind==="xita-visibility-v1"?body.visibility:null;
  // Do not disrupt an active wallet flow, chart interaction or token search.
  const page=path();
- if(changed&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
+ if((!previous||improved)&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
