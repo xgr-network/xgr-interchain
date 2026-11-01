@@ -30,7 +30,7 @@ function fixture(){
  savePrivate(dir,row);
  return {dir,id:created.id,cleanup:()=>rmSync(dir,{recursive:true,force:true})};
 }
-test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE Join PR",async()=>{
+test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE profile-only PR",async()=>{
  const x=fixture();let mined=false,signs=0,published=0;const broadcasts=[];
  const verify=async()=>({chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
   symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:factory.address,
@@ -49,7 +49,7 @@ test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exac
  const run=()=>processCreatorQueue({env:env(x.dir),now,call,loadFactory:()=>factory,
   walletFactory:()=>({address:operator,signTransaction:async()=>{signs++;return signed}}),
   verify,checkSponsorJournal:async()=>{},loadInventory:loadCatalog,mainSha:()=> "a".repeat(40),
-  publisher:async(bundle)=>{published++;return {number:777,url:"https://github.com/xgr-network/xgr-interchain/pull/777",status:"draft",kind:bundle.kind}}});
+  publisher:async(bundle)=>{assert.equal(bundle.kind,"xgrchain-profile");assert.equal(bundle.summary.routeCount,0);published++;return {number:777,url:"https://github.com/xgr-network/xgr-interchain/pull/777",status:"draft",kind:bundle.kind}}});
  try{
   const first=await run();
   assert.equal(first.phase,"deployment-submitted");
