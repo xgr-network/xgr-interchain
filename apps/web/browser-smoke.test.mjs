@@ -81,7 +81,7 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
       const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       const task=setInterval(async()=>{
        const app=document.querySelector("#app"),form=app?.querySelector("#ja-application-form");
-       if(app?.dataset.ready!=="1"||!form||!app.querySelector('[data-join-action="submit"]'))return;
+       if(app?.dataset.ready!=="1"||!form||!app.querySelector('[data-join-action="submit"]:not(:disabled)'))return;
        clearInterval(task);
        form.querySelector('[data-join-action="submit"]').click();
        await sleep(70);
