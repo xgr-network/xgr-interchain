@@ -25,9 +25,13 @@ export function validateApplication(d,catalog,preview=null){
 }
 const field=(id,label,val,placeholder,type="text")=>'<label class="ja-field" for="ja-'+id+'"><span>'+label+'</span>'+
  '<input id="ja-'+id+'" data-join="'+id+'" type="'+type+'" maxlength="254" placeholder="'+placeholder+'" value="'+escape(val||"")+'"></label>';
-export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null){
+export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null,{creatorAvailable=false}={}){
  const choices=preview?.choices||[];
  const accepted=preview?.profile;
+ const creator=creatorAvailable?
+  '<aside class="ja-creator-entry"><div><span class="ux-kicker">START ON XGRCHAIN</span><h2>Create your own token</h2>'+
+  '<p>New project? Create a standard ERC-20 on XGRChain and apply for XITA routes in one process.</p></div>'+
+  '<a class="ux-outline-button" data-nav href="/createtoken">Create a token <span aria-hidden="true">→</span></a></aside>':"";
  const choice=choices.length>1?
  '<label class="ja-field ja-field-full"><span>Original blockchain *</span><select data-join="canonicalChain" id="ja-canonicalChain">'+
  '<option value="">Select the original blockchain</option>'+
@@ -55,7 +59,7 @@ export function joinMarkup(catalog,d=draft(),status="",busy=false,preview=null){
  '<div class="ja-actions"><button type="submit" data-join-action="submit" class="ux-button"'+
  (busy?' disabled':'')+'>Submit free application</button></div></form>'+
  '<p class="ja-info">Already listed? <a data-nav href="/profile-update">Update Token Profile</a></p>'+
- '</section></div></div>';
+ '</section></div>'+creator+'</div>';
 }
 export function profileUpdateMarkup(catalog,form={},status="",busy=false,preview=null){
  const assets=Object.entries(catalog?.assets||{}).filter(([,a])=>a?.profile?.market).sort((a,b)=>a[0].localeCompare(b[0]));
