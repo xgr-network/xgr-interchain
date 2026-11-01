@@ -9,6 +9,7 @@ import {normalizeLogoPng} from "./creator-logo-png.mjs";
 import {applicationMail} from "./mail-template.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {normalizeJoinDescription} from "../../apps/web/join-description.js";
+import {creatorSettings} from "../../apps/web/creator-token-config.js";
 
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[0-9a-f-]{36}$/;
@@ -36,9 +37,9 @@ export function normalizeCreatorApplication(data){
  const name=String(data.name||"").trim(),symbol=String(data.symbol||"").trim(),
   initialSupply=String(data.initialSupply||"").trim(),ownerAddress=String(data.ownerAddress||"").trim().toLowerCase(),contactEmail=String(data.contactEmail||"").trim().toLowerCase();
  if(!ADDRESS.test(ownerAddress)||/^0x0{40}$/i.test(ownerAddress))throw Error("Valid project owner wallet address required");
- if(!NAME.test(name)||!SYMBOL.test(symbol)||!SUPPLY.test(initialSupply)||
-   BigInt(SUPPLY.test(initialSupply)?initialSupply:"0")>10n**18n)
-  throw Error("Invalid token name, symbol or fixed supply");
+ if(!NAME.test(name)||!SYMBOL.test(symbol)||!SUPPLY.test(initialSupply))
+  throw Error("Invalid token name, symbol or initial supply");
+ const config=creatorSettings({...data,initialSupply,ownerAddress});
  if(!EMAIL.test(contactEmail)||contactEmail.length>254)throw Error("Valid contact email required");
  if(!ROLES.has(data.applicantRole))throw Error("Authorized project relationship required");
  const shortDescription=normalizeJoinDescription(data.shortDescription,15,280),
@@ -58,7 +59,9 @@ export function normalizeCreatorApplication(data){
  const links={};
  for(const key of LINKS)links[key]=safeUrl(data.links?.[key]||"");
  const logo=normalizeLogoPng(data.logoPngBase64);
- const record={name,symbol,initialSupply,ownerAddress,contactEmail,applicantRole:data.applicantRole,
+ const record={name,symbol,initialSupply,ownerAddress,tokenType:config.tokenType,
+  decimals:config.decimals,maxSupply:config.maxSupply,minterAddress:config.minterAddress,
+  permit:config.permit,contactEmail,applicantRole:data.applicantRole,
   shortDescription,description,website,categories,tags,links,confirmed:true};
  return {record,logo};
 }

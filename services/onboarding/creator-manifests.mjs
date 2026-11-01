@@ -6,10 +6,12 @@ import {isDeployedChain} from "../../apps/web/route-availability.js";
 import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
+import {creatorSettings} from "../../apps/web/creator-token-config.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const valid=s=>typeof s==="string"&&s.length>0&&!/[<>\x00-\x1f]/.test(s);
 export function buildCreatorJoinBundle(record,proof,catalog){
  const a=record?.input;
+ const cfg=creatorSettings(a||{});
  if(record?.kind!=="token-creator"||!["deployed","pr-published"].includes(record.phase)||
     !a||!proof||!catalog?.chains?.xgrchain||catalog.chains.xgrchain.chainId!==1643)
   throw Error("Verified XGR token creation is required before Join");
@@ -18,7 +20,11 @@ export function buildCreatorJoinBundle(record,proof,catalog){
     /^0x0{40}$/.test(owner)||!TX.test(proof.txHash||"")||
     String(proof.ownerAddress||"").toLowerCase()!==owner||
     String(proof.name)!==a.name||String(proof.symbol)!==a.symbol||
-    String(proof.initialSupplyBaseUnits)!==(BigInt(a.initialSupply)*10n**18n).toString()||
+    String(proof.initialSupplyBaseUnits)!==cfg.initialSupplyBaseUnits||
+    proof.tokenType!==cfg.tokenTypeId||proof.decimals!==cfg.decimals||
+    proof.maxSupplyBaseUnits!==cfg.maxSupplyBaseUnits||
+    proof.permit!==cfg.permit||
+    String(proof.minterAddress||"").toLowerCase()!==cfg.minterAddress||
     proof.chainId!==1643||!ADDRESS.test(proof.factory||"")||
     !ADDRESS.test(proof.operator||"")||!Number.isSafeInteger(proof.blockNumber)||proof.blockNumber<=0)
   throw Error("Creator proof is not bound to the email-confirmed immutable project");
@@ -34,20 +40,22 @@ export function buildCreatorJoinBundle(record,proof,catalog){
  const assetId=canonicalAssetId(asset,catalog.chains),folder=assetConfigFolder(symbol,assetId);
  const spokes=Object.keys(catalog.chains).filter(ch=>ch!=="xgrchain"&&isDeployedChain(catalog,ch)).sort();
  if(!spokes.length)throw Error("No deployed XITA spoke routes are available");
- const metadata={schemaVersion:1,kind:"asset-config",asset:symbol,name:a.name,symbol,decimals:18,
+ const metadata={schemaVersion:1,kind:"asset-config",asset:symbol,name:a.name,symbol,decimals:cfg.decimals,
   canonical:{chain:"xgrchain",representation:"collateral",symbol,tokenAddress:token},
   representations:[{chain:"xgrchain",representation:"collateral",symbol,assetAddress:token},
    ...spokes.map(chain=>({chain,representation:"synthetic",symbol:"w"+symbol,assetAddress:null}))],
   bridgeModel:"lock-mint-burn-unlock",assetId,
   creation:{kind:"xgrchain-creator-v1",factory:proof.factory.toLowerCase(),operator:proof.operator.toLowerCase(),
-   ownerAddress:owner,transactionHash:proof.txHash.toLowerCase(),blockNumber:proof.blockNumber},
+   ownerAddress:owner,transactionHash:proof.txHash.toLowerCase(),blockNumber:proof.blockNumber,
+   tokenType:cfg.tokenType,decimals:cfg.decimals,maxSupplyBaseUnits:cfg.maxSupplyBaseUnits,
+   minterAddress:cfg.minterAddress,permit:cfg.permit},
   notes:"Verified factory-created XGRChain original; Join requires independent PR review and route deployments."};
  const links=Object.fromEntries(["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"].map(x=>[x,a.links?.[x]||null]));
  const profile={schemaVersion:1,kind:"xeta-token-profile",asset:symbol,slug,name:a.name,
   shortDescription:a.shortDescription,description:a.description,
   categories:a.categories,tags:a.tags||[],branding:{logoUrl:record.logoUrl,bannerUrl:null},
   links:{website:a.website,...links},market:{coingeckoId:null,coinmarketcapId:null,priceSource:"none"},
-  supply:{circulating:null,total:proof.initialSupplyBaseUnits,max:proof.initialSupplyBaseUnits},
+  supply:{circulating:null,total:proof.initialSupplyBaseUnits,max:cfg.maxSupplyBaseUnits},
   verification:{status:"project-maintained",proof:proof.txHash}};
  const routes={schemaVersion:1,kind:"asset-routes",asset:symbol,network:"mainnet",
   protocol:"XITA-v3.1.5",routingHub:"xgrchain",

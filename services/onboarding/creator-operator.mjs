@@ -9,6 +9,7 @@ import {loadReviewedCreatorFactory,verifyCreatorAcrossRPCs,CREATOR_VERIFY_RPC_UR
 import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {publishDraft,localMainSha} from "./server.mjs";
+import {creatorSettings} from "../../apps/web/creator-token-config.js";
 const ADDR=/^0x[0-9a-f]{40}$/i,KEY=/^0x[0-9a-f]{64}$/i;
 function value(env,name,min,max){
  const raw=String(env[name]||"");
@@ -140,8 +141,11 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
  if(BigInt(chain)!==1643n)throw Error("Creator operator RPC chain mismatch");
  const gasPrice=BigInt(gasPriceHex);
  if(gasPrice<=0n||gasPrice>limit.gasPrice)throw Error("Creator gas price cap exceeded");
- const data=creatorFactoryInterface.encodeFunctionData("createToken",[
-  target.input.name,target.input.symbol,BigInt(target.input.initialSupply)*10n**18n,target.input.ownerAddress
+ const settings=creatorSettings(target.input);
+ const data=creatorFactoryInterface.encodeFunctionData("createTokenConfigured",[
+  target.input.name,target.input.symbol,BigInt(settings.initialSupplyBaseUnits),
+  settings.ownerAddress,settings.tokenTypeId,settings.decimals,
+  BigInt(settings.maxSupplyBaseUnits),settings.permit,settings.minterAddress
  ]);
  const estimate=BigInt(await rpc(url,"eth_estimateGas",[{from:wallet.address,to:factory.address,data,value:"0x0"}]));
  const gasLimit=estimate+estimate/4n+10000n, reserved=gasLimit*gasPrice;
