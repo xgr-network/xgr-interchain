@@ -8,7 +8,7 @@ import {join} from "node:path";
 import {Wallet,keccak256} from "ethers";
 import {privateLocation,listPrivate,savePrivate,readPrivate,lockedRecord} from "./private-store.mjs";
 import {loadReviewedCreatorFactory,verifyCreatorAcrossRPCs,CREATOR_VERIFY_RPC_URLS,creatorFactoryInterface} from "./creator-chain-proof.mjs";
-import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
+import {buildCreatorProfileBundle} from "./creator-manifests.mjs";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {publishDraft,localMainSha} from "./server.mjs";
 import {creatorSettings} from "../../apps/web/creator-token-config.js";
@@ -129,15 +129,15 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
    x.deployment?.verifiedProof&&!x.pr);
  if(ready){
   const catalog=loadInventory();
-  if(validateCatalog(catalog).length)throw Error("Cannot publish Join against invalid GitHub inventory");
+  if(validateCatalog(catalog).length)throw Error("Cannot publish Creator profile against invalid GitHub inventory");
   const verified=await verify({input:ready.input,txHash:ready.deployment.txHash,factory,urls,call:rpc});
   if(!same(verified.tokenAddress,ready.deployment.tokenAddress))
    throw Error("Creator proof changed before Join PR creation");
-  const bundle=buildCreatorJoinBundle(ready,verified,catalog);
+  const bundle=buildCreatorProfileBundle(ready,verified,catalog);
   const pr=await publisher(bundle,{expectedMain:mainSha(),applicationId:ready.id});
   await lockedRecord(path,ready.id,async record=>{
    if(record.phase!=="deployed"||!same(record.deployment.txHash,verified.txHash))
-    throw Error("Creator PR application state changed");
+    throw Error("Creator profile application state changed");
    record.assetId=bundle.assetId;record.phase="pr-published";record.pr=pr;
    // The project's second email is the actual public token profile link,
    // not a premature PR link while the profile is still under review.
