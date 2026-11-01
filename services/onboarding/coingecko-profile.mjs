@@ -106,7 +106,11 @@ export function joinFromCoin(input,coin,catalog,{requireContact=true}={}){
     (requireContact&&(!EMAIL.test(input.contactEmail||"")||input.contactEmail.length>254||input.confirmed!==true)))
   throw Error("CoinGecko ID, email and project acknowledgement required");
  const choices=joinCandidates(coin,catalog);
- if(!choices.length)throw Error("No verified, deployed EVM original contract with decimals on CoinGecko");
+ if(!choices.length){
+  const supported=Object.entries(catalog?.chains||{}).filter(([key])=>verifiedAssetPlatform(catalog,key))
+   .map(([,chain])=>chain.displayName||chain.name).join(", ");
+  throw Error("No verified, deployed EVM original contract with decimals on CoinGecko for the currently available XITA networks: "+supported);
+ }
  const chosen=input.canonicalChain|| (choices.length===1?choices[0].chain:null);
  if(!chosen)throw Error("Select the original blockchain from verified CoinGecko contracts");
  const chain=choices.find(c=>c.chain===chosen);
