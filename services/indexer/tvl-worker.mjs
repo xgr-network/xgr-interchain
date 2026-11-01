@@ -111,7 +111,10 @@ export function choosePublishedTvlEvidence(catalog,current,previous,{now=Date.no
  const active=Object.keys(catalog?.assets||{}).filter(id=>
   isDeployedAsset(catalog.assets[id],catalog));
  const complete=s=>active.length>0&&s?.kind==="xita-asset-metrics-v1"&&
-  s.schemaVersion===1&&active.every(id=>verifiedMetrics(s,id)?.lockedUsd!==null);
+  s.schemaVersion===1&&active.every(id=>{
+   const value=verifiedMetrics(s,id)?.lockedUsd;
+   return typeof value==="number"&&Number.isFinite(value)&&value>=0;
+  });
  if(complete(current))return {snapshot:current,retained:false};
  const timestamp=Date.parse(previous?.asOf);
  const age=now-timestamp;
