@@ -10,3 +10,15 @@ test("mail template escapes untrusted token names and keeps links restricted",()
  const bad=applicationMail({title:"Test",subtitle:"",action:{label:"Open",url:"https://evil.example/click"}});
  assert.doesNotMatch(bad.html,/href=/);
 });
+
+test("verified Creator contract explorer link is allowed, unrelated URLs are not",()=>{
+ const token="0x"+"a".repeat(40);
+ const verified=applicationMail({title:"Token created",subtitle:"XITA Canary",
+  action:{label:"View token contract",url:"https://explorer.xgr.network/address/"+token}});
+ assert.match(verified.html,/href="https:\/\/explorer.xgr.network\/address\/0x[a-f0-9]{40}"/);
+ for(const url of ["https://explorer.xgr.network/other",
+  "https://explorer.xgr.network/address/0x123",
+  "https://explorer.xgr.network.evil.example/address/"+token]){
+  assert.doesNotMatch(applicationMail({title:"Test",subtitle:"",action:{label:"View",url}}).html,/href=/);
+ }
+});
