@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "ethers": "6.13.4",
+    "nodemailer": "7.0.10",
     "pg": "8.16.3"
   }
 }

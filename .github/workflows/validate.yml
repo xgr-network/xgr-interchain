@@ -85,6 +85,8 @@ jobs:
 
       - name: Install pinned creator verifier
         run: npm install --prefix services/onboarding --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Verify production SMTP dependency
+        run: node -e 'require("./services/onboarding/node_modules/nodemailer")'
       - name: Validate manifest and onboarding generation tests
         shell: bash
         run: |
