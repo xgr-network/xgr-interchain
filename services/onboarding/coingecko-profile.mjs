@@ -99,9 +99,9 @@ export function joinCandidates(coin,catalog){
  }
  return items.sort((a,b)=>a.chain.localeCompare(b.chain));
 }
-export function joinFromCoin(input,coin,catalog){
- if(!input||!EMAIL.test(input.contactEmail||"")||input.contactEmail.length>254||
-    input.confirmed!==true||!ID.test(input.coingeckoId||""))
+export function joinFromCoin(input,coin,catalog,{requireContact=true}={}){
+ if(!input||!ID.test(input.coingeckoId||"")||
+    (requireContact&&(!EMAIL.test(input.contactEmail||"")||input.contactEmail.length>254||input.confirmed!==true)))
   throw Error("CoinGecko ID, email and project acknowledgement required");
  const choices=joinCandidates(coin,catalog);
  if(!choices.length)throw Error("No verified, deployed EVM original contract with decimals on CoinGecko");
@@ -114,7 +114,7 @@ export function joinFromCoin(input,coin,catalog){
   description:profile.description,website:profile.links.website,canonicalChain:chosen,
   canonicalAddress:chain.contract,decimals:chain.decimals,categories:profile.categories,
   tags:[],logoUrl:profile.logoUrl,links:profile.links,priceSource:"coingecko",
-  coingeckoId:input.coingeckoId,contactEmail:input.contactEmail.toLowerCase(),
+  coingeckoId:input.coingeckoId,contactEmail:String(input.contactEmail||"").toLowerCase(),
   applicantRole:"community",confirmed:true};
  assertCoinGeckoIdentity(normalized,coin,{catalog});
  return {normalized,choices,profile};
@@ -136,6 +136,7 @@ export function profileUpdateFromCoin({symbol,coingeckoId},coin,catalog){
  const cp=coinProfile(coin,{fallback:old});
  if(cp.symbol!==symbol)throw Error("CoinGecko token symbol differs from approved asset");
  const original=entry.metadata.canonical;
+ if(!ADDR.test(original.tokenAddress||""))throw Error("Original contract unavailable");
  if(original.chain==="xgrchain"){
   const platform=catalog.chains.xgrchain?.coingeckoAssetPlatform;
   const mapped=platform?(coin.platforms?.[platform]||coin.detail_platforms?.[platform]?.contract_address):null;
