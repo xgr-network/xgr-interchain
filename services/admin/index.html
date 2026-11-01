@@ -13,6 +13,7 @@
 <div class="creator-factory-actions">
 <button type="button" id="creator-factory-deploy">Factory über Wallet deployen</button>
 <button type="button" class="outline" id="creator-factory-check">Bestehende Transaktion prüfen</button>
+<button type="button" class="outline" id="creator-factory-cancel">Nur unsignierten Entwurf verwerfen</button>
 </div><div class="creator-factory-recovery"><label>TX-Hash zur Wiederherstellung (nur bereits gesendete Transaktionen)<input id="creator-factory-hash" type="text" maxlength="66" placeholder="0x…" autocomplete="off" spellcheck="false"></label>
 <button type="button" class="outline" id="creator-factory-recover">TX-Hash sichern und prüfen</button></div>
 <p class="tiny">Erst nach zweifacher RPC- und Bytecode-Verifikation wird ein Draft-PR für config/creator/factory.json erzeugt. Die Factory wird nicht durch diesen Button aktiviert; der Creator-Dienst bleibt separat steuerbar. Kein zweiter Deploy bei ausstehender TX.</p>

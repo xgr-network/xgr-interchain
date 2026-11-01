@@ -948,10 +948,12 @@ el("connect-wallet").addEventListener("click",async()=>{
  }catch(e){el("wallet-status").textContent=e.message;}
 });
 let creatorFactoryBusy=false;
+let creatorFactoryLast=null;
 async function updateCreatorFactory(){
  const status=el("creator-factory-status"),details=el("creator-factory-details");
  try{
   const d=await get("/admin/api/creator-factory/status");
+  creatorFactoryLast=d;
   const phase=d.phase||"ready",tx=d.txHash;
   status.textContent=({
    ready:"Factory noch nicht deployed",prepared:"Wallet-Signatur vorbereitet – nichts doppelt senden",
@@ -959,10 +961,17 @@ async function updateCreatorFactory(){
    "pr-created":"Factory bestätigt – GitHub-PR prüfen und mergen",
    documented:"Factory in GitHub main dokumentiert",cancelled:"Vorbereitung abgebrochen"})[phase]||phase;
   details.textContent=(d.documented?.address?"Factory: "+d.documented.address+" · ":"")+
-   (tx?"TX: "+tx+" · ":"")+(d.pr?.url?"PR: "+d.pr.url:"");
+   (tx?"TX: "+tx+" · ":"");
+  if(/^https:\/\/github.com\/xgr-network\/xgr-interchain\/pull\/\d+$/.test(d.pr?.url||"")){
+   const link=document.createElement("a");
+   link.href=d.pr.url;link.target="_blank";link.rel="noopener noreferrer";
+   link.textContent="GitHub PR #"+d.pr.number+" öffnen";
+   details.append(link);
+  }
   el("creator-factory-deploy").disabled=creatorFactoryBusy||phase!=="ready"&&phase!=="cancelled"||workqueue?.readOnly!==false;
   el("creator-factory-check").disabled=creatorFactoryBusy||!["submitted","verified","pr-created"].includes(phase);
   el("creator-factory-recover").disabled=creatorFactoryBusy||phase!=="prepared";
+  el("creator-factory-cancel").disabled=creatorFactoryBusy||phase!=="prepared";
  }catch(error){
   status.textContent="Factory-Status nicht verfügbar: "+error.message;
   el("creator-factory-deploy").disabled=true;
@@ -995,6 +1004,11 @@ async function runCreatorFactory(action){
    const hash=await broadcastDeploymentIntent(prep);
    await postJSON("/admin/api/creator-factory/hash",{txHash:hash});
    status.textContent="TX "+hash+" gesichert. Vertrag wird geprüft…";
+  }else if(action==="cancel"){
+   if(!creatorFactoryLast?.createdAt)throw Error("Unbekannter Factory-Entwurf");
+   if(!window.confirm("NUR wenn KEINE Factory-Transaktion gesendet wurde: den vorbereiteten Entwurf verwerfen? Im Zweifel Abbrechen und die Original-TX wiederherstellen."))return;
+   await postJSON("/admin/api/creator-factory/cancel",{createdAt:creatorFactoryLast.createdAt});
+   status.textContent="Unsignierter Factory-Entwurf verworfen.";
   }else if(action==="recover"){
    const hash=el("creator-factory-hash").value.trim();
    if(!/^0x[a-f0-9]{64}$/i.test(hash))throw Error("Gültiger gesendeter TX-Hash erforderlich");
@@ -1015,6 +1029,7 @@ async function runCreatorFactory(action){
 el("creator-factory-deploy").addEventListener("click",()=>void runCreatorFactory("deploy"));
 el("creator-factory-check").addEventListener("click",()=>void runCreatorFactory("check"));
 el("creator-factory-recover").addEventListener("click",()=>void runCreatorFactory("recover"));
+el("creator-factory-cancel").addEventListener("click",()=>void runCreatorFactory("cancel"));
 
 async function checkLiveInfrastructure(){
  try{
