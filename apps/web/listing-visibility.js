@@ -64,7 +64,19 @@ export function isDeployedAsset(entry,catalog=null){
  });
 }
 
+// A reviewed Creator receipt makes the original token discoverable after
+// the normal GitHub Join approval, but does not authorize any XITA route.
+export function isReviewedXgrCreator(entry){
+ const m=entry?.metadata,c=m?.creation;
+ return m?.canonical?.chain==="xgrchain"&&c?.kind==="xgrchain-creator-v1"&&
+  ADDRESS.test(m.canonical.tokenAddress||"")&&ADDRESS.test(c.ownerAddress||"")&&
+  ADDRESS.test(c.factory||"")&&HASH.test(c.transactionHash||"")&&
+  HASH.test(c.tokenRuntimeCodeHash||"")&&
+  Number.isSafeInteger(c.blockNumber)&&c.blockNumber>0&&
+  entry?.profile?.market?.coingeckoId===null&&entry.profile.market.priceSource==="none";
+}
 export function listingStatus(entry,visibilityRow,catalog=null){
+ if(isReviewedXgrCreator(entry))return "public";
  if(!isDeployedAsset(entry,catalog))return "prospect";
  if(catalog?.publication){
   if(!validPublicationPolicy(catalog.publication))return "unknown";
@@ -76,6 +88,7 @@ export function listingStatus(entry,visibilityRow,catalog=null){
 }
 
 export function isPublicAsset(id,entry,visibility,catalog=null){
+ if(isReviewedXgrCreator(entry))return true;
  if(!isDeployedAsset(entry,catalog))return false;
  const policy=catalog?.publication;
  if(policy){
@@ -121,7 +134,8 @@ export function publicDirectoryCatalog(catalog,visibility){
    if(!catalog?.chains||!catalog?.infrastructure)return [id,entry];
    const ready=chainsByAsset.get(id);
    return [id,{...entry,metadata:{...entry.metadata,
-    representations:(entry.metadata?.representations||[]).filter(rep=>ready?.has(rep.chain))}}];
+    representations:(entry.metadata?.representations||[]).filter(rep=>
+      ready?.has(rep.chain)||(isReviewedXgrCreator(entry)&&rep.chain==="xgrchain"))}}];
   }));
  return {...catalog,assets};
 }

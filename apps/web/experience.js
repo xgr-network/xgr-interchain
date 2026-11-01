@@ -496,7 +496,7 @@ function dashboardTokenLogo(row){
 }
 function dashboardTopTokens(catalog,metrics){
  const panels=[
-  {key:"marketCapUsd",title:"by Market Cap",caption:"CoinGecko · asset-wide market cap",empty:"No verified market-cap data yet."},
+  {key:"marketCapUsd",title:"by Market Cap",caption:"Asset-wide market cap · unpriced XGR tokens shown as $0",empty:"No market-cap data yet."},
   {key:"lockedUsd",title:"by Locked TVL",caption:"Verified escrow collateral",empty:"No verified locked TVL yet."},
   {key:"movedUsd",title:"by 24h Volume",caption:"Verified indexer-observed escrow flow",empty:"No verified 24h volume yet."}
  ];
@@ -511,7 +511,7 @@ function dashboardTopTokens(catalog,metrics){
       '<span class="ux-dashboard-token-name"><span class="ux-dashboard-token-rank">'+(i+1)+'</span>'+
       dashboardTokenLogo(row)+
       '<span><strong>'+esc(row.name)+'</strong><small>'+esc(row.id)+'</small></span></span>'+
-      '<span class="ux-dashboard-token-amount"><strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong>'+(row.historicalAsOf?'<small>Last verified</small>':'')+'</span></a>').join("")+'</div>':
+      '<span class="ux-dashboard-token-amount"><strong class="ux-dashboard-token-cap">'+esc(formatUsd(row[panel.key]))+'</strong>'+(row.historicalAsOf?'<small>Last verified</small>':row.marketCapPlaceholder&&panel.key==="marketCapUsd"?'<small>No market data · $0 placeholder</small>':'')+'</span></a>').join("")+'</div>':
       '<p class="ux-dashboard-ranking-empty">'+panel.empty+'</p>')+
      '<a class="ux-dashboard-ranking-link" data-nav href="/markets">Browse tokens →</a></article>';
   }).join("")+'</section>';

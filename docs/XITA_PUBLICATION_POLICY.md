@@ -83,3 +83,17 @@ and real verifier are **not** applied to production by CI. Deployment
 requires provisioning the database, independent verifier, read-only DB
 credentials and live transfer adapter. Until then, publication is
 fail-closed and the numeric threshold stays unset.
+
+## XGRChain Creator tokens without CoinGecko
+
+An original ERC-20 deployed through the receipt-verified XGR Creator Factory
+becomes publicly listed once the normal reviewed Join Draft PR is merged.
+This includes tokens with no market data and no CoinGecko ID. The Creator
+provenance, factory, owner, transaction, block and token-specific runtime code
+hash must be included in the manifest and verified on-chain by Join CI.
+
+When a real independently verified market cap is unavailable, the directory
+and rankings display **$0 as a placeholder**, explicitly not an independently
+observed zero valuation. This does not confer an executable XITA route:
+bridge operations, representations and planets still require complete
+deployment receipts. Unmerged PRs remain nonpublic.
