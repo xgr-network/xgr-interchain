@@ -136,3 +136,75 @@ test("profile update email waits for the exact published CoinGecko profile snaps
   assert.match(outgoing[0].text,/https:\/\/xita.xgr.network\/token\/arbitrum/);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("Creator sends deployment confirmation before any PR and independently of public catalog, retry-safe",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-creator-deployed-mail-")),id=randomUUID();
+ const token="0x"+"3".repeat(40),owner="0x"+"4".repeat(40),tx="0x"+"f".repeat(64);
+ const record={id,kind:"token-creator",phase:"deployed",pr:null,sent:[],
+  input:{name:"XITA Canary",symbol:"XITACAN",initialSupply:"1000",ownerAddress:owner,contactEmail:"owner@example.org"},
+  deployment:{status:"verified",tokenAddress:token,txHash:tx,
+   verifiedProof:{chainId:1643,tokenAddress:token,txHash:tx,ownerAddress:owner,
+    name:"XITA Canary",symbol:"XITACAN"}},
+  retainUntil:new Date(Date.now()+365*86400000).toISOString()};
+ writeFileSync(join(dir,id+".json"),JSON.stringify(record),{mode:0o600});
+ const env={XITA_JOIN_PRIVATE_DIR:dir,XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
+  XITA_JOIN_MAIL_API_TOKEN:"test-only",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
+ const outgoing=[];let deliveryFails=true,unexpectedPR=0,unexpectedCatalog=0;
+ const run=()=>notifyApplications({env,readVisibility:async()=>null,
+  readPR:async()=>{unexpectedPR++;throw Error("No PR must be requested");},
+  readPublicCatalog:async()=>{unexpectedCatalog++;throw Error("No catalog must be required");},
+  deliver:async mail=>{if(deliveryFails)throw Error("SMTP temporarily unavailable");outgoing.push(mail);return true;}});
+ try{
+  assert.deepEqual(await run(),[{id,status:"creator-deployed",sent:false}]);
+  assert.deepEqual(readPrivate(dir,id).sent,[]);
+  deliveryFails=false;
+  assert.deepEqual(await run(),[{id,status:"creator-deployed",sent:true,tokenAddress:token}]);
+  assert.equal(outgoing.length,1);
+  assert.match(outgoing[0].subject,/token has been created/i);
+  assert.match(outgoing[0].text,/XGRChain Mainnet \(chain ID 1643\)/);
+  assert.ok(outgoing[0].text.includes(token));
+  assert.ok(outgoing[0].text.includes(tx));
+  assert.ok(outgoing[0].text.includes(owner));
+  assert.match(outgoing[0].text,/1000 XITACAN/);
+  assert.match(outgoing[0].html,/View token contract/);
+  assert.ok(outgoing[0].html.includes("https://explorer.xgr.network/address/"+token));
+  assert.equal(outgoing[0].idempotencyKey,id+":creator-deployed");
+  assert.deepEqual(await run(),[]);
+  assert.equal(outgoing.length,1);
+  assert.equal(unexpectedPR,0);
+  assert.equal(unexpectedCatalog,0);
+  assert.deepEqual(readPrivate(dir,id).sent,["creator-deployed"]);
+  assert.equal(readPrivate(dir,id).phase,"deployed","email must not change token or PR lifecycle");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});
+
+test("Creator creation mail blocks forged/unverified receipts and safely catches legacy already-merged records",async()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-creator-legacy-mail-")),id=randomUUID();
+ const token="0x"+"3".repeat(40),tx="0x"+"f".repeat(64),owner="0x"+"4".repeat(40);
+ const record={id,kind:"token-creator",phase:"profile-live",sent:["creator-profile-live"],
+  pr:{number:402,url:"https://github.com/xgr-network/xgr-interchain/pull/402"},
+  input:{name:"XITA Canary",symbol:"XITACAN",initialSupply:"1000",ownerAddress:owner,contactEmail:"owner@example.org"},
+  deployment:{status:"verified",txHash:tx,tokenAddress:token,
+   verifiedProof:{chainId:1643,txHash:tx,tokenAddress:token,ownerAddress:owner,name:"XITA Canary",symbol:"XITACAN"}},
+  retainUntil:new Date(Date.now()+365*86400000).toISOString()};
+ writeFileSync(join(dir,id+".json"),JSON.stringify(record),{mode:0o600});
+ const env={XITA_JOIN_PRIVATE_DIR:dir,XITA_JOIN_MAIL_API_URL:"https://mail.example.org/send",
+  XITA_JOIN_MAIL_API_TOKEN:"test-only",XITA_JOIN_MAIL_FROM:"contact@xgr.network"};
+ let outgoing=[];
+ const run=()=>notifyApplications({env,readVisibility:async()=>null,
+  readPR:async()=>{throw Error("PR not needed for old deployments")},
+  deliver:async mail=>{outgoing.push(mail);return true}});
+ try{
+  const forged=readPrivate(dir,id);
+  forged.deployment.verifiedProof.tokenAddress="0x"+"9".repeat(40);
+  writeFileSync(join(dir,id+".json"),JSON.stringify(forged),{mode:0o600});
+  assert.deepEqual(await run(),[]);
+  assert.equal(outgoing.length,0);
+  writeFileSync(join(dir,id+".json"),JSON.stringify(record),{mode:0o600});
+  assert.deepEqual(await run(),[{id,status:"creator-deployed",sent:true,tokenAddress:token}]);
+  assert.equal(outgoing.length,1);
+  assert.equal(readPrivate(dir,id).phase,"profile-live");
+  assert.deepEqual(readPrivate(dir,id).sent,["creator-profile-live","creator-deployed"]);
+  assert.deepEqual(await run(),[]);
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

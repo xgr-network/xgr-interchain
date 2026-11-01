@@ -1,8 +1,8 @@
 [Unit]
-Description=XITA review, deployment and listing email notifications
+Description=XITA token creation, review and listing email notifications
 
 [Timer]
-OnCalendar=*:0/15
+OnCalendar=*:0/5
 Persistent=true
 RandomizedDelaySec=30
 Unit=xita-join-notifier.service
