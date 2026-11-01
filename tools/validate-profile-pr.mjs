@@ -31,7 +31,7 @@ export async function verifyUpdatedProfiles({before,after,changedPaths,loadCoin=
    throw Error("Profile fields differ from verified CoinGecko import: "+symbol);
   expected.assets[symbol].profile=profile;
  }
- if(!equal(after,expected))
+ if(!equal(after,{schemaVersion:1,...expected}))
   throw Error("Catalog has unrelated or non-profile modifications");
  return symbols;
 }
