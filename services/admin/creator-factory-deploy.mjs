@@ -84,12 +84,12 @@ export async function verifyCreatorFactoryReceipt({rpc=rpcCall,urls,txHash,init,
  return {phase:"verified",proof:results[0]};
 }
 export function creatorFactoryDeployment({root,stateDir,main=assertCurrentMain,
- rpc=rpcCall,publish}){
+ rpc=rpcCall,publish,artifactForCommit=commit=>creatorFactoryArtifact(
+  readSealedArtifacts(root,commit).raws.XITAStarterTokenCreator)}){
  let busy=false;
  const atomic=async fn=>{if(busy)throw Error("Factory operation already in progress");
   busy=true;try{return await fn()}finally{busy=false}};
- const build=commit=>creatorFactoryArtifact(
-  readSealedArtifacts(root,commit).raws.XITAStarterTokenCreator);
+ const build=artifactForCommit;
  const check=async()=>{
   const commit=await main(root);
   if(!S.test(commit||""))throw Error("Approved GitHub main unavailable");
