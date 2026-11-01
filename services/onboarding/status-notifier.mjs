@@ -83,7 +83,8 @@ export function verifiedProfileLink(record,catalog){
      !isPublicAsset(symbol,asset,null,catalog))return null;
  }else if(record.kind==="profile-update"){
   const id=record.input.coingeckoId;
-  if(!id||asset.profile.market?.coingeckoId!==id)return null;
+  if(!id||asset.profile.market?.coingeckoId!==id||
+     !record.expectedProfile||JSON.stringify(asset.profile)!==JSON.stringify(record.expectedProfile))return null;
  }else return null;
  return "https://xita.xgr.network/token/"+encodeURIComponent(slug);
 }
@@ -110,24 +111,11 @@ export async function notifyApplications({env=process.env,readPR=publicPR,readVi
     if((record.sent||[]).includes(key))return;
     let merged=false;
     try{merged=Boolean((await readPR(record.pr.number,env))?.merged_at);}catch{return;}
-    // A creator may receive its existing PR receipt before a public page exists.
-    const queue=record.notificationQueue||[];
-    if(creator&&queue.includes("submitted")&&!(record.sent||[]).includes("submitted")){
-     try{
-      const mail=applicationMail({
-       title:"Your XGR token has been created",
-       subtitle:record.input.name+" ("+record.input.symbol+")",
-       paragraphs:["Your ERC-20 was deployed on XGRChain and the verified XITA token proposal is under review.",
-        "You will receive a separate email linking to your token profile as soon as it is published."],
-       action:{label:"View your XITA Join proposal",url:record.pr.url}});
-      await deliver({to:record.input.contactEmail,subject:"Your XGR token has been created",
-       ...mail,idempotencyKey:record.id+":submitted"},{env});
-      record.sent=[...new Set([...(record.sent||[]),"submitted"])];
-      record.notificationQueue=queue.filter(x=>x!=="submitted");
-      savePrivate(dir,record);
-      results.push({id:record.id,status:"submitted",sent:true});
-     }catch{results.push({id:record.id,status:"submitted",sent:false});}
-     return;
+    // The creator's SECOND mail must be the public profile URL. Suppress
+    // historical PR-submitted queue notifications until that URL is live.
+    if(creator&&(record.notificationQueue||[]).includes("submitted")){
+     record.notificationQueue=record.notificationQueue.filter(x=>x!=="submitted");
+     savePrivate(dir,record);
     }
     // Keep mailing idempotent across merge, web deployment and re-runs.
     // A merged GitHub PR alone is not a published token profile.

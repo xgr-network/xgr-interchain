@@ -241,6 +241,11 @@ export async function handleJoin(req,res,{publisher=publishDraft,verify=verifyCo
       }
       const expectedMain=await getMainSha();
       const pr=await publisher(bundle,{expectedMain,applicationId:record.id});
+      if(record.kind==="profile-update"){
+       const path=Object.keys(bundle.files).find(x=>x.endsWith("/metadata.json"));
+       if(!path)throw Error("Missing verified profile metadata for notification");
+       record.expectedProfile=JSON.parse(bundle.files[path]);
+      }
       record.phase="under-review";record.pr=pr;
       record.receiptHash=record.tokenHash;record.tokenHash=null;
       record.coinGeckoVerifiedAt=identity.checkedAt;

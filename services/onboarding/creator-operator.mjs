@@ -112,7 +112,8 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
    if(record.phase!=="deployed"||!same(record.deployment.txHash,verified.txHash))
     throw Error("Creator PR application state changed");
    record.assetId=bundle.assetId;record.phase="pr-published";record.pr=pr;
-   record.notificationQueue=[...new Set([...(record.notificationQueue||[]),"submitted"])];
+   // The project's second email is the actual public token profile link,
+   // not a premature PR link while the profile is still under review.
    savePrivate(path,record);
   });
   return {phase:"pr-published",id:ready.id,pr};
