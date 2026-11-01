@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-routes",
+  "asset": "XITACAN",
+  "network": "mainnet",
+  "protocol": "XITA-v3.1.5",
+  "routingHub": "xgrchain",
+  "routes": [
+    {
+      "name": "xgr_to_arbitrum",
+      "sourceChain": "xgrchain",
+      "destinationChain": "arbitrum"
+    },
+    {
+      "name": "arbitrum_to_xgr",
+      "sourceChain": "arbitrum",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_base",
+      "sourceChain": "xgrchain",
+      "destinationChain": "base"
+    },
+    {
+      "name": "base_to_xgr",
+      "sourceChain": "base",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_bsc",
+      "sourceChain": "xgrchain",
+      "destinationChain": "bsc"
+    },
+    {
+      "name": "bsc_to_xgr",
+      "sourceChain": "bsc",
+      "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_optimism",
+      "sourceChain": "xgrchain",
+      "destinationChain": "optimism"
+    },
+    {
+      "name": "optimism_to_xgr",
+      "sourceChain": "optimism",
+      "destinationChain": "xgrchain"
+    }
+  ]
+}

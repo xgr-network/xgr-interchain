@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "asset-config",
+  "asset": "XITACAN",
+  "name": "XITA Canary",
+  "symbol": "XITACAN",
+  "decimals": 18,
+  "canonical": {
+    "chain": "xgrchain",
+    "representation": "collateral",
+    "symbol": "XITACAN",
+    "tokenAddress": "0xa3245b4056f98b75a6b9962d94999704d790cf79"
+  },
+  "representations": [
+    {
+      "chain": "xgrchain",
+      "representation": "collateral",
+      "symbol": "XITACAN",
+      "assetAddress": "0xa3245b4056f98b75a6b9962d94999704d790cf79"
+    },
+    {
+      "chain": "arbitrum",
+      "representation": "synthetic",
+      "symbol": "wXITACAN",
+      "assetAddress": null
+    },
+    {
+      "chain": "base",
+      "representation": "synthetic",
+      "symbol": "wXITACAN",
+      "assetAddress": null
+    },
+    {
+      "chain": "bsc",
+      "representation": "synthetic",
+      "symbol": "wXITACAN",
+      "assetAddress": null
+    },
+    {
+      "chain": "optimism",
+      "representation": "synthetic",
+      "symbol": "wXITACAN",
+      "assetAddress": null
+    }
+  ],
+  "bridgeModel": "lock-mint-burn-unlock",
+  "assetId": "0x430e66a8a869ba2c6927354e08493d578df97d18a18e199419474309eb0bf726",
+  "creation": {
+    "kind": "xgrchain-creator-v1",
+    "factory": "0x713c1ad65e0246520307e7c720d01b24a80f300c",
+    "operator": "0xf0dcd6aad6de2057c7e49e7d294b3736504d4316",
+    "ownerAddress": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+    "transactionHash": "0x521d93a85d34efdabaede9ad6a2d2acf09007a7d90eb5675831d715485fd620f",
+    "blockNumber": 12408991,
+    "tokenRuntimeCodeHash": "0x250e3b8d7b6a337f8e546adb0a5fd2d09bb383ca71e75b3b6b2fe8b56d243ac1",
+    "tokenType": "burnable",
+    "decimals": 18,
+    "maxSupplyBaseUnits": "1000000000000000000000",
+    "minterAddress": "0x0000000000000000000000000000000000000000",
+    "permit": false
+  },
+  "notes": "Verified factory-created XGRChain original; Join requires independent PR review and route deployments."
+}
