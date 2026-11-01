@@ -158,11 +158,12 @@ test("real browser renders all XITA pages from local JSON, not an endless splash
       const canvas=document.createElement("canvas");
       canvas.width=16;canvas.height=16;
       canvas.getContext("2d").fillRect(0,0,16,16);
-      canvas.toBlob(blob=>{
-       const file=new File([blob],"test.png",{type:"image/png"});
-       const files=new DataTransfer();files.items.add(file);
-       logo.files=files.files;logo.dispatchEvent(new Event("change",{bubbles:true}));
-      },"image/png");
+      const uri=canvas.toDataURL("image/png");
+      const png=Uint8Array.from(atob(uri.split(",")[1]),c=>c.charCodeAt(0));
+      const file=new File([png],"test.png",{type:"image/png"});
+      const files=new DataTransfer();files.items.add(file);
+      logo.files=files.files;
+      logo.dispatchEvent(new Event("change",{bubbles:true}));
       document.body.dataset.creatorProbe="logo-selected";
       const ready=setInterval(()=>{
        if(!form.querySelector("#tc-logo-preview")?.getAttribute("src"))return;
