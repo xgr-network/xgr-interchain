@@ -137,7 +137,7 @@ test("server normalization retains each immutable token option and rejects inval
  assert.equal(fixed.decimals,18);
  assert.equal(fixed.maxSupply,input.initialSupply);
  assert.equal(fixed.permit,false);
- const minimal=normalizeCreatorApplication({...input,applicantRole:undefined,confirmed:undefined});
+ const minimal=normalizeCreatorApplication({...input,applicantRole:undefined,confirmed:undefined}).record;
  assert.equal(minimal.applicantRole,"community");
  assert.equal(minimal.confirmed,true);
 });
