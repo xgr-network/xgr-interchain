@@ -211,6 +211,8 @@ test("profile update requires verified email, writes metadata-only Draft PR and 
   assert.equal(again.status,200);assert.equal(drafts,1);
   const row=listPrivate(dir).find(v=>v.kind==="profile-update");
   assert.equal(row.pr.number,456);
-  assert.equal(JSON.stringify(row).includes(coin.description.en),false);
+  assert.equal(row.expectedProfile?.name,"Arbitrum");
+  assert.equal(row.expectedProfile?.market?.coingeckoId,"arbitrum");
+  assert.equal(JSON.stringify(row.expectedProfile).includes("profile@example.org"),false);
  }finally{await new Promise(ok=>server.close(ok));rmSync(dir,{recursive:true,force:true});}
 });
