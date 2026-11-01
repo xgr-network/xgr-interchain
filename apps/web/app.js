@@ -1736,17 +1736,24 @@ el.addEventListener("submit",event=>{
  }
 });
 el.addEventListener("click",event=>{
- const entry=event.target.closest('[data-join-entry="integrate"]');
+ const entry=event.target.closest("[data-join-entry]");
  if(entry&&path()==="/join"){
   event.preventDefault();
   if(joinState.busy)return;
-  joinState.mode=joinState.mode==="integrate"?null:"integrate";
-  render();
-  if(joinState.mode==="integrate"){
+  if(entry.dataset.joinEntry==="integrate"){
+   joinState.mode="integrate";
+   joinState.status="";
+   render();
    const panel=document.querySelector("#ja-integration-panel");
    panel?.scrollIntoView({behavior:"smooth",block:"start"});
    document.querySelector("#ja-coingeckoId")?.focus({preventScroll:true});
-  }else document.querySelector('[data-join-entry="integrate"]')?.focus();
+  }else if(entry.dataset.joinEntry==="back"){
+   captureJoin();
+   joinState.mode=null;
+   joinState.status="";
+   render();
+   document.querySelector('[data-join-entry="integrate"]')?.focus();
+  }
   return;
  }
  const joinButton=event.target.closest('[data-join-action="preview"]');
