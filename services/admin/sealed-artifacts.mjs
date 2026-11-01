@@ -23,6 +23,10 @@ export function deploymentSourceFingerprint(root){
     !paths.some(p=>p.startsWith("contracts/")&&p.endsWith(".sol")))
   throw Error("Tracked Solidity sources, Foundry settings or pinned vendor declaration missing");
  const hash=createHash("sha256");
+ // Adding a newly deployable audited contract is a new seal generation,
+ // even when Solidity source files are unchanged. Old seals must not fail
+ // or get silently mixed with the new Creator artifact inventory.
+ hash.update("sealed-contract-names:"+NAMES.join(",")+"\\0");
  for(const path of paths){
   const file=join(root,path),stat=lstatSync(file);
   if(!stat.isFile()||stat.isSymbolicLink())throw Error("Invalid tracked Solidity source: "+path);
