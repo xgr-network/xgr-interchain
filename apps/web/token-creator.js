@@ -102,7 +102,7 @@ export function tokenCreatorMarkup(d=creatorDraft(),status=CREATOR_STATUS){
   field("symbol","Token symbol *",d.symbol,"EXM")+
   field("initialSupply","Initial supply *",d.initialSupply,"1000000")+
   field("ownerAddress","Project owner wallet address *",d.ownerAddress,"0x...")+
-  '<div class="ja-field ja-field-full"><strong>Standard settings: Fixed Supply + Burnable · 18 decimals</strong>'+
+  '<div class="ja-field ja-field-full"><strong>'+(d.tokenType==="burnable"&&String(d.decimals)==="18"&&!d.permit?'Standard settings: Fixed Supply + Burnable · 18 decimals':'Selected settings: '+clean(d.tokenType)+' · '+clean(d.decimals)+' decimals')+'</strong>'+
    '<small>No additional minting, no transfer fees, no pause, no blacklist. XGR covers deployment gas.</small></div></div>'+
   '<details class="tc-advanced" id="tc-advanced"'+(d.advancedOpen?' open':'')+'>'+
    '<summary data-creator-advanced>Advanced Settings <span>Token features &amp; permissions</span></summary>'+
