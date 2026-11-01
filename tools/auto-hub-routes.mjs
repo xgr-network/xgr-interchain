@@ -37,6 +37,17 @@ export function deriveMissingHubRoutes(catalog){
   if(!meta||!routes||!Array.isArray(meta.representations)||!Array.isArray(routes.routes))
    throw Error("Invalid canonical asset route inventory: "+key);
   if(!meta.representations.some(rep=>rep.chain==="xgrchain"))continue;
+  // A newly verified XGRChain Creator token is admitted to the public
+  // directory independently of Interchain. A single native original with no
+  // desired routes has NOT opted into hub expansion. Do not invent wrapped
+  // representations or routings simply because other spokes are deployed.
+  // After a separately approved Join adds a route, normal auto-expansion
+  // resumes for this asset just as for any other already integrated token.
+  if(meta.canonical?.chain==="xgrchain"&&
+     meta.creation?.kind==="xgrchain-creator-v1"&&
+     meta.representations.length===1&&
+     meta.representations[0]?.chain==="xgrchain"&&
+     routes.routes.length===0)continue;
   const nextMeta=structuredClone(meta),nextRoutes=structuredClone(routes);
   let changed=false;
   for(const name of targets){

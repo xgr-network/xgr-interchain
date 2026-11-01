@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "xeta-token-profile",
+  "asset": "XITACAN",
+  "slug": "xita-canary",
+  "name": "XITA Canary",
+  "shortDescription": "XITA Canary is an ERC-20 test token on XGRChain, designed to validate token creation and onboarding through XITA.",
+  "description": "XITA Canary is an internal test token deployed on XGRChain, the EVM-compatible Layer-1 blockchain developed by XGR.Network. It is used to validate the XITA Token Creator, including contract deployment, token ownership, initial supply allocation, email verification and the automated Interchain onboarding process.\n\nXITA Canary serves technical testing purposes only and is not intended for trading, investment or commercial distribution.",
+  "categories": [
+    "Community"
+  ],
+  "tags": [],
+  "branding": {
+    "logoUrl": "https://xita.xgr.network/token-logos/152105c33a7b0affb17e19e88c03103e5eb9f39b07e3a4c088350d42fbdf896e.png",
+    "bannerUrl": null
+  },
+  "links": {
+    "website": "https://xgr.network/",
+    "explorer": null,
+    "github": null,
+    "docs": null,
+    "whitepaper": null,
+    "x": null,
+    "linkedin": null,
+    "telegram": null,
+    "discord": null
+  },
+  "market": {
+    "coingeckoId": null,
+    "coinmarketcapId": null,
+    "priceSource": "none"
+  },
+  "supply": {
+    "circulating": null,
+    "total": "1000000000000000000000",
+    "max": "1000000000000000000000"
+  },
+  "verification": {
+    "status": "project-maintained",
+    "proof": "0x521d93a85d34efdabaede9ad6a2d2acf09007a7d90eb5675831d715485fd620f"
+  }
+}
