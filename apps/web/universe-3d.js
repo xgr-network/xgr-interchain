@@ -752,6 +752,9 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
  let pointer=null;
  if(!compact){
   canvas.addEventListener("pointerdown",e=>{
+   // On touch screens, swiping over the WebGL canvas scrolls the document.
+   // DOM system labels and buttons remain tap-accessible.
+   if(e.pointerType==="touch")return;
    if(e.button!==0&&e.button!==2)return;
    e.preventDefault();
    pointer={id:e.pointerId,lastX:e.clientX,lastY:e.clientY,x:e.clientX,y:e.clientY,moved:0,
@@ -759,6 +762,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    canvas.setPointerCapture?.(e.pointerId);
   },{signal});
   canvas.addEventListener("pointermove",e=>{
+   if(e.pointerType==="touch")return;
    const rect=canvas.getBoundingClientRect();
    if(pointer&&pointer.id===e.pointerId){
     const dx=e.clientX-pointer.lastX,dy=e.clientY-pointer.lastY;
@@ -768,6 +772,7 @@ export function mountUniverse3D({root,model,selected=HUB,compact=false,onFocus=(
    }else canvas.style.cursor=pick(e.clientX-rect.left,e.clientY-rect.top)?"pointer":"grab";
   },{signal});
   canvas.addEventListener("pointerup",e=>{
+   if(e.pointerType==="touch")return;
    if(!pointer||pointer.id!==e.pointerId)return;
    const was=pointer;pointer=null;
    if(was.moved>6||was.pan)return;
