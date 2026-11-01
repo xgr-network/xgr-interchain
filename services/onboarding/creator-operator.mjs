@@ -8,7 +8,7 @@ import {join} from "node:path";
 import {Wallet,keccak256} from "ethers";
 import {privateLocation,listPrivate,savePrivate,readPrivate,lockedRecord} from "./private-store.mjs";
 import {loadReviewedCreatorFactory,verifyCreatorAcrossRPCs,CREATOR_VERIFY_RPC_URLS,creatorFactoryInterface} from "./creator-chain-proof.mjs";
-import {buildCreatorJoinBundle} from "./creator-manifests.mjs";
+import {buildCreatorProfileBundle} from "./creator-manifests.mjs";
 import {loadCatalog,validateCatalog} from "../../tools/validate-manifests.mjs";
 import {publishDraft,localMainSha} from "./server.mjs";
 import {creatorSettings} from "../../apps/web/creator-token-config.js";
@@ -125,20 +125,30 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   });
   return {phase:"deployed",id:inFlight.id,txHash:verified.txHash,tokenAddress:verified.tokenAddress};
  }
- const ready=records.find(x=>x.kind==="token-creator"&&x.phase==="deployed"&&
-   x.deployment?.verifiedProof&&!x.pr);
+ // Existing Creator records can already have the former combined Join Draft PR
+ // (e.g. XITA Canary #400). Migrate their publication to a separate
+ // receipt-verified, route-free profile PR. Never merge or reuse the broad PR.
+ const ready=records.find(x=>x.kind==="token-creator"&&x.deployment?.verifiedProof&&(
+   (x.phase==="deployed"&&!x.pr)||
+   (x.phase==="pr-published"&&Number.isSafeInteger(x.pr?.number)&&
+    x.pr?.kind!=="xgrchain-profile")));
  if(ready){
   const catalog=loadInventory();
-  if(validateCatalog(catalog).length)throw Error("Cannot publish Join against invalid GitHub inventory");
+  if(validateCatalog(catalog).length)throw Error("Cannot publish Creator profile against invalid GitHub inventory");
   const verified=await verify({input:ready.input,txHash:ready.deployment.txHash,factory,urls,call:rpc});
   if(!same(verified.tokenAddress,ready.deployment.tokenAddress))
    throw Error("Creator proof changed before Join PR creation");
-  const bundle=buildCreatorJoinBundle(ready,verified,catalog);
+  const bundle=buildCreatorProfileBundle(ready,verified,catalog);
   const pr=await publisher(bundle,{expectedMain:mainSha(),applicationId:ready.id});
   await lockedRecord(path,ready.id,async record=>{
-   if(record.phase!=="deployed"||!same(record.deployment.txHash,verified.txHash))
-    throw Error("Creator PR application state changed");
-   record.assetId=bundle.assetId;record.phase="pr-published";record.pr=pr;
+   const migrating=record.phase==="pr-published"&&
+    Number.isSafeInteger(record.pr?.number)&&record.pr?.kind!=="xgrchain-profile";
+   if((record.phase!=="deployed"&&!migrating)||
+      !same(record.deployment.txHash,verified.txHash))
+    throw Error("Creator profile application state changed");
+   if(migrating)record.supersededInterchainPr=record.pr;
+   record.assetId=bundle.assetId;record.phase="pr-published";
+   record.pr={...pr,kind:"xgrchain-profile"};
    // The project's second email is the actual public token profile link,
    // not a premature PR link while the profile is still under review.
    savePrivate(path,record);

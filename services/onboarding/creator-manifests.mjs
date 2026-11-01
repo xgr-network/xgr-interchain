@@ -1,8 +1,8 @@
 // Draft XITA Join manifests created ONLY after on-chain XGRChain ERC-20
 // creation has been verified against the reviewed factory and both XGR RPCs.
-// This creates desired routes, never deploys gateways or lists a token.
+// This registers the verified XGRChain original in the public token catalog.
+// No Interchain routes or wrapped representations are proposed.
 import {canonicalAssetId} from "../admin/asset-state.mjs";
-import {isDeployedChain} from "../../apps/web/route-availability.js";
 import {suggestedTokenSlug} from "../../apps/web/token-slug.js";
 import {assetConfigFolder} from "../../tools/manifest-layout.mjs";
 import {validateCatalog} from "../../tools/validate-manifests.mjs";
@@ -10,7 +10,7 @@ import {creatorSettings} from "../../apps/web/creator-token-config.js";
 import {normalizeJoinDescription} from "../../apps/web/join-description.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const valid=s=>typeof s==="string"&&s.length>0&&!/[<>\x00-\x1f]/.test(s);
-export function buildCreatorJoinBundle(record,proof,catalog){
+export function buildCreatorProfileBundle(record,proof,catalog){
  const a=record?.input;
  const cfg=creatorSettings(a||{});
  if(record?.kind!=="token-creator"||!["deployed","pr-published"].includes(record.phase)||
@@ -39,19 +39,16 @@ export function buildCreatorJoinBundle(record,proof,catalog){
  if(!slug)throw Error("Invalid token profile identity");
  const asset={asset:symbol,canonical:{chain:"xgrchain",representation:"collateral",tokenAddress:token}};
  const assetId=canonicalAssetId(asset,catalog.chains),folder=assetConfigFolder(symbol,assetId);
- const spokes=Object.keys(catalog.chains).filter(ch=>ch!=="xgrchain"&&isDeployedChain(catalog,ch)).sort();
- if(!spokes.length)throw Error("No deployed XITA spoke routes are available");
  const metadata={schemaVersion:1,kind:"asset-config",asset:symbol,name:a.name,symbol,decimals:cfg.decimals,
   canonical:{chain:"xgrchain",representation:"collateral",symbol,tokenAddress:token},
-  representations:[{chain:"xgrchain",representation:"collateral",symbol,assetAddress:token},
-   ...spokes.map(chain=>({chain,representation:"synthetic",symbol:"w"+symbol,assetAddress:null}))],
+  representations:[{chain:"xgrchain",representation:"collateral",symbol,assetAddress:token}],
   bridgeModel:"lock-mint-burn-unlock",assetId,
   creation:{kind:"xgrchain-creator-v1",factory:proof.factory.toLowerCase(),operator:proof.operator.toLowerCase(),
    ownerAddress:owner,transactionHash:proof.txHash.toLowerCase(),blockNumber:proof.blockNumber,
    tokenRuntimeCodeHash:proof.tokenCodeHash,
    tokenType:cfg.tokenType,decimals:cfg.decimals,maxSupplyBaseUnits:cfg.maxSupplyBaseUnits,
    minterAddress:cfg.minterAddress,permit:cfg.permit},
-  notes:"Verified factory-created XGRChain original; Join requires independent PR review and route deployments."};
+  notes:"Verified XGRChain original token. No XITA Interchain routes are configured or approved."};
  const links=Object.fromEntries(["explorer","github","docs","whitepaper","x","linkedin","telegram","discord"].map(x=>[x,a.links?.[x]||null]));
  const profile={schemaVersion:1,kind:"xeta-token-profile",asset:symbol,slug,name:a.name,
   shortDescription:a.shortDescription,description:a.description,
@@ -61,9 +58,7 @@ export function buildCreatorJoinBundle(record,proof,catalog){
   verification:{status:"project-maintained",proof:proof.txHash}};
  const routes={schemaVersion:1,kind:"asset-routes",asset:symbol,network:"mainnet",
   protocol:"XITA-v3.1.5",routingHub:"xgrchain",
-  routes:spokes.flatMap(chain=>[
-   {name:"xgr_to_"+chain,sourceChain:"xgrchain",destinationChain:chain},
-   {name:chain+"_to_xgr",sourceChain:chain,destinationChain:"xgrchain"}])};
+  routes:[]};
  const deployment={schemaVersion:3,kind:"asset-deployment",network:"mainnet",asset:symbol,assetId,
   sourceManifest:folder+"/asset.json",receiptPaths:[],representations:[],routeDeployments:[],present:false};
  const candidate={chains:catalog.chains,assets:{...catalog.assets,[symbol]:{metadata,profile,routes,deployment}},
@@ -82,9 +77,9 @@ export function buildCreatorJoinBundle(record,proof,catalog){
  const errors=validateCatalog(candidate);
  if(errors.length)throw Error("Invalid creator Join bundle: "+errors.join("; "));
  const json=x=>JSON.stringify(x,null,2)+"\n";
- return {key:symbol,assetId,kind:"origin-xgrchain",
+ return {key:symbol,assetId,kind:"xgrchain-profile",
   files:{[folder+"/asset.json"]:json(metadata),[folder+"/metadata.json"]:json(profile),
     [folder+"/routes.json"]:json(routes),["apps/web/catalog.json"]:json({schemaVersion:1,...candidate})},
-  summary:{name:a.name,symbol,canonicalChain:"xgrchain",chains:["xgrchain",...spokes],
-   routeCount:routes.routes.length,applicantRole:a.applicantRole,verified:true}};
+  summary:{name:a.name,symbol,canonicalChain:"xgrchain",chains:["xgrchain"],
+   routeCount:0,applicantRole:a.applicantRole,verified:true}};
 }

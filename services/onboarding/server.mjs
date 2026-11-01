@@ -40,7 +40,7 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
  const head=await githubCall("/git/ref/heads/main");
  if(head.object?.sha!==expectedMain)throw Error("Main changed; request new preview");
  const base=await githubCall("/git/commits/"+expectedMain);
- const update=bundle.kind==="profile-update";
+ const update=bundle.kind==="profile-update",creatorProfile=bundle.kind==="xgrchain-profile";
  const entries=[];
  for(const [path,content] of Object.entries(bundle.files)){
   if(path!=="apps/web/catalog.json"&&
@@ -59,7 +59,7 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
   }
   entries.push({path,mode:"100644",type:"blob",content});
  }
- const branch=(update?"profile/":"alliance/")+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
+ const branch=(update?"profile/":creatorProfile?"creator-profile/":"alliance/")+bundle.key.toLowerCase()+"-"+applicationId.slice(0,8);
  const tree=await githubCall("/git/trees","POST",{base_tree:base.tree.sha,tree:entries});
  // This branch name is unique to the private confirmed application, not each
  // HTTP request. A lost proxy response or partial GitHub write can be resumed.
@@ -73,7 +73,7 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
      commit.parents[0]?.sha!==expectedMain)
    throw Error("Existing application branch differs from validated manifest");
  }else{
-  const commit=await githubCall("/git/commits","POST",{message:(update?"profile: refresh ":"onboard: propose ")+bundle.key,tree:tree.sha,parents:[expectedMain]});
+  const commit=await githubCall("/git/commits","POST",{message:(update?"profile: refresh ":creatorProfile?"creator: register verified original ":"onboard: propose ")+bundle.key,tree:tree.sha,parents:[expectedMain]});
   await githubCall("/git/refs","POST",{ref:"refs/heads/"+branch,sha:commit.sha});
  }
  const current=await githubCall("/pulls?state=all&head="+encodeURIComponent("xgr-network:"+branch));
@@ -87,8 +87,9 @@ export async function publishDraft(bundle,{expectedMain,applicationId,githubCall
   return {number:priorPR.number,url:priorPR.html_url,status:"draft"};
  }
  const creator=bundle.kind==="origin-xgrchain";
- const pr=await githubCall("/pulls","POST",{title:(update?"Refresh XITA profile: ":"Join XITA: ")+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
-  body:(update?"Profile-only CoinGecko update: existing canonical asset, routes, deployments and supply metadata remain unchanged. CoinGecko identity reverified at confirmation and in PR CI. Email verified; no applicant contact information is committed.":
+ const pr=await githubCall("/pulls","POST",{title:(update?"Refresh XITA profile: ":creatorProfile?"Register verified XGR token: ":"Join XITA: ")+bundle.summary.name+" ("+bundle.key+")",head:branch,base:"main",draft:true,
+  body:(creatorProfile?"XGRChain original token profile only. Verified on-chain contract, factory receipt, owner and supply. This PR creates no XITA interchain route, representation or gateway; a separate Join request is required for interoperability. No applicant contact information is committed.":
+   update?"Profile-only CoinGecko update: existing canonical asset, routes, deployments and supply metadata remain unchanged. CoinGecko identity reverified at confirmation and in PR CI. Email verified; no applicant contact information is committed.":
   "Public directory proposal — applicant role: "+bundle.summary.applicantRole+
     (creator?". XGRChain original contract independently verified against the audited factory receipt; required CI repeats the on-chain owner, supply, creation and bytecode checks. No CoinGecko ID is required.":
       ". CoinGecko original-chain contract verified before submission; required CI repeats the check.")+

@@ -114,7 +114,14 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
     p+": invalid profile verification");
 
   check(chains[m.canonical?.chain]!==undefined,p+": unknown canonical chain");
-  check(Array.isArray(m.representations)&&m.representations.length>=2,p+": missing representations");
+  // A verified native XGRChain Creator token is a public original before it
+  // has any Interchain routes. Other assets retain the >=2 representation gate.
+  const creatorOnly=m.canonical?.chain==="xgrchain"&&
+   m.creation?.kind==="xgrchain-creator-v1"&&
+   Array.isArray(m.representations)&&m.representations.length===1&&
+   Array.isArray(r?.routes)&&r.routes.length===0;
+  check(Array.isArray(m.representations)&&m.representations.length>=(creatorOnly?1:2),
+    p+": missing representations");
   const reps=new Map();
   for(const rep of m.representations||[]){
    check(chains[rep.chain]!==undefined&&!reps.has(rep.chain),p+": invalid representation chain");

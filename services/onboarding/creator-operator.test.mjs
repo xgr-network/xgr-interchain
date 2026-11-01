@@ -30,7 +30,7 @@ function fixture(){
  savePrivate(dir,row);
  return {dir,id:created.id,cleanup:()=>rmSync(dir,{recursive:true,force:true})};
 }
-test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE Join PR",async()=>{
+test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE profile-only PR",async()=>{
  const x=fixture();let mined=false,signs=0,published=0;const broadcasts=[];
  const verify=async()=>({chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
   symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,permit:false,minterAddress:"0x0000000000000000000000000000000000000000",factory:factory.address,
@@ -49,7 +49,7 @@ test("verified XGR creator queue writes signed tx BEFORE broadcast, replays exac
  const run=()=>processCreatorQueue({env:env(x.dir),now,call,loadFactory:()=>factory,
   walletFactory:()=>({address:operator,signTransaction:async()=>{signs++;return signed}}),
   verify,checkSponsorJournal:async()=>{},loadInventory:loadCatalog,mainSha:()=> "a".repeat(40),
-  publisher:async(bundle)=>{published++;return {number:777,url:"https://github.com/xgr-network/xgr-interchain/pull/777",status:"draft",kind:bundle.kind}}});
+  publisher:async(bundle)=>{assert.equal(bundle.kind,"xgrchain-profile");assert.equal(bundle.summary.routeCount,0);published++;return {number:777,url:"https://github.com/xgr-network/xgr-interchain/pull/777",status:"draft",kind:bundle.kind}}});
  try{
   const first=await run();
   assert.equal(first.phase,"deployment-submitted");
@@ -107,4 +107,37 @@ test("Creator service loads only the two existing privileged env files",()=>{
  const script=readFileSync(new URL("../../manage.sh",import.meta.url),"utf8");
  assert.doesNotMatch(script,/Missing Creator limits \/etc\/xita\/creator\.env/);
  assert.match(script,/XITA_CREATOR_ENABLED=true\$' \/etc\/xita\/interchain-fee\.env/);
+});
+
+test("existing broad Creator route Draft PR migrates to an independent zero-route profile without signing again",async()=>{
+ const x=fixture(),legacy={number:400,url:"https://github.com/xgr-network/xgr-interchain/pull/400",status:"draft"};
+ const verified={chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
+  symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",
+  maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,
+  permit:false,minterAddress:"0x0000000000000000000000000000000000000000",
+  factory:factory.address,operator,txHash,tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12000000};
+ const row=readPrivate(x.dir,x.id);
+ row.phase="pr-published";row.pr=legacy;
+ row.deployment={status:"verified",txHash,tokenAddress:token,verifiedProof:verified,
+  ownerAddress:owner,chainId:1643,rawSignedTransaction:null};
+ savePrivate(x.dir,row);
+ let published=0;
+ const run=()=>processCreatorQueue({env:env(x.dir),now,loadFactory:()=>factory,
+  walletFactory:()=>({address:operator,signTransaction:async()=>{throw Error("Must not sign again")}}),
+  verify:async()=>verified,loadInventory:loadCatalog,mainSha:()=> "a".repeat(40),
+  publisher:async(bundle)=>{
+   assert.equal(bundle.kind,"xgrchain-profile");assert.equal(bundle.summary.routeCount,0);
+   published++;
+   return {number:401,url:"https://github.com/xgr-network/xgr-interchain/pull/401",status:"draft"};
+  }});
+ try{
+  assert.equal((await run()).phase,"pr-published");
+  const result=readPrivate(x.dir,x.id);
+  assert.equal(result.pr.number,401);
+  assert.equal(result.pr.kind,"xgrchain-profile");
+  assert.deepEqual(result.supersededInterchainPr,legacy);
+  assert.equal(result.deployment.txHash,txHash);
+  assert.equal((await run()).phase,"idle");
+  assert.equal(published,1);
+ }finally{x.cleanup()}
 });
