@@ -47,8 +47,12 @@ No deployment is implied by adding the Solidity source.
 
 ## Current protocol baseline
 
-For node v3.4.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.
+For node v3.5.0, use the [current Direct-BLS architecture](https://github.com/xgr-network/xgr-interchain/blob/main/docs/architecture.md) and [independent execution runbook](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md). Route registration and authenticated destination delivery are permissionless. The XITA website, commercial gateway, sponsor and managed relayer are optional; validator authorization, chain access, gas and source protocol fees remain necessary. Contract/interface version suffixes are independent of node release versions.
 
 ## System context and individual contract roles
 
 See the [system and contract interaction diagrams](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Context_and_Contracts.md) for all production contracts, libraries and interfaces, their callers and authority, deployment dependencies, principal/fee flows and the two-hop lifecycle. The [contract reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_Reference.md) explains method behavior; the [declared API](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Contract_API.md) inventories signatures.
+
+### XGRChain validator admission
+
+Staking BLS registration on XGRChain requires a possession proof after Mainnet block 12,586,649. `xgrchain ibft join` v3.5.0 supplies it automatically. Registry V3 Interchain possession remains a separate admission domain; staking proofs cannot be substituted for Registry V3 membership proofs. See the [node release and migration reference](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.5.0_Release_and_Activation.md).

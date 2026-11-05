@@ -1,8 +1,16 @@
 # XGR Interchain / XITA — Direct-BLS protocol
 
+## v3.5.0 staking BLS possession
+
+XGRChain v3.5.0 activated `stakingBlsPoP` on Mainnet at block **12,586,649**, inclusively, on 5 November 2026. Testnet activation was at **6,613,834**. This single gate upgrades the staking runtime, migrates independently verified public possession proofs and enforces proven BLS keys in consensus. Stakes and delegations remain in the existing contract at `0x0000000000000000000000000000000000001001`; no restaking is required.
+
+The v3.5.0 `ibft join` command creates and submits the possession proof automatically from the local BLS secret, using the live chain ID and registration nonce. New validators do not edit the historical migration manifest. Keep the activated genesis configuration for every restart and fresh sync; a standalone manifest file is not required.
+
+[Release, verified artifacts, migration and operator instructions](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.5.0_Release_and_Activation.md). Consensus BLS seal encoding and the XITA / Direct-BLS message format are unchanged.
+
 [System context and every Interchain contract](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Context_and_Contracts.md): component diagrams, contract roles, trust boundaries and value flows.
 
-The maintained Interchain implementation uses XGRChain as its mandatory hub and **Direct-BLS authorization for each source message**. The node baseline is **xgr-node v3.4.0**; Solidity family suffixes (V315/V2) are independent interface versions.
+The maintained Interchain implementation uses XGRChain as its mandatory hub and **Direct-BLS authorization for each source message**. The node baseline is **xgr-node v3.5.0**; Solidity family suffixes (V315/V2) are independent interface versions.
 
 ## Permissionless protocol, optional service
 
@@ -26,9 +34,9 @@ Every directed route has XGRChain (chain/domain 1643) at exactly one endpoint. B
 - [Source map and validation](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)
 
 
-- [Complete v3.4.0 reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Reference.md)
+- [Direct-BLS protocol reference](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Reference.md)
 - [Independent transfer and recovery](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
-- [Release and consensus activation](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.4.0_Release_and_Activation.md)
+- [Release and consensus activation](https://github.com/xgr-network/XGR/blob/main/docs/chain/XGRCHAIN_v3.5.0_Release_and_Activation.md)
 - [Architecture](docs/architecture.md) and [operations](docs/operations.md)
 - Actual deployment receipts: `deployments/chains/`, `deployments/assets/`; reverify against live chain state before signing.
 
