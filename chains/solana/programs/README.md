@@ -37,3 +37,17 @@ unreviewed standard bridge or a trusted relayer for XITA Direct-BLS.
   route identity, recipient or mint authority by an operator.
 - A security fix requires new immutable deployment and voluntary adoption;
   no silent upgrade or forced migration of an existing immutable route.
+
+
+## Required EVM-equivalent behavior
+
+The single SVM program may contain multiple logical modules. It MUST provide
+all EVM-equivalent operations and invariants: permissionless creator-owned
+routers; immutable append-only route enrollment without a validator vote;
+one mandatory XGRChain hop per directed route; current-set BLS 2/3
+destination verification and quorum-governed membership changes; bootstrap
+source-native fee and subsequent BLS quorum fee changes; gateway-atomic
+principal movement + source fee; epoch-scoped FeeVault pull claims; inbound
+replay protection; independent execution and optional commercial UI-only
+service. Exact asset IDs, 32-byte identities and decimal conversions are
+chain-specific codec adaptations, not alternate protocol governance.

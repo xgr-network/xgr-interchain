@@ -9,6 +9,25 @@ export const SOLANA_PLAN_PATH="config/chains/solana/integration.json";
 const PROGRAMS=["mailbox","validatorRegistry","directBlsVerifier","sourceRegistry",
  "factory","feeVault","collateralRouter","syntheticRouter"];
 const XGR_CONTRACTS=["solanaFactory","solanaRouteRegistry","solanaRouter","solanaDirectBlsIsm"];
+// Exact functional invariants from EVM v3.1.5. Solana may use one Rust program
+// with multiple PDA accounts, but must not invent a second protocol/governance.
+export const EVM_PARITY={
+ baseline:"XITA-v3.1.5-direct-bls",
+ routing:"xgrchain-1643-mandatory-two-hop",
+ assetIdentity:"one-canonical-asset-id-per-origin",
+ routerCreation:"permissionless-creator-owned-router",
+ routeRegistration:"permissionless-append-only-active-on-registration",
+ feeBootstrap:"factory-constructor-source-native",
+ feeUpdates:"current-validator-set-bls-quorum",
+ feeAccounting:"route-feevault-validator-set-epoch-pull-claims",
+ validatorMembership:"current-set-bls-quorum-with-possession-proof",
+ messageAuthorization:"direct-bls-current-destination-set",
+ sourceEvidence:"independent-finalized-source-lock-burn-fee-and-route",
+ execution:"user-signed-replaceable-executor",
+ optionalService:"separate-commercial-execution-gateway",
+ destination:"proof-gated-mint-unlock-and-replay-protection",
+ existingRoutes:"evm-contracts-and-wire-unchanged"
+};
 
 export function validateSolanaPlan(plan){
  const errors=[],check=(ok,message)=>{if(!ok)errors.push(message)};
@@ -30,11 +49,14 @@ export function validateSolanaPlan(plan){
   policy?.wrappedFreezeAuthority==="none"&&
   policy?.tokenVaultAuthority==="immutable-route-program-pda"&&
   policy?.factoryRegistration==="permissionless"&&
-  policy?.serviceOperatorAdmin==="none"&&
+  policy?.serviceOperatorAdmin==="optional-service-gateway-only"&&
   policy?.privilegedPause==="none"&&
   policy?.forcedRouteMigration==="forbidden"&&
   policy?.signedValidatorGovernance==="verified-xgr-bls-quorum",
   "Solana permissionless authority policy must forbid unilateral admin control");
+ check(plan?.evmParity&&Object.keys(EVM_PARITY).length===Object.keys(plan.evmParity).length&&
+  Object.entries(EVM_PARITY).every(([name,value])=>plan.evmParity[name]===value),
+  "Solana must retain all EVM XITA protocol invariants");
  check(JSON.stringify(plan?.solanaPrograms)===JSON.stringify(PROGRAMS)&&
   JSON.stringify(plan?.xgrChainContracts)===JSON.stringify(XGR_CONTRACTS),
   "Solana programs / XGR-side contracts are incomplete");

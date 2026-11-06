@@ -58,3 +58,16 @@ test("No operator/GmbH admin, upgrade, pause or freeze authority is allowed",()=
  const m=clone();m.authorityPolicy.wrappedMintAuthority="none";
  assert.ok(validateSolanaPlan(m).some(x=>x.includes("permissionless authority")));
 });
+
+test("Solana mirrors EVM BLS quorum, per-route fees, owned routers and optional service isolation",()=>{
+ const valid=clone();
+ assert.deepEqual(validateSolanaPlan(valid),[]);
+ const quorum=clone();quorum.evmParity.feeUpdates="gmbh-admin";
+ assert.ok(validateSolanaPlan(quorum).some(x=>x.includes("protocol invariants")));
+ const routes=clone();routes.evmParity.routeRegistration="manual-approval";
+ assert.ok(validateSolanaPlan(routes).some(x=>x.includes("protocol invariants")));
+ const service=clone();service.authorityPolicy.serviceOperatorAdmin="none";
+ assert.ok(validateSolanaPlan(service).some(x=>x.includes("permissionless authority")));
+ const owner=clone();owner.authorityPolicy.serviceOperatorAdmin="core-protocol-owner";
+ assert.ok(validateSolanaPlan(owner).some(x=>x.includes("permissionless authority")));
+});

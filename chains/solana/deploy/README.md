@@ -57,3 +57,20 @@ ELF verification, recovery and checks above are implemented and tested.
 Never route a Solana program deployment through MetaMask/EIP-1193.
 Use the existing canonical XITA asset sharding for token representations;
 never make a new canonical asset solely because it is on Solana.
+
+
+## EVM functional equivalence for the Admin
+
+The **user-facing chain/asset/route deployment workflow is the same** as the
+existing EVM Admin. Only the SVM transaction signer, program binary upload,
+program/account verification, SPL operations and receipt serialization differ.
+Do not build a second product with new approval requirements. The current
+standalone Solana read-only panel is solely an integration staging surface.
+
+A commercial service, like the existing optional `XITAExecutionGateway`,
+may hold a service-wallet signing key and separate recovery-admin authority
+for **its own fee/quote/sponsorship operations only**. This does not contradict
+the absence of core protocol owner, program upgrade authority, route veto,
+bridge mint/burn controller or protocol fee setter. Source-native protocol
+validator fees remain controlled by the valid destination/source validator
+set quorum, exactly as on EVM.

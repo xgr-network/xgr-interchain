@@ -81,3 +81,36 @@ while services controlled directly or indirectly by identifiable persons
 can remain in scope. Independent validator governance and actual operational
 control must be assessed separately. See official EUR-Lex Regulation
 2023/1114 Recital 22 and ESMA Q&A 2671.
+
+
+## Exact EVM contract behavior is the normative specification
+
+This is NOT a separate Solana governance/protocol version. The canonical
+behavior is the implemented EVM V315 Factory, Router, Validator Registry V3,
+Direct-BLS ISM, ILNGateway, FeeVault and *optional* ExecutionGateway. See
+`chains/solana/EVM_PARITY.md` for the executable acceptance matrix and actual
+Solidity source references.
+
+The source-native protocol validator fee is configured once at Factory
+construction, then changed ONLY with a valid current-set BLS quorum
+(`XGRILNRegistryV315.applySourceFee`). Likewise validator ADD/REMOVE is
+current-set BLS quorum governed, with separate BLS possession proofs.
+These are PROTOCOL governance operations and must remain available on Solana.
+Permissionless route registration is distinct from validator quorum actions:
+users create their own routers and enroll a destination without manual voting.
+
+The commercial `XITAExecutionGateway` (GmbH service wallet and recovery
+admin) is a strictly optional operator-owned product, NOT part of protocol
+governance. The operator can administer only its commercial quotes, gas
+sponsorship and service fee beneficiary; it cannot block direct transfers,
+mint, take custody, change validator membership or set protocol source fees.
+A Solana optional service may implement the same limited capabilities without
+receiving additional privileges.
+
+Both chains share the same conceptual administrative workflow: reviewed chain
+infrastructure -> users' own routers/representations -> atomic route and
+FeeVault creation -> verifiable deployed evidence -> transfer/recovery.
+The UI should expose the same workflows and statuses with a chain-specific
+wallet/RPC/deployment adapter. The temporary separate Solana planning panel
+is NOT the final UX. Protocol output and threat model must remain equivalent;
+SVM bytecode and PDA accounts need not be one-to-one with Solidity files.
