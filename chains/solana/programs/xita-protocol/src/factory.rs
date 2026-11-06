@@ -261,3 +261,60 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
         _ => Err(crate::disabled()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_program::program_option::COption;
+    use spl_token::instruction::TokenInstruction;
+
+    #[test]
+    fn synthetic_mint_requires_only_immutable_router_pda_authority() {
+        let program=Pubkey::new_unique();
+        let creator=Pubkey::new_unique();
+        let salt=[7u8;32];
+        let asset=codec::evm_origin_asset_id(1643,[0;20],0).unwrap();
+        let (router,_)=Pubkey::find_program_address(
+            &[SYNTH_ROUTER_SEED,creator.as_ref(),&asset,&salt],&program
+        );
+        let (mint,_)=Pubkey::find_program_address(
+            &[SYNTH_MINT_SEED,router.as_ref()],&program
+        );
+        assert_ne!(router,mint);
+        assert_ne!(creator,router);
+        let ix=spl_token::instruction::initialize_mint2(
+            &spl_token::id(),&mint,&router,None,9
+        ).unwrap();
+        match TokenInstruction::unpack(&ix.data).unwrap() {
+            TokenInstruction::InitializeMint2{
+                decimals,mint_authority,freeze_authority
+            }=>{
+                assert_eq!(decimals,9);
+                assert_eq!(mint_authority,router);
+                assert_eq!(freeze_authority,COption::None);
+            },
+            _=>panic!("wrong token initialization"),
+        }
+        assert_eq!(ix.accounts.len(),1);
+        assert_eq!(ix.accounts[0].pubkey,mint);
+    }
+
+    #[test]
+    fn synthetic_router_identity_is_creator_and_asset_scoped() {
+        let program=Pubkey::new_unique();
+        let creator=Pubkey::new_unique();
+        let other_creator=Pubkey::new_unique();
+        let asset=codec::evm_origin_asset_id(1643,[0;20],0).unwrap();
+        let other_asset=codec::evm_origin_asset_id(8453,[1;20],1).unwrap();
+        let salt=[7u8;32];
+        let derive=|c:&Pubkey,a:&[u8;32],s:&[u8;32]|
+            Pubkey::find_program_address(
+                &[SYNTH_ROUTER_SEED,c.as_ref(),a,s],&program
+            ).0;
+        let addr=derive(&creator,&asset,&salt);
+        assert_eq!(addr,derive(&creator,&asset,&salt));
+        assert_ne!(addr,derive(&other_creator,&asset,&salt));
+        assert_ne!(addr,derive(&creator,&other_asset,&salt));
+        assert_ne!(addr,derive(&creator,&asset,&[8u8;32]));
+    }
+}
