@@ -1,0 +1,14 @@
+✔ all approved current deployed spokes have reciprocal desired hub routes (58.29641ms)
+✔ repository evidence automatically proposes both OP directions for every existing hub asset (36.378333ms)
+✔ incomplete OP deployment or missing gateway never proposes signable routes (9.141819ms)
+✔ idempotent discovery never changes deployed route receipts or canonical IDs (11.384449ms)
+✔ ambiguous route names and missing canonical collateral are not silently accepted (13.334138ms)
+✔ receipt-verified XGR Creator originals without any Join route remain route-free (7.036917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 372.402688

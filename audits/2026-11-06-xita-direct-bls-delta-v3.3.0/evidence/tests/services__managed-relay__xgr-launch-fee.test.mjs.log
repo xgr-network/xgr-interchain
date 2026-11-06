@@ -1,0 +1,13 @@
+✔ source XGR cap is exactly 100 native XGR, never 1% of amount (1.230435ms)
+✔ small normal fees stay unchanged; no fee floor is invented (0.18599ms)
+✔ Base and Arbitrum source fees are exactly capped by fresh XGR/ETH price (2.243701ms)
+✔ sub-gwei cap cannot be rounded up above 100 XGR value (0.201433ms)
+✔ invalid or unavailable FX or nonsensical invoice fail closed (0.74982ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.692748

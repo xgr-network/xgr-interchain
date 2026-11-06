@@ -1,0 +1,28 @@
+XITA recovery Base failover {"provider":"mainnet.base.org","reason":"PROOF_TIMEOUT","stage":"confirmed-fee-vault-allocation"}
+✔ resolve proof script only from canonical deployed route and configured chain URLs (5.87171ms)
+✔ accept exactly authorized unsigned Mailbox.process calldata (4.009048ms)
+✔ public recovery endpoint never signs or assumes success, only returns source-bound calldata (2.373528ms)
+✔ source transaction hint is optional, syntax validated and only passed as an untrusted locator (0.564361ms)
+✔ transfer recovery handler passes source receipt hints without accepting them as proof (0.515046ms)
+✔ proof CLI failures are categorized without putting raw internals in HTTP responses (1.47974ms)
+✔ structured JSON-RPC error diagnostics retain nested quotes and exact RPC code (0.42422ms)
+✔ ILN validator route identity is derived from immutable domains and route ID, not an ENV alias (0.322136ms)
+✔ thousands of on-chain token routes require zero additions to node ENV (9.273929ms)
+✔ rejects externally named proof routes even with otherwise plausible destination calldata (1.301652ms)
+✔ proof builder Base RPC candidates follow canonical approved catalog, never per-token ENV (2.052243ms)
+✔ actual Base source TX qualifies while unrelated historical archive probes are irrelevant (1.089693ms)
+✔ qualifying Base destination reads actual mailbox delivery state (0.826045ms)
+✔ killed recovery CLI surfaces the last stage without exposing RPC internals (0.125409ms)
+✔ Base recovery retries source FeeVault RPC timeout on next chain-ID-qualified provider (1.73126ms)
+✔ RPC timeout on local XGR quorum and conclusive proof failure never switches Base providers (0.489548ms)
+✔ Base destination failure cannot be retried on irrelevant source FeeVault stage (0.170156ms)
+✔ Direct-BLS destination failures retain their precise failing contract (1.724269ms)
+✔ only retry transient Base RPC failures at new Direct-BLS simulation stage (0.204698ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 190.430382

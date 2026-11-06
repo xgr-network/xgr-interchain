@@ -1,0 +1,12 @@
+✔ reloading a previously authorized wallet is silent and account-scoped (1.726653ms)
+✔ no wallet authorization is not a transfer or a permission request (0.237268ms)
+✔ invalid account and provider failures never produce wallet ownership (3.177559ms)
+✔ explicit Connect Wallet still requires the user's permission dialog (0.699905ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.220558

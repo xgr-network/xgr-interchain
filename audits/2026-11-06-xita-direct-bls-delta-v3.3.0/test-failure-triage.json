@@ -1,0 +1,42 @@
+[
+  {
+    "path": "apps/web/metamask-token.test.mjs",
+    "classification": "Stale current-catalog fixture",
+    "explanation": "Two assertions retain an earlier Base XGR token address rather than the current authenticated catalog representation."
+  },
+  {
+    "path": "apps/web/publication-mainnet-regression.test.mjs",
+    "classification": "Stale route/profile inventory",
+    "explanation": "Assertions assume two routes and no route-free Creator profile; the frozen product contains the expanded route inventory and verified XITACAN profile."
+  },
+  {
+    "path": "apps/web/route-availability.test.mjs",
+    "classification": "Stale presentation expectation",
+    "explanation": "The assertion expects the previous continuation label; the current status/continuation wording changed."
+  },
+  {
+    "path": "apps/web/token-inventory.test.mjs",
+    "classification": "Stale current-catalog fixture",
+    "explanation": "An earlier Base representation address remains hard-coded in the fixture."
+  },
+  {
+    "path": "apps/web/wallet-token-balances.test.mjs",
+    "classification": "Stale inventory and fail-closed projection assumptions",
+    "explanation": "The fixture assumes one asset/read where the current catalog supplies additional assets; removing a required representation now removes the unverified route rather than manufacturing the expected unavailable row."
+  },
+  {
+    "path": "services/indexer/rpc-read.test.mjs",
+    "classification": "Contradictory read-only allowlist assertion",
+    "explanation": "The negative fixture rejects a numbered-block eth_call that the documented pinned-read policy intentionally permits. Forbidden write-method rejection remains required."
+  },
+  {
+    "path": "services/onboarding/creator-canary.test.mjs",
+    "classification": "Mail-configuration fixture dependency",
+    "explanation": "The injected delivery stub bypasses one outer check but the inner registration handler still requires configured transport; the isolated unconfigured fixture returns 503. A configured production failure is not established."
+  },
+  {
+    "path": "tools/assert-xita-v320-compatible-deploy.test.mjs",
+    "classification": "Historical component-alias expectation",
+    "explanation": "The old gate expects a requiredHook component name where current receipt bindings use the authenticated dispatchHook alias with the same address/runtime identity. Correct alias validation narrowly; do not bypass deployment checks."
+  }
+]

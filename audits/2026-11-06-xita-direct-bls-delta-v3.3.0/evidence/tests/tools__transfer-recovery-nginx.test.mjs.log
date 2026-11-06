@@ -1,0 +1,18 @@
+✔ fresh install provides both exact read-only proxy paths (4.21956ms)
+✔ existing recovery route alone does not skip missing health endpoint (0.584992ms)
+✔ existing health route alone does not skip destination recovery (0.247093ms)
+✔ wrong virtual host, duplicate route or untrusted upstream fail closed (0.680566ms)
+✔ missing fail-closed API location is an error, not an invented route (0.163696ms)
+✔ wallet and stats routes enforce GET-only and are idempotent (0.422206ms)
+✔ existing nested manual wallet location is respected, missing stats is installed (0.357399ms)
+✔ CSP allows all reviewed browser RPC origins, not just old Base endpoint (0.345812ms)
+✔ CSP modification refuses missing or multiple policies rather than loosening defaults (0.955369ms)
+✔ same-origin RPC proxy uses exact POST-only loopback location and idempotent install (0.622999ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.49319

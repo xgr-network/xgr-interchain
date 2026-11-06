@@ -1,0 +1,56 @@
+✖ mainnet XGR: null publication gives token, listing, and Base/XGR planets with NO fee adapter (4.257847ms)
+✖ mainnet XGR: numeric threshold governs ALL public surfaces, independent of route readiness (1.975167ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.72756
+
+✖ failing tests:
+
+test at apps/web/publication-mainnet-regression.test.mjs:11:1
+✖ mainnet XGR: null publication gives token, listing, and Base/XGR planets with NO fee adapter (4.257847ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  16 !== 2
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/publication-mainnet-regression.test.mjs:17:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 16,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at apps/web/publication-mainnet-regression.test.mjs:36:1
+✖ mainnet XGR: numeric threshold governs ALL public surfaces, independent of route readiness (1.975167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'XITACAN'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/publication-mainnet-regression.test.mjs:40:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'XITACAN' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

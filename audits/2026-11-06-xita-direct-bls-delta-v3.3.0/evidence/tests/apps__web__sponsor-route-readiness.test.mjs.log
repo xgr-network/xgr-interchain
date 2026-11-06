@@ -1,0 +1,11 @@
+✔ broken Base cannot block Base-free XGR and Arbitrum transfers (1.32731ms)
+✔ fail closed when an actually required chain is unavailable (0.322296ms)
+✔ quoted zero-grant chains cannot block a transfer from paying its own gas (0.269516ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.410308

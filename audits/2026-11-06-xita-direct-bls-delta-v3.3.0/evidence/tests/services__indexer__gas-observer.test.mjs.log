@@ -1,0 +1,11 @@
+✔ observer consumes canonical receipt gas, never wallet sponsor balances (4.378455ms)
+✔ observer never records unsuccessful or non-finalized receipts (0.399292ms)
+✔ F-35: unprofiled child does not stall the next statistical observation (1.57284ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.494233

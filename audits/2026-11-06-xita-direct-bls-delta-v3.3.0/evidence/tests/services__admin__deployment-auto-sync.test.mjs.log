@@ -1,0 +1,19 @@
+✔ a valid GitHub receipt publication may be pulled without a build (10.059051ms)
+✔ code, config, deletions, renames, missing receipts and unrelated assets are refused (5.53281ms)
+✔ only the exact current main deployment commit is auto-merged (0.728278ms)
+✔ stale remote commit, dirty checkout, and nonreceipt commit cannot auto-merge (0.354104ms)
+✔ only valid verified commits can request checkout sync; no HTTP/git operation (20.553058ms)
+✔ only canonical nested asset representation and route indices are allowed (0.462578ms)
+✔ atomically publish catalog; refuse symlinked live target (8.561915ms)
+✔ public catalog publication stays world-readable under systemd UMask 0077 (7.193262ms)
+✔ an intermediate application change is rejected even if later reverted (2.804226ms)
+✔ independent polling catches a missed watcher receipt commit (5.686211ms)
+✔ polling refuses unapproved Git origin (6.137862ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 363.036167

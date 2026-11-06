@@ -1,0 +1,16 @@
+✔ systemd parses loaded and not-installed without inventing uptime (4.453102ms)
+✔ indexer health recognizes freshness, historical backlog, stale cursors and missing values (2.225965ms)
+✔ TVL evidence is fresh only with a valid timestamp and schema (2.274047ms)
+✔ overall health is sound with absent optional services but flags core failure (14.099672ms)
+✔ paid quote signer with responsive HTTP but missing DB permissions is DEGRADED (3.704643ms)
+✔ fee timers distinguish disabled, stopped and actually failed (1.721044ms)
+✔ Join health separates service readiness, missing configuration and missing installation (7.368246ms)
+✔ System Health automatically discovers BSC from chain catalog without a new hardcoded chain entry (4.424549ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 206.522722

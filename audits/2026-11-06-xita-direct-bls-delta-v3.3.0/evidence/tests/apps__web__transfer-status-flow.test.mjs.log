@@ -1,0 +1,39 @@
+✔ spoke-to-spoke opens six status stages but only four MetaMask transactions (3.068264ms)
+✔ source confirmed is not mistaken for successful two-hop delivery (0.283838ms)
+✔ awaiting TX3 tells the wallet user exactly what is next (0.264449ms)
+✔ first XGR delivery never advertises Base delivery (0.168264ms)
+✔ linked onward source requires real second-hop hash and message (0.206191ms)
+✔ only canonical journey-delivered proves full Base delivery (1.9179ms)
+✔ RPC unknown and proof failure are never complete (0.29871ms)
+✔ direct XGR to Base uses three statuses and two wallet transactions (0.202204ms)
+✔ status content escapes errors while transient notices stay out of compact banner (0.430018ms)
+✔ mined but unfinalized Arbitrum parent stays at first step and shows count (0.296126ms)
+✔ verified validator proof advances to MetaMask delivery before source receipt changes (0.21271ms)
+✔ absent proof observer entry cannot render validator proof ready (2.390267ms)
+✔ persistent background proof observation waits without asking for wallet signature (0.539593ms)
+✔ unavailable proof never says Base was delivered (0.180673ms)
+✔ stale server observer does not permanently disable independent manual recovery (0.148924ms)
+✔ optional sponsorship appears strictly after confirmed initial fee payment (0.785213ms)
+✔ 12 of 12 confirmations does not claim Base safe finality or unlock delivery (0.245761ms)
+✔ disabled but promised gas warrants attention (0.198779ms)
+✔ pending gas sponsorship is not rendered as actively checking forever (0.157567ms)
+✔ no sponsor claim cannot be displayed as confirmed adequate gas (0.150056ms)
+✔ status modal never renders wallet, refresh, or proof action buttons (0.348145ms)
+✔ final-hop modal retains canonical proof details in model without verbose flickering banner (17.585212ms)
+✔ compact transfer status identifies which chain controls waiting (0.651822ms)
+✔ error is never hidden by generic waiting animation (0.210957ms)
+✔ scheduled transient proof error remains calm but stale or missing retry raises attention (0.73957ms)
+✔ wallet index success notice never becomes a transfer warning (0.367995ms)
+✔ Base observed and observer rechecking both retain finality wording (0.29184ms)
+✔ temporary destination RPC read failures remain waiting, not transfer failures (0.23886ms)
+✔ normal background proof retries and ready handoff keep stable status (0.367244ms)
+✔ elapsed clock and positive footer appear only in active verified flow (0.223667ms)
+✔ broadcast and mined Base Mint must not revert to preparatory wallet messaging (0.317268ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 173.207002

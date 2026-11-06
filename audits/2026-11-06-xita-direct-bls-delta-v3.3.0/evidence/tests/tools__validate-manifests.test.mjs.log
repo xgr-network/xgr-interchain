@@ -1,0 +1,26 @@
+✔ XITA configured XGR/wXGR plan validates (31.924891ms)
+✔ eight directed XGR hub routes exist for four deployed spokes (4.972895ms)
+✔ rejects missing reverse route (7.405092ms)
+✔ rejects external-to-external direct routes (5.172577ms)
+✔ rejects phantom chain (4.037195ms)
+✔ asset deployment manifest is keyed by original asset ID (3.939548ms)
+✔ rejects legacy infrastructure metadata (4.016955ms)
+✔ legacy Hyperlane addresses cannot enter a fresh XITA deployment manifest (6.157952ms)
+✔ recorded XITA deployments are valid; unauthorized metadata or malformed bindings fail (23.728546ms)
+✔ BSC public label is configured independently of canonical chain identity (5.975788ms)
+✔ rejects duplicate domains (10.718435ms)
+✔ XGR deployment receipts stay tied to recorded contract bindings, without assumed deployment counts (1.428423ms)
+✔ rejects missing token profile logo (4.693585ms)
+✔ rejects unsafe public profile URL (5.833509ms)
+✔ rejects mismatched token profile (5.256667ms)
+✔ legacy manual listing controls are rejected (3.246043ms)
+✔ no public threshold is hardcoded in configuration (3.304782ms)
+✔ collateral tokens must have an original ERC20 address in the asset catalog (5.099336ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 284.307497

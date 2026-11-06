@@ -1,0 +1,11 @@
+✔ canonical native and wrapped XGR are distinctly labelled (2.924047ms)
+✔ global universe initially has no eagerly created token planets (1.270474ms)
+✔ dashboard uses token directory not redundant published routes (2.402611ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 104.329164

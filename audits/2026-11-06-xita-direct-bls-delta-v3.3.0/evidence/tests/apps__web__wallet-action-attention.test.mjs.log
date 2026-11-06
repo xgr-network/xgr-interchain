@@ -1,0 +1,12 @@
+✔ backend proofs not ready means monitoring, not a signing request (2.413093ms)
+✔ TX2 is offered only after verified zero grants or fully confirmed grants (0.635558ms)
+✔ TX3 and TX4 never recheck sponsorship and link to original source (0.448045ms)
+✔ unverified or already delivered transfers never request wallet confirmation (0.16559ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.824663

@@ -1,0 +1,17 @@
+✔ first Base route needs exactly one synthetic router, not two (15.387102ms)
+✔ XGRChain native router only on hub, Polygon works with same path (7.452503ms)
+✔ each direction gets its own route instance, same two router addresses reversed (1.6121ms)
+✔ generic ERC20 synthetic includes origin, metadata and salt (10.761561ms)
+✔ synthetic second hop resolves canonical origin outside source and destination (4.031777ms)
+✔ only complete GitHub-documented chain pairs offer routers and gateways (16.475112ms)
+✔ ARB synthetic router on Base resolves canonical Arbitrum from full chain inventory (3.127524ms)
+✔ asset operator supplies approved chain inventory for every synthetic router (1.890329ms)
+✔ XITA admin requires executionGateway before enabling asset route deployment (1.005336ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 271.349231

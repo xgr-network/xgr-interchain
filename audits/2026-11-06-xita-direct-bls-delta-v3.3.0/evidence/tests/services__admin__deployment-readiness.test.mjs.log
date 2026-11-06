@@ -1,0 +1,12 @@
+✔ readiness fails closed and never authorizes wallet execution when evidence is absent (25.456439ms)
+✔ unapproved chain rejected before filesystem operations (0.697561ms)
+✔ Base verifier receipt must use real canonical path and bind exact contract address (14.263859ms)
+✔ Base Registry is ready from pinned Genesis and target BLS PoPs with NO origin PoS lookup (45.790077ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 236.790282

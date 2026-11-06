@@ -1,0 +1,29 @@
+✔ all quoted stages are independently eligible after TX1 and never after TX2 (2.151623ms)
+✔ gas grants may cover gas and validator fee, NEVER a native token principal (0.723641ms)
+✔ durable reserve is committed before any possible payout; duplicate key denied (152.41589ms)
+✔ tampering with nonce, route, amount, beneficiary or quoted fee never unlocks sponsorship (0.827037ms)
+✔ quote lookup requires exact nonce and restricts beneficiary in SQL (3.754659ms)
+✔ L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 constant (0.794578ms)
+✔ N-08 sponsor payout waits for the safe L2 head and canonical block hash (3.564592ms)
+✔ Sponsor inclusion: mined canonical payout is usable before L2 safe finality (0.452853ms)
+✔ F-08: failing RPC on one chain cannot prevent another chain's verified grant (14.507155ms)
+✔ F-08: a stalled read expires without delaying another chain or releasing an obligation (24.966971ms)
+✔ F-08: an unexpected transaction identity is held, not confirmed or retried (4.702608ms)
+✔ F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2 (4.092819ms)
+✔ F-07: prepared signed bytes recover after crash with no user signature and identical tx hash (52.783398ms)
+✔ F-07: a consumed nonce holds the exact signed grant for operator review (29.313232ms)
+✔ N-06 expires only after finalized source nonce evidence, never merely by time (0.555207ms)
+✔ F-16: identical independent finalized hashes and nonce permit expiry release evidence (0.687276ms)
+✔ F-16: mismatched witness, conflicting nonce and reorg never release quote (0.461996ms)
+✔ F-16: lagging finalized witness retains unresolved promise (0.148333ms)
+✔ F-08: expiry work is fairly partitioned across source chains (8.580192ms)
+✔ F-08: stalled reserve balance RPC does not prevent healthy chain monitoring (20.474811ms)
+✔ F-33: stalled preflight cannot broadcast after the deadline (66.155793ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 847.026152

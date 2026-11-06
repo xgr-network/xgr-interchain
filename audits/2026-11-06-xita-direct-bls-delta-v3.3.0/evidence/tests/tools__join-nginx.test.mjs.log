@@ -1,0 +1,11 @@
+✔ install only exact Join methods and rate-limited write paths (3.19102ms)
+✔ keep safe existing read-only preview, add three missing endpoints (1.937851ms)
+✔ fail closed on wrong host, duplicate routes, altered upstream and missing protection (0.840377ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 187.886858

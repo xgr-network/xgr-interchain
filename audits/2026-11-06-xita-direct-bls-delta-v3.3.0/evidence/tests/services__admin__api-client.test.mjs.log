@@ -1,0 +1,12 @@
+✔ proxy timeout HTML becomes actionable API path + status, not JSON parser error (1.598179ms)
+✔ basic auth and absent API routing are diagnosed before parsing (2.015357ms)
+✔ typed JSON preserves backend diagnostics (0.324058ms)
+✔ Admin API module is served behind authenticated Admin path (0.689579ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 76.136985

@@ -1,0 +1,13 @@
+✔ OP, Base and Arbitrum require safe; XGRChain uses IBFT latest (6.458814ms)
+✔ unsupported safe, noncanonical head, wrong chain ID and unknown chain fail closed (0.852665ms)
+✔ original receipt must be canonical and inside source safe finality (0.690761ms)
+✔ every approved chain has the same native finality in relayer as in GitHub catalog (1.458548ms)
+✔ OP source receipt can be finalized by safe but never by a missing safe tag (0.330197ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.262212

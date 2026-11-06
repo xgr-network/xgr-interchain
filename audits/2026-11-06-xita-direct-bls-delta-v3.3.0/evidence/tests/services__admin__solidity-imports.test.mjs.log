@@ -1,0 +1,11 @@
+✔ detect nested missing Solidity dependency under an installed package (5.459148ms)
+✔ report absent first-party dependency and refuse incomplete source tree (1.482745ms)
+✔ unknown non-remapped imports fail closed (1.563706ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.788706

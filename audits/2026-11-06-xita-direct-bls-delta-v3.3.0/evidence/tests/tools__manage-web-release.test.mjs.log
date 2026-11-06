@@ -1,0 +1,20 @@
+✔ XITA static publication cannot roll back when Admin restart or readiness fails (1.378608ms)
+✔ Admin readiness uses a lightweight local endpoint, not the chain inventory (0.294564ms)
+✔ manage.sh retains its executable bit in Git (0.129485ms)
+✔ temporary service cleanup cannot leak a RETURN trap into update() (0.475086ms)
+✔ update always reloads the checkout after pull before publishing or restarting (0.400774ms)
+✔ updating the published XITA release refreshes both proof and historical transfer indexer (0.163076ms)
+✔ optional global Interchain Fee install is separate from blockchain deployment and protects private keys (0.233722ms)
+✔ TVL installer checks root-only indexer env with privileged access (0.154853ms)
+✔ update installs exact read-only RPC Nginx route and refuses public fallback 503 (0.499422ms)
+✔ indexer installer waits for real HTTP socket readiness before checking proof service (0.548858ms)
+✔ DB repair uses idempotent additive migrations and plain SQL checks without malformed DO quoting (0.324439ms)
+✔ Join restart waits for actual HTTP socket before installing nginx and publishing website (0.290378ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.004756

@@ -1,0 +1,10 @@
+✔ exact TX intake route is idempotent and preserves fail-closed API (1.728115ms)
+✔ refuse malformed host, duplicate or untrusted listener (0.555537ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 77.716111

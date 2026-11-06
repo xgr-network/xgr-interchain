@@ -1,0 +1,17 @@
+✔ one canonical two-hop journey with only one visible pending card (3.5696ms)
+✔ a delayed first-hop SQL observation never hides the already verified second hop (0.338941ms)
+✔ fresh canonical progress can advance but cannot revoke the first hop (0.108363ms)
+✔ an immutable message or onward tx disagreement fails closed (0.234839ms)
+✔ an unverified child cannot collapse a pending card (0.17878ms)
+✔ indexed parent absorbs same independently verified onward TX from stale browser state (0.216887ms)
+✔ an unrelated, unconfirmed, mismatched or ambiguous child is never hidden (0.275375ms)
+✔ M-02: a fresh native-finality observation reverses a formerly delivered journey (0.20575ms)
+✔ native-safe finality remains an unconfirmed status and is not replaced by stale 12/12 (0.257488ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.778067

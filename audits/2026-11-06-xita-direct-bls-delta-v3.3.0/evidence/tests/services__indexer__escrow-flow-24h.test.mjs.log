@@ -1,0 +1,11 @@
+✔ 24h: lock inflow and delivered unlock outflow are summed gross, not net (3.599836ms)
+✔ 24h: burn without final delivery is not an escrow outflow (0.921028ms)
+✔ 24h: source events outside rolling interval are excluded and identity conflicts fail (0.804392ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.054914

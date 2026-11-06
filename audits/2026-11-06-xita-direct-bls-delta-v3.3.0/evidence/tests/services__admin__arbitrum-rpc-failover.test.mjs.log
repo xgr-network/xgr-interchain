@@ -1,0 +1,11 @@
+✔ Arbitrum RPC 403 falls back only after verifying official chainId 42161 (2.702854ms)
+✔ wrong-chain fallback cannot authorize any receipt (1.113829ms)
+✔ RPC transport never forwards signing or transaction broadcasts (0.332201ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.414557

@@ -1,0 +1,11 @@
+✔ published CSS URL changes whenever stylesheet changes, not just JavaScript (1.434582ms)
+✔ missing or duplicate stylesheet URL aborts release before publication (0.434706ms)
+✔ published release contains a fingerprint matching its CSS bytes (1.952022ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 132.400351

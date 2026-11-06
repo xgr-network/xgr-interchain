@@ -1,0 +1,16 @@
+✔ receipt verifies canonical block, correct chain and artifact runtime keccak (17.781721ms)
+✔ spoofed chain, failed tx, noncanonical block and altered runtime all fail (17.314507ms)
+✔ cannot publish fake receipt, no GitHub token or mismatched main (1.402063ms)
+✔ atomic deployment catalog includes new infrastructure component and asset receipts (21.83081ms)
+✔ deployment catalog generation fails closed on invalid overrides (9.575188ms)
+✔ receipt proof NEVER requests archived contract state; immutable runtime read at latest (3.78857ms)
+✔ Direct-BLS transport uses actual two-address event and one aliased ProtocolFee receipt (0.488606ms)
+✔ Base receipt waits for 12 confirmations without accepting an unconfirmed deployment (4.619662ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 201.424638

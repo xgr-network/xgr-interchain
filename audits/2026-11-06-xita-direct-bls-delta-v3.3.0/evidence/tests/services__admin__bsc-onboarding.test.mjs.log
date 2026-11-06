@@ -1,0 +1,11 @@
+✔ BSC is available in generic Admin without a contract or active route (25.508382ms)
+✔ BSC bootstrap uses reviewed economics and keeps public BLS proof verification separate (4.459271ms)
+✔ published catalog mirrors BSC's undeployed infrastructure only (0.345511ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.271067

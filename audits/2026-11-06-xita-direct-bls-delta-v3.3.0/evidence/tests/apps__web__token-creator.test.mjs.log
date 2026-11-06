@@ -1,0 +1,16 @@
+✔ creator preview uses 18 precise decimals, full fixed supply and no admin privileges (2.505105ms)
+✔ invalid or unsafe names, symbols, supplies and owner addresses are rejected (0.369316ms)
+✔ page is directly routable yet absent from navigation, with no unverified deploy request (1.51257ms)
+✔ creator enrollment collects private email, complete Join project metadata and uploaded logo (0.994559ms)
+✔ creator variants have exact 6/8/18 decimals and irrecoverable lifetime cap (0.502056ms)
+✔ creator defaults are safe; advanced section stays collapsed without explicit user action (0.396668ms)
+✔ Creator submission navigates to a dedicated confirmation receipt and visible errors (2.079063ms)
+✔ published XGRChain Creator profiles display their verified original token address (0.524861ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75.784278

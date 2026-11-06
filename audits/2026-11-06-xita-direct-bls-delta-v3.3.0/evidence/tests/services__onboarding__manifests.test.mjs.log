@@ -1,0 +1,18 @@
+✔ route bundle matches authoritative main schemas and transits XGR (36.096328ms)
+✔ Join proposals exclude undeployed Polygon and accept BSC as original chain (10.696984ms)
+✔ reject direct bridge and duplicate canonical token (54.530534ms)
+✔ profile URL is generated server-side, not from applicant input (11.471651ms)
+✔ reject unsafe public metadata (0.614176ms)
+✔ never leak private contact information into generated public files (4.815578ms)
+✔ CoinGecko pricing metadata is recorded in generated profile (3.397852ms)
+✔ multiline project descriptions are safe and normalized before publication (2.911949ms)
+✔ Join proposal preserves catalog order and every existing asset unchanged (14.79482ms)
+✔ uploaded logo is rejected even when an HTTPS URL is provided (10.656763ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 343.218894

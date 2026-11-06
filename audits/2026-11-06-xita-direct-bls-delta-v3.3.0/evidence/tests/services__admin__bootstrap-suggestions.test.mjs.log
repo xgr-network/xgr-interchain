@@ -1,0 +1,11 @@
+✔ missing bootstrap economics receive editable gas-price-based nonapproved estimates (1.711079ms)
+✔ approved Base fee and explicitly configured fields override all estimates (0.284579ms)
+✔ chain mismatch, zero and unreasonable gas price fail closed (0.447184ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.576212

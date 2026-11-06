@@ -1,0 +1,17 @@
+✔ CoinGecko Join shows only ID, email, consent and conditional origin choice (1.840093ms)
+✔ no arbitrary original chain selection without verified multiple CoinGecko contracts (0.277258ms)
+✔ profile management allows only CoinGecko sync; no free text editor (7.024116ms)
+✔ email confirmation remains single-use and XGR-reviewed, with no direct route deployment (0.300162ms)
+✔ Creator launch link is rendered only after explicit readiness (0.264809ms)
+✔ mobile navigation exposes an accessible collapsed menu control (0.234133ms)
+✔ Join landing has two equally prominent paths and integration is progressive (0.221043ms)
+✔ CoinGecko matching is explained using only receipt-deployed XITA chains (0.328836ms)
+✔ Join integrates in an exclusive screen with a functional Back action (0.814047ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.174374

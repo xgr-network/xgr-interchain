@@ -1,0 +1,1674 @@
+[
+  {
+    "id": "F-01",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "The securityAccounting rejection, epoch-marker and parent-derived base-fee controls remain in place. The v3.5.0 executor/IBFT changes add the possession migration hook without removing these original accounting boundaries. Unchanged enforcement dependencies and the changed integration points were checked against the previous baseline.",
+    "evidence": "Fresh source comparison; fresh state and IBFT package execution in E-02; prior independent accounting/rejection evidence retained as inherited, not represented as a newly rerun custom suite.",
+    "limits": "The present fork test exercises possession migration, not every historical native exploit fixture or a Byzantine live-network proposal. RPC version strings do not establish each host binary hash.",
+    "remediation": "Retain the original securityAccounting configuration and regression controls. No corrective product change is required for the original resolved cause.",
+    "title": "Native system-transaction accounting and proposal validation",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "High",
+    "original_cause": "Native StateTx execution could receive ordinary refund/fee credits without a matching upfront debit. The proposer-validation boundary did not restrict admissible system transactions tightly enough or require deterministic header base-fee equality. The original prerequisite was proposer-controlled block content, not an ordinary bridge UI action.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "state/executor.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "04934fcfcc5a498360670fcca9d64dce88af28d8",
+        "baseline_blob": "9ccd76226b7b4346c09606d90ad030a33fb908e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/state/executor.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/security_accounting.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1120dbcadfe3d7ecc506d1657e1f1598ffba1f9f",
+        "baseline_blob": "1120dbcadfe3d7ecc506d1657e1f1598ffba1f9f",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/security_accounting.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/verifier.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "0ffaf3ae3234e8d5c28324c3f9021f9a8b97e2cd",
+        "baseline_blob": "0ffaf3ae3234e8d5c28324c3f9021f9a8b97e2cd",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/verifier.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/ibft.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "ba58725d2088aa95b1f9cbe27a63a906758604db",
+        "baseline_blob": "be450bb47c9ab3978f3aae6a926e915c95a4292f",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/ibft.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "blockchain/security_accounting.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "473ca8856c1c292160fdb99b32cb6ed99441f94a",
+        "baseline_blob": "473ca8856c1c292160fdb99b32cb6ed99441f94a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/blockchain/security_accounting.go"
+      }
+    ]
+  },
+  {
+    "id": "F-02",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Transaction-original storage and refund-accounting corrections remain present. State transaction/storage dependencies are unchanged; the changed executor integration was inspected for interference from the possession hook. Fresh state package tests pass.",
+    "evidence": "Fresh blob comparison and source review; E-02 state package result; original differential/rejection traces remain inherited evidence.",
+    "limits": "A passing package run is not a new exhaustive independent refund matrix. No regression of the originally resolved cause was demonstrated.",
+    "remediation": "Preserve original-value tracking, refund invariants and rejection tests; keep migration writes outside ordinary transaction refund semantics.",
+    "title": "Transaction-original storage and refund accounting",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Medium",
+    "original_cause": "The original storage snapshot could retain a previous transaction\u2019s original-slot state inside one block. Refund subtraction could wrap an unsigned counter. This changed transaction gas/refund accounting; the historic refund cap limited the demonstrated effect and did not establish arbitrary minting.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "state/executor.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "04934fcfcc5a498360670fcca9d64dce88af28d8",
+        "baseline_blob": "9ccd76226b7b4346c09606d90ad030a33fb908e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/state/executor.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "state/txn.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "dc1906e2e03248e108b50ac907242c77c11d6857",
+        "baseline_blob": "dc1906e2e03248e108b50ac907242c77c11d6857",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/state/txn.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "state/state.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "97335e4c556a29a387f704659714d0d209fdf66c",
+        "baseline_blob": "97335e4c556a29a387f704659714d0d209fdf66c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/state/state.go"
+      }
+    ]
+  },
+  {
+    "id": "F-03",
+    "severity": "Medium",
+    "status": "OPEN",
+    "assessment": "The general gossip/governance admission paths still allow substantial work before complete bounded admission and deduplication. New JSON-RPC request-storage limits do not impose an equivalent global budget on every peer-originated verification path. The original availability boundary remains relevant.",
+    "evidence": "Fresh inspection of unchanged network/worker/governance dependencies and changed checkpoint integration; E-02/E-04 validate ordinary runtime behavior, not a full adversarial saturation campaign.",
+    "limits": "No production consensus outage or principal compromise was induced. This is distinct from the now-resolved unverified per-message storage cause F-32.",
+    "remediation": "Add cheap authenticated admission/deduplication and bounded global/per-peer work before expensive remote verification, preserving complete evidence checks before signing.",
+    "title": "Expensive gossip work lacks complete admission bounds",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "Peer checkpoint votes and quorum hints can trigger full source verification before sufficiently cheap member/signature admission. Gossip delivery starts a goroutine for each message. Governance proposal admission lacks a global count/disk limit and an upper bound on accepted future expiry.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "network/gossip.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "baseline_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/network/gossip.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_quorum_request.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "baseline_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_quorum_request.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "baseline_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance.go"
+      }
+    ]
+  },
+  {
+    "id": "F-04",
+    "severity": "Low",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "Rotating bounded route retries remove the fixed-prefix starvation condition, and corrupt records no longer necessarily abort healthy siblings. Fresh repeated runtime tests support this improvement. Capacity-pressure and filesystem failure paths can still hold shared observer progress, so the finding is downgraded rather than closed.",
+    "evidence": "Fresh review of iln_observer_retry.go, checkpoint/storage integration and their tests; E-02 and three repeated runtime runs in E-04.",
+    "limits": "The narrower residual needs route-capacity pressure or persistent local I/O problems. Time-based rotation is not a proof of arbitrary-timing fairness or unlimited throughput. A durable fair-service SLA was not established.",
+    "remediation": "Isolate capacity/I/O failures per route, retain evidence on quarantine and measure oldest work; add capacity-saturation and restart fairness tests before claiming autonomous progress under overload.",
+    "title": "Shared observer retry fairness and failure isolation",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "The earlier shared-cursor defect let one failed operation stall sibling routes. Durable retry storage mitigated that original failure, but retry service always starts from the same route ordering and consumes a fixed source-wide budget; corrupt or full retry storage can still affect the source group.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_retry.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1de9271ec0d62854d8222b499bbb5fde4ee64a23",
+        "baseline_blob": "6fde9da735f14b518fd1b1cf0204cdd4a6abc1ec",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_retry.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "baseline_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_worker.go"
+      }
+    ]
+  },
+  {
+    "id": "F-05",
+    "severity": "Medium",
+    "status": "OPEN",
+    "assessment": "Complete source evidence is compared across distinct operator-labelled RPC witnesses, but labels and URLs do not establish independent physical upstreams. BSC and Optimism extend the same trust model. Native safe/finalized checks and fail-closed message binding remain positive controls; two correlated or colluding counted witnesses remain the relevant trust prerequisite.",
+    "evidence": "Fresh witness/finality/configuration source review; E-02 finality tests; E-05 live read-only observations. The unchanged quorum comparison implementation is recorded in the source matrix.",
+    "limits": "No false live quorum was constructed. HTTP 403/429 observations are reachability limits, not evidence of collusion or invalid chain state. Safe L2 evidence is not represented as final L1 settlement.",
+    "remediation": "Document actual upstream control, diversify witnesses and monitor disagreement. Reassess on correlated-provider discovery; do not weaken finality or invent new operator acceptance.",
+    "title": "External source witnesses retain correlated-provider trust",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "External-source signing historically depended on a provider view that honest BLS validators could share. Requiring two labelled operators removed the single-counted-witness failure mode but left correlated or colluding providers and their upstreams inside the trust boundary.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/rpc_evidence_quorum.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "baseline_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/rpc_evidence_quorum.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/config.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "7ff8814fce1f43be61a2e240f9734c210cabee45",
+        "baseline_blob": "8c7f53ada886a50ff0077d6c354a6f97bcdea9e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/config.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_direct_signing.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "baseline_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_direct_signing.go"
+      }
+    ]
+  },
+  {
+    "id": "F-06",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "The supported quote writer now receives the required narrow intent SELECT permission; the status reader receives the overtaken-obligation read dependency. Readiness checks include the new dependency. An isolated PostgreSQL test executed the real monitor queries and exact production readiness SQL under restricted roles; all required checks passed after the documented migration.",
+    "evidence": "E-03 restricted-roles.json/log: missing intent read detected before repair, all nine readiness checks true after repair, joined reads succeed, UPDATE/DELETE on immutable debt tables denied, unrelated role promotion rejected.",
+    "limits": "This verifies source/schema/role behavior in disposable PostgreSQL, not installation of the migration on every production database or a new paid quote transaction.",
+    "remediation": "Apply/verify the documented narrow migration during normal authorized operations and retain role-level regression tests. Do not use superuser or grant debt mutation as a workaround.",
+    "title": "Restricted-role reads and readiness omit new quote/monitor dependencies",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "Missing SELECT used by aggregate quote query while readiness falsely passes; prior operations/resolutions repair was verified.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/011_quote_writer_runtime_grants.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "70d8dce8703b8c8fac04f280593b8376d8052ffc",
+        "baseline_blob": "92b4f70716598a173e863f58f3156fcc1d582531",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/011_quote_writer_runtime_grants.sql"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/014_sponsor_overtaken_obligations.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ef1ec88f90181cfe1b23ed64aebebbc247412246",
+        "baseline_blob": "3131e614d80f4a295652b220bab8813e881e9777",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/014_sponsor_overtaken_obligations.sql"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-obligation-audit.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "baseline_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-obligation-audit.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-07",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Prepared exact signed transaction bytes, hash and nonce ownership remain durable before broadcast. The new Creator shared-wallet guard does not authorize replacement signing of uncertain sponsorship rows. Fresh sponsor tests preserve the original identity/recovery controls.",
+    "evidence": "Fresh sponsor source review and E-01 managed-relay/real-schema tests; exact-byte recovery remains separate from F-33 effect fencing.",
+    "limits": "No historical production orphan was resolved by this audit. Preserving a row is not proof that every old obligation has completed.",
+    "remediation": "Keep original transaction identity and nonce ownership through uncertainty. Investigate pre-upgrade rows under controlled reconciliation, never by blind re-signing.",
+    "title": "Sponsor reservation can strand the sender nonce after interruption",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Medium",
+    "original_cause": "The reservation committed before a signed transaction or durable hash existed. Restart only selected submitted rows with a hash, so a crash left an unrecoverable reserved nonce blocking later grants.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/013_sponsor_prepared_tx.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e41ef92ab76c3e9e34335007d49f1c7306df614f",
+        "baseline_blob": "e41ef92ab76c3e9e34335007d49f1c7306df614f",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/013_sponsor_prepared_tx.sql"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/004_sponsor_grants.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ac0e2acb3753db8b5fe9095803c4b75aa429ce71",
+        "baseline_blob": "ac0e2acb3753db8b5fe9095803c4b75aa429ce71",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/004_sponsor_grants.sql"
+      }
+    ]
+  },
+  {
+    "id": "F-08",
+    "severity": "Medium",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "The repaired recovery helper bounds raced read work, but the full fresh-candidate sweep still contains serial provider-dependent preflight paths that can delay service to otherwise healthy chains. The narrower F-33 fix does not establish fair, bounded all-chain servicing.",
+    "evidence": "Fresh runSweep/preflight and recovery call-graph review; E-01 timeout controls pass for their actual helper scope.",
+    "limits": "No live outage was generated. An outer timeout around an effectful callback would reintroduce the resolved late-broadcast problem and is not an acceptable fix.",
+    "remediation": "Bound read-only preflight end-to-end and schedule independent chains fairly. Test a deliberately stalled provider while healthy chains progress, without cancelling or replacing uncertain sends.",
+    "title": "One grant RPC failure can block all-chain sponsorship",
+    "prior_severity": "Medium",
+    "prior_disposition": "PARTIALLY_MITIGATED",
+    "historical_severity": "Medium",
+    "original_cause": "v3.0 had escaping submitted-grant errors and oldest-only windows; v3.1 fixed that helper but left earlier serial expiry and reserve reads able to block all later stages.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-event-listener.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "45a1e4d44077ddf454f3fafc86afccce3c56225c",
+        "baseline_blob": "45a1e4d44077ddf454f3fafc86afccce3c56225c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-event-listener.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/xita-gas-sponsor.service.example",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b60f9a14f0f56c0fa7479dee66f6f8a4a996c1ab",
+        "baseline_blob": "b60f9a14f0f56c0fa7479dee66f6f8a4a996c1ab",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/xita-gas-sponsor.service.example"
+      }
+    ]
+  },
+  {
+    "id": "F-09",
+    "severity": "Medium",
+    "status": "OPEN",
+    "assessment": "The native router preserves backed deferred claims and beneficiary-only withdrawal when direct native delivery fails. Mailbox completion can nevertheless still be presented as fully received principal, and arbitrary recipient contracts may lack a usable claim path. UI changes in this delta do not eliminate the original distinction.",
+    "evidence": "Fresh router/presentation review and E-06 native fallback tests covering reserved backing, accumulation, failed withdrawals and beneficiary authorization.",
+    "limits": "No unbacked claim or unauthorized withdrawal was demonstrated. The issue is recipient support and truthful completion, not a claim that every completed message loses funds.",
+    "remediation": "Retain the restricted code-free or separately verified claim-capable recipient policy; expose deferred native principal and the existing beneficiary-authorized recovery path explicitly.",
+    "title": "Mailbox completion can conceal a pending native-principal claim",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "Authenticated native delivery can fail to pay recipient code within the router\u2019s 30,000-gas allowance. The router reserves a backed pending balance and returns successfully, so Mailbox delivery does not necessarily mean native principal reached the beneficiary. The presentation layer equates these states.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XETAGuardedNativeWarpRouter.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "10563e05083db54972ec35801234babc0afc1f87",
+        "baseline_blob": "10563e05083db54972ec35801234babc0afc1f87",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XETAGuardedNativeWarpRouter.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-store.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "56d3eb9e9391b7694e00c215325d9f82583b9a6e",
+        "baseline_blob": "f4a279240418cf7422cf729da1c061363b236337",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-store.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-status-flow.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "01fdf4bda558b0ac97c7d0050a6c3325d21e69fb",
+        "baseline_blob": "e294fb7820cb2039152ab3dd67ff5bd74c7be245",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-status-flow.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-token-journey.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "f5bbb61e315799abf0394061db7090004ae9f83e",
+        "baseline_blob": "303e671fe3d3b9201a0d219907dfb710a418574d",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-token-journey.js"
+      }
+    ]
+  },
+  {
+    "id": "F-10",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "Authorized ownership/service-wallet transitions can still converge the intended independent roles. The relevant gateway ownership implementation is unchanged. This is an authorized-role separation weakness, not an arbitrary external takeover.",
+    "evidence": "Fresh unchanged-source comparison and ownership/fee-wallet tests within E-06.",
+    "limits": "The triggering actor already holds the relevant administrative authority. Ordinary token holders were not shown to gain it.",
+    "remediation": "Check current and pending ownership during rotation. A future contract revision should enforce role inequality across nomination, acceptance and service-wallet changes in either order.",
+    "title": "Authorized ownership transfer can collapse service/admin separation",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "The gateway constructor and service-wallet setter enforce different service and recovery-admin addresses, while inherited two-step ownership nomination/acceptance do not enforce the same invariant, including the pending-owner rotation order.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XITAExecutionGateway.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "baseline_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XITAExecutionGateway.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "id": "F-11",
+    "severity": "Medium",
+    "status": "ACCEPTED_RISK",
+    "assessment": "Membership signatures retain the prior deployment-unbound domain under the documented single-active-registry model. Direct transfer signatures separately bind registry/ISM identities. The existing bounded risk acceptance is retained; adding chains is not an implicit acceptance of overlapping registry migrations.",
+    "evidence": "Fresh Registry V3/domain review and receipt-pinned chain configuration; E-06 membership and Direct-BLS replay tests.",
+    "limits": "The audit did not prove absence of every unlisted alternative deployment, nor authorize simultaneous equivalent active registries. The pre-existing acceptance is not expanded.",
+    "remediation": "Maintain a single active receipt-pinned registry per stated domain. Reopen the design before overlapping migrations and use an explicitly versioned address-bound membership domain if the invariant changes.",
+    "title": "Membership authorizations omit the exact registry deployment",
+    "prior_severity": "Medium",
+    "prior_disposition": "ACCEPTED_RISK",
+    "historical_severity": "Medium",
+    "original_cause": "Membership payloads bind chain/domain, expected set, expiry, action and keys but omit the exact registry deployment address. Equivalent simultaneously active deployments can therefore accept the same valid membership authorization.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XGRInterchainValidatorRegistryV3.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "2b15aa1a1b695f7ebb4080f71bca80609b4197ac",
+        "baseline_blob": "2b15aa1a1b695f7ebb4080f71bca80609b4197ac",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XGRInterchainValidatorRegistryV3.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XITADirectProtocol.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ca35271ce037680b22f4dea646c2078b23eda1b2",
+        "baseline_blob": "ca35271ce037680b22f4dea646c2078b23eda1b2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XITADirectProtocol.sol"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/config.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "7ff8814fce1f43be61a2e240f9734c210cabee45",
+        "baseline_blob": "8c7f53ada886a50ff0077d6c354a6f97bcdea9e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/config.go"
+      }
+    ]
+  },
+  {
+    "id": "F-12",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "A minimum independently operated committee size remains an operating policy rather than a hard on-chain minimum. Correct threshold calculation does not establish independence or a minimum committee of three.",
+    "evidence": "Fresh registry/quorum source review and E-06 current-set membership controls.",
+    "limits": "Consensus migration's five proven keys must not be confused with five independent Interchain operators. Active bridge committee independence was not newly attested.",
+    "remediation": "Monitor the documented operating minimum and rotation continuity. Any hard minimum or altered governance rule needs a separately authorized design and migration decision.",
+    "title": "Minimum validator committee size remains an operating rule",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Bootstrap requires a nonempty committee rather than a minimum of three, and authorized membership removal stops only at one remaining member. The correct ceil(2n/3) threshold consequently becomes one signature for a one-member set.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XGRInterchainValidatorRegistryV3.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "2b15aa1a1b695f7ebb4080f71bca80609b4197ac",
+        "baseline_blob": "2b15aa1a1b695f7ebb4080f71bca80609b4197ac",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XGRInterchainValidatorRegistryV3.sol"
+      }
+    ]
+  },
+  {
+    "id": "F-13",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "Wallet proof submission retains basic selector/target/value checks without fully decoding and binding the submitted valid message to the user's selected intent. Contract-side authorization still prevents arbitrary forged value delivery; a substituted independently valid operation remains a wallet-intent/gas-spend concern.",
+    "evidence": "Fresh unchanged wallet submission-path review and relevant E-01 wallet regression runs.",
+    "limits": "No message forgery or principal redirection through a bad signature was demonstrated. Existing proofs and source records remain required.",
+    "remediation": "Decode the process arguments and compare the complete authenticated message identity with the selected transfer before requesting wallet submission; test substituted valid messages.",
+    "title": "Wallet proof calldata is not fully bound to selected intent",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "The browser validates metadata, destination, selector and zero native value but does not decode process message bytes and bind their hash to the selected source message.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-actions.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "baseline_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-actions.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-recovery.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "baseline_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-recovery.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "runtime/native-relayer/xita-direct-codec.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "baseline_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/runtime/native-relayer/xita-direct-codec.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-14",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "The broad isolated discovery run executes 173 test files, of which eight fail. Triage identifies stale catalog/address/copy assumptions, a configured-mail fixture dependency and a historical deployment-component alias assertion; none alone demonstrates a new principal vulnerability. Manually enumerated normal CI can still be green while these regressions fail.",
+    "evidence": "E-01 all 173 logs and test-failure-triage.json; E-06 is a separate 111-test Solidity result, not a substitute for the JavaScript failures.",
+    "limits": "Tests were not edited to obtain green results. The audit distinguishes test-file exit status from individual assertions and does not add unrelated suite totals as unique exploit counts.",
+    "remediation": "Update fixtures narrowly against authenticated current inventory/intentional behavior, retain negative security assertions and discover the full supported test set in CI. Preserve strict receipt/runtime validation when recognizing component aliases.",
+    "title": "Regression fixtures and CI discovery drift from the current product",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Some negative tests assume obsolete behavior and CI uses manually enumerated test lists, omitting existing and newly added suites.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": ".github/workflows/validate.yml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "52eafa324d59aabadce4de7e91e7fe79b44143c4",
+        "baseline_blob": "7d8d1b775a626d1516d09d5575685c1834327c07",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/.github/workflows/validate.yml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/rpc-read.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "baseline_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/rpc-read.test.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ba8c39abe3d39ded4c3d6b22a5d5a6bfa35da4b4",
+        "baseline_blob": "c3a2dc57a1292648fdd0895e2586464c68a580b4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.test.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-15",
+    "severity": "Informational",
+    "status": "OPEN",
+    "assessment": "Positive live contract and activation observations were obtained, but exact installed service revisions, effective production database-role migration, aged obligation outcomes and representative existing paid-operation evidence remain installation-assurance tasks. They are not fabricated source vulnerabilities.",
+    "evidence": "E-03 actual restricted-role test; E-05 202 endpoint observations and node runtime checks; scope-specific limitations in verification.md.",
+    "limits": "No new Mainnet transfer or payout was requested. BSC receipt reads were unavailable from the CI vantage point. Separate node release metadata and observed client toolchain strings differ, so per-host binary identity is not established.",
+    "remediation": "When a concrete installed-service approval depends on it, request existing sanitized revision/role/journal-age/outcome records and installed binary hashes. Do not turn missing evidence alone into a blanket NO-GO.",
+    "title": "Production sponsorship and installation readiness remain unproven",
+    "prior_severity": "Informational",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "The old read-only observation reported sponsoring enabled but unavailable; installed service, role, journal and build identity were not demonstrated. It was not an identified source-level exploitation path.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-16",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Expiry release retains distinct witness comparison and canonical reread before a liability is released. The original single-view/no-reread cause remains absent. Changes elsewhere in quote lifecycle do not remove this control.",
+    "evidence": "Fresh source comparison/review and E-01 sponsor quote/finalized-resolution regressions; original entrypoint traces remain identified inherited evidence.",
+    "limits": "The audit did not perform a production expiry release. Provider physical independence remains F-05 rather than reopening the eliminated single-view implementation cause.",
+    "remediation": "Retain independent witness configuration, immutable liability age and canonical reread tests; monitor unresolved backlog without dropping uncertain obligations.",
+    "title": "Expiry-release evidence trusts one RPC without a canonical reread",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Medium",
+    "original_cause": "One finalized/committed head plus a number-tagged nonce call could append expired-unused without independent agreement or a post-call hash reread, removing an actually owed liability from accounting.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-17",
+    "severity": "Medium",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "Per-wallet request limits and durable promises bound individual admission, but unpaid payer aliases can still occupy finite aggregate sponsor capacity. The delta does not provide Sybil-resistant capacity fairness. Existing obligations remain protected rather than silently expired for availability.",
+    "evidence": "Fresh quote admission/commitment source review and E-01 funding/admission tests.",
+    "limits": "No production capacity exhaustion was attempted. A per-address limit is not an identity limit, and the audit does not invent operator acceptance of an unlimited free-admission policy.",
+    "remediation": "Adopt explicitly approved bounded admission and fairness controls while preserving every uncertain/paid liability. Measure saturation and recovery without adding an unrequested mandatory user signature.",
+    "title": "Unpaid payer aliases still occupy finite sponsor admission capacity",
+    "prior_severity": "Medium",
+    "prior_disposition": "PARTIALLY_MITIGATED",
+    "historical_severity": "Medium",
+    "original_cause": "Public positive promises reserve budget without source payment; per-identity rate limits do not authenticate or bound distributed demand.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-funding.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "baseline_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-funding.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-18",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "The conservative daily-spend plus outstanding-liability calculation can count some uncertain grants in overlapping sets. This can reject otherwise affordable new work, rather than proving treasury insolvency or duplicate payout.",
+    "evidence": "Fresh budget/funding arithmetic review and E-01 corresponding tests; the overlapping classification is not eliminated by the Creator's separate caps.",
+    "limits": "No exact production overcount amount was measured; live journals were not inspected.",
+    "remediation": "Define mutually exclusive confirmed-spend and unsettled-obligation categories and test real-schema transitions/windows. Preserve uncertain obligations exactly once when changing arithmetic.",
+    "title": "Conservative daily-limit accounting can count a liability twice",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Outstanding commitments exclude only confirmed payouts while issued-today includes every recent grant status. The daily arithmetic adds these overlapping sets.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-funding.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "baseline_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-funding.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-19",
+    "severity": "Medium",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "Paid obligations are retained when external completion overtakes service, but recording an overtaken state is not a complete controlled-outcome process. Stopping new admission and servicing old debt are still insufficiently separated. This remains a blocker for an unrestricted unattended servicing claim even after F-33 is fixed.",
+    "evidence": "Fresh lifecycle, global-disable, overtaken-record and monitor review; E-01/E-03 establish durability and restricted reads, not fulfillment of every promise.",
+    "limits": "A staffed, explicitly approved outcome/escalation process may support a narrower operation. No such new policy was accepted on the operator's behalf. Automatic late gifts or debt deletion are not recommended.",
+    "remediation": "Separate stop-new-admission from safe old-obligation reconciliation and implement operator-owned traceable outcomes with escalation. Preserve original nonce, transaction identity and liabilities throughout uncertainty.",
+    "title": "Paid grant lifecycle can remain unresolved after early delivery or shutdown",
+    "prior_severity": "Medium",
+    "prior_disposition": "PARTIALLY_MITIGATED",
+    "historical_severity": "Medium",
+    "original_cause": "Every stage requires the original parent undelivered; permissionless external completion can make an owed grant ineligible. The global disabled switch stops existing servicing as well as new promises.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-obligation-audit.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "baseline_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-obligation-audit.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/014_sponsor_overtaken_obligations.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ef1ec88f90181cfe1b23ed64aebebbc247412246",
+        "baseline_blob": "3131e614d80f4a295652b220bab8813e881e9777",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/014_sponsor_overtaken_obligations.sql"
+      }
+    ]
+  },
+  {
+    "id": "F-20",
+    "severity": "Medium",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "Missing-route and undelivered-vote retention are improved, and ordinary expired-set handoff tests pass. A narrower source path remains in which a success return does not uniformly prove durable successor persistence before the original locator is removed. Therefore the original consume-before-success cause is not fully closed.",
+    "evidence": "Fresh caller/callee source proof across checkpoint, direct signing and durable storage; E-02/E-04 positive retention/handoff regressions. No new full end-to-end negative execution for this narrower branch is claimed.",
+    "limits": "This is a refinement of the existing finding, not a new duplicate finding. Public material omits a runnable unresolved trigger sequence. Known-hash recovery can mitigate availability but does not prove atomic handoff.",
+    "remediation": "Make persistence/terminal-delivery status explicit, not inferred from a generic nil error. Delete original evidence only after authenticated completion or an atomic verified durable successor; test ineligible/failed persistence and restart cases.",
+    "title": "Pending recovery work can be removed before durable replacement",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "Persisted votes can be removed when their route is temporarily missing or when a set changes, before successor signing succeeds. Old undelivered attestations can also be pruned after evidence is judged regenerable without persisting a replacement job.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_storage.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1104e7c13a5cd9bb9dfb39d745c3219dfc3c7300",
+        "baseline_blob": "3ee01dfcd9ee581108804de28caee51794cfcb39",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_storage.go"
+      }
+    ]
+  },
+  {
+    "id": "F-21",
+    "severity": "Medium",
+    "status": "OPEN",
+    "assessment": "A syntactically successful but incomplete discovery response can still advance a durable scan cursor. Full two-witness authorization of each discovered message does not itself prove completeness of the discovery list.",
+    "evidence": "Fresh scan/observer source review and unchanged-dependency comparison; E-02 ordinary discovery tests.",
+    "limits": "No unauthorized mint is implied: missing messages affect availability and discovery. No false live response was injected into production.",
+    "remediation": "Use bounded overlapping reconciliation or independently checked completeness, retain known-hash recovery and alert on differing windows. Never weaken complete source verification to gain progress.",
+    "title": "Successful incomplete discovery responses can advance durable cursors",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "A successful single-provider log query is treated as a complete discovery window. A well-formed response that omits real events can therefore advance durable operation or route-discovery cursors without creating retry records for the omitted entries.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_multi_gateway_scan.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20f77fe827d1947e0a49667fa69d1ff9780f3232",
+        "baseline_blob": "20f77fe827d1947e0a49667fa69d1ff9780f3232",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_multi_gateway_scan.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "baseline_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "df2570ad36884903beb409bfe4d61e1b699c1c8b",
+        "baseline_blob": "df2570ad36884903beb409bfe4d61e1b699c1c8b",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      }
+    ]
+  },
+  {
+    "id": "F-22",
+    "severity": "Low",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "BSC admin reconciliation now recognizes finalized evidence and checks the canonical receipt block. The corresponding admin branch does not uniformly apply the safe policy requested for the L2 configurations, where confirmation-depth promotion remains. The Direct-BLS runtime's safe verification is a separate, stronger path.",
+    "evidence": "Fresh admin deployment-finality and BSC/OP configuration review; E-01 chain-finality tests and E-02 runtime finality tests; E-05 deployment observations.",
+    "limits": "No presently deployed contract mismatch or invalid validator signature was demonstrated. Read-only receipt identity checks are not a proof that every admin status path uses native finality.",
+    "remediation": "Share the chain-native safe/finalized policy across admin reconciliation, pin receipt height/hash and canonical rereads, and keep provisional depth labels distinct from final approval.",
+    "title": "Admin deployment evidence uses confirmation depth as finality",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "verifyDeploymentReceipt obtains latest head/confirmations plus canonical numeric receipt block, but never requests adopted native safe/finalized head.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-ledger.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dafe0484ed5b7e3e79fb7ab018020c1504bee9d7",
+        "baseline_blob": "246a51053f86e702771c3c095cff3b4151159ac1",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-ledger.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-23",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "Exclusive deployment-intent locks can still survive an owner crash without a safe automatic owner/lease recovery protocol. Related operator locks require conservative recovery; age alone cannot prove that no transaction is in flight.",
+    "evidence": "Fresh admin intent/journal/locking source review and E-01 deployment recovery tests.",
+    "limits": "No lock was deleted or service restarted. This is bounded operational availability, not authority to discard an uncertain deployment or duplicate a nonce.",
+    "remediation": "Provide explicit stale-owner verification and journal-preserving recovery. Preserve exact signed bytes, nonce and hash; never delete a lock solely because it is old.",
+    "title": "Orphaned deployment locks require careful manual recovery",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Exclusive intents.lock file has no persisted owner lease; a killed process can leave it while finally cleanup never executes.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-intents.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "baseline_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-intents.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-24",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "The paid-fee backfill still constructs an event without the complete message/source-transaction identity required by verified storage. Error handling can hold progress instead of producing the intended independently bound record. The unrelated indexed open-count change does not repair this path.",
+    "evidence": "Fresh backfillPaidFeeTax/storeVerifiedOperation call-site review and source comparison.",
+    "limits": "No fabricated verified record or stolen fee was demonstrated. The present audit does not claim a new actual-database backfill reproduction.",
+    "remediation": "Pass the verified row's message ID and source transaction hash into the stored event and add a successful-store regression with real schema constraints.",
+    "title": "Verified paid-fee backfill still omits required event identity",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Backfill event lacks messageId/txHash required by storeVerifiedOperation provenance guard.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-25",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "Dense event windows still lack complete adaptive splitting/progress in the affected indexer path. Retrying the same overfull range can hold the cursor. Node-side bounded scans elsewhere do not close this distinct indexer cause.",
+    "evidence": "Fresh indexer window/cursor review and E-01 worker tests; unchanged relevant dependency paths recorded.",
+    "limits": "No dense Mainnet load was generated. The safety-preserving held cursor is preferable to silently skipping logs, but remains an availability limit.",
+    "remediation": "Split bounded ranges adaptively and define a safe dense-single-block strategy. Advance only after complete canonical processing, retaining uncertainty rather than dropping records.",
+    "title": "Dense event windows lack adaptive progress",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "Oversized bounded event windows fail before commit and are retried at the same cursor/window width instead of adaptively splitting.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "baseline_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-26",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "The corrected exact active source/route-pair selection precedes the batch limit, preventing unrelated unknown-route rows from occupying all selected work. The original query-level starvation cause remains removed.",
+    "evidence": "Fresh source comparison and E-01 exact-pair fairness regression; prior actual PostgreSQL negative/positive evidence remains inherited where not newly repeated.",
+    "limits": "Other provider waits and dense-window limits remain separately tracked. This closure is not an unlimited throughput guarantee.",
+    "remediation": "Retain exact-pair filtering before LIMIT and the unrelated-row starvation regression.",
+    "title": "Unknown route rows can starve background delivery refresh",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Medium",
+    "original_cause": "Historical SQL applied LIMIT before filtering active source/route pairs, letting retired or cross-product rows crowd out valid delivery checks.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/002_transfer_operations.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "3d1aeb524f6015108a752c1109ec6041bbc2d075",
+        "baseline_blob": "3d1aeb524f6015108a752c1109ec6041bbc2d075",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/002_transfer_operations.sql"
+      }
+    ]
+  },
+  {
+    "id": "F-27",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Versioned build/linker identity controls remain corrected, and both observed XGR endpoints expose nonempty v3.5.0 client strings. The new release workflows preserve explicit revision/version checks.",
+    "evidence": "Fresh source/workflow review, E-02 build and E-05 client responses; canonical activation documentation is contextual evidence.",
+    "limits": "A nonempty version string is not a binary checksum. The observed Go toolchain string differs from the documented published asset toolchain; that traceability gap is explicitly retained in the companion review, without reopening the old empty-field cause.",
+    "remediation": "Maintain nonempty version/commit checks and compare actual installed executable hashes with the intended release in ordinary operations.",
+    "title": "Published CLI version fields are empty despite valid embedded VCS data",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Informational",
+    "original_cause": "The former release workflow passed linker targets for an obsolete module path, leaving four product CLI version fields empty despite valid embedded Go VCS metadata.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": ".github/workflows/release.yml",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "baseline_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/.github/workflows/release.yml"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "versioning/versioning.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "baseline_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/versioning/versioning.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "command/version/version.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "baseline_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/command/version/version.go"
+      }
+    ]
+  },
+  {
+    "id": "F-28",
+    "severity": "Informational",
+    "status": "OPEN",
+    "assessment": "The XITA compiler remains the recorded optimized via-IR Solidity 0.8.24 build. Fresh compilation/runtime provenance checks are positive, but they do not establish semantic equivalence or close a project-specific compiler applicability question. No historical unverified advisory identifier is adopted as a verified fact.",
+    "evidence": "Frozen foundry settings, E-06 build/import/constructor checks and E-05 runtime identity observations.",
+    "limits": "No project miscompilation, affected official advisory trigger or principal-loss path was demonstrated. Node staking's separately pinned Solidity 0.8.30 is a different artifact set.",
+    "remediation": "Keep this an assurance task. Qualify a specific official issue and exact trigger/settings before asserting exposure; use targeted equivalence or corrected-build evidence rather than ordering redeployment from an unverified historical claim.",
+    "title": "Compiler advisory applicability remains an assurance gap",
+    "prior_severity": "Informational",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Informational",
+    "original_cause": "The historical review left a project-specific compiler-equivalence/applicability question open for the Solidity 0.8.24 optimized via-IR artifacts. The old historical register included an advisory identifier; this audit does not adopt that identifier or its alleged affected-version range as a newly verified official fact.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "foundry.toml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "baseline_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/foundry.toml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "id": "F-29",
+    "severity": "Medium",
+    "status": "OPEN",
+    "assessment": "Membership/governance transaction submission retains unbounded remote wait paths outside the repaired sponsor helper. A slow external provider can prevent complete worker shutdown/progress. The possession migration does not repair these unchanged submission dependencies.",
+    "evidence": "Fresh worker/txrelayer/client call-graph inspection and exact-source comparison.",
+    "limits": "No forced production provider outage or node shutdown was performed. An outer timer alone cannot safely roll back a send whose outcome is unknown.",
+    "remediation": "Carry bounded contexts through preflight, submission and receipt waits; test complete Worker.Close termination while preserving original transaction and nonce identity for uncertain sends.",
+    "title": "Membership and governance submission RPC remains unbounded",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "Read-side witness RPC gained deadlines and worker-scope cancellation, but external membership and governance submissions construct a separate legacy transaction relayer. Its receipt timeout controls the interval between polls, not a bound on each preflight/send/receipt network call.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/client.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "baseline_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/client.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_governance_submit.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "baseline_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_governance_submit.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "txrelayer/txrelayer.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "baseline_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/txrelayer/txrelayer.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance_execute.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "baseline_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance_execute.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/ibft.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "ba58725d2088aa95b1f9cbe27a63a906758604db",
+        "baseline_blob": "be450bb47c9ab3978f3aae6a926e915c95a4292f",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/ibft.go"
+      }
+    ]
+  },
+  {
+    "id": "F-30",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Delayed-grant monitoring continues to use immutable creation age rather than mutable retry/heartbeat timestamps. The required status-reader privilege is now also repaired under F-06.",
+    "evidence": "Fresh source review, E-01 age regressions and E-03 actual restricted monitor query execution.",
+    "limits": "Actual production alert delivery and aged journal contents were not inspected. Those operational checks do not reopen the resolved age-predicate defect.",
+    "remediation": "Retain immutable-age predicates and validate installed alert delivery using existing sanitized/synthetic monitoring evidence.",
+    "title": "Reconciliation refresh suppresses delayed-grant monitoring",
+    "prior_severity": "RESOLVED",
+    "prior_disposition": "VERIFIED / RESOLVED",
+    "historical_severity": "Medium",
+    "original_cause": "Retry scheduling refreshed updated_at while both delayed-grant and paid-commitment diagnostics used updated_at as the fifteen-minute age predicate, hiding old unresolved payouts after every retry.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-obligation-audit.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "baseline_blob": "e6a110f3c50f8a33d705f8209de2a987169325f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-obligation-audit.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-obligation-audit.pg.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d9e0de8ab58b8470133db4a2aa7a92f079a382a2",
+        "baseline_blob": "d9e0de8ab58b8470133db4a2aa7a92f079a382a2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-obligation-audit.pg.test.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-31",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "An explicit destination receipt failure can still coexist with a retained submitted/pending stage and misleading waiting wording. The delta's transfer-selection and copy changes do not consistently give the failure state precedence.",
+    "evidence": "Fresh transfer status/flow source review and E-01 existing presentation tests; no new wallet transaction was submitted.",
+    "limits": "The original source evidence should remain valid; a failed destination execution is not a reason to repeat the source lock. This is presentation/recovery guidance rather than message authorization.",
+    "remediation": "Prioritize authenticated destination failure and offer only the appropriate destination retry while preserving source transaction/message identity.",
+    "title": "A failed destination receipt can retain transaction-submitted wording",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Low",
+    "original_cause": "The retained first-delivery-pending stage outranks a failure notice after destination receipt failure; the UI renders submitted/do-not-resubmit wording despite failed result.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/app.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6a7a574b69add225a6783524cdc2c8a78291dd46",
+        "baseline_blob": "c37949090267f891493079dbcc41a4fa7d973260",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/app.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-status-flow.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "01fdf4bda558b0ac97c7d0050a6c3325d21e69fb",
+        "baseline_blob": "e294fb7820cb2039152ab3dd67ff5bd74c7be245",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-status-flow.js"
+      }
+    ]
+  },
+  {
+    "id": "F-32",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "Unverified unknown-route request directories now have global admission/retention bounds and expiry cleanup. Verified votes and unfinished authenticated recovery evidence are not swept under the unverified-hint policy. The original permanent unbounded request-storage cause is removed.",
+    "evidence": "Fresh JSON-RPC/storage policy review; E-02 package tests and E-04 three repeated JSON-RPC/runtime runs including bound/expiry/churn controls.",
+    "limits": "This is not a general guarantee against every local disk exhaustion or expensive peer workload. Those broader resource boundaries remain F-03/F-04.",
+    "remediation": "Retain bounded unverified admission and age-based cleanup tests, including restart behavior and preservation of authenticated work.",
+    "title": "Expired unverified route hints leave permanent per-message request storage",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "Medium",
+    "original_cause": "An unauthenticated unknown-route quorum request allocates both a discovery hint and a per-message request directory before canonical route admission. Hint expiry/rejection removes only the hint, while background request cleanup traverses known routes only.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-node",
+        "path": "jsonrpc/xgr_iln_quorum.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "b113be5e1410c167516fdeb487d8a2e91cc99a2f",
+        "baseline_blob": "8b9cc0875f9519a3fc743c391784fc845471c34b",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/jsonrpc/xgr_iln_quorum.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_quorum_request.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "baseline_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_quorum_request.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_storage.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1104e7c13a5cd9bb9dfb39d745c3219dfc3c7300",
+        "baseline_blob": "3ee01dfcd9ee581108804de28caee51794cfcb39",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_storage.go"
+      }
+    ]
+  },
+  {
+    "id": "F-33",
+    "severity": "RESOLVED",
+    "status": "VERIFIED / RESOLVED",
+    "assessment": "The raced recovery inspector now returns read-only observations/action descriptors. Only the still-active caller may pass bounded rechecks and broadcast the original signed bytes. The controlled slow-read regression verifies that resolving an old timed-out read cannot newly start the payout effect.",
+    "evidence": "Fresh source call-graph review and E-01 effect-boundary/timeout tests. Exact-byte and uncertain-send ownership remain enforced.",
+    "limits": "Cancellation is not rollback of a broadcast already started, and a last-read-to-mining race is not claimed eliminated. The closure addresses the original asynchronous callback that initiated a new effect after timeout.",
+    "remediation": "Preserve the read/effect separation and negative late-resolution tests; keep uncertain sends durable. Do not wrap effectful callbacks in a timeout race as an apparent simplification.",
+    "title": "Timed-out sponsor recovery can initiate a late prepared payout",
+    "prior_severity": "Medium",
+    "prior_disposition": "OPEN",
+    "historical_severity": "NEW",
+    "original_cause": "Prepared-transaction recovery added a broadcast side effect inside a callback still raced as read-only. Promise.race times out its caller but never cancels the underlying callback. The destination-delivery gate precedes a potentially delayed nonce/transaction lookup; a late callback can initiate a send after the caller reported the work held and after independent destination completion.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-34",
+    "severity": "Low",
+    "status": "OPEN",
+    "assessment": "Recovered inclusion and provisional spendable projection are still not uniformly synchronized with durable submitted identity and later canonical evidence. A reserved row can retain incomplete transaction projection, and a provisional marker can outlive disproven inclusion.",
+    "evidence": "Fresh sponsor recovery/projection source review; E-01 relevant tests are positive controls but do not establish closure of the remaining branches.",
+    "limits": "Provisional spendability is distinct from final settlement. No duplicate payout or principal loss is asserted merely from a stale projection.",
+    "remediation": "Persist recovered transaction identity/submitted transition atomically, and downgrade disproven provisional inclusion without deleting the underlying obligation or reassigning its nonce.",
+    "title": "Provisional spendable state diverges from recovered or current receipt evidence",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "NEW",
+    "original_cause": "The new spendable_at marker lacks complete state transitions: crash-recovered canonical inclusion sets the marker while leaving the grant reserved with its tx_hash still NULL despite the durable prepared hash, whereas a later absent or noncanonical receipt leaves an old submitted grant marker intact. Public projection recognizes submitted+marker but cannot distinguish historical from current inclusion.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/015_sponsor_spendable_receipt.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "67f8f46771962cf10a125b764fd771a09350eff4",
+        "baseline_blob": "67f8f46771962cf10a125b764fd771a09350eff4",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/015_sponsor_spendable_receipt.sql"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-actions.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "baseline_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-actions.js"
+      }
+    ]
+  },
+  {
+    "id": "F-35",
+    "severity": "Low",
+    "status": "PARTIALLY_MITIGATED",
+    "assessment": "The onward optional gas observer now skips the addressed out-of-scope case, but the delivery observer can still hold an entire range on missing/unmatched optional data. A fix to one sampling cursor does not close both paths.",
+    "evidence": "Fresh comparison of onward and delivery observer control flow; E-01 gas observer tests cover their stated path only.",
+    "limits": "This is optional statistical sampling, separate from authenticated main transfer/debt cursors. No authorization weakening is recommended to obtain metric progress.",
+    "remediation": "Give both optional observers bounded independent progress while retaining accepted-sample verification. Test missing profiles/unmatched operations without advancing mandatory financial cursors unsafely.",
+    "title": "An out-of-scope record can indefinitely stall optional gas observation",
+    "prior_severity": "Low",
+    "prior_disposition": "OPEN",
+    "historical_severity": "NEW",
+    "original_cause": "The delivery gas observer scans a shared Mailbox but requires every accepted-looking event in the window to have one catalog-indexed delivered operation and a known gas profile before advancing its cursor. Permanently out-of-scope events are treated like temporary evidence gaps. The onward observer likewise stops at the first unprofileable child row.",
+    "new_finding": false,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/gas-observer.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ca8768865bea2866a4dc2758be9b22fe8da79921",
+        "baseline_blob": "26db879618069319a4ad37ba5c387cbbba6ee42a",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/gas-observer.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XETATokenFactoryV315.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "3ce5d255d9124f1e71c7837e85253176da86870c",
+        "baseline_blob": "3ce5d255d9124f1e71c7837e85253176da86870c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XETATokenFactoryV315.sol"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "baseline_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/route-availability.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "17c1b074c711864c466f56a06a02347d45b3f0a9",
+        "baseline_blob": "17c1b074c711864c466f56a06a02347d45b3f0a9",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/route-availability.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-gas-profile.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "343830a1a3f26c46b2d4f7e1d5e973e8dfd07819",
+        "baseline_blob": "343830a1a3f26c46b2d4f7e1d5e973e8dfd07819",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-gas-profile.js"
+      }
+    ]
+  },
+  {
+    "id": "F-36",
+    "title": "Creator queue lacks per-item failure isolation",
+    "severity": "Medium",
+    "status": "OPEN",
+    "cause": "An admitted, email-confirmed request can remain unprocessable by the deployment worker while occupying the first work position.",
+    "assessment": "An independent isolated reproduction accepted and confirmed a request, then observed three blocked worker sweeps with no healthy sibling progress. A controlled positive fixture demonstrated that otherwise valid work can progress. Two validation-boundary variants share this same missing isolation cause and are counted once.",
+    "evidence": "E-07 protected Creator reproduction/result hashes; real registration and worker code with mocked RPC/mail effects. Zero real broadcasts.",
+    "limits": "No unauthorized token ownership, minting or principal theft was demonstrated. Detailed unresolved input recipes and executable fixtures are withheld from public publication. Test-fixture removal is not a production recovery instruction.",
+    "remediation": "Reject unprocessable configurations before admission, isolate each item's bounded failure/backoff/quarantine and continue healthy work. Preserve all uncertain signed deployment identities and add negative/positive queue-progress tests.",
+    "paths": [
+      "services/onboarding/creator-registration.mjs",
+      "services/onboarding/creator-operator.mjs",
+      "contracts/XITAStarterTokenCreator.sol"
+    ],
+    "prior_severity": "NEW",
+    "prior_disposition": "NEW",
+    "historical_severity": "Medium",
+    "original_cause": "An admitted, email-confirmed request can remain unprocessable by the deployment worker while occupying the first work position.",
+    "new_finding": true,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/onboarding/creator-registration.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "7880de6df590b90e6f14d4fa53d0d5bea6c699d6",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/onboarding/creator-registration.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/onboarding/creator-operator.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "56260b3babd1c008f51cea8bb0eca79a68259998",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/onboarding/creator-operator.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XITAStarterTokenCreator.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "a00cbd3831920b8bfec114c9a1676517f8380310",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XITAStarterTokenCreator.sol"
+      }
+    ]
+  },
+  {
+    "id": "F-37",
+    "title": "Contact retention can remove unresolved Creator deployment evidence",
+    "severity": "Low",
+    "status": "OPEN",
+    "cause": "Financial recovery identity shares a deletion lifecycle with an expiring private contact record.",
+    "assessment": "A clock-controlled isolated test observed an unresolved deployment-submitted record, including signed recovery identity, removed when the configured long contact-retention period expired. Durable nonce/transaction recovery should not depend on retaining personal contact data indefinitely.",
+    "evidence": "E-07 protected Creator retention reproduction and source review of private storage/operator recovery.",
+    "limits": "The default long retention period is a material prerequisite. No real production record was removed, and no duplicate send or nonce reuse was demonstrated.",
+    "remediation": "Separate contact/PII retention from immutable unresolved deployment evidence. Purge recovery state only after authenticated terminal completion and retain minimal nonpersonal identity until then.",
+    "paths": [
+      "services/onboarding/private-store.mjs",
+      "services/onboarding/creator-operator.mjs"
+    ],
+    "prior_severity": "NEW",
+    "prior_disposition": "NEW",
+    "historical_severity": "Low",
+    "original_cause": "Financial recovery identity shares a deletion lifecycle with an expiring private contact record.",
+    "new_finding": true,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/onboarding/private-store.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "93dd7456c777b6e2020df043fe8701a47986017a",
+        "baseline_blob": "93dd7456c777b6e2020df043fe8701a47986017a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/onboarding/private-store.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/onboarding/creator-operator.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "56260b3babd1c008f51cea8bb0eca79a68259998",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/onboarding/creator-operator.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-38",
+    "title": "Creator child-token proof comparison omits canonical block identity",
+    "severity": "Low",
+    "status": "OPEN",
+    "cause": "The proof projection compared between witnesses does not retain all receipt block-identity information used by the underlying observations.",
+    "assessment": "An independent injected-RPC test accepted two differing receipt block identities after they collapsed to the same child-token proof projection. Token address/owner/supply checks remain; the defect is narrower canonical provenance, not demonstrated token forgery. The separate factory deployment verifier has stronger block binding.",
+    "evidence": "E-07 protected witness-projection reproduction; fresh child-token versus factory verification source comparison.",
+    "limits": "No fabricated token or unauthorized owner was demonstrated. Two endpoints are still not a cryptographic light client or proof of infrastructure independence.",
+    "remediation": "Compare chain, block height and block hash in the verified child proof and require canonical numbered-block rereads before promotion. Retain all token feature/runtime checks.",
+    "paths": [
+      "services/onboarding/creator-chain-proof.mjs"
+    ],
+    "prior_severity": "NEW",
+    "prior_disposition": "NEW",
+    "historical_severity": "Low",
+    "original_cause": "The proof projection compared between witnesses does not retain all receipt block-identity information used by the underlying observations.",
+    "new_finding": true,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/onboarding/creator-chain-proof.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6907d32234b1c01c436e5d51a20beabae9d8ca71",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/onboarding/creator-chain-proof.mjs"
+      }
+    ]
+  },
+  {
+    "id": "F-39",
+    "title": "Mintable Creator presentation retains a no-additional-minting label",
+    "severity": "Informational",
+    "status": "OPEN",
+    "cause": "A constant user-facing label is not derived from the selected validated token feature configuration.",
+    "assessment": "A fresh rendering assertion shows the no-additional-minting label for a mintable token while the advanced fields also disclose mint permissions and the cap. The result is contradictory presentation, not an authorization bypass.",
+    "evidence": "E-07 protected presentation assertion/result hashes and current Creator UI source.",
+    "limits": "Owner/minter controls and lifetime cap tests pass. No unauthorized mint was demonstrated.",
+    "remediation": "Derive the summary label from the validated token type and render every fixed/burnable/mintable variant in regression tests.",
+    "paths": [
+      "apps/web/token-creator.js"
+    ],
+    "prior_severity": "NEW",
+    "prior_disposition": "NEW",
+    "historical_severity": "Informational",
+    "original_cause": "A constant user-facing label is not derived from the selected validated token feature configuration.",
+    "new_finding": true,
+    "source_refs": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/token-creator.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8d8059a35fed755e77f3fd515155f47b20f9a5ca",
+        "baseline_blob": null,
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/token-creator.js"
+      }
+    ]
+  }
+]

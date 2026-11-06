@@ -1,0 +1,13 @@
+✔ native XGR route passes read-only contract, registry, reverse-router and fee checks (54.372553ms)
+✔ collateral token does not require operator to own or approve any original ERC20 (17.566587ms)
+✔ destination rejecting the origin route blocks readiness before a user lock (8.890521ms)
+✔ unexpected runtime bytecode blocks readiness despite correctly shaped catalog receipts (5.430575ms)
+✔ catalog verification requires the bidirectional real deployed route (9.656024ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 587.583646

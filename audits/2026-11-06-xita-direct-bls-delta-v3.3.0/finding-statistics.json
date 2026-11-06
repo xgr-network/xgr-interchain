@@ -1,0 +1,34 @@
+{
+  "current": {
+    "RESOLVED": 10,
+    "Medium": 11,
+    "Low": 15,
+    "Informational": 3,
+    "Critical": 0,
+    "High": 0
+  },
+  "total": 39,
+  "previous": {
+    "Medium": 14,
+    "Low": 12,
+    "Informational": 2,
+    "RESOLVED": 7,
+    "Critical": 0,
+    "High": 0
+  },
+  "new_ids": [
+    "F-36",
+    "F-37",
+    "F-38",
+    "F-39"
+  ],
+  "newly_resolved": [
+    "F-06",
+    "F-32",
+    "F-33"
+  ],
+  "downgraded_not_closed": [
+    "F-04"
+  ],
+  "counting": "Unique current XITA causes; no duplicate historical occurrences or companion legacy cause added."
+}

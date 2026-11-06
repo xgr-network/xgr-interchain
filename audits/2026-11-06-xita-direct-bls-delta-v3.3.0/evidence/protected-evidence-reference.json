@@ -1,0 +1,24 @@
+{
+  "phase_a_master_sha256": "24618adefa6ac2955c45de21a3121e49fd84cadb333b6d8c6613ff0b2779c320",
+  "files": [
+    {
+      "file": "creator-negative-tests.mjs",
+      "sha256": "3fe718ce3a57fdd8e31e760841c9ff022d592455b7fe82d25d402398d03053be"
+    },
+    {
+      "file": "creator-negative-results.json",
+      "sha256": "46e6f029c33a87e9a3fc9c1fdfc42e8ec37fa7f26ec28b1bf852998f6a36f9e9"
+    },
+    {
+      "file": "presentation-check.mjs",
+      "sha256": "caa8123538c3e3c0fc147c53bddabc1b3e0dc00b60760ff54bf39b6ff6ad5c2f"
+    },
+    {
+      "file": "presentation-result.json",
+      "sha256": "20dc242c993c71c4a9bf658f232c9127a5ce1869a1a8344edbb389f272ad17b9"
+    }
+  ],
+  "availability": "Operator-confidential conversation evidence, not public CI/repository artifacts. Hashes establish identity, not external escrow or access for third parties.",
+  "public_derivative": "phase-a-publication.md",
+  "limits": "Unresolved executable triggers are deliberately not published."
+}

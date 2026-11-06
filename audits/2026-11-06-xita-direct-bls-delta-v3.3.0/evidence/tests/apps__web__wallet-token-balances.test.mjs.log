@@ -1,0 +1,49 @@
+✔ ARB Arbitrum source reads the original ERC-20 contract and labels balance ARB, not wARB (3.679415ms)
+✖ BSC and XGRChain synthetic ARB use the receipt-backed router and wARB symbol (1.543336ms)
+✖ absent or conflicting source representation fails closed instead of inventing token identity (1.252268ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 63.11506
+
+✖ failing tests:
+
+test at apps/web/wallet-token-balances.test.mjs:27:1
+✖ BSC and XGRChain synthetic ARB use the receipt-backed router and wARB symbol (1.543336ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/wallet-token-balances.test.mjs:38:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at apps/web/wallet-token-balances.test.mjs:42:1
+✖ absent or conflicting source representation fails closed instead of inventing token identity (1.252268ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - 'unavailable'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/wallet-token-balances.test.mjs:48:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'unavailable',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

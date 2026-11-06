@@ -1,0 +1,9 @@
+a84c82737dc3ca195192a96498eab0e170f8bb5a	2026-11-05T20:30:52+01:00	docs: update v3.5.0 baseline and automatic staking BLS possession
+b3717a44b5ec5faa19fabdd88bd4b91f54659983	2026-11-04T11:45:10+01:00	Merge commit from fork
+0d9aca695c49784da64736d78620cc1bba4f7daa	2026-10-31T16:11:36+01:00	feat(v3.4.3): receipt-pinned Optimism policy and Interchain light release workflow (#88)
+8a3737f6656c132c0da6b0029d081bf976f27b68	2026-10-30T11:04:13+04:00	ci(release): targeted F-04 F-20 F-32 light release v3.4.2 (#87)
+6ea099de91b9b73996e1c81079a31b33c4792d18	2026-10-30T11:00:36+04:00	fix(v3.4.2): restore fair observer retries, retain undelivered evidence and cap unverified request storage (#82)
+4c1bd99d943999c44dd1141fe69a4048d77fcc1b	2026-10-30T09:18:08+04:00	fix(v3.4.1): restore focused light-release tests and correct build version metadata (#86)
+02245839df43c9c1d75cb9c3b9bb67af1e46a485	2026-10-30T00:30:27+04:00	fix(v3.4.1): allow previously reviewed operator documentation in light-release scope (#85)
+19ad376ef345ed3f88b939c79cb769117146f1cc	2026-10-30T00:04:56+04:00	release(v3.4.1): prepare guarded BSC Direct-BLS light release (#84)
+3c90dd07189465171e2e4bec498ed2236023589d	2026-10-29T23:38:04+04:00	feat(v3.4.1): bind deployed BSC contracts and finalized policy (#83)

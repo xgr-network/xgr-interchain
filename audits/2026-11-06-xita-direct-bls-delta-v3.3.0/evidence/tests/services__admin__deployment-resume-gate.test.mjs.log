@@ -1,0 +1,13 @@
+✔ asset batch uses the existing server-side nonce and receipt recovery before signing (3.787338ms)
+✔ a previous submitted transaction stays pending; never interpreted as permission to resend (0.415065ms)
+✔ a recovered confirmed contract is documented without a new wallet request (4.225669ms)
+✔ chain batch shares the exact same continuation gate (0.284929ms)
+✔ missing, failed or malformed recovery does not authorize a new signature (1.381562ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 274.819296

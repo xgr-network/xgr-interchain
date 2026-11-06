@@ -1,0 +1,10 @@
+✔ sponsor/fee claim must refuse unresolved signed Creator tx even if RPC mempool is empty (1.895447ms)
+✔ Creator wallet guard is fail-closed for bad private journal paths and evidence (0.347063ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.123135

@@ -1,0 +1,12 @@
+✔ receipt-only sync may finish after the old 16-second UI limit (6.480528ms)
+✔ unrelated code main is not accepted as expected receipt commit (3.478302ms)
+✔ failures are explicit and no new transaction is sent (0.380344ms)
+✔ operator Pause stops sync polling without throwing (0.175855ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 236.866958

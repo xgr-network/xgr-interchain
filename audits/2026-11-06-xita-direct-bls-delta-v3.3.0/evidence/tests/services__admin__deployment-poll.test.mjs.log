@@ -1,0 +1,11 @@
+✔ transient pending receipts are recovered without new broadcast (1.009611ms)
+✔ expiry remains pending, never asks to rebroadcast (0.256447ms)
+✔ hard reconcile errors propagate, never create another transaction (0.477019ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 110.061597

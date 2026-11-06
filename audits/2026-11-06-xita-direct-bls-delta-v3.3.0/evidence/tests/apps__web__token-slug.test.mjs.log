@@ -1,0 +1,12 @@
+✔ Token Holder does not choose a slug, ARB URL is generated from public identity (1.279058ms)
+✔ Existing profile URLs remain reserved; fallback stays stable (0.48427ms)
+✔ URL-safe transliteration, long names, symbols and incomplete preview (1.281501ms)
+✔ Slug cannot be supplied by an applicant (0.161754ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.395581

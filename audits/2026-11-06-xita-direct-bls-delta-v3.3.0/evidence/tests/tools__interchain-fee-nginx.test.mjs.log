@@ -1,0 +1,14 @@
+✔ add exact fee quote and status, not a broad public signer proxy (2.978069ms)
+✔ upgrade existing signer location with trusted client IP, reject spoofable headers (2.40798ms)
+✔ reject unsafe existing quote route or duplicate and wrong host (0.462177ms)
+✔ exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whitelisted once in CSP (0.610641ms)
+✔ keyless preview installs only POST /preview on isolated 4093, not signer on 4092 (0.305871ms)
+✔ later fee signer route setup keeps preview isolated and existing signer proxy (0.216376ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.815376

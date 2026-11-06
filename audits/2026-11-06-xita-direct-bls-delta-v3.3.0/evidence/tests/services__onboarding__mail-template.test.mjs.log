@@ -1,0 +1,10 @@
+✔ mail template escapes untrusted token names and keeps links restricted (4.477339ms)
+✔ verified Creator contract explorer link is allowed, unrelated URLs are not (0.438381ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.609509

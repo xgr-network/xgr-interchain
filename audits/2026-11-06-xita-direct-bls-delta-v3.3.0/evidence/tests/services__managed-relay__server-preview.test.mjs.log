@@ -1,0 +1,13 @@
+✔ preview-only mode reads public catalog and answers health without a signer (4.765543ms)
+✔ preview-only mode refuses signed quotes before even parsing a transfer (0.368496ms)
+✔ unsigned preview endpoint is explicitly routed but requires a valid request (8.140009ms)
+✔ new receipt-backed Arbitrum route and adapter become visible without restarting preview service (9.32084ms)
+✔ adapter discovery supports any future configured chain, without editing service source (1.26032ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 410.35634

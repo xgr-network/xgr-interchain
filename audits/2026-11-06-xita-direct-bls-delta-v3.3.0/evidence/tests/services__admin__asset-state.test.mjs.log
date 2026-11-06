@@ -1,0 +1,12 @@
+✔ native XGR has deterministic canonical asset ID (42.877133ms)
+✔ all configured XGR routes remain attached to ONE asset and one deployment index (15.708554ms)
+✔ cannot silently treat existing config as evidence of a deployment (9.73437ms)
+✔ global asset routers are reused across two independently registered route directions (3.104068ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 203.374092

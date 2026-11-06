@@ -1,0 +1,57 @@
+✖ only receipt-backed synthetic token with valid chain metadata is importable (4.163694ms)
+✖ wallet watchAsset never requests accounts or signs and only switches chains on explicit click (1.562855ms)
+✔ wrong network, invalid address and rejected switches never send wallet_watchAsset (0.826004ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 1
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108.332301
+
+✖ failing tests:
+
+test at apps/web/metamask-token.test.mjs:8:1
+✖ only receipt-backed synthetic token with valid chain metadata is importable (4.163694ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '0xd7443427ca21ae0907d2aa55446470307c990092'
+  - '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/metamask-token.test.mjs:10:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '0xd7443427ca21ae0907d2aa55446470307c990092',
+    expected: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at apps/web/metamask-token.test.mjs:23:1
+✖ wallet watchAsset never requests accounts or signs and only switches chains on explicit click (1.562855ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   address: '0xd7443427ca21ae0907d2aa55446470307c990092',
+  -   address: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d',
+      decimals: 18,
+      symbol: 'wXGR'
+    }
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/metamask-token.test.mjs:32:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { address: '0xd7443427ca21ae0907d2aa55446470307c990092', symbol: 'wXGR', decimals: 18 },
+    expected: { address: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d', symbol: 'wXGR', decimals: 18 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

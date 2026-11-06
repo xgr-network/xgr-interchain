@@ -1,0 +1,12 @@
+✔ BSC deployment evidence is bound to finalized head and a matching numeric block (1.712842ms)
+✔ unsupported finalized tag fails closed without safe/latest fallback (0.508056ms)
+✔ malformed finalized head and canonical mismatch fail closed (1.162872ms)
+✔ a finalized policy never accepts a non-HTTPS RPC (0.569288ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 71.379647

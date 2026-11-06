@@ -1,0 +1,10 @@
+✔ OP Mainnet chain 10 has operator-independent RPCs and native safe/EIP-2537 intent (28.106085ms)
+✔ deployed OP infrastructure and XGR hub routes remain separately receipt-backed (9.590135ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.653162

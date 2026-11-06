@@ -1,0 +1,16 @@
+✔ the actual indexed 50-XGR Arbitrum-Base journey replaces stale child history (3.525533ms)
+✔ a simultaneous wallet broadcast is transient only until SQL indexes it (0.340052ms)
+✔ unknown, foreign and unverified index rows cannot enter canonical history (0.235955ms)
+✔ parent already indexed prevents active onward TX becoming a second selectable journey (0.168344ms)
+✔ verified onward receipt survives lagging SQL parent, without creating duplicate child (0.258179ms)
+✔ finalized direct BSC delivery stays complete while SQL row lags; unrelated or conflicting rows do not (0.296316ms)
+✔ pending source parent must survive an incomplete, stale or paginated SQL result (0.336477ms)
+✔ never invent a pending transfer for a different wallet or unconfirmed operation (0.123997ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 83.949315

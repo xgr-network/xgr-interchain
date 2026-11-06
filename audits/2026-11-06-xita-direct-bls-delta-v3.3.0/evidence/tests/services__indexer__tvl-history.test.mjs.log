@@ -1,0 +1,10 @@
+✔ planned or partial deployment does not block verified XGR history (2.550995ms)
+✔ hard reset with zero deployed routes removes all retained TVL history (0.218789ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.374441

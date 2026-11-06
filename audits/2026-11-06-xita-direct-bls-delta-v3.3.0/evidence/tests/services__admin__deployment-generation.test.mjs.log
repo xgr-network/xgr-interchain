@@ -1,0 +1,10 @@
+✔ pre-reset deployment WAL is ignored only with proven Git ancestry (1.063553ms)
+✔ unknown, pruned or malformed Git history cannot retire an intent (0.216346ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.513593

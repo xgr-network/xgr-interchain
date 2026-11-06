@@ -1,0 +1,13 @@
+✔ verified creator deployment creates a standalone XGR token profile with NO Interchain routes (19.230025ms)
+✔ cannot create PR from unverified, forged, or still queued creator receipt (3.721559ms)
+✔ mintable creator PR publishes exact on-chain cap, minter, decimals and permit (17.993933ms)
+✔ email-verified multiline descriptions survive receipt-backed Join PR creation without reducing validation (48.833707ms)
+✔ unverified chain-native tokens and synthetic routes cannot qualify as no-route creator profiles (45.871342ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 252.67716

@@ -1,0 +1,14 @@
+✔ Creator registration fails closed until separately enabled in Join service (32.318273ms)
+✔ unverified logo is private; confirmed email publishes sanitized permanent XITA URL exactly once (89.620204ms)
+✔ expired confirmation is rejected and no public logo appears (30.329987ms)
+✔ server rejects invalid logos and unsafe token/application parameters (61.89246ms)
+✔ server normalization retains each immutable token option and rejects invalid mint caps (22.967368ms)
+✔ real Creator registration accepts no relationship selection or duplicate acknowledgement checkbox (33.670642ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 536.863635

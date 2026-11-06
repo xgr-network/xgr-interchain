@@ -1,0 +1,1045 @@
+{
+  "utc": "2026-11-06T08:43:20.437087+00:00",
+  "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+  "node": "v24.22.2",
+  "results": [
+    {
+      "path": "apps/web/automatic-transfer-step.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "apps__web__automatic-transfer-step.test.mjs.log"
+    },
+    {
+      "path": "apps/web/browser-smoke.test.mjs",
+      "exit_code": 0,
+      "seconds": 22.2,
+      "log": "apps__web__browser-smoke.test.mjs.log"
+    },
+    {
+      "path": "apps/web/chain-finality.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.168,
+      "log": "apps__web__chain-finality.test.mjs.log"
+    },
+    {
+      "path": "apps/web/experience.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "apps__web__experience.test.mjs.log"
+    },
+    {
+      "path": "apps/web/fee-gas-projection.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "apps__web__fee-gas-projection.test.mjs.log"
+    },
+    {
+      "path": "apps/web/join.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__join.test.mjs.log"
+    },
+    {
+      "path": "apps/web/keccak.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "apps__web__keccak.test.mjs.log"
+    },
+    {
+      "path": "apps/web/leaderboard-data.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "log": "apps__web__leaderboard-data.test.mjs.log"
+    },
+    {
+      "path": "apps/web/legal.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__legal.test.mjs.log"
+    },
+    {
+      "path": "apps/web/listing-visibility.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.117,
+      "log": "apps__web__listing-visibility.test.mjs.log"
+    },
+    {
+      "path": "apps/web/metamask-token.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.175,
+      "log": "apps__web__metamask-token.test.mjs.log"
+    },
+    {
+      "path": "apps/web/publication-mainnet-regression.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.118,
+      "log": "apps__web__publication-mainnet-regression.test.mjs.log"
+    },
+    {
+      "path": "apps/web/route-availability.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.165,
+      "log": "apps__web__route-availability.test.mjs.log"
+    },
+    {
+      "path": "apps/web/source-tx-hints.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.117,
+      "log": "apps__web__source-tx-hints.test.mjs.log"
+    },
+    {
+      "path": "apps/web/sponsor-route-readiness.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__sponsor-route-readiness.test.mjs.log"
+    },
+    {
+      "path": "apps/web/system-rankings.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__system-rankings.test.mjs.log"
+    },
+    {
+      "path": "apps/web/token-creator.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__token-creator.test.mjs.log"
+    },
+    {
+      "path": "apps/web/token-inventory.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.168,
+      "log": "apps__web__token-inventory.test.mjs.log"
+    },
+    {
+      "path": "apps/web/token-representation.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "apps__web__token-representation.test.mjs.log"
+    },
+    {
+      "path": "apps/web/token-slug.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "apps__web__token-slug.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-actions.test.mjs",
+      "exit_code": 0,
+      "seconds": 4.801,
+      "log": "apps__web__transfer-actions.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-balance-refresh.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "apps__web__transfer-balance-refresh.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-flow-binding.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.171,
+      "log": "apps__web__transfer-flow-binding.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-gas-profile.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__transfer-gas-profile.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-page.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "apps__web__transfer-page.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-sponsor-evidence.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "apps__web__transfer-sponsor-evidence.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-status-flow.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.274,
+      "log": "apps__web__transfer-status-flow.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-step-timer.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.276,
+      "log": "apps__web__transfer-step-timer.test.mjs.log"
+    },
+    {
+      "path": "apps/web/transfer-token-journey.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "log": "apps__web__transfer-token-journey.test.mjs.log"
+    },
+    {
+      "path": "apps/web/universe-orbits.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "log": "apps__web__universe-orbits.test.mjs.log"
+    },
+    {
+      "path": "apps/web/universe-scene.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "apps__web__universe-scene.test.mjs.log"
+    },
+    {
+      "path": "apps/web/universe-token-layout.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "apps__web__universe-token-layout.test.mjs.log"
+    },
+    {
+      "path": "apps/web/verified-journey.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "apps__web__verified-journey.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-action-attention.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.218,
+      "log": "apps__web__wallet-action-attention.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-core.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "apps__web__wallet-core.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-gas.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "apps__web__wallet-gas.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-index-projection.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "apps__web__wallet-index-projection.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-nonce.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "apps__web__wallet-nonce.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-pending.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "apps__web__wallet-pending.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-token-balances.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.114,
+      "log": "apps__web__wallet-token-balances.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-transfer-selection.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "apps__web__wallet-transfer-selection.test.mjs.log"
+    },
+    {
+      "path": "apps/web/wallet-transfers.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.114,
+      "log": "apps__web__wallet-transfers.test.mjs.log"
+    },
+    {
+      "path": "runtime/native-relayer/gas-planner.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "runtime__native-relayer__gas-planner.test.mjs.log"
+    },
+    {
+      "path": "runtime/native-relayer/receipt-evidence.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.266,
+      "log": "runtime__native-relayer__receipt-evidence.test.mjs.log"
+    },
+    {
+      "path": "runtime/native-relayer/source-finality.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "runtime__native-relayer__source-finality.test.mjs.log"
+    },
+    {
+      "path": "runtime/native-relayer/xita-direct-codec.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.368,
+      "log": "runtime__native-relayer__xita-direct-codec.test.mjs.log"
+    },
+    {
+      "path": "services/admin/api-client.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__api-client.test.mjs.log"
+    },
+    {
+      "path": "services/admin/arbitrum-rpc-failover.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "log": "services__admin__arbitrum-rpc-failover.test.mjs.log"
+    },
+    {
+      "path": "services/admin/asset-state.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.321,
+      "log": "services__admin__asset-state.test.mjs.log"
+    },
+    {
+      "path": "services/admin/base-bootstrap-from-xgr.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.268,
+      "log": "services__admin__base-bootstrap-from-xgr.test.mjs.log"
+    },
+    {
+      "path": "services/admin/base-fee-quote.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__base-fee-quote.test.mjs.log"
+    },
+    {
+      "path": "services/admin/base-rpc-failover.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.271,
+      "log": "services__admin__base-rpc-failover.test.mjs.log"
+    },
+    {
+      "path": "services/admin/bls-bootstrap-proof.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "services__admin__bls-bootstrap-proof.test.mjs.log"
+    },
+    {
+      "path": "services/admin/bootstrap-evidence.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "log": "services__admin__bootstrap-evidence.test.mjs.log"
+    },
+    {
+      "path": "services/admin/bootstrap-suggestions.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "services__admin__bootstrap-suggestions.test.mjs.log"
+    },
+    {
+      "path": "services/admin/bootstrap.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.221,
+      "log": "services__admin__bootstrap.test.mjs.log"
+    },
+    {
+      "path": "services/admin/bsc-onboarding.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__admin__bsc-onboarding.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-finality.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.115,
+      "log": "services__admin__chain-finality.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-intent-view.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "services__admin__chain-intent-view.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-preflight.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__chain-preflight.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-reconcile.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.223,
+      "log": "services__admin__chain-reconcile.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-state.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__chain-state.test.mjs.log"
+    },
+    {
+      "path": "services/admin/chain-transaction-draft.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "services__admin__chain-transaction-draft.test.mjs.log"
+    },
+    {
+      "path": "services/admin/creator-factory-deploy.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.369,
+      "log": "services__admin__creator-factory-deploy.test.mjs.log"
+    },
+    {
+      "path": "services/admin/creator-factory-github.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__admin__creator-factory-github.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-auto-recovery.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.424,
+      "log": "services__admin__deployment-auto-recovery.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-auto-sync.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.476,
+      "log": "services__admin__deployment-auto-sync.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-batch.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "log": "services__admin__deployment-batch.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-generation.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.218,
+      "log": "services__admin__deployment-generation.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-intents.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.466,
+      "log": "services__admin__deployment-intents.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-journal.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.225,
+      "log": "services__admin__deployment-journal.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-ledger.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.267,
+      "log": "services__admin__deployment-ledger.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-parameters.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.116,
+      "log": "services__admin__deployment-parameters.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-poll.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.219,
+      "log": "services__admin__deployment-poll.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-readiness.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.368,
+      "log": "services__admin__deployment-readiness.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-resume-gate.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.426,
+      "log": "services__admin__deployment-resume-gate.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-retry.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.425,
+      "log": "services__admin__deployment-retry.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-sequence.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.474,
+      "log": "services__admin__deployment-sequence.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-sync-wait.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.369,
+      "log": "services__admin__deployment-sync-wait.test.mjs.log"
+    },
+    {
+      "path": "services/admin/deployment-wallet-transaction.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.324,
+      "log": "services__admin__deployment-wallet-transaction.test.mjs.log"
+    },
+    {
+      "path": "services/admin/destination-validator-set.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.222,
+      "log": "services__admin__destination-validator-set.test.mjs.log"
+    },
+    {
+      "path": "services/admin/factory-defaults.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.168,
+      "log": "services__admin__factory-defaults.test.mjs.log"
+    },
+    {
+      "path": "services/admin/fee-treasury.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.216,
+      "log": "services__admin__fee-treasury.test.mjs.log"
+    },
+    {
+      "path": "services/admin/forge-tooling.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "services__admin__forge-tooling.test.mjs.log"
+    },
+    {
+      "path": "services/admin/forge-vendor-runtime.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "services__admin__forge-vendor-runtime.test.mjs.log"
+    },
+    {
+      "path": "services/admin/main-gate.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.321,
+      "log": "services__admin__main-gate.test.mjs.log"
+    },
+    {
+      "path": "services/admin/no-archive-state.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.369,
+      "log": "services__admin__no-archive-state.test.mjs.log"
+    },
+    {
+      "path": "services/admin/operations-health.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "services__admin__operations-health.test.mjs.log"
+    },
+    {
+      "path": "services/admin/plan.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "services__admin__plan.test.mjs.log"
+    },
+    {
+      "path": "services/admin/reconcile-readonly.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.321,
+      "log": "services__admin__reconcile-readonly.test.mjs.log"
+    },
+    {
+      "path": "services/admin/route-factory-draft.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.423,
+      "log": "services__admin__route-factory-draft.test.mjs.log"
+    },
+    {
+      "path": "services/admin/route-lifecycle.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "log": "services__admin__route-lifecycle.test.mjs.log"
+    },
+    {
+      "path": "services/admin/route-live.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.266,
+      "log": "services__admin__route-live.test.mjs.log"
+    },
+    {
+      "path": "services/admin/sealed-artifacts.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.519,
+      "log": "services__admin__sealed-artifacts.test.mjs.log"
+    },
+    {
+      "path": "services/admin/service-wallet-rotation.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.267,
+      "log": "services__admin__service-wallet-rotation.test.mjs.log"
+    },
+    {
+      "path": "services/admin/solidity-imports.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "services__admin__solidity-imports.test.mjs.log"
+    },
+    {
+      "path": "services/admin/source-registry-recovery.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.28,
+      "log": "services__admin__source-registry-recovery.test.mjs.log"
+    },
+    {
+      "path": "services/admin/static-modules.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__static-modules.test.mjs.log"
+    },
+    {
+      "path": "services/admin/trusted-artifacts.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.168,
+      "log": "services__admin__trusted-artifacts.test.mjs.log"
+    },
+    {
+      "path": "services/admin/validator-indexer-health.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "services__admin__validator-indexer-health.test.mjs.log"
+    },
+    {
+      "path": "services/admin/validator-reference-lag.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.12,
+      "log": "services__admin__validator-reference-lag.test.mjs.log"
+    },
+    {
+      "path": "services/admin/wallet-executor.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__admin__wallet-executor.test.mjs.log"
+    },
+    {
+      "path": "services/admin/work-items.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__admin__work-items.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/coingecko.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.168,
+      "log": "services__indexer__coingecko.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/escrow-flow-24h.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__indexer__escrow-flow-24h.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/explorer-wallet-discovery.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.172,
+      "log": "services__indexer__explorer-wallet-discovery.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/finality-observer.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__indexer__finality-observer.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/gas-observer.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.366,
+      "log": "services__indexer__gas-observer.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/indexed-flow-24h.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__indexer__indexed-flow-24h.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/publication.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.226,
+      "log": "services__indexer__publication.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/route-readiness.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.724,
+      "log": "services__indexer__route-readiness.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/rpc-read.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.476,
+      "log": "services__indexer__rpc-read.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/server.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.423,
+      "log": "services__indexer__server.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-announcements.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "services__indexer__transfer-announcements.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-index-store.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.421,
+      "log": "services__indexer__transfer-index-store.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-index.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.371,
+      "log": "services__indexer__transfer-index.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-intake.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.267,
+      "log": "services__indexer__transfer-intake.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-proof-observer.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.216,
+      "log": "services__indexer__transfer-proof-observer.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/transfer-recovery.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "log": "services__indexer__transfer-recovery.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/tvl-history.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.174,
+      "log": "services__indexer__tvl-history.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/tvl-verifier.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "services__indexer__tvl-verifier.test.mjs.log"
+    },
+    {
+      "path": "services/indexer/xgr-quorum-poll.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__indexer__xgr-quorum-poll.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/creator-wallet-guard.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.165,
+      "log": "services__managed-relay__creator-wallet-guard.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/delivery.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.367,
+      "log": "services__managed-relay__delivery.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/fee-claim.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.521,
+      "log": "services__managed-relay__fee-claim.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/fee-quote.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.222,
+      "log": "services__managed-relay__fee-quote.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/gas-sponsor.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.923,
+      "log": "services__managed-relay__gas-sponsor.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/managed-index.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.57,
+      "log": "services__managed-relay__managed-index.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/managed-indexer.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.572,
+      "log": "services__managed-relay__managed-indexer.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/price-cache.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.371,
+      "log": "services__managed-relay__price-cache.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/quote-service.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.775,
+      "log": "services__managed-relay__quote-service.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/server-preview.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.521,
+      "log": "services__managed-relay__server-preview.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-funding.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.371,
+      "log": "services__managed-relay__sponsor-funding.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-obligation-audit.pg.test.mjs",
+      "exit_code": 0,
+      "seconds": 3.253,
+      "log": "services__managed-relay__sponsor-obligation-audit.pg.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-obligation-audit.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.169,
+      "log": "services__managed-relay__sponsor-obligation-audit.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-policy.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.166,
+      "log": "services__managed-relay__sponsor-policy.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-quote-atomic.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.571,
+      "log": "services__managed-relay__sponsor-quote-atomic.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/sponsor-status.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.874,
+      "log": "services__managed-relay__sponsor-status.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/tax-evidence.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.72,
+      "log": "services__managed-relay__tax-evidence.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/wallet-aware-sponsorship.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.272,
+      "log": "services__managed-relay__wallet-aware-sponsorship.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/worker.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "services__managed-relay__worker.test.mjs.log"
+    },
+    {
+      "path": "services/managed-relay/xgr-launch-fee.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.216,
+      "log": "services__managed-relay__xgr-launch-fee.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/coingecko-identity.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.167,
+      "log": "services__onboarding__coingecko-identity.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-canary.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.369,
+      "log": "services__onboarding__creator-canary.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-chain-proof.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.418,
+      "log": "services__onboarding__creator-chain-proof.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-logo-png.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.218,
+      "log": "services__onboarding__creator-logo-png.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-manifests.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.37,
+      "log": "services__onboarding__creator-manifests.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-operator.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.622,
+      "log": "services__onboarding__creator-operator.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/creator-registration.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.722,
+      "log": "services__onboarding__creator-registration.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/mail-template.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.319,
+      "log": "services__onboarding__mail-template.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/manifests.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.468,
+      "log": "services__onboarding__manifests.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/private-store.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.219,
+      "log": "services__onboarding__private-store.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/server.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.619,
+      "log": "services__onboarding__server.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/status-notifier.integration.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.269,
+      "log": "services__onboarding__status-notifier.integration.test.mjs.log"
+    },
+    {
+      "path": "services/onboarding/status-notifier.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.226,
+      "log": "services__onboarding__status-notifier.test.mjs.log"
+    },
+    {
+      "path": "tools/assert-xita-v320-compatible-deploy.test.mjs",
+      "exit_code": 1,
+      "seconds": 0.266,
+      "log": "tools__assert-xita-v320-compatible-deploy.test.mjs.log"
+    },
+    {
+      "path": "tools/auto-hub-routes.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "tools__auto-hub-routes.test.mjs.log"
+    },
+    {
+      "path": "tools/interchain-fee-nginx.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.372,
+      "log": "tools__interchain-fee-nginx.test.mjs.log"
+    },
+    {
+      "path": "tools/join-nginx.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.374,
+      "log": "tools__join-nginx.test.mjs.log"
+    },
+    {
+      "path": "tools/manage-web-release.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "tools__manage-web-release.test.mjs.log"
+    },
+    {
+      "path": "tools/manifest-layout.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.321,
+      "log": "tools__manifest-layout.test.mjs.log"
+    },
+    {
+      "path": "tools/optimism-predeploy.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.318,
+      "log": "tools__optimism-predeploy.test.mjs.log"
+    },
+    {
+      "path": "tools/probe-base-rpc.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.325,
+      "log": "tools__probe-base-rpc.test.mjs.log"
+    },
+    {
+      "path": "tools/quote-db-role.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.268,
+      "log": "tools__quote-db-role.test.mjs.log"
+    },
+    {
+      "path": "tools/stamp-xita-web-modules.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.221,
+      "log": "tools__stamp-xita-web-modules.test.mjs.log"
+    },
+    {
+      "path": "tools/stamp-xita-web-style.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.219,
+      "log": "tools__stamp-xita-web-style.test.mjs.log"
+    },
+    {
+      "path": "tools/transfer-intake-nginx.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.173,
+      "log": "tools__transfer-intake-nginx.test.mjs.log"
+    },
+    {
+      "path": "tools/transfer-recovery-nginx.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "log": "tools__transfer-recovery-nginx.test.mjs.log"
+    },
+    {
+      "path": "tools/validate-join-pr.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.371,
+      "log": "tools__validate-join-pr.test.mjs.log"
+    },
+    {
+      "path": "tools/validate-manifests.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.368,
+      "log": "tools__validate-manifests.test.mjs.log"
+    },
+    {
+      "path": "tools/validate-profile-pr.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.222,
+      "log": "tools__validate-profile-pr.test.mjs.log"
+    },
+    {
+      "path": "tools/verify-iln-route-catalog.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.217,
+      "log": "tools__verify-iln-route-catalog.test.mjs.log"
+    },
+    {
+      "path": "tools/verify-xita-roundtrip.test.mjs",
+      "exit_code": 0,
+      "seconds": 0.315,
+      "log": "tools__verify-xita-roundtrip.test.mjs.log"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+✔ hide A, select B: modal and continuation bind ONLY B (0.83571ms)
+✔ reselect original two-hop parent after another transfer preserves full destination (0.154323ms)
+✔ new transfer with no selected hash must not inherit hidden old modal (6.974667ms)
+✔ wallet switch and foreign wallet record never opens previous modal (0.348836ms)
+✔ broadcast without indexer evidence can reopen only exact wallet/session hash (0.222516ms)
+✔ unconfirmed pending source never authorizes continuation (0.153862ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.79251

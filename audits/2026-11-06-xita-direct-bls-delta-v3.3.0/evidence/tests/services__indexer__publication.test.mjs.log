@@ -1,0 +1,14 @@
+✔ null publishes documented token independently of TVL and indexer (9.99188ms)
+✔ strict greater-than in eight-decimal USD integer units (1.433741ms)
+✔ missing, stale, future, incomplete and forged TVL remain unknown under numeric threshold (0.731412ms)
+✔ one complete route publishes even if future spokes remain planned (1.373961ms)
+✔ invalid publication policy does not silently remove TVL restrictions (0.235284ms)
+✔ approved XGR creator origin stays published without DB, TVL or route receipts (0.419302ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.011853

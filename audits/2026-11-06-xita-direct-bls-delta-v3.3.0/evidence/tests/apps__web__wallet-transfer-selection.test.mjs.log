@@ -1,0 +1,12 @@
+✔ unfinished historical delivery never hijacks a new transfer implicitly (1.113368ms)
+✔ resume URL cannot accidentally start a new lock while source is unverified or completed (0.191068ms)
+✔ safe-head or RPC-unavailable wallet transfers remain resumable by original hash (0.263838ms)
+✔ only wallet-owned fully delivered resume hashes restore fresh transfer fee preview (0.205029ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 52.115196

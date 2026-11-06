@@ -1,0 +1,12 @@
+✔ all four archive methods required (4.884693ms)
+✔ 403,429 archive errors fail closed (5.255061ms)
+✔ current state is required, not an archive-state call (0.365902ms)
+✔ wrong chain fails before any historical call (0.216837ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 200.998992

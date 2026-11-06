@@ -1,0 +1,13 @@
+✔ Registry values are signed as exact component-scoped Wei, never main config (1.072386ms)
+✔ Factory accepts source-native fee only; router metadata hint is internal (0.990833ms)
+✔ malformed fee, mismatched input and reserve relationships fail before signing (1.076242ms)
+✔ validator initial reserve must be explicit and at least minimum (0.266081ms)
+✔ GmbH fee recipient, gas sponsor and quote signer share exactly ONE wallet (0.367183ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.10232

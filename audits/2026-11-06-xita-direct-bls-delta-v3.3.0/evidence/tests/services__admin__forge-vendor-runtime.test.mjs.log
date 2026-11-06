@@ -1,0 +1,10 @@
+✔ UI trusted build compiles production contracts without forge-std scripts or tests (1.747648ms)
+✔ server update provisions Hyperlane and OpenZeppelin before restarting UI (1.688926ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.620091

@@ -1,0 +1,11 @@
+✔ an empty journal does not crash the optional execution gateway modal (0.704182ms)
+✔ only the same chain and component count as an existing wallet intent (0.175625ms)
+✔ an actual submitted or confirmed hash blocks an accidental new sign (0.164447ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 55.938203

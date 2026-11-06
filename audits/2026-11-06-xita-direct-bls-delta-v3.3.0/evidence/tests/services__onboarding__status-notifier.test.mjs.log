@@ -1,0 +1,12 @@
+✔ XITA notifications arise only from merged GitHub proposal and independently validated visibility (2.83927ms)
+✔ listed and delisted history is not mistaken for a fresh deployed milestone (0.49072ms)
+✔ deployed/first-lock mail requires an executable route gate (0.154422ms)
+✔ route milestones require both directions of the canonical home route and ALL planned directions for completion (1.996289ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 133.266337

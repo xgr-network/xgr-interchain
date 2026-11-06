@@ -1,0 +1,13 @@
+✔ Arbitrum delegated execution is documented using the Factory event without historical tx lookup (30.618971ms)
+✔ same Registry event works for direct MetaMask Factory transaction (20.497725ms)
+✔ event proof rejects failed receipts and foreign Registry events (3.341437ms)
+✔ Factory.registry zero means a new wallet-confirmed Registry call is still needed (0.828199ms)
+✔ normal chain reconcile documents original Factory deployment despite unrelated latest MetaMask transaction (30.569025ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.924482

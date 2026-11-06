@@ -1,0 +1,12 @@
+✔ fee evidence and all signed quote promises commit in ONE database transaction (25.770444ms)
+✔ over-budget or duplicate nonce never exposes a partially committed grant (6.160986ms)
+✔ tampered quote nonce or fee cannot create a grant commitment (0.342165ms)
+✔ N-07 rejects an unfunded concurrently committed quote atomically (4.777641ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 456.622882

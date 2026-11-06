@@ -1,0 +1,11 @@
+✔ operator does not scan token routes: only its own ExecutionGateway emitter (0.939917ms)
+✔ operator preserves verified gateway, fee, ILN and canonical destination binding (0.189936ms)
+✔ write-ahead destination tx signing checks gas, chain ID, and fresh mailbox state (0.226912ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 249.094566

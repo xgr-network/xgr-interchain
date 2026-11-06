@@ -1,0 +1,25 @@
+{
+  "audit_id": "XITA-DBLS-2026-11-06-v3.3.0",
+  "verified_input_artifact": 13490706890,
+  "verified_input_sha256": "7d2d607b9b48fa75affde2b4be0a317aed2d1db57e0a6d700d123a46a25e1439",
+  "publication_parent": "d83313fe045671cdc5a5f259bcf852a668b28e1e",
+  "pdfs": [
+    {
+      "path": "report.pdf",
+      "pages": 19,
+      "sha256": "e203665b1b2b8a0daf49eddf05e955af7150719a25792850e5a1ec665d205138",
+      "out_of_page_text_blocks": 0,
+      "replacement_or_black_square_glyphs": 0
+    },
+    {
+      "path": "node-v3.5.0-review.pdf",
+      "pages": 4,
+      "sha256": "c2c4137c655f209dfb3bb1b1f622bd20035e0e540878f14ca8732d59c36c0c30",
+      "out_of_page_text_blocks": 0,
+      "replacement_or_black_square_glyphs": 0
+    }
+  ],
+  "temporary_workflows": "Archived as evidence and removed from active CI; final PR changes audit paths only.",
+  "operational_changes": "None. No product code, live service, transaction, deployment or production configuration changed.",
+  "later_attestation": "publication-readback.json is intentionally outside the byte manifest because it records the resulting publication commit."
+}

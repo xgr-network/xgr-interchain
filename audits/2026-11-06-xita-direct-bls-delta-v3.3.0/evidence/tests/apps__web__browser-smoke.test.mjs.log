@@ -1,0 +1,10 @@
+✔ real browser renders all XITA pages from local JSON, not an endless splash (20087.958426ms)
+✔ real browser reconnects wallet and opens pending transfer without TX input (1721.12812ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 22134.551896

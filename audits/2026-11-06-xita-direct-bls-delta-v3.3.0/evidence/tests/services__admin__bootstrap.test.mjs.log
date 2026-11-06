@@ -1,0 +1,11 @@
+✔ every main-configured chain has independent bootstrap in every lifecycle stage (29.775379ms)
+✔ the original Interchain Genesis signer set stays pinned even before public proofs are loaded (5.806472ms)
+✔ XGRChain Registry and Factory batch never receive empty constructor economics (6.34888ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 126.849729

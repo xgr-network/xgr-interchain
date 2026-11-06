@@ -1,0 +1,14 @@
+✔ official explorer request is read-only, fixed endpoint, chain-bound and paginated (1.732712ms)
+✔ wallet and documented target must match before receipt verification (1.075711ms)
+✔ adapter discovery never turns unverified explorer claim into actionable transfer (1.218397ms)
+✔ verified transfer returned only after original verifier confirms wallet and chain (0.499062ms)
+✔ DB record wins over explorer duplicate and wallet filters enforce scope (0.387384ms)
+✔ rate-limit errors do not fabricate empty canonical history (0.392531ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 101.342969

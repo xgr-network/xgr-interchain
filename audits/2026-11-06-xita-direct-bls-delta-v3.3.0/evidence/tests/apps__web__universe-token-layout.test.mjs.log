@@ -1,0 +1,13 @@
+✔ catalog-listed wrapped tokens appear without ranking or deployment receipts (1.810358ms)
+✔ hub native representation also appears without market or custody metrics (0.287934ms)
+✔ ranked items reorder catalog tokens but never filter out unranked assets or add outsiders (0.356357ms)
+✔ search filters from catalog locally even when external ranking is unavailable (0.559123ms)
+✔ at most six deterministic selectable planets are placed even for large catalogs (0.421976ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.286284

@@ -1,0 +1,12 @@
+✔ contacts stay in owner-only private storage; only token hash persists (3.998346ms)
+✔ private storage cannot default to repository or relative paths (0.611481ms)
+✔ mail gateway requires server-only config, sends no address to Github (1.198036ms)
+✔ use existing Zoho SMTP on port 465 with TLS, credentials never written to GitHub (0.757652ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130.464399
