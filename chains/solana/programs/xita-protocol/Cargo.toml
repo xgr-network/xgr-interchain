@@ -17,8 +17,3 @@ solana-program = "=2.3.0"
 borsh = { version = "=1.5.5", features = ["derive"] }
 spl-token = { version = "=7.0.0", features = ["no-entrypoint"] }
 
-[profile.release]
-overflow-checks = true
-lto = "fat"
-codegen-units = 1
-panic = "abort"
