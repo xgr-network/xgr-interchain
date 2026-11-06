@@ -158,7 +158,7 @@ export async function probeSolanaPlan(plan,{fetcher=globalThis.fetch}={}){
  return {chain:"solana",phase:"development",deploymentEnabled:false,
   independentWitnesses:rpc.filter(r=>r.healthy).length,
   rpcPreflightOK:rpc.filter(r=>r.healthy).length>=2,rpc,
-  programs:PROGRAMS.map(name=>({name,status:"not-deployed"})),
+  programs:[{name:"xitaProtocol",modules:PROGRAMS,status:"not-deployed"}],
   xgrContracts:XGR_CONTRACTS.map(name=>({name,status:"not-deployed"})),
   note:"Solana program and XGR-side adapters must be implemented/audited; RPC checks do not permit deployment."};
 }

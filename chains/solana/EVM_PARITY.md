@@ -40,7 +40,9 @@ Chain setup -> reviewed deployment artifact -> wallet-signed deployment ->
 independent code/receipt verification -> token router/representation -> route
 registration -> signed transfers -> recovery. This is a single product workflow
 with EVM and Solana *transport adapters*, not two products or governance
-models. The current Solana read-only staging panel is temporary.
+models. Solana appears as one native SVM executable with Solidity-parity Rust
+modules in the same Chain/Asset/Route Admin workflow as EVM. Native signing
+and receipt verification remain blocked until the executable is audited.
 
 No Solana transfer is approved for release until parity, adversarial security
 tests, current-set validator checks, replay, fee snapshots, 2-hop XGR topology
