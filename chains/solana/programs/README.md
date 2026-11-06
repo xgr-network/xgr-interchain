@@ -1,53 +1,55 @@
-# Native Solana program suite
+# XITA V315 — Solana-native Rust implementation
 
-Reserved for auditable Rust/SVM implementation, not Solidity/EVM bytecode.
+This workspace deliberately mirrors the **logical Solidity modules** while
+using Solana's native immutable executable and Program Derived Accounts (PDAs).
+A one-to-one **file/module structure** is feasible; a one-to-one EVM contract
+deployment topology is *not* Solana's execution model.
 
-The program suite will implement Mailbox, ValidatorRegistry, Direct-BLS
-verification, SourceRegistry, Factory, route-specific FeeVault and guarded
-SPL collateral/synthetic routers. The XGRChain counterpart will be a separate
-Solana-compatible Solidity Factory/Router/ISM/Registry family; the existing
-EVM family must not change.
+| Solidity contract | Rust module | Current implementation |
+| --- | --- | --- |
+| `XGRILNProtocol.sol` + Solana codec | `codec.rs` | Full additive Solana asset, route, signing-preimage and decimals codec; golden vectors |
+| `XETATokenFactoryV315.sol` | `factory.rs` | Permissionless creator-bound SPL collateral router and paired route/fee PDA creation |
+| `XGRILNRegistryV315.sol` | `registry.rs` | Append-only, PDA-validated route record; fee changes require future BLS |
+| `XETARouterCore.sol` + guarded routers | `router.rs` | Immutable router identity and route checks; transfer/mint gated |
+| `ILNGateway.sol` | `gateway.rs` | Explicitly disabled pending atomic source custody and fee evidence |
+| `XGRILNFeeVault.sol` | `fee_vault.rs` | PDA storage and pure historical rounding; live allocation/claim gated |
+| `XGRInterchainValidatorRegistryV3.sol` | `validator_registry.rs` | 2/3 bitmap validation; state transitions and PoP pending |
+| `XITADirectBLSISM.sol` | `direct_bls_ism.rs` | Signing preimage available, BLS verifier intentionally fail-closed |
+| EVM storage & ABI | `state.rs`, `instruction.rs`, `lib.rs` | Deterministic Borsh account storage and dispatch |
 
-Before any deployable `.so` is accepted, implement and test:
-1. Protocol-domain-separated exact message and route encoding, including
-   full 32-byte Solana accounts and 20-byte XGR EVM addresses.
-2. Current validator-set BLS quorum, proof-of-possession and replay protection.
-3. Source lock/burn + fee allocation atomicity and destination mint/unlock.
-4. Independent unsigned execution, account constraints, signer/authority
-   boundaries, rent and token decimal conversion.
-5. Pairing/hash-to-curve compute-unit measurements and adversarial vectors.
+**One executable SVM program**, multiple logical modules and PDAs for
+individual creator routers, routes, asset mints and fee vaults. The Solana
+integration inventory currently uses component names as **logical roles**;
+do NOT treat them as eight independently deployed executable programs or
+publish fabricated Program IDs.
 
-There is no executable program in this directory yet. Do not substitute an
-unreviewed standard bridge or a trusted relayer for XITA Direct-BLS.
+## Local validation — no SOL purchase
 
+From this folder, run `cargo check --workspace --all-targets` and
+`cargo test --workspace --all-targets`. These are native Rust tests and
+require Rust and crate dependencies, not a Solana RPC or a funded wallet.
+The sibling `xgr-interchain` Solidity and Node JS/Go codecs use the same
+fixed golden vectors. GitHub Actions runs a dedicated Solana Rust job.
 
-## Immutable permissionless program invariants
+## Production admission blocked
 
-- All public deployments MUST have no upgrade/close authority.
-- Wrapped SPL mint authority is a **route PDA** controlled exclusively by
-  independently verified inbound message proof; it is not revoked because
-  legitimate bridge minting must continue. Wrapped mint freeze authority is
-  None. Original SPL mint authorities belong to their original projects.
-- SPL token vaults are held by program PDAs, not any service/operator wallet.
-- New assets and routes are registered by any actor satisfying protocol
-  prerequisites; no allowlist, manual approval or unilateral pause/fee setter.
-- Changes in validator membership follow authenticated existing XGR quorum
-  rules; no separate GmbH validator registry owner.
-- No mutable configuration must permit redirection of escrow, verifier,
-  route identity, recipient or mint authority by an operator.
-- A security fix requires new immutable deployment and voluntary adoption;
-  no silent upgrade or forced migration of an existing immutable route.
+This is **NOT a functional bridge and must not be deployed on mainnet**.
+On-chain SPL collateral escrow and synthetic mint/burn, the fee-qualified
+dispatch, independent finalized source proof, current-set BLS verification
+and validator governance, replay protection, native fee claims, audited
+Solana wallet deployment and on-chain message handling remain required.
 
+The only executable instructions create *non-transferable initialization
+records*. They do not lock, mint, unlock, dispatch, charge bridge fees,
+alter validator sets or accept untrusted proof bytes as authorization.
+There is no owner/pause/upgrade admin in the Rust instruction set. The
+Solana program Upgrade Authority must be permanently revoked before any
+production route activation (see `chains/solana/deploy/README.md`).
 
-## Required EVM-equivalent behavior
+## EVM continuity
 
-The single SVM program may contain multiple logical modules. It MUST provide
-all EVM-equivalent operations and invariants: permissionless creator-owned
-routers; immutable append-only route enrollment without a validator vote;
-one mandatory XGRChain hop per directed route; current-set BLS 2/3
-destination verification and quorum-governed membership changes; bootstrap
-source-native fee and subsequent BLS quorum fee changes; gateway-atomic
-principal movement + source fee; epoch-scoped FeeVault pull claims; inbound
-replay protection; independent execution and optional commercial UI-only
-service. Exact asset IDs, 32-byte identities and decimal conversions are
-chain-specific codec adaptations, not alternate protocol governance.
+EVM V315 remains fully unchanged. All routes still require XGRChain
+(domain 1643) as the hub. Solana source mints use full 32-byte keys;
+EVM router endpoints use uniquely left-zero-padded 20-byte identities.
+Source-native fees are BLS quorum governed, exactly as on EVM, and never
+set by a GmbH service wallet.
