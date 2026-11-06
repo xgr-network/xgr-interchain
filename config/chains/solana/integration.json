@@ -47,7 +47,7 @@
     "solanaRouter",
     "solanaDirectBlsIsm"
   ],
-  "notes": "Development only. Exact EVM protocol invariants: one XGR hub, current-set Direct-BLS, append-only permissionless creator-owned routes, quorum-governed source fee, epoch fee vault, user-signed transfer, optional separately administered commercial service. SVM programs immutable at route activation. No live Solana routes.",
+  "notes": "The solanaPrograms list names logical Solidity-parity modules within ONE deployed SVM executable, not eight deployable programs. Factory SPL collateral and zero-supply synthetic mint initialization live under the single Rust program. Source custody, Direct-BLS and claims remain disabled pending proof/audit.",
   "authorityPolicy": {
     "programUpgradeAuthority": "none-before-route-activation",
     "programCloseAuthority": "none-before-route-activation",
@@ -76,5 +76,6 @@
     "optionalService": "separate-commercial-execution-gateway",
     "destination": "proof-gated-mint-unlock-and-replay-protection",
     "existingRoutes": "evm-contracts-and-wire-unchanged"
-  }
+  },
+  "solanaDeploymentModel": "single-immutable-svm-executable-multiple-modules-and-pdas"
 }

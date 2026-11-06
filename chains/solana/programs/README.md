@@ -53,3 +53,11 @@ EVM V315 remains fully unchanged. All routes still require XGRChain
 EVM router endpoints use uniquely left-zero-padded 20-byte identities.
 Source-native fees are BLS quorum governed, exactly as on EVM, and never
 set by a GmbH service wallet.
+
+## Deployment-unit mapping
+
+`solanaPrograms` in the integration plan is a list of **logical modules**.
+The Admin's one `xitaProtocol` SVM component is one ELF/Program ID and one
+immutable upgrade-authority check. Creator routers, fee vaults and route
+records are independent PDAs under that executable. XGR-side Solidity
+components remain distinct executable contracts when actually deployed.

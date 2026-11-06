@@ -60,6 +60,8 @@ export function validateSolanaPlan(plan){
  check(JSON.stringify(plan?.solanaPrograms)===JSON.stringify(PROGRAMS)&&
   JSON.stringify(plan?.xgrChainContracts)===JSON.stringify(XGR_CONTRACTS),
   "Solana programs / XGR-side contracts are incomplete");
+ check(plan?.solanaDeploymentModel==="single-immutable-svm-executable-multiple-modules-and-pdas",
+  "Solana executable must be one immutable program with multiple Rust modules");
  const seenURLs=new Set(),seenOperators=new Set();
  check(Array.isArray(plan?.rpcWitnesses)&&plan.rpcWitnesses.length>=2,
   "Solana requires independent RPC witnesses");
@@ -92,8 +94,14 @@ export function solanaInfrastructurePlan(plan){
  const errors=validateSolanaPlan(plan);
  if(errors.length)throw Error(errors.join("; "));
  const components=[
-  ...plan.solanaPrograms.map(key=>({key,network:"solana",status:"not-deployed",address:null,optional:false,deployable:false})),
-  ...plan.xgrChainContracts.map(key=>({key,network:"xgrchain",status:"not-deployed",address:null,optional:false,deployable:false}))
+  // One independently deployed SVM executable with Solidity-parity Rust
+  // modules. Router, route, validator and fee vault data are separate PDAs,
+  // NOT separate executable Program IDs.
+  {key:"xitaProtocol",network:"solana",runtime:"svm",kind:"program",
+   modules:[...plan.solanaPrograms],status:"not-deployed",
+   address:null,optional:false,deployable:false},
+  ...plan.xgrChainContracts.map(key=>({key,network:"xgrchain",runtime:"evm",
+   status:"not-deployed",address:null,optional:false,deployable:false}))
  ];
  return {name:"solana",displayName:plan.displayName,runtime:"svm",network:plan.network,
   chainId:null,domainId:plan.domainId,genesisHash:plan.networkIdentity.value,

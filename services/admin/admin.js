@@ -113,6 +113,7 @@ const coreTitles={
  factory:"Permissionless Token Factory",
  sourceRegistry:"ILN Source Registry",
  executionGateway:"Interchain Fee · Execution Gateway (optional)",
+ xitaProtocol:"XITA Solana Protocol (Rust)",
  mailbox:"Mailbox / Nachrichtentransport",
  directBlsVerifier:"Direct-BLS Verifier",
  feeVault:"Validator FeeVault",
@@ -151,6 +152,8 @@ function renderInfrastructure(){
    '<div class="component-row'+(part.key==="executionGateway"?' is-fee-gateway':'')+'"><span>'+
     (svm?'<span class="component-network">'+esc(part.network==="xgrchain"?"XGRChain":"Solana")+'</span> · ':'')+
     esc(coreTitles[part.key]||part.key)+
+    (svm&&Array.isArray(part.modules)?
+      '<small class="chain-program-modules">'+esc(part.modules.join(" · "))+'</small>':"")+
     (part.optional?' · freiwilliger Service':'')+'</span>'+
    '<div class="component-controls">'+
    (part.status==="documented"&&part.address?

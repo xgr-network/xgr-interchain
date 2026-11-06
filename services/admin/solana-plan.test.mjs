@@ -79,8 +79,10 @@ test("Solana is represented in the shared infrastructure schema, never as EVM",(
  assert.equal(infra.domainId,SOLANA_DOMAIN);
  assert.equal(infra.deployable,false);
  assert.equal(infra.documented,0);
- assert.equal(infra.required,12);
- assert.equal(infra.components.filter(x=>x.network==="solana").length,8);
+ assert.equal(infra.required,5);
+ assert.equal(infra.components.filter(x=>x.network==="solana").length,1);
+ assert.equal(infra.components[0].key,"xitaProtocol");
+ assert.equal(infra.components[0].modules.length,8);
  assert.equal(infra.components.filter(x=>x.network==="xgrchain").length,4);
  assert.ok(infra.components.every(x=>x.status==="not-deployed"&&!x.deployable));
 });
