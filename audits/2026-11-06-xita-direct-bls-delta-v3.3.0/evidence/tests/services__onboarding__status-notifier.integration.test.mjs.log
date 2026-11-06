@@ -1,0 +1,13 @@
+✔ notify applicant only on verified phase changes, retry failures and prevent repeats (30.527268ms)
+✔ XGR Creator second email contains working public token page, not a premature PR URL (7.743602ms)
+✔ profile update email waits for the exact published CoinGecko profile snapshot (2.66057ms)
+✔ Creator sends deployment confirmation before any PR and independently of public catalog, retry-safe (6.903065ms)
+✔ Creator creation mail blocks forged/unverified receipts and safely catches legacy already-merged records (8.549006ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 195.734787

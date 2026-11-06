@@ -1,0 +1,11 @@
+✔ one verified lock plus one observed unlock gives gross 4 USD, not net zero (2.696194ms)
+✔ pending unlock, unknown past timestamp and old locks do not inflate 24h (0.549038ms)
+✔ duplicate messages, incomplete coverage and invalid provenance fail closed (2.356638ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 102.97842

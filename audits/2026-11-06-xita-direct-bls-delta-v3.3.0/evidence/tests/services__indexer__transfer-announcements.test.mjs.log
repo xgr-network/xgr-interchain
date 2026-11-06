@@ -1,0 +1,18 @@
+✔ source receipt missing means OBSERVED wallet transaction, not verified lock (5.06185ms)
+✔ a claimed wallet must match independent RPC tx.from (0.44477ms)
+✔ RPC uncertainty and insufficient finality never publish a source operation (0.488797ms)
+✔ exact canonical Gateway receipt fast-tracks an operation WITHOUT advancing cursor (4.459631ms)
+✔ invalid or ambiguous Gateway evidence cannot become a confirmed transfer (0.499172ms)
+✔ source reorg retracts ONLY matching derived hash and restages it (0.556549ms)
+✔ missing RPC block response is unknown, NEVER a reorg deletion (0.279952ms)
+✔ untrusted hash queue is strictly bounded (8.629877ms)
+✔ wrapped wallet target is accepted only with matching fee adapter evidence (0.927658ms)
+✔ recently rejected announcements can be restaged without trusting them (0.573945ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 254.510425

@@ -1,0 +1,10 @@
+✔ service wallet rotation is exactly one admin-signed EVM call (6.447151ms)
+✔ recover only if connected wallet is owner and all three operational roles match (0.439312ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 107.070847

@@ -1,0 +1,12 @@
+✔ a clean Arbitrum ISM retry does not invoke recovery (2.40818ms)
+✔ an old failed or rejected MetaMask intent is automatically retired before new signing (1.128982ms)
+✔ a confirmed original deployment is reconciled, never deployed again (0.57742ms)
+✔ an on-chain pending original deployment cannot be paid for a second time (0.446883ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 198.768464

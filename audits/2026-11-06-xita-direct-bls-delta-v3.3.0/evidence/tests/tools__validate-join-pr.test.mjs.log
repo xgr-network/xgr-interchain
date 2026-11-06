@@ -1,0 +1,12 @@
+✔ Join CI detects proposal paths and validates contract (13.43435ms)
+✔ Join CI refuses any public applicant email (1.935257ms)
+✔ Join CI rejects unlisted price sources (1.321311ms)
+✔ Join CI revalidates new CoinGecko ERC-20 against deployed chain inventory (1.234171ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 298.104633

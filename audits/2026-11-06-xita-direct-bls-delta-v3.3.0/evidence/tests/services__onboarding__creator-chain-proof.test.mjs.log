@@ -1,0 +1,10 @@
+✔ verify independently checks signed factory calldata, ERC20 code, supply and designated owner (16.85799ms)
+✔ wrong owner, factory bytecode, nonfinal receipts and conflicting nodes never publish Join (61.158855ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 359.196707

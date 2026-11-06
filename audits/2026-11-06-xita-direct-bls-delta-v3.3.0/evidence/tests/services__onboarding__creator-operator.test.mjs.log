@@ -1,0 +1,14 @@
+✔ verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE profile-only PR (72.066576ms)
+✔ explicit daily gas caps and signer segregation reject unsafe deployment (7.30848ms)
+✔ shared Sponsor wallet must be exactly configured; no separate Creator key (0.607846ms)
+✔ creator fails closed when XGR sponsor has durable unresolved nonce (2.563964ms)
+✔ Creator service loads only the two existing privileged env files (0.459623ms)
+✔ existing broad Creator route Draft PR migrates to an independent zero-route profile without signing again (27.015607ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 507.469509

@@ -1,0 +1,38 @@
+✔ a documented route whose destination rejects its identity blocks a source lock before wallet interaction (4.696768ms)
+✔ destination inbound route verification binds exact canonical source chain, router and route ID (1.068119ms)
+✔ amount conversion and Gateway ABI are fixed, with no floating point (1.636796ms)
+✔ source bridge quotes, checks native gas and sends exactly one canonical Gateway call (10.984068ms)
+✔ unresolved MetaMask source nonce blocks any second lock while no canonical receipt exists (1.615545ms)
+✔ one wei of destination gas is NOT enough to safely lock source assets (1.33391ms)
+✔ wallet with no destination-native gas never submits source lock (1.058676ms)
+✔ if source is confirmed but proof is pending, retry never sends a source or destination transaction (3.2509ms)
+✔ an unresolved wallet nonce blocks a second source lock after reload (1.688595ms)
+✔ missing unsigned recovery service must prevent any source token lock (0.475787ms)
+✔ stale MetaMask pending nonce can be reconciled by an independent source-chain RPC (7.981398ms)
+✔ invalid wallet nonce is not bypassed if the canonical RPC is unavailable (1.295482ms)
+✔ unsigned automatic delivery polling is bounded and never initiates source or target signing (0.514996ms)
+✔ temporary proof service error keeps immutable source lock and retries (0.517079ms)
+✔ fatal backend configuration mismatch blocks automated signing (0.214663ms)
+✔ raw second-hop token amount roundtrips exactly without float loss (0.362066ms)
+✔ only a confirmed, adapter-proven first hop can initiate a second user call (0.385872ms)
+✔ deployed Interchain Fee adapter owns first TX and no direct Gateway fee bypass occurs (12.787131ms)
+✔ adapter fee quote refuses altered transaction bytes, even with valid EIP-712 quoted fields (0.672002ms)
+✔ commercial transfer refuses fee-free fallback when either execution gateway is missing (1.05533ms)
+✔ RPC failure is not mislabeled as a missing validator quorum (0.415416ms)
+✔ unsupported quorum RPC fails promptly without a wallet transaction (0.233392ms)
+✔ quorum pending remains distinct from proof-service outage (0.260773ms)
+✔ spoke-to-spoke preflight checks BOTH hub and final destination before any source lock (1.913935ms)
+✔ spoke-to-spoke live preflight accepts both routed destinations independent of wallet holdings (0.92906ms)
+✔ ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum regression) (4518.070569ms)
+✔ temporary source safe RPC outage returns a waiting reason without wallet signing (9.224494ms)
+✔ fully funded direct XGR transfer sends canonical gateway with zero service fee (18.704162ms)
+✔ N-05 onward gas exception requires a paid parent-specific final gift (3.638204ms)
+✔ N-05 parent-bound final gas authorization fails closed without final-stage promise (0.226982ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4703.882415

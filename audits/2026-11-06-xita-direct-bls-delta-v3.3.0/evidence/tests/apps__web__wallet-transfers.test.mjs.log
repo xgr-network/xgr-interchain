@@ -1,0 +1,31 @@
+✔ route discovery only exposes canonical deployed Gateway and paired mailbox (1.708875ms)
+✔ exact Dispatch ABI payload yields source message ID (0.753906ms)
+✔ verified successful source can be delivered or pending proof (2.685538ms)
+✔ failed and pending source cannot advertise a recoverable proof (0.402707ms)
+✔ wallet mismatch or untrusted source Dispatch cannot be claimed (0.679524ms)
+✔ verified source with unavailable destination is unknown, not delivered (0.674026ms)
+✔ bounded recent scan includes only wallet-owned canonical gateway txs (0.886807ms)
+✔ source fee adapter is verified using canonical Gateway, Mailbox and fee event (2.461439ms)
+✔ mined fee adapter transfer recovers across arbitrary wallet executors on base (1.049192ms)
+✔ canonical direct Gateway call remains valid without fee event on base (0.732334ms)
+✔ unverified intermediate calls never claim ownership of canonical logs on base (1.195702ms)
+✔ route evidence cannot be duplicated or mismatched on base (0.914538ms)
+✔ mined fee adapter transfer recovers across arbitrary wallet executors on arbitrum (0.704812ms)
+✔ canonical direct Gateway call remains valid without fee event on arbitrum (0.376888ms)
+✔ unverified intermediate calls never claim ownership of canonical logs on arbitrum (0.529828ms)
+✔ route evidence cannot be duplicated or mismatched on arbitrum (0.374174ms)
+✔ source RPC failover works for every connected spoke source, not just Base (1.300861ms)
+✔ XGRChain source also selects an independently verified backup RPC (0.435667ms)
+✔ lagging RPC null receipt does not mask a mined canonical source (0.452842ms)
+✔ RPC failover cannot admit a mismatched chain ID or untrusted URL (0.286132ms)
+✔ Arbitrum browser preflight uses same-origin read-only RPC proxy, not blocked cross-origin fetch (0.485251ms)
+✔ browser proxy failing is explicitly identified before wallet signing (0.733085ms)
+✔ Arbitrum mined two-hop intent survives 64-block finality before unlock (0.724352ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 78.80431

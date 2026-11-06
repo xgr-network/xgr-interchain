@@ -1,0 +1,12 @@
+✔ single operator address scans all token routes using ONE filtered chain window (5.911801ms)
+✔ wrong-chain source endpoint fails before scanning any logs (0.939416ms)
+✔ a stale contract identity never silently inherits another deployment cursor (0.720696ms)
+✔ missing state is reconstructed from deployment block rather than assuming empty (0.427945ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 470.165232

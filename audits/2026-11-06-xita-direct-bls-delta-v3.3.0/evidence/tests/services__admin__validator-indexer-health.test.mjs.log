@@ -1,0 +1,13 @@
+✔ Validator indexer health reports honest ready, lag and source outage separately (1.331637ms)
+✔ Validator RPC targets are opt-in and validated before a request (0.945706ms)
+✔ Admin validator RPC probe keeps individual node outage visible (2.035539ms)
+✔ Direct BLS health reports source block lag independently of quorum requests (0.171248ms)
+✔ XGRChain source alias is normalized at the RPC boundary, not mislabeled unreachable (0.129676ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 82.138133

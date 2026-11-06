@@ -1,0 +1,86 @@
+name: Audit report artifacts 2026-11-06
+on:
+  pull_request:
+    paths:
+      - .github/workflows/audit-20261106-reports.yml
+      - audits/2026-11-06-xita-direct-bls-delta-v3.3.0/build_reports.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reports:
+    if: github.head_ref == 'audit/2026-11-06-delta-v3.3.0' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Frozen source and PDF environment
+        run: |
+          set -euo pipefail
+          mkdir -p input/evidence
+          git clone --single-branch --branch main https://github.com/xgr-network/xgr-interchain.git input/interchain
+          git -C input/interchain checkout --detach 33a4e37cf48c509b83c67d8007c246ff2838c606
+          git clone --single-branch --branch XGR3.0 https://github.com/xgr-network/xgr-node.git input/node
+          git -C input/node checkout --detach a84c82737dc3ca195192a96498eab0e170f8bb5a
+          python3 -m venv .audit-venv
+          .audit-venv/bin/pip install reportlab==4.4.9
+      - name: Download and verify retained public execution evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,io,json,os,pathlib,urllib.request,urllib.error,zipfile
+          root=pathlib.Path('input/evidence')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):return None
+          opener=urllib.request.build_opener(NoRedirect)
+          def get(url):
+              request=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','User-Agent':'xgr-audit-evidence'})
+              try:
+                  with opener.open(request,timeout=60) as r:return r.read()
+              except urllib.error.HTTPError as e:
+                  if e.code not in (301,302,303,307,308):raise
+                  location=e.headers['Location']
+                  if not location.startswith('https://'):raise ValueError('non-HTTPS artifact redirect')
+                  with urllib.request.urlopen(location,timeout=90) as r:return r.read()
+          items=[
+            ('interchain-fresh',13488783437,'a23b7c317e8d9683fa2a2a5f3ea11291e47ef9138861c4c3dc3189c02c0a31c7'),
+            ('node-fresh',13489760683,'4ee8e04fabc7674c13bb251103cc20bd1799eb97a3e11d76c44ec43265968103'),
+            ('supplement',13489782525,'88b4339094394b3bf9bfb1d6a1330cec839ae97c68ae697c6c77a65683138f39'),
+            ('node-repeat',13489703960,'3cc56011e1a3069f994681a57e4e2b948332efd62e08d956b5230d697ad7aef0')]
+          records=[]
+          for name,aid,digest in items:
+              raw=get(f'https://api.github.com/repos/xgr-network/xgr-interchain/actions/artifacts/{aid}/zip')
+              assert hashlib.sha256(raw).hexdigest()==digest,(name,'artifact digest mismatch')
+              with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                  for entry in z.infolist():
+                      p=pathlib.PurePosixPath(entry.filename)
+                      if p.is_absolute() or '..' in p.parts:raise ValueError('unsafe archive path')
+                      if entry.is_dir() or p.suffix not in ('.json','.log','.exit','.txt'):continue
+                      if entry.file_size>5_000_000:raise ValueError('unexpected evidence size')
+                      target=root/name/str(p);target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(z.read(entry))
+              records.append({'name':name,'artifact_id':aid,'sha256':digest,'bytes':len(raw)})
+          (root/'input-artifacts.json').write_text(json.dumps(records,indent=2)+'\n')
+          (root/'solidity.log').write_bytes(get('https://api.github.com/repos/xgr-network/xgr-interchain/actions/jobs/127798101246/logs'))
+          blob=json.loads(get('https://api.github.com/repos/xgr-network/XGR/git/blobs/cef98a7e6ae16646a9291cbf0d56b746a41d6c4d'))
+          content=base64.b64decode(blob['content']);assert hashlib.sha1(b'blob '+str(len(content)).encode()+b'\0'+content).hexdigest()=='cef98a7e6ae16646a9291cbf0d56b746a41d6c4d'
+          (root/'canonical-activation.md').write_bytes(content)
+          print('Verified four retained evidence archives and canonical documentation blob; no private reproduction downloaded.')
+          PY
+      - name: Generate complete reports and verify hashes
+        run: |
+          set -euo pipefail
+          .audit-venv/bin/python audits/2026-11-06-xita-direct-bls-delta-v3.3.0/build_reports.py \
+            --interchain input/interchain --node input/node --evidence input/evidence --out generated
+          python3 generated/verify_artifacts.py
+          test -s generated/report.pdf
+          test -s generated/node-v3.5.0-review.pdf
+          git diff --exit-code
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-complete-publication-record
+          path: generated/
+          retention-days: 30

@@ -1,0 +1,13 @@
+✔ Factory artifact accepts sealed no-constructor bytecode only (2.328199ms)
+✔ Two independent RPCs prove the exact tx, creation receipt and matching runtime (7.985285ms)
+✔ Creator Factory admin never signs twice, journals hash before publication and recovers PR (101.76803ms)
+✔ Only exact unsent Factory preparation can be cancelled; no silent reset of signed TX (46.139353ms)
+✔ factory already documented in main blocks a second creation (6.665416ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 287.810096

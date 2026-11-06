@@ -1,0 +1,14 @@
+✔ prospect lacks documentation and cannot be published (1.634964ms)
+✔ any complete route suffices and incomplete future chains do not block (0.490659ms)
+✔ null lists deployed without metrics and positive threshold requires matching proof (1.063082ms)
+✔ untrusted publication status does not override config policy (0.230237ms)
+✔ legacy no-policy catalogs still require explicit matching public snapshot (0.264979ms)
+✔ reviewed XGR creator enters public token directory even before ILN route deployment (0.376628ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60.124162

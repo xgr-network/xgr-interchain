@@ -1,0 +1,47 @@
+{
+  "audit_id": "XITA-DBLS-2026-11-06-v3.3.0",
+  "companion_review_id": "XGR-POP-2026-11-06-v1.0.0",
+  "status": "IN_PROGRESS_NOT_AN_APPROVAL",
+  "authorized_by": "Operator GO in the 6 November 2026 audit conversation",
+  "source_freeze_observed_at_utc": "2026-11-06T08:37:49Z",
+  "sources": {
+    "xgr-interchain": {
+      "branch": "main",
+      "baseline": "5cfc095d0f02271427832ee6bbb268322f38ae2d",
+      "target": "33a4e37cf48c509b83c67d8007c246ff2838c606"
+    },
+    "xgr-node": {
+      "branch": "XGR3.0",
+      "interchain_audit_baseline": "51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671",
+      "possession_review_baseline": "0d9aca695c49784da64736d78620cc1bba4f7daa",
+      "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a"
+    }
+  },
+  "scope": [
+    "All security-relevant in-scope changes since the preceding audit, with changed trust boundaries and reachable unchanged dependencies",
+    "Direct-BLS authorization, finality, RPC witnesses, native accounting and recovery",
+    "Optional sponsorship, two-hop obligations, quote roles and timeout/broadcast boundaries",
+    "BSC and Optimism configuration and receipt-pinned deployment identities",
+    "Token Creator, onboarding, metadata and shared sponsor-wallet boundaries",
+    "Separate v3.5.0 BLS possession, staking migration, fork, join and historical-import security review",
+    "Reconciliation of all 35 prior current findings and 43 historical occurrences after the source-first phase is sealed"
+  ],
+  "excluded": ["Solana implementation, branches, programs, routes and deployments"],
+  "methodology": {
+    "blind_review": false,
+    "reason": "The conversation already contains prior finding summaries. This is a fresh source-first AI-assisted delta review, not a truly blind or externally accredited audit.",
+    "phase_a": "Source-first new-risk assessment, sealed before fresh detailed historical reconciliation",
+    "phase_b": "Evidence-based current and historical finding reconciliation",
+    "evidence_classes": ["fresh_execution", "fresh_source_proof", "inherited_evidence", "read_only_deployment_observation", "unverified"],
+    "missing_evidence": "Record precisely and seek targeted operator evidence before an adverse installed-state decision; absence alone is not a source vulnerability.",
+    "disclosure": "Public-safe reports and metadata only; do not publish new unresolved exploitation recipes, signing material or private runtime data."
+  },
+  "operational_limits": {
+    "production_transactions": false,
+    "production_deployments": false,
+    "production_service_or_configuration_changes": false,
+    "product_source_changes": false,
+    "allowed_writes": "Audit documentation, isolated test/evidence tooling and publication metadata only",
+    "test_network": "Isolated local/CI loopback environment; no production keys"
+  }
+}

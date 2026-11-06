@@ -1,0 +1,11 @@
+✔ one backend refresh persists one shared quote-safe snapshot (63.885191ms)
+✔ CoinGecko HTTP 503 never erases a good cached snapshot (16.581683ms)
+✔ partial refresh keeps only independent timestamp-valid coins (16.610236ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 233.603977

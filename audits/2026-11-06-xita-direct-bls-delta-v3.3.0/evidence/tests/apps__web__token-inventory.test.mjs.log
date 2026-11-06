@@ -1,0 +1,38 @@
+✔ only documented synthetic routers become wallet-copyable token contracts (2.531736ms)
+✖ published XGR Base synthetic address is grounded in verified route deployments (2.891187ms)
+✔ wallet balances are read-only, represent zero honestly and never invent missing RPC data (0.998755ms)
+✔ wallet inventory shows original ARB balance without a synthetic prefix (0.128214ms)
+✔ explorer links have vetted chain origins and validated contract address (0.116145ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.645444
+
+✖ failing tests:
+
+test at apps/web/token-inventory.test.mjs:25:1
+✖ published XGR Base synthetic address is grounded in verified route deployments (2.891187ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + '0xd7443427ca21ae0907d2aa55446470307c990092'
+  - '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/apps/web/token-inventory.test.mjs:30:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '0xd7443427ca21ae0907d2aa55446470307c990092',
+    expected: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

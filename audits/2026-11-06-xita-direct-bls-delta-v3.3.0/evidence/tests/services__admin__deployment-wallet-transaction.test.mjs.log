@@ -1,0 +1,17 @@
+✔ persist wallet hash synchronously before any RPC lookup; idempotent recovery (15.898283ms)
+✔ matching transaction can proceed to independent receipt verification (1.133609ms)
+✔ RPC propagation gaps and outages are pending, not failed (0.277569ms)
+✔ wrong wallet, calldata, chain or target is permanently rejected (0.435446ms)
+✔ original tx is recovered from its receipt block when hash indexing has expired (0.294234ms)
+✔ MetaMask may assign a newer nonce without invalidating the exact returned hash (0.638312ms)
+✔ wallet-assigned nonce does not override wrong destination or calldata (0.25863ms)
+✔ Base smart wallet envelope accepts exact target and calldata, but rejects substituted payloads (0.540054ms)
+✔ Arbitrum MetaMask delegated executor preserves original wallet, target and calldata (0.621347ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.176715

@@ -1,0 +1,11 @@
+✔ manual Genesis proofs become verified constructor records without any origin snapshot (2.613879ms)
+✔ invalid domain-bound payloads and BLS public keys are rejected (3.339954ms)
+✔ missing, duplicated, or target-verifier-rejected public proofs are rejected (0.51717ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 125.567547

@@ -1,0 +1,10 @@
+✔ persisted Base cursor with failed RPC has external reference lag but not validator head (1.407661ms)
+✔ missing cursor, stale XITA evidence and chain mismatch never fabricate lag (0.239671ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 80.544451

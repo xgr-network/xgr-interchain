@@ -1,0 +1,1198 @@
+[
+  {
+    "occurrence": "2026-10-24/H-01",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/rpc_evidence_quorum.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "baseline_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/rpc_evidence_quorum.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/config.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "7ff8814fce1f43be61a2e240f9734c210cabee45",
+        "baseline_blob": "8c7f53ada886a50ff0077d6c354a6f97bcdea9e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/config.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_direct_signing.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "baseline_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_direct_signing.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-01",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/chain-finality.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "df62e760c66f09f502c92efd7a18b821381577ff",
+        "baseline_blob": "4b760eac66c0e121b6149ac32fa1776e866c0a45",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/chain-finality.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/wallet-transfers.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "68b38c44b1dc477aa72d918fcde8e0e1c496d570",
+        "baseline_blob": "68b38c44b1dc477aa72d918fcde8e0e1c496d570",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/wallet-transfers.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-02",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "baseline_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/verified-journey.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "5f62da6997a8419411de6d5ab1c4c1835c28abfb",
+        "baseline_blob": "5f62da6997a8419411de6d5ab1c4c1835c28abfb",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/verified-journey.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/010_native_delivery_finality.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6312f2c55675125295ed8022f51cf17513cabc09",
+        "baseline_blob": "6312f2c55675125295ed8022f51cf17513cabc09",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/010_native_delivery_finality.sql"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-03",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_direct_signing.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "baseline_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_direct_signing.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_quorum_request.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "baseline_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_quorum_request.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "baseline_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/interchain_runtime.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "6f07ac7b0b2d80aff43a31a61854dcf3cf4e9dfc",
+        "baseline_blob": "44dddc13969eeb63545d4d0f87f3080795abdf30",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/interchain_runtime.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-04",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/client.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "baseline_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/client.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_governance_submit.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "baseline_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_governance_submit.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "txrelayer/txrelayer.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "baseline_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/txrelayer/txrelayer.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance_execute.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "baseline_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance_execute.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/ibft.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "ba58725d2088aa95b1f9cbe27a63a906758604db",
+        "baseline_blob": "be450bb47c9ab3978f3aae6a926e915c95a4292f",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/ibft.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-05",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "network/gossip.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "baseline_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/network/gossip.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_quorum_request.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "baseline_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_quorum_request.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "baseline_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/M-06",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery_test.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a7109ec908f84b04ef7fcc22f18e383222281990",
+        "baseline_blob": "a7109ec908f84b04ef7fcc22f18e383222281990",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery_test.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-01",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-actions.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "baseline_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-actions.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-recovery.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "baseline_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-recovery.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "runtime/native-relayer/xita-direct-codec.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "baseline_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/runtime/native-relayer/xita-direct-codec.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-02",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-03",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XITAExecutionGateway.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "baseline_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XITAExecutionGateway.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-04",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-ledger.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dafe0484ed5b7e3e79fb7ab018020c1504bee9d7",
+        "baseline_blob": "246a51053f86e702771c3c095cff3b4151159ac1",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-ledger.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-05",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-intents.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "baseline_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-intents.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-06",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/L-07",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "baseline_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/I-01",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": ".github/workflows/validate.yml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "52eafa324d59aabadce4de7e91e7fe79b44143c4",
+        "baseline_blob": "7d8d1b775a626d1516d09d5575685c1834327c07",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/.github/workflows/validate.yml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/rpc-read.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "baseline_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/rpc-read.test.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ba8c39abe3d39ded4c3d6b22a5d5a6bfa35da4b4",
+        "baseline_blob": "c3a2dc57a1292648fdd0895e2586464c68a580b4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.test.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/I-02",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": ".github/workflows/release.yml",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "baseline_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/.github/workflows/release.yml"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "versioning/versioning.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "baseline_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/versioning/versioning.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "command/version/version.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "baseline_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/command/version/version.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-24/I-03",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "foundry.toml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "baseline_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/foundry.toml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/H-01",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/rpc_evidence_quorum.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "baseline_blob": "62369fad3ddb2e8e8f0a72cdc8c39bda64de7b47",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/rpc_evidence_quorum.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/config.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "7ff8814fce1f43be61a2e240f9734c210cabee45",
+        "baseline_blob": "8c7f53ada886a50ff0077d6c354a6f97bcdea9e4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/config.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_direct_signing.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "baseline_blob": "f4a7b94fb59125388e4dcaad8a233d102f02f8a2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_direct_signing.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/M-04",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/client.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "baseline_blob": "fb813e707639c3954af62d9a4038219b2a77f0c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/client.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_governance_submit.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "baseline_blob": "9a5c757f3d9fe1439830f72a7da073d0721438c3",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_governance_submit.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "txrelayer/txrelayer.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "baseline_blob": "1abb5545ebe494e50187e55cd53c8d7e70b11f48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/txrelayer/txrelayer.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance_execute.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "baseline_blob": "a483cb5330cf74493d9a96f897ab7bbf185f88f6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance_execute.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "consensus/ibft/ibft.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "ba58725d2088aa95b1f9cbe27a63a906758604db",
+        "baseline_blob": "be450bb47c9ab3978f3aae6a926e915c95a4292f",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/consensus/ibft/ibft.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/M-05",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "network/gossip.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "baseline_blob": "562bb466823db97b9fc76adab30e97279e7e0d02",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/network/gossip.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "baseline_blob": "9c9ce549bb521645ab3ccfbaced2803b5f23ca1a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_quorum_request.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "baseline_blob": "20dd9b50f11b4fdb23c54dc22d8bf46f93ae3a65",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_quorum_request.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/governance.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "baseline_blob": "cffe07c3b5007ebefb16e88a2612418edf7ea35a",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/governance.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/M-06",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery_test.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a7109ec908f84b04ef7fcc22f18e383222281990",
+        "baseline_blob": "a7109ec908f84b04ef7fcc22f18e383222281990",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery_test.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-01",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-actions.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "baseline_blob": "24390edf24a2addd5bc20eadc90ddd6addfddfe0",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-actions.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-recovery.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "baseline_blob": "dd196ef030e685cb104db5676fe403a22539871c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-recovery.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "runtime/native-relayer/xita-direct-codec.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "baseline_blob": "538054182f79e4f3e3acc943bb757de557f6e836",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/runtime/native-relayer/xita-direct-codec.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-02",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-03",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XITAExecutionGateway.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "baseline_blob": "eadaa0685eaf478e748b15fe573febefe4c4f0f8",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XITAExecutionGateway.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-04",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-ledger.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "dafe0484ed5b7e3e79fb7ab018020c1504bee9d7",
+        "baseline_blob": "246a51053f86e702771c3c095cff3b4151159ac1",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-ledger.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-05",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/admin/deployment-intents.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "baseline_blob": "62289e817d9a903c1ced96f0b82bf7565f50bcf2",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/admin/deployment-intents.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-06",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/L-07",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "baseline_blob": "b4461568b9008e2a466a17b4ce193c82025b1c6c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/I-01",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": ".github/workflows/validate.yml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "52eafa324d59aabadce4de7e91e7fe79b44143c4",
+        "baseline_blob": "7d8d1b775a626d1516d09d5575685c1834327c07",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/.github/workflows/validate.yml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/rpc-read.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "baseline_blob": "e3588fc98eb1addd519f1b8f363d91ffa2614830",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/rpc-read.test.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.test.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "ba8c39abe3d39ded4c3d6b22a5d5a6bfa35da4b4",
+        "baseline_blob": "c3a2dc57a1292648fdd0895e2586464c68a580b4",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.test.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/I-02",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": ".github/workflows/release.yml",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "baseline_blob": "1b94f26bb6d71e53e0f8c4c7f9bb2d8b912bc4a1",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/.github/workflows/release.yml"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "versioning/versioning.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "baseline_blob": "a662cbd4a5c2fb2947a23e734b60b39673398e48",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/versioning/versioning.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "command/version/version.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "baseline_blob": "aef873a21ebc92ffbd2a81190860c71c5877d47e",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/command/version/version.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/I-03",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "foundry.toml",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "baseline_blob": "6af660822d7bbff0548f597e549d7fbbf83691c5",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/foundry.toml"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "vendor/package.json",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "baseline_blob": "d22d549f2ba2ebddc1b822ef239436396c1ac732",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/vendor/package.json"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-01",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_retry.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1de9271ec0d62854d8222b499bbb5fde4ee64a23",
+        "baseline_blob": "6fde9da735f14b518fd1b1cf0204cdd4a6abc1ec",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_retry.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "baseline_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_worker.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-02",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_direct_operation.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "71bb12424fc5c21a12a86982286a4b219afe3b0d",
+        "baseline_blob": "71bb12424fc5c21a12a86982286a4b219afe3b0d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_direct_operation.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-03",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_checkpoint.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "59c7767cdbd961763cb72514dafac4814027c1d8",
+        "baseline_blob": "3dd093a12f78cc2c27f10dd716f4a4a7c40510dc",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_checkpoint.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_storage.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "1104e7c13a5cd9bb9dfb39d745c3219dfc3c7300",
+        "baseline_blob": "3ee01dfcd9ee581108804de28caee51794cfcb39",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_storage.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-04",
+    "sources": [
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_multi_gateway_scan.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "20f77fe827d1947e0a49667fa69d1ff9780f3232",
+        "baseline_blob": "20f77fe827d1947e0a49667fa69d1ff9780f3232",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_multi_gateway_scan.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_observer_worker.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "baseline_blob": "cb251fe860b5d831d3e9b3797b8b7c841f616b55",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_observer_worker.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/evm/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "df2570ad36884903beb409bfe4d61e1b699c1c8b",
+        "baseline_blob": "df2570ad36884903beb409bfe4d61e1b699c1c8b",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/evm/iln_discovery.go"
+      },
+      {
+        "repository": "xgr-node",
+        "path": "interchain/runtime/iln_discovery.go",
+        "target": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+        "target_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "baseline_blob": "3ab6fbbd21a8ff8ac563b509b47a2367d3a65254",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-node/blob/a84c82737dc3ca195192a96498eab0e170f8bb5a/interchain/runtime/iln_discovery.go"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-05",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-06",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-funding.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "baseline_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-funding.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-07",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/tax-evidence.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "baseline_blob": "bd37e84babd2a912a071ea19fb34d605738c0dc6",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/tax-evidence.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/sponsor-funding.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "baseline_blob": "c5d9e45885e60ff854b999d8fdb814ace5165177",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/sponsor-funding.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/server.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "8082fd1f6631e51208a56ff9a0b4c56343f597a1",
+        "baseline_blob": "6b1bc843a52dea635cbee89f564f7a597ee87383",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/server.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-08",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-09",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "contracts/XETAGuardedNativeWarpRouter.sol",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "10563e05083db54972ec35801234babc0afc1f87",
+        "baseline_blob": "10563e05083db54972ec35801234babc0afc1f87",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/contracts/XETAGuardedNativeWarpRouter.sol"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-store.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "56d3eb9e9391b7694e00c215325d9f82583b9a6e",
+        "baseline_blob": "f4a279240418cf7422cf729da1c061363b236337",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-store.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-status-flow.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "01fdf4bda558b0ac97c7d0050a6c3325d21e69fb",
+        "baseline_blob": "e294fb7820cb2039152ab3dd67ff5bd74c7be245",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-status-flow.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/transfer-token-journey.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "f5bbb61e315799abf0394061db7090004ae9f83e",
+        "baseline_blob": "303e671fe3d3b9201a0d219907dfb710a418574d",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/transfer-token-journey.js"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-10",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/source-tx-hints.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "44a848c5ad9841562a21411b7cf3c8c1023fa88c",
+        "baseline_blob": "44a848c5ad9841562a21411b7cf3c8c1023fa88c",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/source-tx-hints.js"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "apps/web/app.js",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "6a7a574b69add225a6783524cdc2c8a78291dd46",
+        "baseline_blob": "c37949090267f891493079dbcc41a4fa7d973260",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/apps/web/app.js"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-11",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/transfer-index-worker.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "baseline_blob": "e9ba907ea28c6c240bdd224c7a757609744b3b4d",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/transfer-index-worker.mjs"
+      },
+      {
+        "repository": "xgr-interchain",
+        "path": "services/indexer/sql/002_transfer_operations.sql",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "3d1aeb524f6015108a752c1109ec6041bbc2d075",
+        "baseline_blob": "3d1aeb524f6015108a752c1109ec6041bbc2d075",
+        "unchanged": true,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/indexer/sql/002_transfer_operations.sql"
+      }
+    ]
+  },
+  {
+    "occurrence": "2026-10-25/N-12",
+    "sources": [
+      {
+        "repository": "xgr-interchain",
+        "path": "services/managed-relay/gas-sponsor.mjs",
+        "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+        "target_blob": "e7cff2214988b6e38b28e37d53499f966651278c",
+        "baseline_blob": "5dd4683cca4a27b699ecd62cf72839850ad1b332",
+        "unchanged": false,
+        "url": "https://github.com/xgr-network/xgr-interchain/blob/33a4e37cf48c509b83c67d8007c246ff2838c606/services/managed-relay/gas-sponsor.mjs"
+      }
+    ]
+  }
+]

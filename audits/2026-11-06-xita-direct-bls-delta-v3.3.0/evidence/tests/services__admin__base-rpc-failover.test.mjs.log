@@ -1,0 +1,14 @@
+✔ Base 403 is retried on verified 8453 fallback, preserving receipt hash (3.538823ms)
+✔ Base failover rejects wrong chain without querying transaction receipt (1.062341ms)
+✔ A JSON-RPC execution error is never silently bypassed (1.739372ms)
+✔ configured Tenderly Base HTTP 429 retries a chain-verified independent RPC (0.642358ms)
+✔ Tenderly JSON-RPC 429 quota error is transient but execution revert is not (3.851305ms)
+✔ Tenderly 429 fallback on wrong chain is blocked before any deployment simulation (3.087133ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 158.12094

@@ -1,0 +1,31 @@
+✔ produces cryptographically valid owner EIP712 binding both chains and exact native fees (22.937143ms)
+✔ never signs when relayer owner mismatches deployed adapter (0.927648ms)
+✔ fee quotes remain available without sponsorship but fail on missing gas price or stale prices (6.553578ms)
+✔ quotes only canonical deployed routes and exact bridge principal (0.730081ms)
+✔ no unsupported source/destination or non-decimal raw amount (0.568146ms)
+✔ worldwide source-native quote is not gated on VAT customer location (1.815987ms)
+✔ honors owner-configured on-chain TTL, never exceeds 90 seconds (2.738702ms)
+✔ refuses invalid source timestamp before signing (0.401996ms)
+✔ two-hop quote includes both deliveries, XGR bridge gas and its native validator fee (3.253915ms)
+✔ browser reconstructs exactly the signed EIP-712 execute ABI calldata (6.006714ms)
+✔ preview reuses exact priced source and two-hop fees but never signs or allocates a nonce (2.217552ms)
+✔ signed quote never carries a future timestamp relative to source block (1.763588ms)
+✔ signer refuses stale or invalid source block rather than issuing unsafe quote (0.838724ms)
+✔ unsigned fee pricing automatically discovers the receipt-backed XGR to Arbitrum route (1.689937ms)
+✔ XGR to BSC unsigned fee preview prices native BNB without a wallet signature (1.28706ms)
+✔ wallet-specific fee quote never trusts a browser balance, keeps signed EIP712 fee exact (10.782342ms)
+✔ fully funded route signs fixed 1000-gwei native fee independent of network gas (4.023515ms)
+✔ only committed wallet gas deficits increase the signed service fee (5.213188ms)
+✔ wallet-funded two-hop signs full onward intent with exactly 1000 gwei UI charge (2.126525ms)
+✔ XGR promotion changes only signed commercial fee; no principal or protocol concession (6.267417ms)
+✔ no discount for non-XGR asset; XGR cap applies even without sponsorship (3.888411ms)
+✔ learned gas changes signed wallet commitment and source fee (3.580913ms)
+✔ two-hop pre-commits all three individually learned stage grants (3.636121ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 590.929152

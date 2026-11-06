@@ -1,0 +1,138 @@
+name: Frozen audit evidence 2026-11-06
+on:
+  pull_request:
+    paths:
+      - .github/workflows/audit-20261106.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  xita:
+    if: github.head_ref == 'audit/2026-11-06-delta-v3.3.0' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: xita_ci
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: xita_sponsor_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - name: Fetch exact public source snapshots without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git clone --single-branch --branch main https://github.com/xgr-network/xgr-interchain.git source
+          git -C source checkout --detach 33a4e37cf48c509b83c67d8007c246ff2838c606
+          test "$(git -C source rev-parse HEAD)" = 33a4e37cf48c509b83c67d8007c246ff2838c606
+          git -C source diff --numstat 5cfc095d0f02271427832ee6bbb268322f38ae2d HEAD > evidence/interchain-numstat.tsv
+          git -C source diff --name-status 5cfc095d0f02271427832ee6bbb268322f38ae2d HEAD > evidence/interchain-name-status.tsv
+          git -C source log --format='%H%x09%aI%x09%s' 5cfc095d0f02271427832ee6bbb268322f38ae2d..HEAD > evidence/interchain-commits.tsv
+          tar -czf evidence/interchain-frozen-source.tar.gz source
+          sha256sum evidence/interchain-frozen-source.tar.gz > evidence/interchain-source.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-interchain-frozen-source
+          path: evidence/
+          retention-days: 7
+      - name: Install test-only dependencies, without lifecycle scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          for dir in services/managed-relay services/indexer services/onboarding runtime/native-relayer; do
+            npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund --package-lock=false
+          done
+          tar -czf ../evidence/interchain-test-dependencies.tar.gz services/managed-relay/node_modules services/indexer/node_modules services/onboarding/node_modules runtime/native-relayer/node_modules
+      - name: Execute existing isolated tests, retaining every result
+        env:
+          XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
+        shell: bash
+        run: |
+          cd source
+          mkdir -p ../evidence/tests
+          python3 - <<'PY'
+          import concurrent.futures, datetime, glob, json, os, pathlib, subprocess, time
+          out=pathlib.Path('../evidence/tests')
+          roots=['tools','apps/web','runtime/native-relayer','services/admin','services/indexer','services/managed-relay','services/onboarding']
+          paths=sorted({p for root in roots for p in glob.glob(root+'/*.test.mjs')})
+          env=dict(os.environ)
+          for b in ['google-chrome','chromium','chromium-browser','google-chrome-stable']:
+              import shutil
+              if shutil.which(b): env['XITA_BROWSER']=shutil.which(b);break
+          def run(p):
+              start=time.time(); log=out/(p.replace('/','__')+'.log')
+              with log.open('w') as f:
+                  try:
+                      r=subprocess.run(['node','--test',p],stdout=f,stderr=subprocess.STDOUT,env=env,timeout=180)
+                      code=r.returncode
+                  except subprocess.TimeoutExpired: code=124
+              return {'path':p,'exit_code':code,'seconds':round(time.time()-start,3),'log':log.name}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool: results=list(pool.map(run,paths))
+          record={'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'target':'33a4e37cf48c509b83c67d8007c246ff2838c606','node':subprocess.check_output(['node','--version'],text=True).strip(),'results':results}
+          pathlib.Path('../evidence/xita-test-results.json').write_text(json.dumps(record,indent=2))
+          print(json.dumps({'files':len(results),'successful':sum(x['exit_code']==0 for x in results),'failed':[x for x in results if x['exit_code']!=0]},indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-interchain-fresh-test-evidence
+          path: |
+            evidence/tests/
+            evidence/xita-test-results.json
+            evidence/interchain-test-dependencies.tar.gz
+          retention-days: 7
+  node:
+    if: github.head_ref == 'audit/2026-11-06-delta-v3.3.0' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Fetch exact public node snapshot without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git clone --single-branch --branch XGR3.0 https://github.com/xgr-network/xgr-node.git source
+          git -C source checkout --detach a84c82737dc3ca195192a96498eab0e170f8bb5a
+          test "$(git -C source rev-parse HEAD)" = a84c82737dc3ca195192a96498eab0e170f8bb5a
+          git -C source diff --numstat 51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671 HEAD > evidence/node-numstat.tsv
+          git -C source diff --name-status 51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671 HEAD > evidence/node-name-status.tsv
+          git -C source log --format='%H%x09%aI%x09%s' 51d92f1ab9b1ba52f62e2ff903c6ff0a7c2f5671..HEAD > evidence/node-commits.tsv
+          tar -czf evidence/node-frozen-source.tar.gz source
+          sha256sum evidence/node-frozen-source.tar.gz > evidence/node-source.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-node-frozen-source
+          path: evidence/
+          retention-days: 7
+      - name: Fresh v3.5.0 possession validation and loopback-only fork import
+        shell: bash
+        env:
+          GOTOOLCHAIN: go1.23.11
+          GOMAXPROCS: '2'
+        run: |
+          set +e
+          cd source
+          date -u +%FT%TZ > ../evidence/node-test-start.txt
+          bash scripts/validate-v3.5.0.sh > ../evidence/node-validation.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > ../evidence/node-validation.exit
+          date -u +%FT%TZ > ../evidence/node-test-end.txt
+          tail -n 60 ../evidence/node-validation.log
+          exit "$status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-node-fresh-test-evidence
+          path: |
+            evidence/node-validation.log
+            evidence/node-validation.exit
+            evidence/node-test-start.txt
+            evidence/node-test-end.txt
+          retention-days: 7

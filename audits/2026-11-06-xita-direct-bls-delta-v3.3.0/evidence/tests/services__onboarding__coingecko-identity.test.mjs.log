@@ -1,0 +1,12 @@
+✔ CoinGecko identity validates exact original chain, contract, decimals and token symbol (1.576797ms)
+✔ CoinGecko identity fails closed for ID, contract, network, symbol, decimals and unsupported chains (0.86913ms)
+✔ BSC original BEP20 identity uses binance-smart-chain and excludes undeployed Polygon (2.325145ms)
+✔ CoinGecko fetch verifies the upstream JSON and fails closed on provider errors (0.964444ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91.111913

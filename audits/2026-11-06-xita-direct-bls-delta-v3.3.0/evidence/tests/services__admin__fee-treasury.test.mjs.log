@@ -1,0 +1,12 @@
+✔ fee treasury shows exact raw wallet & claimable balances without signing or env (11.218539ms)
+✔ fee treasury reports low gas reserve distinctly (5.658949ms)
+✔ RPC chain mismatch, wrong code, misleading beneficiary and unbacked claims never show verified balances (13.898548ms)
+✔ receipt mismatch, missing hashes and unreachable fee RPC fail closed per-chain (2.343502ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123.839372

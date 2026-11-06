@@ -1,0 +1,14 @@
+✔ trusted quote IP cannot be spoofed by forwarded headers (6.033424ms)
+✔ OTC-style local CIDR lookup returns ISO country and provenance (19.469851ms)
+✔ native source fee fixed to eight-decimal EUR value (0.597881ms)
+✔ unknown customer country or EUR rate cannot cancel a signed fee (1.706332ms)
+✔ ZZ synthetic CIDR cannot override country match (8.174752ms)
+✔ F-17 wallet-aware quotes enforce durable pending limit inside database transaction (1.815657ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 593.853465

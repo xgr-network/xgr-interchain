@@ -1,0 +1,11 @@
+✔ all main-approved chains derive deployment progress from documented component evidence (21.340081ms)
+✔ Base observes only documented XITA contracts, not undeployed legacy core (5.702465ms)
+✔ wallet wei/ETH formatting keeps exact integer precision (0.628798ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 100.758604

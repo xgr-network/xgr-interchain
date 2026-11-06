@@ -1,0 +1,15 @@
+{
+  "audit_id": "XITA-DBLS-2026-11-06-v3.3.0",
+  "reviewed_artifact_id": 13490706890,
+  "reviewed_artifact_sha256": "7d2d607b9b48fa75affde2b4be0a317aed2d1db57e0a6d700d123a46a25e1439",
+  "build_run": 42193744633,
+  "build_source_commit": "53b0c16693219121325474feb8f1670cb4b88fa8",
+  "integrity": {"all_212_manifest_entries_verified": true, "unique_findings": 39, "historical_occurrences": 43, "original_historical_columns_preserved": true},
+  "pdfs": [
+    {"path": "report.pdf", "pages": 19, "sha256": "e203665b1b2b8a0daf49eddf05e955af7150719a25792850e5a1ec665d205138", "out_of_page_text_blocks": 0, "replacement_or_black_square_glyphs": 0},
+    {"path": "node-v3.5.0-review.pdf", "pages": 4, "sha256": "c2c4137c655f209dfb3bb1b1f622bd20035e0e540878f14ca8732d59c36c0c30", "out_of_page_text_blocks": 0, "replacement_or_black_square_glyphs": 0}
+  ],
+  "visual_review": "All 23 pages rendered into contact sheets and inspected, with representative full-page renderings; no visible clipping, overlap or missing glyphs observed.",
+  "protected_operator_bundle": {"filename": "XITA_2026-11-06_CONFIDENTIAL_operator_evidence.zip", "sha256": "802b2b13c540cf23077fa1d9544928dfb573f81caa99f3d53f4aec9e04ae656f", "publication": "Conversation delivery to the operator only; not committed to public GitHub or public CI artifacts."},
+  "publication_constraints": ["Publish the exact visually checked PDF bytes", "Retain all previous dated audit directories unchanged", "Only audit documentation and audit evidence paths may remain in the final PR", "Archive and remove the temporary audit workflows after their execution", "No product source, production configuration or runtime change"]
+}

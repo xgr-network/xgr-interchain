@@ -1,0 +1,151 @@
+33a4e37cf48c509b83c67d8007c246ff2838c606	2026-11-05T20:31:19+01:00	docs: update v3.5.0 baseline and automatic staking BLS possession
+91d9424b5dc2bcfd81f9d946f8070fc34d29afc8	2026-11-01T22:07:45+01:00	fix(dashboard): refresh read-only metrics after temporary startup evidence gap (#409)
+31295c3eda0a26b90b9289221a1bd3be9666a79f	2026-11-01T21:02:44+01:00	fix(metrics): show verified 24h volume minimum when an asset is unverified (#408)
+0ad8087abbdeeea1b661705e8f4494eafc74435a	2026-11-01T20:29:53+01:00	fix(join-ci): reverify supported CoinGecko originals with deployed chain inventory (#407)
+6f83829877cb8565b5ff4f6f0c01ea119e301584	2026-11-01T18:42:06+01:00	fix(join): hide entry choices in integration step and explain CoinGecko chain matches (#405)
+c4fbd7e1f2dd438a97ef7cdfa58751fe07b8c0c9	2026-11-01T18:26:29+01:00	fix(creator): notify verified XGR token deployment independently of profile listing (#404)
+d426dc8d40d12ba190bdff169ab35d7ab0d7483d	2026-11-01T17:59:01+01:00	Merge pull request #402 from xgr-network/creator-profile/xitacan-36c5cb00
+d404bda44bb74321943051c8331df1cd8c907993	2026-11-01T17:57:12+01:00	test(routes): proof-bound route-free XGR Creator profiles exempt from hub expansion
+780eac77e7a42d2d4c6bbf012eff20cfc8b97276	2026-11-01T17:56:48+01:00	fix(routes): exempt non-joined XGR Creator token profiles from automatic route expansion
+df1039ca33eb3c5ccd703a5e3e6bbb58578224d1	2026-11-01T17:49:08+01:00	creator: register verified original XITACAN
+2fdbeca44fdef4132da777d3f27b483fea7d0ad4	2026-11-01T17:48:12+01:00	feat(creator): separate XGRChain token admission from Interchain Join routes (#401)
+dd5c897bd541977e9cbdd050ab623b18fb2d9df5	2026-11-01T17:35:11+01:00	fix(creator): unblock Join PR after newline description and include deployed contract in notification (#399)
+6d85726af8598204627d62d3bfd3cbf9542ae315	2026-11-01T17:19:47+01:00	fix(join): install and verify shared Nodemailer SMTP dependency (#398)
+3f188783919bfe8927038f701c960e793a65d479	2026-11-01T16:40:25+01:00	fix(creator): accept normal PNG logos and securely normalize metadata (#397)
+70eeb19dcc7348fd673a38066d20038acece645e	2026-11-01T16:26:14+01:00	fix(creator): remove redundant authority fields and show email confirmation receipt (#396)
+8939451405b262a00796960f5f651d4c712bf3a8	2026-11-01T16:07:35+01:00	feat(creator): restricted local email canary before public launch (#395)
+a8d1bc3ba8dad71e7062a18a478c9a8203b79d8b	2026-11-01T15:33:53+01:00	refactor(creator): use existing interchain-fee.env for operator limits (#394)
+b26582170819790aec8ab956de2cdde74f0755d9	2026-11-01T12:58:17+01:00	fix(creator): safe disabled install, public registration gate and CoinGecko 404 guidance (#393)
+98829282b2db762571467f7416b51bd695e98500	2026-11-01T12:46:59+01:00	fix(mobile): static Universe hero, native scrolling and no WebGL on phones (#392)
+88cc26665d928408dcc5a21465c4da90c4baefe4	2026-11-01T12:35:24+01:00	feat(join): introduce two equal token onboarding paths above the fold (#391)
+6937f20e61cea19a68fced4b6afc805cdb8a18aa	2026-11-01T12:24:53+01:00	fix(join+web): multi-chain CoinGecko preview, Creator entry, mobile nav and 24h TVL (#390)
+34a7c386bbd8f6db1438a44fdb4f0a9830791b7a	2026-11-01T11:28:03+01:00	Merge pull request #388 from xgr-network/creator-factory/deploy-375bbc2299b2a155
+f925232d5437196e5d90c5c4f6866cc1acf40907	2026-11-01T11:27:25+01:00	Merge pull request #389 from xgr-network/fix/creator-factory-tests-after-manifest-20261101
+ede6bf980dc8213545f3c59650d401e02f1e7c96	2026-11-01T11:25:27+01:00	test(creator): make factory deployment recovery deterministic after main factory manifest is published
+8d9d009e6b73028237dfb49d2b25f8ddcb2d6a0b	2026-11-01T11:19:24+01:00	deploy(creator): attest XGRChain Creator Factory from verified on-chain receipt
+ab4fd11407e88dfb9614ebd4c8c0edd61b723e79	2026-11-01T11:15:24+01:00	Merge pull request #387 from xgr-network/feat/admin-deploy-creator-factory-20261101
+ae7182bfb226760935b74f7c1d1933fa30d262b8	2026-11-01T11:11:47+01:00	test(admin): scoped verified Creator Factory PR publication and GitHub failure gates
+497eb4ebb8eda93be8a02a28ae251d2bc3c6268f	2026-11-01T11:10:44+01:00	feat(admin): explicit unsent Factory cancellation, TX recovery and clickable GitHub receipt PR
+0b1dcfad776f3055900f1407a72083b70ca430ce	2026-11-01T11:09:21+01:00	fix(catalog): regenerate XGRChain two-RPC snapshot for new Factory verification
+9021b9416b67201a305598a4e94483cb5fe95204	2026-11-01T11:08:06+01:00	fix(admin): trust Creator artifact ABI and add second independent XGRChain RPC
+889060fc56def46a9bc28c014cb6e9193419845b	2026-11-01T11:06:58+01:00	fix(admin): fsync Factory WAL before wallet broadcast and after rename
+677764d7e948dcff1f7b1db8acac882fd680d7de	2026-11-01T11:06:23+01:00	fix(admin): hash EVM bytecode bytes (not UTF-8 hex string) and fsync factory intent journal
+a620deb327d7f821f4de17b56c45fcabed14441f	2026-11-01T11:06:17+01:00	fix(admin): hash EVM bytecode bytes (not UTF-8 hex string) and fsync factory intent journal
+6d448cd4fdde7931694a6b381cd00d49bdde0649	2026-11-01T11:05:23+01:00	test(admin): factory artifact, 2-RPC receipt, journal recovery; document deployment UI
+4f50fe3a39a1b632c6c24bc17655060d0916152f	2026-11-01T11:04:51+01:00	testability(admin): inject read-only validated factory artifact for deterministic deployment tests
+6dcb22405ff11eb81e7de0c92eb2b5d9e4583b5f	2026-11-01T11:04:34+01:00	fix(seal): advance artifact fingerprint when Creator Factory joins sealed build
+b30f31d4ad53248794e476c5e184f2a16d57f833	2026-11-01T11:04:10+01:00	feat(admin): Creator Factory deploy/reconcile UI and main-approved endpoints; seal audited artifact
+0168db82f553114d86c5b5c3099d59d8181fa38b	2026-11-01T11:03:21+01:00	feat(admin): idempotent receipt-proven GitHub PR for Creator Factory manifest
+7e5a81a34145a197c60e1b8aea29405a3bee3f8b	2026-11-01T11:02:52+01:00	feat(admin): one-shot Creator Factory deployment with persisted wallet intent and two-RPC proof
+f803cdead4da512471560e72e87e6c9e67a6e1d4	2026-11-01T10:32:11+01:00	Merge pull request #386 from xgr-network/fix/creator-shared-sponsor-wallet-20261101
+52c0ef45330adbed97b5fcbd5cd9b085fab35b02	2026-11-01T10:29:37+01:00	fix(ci): preserve executable mode 100755 on manage.sh shared-wallet installer
+01775a6a4bad5bd920c6881669d93d4092614bf4	2026-11-01T10:28:04+01:00	test(wallet): persistent shared sponsor/Creator nonce lock safety
+8f0a8e9e62b22c3b8e203e71b690ebeeb89faa80	2026-11-01T10:27:26+01:00	ops(creator): install shared sponsor wallet guards, test sponsor nonce journal barriers
+0e2769f3933bc7705e0264649f99ab6ed77090c3	2026-11-01T10:26:24+01:00	feat(wallet): gate fee claim and sponsor with Creator nonce journal, share systemd signer and DB
+4c513d8a547bddf45e27ccead76daae0e450ec06	2026-11-01T10:25:57+01:00	security(wallet): add persistent unresolved Creator nonce guard for sponsor and fee claim
+4703f293d6e9f7460b9a60fbd823d17aef19fc6a	2026-11-01T10:25:28+01:00	feat(creator): reuse XITA sponsor wallet with shared nonce journal and pending nonce gates
+ade1d340489640f41793988d7b5c68e4ec944bd9	2026-11-01T10:06:49+01:00	Merge pull request #385 from xgr-network/feat/creator-operator-deploy-after-email-20261031
+0765783047c31b89d9b83955b459b6186cb5a24a	2026-11-01T10:04:18+01:00	test(browser): wait for Join readiness before validating first empty submit
+13dc3cd136058268347268c95c52db56bb6a4d6f	2026-11-01T10:03:02+01:00	test(profile): retain approved public snapshot privately for after-publication email verification
+40ffe6fbeb28b6583adff07d272ee83caa6452ec	2026-11-01T10:02:11+01:00	docs(creator): notify with public token URL only after live verified profile publication
+35baa11b2bc38424981f53dba3979430e0c55a5e	2026-11-01T10:01:41+01:00	test(creator): second email only after on-site token profile is live; prevent premature and duplicate mail
+1f602b4e0ae08d635bdf0d9707215c59a86763e6	2026-11-01T10:01:13+01:00	fix(creator): send exactly one second email after verified public token profile; pin update snapshot
+c8a63f97ce5057f07e31df8c8d33f8b217cbc146	2026-11-01T10:00:18+01:00	feat(creator): email verified creator a live token-profile link only after public publication
+2630fdb86bfa00c63d849b31a7d9993692e75e9b	2026-11-01T09:32:30+01:00	test(ui): update real browser Join smoke flow for CoinGecko ID-only form
+cfb9823480eb1c3f2abac9a2dd1916ad36055c73	2026-11-01T09:30:58+01:00	fix(join): correct email syntax validator for CoinGecko Join and profile updates
+1110f5321787fc669c0e0c99bc1923ff8b2ae134	2026-11-01T09:30:00+01:00	test(join): expose failed submit reason for profile and Join integration
+c277d1d205cc1b2bfdece68ba66768c4ff27be43	2026-11-01T09:29:23+01:00	fix(listing): preserve automatic XGR Creator listing after optional CoinGecko ID association
+b968b052e2364b9b89ac95b73b11b2be13ec5722	2026-11-01T09:29:07+01:00	fix(profile-ci): normalize catalog schemaVersion when comparing profile-only diffs
+913bc29351ebdd848759aaf4b9c98c75847605e0	2026-11-01T09:28:42+01:00	test(join): surface exact confirmation failure diagnostics for minimal Join
+4a133db804bc384896f4f6d78013e7b47c01dea3	2026-11-01T09:28:06+01:00	test(profile): enforce CoinGecko-only profile diffs in PR CI
+91ef6239bf341dc341e0bb2717a4a90b135a6a3f	2026-11-01T09:27:23+01:00	test(join): verify minimal CoinGecko requests and authenticated profile-only PR lifecycle
+f87613b06f676630fb06506c90eecde707a705f0	2026-11-01T09:26:34+01:00	test(join): minimal CoinGecko entry and restricted profile synchronization UI
+388ee4e43aed9d107ef1a4853466b2fd602f3297	2026-11-01T09:26:08+01:00	feat(ui): minimal CoinGecko Join, preview selection and one-click profile update
+1d5fb9fa95476ac1a7dc64295f33b046a70a18c7	2026-11-01T09:25:41+01:00	feat(join): two-field CoinGecko Join and simple restricted profile refresh interface
+483ac5c100b491cbaed91a9547b463a40c7f4353	2026-11-01T09:25:11+01:00	feat(join): verified CoinGecko one-ID Join and email-confirmed profile-only update PRs
+42a43b11aa51529ac8660fa5583a478a396cbd0f	2026-11-01T09:24:45+01:00	fix(join): distinguish CoinGecko preview from verified-email submission
+f984c92e1e9a77e441872358442cce24663ac51c	2026-11-01T09:24:01+01:00	feat(join): derive safe public project metadata from CoinGecko and stage restricted profile sync
+269351b61ee0168181b8f151717147f8ff120f5e	2026-11-01T09:10:23+01:00	test(listing): tolerate legacy minimal catalogs while requiring XGR origin visibility
+7c16f8b591c40b39153172a90f6f33405f9c8c43	2026-11-01T09:09:26+01:00	test(listing): prove XGR Creator always-list exception and $0 placeholder
+f74f58bbe1df01443dbf9aba7358a729206b954c	2026-11-01T09:09:00+01:00	fix(creator): show chosen settings instead of stale standard summary
+b1133c5de5c85450e449955366751b8cf60626ad	2026-11-01T09:08:45+01:00	feat(listing): publish reviewed XGR-origin creator tokens without CoinGecko, show $0 market-cap placeholder
+2d2b7018f43b99e12c8ba075782780a9cb7a523a	2026-11-01T09:07:35+01:00	feat(creator): simple burnable defaults and collapsible advanced settings
+972c431dc01bc125b4ef79ed49618b411b39a337	2026-11-01T08:57:09+01:00	test(creator): exercise token variants across UI, enrollment, Join and document XGR-owned deployment
+d928293f47db2cb6ac40a320bcc46c29a604c301	2026-11-01T08:55:37+01:00	test(creator): include token-specific codehash in verified on-chain evidence
+4a3869172aead3e236804fe61df01012efa57591	2026-11-01T08:55:33+01:00	test(creator): include token-specific codehash in verified on-chain evidence
+ab83b60d5f4eb169135f7d1326fb8290c3444c6b	2026-11-01T08:55:15+01:00	fix(creator): verify permit token-specific runtime hash against factory creation event
+ed92a2d6d58097346cb26fc385e38ad05d5c4a7a	2026-11-01T08:53:53+01:00	test(creator): bind feature flags to operator, receipt, Join CI and UI
+5ea9e6b1419b0e74a9ed027b9f3863fc14109cf0	2026-11-01T08:53:24+01:00	fix(creator): attest exact on-chain token capabilities and owner at creation block
+62f104934f2c476919b9840bf98459d2fa4a9498	2026-11-01T08:52:41+01:00	feat(creator): propagate token variants through UI, confirmation, deployment and XITA manifests
+a236c2fece3f07dfee217184cdce7494b2bb5aa4	2026-11-01T08:51:45+01:00	feat(creator): canonical validated immutable token configuration
+b806189f8a5a7dc6fa39e85470b8df9aecd3a18d	2026-11-01T08:51:10+01:00	test(creator): fixed/burn/mint cap, roles, permit, decimals and audited factory event
+458f11ef921f3a47b935855a450cb96c6dafc36f	2026-11-01T08:50:39+01:00	feat(creator): fixed, burnable, capped lifetime mint and optional EIP-2612 templates
+98c3ea598a965bf523629372dabdc00c055ba25e	2026-10-31T21:14:46+01:00	docs(creator): replace deprecated user gas and microgrant model with direct XGR deployment
+4e524c05f7c78ff8dd5f7679863917e17dbbcfe4	2026-10-31T21:14:43+01:00	docs(creator): replace deprecated user gas and microgrant model with direct XGR deployment
+84a7a162abf6dda811205fdca5ca6f5faca77635	2026-10-31T21:13:44+01:00	test(creator): preserve explicit wallet no-transaction safety notice
+32e4bd5791c5caff7e42838089545700a65773c4	2026-10-31T21:12:54+01:00	test(creator): protect signed tx recovery and add opt-in operator timer installer
+6a567f8957f9d3d7ac3bd1d1087c2df5a8f7cfd2	2026-10-31T21:11:42+01:00	feat(creator): dedicated budgeted XGR signer and crash-safe deployment-to-Join worker
+7b513c8fc8dab97430bdcd627c5ed17190754e89	2026-10-31T21:10:30+01:00	feat(creator): verify on-chain factory receipt and XGR owner before Join PR
+ad22537cdedc111cefb9a9045126e5f4394f13af	2026-10-31T21:09:27+01:00	feat(creator): derive canonical XITA hub route Join PR from confirmed XGR token deployment
+e08d636729bc11fad3d9c72dc178261e22ea2ccc	2026-10-31T21:08:06+01:00	feat(creator): bind project owner separately from XGR deployer and queue verified applicants
+3e778ea172c673b7ceedcbc82c712969a873f8a2	2026-10-31T17:37:15+01:00	fix: unblock XGR ↔ Optimism transfer verification with safe finality (#384)
+f9ed20a0b272e916c005718c6c609c95738f050b	2026-10-31T17:22:59+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+8465de5916aba6e1cd6c8b9326fa3b071df10ec4	2026-10-31T17:21:45+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+61ee7932270f307289bed044278848b20c020c56	2026-10-31T17:20:44+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+af5bdf78b1bcef76adccd05f1fba09a884b90459	2026-10-31T17:19:33+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+876c5402ac0d786ab5f7caae140b1fbbb9f9bffa	2026-10-31T17:18:19+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+fb10090068f6fd2affb82d50774e97b5f57f466c	2026-10-31T17:17:27+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+0d7f1026c5e8f0ca552339ff649546eeaa7ebb20	2026-10-31T17:10:23+01:00	fix(admin): derive OP and future hub routes from deployed chain receipts (#383)
+685f563300ebb15e8b51e9308bc5c97af5efd6ef	2026-10-31T15:41:18+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+6aecd82d4e6c8b9c1aa3044886746a9fefe6b20a	2026-10-31T15:36:09+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+4fe066c69dc4408d28eb6d15aa6ce0ed27ff3e81	2026-10-31T15:35:13+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+a36cb38c8fa667f3c75ee58f1325e29911561674	2026-10-31T15:33:51+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+91a55b0b03cb1bcd1e6908e5476d4c683a7847ca	2026-10-31T15:31:46+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+6b2adbba2b92af967ae35a1909ef7c108e746941	2026-10-31T15:30:56+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+6b78a37ff97a507fce3462f63dc4d6d7ef23853e	2026-10-31T15:30:07+01:00	record(deploy): verified v3.1.5 chain receipts [3]
+d41612bc00b6ef1ccc95957981b86835e6abbeb4	2026-10-31T15:29:15+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+a31632b0a78c31270c32d8a285819c47f8969417	2026-10-31T15:27:54+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+1f52fd7f0dd740622d88718476b57b2aa1cf9804	2026-10-31T15:26:42+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+04cec2de8f9c358a8d137f0f4d80be7859cf64db	2026-10-31T12:34:41+01:00	fix(release): wait for Join HTTP readiness after service restart (#382)
+9eb086a4b0db909790d6c8e43cacae8e10e9e456	2026-10-31T12:13:32+01:00	feat(creator): verify email before XITA-hosted token logo publication and starter-gas eligibility (#381)
+dea08149e0893a8371d5bf58c076e9da36fa937b	2026-10-31T10:48:14+01:00	feat(creator): hidden /createtoken preview and fixed-supply wallet-owned ERC20 prototype (#380)
+308fcaedef5a6516b7bc7455f544cf9e711df739	2026-10-31T10:44:45+01:00	feat(optimism): prepare OP Mainnet chain 10 for Admin deployment (not activated) (#378)
+42986d4c29c6cbf6247cf91d7a07ff99b6e0e54f	2026-10-31T09:37:21+01:00	hotfix(wallet): never hide unfinished two-hop transfers on delayed indexed snapshots (#379)
+b040c76b44deb9cd17da59c08e5580fe3d206bb4	2026-10-31T09:09:16+01:00	hotfix(web): recover XITA startup and prevent mixed cached JavaScript releases (#377)
+29ea0b091f1a5248992944f82ee4462445a1315a	2026-10-31T09:00:08+01:00	fix(web): show BNB Smart Chain and BNB instead of internal bsc slug in all fees (#376)
+3458fc3aaaf7dc7a8d49ae421ff640438ea6201c	2026-10-31T08:52:35+01:00	fix(wallet): show canonical ARB balance rather than wARB on Arbitrum (#375)
+0be922b67069d5844e19cf5e44c060c9c327f254	2026-10-31T08:03:54+01:00	fix(join): derive eligible token home chains from deployed repository inventory (#374)
+c8c3b5490669c8a1c5a9fe8378569f0bf827e536	2026-10-31T07:51:01+01:00	fix(web): clear completed transfer pending banner without waiting for stale index count (#373)
+9f9a5bbde0a973a9d0eb426b5cddcf297aef1206	2026-10-30T18:46:58+01:00	fix(pricing): support BNB Smart Chain in native gas fee quotes (#372)
+f5fa4f382b87fe0b3b9b3f911158eee3d8e3c4e8	2026-10-30T18:04:57+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+d73a5c6d62dfa26549cd393bc3411c548ef0bbd6	2026-10-30T18:04:03+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+dd26cb114a74256db20a7610e57e01bab01e356e	2026-10-30T18:02:51+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+933bb90221b18f015a7c056bdef50401a91dd434	2026-10-30T18:00:46+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+6acd1559160f7b501d970c3e39f9ef9d4c48e44f	2026-10-30T17:59:52+01:00	record(deploy): verified v3.1.5 chain receipts [2]
+0820f3b6b34e3e0bd7e64c75d10b823d34ca63a8	2026-10-30T17:58:45+01:00	record(deploy): verified v3.1.5 chain receipts [1]
+76f3b4ab6ce65caee85b209370ef9fe7461a40f1	2026-10-30T17:48:16+01:00	fix(admin): automatically resume interrupted asset deployment before MetaMask signing (#371)
+95a6e1b1c2c108e4d147766716c2157fd74cec29	2026-10-30T10:59:15+04:00	fix(audit): rebase sponsor deadline boundary and least-privilege role repairs on current main (#363)
+8e4b9ac74ac0e4f6d56c5847ed7fcbcebf6e1403	2026-10-30T09:10:22+04:00	fix(web): restore fee estimator on completed transfer resume links (#370)
+8db83fe52728ca03be5e7119e3d1bc5020f0f523	2026-10-30T00:08:08+04:00	fix(admin): approve BSC reciprocal XGR/ARB routes and add generic spoke suggestions (#369)
+136dec821fb46c436f26bfa07333fca2b72d4062	2026-10-29T23:36:38+04:00	fix(bsc): use finalized head across XITA Web and native relayer (#368)
+ce015e8c8448311b510a53135b44dc2fef5e2253	2026-10-29T23:00:55+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+8be03b0a1ad243483f4f8a1540f95597d7f81e19	2026-10-29T22:59:58+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+bbef55ee39220e022e2b87bb5d37bd96c4b8ceb2	2026-10-29T22:58:44+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+28a26a0b7fa311e77c9e0291fbc2bb80e49f5ea9	2026-10-29T22:55:54+04:00	fix(universe): show only fully deployed chain planets (#367)
+e4f944d541eaba05a3fef02b8e627b706595c5e7	2026-10-29T22:55:33+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+15d2a37cd93f0daadcf818e33ff130c99567cf1a	2026-10-29T22:54:39+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+5ec83171c77aa6f0093e96c8bbec00c9db2ea3a1	2026-10-29T22:54:10+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+971d4b7f9bda8c65a494c753f0509215dc480e47	2026-10-29T22:53:44+04:00	record(deploy): verified v3.1.5 chain receipts [3]
+61f768073639c5705ae7ab388ac4edd645356960	2026-10-29T22:51:38+04:00	Join: allow reapplication after a closed or removed draft PR (#359)
+7d9c552d876d1787b0dec43a740bafd4f6fcad60	2026-10-29T22:49:54+04:00	fix(xita): show BNB Smart Chain instead of bsc on Universe planets (#366)
+9f6e6adcb3cfc8f8d6bf4956dc252c4d2abcb08f	2026-10-29T22:49:32+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+2b0ecdd7dfb244cc77124b13444a19836cdfdb62	2026-10-29T22:47:39+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+a9a951b4778c832c4c6536f90e6da7bb69ef2305	2026-10-29T22:37:57+04:00	config(bsc): approve raised BNB reserves and initial source fee (#365)
+b2b65a60670ca1245dec04b159cf8e5ddb336303	2026-10-29T21:49:31+04:00	record(deploy): verified v3.1.5 chain receipts [1]
+df8c8683166bbf698a0e5ef8701a76f59451be3a	2026-10-29T21:37:04+04:00	feat(bsc): prepare BSC deployment through XITA Admin (#364)
+390a2faf42dc57ae11db4adba885ed287ae64468	2026-10-29T13:38:37+04:00	Merge pull request #362: archive XITA Direct-BLS delta audit v3.2.0
+2cbf7035d11653db20d0b96ff636b7a159f00911	2026-10-29T13:33:43+04:00	audit: archive complete XITA v3.2.0 reassessment and verified evidence
+aeaf669a7ebdea82eb2d6d60b69e5aba07595cce	2026-10-29T13:09:04+04:00	audit: commit v3.2.0 finding reassessment and complete historical matrix
+f7b98a0a93ad21c08be049864a5cfbc50200d884	2026-10-29T13:04:29+04:00	audit: record completed review coverage for all v3.2.0 delta paths
+587c0804f6e7acfe94c94a821b51472c91816c9c	2026-10-29T12:56:03+04:00	audit: seal independent v3.2.0 Phase A findings before historical reconciliation
+c3c4b09967721df7333e6cbefcf72fbbc7bc0fba	2026-10-29T12:51:24+04:00	audit: freeze v3.2.0 source scope and complete delta inventory

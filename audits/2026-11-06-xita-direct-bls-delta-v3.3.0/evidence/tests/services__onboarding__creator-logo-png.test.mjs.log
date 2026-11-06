@@ -1,0 +1,11 @@
+✔ canonical PNG is immutable, content-addressed, stripped and always safe RGB/RGBA (8.137491ms)
+✔ reject malicious uploads, animation, size and unsupported pixel formats (2.00325ms)
+✔ valid ordinary PNG metadata is stripped and pixels remain unchanged (6.874913ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 139.765028

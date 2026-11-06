@@ -1,0 +1,12 @@
+✔ Only configured CoinGecko identifiers are requested (5.248771ms)
+✔ Reject invalid, incomplete market records (0.240202ms)
+✔ Market caps require valid public provider record (0.842179ms)
+✔ XGR CoinGecko id is configured in the canonical generated catalog (2.025473ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.799751

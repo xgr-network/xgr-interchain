@@ -1,0 +1,26 @@
+[
+  {
+    "name": "interchain-fresh",
+    "artifact_id": 13488783437,
+    "sha256": "a23b7c317e8d9683fa2a2a5f3ea11291e47ef9138861c4c3dc3189c02c0a31c7",
+    "bytes": 19550996
+  },
+  {
+    "name": "node-fresh",
+    "artifact_id": 13489760683,
+    "sha256": "4ee8e04fabc7674c13bb251103cc20bd1799eb97a3e11d76c44ec43265968103",
+    "bytes": 4085
+  },
+  {
+    "name": "supplement",
+    "artifact_id": 13489782525,
+    "sha256": "88b4339094394b3bf9bfb1d6a1330cec839ae97c68ae697c6c77a65683138f39",
+    "bytes": 9535
+  },
+  {
+    "name": "node-repeat",
+    "artifact_id": 13489703960,
+    "sha256": "3cc56011e1a3069f994681a57e4e2b948332efd62e08d956b5230d697ad7aef0",
+    "bytes": 2490
+  }
+]

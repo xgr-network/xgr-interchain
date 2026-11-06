@@ -1,0 +1,12 @@
+✔ immutable fields may differ but no other runtime byte may differ (2.537278ms)
+✔ constructor bytecode, metadata, overlap and provenance are strictly checked (0.335336ms)
+✔ Factory trusted ABI is exactly the gas-free ten-argument constructor (1.242603ms)
+✔ Base BLS verifier accepts only a 32-byte Solidity 0.8.24 IPFS digest difference (3.914767ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 112.713904

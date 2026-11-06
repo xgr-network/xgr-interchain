@@ -1,0 +1,14 @@
+✔ chain-native policy requires L2 safe and XGR committed latest (2.309611ms)
+✔ Source above safe, mismatched receipt hash or unavailable safe never gets finalized (0.555637ms)
+✔ Mailbox delivery is read at pinned safe height, not latest; stale or reorg evidence rejected (0.361014ms)
+✔ native-safe delivery reorg during eth_call is rejected and not persisted (0.21917ms)
+✔ all GitHub-main chain finality policies are supported by the web/indexer verifier (0.977703ms)
+✔ Optimism destination Mailbox state is read at a pinned safe block (0.515917ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.007048

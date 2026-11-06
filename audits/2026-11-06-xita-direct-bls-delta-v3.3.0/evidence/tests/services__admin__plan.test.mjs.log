@@ -1,0 +1,12 @@
+✔ validates the 2-chain topology (1.197405ms)
+✔ all plan steps are ordered and explicit (0.527706ms)
+✔ wallet deployment plan never invents CLI broadcast steps (1.541183ms)
+✔ rejects wrong chain or missing canonical endpoints (0.672884ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.248621

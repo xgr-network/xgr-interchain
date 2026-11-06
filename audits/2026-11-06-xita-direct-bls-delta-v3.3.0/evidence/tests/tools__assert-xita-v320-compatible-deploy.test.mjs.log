@@ -1,0 +1,41 @@
+✔ retained Solidity deployments and receipts pass without a new deployment (17.596765ms)
+✔ refuses an absent verified receipt instead of inventing or wiping it (1.292168ms)
+✔ refuses hash, address or provenance mismatches (8.05414ms)
+✔ refuses missing active generation or wrong chain ID (2.277543ms)
+✖ current repository retains both documented contract generations (8.54495ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 187.99892
+
+✖ failing tests:
+
+test at tools/assert-xita-v320-compatible-deploy.test.mjs:70:1
+✖ current repository retains both documented contract generations (8.54495ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'retained receipt evidence mismatch: base/requiredHook',
+  +   'retained receipt evidence mismatch: xgrchain/requiredHook'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/source/tools/assert-xita-v320-compatible-deploy.test.mjs:72:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'retained receipt evidence mismatch: base/requiredHook', 'retained receipt evidence mismatch: xgrchain/requiredHook' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

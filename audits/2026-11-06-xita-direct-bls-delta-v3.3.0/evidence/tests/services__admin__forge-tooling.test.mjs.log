@@ -1,0 +1,12 @@
+✔ systemd restricted PATH resolves actual service account Foundry home (1.4332ms)
+✔ server-only explicit binary takes precedence over PATH (1.30722ms)
+✔ reject relative, nonexistent or unexecutable override (0.555717ms)
+✔ unavailable binary reports actionable service configuration error (0.217187ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.210242

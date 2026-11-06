@@ -1,0 +1,15 @@
+✔ the gateway stays central and spokes use distinct inclined 3D orbital planes (16.969014ms)
+✔ reduced-motion setting freezes orbital positions (1.792201ms)
+✔ XGR remains fixed while spokes and their decorative moons move consistently (0.710631ms)
+✔ illumination is one normalized fixed world-space direction (0.149575ms)
+✔ overview only draws real configured hub-to-spoke edges, never loose fragments (1.662696ms)
+✔ orbital planes, speeds and phases stay generic for arbitrary configured systems (1.6785ms)
+✔ every spoke gets a different star distance and independent angular motion (0.456398ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 135.696211

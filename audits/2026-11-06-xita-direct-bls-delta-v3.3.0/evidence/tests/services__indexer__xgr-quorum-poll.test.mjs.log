@@ -1,0 +1,10 @@
+✔ local-only quorum poll calls the XGR RPC method and never requests L2 data (1.852752ms)
+✔ public L2 RPC URLs are forbidden and untrusted status is rejected (0.657381ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.699967

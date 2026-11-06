@@ -1,0 +1,17 @@
+✔ physical balance is counted once, NOT reduced a second time by unlocks (2.608051ms)
+✔ pending reverse unlock retains real escrow backing (0.612233ms)
+✔ native pending beneficiary payout is excluded only once (0.51739ms)
+✔ unexpected transfer and incomplete finalized index fail closed (0.770481ms)
+✔ ERC20 requires matching underlying token identity and native reserve zero (3.201255ms)
+✔ price conversion scales native and ERC20 decimals and rejects stale prices (0.499333ms)
+✔ asset evidence remains per token and misses do not become zero (0.537069ms)
+✔ new blocks after complete index snapshot do not invalidate balanced custody (0.851544ms)
+✔ invalid finalized cursor and a live balance mismatch still fail closed (0.747908ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 119.433387

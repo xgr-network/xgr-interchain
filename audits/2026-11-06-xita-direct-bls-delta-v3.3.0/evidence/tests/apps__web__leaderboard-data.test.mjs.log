@@ -1,0 +1,16 @@
+✔ complete, independently verified collateral and journeys are shown (1.557067ms)
+✔ duplicated custody vault cannot inflate TVL (0.396918ms)
+✔ duplicate bridge journeys and mismatched totals fail closed (0.256366ms)
+✔ wrapped supply alone cannot be construed as custody (0.131689ms)
+✔ missing price and supply never invent market cap (0.122044ms)
+✔ unknown always last for either sort direction (0.214012ms)
+✔ only DB-qualified deployed tokens appear; no fabricated metrics (1.119357ms)
+✔ unknown XGR Creator market cap is $0 display placeholder without inventing a verified metric (1.078936ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.769024

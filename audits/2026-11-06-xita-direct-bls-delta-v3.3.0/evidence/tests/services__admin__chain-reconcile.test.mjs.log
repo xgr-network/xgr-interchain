@@ -1,0 +1,21 @@
+✔ main-pinned Polygon Factory constructor getters verify without Base exceptions (3.903143ms)
+✔ unexpected fee or malicious constructor address fails closed (3.212443ms)
+✔ SourceRegistry live BLS-governed fee overrides the original Factory constructor fee (2.328409ms)
+✔ initial SourceRegistry fee must equal deployed Factory when nonce zero (2.7865ms)
+✔ every independent module reconciles without a bogus constructor-binding requirement (0.225089ms)
+✔ factory may not bind a substituted router deployment module (3.187791ms)
+✔ factory must have all three independently documented router modules (1.823849ms)
+✔ receipt absence returns resumable pending without touching chain constructor (1.118836ms)
+✔ RPC indexing delay after wallet returned hash is an ordinary resumable pending state (0.246021ms)
+✔ RPC outage during transaction indexing never triggers another broadcast (0.360504ms)
+✔ Base Registry V3 checks initial reserve per validator against signed value (12.439123ms)
+✔ fee contract deployment must bind all three service roles to ONE address (2.984829ms)
+✔ deployment verifier never reads historic eth_getCode or eth_call (12.22387ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.046735

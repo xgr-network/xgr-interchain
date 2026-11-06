@@ -1,0 +1,50 @@
+{
+  "audit_id": "XITA-DBLS-2026-11-06-v3.3.0",
+  "companion_review_id": "XGR-POP-2026-11-06-v1.0.0",
+  "publication_commit_verified": "7674a20967dd3fcc54405344aa2006b1588c2bf6",
+  "pull_request": 410,
+  "state_at_this_attestation": "Published to audit branch; main merge is a subsequent separately verified step.",
+  "source_targets": {
+    "xgr-interchain": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+    "xgr-node": "a84c82737dc3ca195192a96498eab0e170f8bb5a"
+  },
+  "public_package": {
+    "artifact_id": 13491540812,
+    "workflow_run_id": 42194181591,
+    "sha256": "aec19c9dad6287a18cdfb85de934e04ae68bdcc71e296dd4908ee760da6ac760",
+    "archive_manifest_sha256": "637c1bdd2d8ea297a024e1a93eb952c402a83625bb4cbb9b2c6f91dcd77757a2",
+    "independently_rechecked_manifest_entries": 218
+  },
+  "repository_pdf_readback": [
+    {
+      "path": "report.pdf",
+      "pages": 19,
+      "bytes": 59161,
+      "sha256": "e203665b1b2b8a0daf49eddf05e955af7150719a25792850e5a1ec665d205138",
+      "git_blob_sha": "357d79c29532c4e82fc401a435806a2abf42545c",
+      "repository_blob_matches_visually_reviewed_bytes": true
+    },
+    {
+      "path": "node-v3.5.0-review.pdf",
+      "pages": 4,
+      "bytes": 13210,
+      "sha256": "c2c4137c655f209dfb3bb1b1f622bd20035e0e540878f14ca8732d59c36c0c30",
+      "git_blob_sha": "4c10b5ed2a8e6cd1299c26c4eb2fef867d530c4f",
+      "repository_blob_matches_visually_reviewed_bytes": true
+    }
+  ],
+  "reconciliation": {
+    "current_unique_entries": 39,
+    "historical_occurrences": 43,
+    "original_historical_csv_columns_preserved": true,
+    "previous_dated_audit_directories_unchanged": true
+  },
+  "publication_boundary": {
+    "final_diff": "Only audits/README.md and this new audit directory; temporary workflows archived under evidence/workflows and removed from active CI.",
+    "product_source_changes": false,
+    "production_operations": false,
+    "solana_in_scope": false,
+    "new_unresolved_executable_reproductions_public": false
+  },
+  "integrity_note": "This post-publication attestation is intentionally excluded from archive-manifest.json. It does not alter the previously hashed report or evidence bytes and does not claim a main-branch merge that had not yet occurred."
+}

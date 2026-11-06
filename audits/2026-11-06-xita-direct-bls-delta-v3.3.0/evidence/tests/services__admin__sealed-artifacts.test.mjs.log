@@ -1,0 +1,11 @@
+✔ sealed deployment release survives Forge out removal and unrelated main commits (23.882102ms)
+✔ source fingerprint detects Solidity and pinned dependency changes, ignores unrelated files (162.62452ms)
+✔ UI deployment uses wallet, not a separate Forge or gas button (0.872936ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 388.780784

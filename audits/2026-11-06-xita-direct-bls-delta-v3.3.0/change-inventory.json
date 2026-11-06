@@ -1,0 +1,2788 @@
+[
+  {
+    "repository": "xgr-interchain",
+    "path": ".github/workflows/validate.yml",
+    "change": "M",
+    "category": "ci",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": ".github/workflows/verify-join.yml",
+    "change": "M",
+    "category": "ci",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "README.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/app.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/browser-smoke.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/catalog.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/chain-finality.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/chain-finality.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/creator-token-config.js",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/experience.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/experience.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/index.html",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/join.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/join.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/leaderboard-data.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/leaderboard-data.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/listing-visibility.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/listing-visibility.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/style.css",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/token-creator.js",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/token-creator.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/token-inventory.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/token-inventory.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/transfer-status-flow.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/transfer-token-journey.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/universe-3d.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/universe-scene.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-index-projection.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-index-projection.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-pending.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-pending.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-token-balances.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-token-balances.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-transfer-selection.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "apps/web/wallet-transfer-selection.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/README.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/archive-manifest.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/change-inventory.csv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/confidential-evidence-reference.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence-public.zip",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/MANIFEST.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/README.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/coverage-integration.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/coverage/protocol.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/coverage/quote.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/coverage/root.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/coverage/sponsor.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/fresh-test-executions.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/historical-archive-integrity.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/historical-matrix-validation.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/integration-quality-review.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/approval-source-identity.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/coverage.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/deployment-identity-checks.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/f09-presentation-result.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/phase-a-commands.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/phase-a-publication-metadata.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/phase-b-source-identity.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/public-canonical-genesis-summary.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/public-chain-evidence-summary.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/public-f09-execution-metadata.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/public-inherited-native-summary.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/public-inherited-release-summary.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/registry-live-checks.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/retained-evidence-checks.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/protocol/source-identity.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/public-sponsor-health.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/publication-review.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/rpc-read-test-triage.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source-scope-verification.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/change-inventory.csv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/node-zero-delta.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/scope-and-baselines.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-interchain-all-commit-changes.diff",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-interchain-commits.tsv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-interchain-full.diff",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-interchain-name-status.txt",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-interchain-tree.txt",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/source/xgr-node-tree.txt",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/test-environment.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/quote/existing-tests-detailed.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__automatic-transfer-step.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__chain-finality.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__fee-gas-projection.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__source-tx-hints.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-actions.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-balance-refresh.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-flow-binding.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-gas-profile.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-page.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-sponsor-evidence.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-status-flow.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-step-timer.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__transfer-token-journey.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__verified-journey.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__wallet-gas.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__wallet-nonce.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__wallet-pending.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/apps__web__wallet-transfer-selection.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/runtime__native-relayer__gas-planner.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/runtime__native-relayer__receipt-evidence.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/runtime__native-relayer__source-finality.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/runtime__native-relayer__xita-direct-codec.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__admin__chain-preflight.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__admin__deployment-intents.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__admin__deployment-journal.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__admin__deployment-ledger.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__admin__deployment-retry.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__finality-observer.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__rpc-read.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-announcements.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-index-store.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-index.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-intake.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-proof-observer.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__indexer__transfer-recovery.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__delivery.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__fee-claim.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__fee-quote.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__server-preview.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__sponsor-funding.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__sponsor-obligation-audit.pg.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__sponsor-policy.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/services__managed-relay__wallet-aware-sponsorship.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/root/tools__quote-db-role.test.mjs.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/sponsor/existing-gas-unit-direct.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/sponsor/existing-monitor-unit-direct.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/tests/sponsor/existing-status-unit-direct.log",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/unlogged-attempts.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/evidence/verifier-self-check.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/finding-details.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/finding-statistics.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/findings.csv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/historical-findings-matrix.csv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/historical-findings-matrix.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/historical-findings.csv",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/launch-decision.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/pdf-validation.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/phase-a-findings.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/phase-a-freeze.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/phase-a-publication.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/prior-findings-matrix.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/remediation.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/render_report.py",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/report.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/report.pdf",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/reproduce_source_scope.py",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/scope-and-baselines.json",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/test-matrix.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/verification.md",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/2026-10-29-xita-direct-bls-delta-v3.2.0/verify_artifacts.py",
+    "change": "A",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "audits/README.md",
+    "change": "M",
+    "category": "audit_publication",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/43/XITACAN/asset.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/43/XITACAN/metadata.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/43/XITACAN/routes.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/a7/XGR/asset.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/a7/XGR/routes.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/b9/ARB/asset.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/assets/b9/ARB/routes.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/arbitrum/chain.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/base/chain.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/bsc/bootstrap.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/bsc/chain.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/optimism/bootstrap.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/optimism/chain.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/polygon/bootstrap.json",
+    "change": "D",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/polygon/chain.json",
+    "change": "D",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/chains/xgrchain/chain.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/creator/README.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "config/creator/factory.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "contracts/README.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "contracts/XITAStarterTokenCreator.sol",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deploy/nginx/xita.xgr.network.conf.example",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deploy/systemd/xita-creator-operator.service.in",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deploy/systemd/xita-creator-operator.timer.in",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deploy/systemd/xita-join-notifier.timer.in",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/a7/XGR/representations.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/a7/XGR/routes/07026f934ab71fe55e3c19d8930be45cad8b61e2b10c06a1965c1e9f4331ad09.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/a7/XGR/routes/0bc99aa0bfb8d3d5f3c12e69acf1951b36b4992de3bd9289eda27fc29794ad47.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/a7/XGR/routes/0e33c8905835337e8c89c7c8dee84e2238cc5f034a4255d163161dcdf24df5e9.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/a7/XGR/routes/f89a3a5ec89bf199165b6d5c62970eb220c20147c9f04054bfe7f5f2c2d70318.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/b9/ARB/representations.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/b9/ARB/routes/05c10ab55354db1b6ba1c60783788b34fdb9b43100cd6757302edd46be8b33a7.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/b9/ARB/routes/7b6f8f5f01a807282f6b393eb89bb9a9a0dd23fb55989c28e0b2a53b8dcb4e29.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/b9/ARB/routes/9e3c7bb56da0ac104e87c3f7bce5e2151e842f7b4e224916985470d9b7d13560.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/assets/b9/ARB/routes/a55f88ae4667026a3d967cd4970b661f57e3e34604b2b9a9f61cf8faf30ac140.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/chains/bsc.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/chains/optimism.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/09006c8d61edc8e88897052056aa3920ffcf08f4c7e6cb8060884fae992379dc-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/212629e77fa75ea052eb19d816f7fea232e6094cf9e44d24463719f159bb223d-d95d7bdab837a36b200f95b4b36e89a5702891c8.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-b8e9eacb6858065e42a159061342504d82501edf.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/31ae85b12d0a8894f26fa78c6e1b10462943631105a8db8ed25bfef849891a75-f338451ecb756133dc0fe19d9c6d3f78c22ddbe7.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/46071d914c77a3bd8b8263828a872f13ba97da3151924766da51b914996a72b9-3a193b88b8dfc860bcc0c3253f991b48428bc07d.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/46071d914c77a3bd8b8263828a872f13ba97da3151924766da51b914996a72b9-5d2072ccf177eb1525ae2f9d9b8378de8091d260.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/9f53ff58038c81e908d59a61f234063167fcd22bf207d247ef2d856f5e0d6b4c-013f2f2f7db897f941b19c4ab71c5395a48a0292.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/a9887999fc385f6f80aae06ed2bd9d4e7805d50545f6a6f4f00919df4d946f28-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/aa2d5568b1bb0b6e738c8a3782b1fa5c20d4a60866cea3107e892a6d621254d0-308b4084273a94c639264a87241ac66a2b0e0a04.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/acbea36edafe08e174e3b6e48548e4b77580c89dc5f694d7caa6cf118665bb4a-3b83687d77170d42feddfe221629cc21e771e021.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/b0d788a486272e32061d396d40fbd258fc2604973f6d5eff08bcb37a9aa83a4f-62567be722f5ef9df0dac5eefe6965b007be155d.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/b3908b75a65037590017b0864a0b90b6e0c8f49afc48f3c6c90e0a9c629c2ff0-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/b86548427f1b6cef715bf8d3509c39c611705b431b6ef8daf70bd56cc9b60aa2-fec805da314ea6ccbaf942c9965362b5de842610.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/d7258302501713f25084c399ced03316aa1c7e474d39307bd8663c2b4e3f4645-70f5752326735b31641f21d174ba035e904db93c.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/e1b3a5c11b103a8a4f3ad291606966ff44a27997cb852eb32f1c0e3fb841cd17-14d5d33a65a39f96665ed631b04fecf357bcb576.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/bsc/f1cbe96a70bc822f68f48c2e0e8c3b4a550af6f07dad1c8d549334960317de5a-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-326ff8ba9af8e5719181079afa93577617406c75.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/0805912cb02940c3f04869d83c6214e497be961f9afc3b5439043413dd557c1d-54731f4ca1d7e981d80d4cdd117c80063defe929.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-8a8e1d955641a78494d1fce2579050dd9b9c5f73.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/459eb7473512254fbfd734a2be493df40d9ed0d1f0b7367e33a3477f81a41284-62567be722f5ef9df0dac5eefe6965b007be155d.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/8808c3a9a9af285868251946db13c744ed60f8f0d21229a3b949678c61108e20-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/8808c3a9a9af285868251946db13c744ed60f8f0d21229a3b949678c61108e20-1b9df66feafaf7f4d49b39abbeccc7146cd27f70.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/8808c3a9a9af285868251946db13c744ed60f8f0d21229a3b949678c61108e20-9465471e6dbadac4759f5950bc0e8d8ee6e81c83.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/93178b2146f22a362febb59b03fca3df4cf8599e07ffd011b9adcba76918b582-70f5752326735b31641f21d174ba035e904db93c.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/a8ab18bfdcc827dea9abe0f050521cff5c85ecf8149f4382f1ca12549b28acc2-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/b489e43aab16bbdde7c515ad908c12c39834a20e54b325e2cff7a094ba5ecdca-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/bf3f3c57f88a29dfdb928b1cf27f2c4c51f848a3c62a18fe783738776847aad5-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/c549ee95eef161a9d112ee91cccceb08f32e4914cc71543b3609f6311d3dcf1f-2d1edc54b6d02dfa15d4cedef27637011934154f.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/d1ee69752ef280637964de452adda2fd55f4bf8a3fd5c16f2814a9ffa82254ab-013f2f2f7db897f941b19c4ab71c5395a48a0292.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/ee77ab2fdde50b697e950c97322ffcf0fea81b9364458e70e049db8a10f896d4-14d5d33a65a39f96665ed631b04fecf357bcb576.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/f83376a7c7a8086f8f903432398da45cee299673bf8c9c3c0b9228e650e5266b-fec805da314ea6ccbaf942c9965362b5de842610.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/optimism/fcadce8a7a46e8065523903053ac85e7b3b4c5ca7242e0174d07a706d26de210-3b83687d77170d42feddfe221629cc21e771e021.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-b14587fcd381e04835d5408fc11be3a29aa0ac68.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-e54de3b0b51f5d02957a3791f18fb3fe253517f7.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/9f99fa1acb07a4ff546c9ba99012c52865bca1e216054ac32d57fbc785e1f61b-3a37e3ab516284fef6a5afce0a54940c17d86399.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/9f99fa1acb07a4ff546c9ba99012c52865bca1e216054ac32d57fbc785e1f61b-b6ec45f5bf3dc69375f508a4484a37698ba24ea9.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/c7f9035c742e4543c8a5114dd83492f82d7dff33e749319522612c6cf1a374f2-a8e38bd5dea5fc9c62e0c4249afdd7d7b9e5f8db.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/c7f9035c742e4543c8a5114dd83492f82d7dff33e749319522612c6cf1a374f2-dde95358de2cbabc4db72bd779e34974c4fb0c78.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/f467780abedc36fa6f95f10b0e2150474784e1c0d4db30ab440fb84c17adf1f2-85ab076e3a8dc4074239d8437fa880a671a57cad.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "deployments/receipts/xgrchain/f467780abedc36fa6f95f10b0e2150474784e1c0d4db30ab440fb84c17adf1f2-d2ee35af42b9d96afea8fca3dd837f2bbc285755.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "docs/XITA_JOIN_OPERATIONS.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "docs/XITA_PUBLICATION_POLICY.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "docs/XITA_TOKEN_CREATOR_STARTER_GAS_DESIGN.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "manage.sh",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "runtime/native-relayer/source-finality.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "runtime/native-relayer/source-finality.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/README.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/admin.js",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/asset-state.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/bsc-onboarding.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/chain-finality.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/chain-finality.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/chain-reconcile.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/chain-state.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/creator-factory-deploy.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/creator-factory-deploy.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/creator-factory-github.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/creator-factory-github.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/deployment-ledger.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/deployment-resume-gate.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/deployment-resume-gate.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/fee-treasury.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/index.html",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/main-gate.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/operations-health.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/route-factory-draft.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/sealed-artifacts.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/server.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/style.css",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/admin/trusted-artifacts.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/gas-observer.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/gas-observer.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/publication.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/publication.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/server.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/server.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/sql/011_quote_writer_runtime_grants.sql",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/sql/014_sponsor_overtaken_obligations.sql",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/transfer-index-store.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/indexer/transfer-index-store.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/creator-wallet-guard.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/creator-wallet-guard.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/fee-claim.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/fee-claim.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/fee-quote.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/fee-quote.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/gas-sponsor.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/gas-sponsor.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/interchain-fee.env.example",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/price-cache.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/quote-service.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/managed-relay/server.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/coingecko-identity.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/coingecko-identity.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/coingecko-profile.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-canary-request.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-canary.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-canary.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-chain-proof.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-chain-proof.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-logo-png.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-logo-png.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-manifests.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-manifests.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-operator.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-operator.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-registration.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/creator-registration.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/mail-template.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/mail-template.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/manifests.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/manifests.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/package.json",
+    "change": "M",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/server.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/server.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/status-notifier.integration.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "services/onboarding/status-notifier.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "test/XITAStarterTokenCreator.t.sol",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/auto-hub-routes.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/auto-hub-routes.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/check-hub-route-expansion.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/check-xeta-clean.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/interchain-fee-nginx.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/interchain-fee-nginx.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/join-nginx.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/join-nginx.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/manage-web-release.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/manifest-layout.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/optimism-predeploy.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/quote-db-role.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/stamp-xita-web-modules.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/stamp-xita-web-modules.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/suggest-hub-routes.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/transfer-recovery-nginx.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/transfer-recovery-nginx.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-join-pr.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-join-pr.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-manifests.mjs",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-manifests.test.mjs",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-profile-pr.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-interchain",
+    "path": "tools/validate-profile-pr.test.mjs",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": ".github/workflows/release-light-v341.yml",
+    "change": "A",
+    "category": "ci",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": ".github/workflows/release-light-v342.yml",
+    "change": "A",
+    "category": "ci",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": ".github/workflows/release-light-v343.yml",
+    "change": "A",
+    "category": "ci",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "README.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "RELEASE_NOTES_v3.4.1.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "RELEASE_NOTES_v3.4.2.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "RELEASE_NOTES_v3.4.3.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "RELEASE_NOTES_v3.5.0.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "SECURITY_v3.5.0_WORKLOG.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "chain/params.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "chain/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/blspop/blspop.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/blspop/blspop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/blspop/configure.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/ibft.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/join/join.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "command/ibft/join/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/blspop/aggregate_review_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/blspop/manifest.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/blspop/manifest_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/blspop/rogue_key_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/fork/manager.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/fork/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/ibft.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/interchain_runtime.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/interchain_runtime_disabled_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/staking_pop.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "consensus/ibft/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "contracts/staking/StakingV2.sol",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "contracts/staking/pop-artifact/StakingV2PoP.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "contracts/staking/pop_artifact.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "crypto/staking_pop.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "crypto/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "docs/ILN_V340_OPERATOR_REFERENCE.md",
+    "change": "M",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "docs/security/v3.5.0-final-review.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "docs/security/v3.5.0-rollout.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "docs/security/v3.5.0-validation.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "docs/security/v3.5.0.md",
+    "change": "A",
+    "category": "documentation",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "e2e/staking_pop_fork_e2e_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/config.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/config_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/checkpoint_source_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/config.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/config_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/finality.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/finality_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/evm/optimism_v343_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/optimism_v343_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/runtime/iln_checkpoint.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/runtime/iln_observer_retry.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/runtime/iln_observer_retry_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/runtime/iln_storage.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "interchain/runtime/iln_storage_f32_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "jsonrpc/xgr_iln_quorum.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "jsonrpc/xgr_iln_quorum_test.go",
+    "change": "M",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "scripts/build-staking-pop.mjs",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "scripts/staking-pop-build/package-lock.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "scripts/staking-pop-build/package.json",
+    "change": "A",
+    "category": "configuration_or_artifact",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "scripts/validate-v3.5.0.sh",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "server/server.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "state/executor.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "state/staking_pop.go",
+    "change": "A",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "state/staking_pop_contract_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "validators/store/contract/fetcher.go",
+    "change": "M",
+    "category": "source",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  },
+  {
+    "repository": "xgr-node",
+    "path": "validators/store/contract/staking_pop_test.go",
+    "change": "A",
+    "category": "test",
+    "coverage": "Complete change inventory; security-path review depth is described separately, not line coverage."
+  }
+]

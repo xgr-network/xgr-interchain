@@ -1,0 +1,29 @@
+{
+  "target": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+  "utc": "2026-11-06T08:58:40.192Z",
+  "notes": [
+    {
+      "test": "actual restricted monitor queries",
+      "result": "no-aged-alerts"
+    },
+    {
+      "test": "exact production readiness SQL after migration",
+      "checks": {
+        "named": true,
+        "tax_write": true,
+        "intent_write": true,
+        "intent_read": true,
+        "promise_write": true,
+        "promise_read": true,
+        "grants_read": true,
+        "resolutions_read": true,
+        "transfers_read": true
+      },
+      "forbiddenDebtMutations": false
+    },
+    {
+      "test": "unrelated role promotion rejected",
+      "passed": true
+    }
+  ]
+}

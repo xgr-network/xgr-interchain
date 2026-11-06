@@ -1,0 +1,11 @@
+✔ entry and every static/dynamic JS dependency share a version, preventing split-release imports (1.692471ms)
+✔ staged website rewrites dependency edges without modifying repo source (6.009448ms)
+✔ release publisher checks staged JS syntax before changing current symlink (0.454996ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.300039

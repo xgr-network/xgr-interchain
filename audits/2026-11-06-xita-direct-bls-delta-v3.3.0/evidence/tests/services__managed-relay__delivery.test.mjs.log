@@ -1,0 +1,15 @@
+✔ persist signed transaction before broadcasting, never sign twice (4.668867ms)
+✔ after crash rebroadcast exact same signed tx without taking a new nonce (0.383057ms)
+✔ do not send or sign after any third-party delivery (1.263789ms)
+✔ on uncertain mailbox state never send (0.547636ms)
+✔ if validator quorum pending, do not broadcast or second-source-lock (0.264208ms)
+✔ unsigned destination calldata is strictly message/chain/mailbox bound (0.256156ms)
+✔ failed destination tx requires human review, never automatic new gas nonce (0.374434ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 301.582016

@@ -1,0 +1,11 @@
+✔ XGRChain starts at 0.1 XGR regardless of RPC fee quote (2.153395ms)
+✔ 0.1 XGR is prefilled even without a quote (0.155525ms)
+✔ other chains do not inherit XGR fee or expose destination gas input (0.212991ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.1549

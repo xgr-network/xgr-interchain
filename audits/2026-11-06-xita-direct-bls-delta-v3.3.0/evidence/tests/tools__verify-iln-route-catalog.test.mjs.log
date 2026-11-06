@@ -1,0 +1,10 @@
+✔ Arbitrum L2 route is independently verified at the documented deployment without trusting L1 block.number (1.701244ms)
+✔ reject mismatched source route, unconfirmed factory receipt and missing code (0.980609ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 109.032455

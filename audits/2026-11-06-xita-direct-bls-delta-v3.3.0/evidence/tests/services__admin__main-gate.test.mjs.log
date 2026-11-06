@@ -1,0 +1,17 @@
+✔ only XGRChain can serve as exactly one hop endpoint (0.923171ms)
+✔ requires the LIVE GitHub main SHA, not PRs or cached branch commits (0.69662ms)
+✔ no deploy on a PR branch or stale checkout (0.585393ms)
+✔ GitHub outage and dirty checkout block deployment (0.216867ms)
+✔ main work inventory returns assets by canonical key (28.384122ms)
+✔ stale main still renders read-only inventory while never approving Deploy (15.399821ms)
+✔ GitHub outage still allows a local read-only inventory but denies authorization (6.450693ms)
+✔ HTTP 403 uses only a verified LIVE Git main ref for deploy authorization (1.403546ms)
+✔ origin spoofing, fallback failure and cached main never authorize deployment (0.38488ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.1166

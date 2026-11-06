@@ -1,0 +1,17 @@
+✔ unavailable evidence never invents zero TVL or movement (5.90513ms)
+✔ fully verified unique assets produce totals only with complete coverage (1.026948ms)
+✔ a single unverifiable asset invalidates aggregate totals (5.355542ms)
+✔ CoinGecko public market data does not fabricate locked collateral (0.26575ms)
+✔ newly accepted asset with partial receipts does not zero valid XGR 24h turnover (1.070043ms)
+✔ undeployed post-reset asset cannot inherit verified TVL or movement (0.236397ms)
+✔ fresh verified TVL exposes its own observation timestamp for 24h comparisons (0.319111ms)
+✔ verified partial 24h volume is an explicitly incomplete lower bound while TVL remains complete (2.322491ms)
+✔ partial 24h volume never invents a value without independently verified movement (3.800619ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 274.213413

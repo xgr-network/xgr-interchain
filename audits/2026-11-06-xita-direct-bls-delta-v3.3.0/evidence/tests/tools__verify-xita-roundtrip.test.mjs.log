@@ -1,0 +1,11 @@
+✔ read-only roundtrip accepts any documented hub/spoke source pair, not only Base or XGR (1.706773ms)
+✔ receipt auditor never requires relayer or database state (0.663059ms)
+✔ any same-asset roundtrip must confirm both destination deliveries (0.446493ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 154.929339

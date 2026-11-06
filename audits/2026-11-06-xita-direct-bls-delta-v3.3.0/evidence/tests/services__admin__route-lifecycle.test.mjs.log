@@ -1,0 +1,14 @@
+✔ new Base spoke creates ONE wrapped router for both directed paths (3.998928ms)
+✔ return route REUSES existing synthetic mint/burn router (7.196397ms)
+✔ Polygon is the same process without chain-specific branches (4.202114ms)
+✔ duplicate or mismatched router observations always fail closed (1.608845ms)
+✔ unidirectional or direct spoke route is not registrable (0.327334ms)
+✔ same canonical pair derives deterministic reverse-distinct route hashes (6.51537ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 121.706312

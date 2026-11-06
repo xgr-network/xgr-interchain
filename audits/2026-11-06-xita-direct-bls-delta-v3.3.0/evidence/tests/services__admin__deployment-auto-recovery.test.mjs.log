@@ -1,0 +1,24 @@
+✔ unsent rejected MetaMask nonce is immediately safe for a new Wallet attempt (6.061346ms)
+✔ untraceable occupied pending nonce permits a new explicitly MetaMask-confirmed deployment (0.569839ms)
+✔ pending block recovers original wallet hash by exact nonce and calldata (4.672283ms)
+✔ consumed nonce with unavailable original hash does not query historical state (0.812014ms)
+✔ untraceable consumed original nonce allows a NEW explicitly confirmed wallet deploy (2.791828ms)
+✔ failed on-chain receipt is reusable, successful receipt is always reconciled (0.897463ms)
+✔ a saved hash with wrong transaction bytes never grants an automatic retry (1.579551ms)
+✔ confirmed-but-not-published entry must be reconciled, never retired (2.94609ms)
+✔ normal deploy click automatically removes unsent draft without a manual dialog (1.904681ms)
+✔ normal deploy click automatically recovers a submitted receipt without rebroadcast (0.652213ms)
+✔ unknown mempool transaction is auditable and permits an explicit new wallet nonce (0.378541ms)
+✔ an unused earlier draft is retired but a second IDENTIFIED pending transaction is reconciled first (22.560785ms)
+✔ saved Base SourceRegistry hash with stale unrelated tx is retired ONLY if factory has no registry (22.614646ms)
+✔ sourceRegistry wrong signed tx with missing receipt cannot be rebroadcast (3.426935ms)
+✔ approved Factory with empty registry enables new wallet attempt despite mismatching saved hash (8.925543ms)
+✔ already deployed SourceRegistry never initiates another wallet attempt without receipt provenance (5.281661ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 241.566442

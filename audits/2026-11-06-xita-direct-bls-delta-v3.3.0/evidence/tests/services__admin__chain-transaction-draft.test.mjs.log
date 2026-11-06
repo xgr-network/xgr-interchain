@@ -1,0 +1,17 @@
+✔ ABI encoder handles dynamic bytes[] offsets and typed uint boundaries (1.784149ms)
+✔ native verifier cannot be accidentally deployed on XGRChain (0.44434ms)
+✔ factory registry is a call to existing verified Factory, not a new deployment (1.071305ms)
+✔ missing bootstrap and dependencies fail closed (0.381145ms)
+✔ gas simulation checks chain, balance and gas before any signing (2.566298ms)
+✔ real constructor simulation journals explicit null recipient and factory call keeps address (0.321424ms)
+✔ Base EIP2537 contract creation quote accounts for L1 data and operator fees (4.998895ms)
+✔ Base Registry create draft deposits three exact, independently specified validator reserves (0.728137ms)
+✔ one optional Interchain Fee Gateway per chain uses one service wallet and separate recovery admin (4.358839ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 105.656201
