@@ -5,7 +5,7 @@ import {execFileSync} from "node:child_process";
 import {readdirSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {buildAssetState} from "./asset-state.mjs";
-import {chainConfigPath} from "../../tools/manifest-layout.mjs";
+import {chainConfigPath,activeChainFolders} from "../../tools/manifest-layout.mjs";
 
 const SHA=/^[0-9a-f]{40}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
@@ -80,7 +80,7 @@ export async function assertCurrentMain(root,options={}){
 function load(root,path){return JSON.parse(readFileSync(join(root,path),"utf8"));}
 export function approvedWorkInventory(root){
  const chains={},assets={},routes=[];
- for(const dir of readdirSync(join(root,"config/chains"),{withFileTypes:true}).filter(d=>d.isDirectory())){
+ for(const dir of activeChainFolders(root)){
    const name=dir.name;
    const chain=load(root,chainConfigPath(name));
    if(name!==chain.name||!Number.isSafeInteger(chain.chainId)||!Number.isSafeInteger(chain.domainId))

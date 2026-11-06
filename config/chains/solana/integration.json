@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-chain-integration-plan",
+  "name": "solana",
+  "displayName": "Solana",
+  "protocol": "sealevel",
+  "network": "mainnet-beta",
+  "networkIdentity": {
+    "kind": "solana-genesis-hash",
+    "value": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
+  },
+  "domainId": 1399811149,
+  "hub": {
+    "name": "xgrchain",
+    "domainId": 1643
+  },
+  "status": "development",
+  "protocolAdmissionEnabled": false,
+  "deploymentEnabled": false,
+  "rpcWitnesses": [
+    {
+      "operatorId": "solana-foundation",
+      "url": "https://api.mainnet-beta.solana.com"
+    },
+    {
+      "operatorId": "publicnode",
+      "url": "https://solana-rpc.publicnode.com"
+    },
+    {
+      "operatorId": "drpc",
+      "url": "https://solana.drpc.org"
+    }
+  ],
+  "solanaPrograms": [
+    "mailbox",
+    "validatorRegistry",
+    "directBlsVerifier",
+    "sourceRegistry",
+    "factory",
+    "feeVault",
+    "collateralRouter",
+    "syntheticRouter"
+  ],
+  "xgrChainContracts": [
+    "solanaFactory",
+    "solanaRouteRegistry",
+    "solanaRouter",
+    "solanaDirectBlsIsm"
+  ],
+  "notes": "Planning only; no chain.json, active node chain policy, deployable artifact, Solana signing worker or on-chain receipt. Runtime capabilities and independent operators require validation before deployment."
+}

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import {readdirSync,readFileSync} from "node:fs";
+import {existsSync,readdirSync,readFileSync} from "node:fs";
 import {join,resolve,dirname} from "node:path";
-import {chainConfigPath,loadChainDeployment,listAssetFolders,loadAssetDeployment,assetConfigFolder,chainDeploymentPath} from "./manifest-layout.mjs";
+import {chainConfigPath,loadChainDeployment,listAssetFolders,loadAssetDeployment,assetConfigFolder,chainDeploymentPath,activeChainFolders} from "./manifest-layout.mjs";
+import {readSolanaPlan} from "../services/admin/solana-plan.mjs";
 import {canonicalAssetId} from "../services/admin/asset-state.mjs";
 import {fileURLToPath} from "node:url";
 export const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),"..");
@@ -11,7 +12,7 @@ const RECEIPT=/^deployments\/receipts\/[a-z][a-z0-9-]*\/[a-f0-9]{64}-[a-f0-9]{40
 const read=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
 export function loadCatalog(root=ROOT){
  const chains={},assets={},infrastructure={};
- for(const dir of readdirSync(join(root,"config/chains"),{withFileTypes:true}).filter(x=>x.isDirectory())){
+ for(const dir of activeChainFolders(root)){
   const chain=read(root,chainConfigPath(dir.name));
   if(chain.name!==dir.name)throw Error("Chain folder/identity mismatch: "+dir.name);
   chains[dir.name]=chain;
@@ -187,7 +188,13 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
  }
  return errors;
 }
-export function validateRepository(root=ROOT){return validateCatalog(loadCatalog(root))}
+export function validateRepository(root=ROOT){
+ const errors=validateCatalog(loadCatalog(root));
+ if(existsSync(join(root,"config/chains/solana/integration.json"))){
+  try{readSolanaPlan(root)}catch(e){errors.push("Solana integration plan invalid: "+e.message)}
+ }
+ return errors;
+}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{const problems=validateRepository();if(problems.length){for(const x of problems)console.error("INVALID: "+x);process.exitCode=1}else console.log("PASS: XITA v3.1.5 chain, asset, hub and deployment manifests")}
  catch(err){console.error("INVALID: "+err.message);process.exitCode=1}

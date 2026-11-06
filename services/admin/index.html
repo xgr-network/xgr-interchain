@@ -5,7 +5,17 @@
 <div class="source-bar"><div><span class="tiny">QUELLE</span><p id="main-status">Prüfe GitHub main …</p></div><button id="reload-inventory" class="outline">Aktualisieren</button></div>
 <section id="assets" class="module view"><div class="section-head"><div><span class="eyebrow">TOKEN ZUERST</span><h2>Assets und Routen</h2><p>Ein Asset, eine kanonische Identität, alle Repräsentationen und zugehörigen Deployments.</p></div><div class="metrics" id="metrics"></div></div><div class="filters"><input id="asset-search" type="search" placeholder="Asset oder Netzwerk suchen …"><select id="asset-filter"><option value="all">Alle Zustände</option><option value="not-deployed">Nicht deployed</option><option value="partial">Teilweise deployed</option><option value="deployed">Deployed</option></select></div><div id="main-workqueue" class="asset-list">Asset-Katalog wird geprüft …</div><div id="asset-pagination" class="pagination"></div></section>
 <section id="infrastructure" class="module view" hidden><div class="section-head"><div><span class="eyebrow">NETZWERKE</span><h2>Chain-Infrastruktur</h2><p>Gemeinsame Komponenten pro Chain – getrennt von assetbezogenen Routern.</p></div><button type="button" class="outline" id="refresh">RPC prüfen</button></div><div id="infrastructure-list" class="chain-grid"></div>
-<article class="creator-factory-panel">
+<article class="creator-factory-panel" id="solana-integration-panel">
+ <div class="section-head"><div><span class="eyebrow">SOLANA · NATIVE INTERCHAIN</span>
+ <h3>Solana Integration & Deployment</h3>
+ <p>Eigener SVM-Adapter und Solana-Programme, angebunden an denselben XGR-Hub. Kein EVM-/MetaMask-Deployment.</p>
+ </div></div>
+ <p id="solana-panel-status" role="status" aria-live="polite">Lade Solana-Integrationsplan …</p>
+ <div id="solana-program-steps" class="tiny"></div>
+ <button id="solana-rpc-check" type="button" class="outline">Solana RPC & Finalität prüfen</button>
+ <p class="tiny">Die Programmbereitstellung per Solana-Wallet wird erst nach verifiziertem Rust-Build, Direct-BLS-Prüfung, Program-ID- und Receipt-Validierung freigeschaltet. Kein Deployment nur aufgrund erfolgreicher RPC-Checks.</p>
+ </article>
+ <article class="creator-factory-panel">
 <div class="section-head"><div><span class="eyebrow">XGRCHAIN · ERC-20 CREATOR</span>
 <h3>Token Creator Factory</h3><p>Einmaliges XITAStarterTokenCreator-Deployment – unabhängig von der bestehenden Interchain Router Factory.</p></div></div>
 <p id="creator-factory-status" role="status" aria-live="polite">Prüfe Factory-Deployment …</p>

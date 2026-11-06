@@ -16,3 +16,16 @@ The deployment receipt writer automatically extends existing XGR-hub assets to e
 - [Independent transfer and unsigned recovery](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
 - [Protocol and permissionless route registration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Asset_Bridge.md)
 - [Source map, validation and evidence limits](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)
+
+
+## Solana development lane
+
+The Solana panel on **Chains & Onboarding** reads
+`config/chains/solana/integration.json` and optionally probes mainnet-beta
+`getGenesisHash` / `getSlot(finalized)` across distinct operators.
+This is separate from the current EVM-only MetaMask/Foundry executor.
+It shows undeployed SVM programs and XGR-side contracts without fabricating
+addresses, readiness or asset listings. Program build, unsigned Solana-wallet
+deployment, submitted-signature recovery, ELF/programdata attestation and
+GitHub receipt publication are mandatory before any Solana deploy action can
+be enabled. See `docs/SOLANA_INTEGRATION.md` and `chains/solana/deploy/`.

@@ -1049,3 +1049,33 @@ el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth()
 setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
 loadMainWorkqueue();loadPlan();
 // Chain RPC state is queried only in the dedicated Chains view or on refresh.
+
+
+// SVM deployment is a separate security domain from the EIP-1193 executor.
+async function loadSolanaIntegration(probe=false){
+ const status=el("solana-panel-status"),steps=el("solana-program-steps");
+ if(!status||!steps)return;
+ status.textContent=probe?"Prüfe unabhängige Solana RPCs und finalized-Slots …":"Lade Solana-Plan …";
+ try{
+  const {plan,probe:result}=await get(probe?"/admin/api/solana/probe":"/admin/api/solana/plan");
+  const programs=(plan.solanaPrograms||[]).map(x=>"Solana / "+x);
+  const xgr=(plan.xgrChainContracts||[]).map(x=>"XGRChain / "+x);
+  steps.innerHTML='<p>Netz: '+esc(plan.network)+' · Domain '+esc(plan.domainId)+
+   ' · Genesis '+esc(plan.networkIdentity.value)+'</p>'+
+   '<p>Offene Deployment-Komponenten:</p><div class="chain-components">'+
+   [...programs,...xgr].map(x=>'<div class="component-row"><span>'+esc(x)+
+    '</span><span class="status">Noch nicht deployed</span></div>').join("")+'</div>';
+  status.textContent="Integration in Entwicklung · signierte Deployments gesperrt"+
+   (result?" · Unabhängige RPCs: "+result.independentWitnesses+"/"+plan.rpcWitnesses.length+
+    (result.rpcPreflightOK?" erreichbar":" · nicht ausreichend"):"");
+  if(result){
+   steps.innerHTML+='<p>'+result.rpc.map(x=>esc(x.operatorId)+": "+
+    (x.healthy?"finalized Slot "+x.finalizedSlot:"FEHLER "+esc(x.error))).join(" · ")+'</p>';
+  }
+ }catch(e){
+  status.textContent="Solana-Plan nicht verfügbar: "+String(e.message||e);
+  steps.textContent="";
+ }
+}
+el("solana-rpc-check")?.addEventListener("click",()=>void loadSolanaIntegration(true));
+void loadSolanaIntegration();

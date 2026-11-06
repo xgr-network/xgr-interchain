@@ -20,6 +20,17 @@ export function chainDeploymentPath(name){
  if(!SLUG.test(name))throw Error("Invalid chain slug");
  return "deployments/chains/"+name+".json";
 }
+// The Solana integration plan deliberately stays out of the active EVM chain
+// inventory until Solana programs and both-side adapters are independently
+// verified. Unknown/incomplete chain directories are still errors.
+export function activeChainFolders(root){
+ const base=join(root,"config/chains");
+ return readdirSync(base,{withFileTypes:true}).filter(x=>x.isDirectory()).filter(entry=>{
+  if(existsSync(join(base,entry.name,"chain.json")))return true;
+  if(entry.name==="solana"&&existsSync(join(base,"solana/integration.json")))return false;
+  throw Error("Unconfigured chain directory: "+entry.name);
+ });
+}
 export function assetConfigFolder(key,assetId){
  if(!SYMBOL.test(key)||!ID.test(assetId))throw Error("Invalid asset folder identity");
  return "config/assets/"+assetId.slice(2,4).toLowerCase()+"/"+key;

@@ -22,6 +22,7 @@ import {createChainOperator} from "./chain-operator.mjs";
 import {createAssetOperator} from "./asset-operator.mjs";
 import {creatorFactoryDeployment} from "./creator-factory-deploy.mjs";
 import {publishCreatorFactoryPR} from "./creator-factory-github.mjs";
+import {readSolanaPlan,probeSolanaPlan} from "./solana-plan.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 import {collectOperationsHealth} from "./operations-health.mjs";
@@ -184,6 +185,15 @@ http.createServer(async(req,res)=>{
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
    return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
+  }
+  // Solana has its own SVM planning/preflight API; never send it to the EVM
+  // deployment operator or mark its planned programs as deployed.
+  if(req.method==="GET"&&path==="/admin/api/solana/plan"){
+   return reply(res,200,{ok:true,plan:readSolanaPlan(root)});
+  }
+  if(req.method==="GET"&&path==="/admin/api/solana/probe"){
+   const plan=readSolanaPlan(root);
+   return reply(res,200,{ok:true,plan,probe:await probeSolanaPlan(plan)});
   }
   if(req.method==="GET"&&path==="/admin/api/fee-treasury"){
    return reply(res,200,await inspectFeeTreasury({root,catalog:load("apps/web/catalog.json")}));
