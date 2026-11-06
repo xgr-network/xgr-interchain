@@ -34,8 +34,7 @@ solana_program::entrypoint!(process_instruction);
 #[cfg(test)]
 mod tests{
  use super::*;
- use borsh::BorshSerialize;
- use instruction::XitaInstruction;
+  use instruction::XitaInstruction;
  #[test]fn every_monetary_or_privileged_instruction_fails_closed(){
   let program_id=Pubkey::new_unique();
   for instruction in [
@@ -44,7 +43,7 @@ mod tests{
    XitaInstruction::ExecuteInbound{message:vec![],proof:vec![]},
    XitaInstruction::ClaimFees{max_epochs:1},
   ]{
-   let raw=instruction.try_to_vec().unwrap();
+   let raw=borsh::to_vec(&instruction).unwrap();
    assert_eq!(process_instruction(&program_id,&[],&raw),Err(disabled()));
   }
  }

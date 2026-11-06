@@ -7,18 +7,25 @@ pub fn threshold(count:usize)->Option<usize>{
  if count==0{return None;}
  count.checked_mul(2)?.checked_add(2).map(|v|v/3)
 }
+/// Solidity V3 uses *big-endian* bitmap bytes: the least significant
+/// validator index is the rightmost byte. Leading zero bytes are invalid.
+/// Historical validator membership must use this same bit-index convention.
+pub fn bitmap_member(bitmap:&[u8],validator_index:usize)->bool {
+ let offset=validator_index/8;
+ if offset>=bitmap.len(){return false;}
+ bitmap[bitmap.len()-1-offset]&(1u8<<(validator_index%8))!=0
+}
 pub fn bitmap_has_quorum(bitmap:&[u8],count:usize)->bool{
  let needed=match threshold(count){Some(v)=>v,None=>return false};
- if bitmap.len()!=(count+7)/8 {return false;}
- let mut n=0;
- for (i,b) in bitmap.iter().enumerate(){
-  if i==bitmap.len()-1 && count%8!=0{
-   let mask=0xffu8 << (count%8);
-   if *b&mask!=0{return false;}
-  }
-  n+=b.count_ones() as usize;
+ if bitmap.is_empty()||bitmap.len()>(count+7)/8||bitmap[0]==0 {return false;}
+ let mut included=0;
+ for index in 0..count {
+  if bitmap_member(bitmap,index){included+=1;}
  }
- n>=needed
+ for index in count..bitmap.len()*8 {
+  if bitmap_member(bitmap,index){return false;}
+ }
+ included>=needed
 }
 pub fn apply_membership_unavailable()->Result<(),ProgramError>{
  Err(crate::disabled())
@@ -35,5 +42,11 @@ mod tests{
   assert!(!bitmap_has_quorum(&[0b0000_0001],3));
   assert!(!bitmap_has_quorum(&[0b1000_0011],3));
   assert!(!bitmap_has_quorum(&[],3));
+  // V3 accepts minimally encoded big-endian bytes; never leading padding.
+  assert!(bitmap_has_quorum(&[0x01,0xff],9));
+  assert!(bitmap_member(&[0x01,0x00],8));
+  assert!(!bitmap_member(&[0x01,0x00],0));
+  assert!(!bitmap_has_quorum(&[0x00,0x03],9));
+  assert!(!bitmap_has_quorum(&[0x02,0xff],9));
  }
 }

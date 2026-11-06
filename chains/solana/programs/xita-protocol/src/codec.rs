@@ -75,7 +75,7 @@ pub fn signing_preimage(a:&Authorization)->Option<Vec<u8>> {
         a.set_id==0 ||a.source_height==0 ||
         [a.source_registry,a.gateway,a.source_mailbox,a.message_id,a.recipient,
          a.destination_ism,a.destination_registry,a.validator_fee,a.amount]
-            .iter().any(|x|*x==&[0u8;32]) {
+            .iter().any(|x|*x==[0u8;32]) {
         return None;
     }
     if a.source_domain==XGR_DOMAIN &&
