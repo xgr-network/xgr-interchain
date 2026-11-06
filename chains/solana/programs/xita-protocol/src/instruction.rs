@@ -22,4 +22,12 @@ pub enum XitaInstruction {
     ExecuteInbound { message:Vec<u8>, proof:Vec<u8> },
     /// Reserved for claim based on a final historical validator snapshot.
     ClaimFees { max_epochs:u64 },
+    /// Factory.deployWrappedXGRRouter / deploySyntheticRouter parity.
+    /// All synthetic mint accounts start with zero supply. CPI minting remains
+    /// blocked until on-chain Direct-BLS verification is independently audited.
+    /// accounts: creator, router PDA, mint PDA, system, rent, SPL Token program.
+    DeploySyntheticRouter {
+        salt:[u8;32], origin_chain_id:u64, origin_token:[u8;20],
+        origin_kind:u8, decimals:u8,
+    },
 }

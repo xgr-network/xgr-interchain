@@ -26,6 +26,18 @@ fn word_u8(v: u8) -> [u8;32] {
 pub fn is_evm_address_32(a: &[u8;32]) -> bool {
     *a != [0;32] && a[..12] == [0;12]
 }
+/// Existing V315 EVM-origin assets never change their canonical Asset ID.
+pub fn evm_origin_asset_id(chain_id:u64,token:[u8;20],kind:u8)->Option<[u8;32]>{
+    if chain_id==0 || !(kind==0&&token==[0;20] || kind==1&&token!=[0;20]){
+        return None;
+    }
+    let mut chain_word=[0u8;32];
+    chain_word[24..].copy_from_slice(&chain_id.to_be_bytes());
+    let mut token_word=[0u8;32];
+    token_word[12..].copy_from_slice(&token);
+    let scope=hashv(&[b"XITA_ASSET_V315"]);
+    Some(hashv(&[&scope,&chain_word,&token_word,&word_u8(kind)]))
+}
 pub fn asset_id(mint: [u8;32],kind: u8) -> Option<[u8;32]> {
     if !((kind==0&&mint==[0;32])||(kind==1&&mint!=[0;32])) {
         return None;
@@ -125,6 +137,14 @@ mod tests{
  fn h(s:&str)->[u8;32]{
     assert_eq!(s.len(),64);let mut b=[0u8;32];
     for i in 0..32 {b[i]=u8::from_str_radix(&s[i*2..i*2+2],16).unwrap();}b
+ }
+ #[test]fn evm_native_xgr_asset_keeps_v315_id(){
+    assert_eq!(
+        evm_origin_asset_id(1643,[0;20],0).unwrap(),
+        h("a7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0")
+    );
+    assert!(evm_origin_asset_id(0,[0;20],0).is_none());
+    assert!(evm_origin_asset_id(1643,[0;20],1).is_none());
  }
  #[test]fn solana_asset_and_route_golden_vectors(){
   let a=h("a7585b8fbd074c1a7fa6df8b8e2e5ce73395ccbb64bf99b631c5da8ff2ac44e0");

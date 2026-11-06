@@ -15,7 +15,7 @@ pub struct Router {
     pub tag: u8,
     pub version: u8,
     pub bump: u8,
-    pub kind: u8, // 1 = SPL collateral. Synthetic/native execution is gated.
+    pub kind: u8, // 1 = SPL collateral, 2 = synthetic SPL mint (zero supply).
     pub creator: [u8; 32],
     pub mint: [u8; 32],
     pub asset_id: [u8; 32],

@@ -8,7 +8,7 @@ deployment topology is *not* Solana's execution model.
 | Solidity contract | Rust module | Current implementation |
 | --- | --- | --- |
 | `XGRILNProtocol.sol` + Solana codec | `codec.rs` | Full additive Solana asset, route, signing-preimage and decimals codec; golden vectors |
-| `XETATokenFactoryV315.sol` | `factory.rs` | Permissionless creator-bound SPL collateral router and paired route/fee PDA creation |
+| `XETATokenFactoryV315.sol` | `factory.rs` | Permissionless creator-bound collateral router, ZERO-supply synthetic SPL mint (mint-authority PDA, freeze=None), and paired route/fee PDAs |
 | `XGRILNRegistryV315.sol` | `registry.rs` | Append-only, PDA-validated route record; fee changes require future BLS |
 | `XETARouterCore.sol` + guarded routers | `router.rs` | Immutable router identity and route checks; transfer/mint gated |
 | `ILNGateway.sol` | `gateway.rs` | Explicitly disabled pending atomic source custody and fee evidence |
@@ -40,7 +40,7 @@ and validator governance, replay protection, native fee claims, audited
 Solana wallet deployment and on-chain message handling remain required.
 
 The only executable instructions create *non-transferable initialization
-records*. They do not lock, mint, unlock, dispatch, charge bridge fees,
+records* or zero-supply SPL synthetic mints. They do not lock, mint, unlock, dispatch, charge bridge fees,
 alter validator sets or accept untrusted proof bytes as authorization.
 There is no owner/pause/upgrade admin in the Rust instruction set. The
 Solana program Upgrade Authority must be permanently revoked before any

@@ -9,7 +9,7 @@ use crate::{
 use borsh::BorshDeserialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult, program::invoke_signed, program_error::ProgramError,
+    entrypoint::ProgramResult, program::{invoke,invoke_signed}, program_error::ProgramError,
     pubkey::Pubkey, rent::Rent, system_instruction, system_program,
     sysvar::{self, Sysvar}, program_pack::Pack,
 };
@@ -18,16 +18,20 @@ use spl_token::state::Mint;
 pub const ROUTER_SEED: &[u8] = b"xita-router";
 pub const ROUTE_SEED: &[u8] = b"xita-route";
 pub const FEE_SEED: &[u8] = b"xita-fee-vault";
+pub const SYNTH_ROUTER_SEED: &[u8] = b"xita-synthetic";
+pub const SYNTH_MINT_SEED: &[u8] = b"xita-mint";
+
 
 fn create_pda<'a>(
     program_id:&Pubkey, payer:&AccountInfo<'a>, new_account:&AccountInfo<'a>,
-    system:&AccountInfo<'a>, rent:&Rent, seeds:&[&[u8]], space:usize
+    system:&AccountInfo<'a>, rent:&Rent, seeds:&[&[u8]], space:usize,
+    owner:&Pubkey
 ) -> ProgramResult {
     if !payer.is_signer || !payer.is_writable || !new_account.is_writable ||
        *system.key!=system_program::id() || !system.executable {
         return Err(ProgramError::MissingRequiredSignature)
     }
-    if new_account.lamports()!=0 || new_account.data_len()!=0 {
+    if new_account.data_len()!=0 || *new_account.owner!=system_program::id() {
         return Err(ProgramError::AccountAlreadyInitialized)
     }
     let (expected,bump)=Pubkey::find_program_address(seeds,program_id);
@@ -38,10 +42,31 @@ fn create_pda<'a>(
     let mut signer_seeds=seeds.to_vec();
     signer_seeds.push(&bump_seed);
     let amount=rent.minimum_balance(space).max(1);
-    let ix=system_instruction::create_account(
-        payer.key,new_account.key,amount,space as u64,program_id
-    );
-    invoke_signed(&ix,&[payer.clone(),new_account.clone(),system.clone()],&[&signer_seeds])
+    if new_account.lamports()==0 {
+        let ix=system_instruction::create_account(
+            payer.key,new_account.key,amount,space as u64,owner
+        );
+        return invoke_signed(
+            &ix,&[payer.clone(),new_account.clone(),system.clone()],&[&signer_seeds]
+        );
+    }
+    // A third party may pre-fund a deterministic PDA through System Program
+    // before its creator initializes it. That must NOT permanently block
+    // permissionless router or route creation.
+    if new_account.lamports()<amount {
+        let ix=system_instruction::transfer(
+            payer.key,new_account.key,amount-new_account.lamports()
+        );
+        invoke(&ix,&[payer.clone(),new_account.clone(),system.clone()])?;
+    }
+    invoke_signed(
+        &system_instruction::allocate(new_account.key,space as u64),
+        &[new_account.clone(),system.clone()],&[&signer_seeds]
+    )?;
+    invoke_signed(
+        &system_instruction::assign(new_account.key,owner),
+        &[new_account.clone(),system.clone()],&[&signer_seeds]
+    )
 }
 
 pub fn deploy_collateral_router(
@@ -81,7 +106,65 @@ pub fn deploy_collateral_router(
     let encoded=borsh::to_vec(&state).map_err(|_|ProgramError::InvalidAccountData)?;
     let rent=Rent::from_account_info(rent_sysvar)?;
     create_pda(program_id,creator,router_account,system,&rent,
-        &[ROUTER_SEED,creator.key.as_ref(),&salt,mint_account.key.as_ref()],encoded.len())?;
+        &[ROUTER_SEED,creator.key.as_ref(),&salt,mint_account.key.as_ref()],encoded.len(),program_id)?;
+    state::save(router_account,program_id,&state)?;
+    Ok(())
+}
+
+/// Permissionless factory parity for `deploySyntheticRouter` and
+/// `deployWrappedXGRRouter`. The minted SPL asset has ZERO initial supply;
+/// only its immutable router PDA has mint authority, never the payer/operator.
+/// Freeze authority is permanently unset. No mint instructions are exposed.
+pub fn deploy_synthetic_router(
+    program_id:&Pubkey,accounts:&[AccountInfo],
+    salt:[u8;32],origin_chain_id:u64,origin_token:[u8;20],
+    origin_kind:u8,decimals:u8,
+)->ProgramResult {
+    let mut it=accounts.iter();
+    let creator=next_account_info(&mut it)?;
+    let router_account=next_account_info(&mut it)?;
+    let mint_account=next_account_info(&mut it)?;
+    let system=next_account_info(&mut it)?;
+    let rent_sysvar=next_account_info(&mut it)?;
+    let token_program=next_account_info(&mut it)?;
+    if !creator.is_signer||!creator.is_writable||
+       !router_account.is_writable||!mint_account.is_writable||
+       *rent_sysvar.key!=sysvar::rent::id()||
+       *token_program.key!=spl_token::id()||!token_program.executable||
+       decimals>9 || origin_chain_id==codec::SOLANA_DOMAIN as u64 {
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    // Native SOL is not supported as an origin through this path. Native
+    // wrapped XGR is the only native representation currently admitted.
+    if origin_kind==0&&origin_chain_id!=codec::XGR_DOMAIN as u64 {
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    let asset_id=codec::evm_origin_asset_id(
+        origin_chain_id,origin_token,origin_kind)
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    let (expected_router,bump)=Pubkey::find_program_address(
+        &[SYNTH_ROUTER_SEED,creator.key.as_ref(),&asset_id,&salt],program_id);
+    if expected_router!=*router_account.key {
+        return Err(ProgramError::InvalidSeeds)
+    }
+    let (expected_mint,_)=Pubkey::find_program_address(
+        &[SYNTH_MINT_SEED,router_account.key.as_ref()],program_id);
+    if expected_mint!=*mint_account.key {
+        return Err(ProgramError::InvalidSeeds)
+    }
+    let state=Router{tag:ROUTER_TAG,version:VERSION,bump,kind:2,
+        creator:creator.key.to_bytes(),mint:mint_account.key.to_bytes(),
+        asset_id,salt,decimals};
+    let space=borsh::to_vec(&state)
+        .map_err(|_|ProgramError::InvalidAccountData)?.len();
+    let rent=Rent::from_account_info(rent_sysvar)?;
+    create_pda(program_id,creator,router_account,system,&rent,
+        &[SYNTH_ROUTER_SEED,creator.key.as_ref(),&asset_id,&salt],space,program_id)?;
+    create_pda(program_id,creator,mint_account,system,&rent,
+        &[SYNTH_MINT_SEED,router_account.key.as_ref()],Mint::LEN,&spl_token::id())?;
+    let ix=spl_token::instruction::initialize_mint2(
+        &spl_token::id(),mint_account.key,router_account.key,None,decimals)?;
+    invoke(&ix,&[mint_account.clone(),token_program.clone()])?;
     state::save(router_account,program_id,&state)?;
     Ok(())
 }
@@ -103,13 +186,23 @@ pub fn register_route(
         return Err(ProgramError::MissingRequiredSignature)
     }
     let router:Router=state::load(router_account,program_id)?;
-    if router.tag!=ROUTER_TAG||router.version!=VERSION||router.kind!=1 ||
+    if router.tag!=ROUTER_TAG||router.version!=VERSION||
+       (router.kind!=1&&router.kind!=2)||
        router.creator!=creator.key.to_bytes() {
         return Err(ProgramError::InvalidAccountData)
     }
     let mint=Pubkey::new_from_array(router.mint);
-    let (router_pda,router_bump)=Pubkey::find_program_address(
-        &[ROUTER_SEED,creator.key.as_ref(),&router.salt,mint.as_ref()],program_id);
+    let (router_pda,router_bump)=if router.kind==1 {
+       Pubkey::find_program_address(
+           &[ROUTER_SEED,creator.key.as_ref(),&router.salt,mint.as_ref()],program_id)
+    } else {
+       let (pda,bump)=Pubkey::find_program_address(
+           &[SYNTH_ROUTER_SEED,creator.key.as_ref(),&router.asset_id,&router.salt],program_id);
+       let (mint_expected,_)=Pubkey::find_program_address(
+           &[SYNTH_MINT_SEED,router_account.key.as_ref()],program_id);
+       if mint_expected!=mint {return Err(ProgramError::InvalidSeeds)}
+       (pda,bump)
+    };
     if *router_account.key!=router_pda||router.bump!=router_bump {
         return Err(ProgramError::InvalidSeeds)
     }
@@ -143,9 +236,9 @@ pub fn register_route(
         .map_err(|_|ProgramError::InvalidAccountData)?.len();
     let rent=Rent::from_account_info(rent_sysvar)?;
     create_pda(program_id,creator,route_account,system,&rent,
-        &[ROUTE_SEED,router_account.key.as_ref(),&destination_domain.to_be_bytes()],route_len)?;
+        &[ROUTE_SEED,router_account.key.as_ref(),&destination_domain.to_be_bytes()],route_len,program_id)?;
     create_pda(program_id,creator,fee_account,system,&rent,
-        &[FEE_SEED,route_account.key.as_ref()],fee_len)?;
+        &[FEE_SEED,route_account.key.as_ref()],fee_len,program_id)?;
     state::save(route_account,program_id,&route)?;
     state::save(fee_account,program_id,&fee)?;
     // Never claim this provisional record is an active bridge route. It must
@@ -161,6 +254,10 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             deploy_collateral_router(program_id,accounts,salt),
         XitaInstruction::RegisterRoute{destination_domain,remote_router} =>
             register_route(program_id,accounts,destination_domain,remote_router),
+        XitaInstruction::DeploySyntheticRouter{
+            salt,origin_chain_id,origin_token,origin_kind,decimals
+        } => deploy_synthetic_router(
+            program_id,accounts,salt,origin_chain_id,origin_token,origin_kind,decimals),
         _ => Err(crate::disabled()),
     }
 }
