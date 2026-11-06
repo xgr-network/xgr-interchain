@@ -1074,6 +1074,168 @@
         "routeDeployments": [],
         "present": false
       }
+    },
+    "AERO": {
+      "metadata": {
+        "schemaVersion": 1,
+        "kind": "asset-config",
+        "asset": "AERO",
+        "name": "Aerodrome Finance",
+        "symbol": "AERO",
+        "decimals": 18,
+        "canonical": {
+          "chain": "base",
+          "representation": "collateral",
+          "symbol": "AERO",
+          "tokenAddress": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+        },
+        "representations": [
+          {
+            "chain": "base",
+            "representation": "collateral",
+            "symbol": "AERO",
+            "assetAddress": "0x940181a94a35a4569e4529a3cdfb74e38fd98631"
+          },
+          {
+            "chain": "xgrchain",
+            "representation": "synthetic",
+            "symbol": "wAERO",
+            "assetAddress": null
+          },
+          {
+            "chain": "arbitrum",
+            "representation": "synthetic",
+            "symbol": "wAERO",
+            "assetAddress": null
+          },
+          {
+            "chain": "bsc",
+            "representation": "synthetic",
+            "symbol": "wAERO",
+            "assetAddress": null
+          },
+          {
+            "chain": "optimism",
+            "representation": "synthetic",
+            "symbol": "wAERO",
+            "assetAddress": null
+          }
+        ],
+        "bridgeModel": "lock-mint-burn-unlock",
+        "assetId": "0xaf7a4d225f47f0b70047494a8b03ce18fad693634dddc4807f41ac74aa1e76f7",
+        "notes": "Public directory application; no route or deployment is active without independent safety verification."
+      },
+      "profile": {
+        "schemaVersion": 1,
+        "kind": "xeta-token-profile",
+        "asset": "AERO",
+        "slug": "aerodrome-finance",
+        "name": "Aerodrome Finance",
+        "shortDescription": "Aerodrome Finance is a next-generation AMM designed to serve as Base's central liquidity hub, combining a powerful liquidity incentive engine, vote-lock governance model, and friendly user experience. Aerodrome inherits the latest features from Velodrome",
+        "description": "Aerodrome Finance is a next-generation AMM designed to serve as Base's central liquidity hub, combining a powerful liquidity incentive engine, vote-lock governance model, and friendly user experience. Aerodrome inherits the latest features from Velodrome V2.",
+        "categories": [
+          "Decentralized Exchange (DEX)",
+          "Exchange-based Tokens",
+          "Decentralized Finance (DeFi)",
+          "Automated Market Maker (AMM)",
+          "Base Ecosystem",
+          "Binance Alpha Spotlight",
+          "Made in USA",
+          "Base Native"
+        ],
+        "tags": [],
+        "branding": {
+          "logoUrl": "https://coin-images.coingecko.com/coins/images/31745/large/token.png?1696530564",
+          "bannerUrl": null
+        },
+        "links": {
+          "website": "https://aerodrome.finance/",
+          "explorer": "https://basescan.org/token/0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+          "github": "https://github.com/aerodrome-finance",
+          "docs": null,
+          "whitepaper": "https://aerodrome.finance/docs",
+          "x": "https://x.com/aerodromefi",
+          "linkedin": null,
+          "telegram": null,
+          "discord": "https://discord.gg/aerodrome"
+        },
+        "market": {
+          "coingeckoId": "aerodrome-finance",
+          "coinmarketcapId": null,
+          "priceSource": "coingecko"
+        },
+        "supply": {
+          "circulating": null,
+          "total": null,
+          "max": null
+        },
+        "verification": {
+          "status": "project-maintained",
+          "proof": null
+        }
+      },
+      "routes": {
+        "schemaVersion": 1,
+        "kind": "asset-routes",
+        "asset": "AERO",
+        "network": "mainnet",
+        "protocol": "XITA-v3.1.5",
+        "routingHub": "xgrchain",
+        "routes": [
+          {
+            "name": "arbitrum_to_xgr",
+            "sourceChain": "arbitrum",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_arbitrum",
+            "sourceChain": "xgrchain",
+            "destinationChain": "arbitrum"
+          },
+          {
+            "name": "base_to_xgr",
+            "sourceChain": "base",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_base",
+            "sourceChain": "xgrchain",
+            "destinationChain": "base"
+          },
+          {
+            "name": "bsc_to_xgr",
+            "sourceChain": "bsc",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_bsc",
+            "sourceChain": "xgrchain",
+            "destinationChain": "bsc"
+          },
+          {
+            "name": "optimism_to_xgr",
+            "sourceChain": "optimism",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_optimism",
+            "sourceChain": "xgrchain",
+            "destinationChain": "optimism"
+          }
+        ]
+      },
+      "deployment": {
+        "schemaVersion": 3,
+        "kind": "asset-deployment",
+        "network": "mainnet",
+        "asset": "AERO",
+        "assetId": "0xaf7a4d225f47f0b70047494a8b03ce18fad693634dddc4807f41ac74aa1e76f7",
+        "sourceManifest": "config/assets/af/AERO/asset.json",
+        "receiptPaths": [],
+        "representations": [],
+        "routeDeployments": [],
+        "present": false
+      }
     }
   },
   "infrastructure": {
