@@ -51,3 +51,33 @@ Current branch delivers the isolated plan, read-only Admin RPC diagnostics
 and the fail-closed node RPC observation layer. Rust programs, cross-chain
 message codecs, executable wallet deployer and live BLS authorization remain
 subsequent implementation work.
+
+
+## Permissionlessness and MiCAR-relevant operational control
+
+The Solana variant MUST NOT create governance powers for XGR.Network GmbH.
+No program upgrade/close authority may remain at public activation. No
+company-controlled pause, freeze, custody, unrestricted mint, unilateral
+protocol fee setter, allowlist or forced route migration. Program code is
+fully immutable and reproducibly verified before assets/routes can be live.
+
+Wrapped token minting and vault release are authorized exclusively by
+on-chain program-derived addresses, with auditable immutable logic that
+checks source custody, current direct BLS quorum, route, amount, fee and
+replay state. A wrapped mint's mint authority therefore remains a PDA; the
+freeze authority must be None. Do not confuse these authorities with
+Solana program Upgrade Authority.
+
+Third parties are allowed to deploy the same open-source software. A new
+protocol release changes the Program ID and is voluntarily adopted; no
+owner can upgrade the existing bridge or silently redirect a route.
+This also applies to XGR-side Solana-specific Solidity counterparts:
+they must not embed operator-only pause/mint/route/configuration rights.
+
+**Compliance caveat:** Technical immutability and self-custody improve the
+decentralization analysis but do not establish a CASP exemption. MiCAR
+Recital 22 excludes fully decentralized services with no intermediary,
+while services controlled directly or indirectly by identifiable persons
+can remain in scope. Independent validator governance and actual operational
+control must be assessed separately. See official EUR-Lex Regulation
+2023/1114 Recital 22 and ESMA Q&A 2671.

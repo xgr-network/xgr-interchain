@@ -47,5 +47,17 @@
     "solanaRouter",
     "solanaDirectBlsIsm"
   ],
-  "notes": "Planning only; no chain.json, active node chain policy, deployable artifact, Solana signing worker or on-chain receipt. Runtime capabilities and independent operators require validation before deployment."
+  "notes": "Development only: SVM contracts, program IDs, build verification, deployment and signing disabled. Permissionless policy: no lasting GmbH keys, mainnet routing blocked until all upgrade authorities are revoked and code verified.",
+  "authorityPolicy": {
+    "programUpgradeAuthority": "none-before-route-activation",
+    "programCloseAuthority": "none-before-route-activation",
+    "wrappedMintAuthority": "immutable-route-program-pda",
+    "wrappedFreezeAuthority": "none",
+    "tokenVaultAuthority": "immutable-route-program-pda",
+    "factoryRegistration": "permissionless",
+    "serviceOperatorAdmin": "none",
+    "privilegedPause": "none",
+    "forcedRouteMigration": "forbidden",
+    "signedValidatorGovernance": "verified-xgr-bls-quorum"
+  }
 }

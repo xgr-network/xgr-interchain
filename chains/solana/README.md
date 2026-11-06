@@ -43,3 +43,11 @@ and displayed read-only by the Admin UI.
 See [deployment plan](deploy/README.md). Transaction ownership stays with the
 user/operator wallet, receipts are immutable, and no program is marked deployed
 from an unsigned draft, unknown authority or unverified program hash.
+
+## Mandatory authority policy
+
+Public Solana programs are **immutable**: no GmbH multisig, persistent
+upgrade authority or close authority. The wrapped mint and vault use
+only immutable-program PDAs; freeze authority is disabled; registration
+is permissionless. See `deploy/README.md` and the enforced `authorityPolicy`
+in `config/chains/solana/integration.json`.

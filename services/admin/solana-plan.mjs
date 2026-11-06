@@ -23,6 +23,18 @@ export function validateSolanaPlan(plan){
  check(plan?.status==="development"&&plan.deploymentEnabled===false&&
   plan.protocolAdmissionEnabled===false,
   "Solana integration must remain inactive before security review");
+ const policy=plan?.authorityPolicy;
+ check(policy?.programUpgradeAuthority==="none-before-route-activation"&&
+  policy?.programCloseAuthority==="none-before-route-activation"&&
+  policy?.wrappedMintAuthority==="immutable-route-program-pda"&&
+  policy?.wrappedFreezeAuthority==="none"&&
+  policy?.tokenVaultAuthority==="immutable-route-program-pda"&&
+  policy?.factoryRegistration==="permissionless"&&
+  policy?.serviceOperatorAdmin==="none"&&
+  policy?.privilegedPause==="none"&&
+  policy?.forcedRouteMigration==="forbidden"&&
+  policy?.signedValidatorGovernance==="verified-xgr-bls-quorum",
+  "Solana permissionless authority policy must forbid unilateral admin control");
  check(JSON.stringify(plan?.solanaPrograms)===JSON.stringify(PROGRAMS)&&
   JSON.stringify(plan?.xgrChainContracts)===JSON.stringify(XGR_CONTRACTS),
   "Solana programs / XGR-side contracts are incomplete");

@@ -19,3 +19,21 @@ Before any deployable `.so` is accepted, implement and test:
 
 There is no executable program in this directory yet. Do not substitute an
 unreviewed standard bridge or a trusted relayer for XITA Direct-BLS.
+
+
+## Immutable permissionless program invariants
+
+- All public deployments MUST have no upgrade/close authority.
+- Wrapped SPL mint authority is a **route PDA** controlled exclusively by
+  independently verified inbound message proof; it is not revoked because
+  legitimate bridge minting must continue. Wrapped mint freeze authority is
+  None. Original SPL mint authorities belong to their original projects.
+- SPL token vaults are held by program PDAs, not any service/operator wallet.
+- New assets and routes are registered by any actor satisfying protocol
+  prerequisites; no allowlist, manual approval or unilateral pause/fee setter.
+- Changes in validator membership follow authenticated existing XGR quorum
+  rules; no separate GmbH validator registry owner.
+- No mutable configuration must permit redirection of escrow, verifier,
+  route identity, recipient or mint authority by an operator.
+- A security fix requires new immutable deployment and voluntary adoption;
+  no silent upgrade or forced migration of an existing immutable route.

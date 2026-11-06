@@ -48,3 +48,13 @@ test("Solana RPC genesis mismatch is fail-closed",async()=>{
  assert.equal(result.rpc.find(x=>x.operatorId==="publicnode").healthy,false);
  assert.equal(result.deploymentEnabled,false);
 });
+
+test("No operator/GmbH admin, upgrade, pause or freeze authority is allowed",()=>{
+ const p=clone();
+ p.authorityPolicy.programUpgradeAuthority="gmbh-multisig";
+ assert.ok(validateSolanaPlan(p).some(x=>x.includes("permissionless authority")));
+ const f=clone();f.authorityPolicy.wrappedFreezeAuthority="service-wallet";
+ assert.ok(validateSolanaPlan(f).some(x=>x.includes("permissionless authority")));
+ const m=clone();m.authorityPolicy.wrappedMintAuthority="none";
+ assert.ok(validateSolanaPlan(m).some(x=>x.includes("permissionless authority")));
+});

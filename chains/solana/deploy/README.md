@@ -1,21 +1,59 @@
-# Solana deployment contract with the XITA Admin UI
+# Solana immutable deployment contract with the XITA Admin UI
 
-The Admin UI will be the authoritative *workflow* for deployment, while each
-Solana transaction must be signed by the connected Solana wallet. The backend
-must never retain or use a Solana program-authority private key.
+## Non-negotiable permissionless authority policy
 
-Planned UI stages: reviewed program build and ELF hash -> wallet connection
-(Phantom/Solflare or Solana Wallet Standard) -> explicit per-program deploy
-and upgrade-authority choice -> retain submitted signature before retry ->
-`finalized` receipt and programdata checks from independent RPC operators ->
-on-chain program ID/authority/code hash reconciliation -> GitHub evidence PR
-and receipt -> enable next dependent component.
+Deployment funding or providing an optional Admin UI must confer **no lasting
+upgrade, close, pause, freeze, custody, mint or fee-setting privilege** on
+XGR.Network GmbH or any other single operator.
 
-There is no valid `deploy` button until the program binaries, wallet sender,
-transaction recovery and receipt verifier have passed tests. Never route a
-Solana deployment through the existing EIP-1193/MetaMask transaction path.
+The deployed SVM program must have **upgrade authority = None** before ANY
+public route can be activated. No company, founder or operator multisig may
+hold a permanent upgrade or program-close key. Under Solana's upgradeable
+loader, revoking upgrade authority makes the program immutable and prevents
+program closure.
 
-Use the existing canonical asset sharding. New Solana token mints are
-representations of the SAME assetId, not a new asset just because they use a
-32-byte program/mint address. Only actual signed/verified program and route
-deployments populate `deployments/`; planning records stay in `config/`.
+The deployment flow is: independently reviewed and reproducible Rust/ELF
+build -> exact expected Program ID/code hash -> wallet-paid deployment ->
+permanently revoke the upgrade authority (CLI may support deploy `--final`)
+-> verify `Authority: none` and programdata/ELF identity from independent
+RPC operators -> publish signed/finalized deployment evidence -> allow
+permissionless route initialization. The UI MUST NOT enable transfer/mint
+routes before revocation and independent verification. If deployment and
+revocation are not atomic, the intermediate program is never treated as an
+active protocol endpoint.
+
+Solana CLI verification example:
+
+```bash
+solana program show <PROGRAM_ID>
+# Must show "Authority: none" before mainnet route admission
+```
+
+**Token controls are different from program upgrade authority.** A wrapped
+SPL mint must retain a mint authority owned by a program-derived address
+(PDA) controlled only by immutable route logic; otherwise the bridge could
+never mint upon a verified inbound message. It must never point to a GmbH,
+admin wallet or developer key. Disable the wrapped mint's freeze authority.
+Vault tokens are program-PDA controlled, never an operator key. The
+destination program checks exact quorum, route, source custody and replay
+proofs before using the PDA. Original external tokens keep their original
+issuer permissions; XITA must not acquire those permissions.
+
+Route creation remains permissionless. No company-controlled pause, forced
+migration, allowlist, blacklist, manual approval or unilateral protocol
+fee setter may be introduced. If a vulnerability later requires new code,
+deploy a **new immutable Program ID**; existing deployments are not
+silently upgraded or forcibly redirected.
+
+## Admin workflow
+
+The Admin UI is merely an optional transaction authoring and verification
+interface: user/operator wallet signs each deployment; backend never owns
+private keys. Explicit stages include unsigned program deployment, durable
+transaction signature recovery, finality, code/authority verification, and
+append-only GitHub receipts. No deploy button is valid until wallet signing,
+ELF verification, recovery and checks above are implemented and tested.
+
+Never route a Solana program deployment through MetaMask/EIP-1193.
+Use the existing canonical XITA asset sharding for token representations;
+never make a new canonical asset solely because it is on Solana.
