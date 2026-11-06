@@ -54,9 +54,9 @@ contract XITASolanaCodecTest is Test {
     }
     function testBadRouteAndSpoofedSourceRejects() public {
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
-        XITASolanaCodec.solanaRouteId(XGR_ASSET,8453,SOL,SRC,DST);
+        this.routeHash(XGR_ASSET,8453,SOL,SRC,DST);
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
-        XITASolanaCodec.solanaRouteId(XGR_ASSET,XGR,SOL,DST,SRC);
+        this.routeHash(XGR_ASSET,XGR,SOL,DST,SRC);
         XITASolanaCodec.Authorization memory a=_a();
         a.routeId=REVERSE;
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
@@ -68,12 +68,25 @@ contract XITASolanaCodecTest is Test {
     function signingHash(XITASolanaCodec.Authorization memory a) external pure returns (bytes32) {
         return XITASolanaCodec.directSigningHash(a);
     }
+    // Foundry vm.expectRevert requires a lower-depth external call.
+    function routeHash(
+        bytes32 asset,uint32 source,uint32 destination,
+        bytes32 sourceRouter,bytes32 destinationRouter
+    ) external pure returns (bytes32) {
+        return XITASolanaCodec.solanaRouteId(
+            asset,source,destination,sourceRouter,destinationRouter
+        );
+    }
+    function scale(uint256 value,uint8 src,uint8 dst,bool svm)
+        external pure returns (uint256) {
+        return XITASolanaCodec.exactScaleAmount(value,src,dst,svm);
+    }
     function testExactDecimals() public {
         assertEq(XITASolanaCodec.exactScaleAmount(1e18,18,9,true),1e9);
         assertEq(XITASolanaCodec.exactScaleAmount(1e9,9,18,false),1e18);
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
-        XITASolanaCodec.exactScaleAmount(1,18,9,true);
+        this.scale(1,18,9,true);
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
-        XITASolanaCodec.exactScaleAmount((uint256(type(uint64).max)+1)*1e9,18,9,true);
+        this.scale((uint256(type(uint64).max)+1)*1e9,18,9,true);
     }
 }
