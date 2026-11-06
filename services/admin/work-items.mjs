@@ -4,6 +4,17 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
  const items=[];
  const planByChain=new Map(bootstrap.map(p=>[p.chain,p]));
  for(const chain of infrastructure){
+  if(chain.runtime==="svm"){
+   // Unified task graph, but do not dispatch SVM tasks to the EVM executor.
+   for(const part of chain.components){
+    if(part.status==="documented")continue;
+    items.push({kind:"chain",id:chain.name+":"+part.key,chain:chain.name,
+     network:part.network,runtime:"svm",component:part.key,
+     title:part.network+" / "+part.key,status:"blocked",
+     reason:"Verifizierter SVM-Build, Solana-Wallet-Signer und unabhängiger Deployment-Nachweis fehlen"});
+   }
+   continue;
+  }
   const core=Boolean(chain.hyperlane.mailbox&&chain.hyperlane.dispatchHook);
   for(const part of chain.components){
    if(part.status==="documented")continue;

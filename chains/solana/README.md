@@ -20,7 +20,7 @@ That file is the existing EVM-only active-chain admission trigger. Adding
 Solana there before the adapters and programs are audited would cause EVM
 JSON-RPC, Ethereum wallet and EIP-2537 deployment code to handle an SVM
 network incorrectly. The integration proposal is validated independently
-and displayed read-only by the Admin UI.
+and displayed as a read-only Chain-Infrastruktur card alongside EVM chains.
 
 ## Security and compatibility
 

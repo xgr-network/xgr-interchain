@@ -86,6 +86,35 @@ export function readSolanaPlan(root){
  return plan;
 }
 
+// Same chain inventory shape as EVM. This is NOT protocol admission or a
+// real deployed SVM program. Never invent an EVM chainId for Solana.
+export function solanaInfrastructurePlan(plan){
+ const errors=validateSolanaPlan(plan);
+ if(errors.length)throw Error(errors.join("; "));
+ const components=[
+  ...plan.solanaPrograms.map(key=>({key,network:"solana",status:"not-deployed",address:null,optional:false,deployable:false})),
+  ...plan.xgrChainContracts.map(key=>({key,network:"xgrchain",status:"not-deployed",address:null,optional:false,deployable:false}))
+ ];
+ return {name:"solana",displayName:plan.displayName,runtime:"svm",network:plan.network,
+  chainId:null,domainId:plan.domainId,genesisHash:plan.networkIdentity.value,
+  nativeCurrency:{name:"Solana",symbol:"SOL",decimals:9},
+  rpcUrls:plan.rpcWitnesses.map(e=>e.url),
+  status:"not-deployed",phase:"development",deployable:false,
+  documented:0,required:components.length,components,
+  hyperlane:{mailbox:null,dispatchHook:null,requiredHook:null,transportBundle:null}};
+}
+export function solanaInfrastructureObservation(plan,probe){
+ const c=solanaInfrastructurePlan(plan);
+ if(!probe||probe.chain!=="solana"||probe.deploymentEnabled!==false)
+  throw Error("Invalid Solana preflight");
+ return {name:c.name,chainId:null,domainId:c.domainId,runtime:"svm",
+  rpc:probe.rpcPreflightOK,core:false,status:"not-deployed",
+  components:c.components.map(x=>({...x,live:false})),
+  rpcPreflightOK:probe.rpcPreflightOK,
+  independentWitnesses:probe.independentWitnesses,
+  rpcWitnessCount:plan.rpcWitnesses.length,rpcWitnesses:probe.rpc};
+}
+
 async function rpcCall(fetcher,endpoint,method,params){
  const response=await fetcher(endpoint,{
   method:"POST",headers:{"content-type":"application/json"},

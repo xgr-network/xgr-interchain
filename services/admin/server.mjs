@@ -22,7 +22,7 @@ import {createChainOperator} from "./chain-operator.mjs";
 import {createAssetOperator} from "./asset-operator.mjs";
 import {creatorFactoryDeployment} from "./creator-factory-deploy.mjs";
 import {publishCreatorFactoryPR} from "./creator-factory-github.mjs";
-import {readSolanaPlan,probeSolanaPlan} from "./solana-plan.mjs";
+import {readSolanaPlan,probeSolanaPlan,solanaInfrastructurePlan,solanaInfrastructureObservation} from "./solana-plan.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 import {collectOperationsHealth} from "./operations-health.mjs";
@@ -182,18 +182,11 @@ http.createServer(async(req,res)=>{
   }
   if(req.method==="GET"&&path==="/admin/api/workqueue"){
    const queue=await readOnlyWorkQueue(root);
-   const infrastructure=infrastructureInventory(root,queue.inventory.chains);
+   const solana=solanaInfrastructurePlan(readSolanaPlan(root));
+   const infrastructure=[...infrastructureInventory(root,queue.inventory.chains),solana];
    const bootstrap=queue.inventory.chains.map(chain=>bootstrapPlan(root,chain));
-   return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
-  }
-  // Solana has its own SVM planning/preflight API; never send it to the EVM
-  // deployment operator or mark its planned programs as deployed.
-  if(req.method==="GET"&&path==="/admin/api/solana/plan"){
-   return reply(res,200,{ok:true,plan:readSolanaPlan(root)});
-  }
-  if(req.method==="GET"&&path==="/admin/api/solana/probe"){
-   const plan=readSolanaPlan(root);
-   return reply(res,200,{ok:true,plan,probe:await probeSolanaPlan(plan)});
+   return reply(res,200,{ok:true,...queue,infrastructure,bootstrap,
+    workItems:buildWorkItems(queue.inventory,infrastructure,bootstrap)});
   }
   if(req.method==="GET"&&path==="/admin/api/fee-treasury"){
    return reply(res,200,await inspectFeeTreasury({root,catalog:load("apps/web/catalog.json")}));
@@ -226,8 +219,17 @@ http.createServer(async(req,res)=>{
   }
   if(req.method==="GET"&&path==="/admin/api/infrastructure"){
    const queue=await readOnlyWorkQueue(root);
+   const requested=new URL(req.url,"http://localhost").searchParams.get("chain");
+   if(requested&&requested!=="solana")throw Error("Unknown native preflight chain");
+   const plan=readSolanaPlan(root);
+   if(requested==="solana"){
+    return reply(res,200,{ok:true,commit:queue.commit,chains:[
+     solanaInfrastructureObservation(plan,await probeSolanaPlan(plan))]});
+   }
    const configured=infrastructureInventory(root,queue.inventory.chains);
-   return reply(res,200,{ok:true,commit:queue.commit,chains:await verifyChainInfrastructure(configured)});
+   const [evm,solana]=await Promise.all([verifyChainInfrastructure(configured),probeSolanaPlan(plan)]);
+   return reply(res,200,{ok:true,commit:queue.commit,
+    chains:[...evm,solanaInfrastructureObservation(plan,solana)]});
   }
   if(req.method==="GET"&&path==="/admin/api/chain-preflight"){
    const queue=await readOnlyWorkQueue(root);

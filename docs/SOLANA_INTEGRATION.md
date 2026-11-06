@@ -41,8 +41,10 @@ counterparts on XGRChain. Do NOT truncate Solana account identities.
 `config/chains/solana/integration.json` is a separately validated proposal.
 It intentionally is not a `chain.json`: that file is interpreted by the
 current admin, catalog builder and validators as an active EVM-oriented chain.
-The Admin displays Solana as a separate development lane; it must not offer
-MetaMask EVM deploy buttons or present absent programs as deployed.
+The Admin displays Solana as a normal Chain-Infrastruktur card alongside
+the EVM networks in the existing work queue and infrastructure preflight.
+It never offers EVM/MetaMask deployments for native Solana programs nor
+treats undeployed plans as live routes.
 
 Solana mainnet-beta identity is its fixed genesis hash. Domain `1399811149`
 is a messaging domain, not a native chain ID.
@@ -111,6 +113,5 @@ Both chains share the same conceptual administrative workflow: reviewed chain
 infrastructure -> users' own routers/representations -> atomic route and
 FeeVault creation -> verifiable deployed evidence -> transfer/recovery.
 The UI should expose the same workflows and statuses with a chain-specific
-wallet/RPC/deployment adapter. The temporary separate Solana planning panel
-is NOT the final UX. Protocol output and threat model must remain equivalent;
+wallet/RPC/deployment adapter. Solana appears in the shared Chain/Asset/Route workflow. Protocol output and threat model must remain equivalent;
 SVM bytecode and PDA accounts need not be one-to-one with Solidity files.

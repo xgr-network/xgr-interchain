@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {resolve,dirname} from "node:path";
-import {readSolanaPlan,validateSolanaPlan,probeSolanaPlan,SOLANA_DOMAIN,SOLANA_GENESIS}
+import {readSolanaPlan,validateSolanaPlan,probeSolanaPlan,solanaInfrastructurePlan,solanaInfrastructureObservation,SOLANA_DOMAIN,SOLANA_GENESIS}
  from "./solana-plan.mjs";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const source=JSON.parse(readFileSync(resolve(root,"config/chains/solana/integration.json"),"utf8"));
@@ -70,4 +70,26 @@ test("Solana mirrors EVM BLS quorum, per-route fees, owned routers and optional 
  assert.ok(validateSolanaPlan(service).some(x=>x.includes("permissionless authority")));
  const owner=clone();owner.authorityPolicy.serviceOperatorAdmin="core-protocol-owner";
  assert.ok(validateSolanaPlan(owner).some(x=>x.includes("permissionless authority")));
+});
+
+test("Solana is represented in the shared infrastructure schema, never as EVM",()=>{
+ const plan=clone(),infra=solanaInfrastructurePlan(plan);
+ assert.equal(infra.runtime,"svm");
+ assert.equal(infra.chainId,null);
+ assert.equal(infra.domainId,SOLANA_DOMAIN);
+ assert.equal(infra.deployable,false);
+ assert.equal(infra.documented,0);
+ assert.equal(infra.required,12);
+ assert.equal(infra.components.filter(x=>x.network==="solana").length,8);
+ assert.equal(infra.components.filter(x=>x.network==="xgrchain").length,4);
+ assert.ok(infra.components.every(x=>x.status==="not-deployed"&&!x.deployable));
+});
+test("RPC witness health cannot make any Solana programs deployed",()=>{
+ const plan=clone();
+ const probe={chain:"solana",deploymentEnabled:false,rpcPreflightOK:true,
+  independentWitnesses:3,rpc:[]};
+ const status=solanaInfrastructureObservation(plan,probe);
+ assert.equal(status.status,"not-deployed");
+ assert.equal(status.rpc,true);
+ assert.ok(status.components.every(x=>x.status==="not-deployed"&&x.live===false));
 });

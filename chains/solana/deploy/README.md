@@ -64,8 +64,8 @@ never make a new canonical asset solely because it is on Solana.
 The **user-facing chain/asset/route deployment workflow is the same** as the
 existing EVM Admin. Only the SVM transaction signer, program binary upload,
 program/account verification, SPL operations and receipt serialization differ.
-Do not build a second product with new approval requirements. The current
-standalone Solana read-only panel is solely an integration staging surface.
+Do not build a second product with new approval requirements. The same Chain-Infrastruktur card and workqueue display this blocked SVM
+deployment status. A separate Solana Admin panel is not used.
 
 A commercial service, like the existing optional `XITAExecutionGateway`,
 may hold a service-wallet signing key and separate recovery-admin authority
