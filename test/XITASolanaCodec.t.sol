@@ -74,6 +74,6 @@ contract XITASolanaCodecTest is Test {
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
         XITASolanaCodec.exactScaleAmount(1,18,9,true);
         vm.expectRevert(XITASolanaCodec.InvalidSolanaCodec.selector);
-        XITASolanaCodec.exactScaleAmount(uint256(type(uint64).max+1)*1e9,18,9,true);
+        XITASolanaCodec.exactScaleAmount((uint256(type(uint64).max)+1)*1e9,18,9,true);
     }
 }
