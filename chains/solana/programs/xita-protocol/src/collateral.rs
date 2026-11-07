@@ -109,12 +109,18 @@ pub fn lock_instruction(
 /// In the final gateway, a failed message/fee commitment must rollback this CPI.
 #[allow(dead_code)]
 pub(crate) fn lock_when_gateway_authorized<'a>(
-    source: &AccountInfo<'a>, identity: &EscrowIdentity,
-    mint: &AccountInfo<'a>, vault: &AccountInfo<'a>,
-    user: &AccountInfo<'a>, token_program: &AccountInfo<'a>, amount: u64,
+    program_id: &Pubkey, router: &Router, router_account: &AccountInfo<'a>,
+    source: &AccountInfo<'a>, mint: &AccountInfo<'a>,
+    vault: &AccountInfo<'a>, user: &AccountInfo<'a>,
+    token_program: &AccountInfo<'a>, amount: u64,
 ) -> Result<(), ProgramError> {
-    validate_source_account(source, user, identity)?;
-    let ix = lock_instruction(source.key, identity, user.key, amount)?;
+    let stored: Router = crate::state::load(router_account, program_id)?;
+    if stored != *router {return Err(ProgramError::InvalidAccountData);}
+    let identity = validate_collateral_accounts(
+        program_id,router_account.key,router,mint,vault,token_program
+    )?;
+    validate_source_account(source, user, &identity)?;
+    let ix = lock_instruction(source.key, &identity, user.key, amount)?;
     invoke(&ix, &[
         source.clone(), mint.clone(), vault.clone(),
         user.clone(), token_program.clone()
@@ -131,10 +137,15 @@ pub(crate) fn unlock_when_inbound_verified<'a>(
     token_program: &AccountInfo<'a>, amount: u64,
 ) -> Result<(), ProgramError> {
     if amount == 0 || router.kind != 1 || router.mint != mint.key.to_bytes() ||
-       router_account.key != router_key || *token_program.key != spl_token::id() ||
-       !token_program.executable {
+       router_account.key != router_key ||
+       *destination.owner != spl_token::id() || !destination.is_writable {
         return Err(ProgramError::InvalidInstructionData);
     }
+    let stored: Router = crate::state::load(router_account, program_id)?;
+    if stored != *router {return Err(ProgramError::InvalidAccountData);}
+    validate_collateral_accounts(
+        program_id,router_key,router,mint,vault,token_program
+    )?;
     let creator = Pubkey::new_from_array(router.creator);
     let (expected, bump) = Pubkey::find_program_address(
         &[factory::ROUTER_SEED, creator.as_ref(), &router.salt, mint.key.as_ref()],
@@ -146,7 +157,7 @@ pub(crate) fn unlock_when_inbound_verified<'a>(
     let vault_state = SplAccount::unpack(&vault.try_borrow_data()?)?;
     let dst_state = SplAccount::unpack(&destination.try_borrow_data()?)?;
     if vault_state.owner != *router_key || vault_state.mint != *mint.key ||
-       dst_state.mint != *mint.key ||
+       dst_state.mint != *mint.key || vault_state.amount < amount ||
        *vault.key != factory::collateral_vault_address(program_id, router_key).0 ||
        vault_state.delegate != COption::None ||
        vault_state.close_authority != COption::None ||
