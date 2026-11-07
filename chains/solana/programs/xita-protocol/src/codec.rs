@@ -62,6 +62,7 @@ pub fn route_id(
     Some(hashv(&[&scope,&asset_id,&word_u32(source_domain),
         &word_u32(dest_domain),&src_router,&dst_router,&GENESIS]))
 }
+#[derive(Clone)]
 pub struct Authorization {
     pub source_domain:u32,
     pub destination_domain:u32,

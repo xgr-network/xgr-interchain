@@ -121,6 +121,57 @@ mod tests{
   wrong.set_id=7;wrong.destination_domain=codec::XGR_DOMAIN;
   assert!(structural_preflight(&wrong,&view,&[0b011],&sig).is_err());
  }
+ #[test]fn genuine_xita_direct_authorization_is_cryptographically_bound(){
+  use bls12_381::{Scalar,G1Projective,G1Affine,G2Projective,G2Affine,
+    hash_to_curve::{HashToCurve,ExpandMsgXmd}};
+  use sha2::Sha256;
+  fn eip_g1(p:G1Affine)->[u8;G1_EIP2537_LEN]{
+   let b=p.to_uncompressed();
+   let mut x=[0u8;G1_EIP2537_LEN];
+   x[16..64].copy_from_slice(&b[..48]);x[80..128].copy_from_slice(&b[48..]);
+   x
+  }
+  fn eip_g2(p:G2Affine)->[u8;G2_EIP2537_LEN]{
+   let b=p.to_uncompressed();
+   let mut x=[0u8;G2_EIP2537_LEN];
+   x[16..64].copy_from_slice(&b[48..96]);
+   x[80..128].copy_from_slice(&b[..48]);
+   x[144..192].copy_from_slice(&b[144..]);
+   x[208..256].copy_from_slice(&b[96..144]);
+   x
+  }
+  let mut auth=vector();
+  auth.validator_fee[31]=100;
+  let message=signing_preimage(&auth).unwrap();
+  assert_eq!(message.len(),501);
+  let secret=[Scalar::from(11u64),Scalar::from(29u64),Scalar::from(47u64)];
+  let keys=secret.map(|s|eip_g1(G1Affine::from(G1Projective::generator()*s)));
+  let hash=<G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(
+    &message,BLS_DST
+  );
+  let signature=eip_g2(G2Affine::from(hash*(secret[0]+secret[2])));
+  let snapshot=UntrustedSnapshot{set_id:auth.set_id,public_keys:&keys};
+  assert_eq!(verify_cryptography_against_snapshot(
+   &auth,&snapshot,&[0b101],&signature),Ok(true));
+  assert!(verify_cryptography_against_snapshot(
+   &auth,&snapshot,&[0b011],&signature)!=Ok(true));
+  let mut changed=vector();changed.validator_fee[31]=101;
+  assert!(verify_cryptography_against_snapshot(
+   &changed,&snapshot,&[0b101],&signature)!=Ok(true));
+  let mut changed=auth.clone();changed.message_id[0]^=1;
+  assert!(verify_cryptography_against_snapshot(
+   &changed,&snapshot,&[0b101],&signature)!=Ok(true));
+  let mut changed=auth.clone();changed.recipient[0]^=1;
+  assert!(verify_cryptography_against_snapshot(
+   &changed,&snapshot,&[0b101],&signature)!=Ok(true));
+  let mut changed=auth.clone();changed.set_id+=1;
+  assert!(verify_cryptography_against_snapshot(
+   &changed,&snapshot,&[0b101],&signature).is_err());
+  let mut wrong=auth.clone();wrong.route_id[0]^=1;
+  assert!(verify_cryptography_against_snapshot(
+   &wrong,&snapshot,&[0b101],&signature).is_err());
+  assert!(verify(&auth,&[0b101],&signature).is_err());
+ }
  #[test]fn invalid_keys_are_rejected_before_pairing(){
   let mut a=vector();a.validator_fee[31]=1;
   let sig=[9u8;G2_EIP2537_LEN];
