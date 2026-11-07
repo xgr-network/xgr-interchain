@@ -72,7 +72,7 @@ fn xgr_direct_bls_positive_and_adversarial_mollusk_cases(){
     assert_eq!(result.return_data,[1u8]);
 
     let cases=[
-        ("insufficient 1-of-3 quorum",1,0),
+        ("insufficient 1-of-3 quorum",1,0b100),
         ("bitmap for wrong signers",1,0b011),
         ("invalid bitmap high bits",1,0b10000101),
         ("tampered signature",2+3*48+10,1),
