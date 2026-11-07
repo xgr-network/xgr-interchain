@@ -8,6 +8,7 @@
 //! independently authenticated source evidence are implemented and audited.
 #![allow(unexpected_cfgs)]
 pub mod codec;
+pub mod collateral;
 pub mod direct_bls_ism;
 pub mod factory;
 pub mod fee_vault;
