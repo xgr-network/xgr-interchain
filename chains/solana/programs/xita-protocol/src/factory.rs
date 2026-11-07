@@ -154,7 +154,7 @@ pub fn init_collateral_vault(
     if expected_router!=*router_account.key||bump!=router.bump{
         return Err(ProgramError::InvalidSeeds)
     }
-    let (expected_vault,_)=collateral_vault_address(program_id,router_account);
+    let (expected_vault,_)=collateral_vault_address(program_id,router_account.key);
     if expected_vault!=*vault_account.key{
         return Err(ProgramError::InvalidSeeds)
     }
