@@ -22,6 +22,11 @@ pub enum XitaInstruction {
     ExecuteInbound { message:Vec<u8>, proof:Vec<u8> },
     /// Reserved for claim based on a final historical validator snapshot.
     ClaimFees { max_epochs:u64 },
+    /// Initialize a PDA-owned SPL collateral vault for an existing creator
+    /// router. Permissionless rent payer, immutable router-PDA token authority.
+    /// No escrow transfers or minting occur during initialization.
+    /// Accounts: payer(signer,w), router, mint, vault(w), system, rent, SPL token.
+    InitCollateralVault,
     /// Factory.deployWrappedXGRRouter / deploySyntheticRouter parity.
     /// All synthetic mint accounts start with zero supply. CPI minting remains
     /// blocked until on-chain Direct-BLS verification is independently audited.

@@ -13,13 +13,14 @@ use solana_program::{
     pubkey::Pubkey, rent::Rent, system_instruction, system_program,
     sysvar::{self, Sysvar}, program_pack::Pack,
 };
-use spl_token::state::Mint;
+use spl_token::state::{Mint,Account as SplAccount};
 
 pub const ROUTER_SEED: &[u8] = b"xita-router";
 pub const ROUTE_SEED: &[u8] = b"xita-route";
 pub const FEE_SEED: &[u8] = b"xita-fee-vault";
 pub const SYNTH_ROUTER_SEED: &[u8] = b"xita-synthetic";
 pub const SYNTH_MINT_SEED: &[u8] = b"xita-mint";
+pub const COLLATERAL_VAULT_SEED: &[u8] = b"xita-collateral-vault";
 
 
 fn create_pda<'a>(
@@ -115,6 +116,58 @@ pub fn deploy_collateral_router(
 /// `deployWrappedXGRRouter`. The minted SPL asset has ZERO initial supply;
 /// only its immutable router PDA has mint authority, never the payer/operator.
 /// Freeze authority is permanently unset. No mint instructions are exposed.
+/// Analogous to an immutable collateral router's token escrow.
+pub fn collateral_vault_address(program_id:&Pubkey,router:&Pubkey)->(Pubkey,u8){
+    Pubkey::find_program_address(&[COLLATERAL_VAULT_SEED,router.as_ref()],program_id)
+}
+
+/// Permissionless, zero-balance vault initialization. This does NOT activate
+/// or dispatch a transfer; Source Gateway stays fail-closed until BLS.
+pub fn init_collateral_vault(
+    program_id:&Pubkey,accounts:&[AccountInfo],
+)->ProgramResult{
+    let mut it=accounts.iter();
+    let payer=next_account_info(&mut it)?;
+    let router_account=next_account_info(&mut it)?;
+    let mint_account=next_account_info(&mut it)?;
+    let vault_account=next_account_info(&mut it)?;
+    let system=next_account_info(&mut it)?;
+    let rent_account=next_account_info(&mut it)?;
+    let token_program=next_account_info(&mut it)?;
+    if !payer.is_signer||!payer.is_writable||
+       !vault_account.is_writable||!token_program.executable||
+       *token_program.key!=spl_token::id()||
+       *rent_account.key!=sysvar::rent::id()||
+       *mint_account.owner!=spl_token::id(){
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    let router:Router=state::load(router_account,program_id)?;
+    if router.tag!=ROUTER_TAG||router.version!=VERSION||router.kind!=1||
+       router.mint!=mint_account.key.to_bytes()||
+       router.asset_id!=codec::asset_id(router.mint,1)
+           .ok_or(ProgramError::InvalidAccountData)?{
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let creator=Pubkey::new_from_array(router.creator);
+    let (expected_router,bump)=Pubkey::find_program_address(
+        &[ROUTER_SEED,creator.as_ref(),&router.salt,mint_account.key.as_ref()],program_id);
+    if expected_router!=*router_account.key||bump!=router.bump{
+        return Err(ProgramError::InvalidSeeds)
+    }
+    let (expected_vault,_)=collateral_vault_address(program_id,router_account);
+    if expected_vault!=*vault_account.key{
+        return Err(ProgramError::InvalidSeeds)
+    }
+    let rent=Rent::from_account_info(rent_account)?;
+    create_pda(program_id,payer,vault_account,system,&rent,
+        &[COLLATERAL_VAULT_SEED,router_account.key.as_ref()],SplAccount::LEN,
+        &spl_token::id())?;
+    let ix=spl_token::instruction::initialize_account3(
+        &spl_token::id(),vault_account.key,mint_account.key,router_account.key)?;
+    invoke(&ix,&[vault_account.clone(),mint_account.clone(),token_program.clone()])?;
+    Ok(())
+}
+
 pub fn deploy_synthetic_router(
     program_id:&Pubkey,accounts:&[AccountInfo],
     salt:[u8;32],origin_chain_id:u64,origin_token:[u8;20],
@@ -254,6 +307,8 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             deploy_collateral_router(program_id,accounts,salt),
         XitaInstruction::RegisterRoute{destination_domain,remote_router} =>
             register_route(program_id,accounts,destination_domain,remote_router),
+        XitaInstruction::InitCollateralVault =>
+            init_collateral_vault(program_id,accounts),
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(
@@ -268,6 +323,29 @@ mod tests {
     use solana_program::program_option::COption;
     use spl_token::instruction::TokenInstruction;
 
+    #[test]
+    fn collateral_vault_is_one_per_router_and_owned_by_router_not_operator() {
+        let program=Pubkey::new_unique();
+        let a=Pubkey::new_unique();
+        let b=Pubkey::new_unique();
+        let (v,_)=collateral_vault_address(&program,&a);
+        let (v2,_)=collateral_vault_address(&program,&a);
+        let (other,_)=collateral_vault_address(&program,&b);
+        assert_eq!(v,v2);
+        assert_ne!(v,other);
+        assert_ne!(v,a);
+        let mint=Pubkey::new_unique();
+        let ix=spl_token::instruction::initialize_account3(
+            &spl_token::id(),&v,&mint,&a).unwrap();
+        assert_eq!(ix.program_id,spl_token::id());
+        assert_eq!(ix.accounts.len(),2);
+        assert_eq!(ix.accounts[0].pubkey,v);
+        assert_eq!(ix.accounts[1].pubkey,mint);
+        match TokenInstruction::unpack(&ix.data).unwrap() {
+            TokenInstruction::InitializeAccount3{owner}=>assert_eq!(owner,a),
+            _=>panic!("non-vault token instruction"),
+        }
+    }
     #[test]
     fn synthetic_mint_requires_only_immutable_router_pda_authority() {
         let program=Pubkey::new_unique();
