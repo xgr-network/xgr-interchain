@@ -99,7 +99,7 @@ mod tests{
   let mut wrong=identity(1,23);
   assert!(xgr_set_commitment(&[first,wrong]).is_none());
   let a=identity(1,17);
-  wrong.validator[19]=3;
+  let mut wrong=identity(3,23);
   wrong.compressed_key[10]^=1;
   assert!(xgr_set_commitment(&[a,wrong]).is_none());
   let a=identity(1,17);
