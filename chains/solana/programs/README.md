@@ -14,7 +14,7 @@ deployment topology is *not* Solana's execution model.
 | `ILNGateway.sol` | `gateway.rs` | Explicitly disabled pending atomic source custody and fee evidence |
 | `XGRILNFeeVault.sol` | `fee_vault.rs` | Route-scoped fee vault, separate historical epoch state, message receipt PDA replay checks and exact rounding; live allocation/claim gated |
 | `XGRInterchainValidatorRegistryV3.sol` | `validator_registry.rs` | 2/3 bitmap validation; state transitions and PoP pending |
-| `XITADirectBLSISM.sol` | `direct_bls_ism.rs` | Signing preimage available, BLS verifier intentionally fail-closed |
+| `XITADirectBLSISM.sol` | `direct_bls_ism.rs`, `bls_crypto.rs` | Full MinPk EIP-2537 BLS pairing/hash-to-G2 reference verifier with positive/negative vectors; public bridge verifier stays disabled until authenticated set PDA and SBF compute evidence |
 | EVM storage & ABI | `state.rs`, `instruction.rs`, `lib.rs` | Deterministic Borsh account storage and dispatch |
 
 **One executable SVM program**, multiple logical modules and PDAs for
@@ -75,3 +75,21 @@ validator epochs and receipt PDAs to prevent duplicate message-fee allocation.
 `plan_allocation` is **pure only**; it does not move funds, change lamports or
 create a transferable claim. Its set IDs and recipient counts still need
 trusted, on-chain Direct-BLS-validated snapshots.
+
+## XGR Direct-BLS cryptography parity
+
+`bls_crypto.rs` implements the actual MinPk BLS12-381 pairing verification
+using XGR's existing EIP-2537 128-byte G1 and 256-byte G2 encodings, the
+unchanged `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_` DST and RFC 9380
+hash-to-G2. Tests use the positive reference vector from
+`test/XGRInterchainBLSVerifier.t.sol`, plus fresh 2-of-3 aggregate signatures
+and failures for tampered message, invalid bitmap, substituted validator key,
+infinity, invalid curves and bad padding. No tokens or network access needed.
+
+**IMPORTANT:** The pure Rust verifier is the reference implementation. The
+callable SVM instruction remains fail-closed: we have not yet established the
+on-chain validator-set PDA bootstrap/transition trust chain or measured the
+hash-to-G2/pairing CU budget on the activated Agave runtime. A purely
+cryptographically valid vote without this chain/route binding cannot authorize
+transfers. The final SVM verifier must use the active SIMD-0388 native syscall
+backend or another audited and budget-tested implementation before release.

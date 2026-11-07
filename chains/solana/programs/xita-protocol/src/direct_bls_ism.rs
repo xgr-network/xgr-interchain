@@ -59,6 +59,29 @@ pub fn verify(_authorization:&Authorization,_bitmap:&[u8],_signature:&[u8])
  -> Result<bool,ProgramError> {
  Err(crate::disabled())
 }
+/// Full CRYPTOGRAPHIC verification against an explicitly untrusted in-memory
+/// view. This is available for offline reference tests ONLY. Its caller must
+/// first prove the snapshot is loaded from an authenticated PDA whose current
+/// set transition history is checked on-chain. Without that trust anchor,
+/// even a mathematically valid signature could mint unbacked assets.
+///
+/// The public program verify() deliberately remains disabled pending:
+///  - independently verified current validator-set PDA and PoP status,
+///  - trusted source escrow/fee operation and canonical route/replay binding,
+///  - SBF compute-unit proof for on-chain hash-to-G2 / pairing.
+pub fn verify_cryptography_against_snapshot(
+ authorization:&Authorization,
+ snapshot:&UntrustedSnapshot<'_>,
+ bitmap:&[u8],
+ signature:&[u8],
+)->Result<bool,ProgramError>{
+ structural_preflight(authorization,snapshot,bitmap,signature)?;
+ let message=signing_preimage(authorization)
+    .ok_or(ProgramError::InvalidInstructionData)?;
+ Ok(crate::bls_crypto::verify_eip2537_quorum(
+    &message,snapshot.public_keys,bitmap,signature
+ ))
+}
 pub fn signing_bytes(authorization:&Authorization)->Option<Vec<u8>>{
  signing_preimage(authorization)
 }
