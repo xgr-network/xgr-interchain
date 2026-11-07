@@ -209,4 +209,111 @@ mod tests {
             factory::collateral_vault_address(&program, &router_b).0
         );
     }
+    #[test]
+    fn source_and_vault_account_invariants_reject_foreign_authorities() {
+        use spl_token::state::AccountState;
+        let program_id=Pubkey::new_unique();
+        let creator=Pubkey::new_unique();
+        let user=Pubkey::new_unique();
+        let rogue=Pubkey::new_unique();
+        let mint_key=Pubkey::new_unique();
+        let source_key=Pubkey::new_unique();
+        let salt=[4u8;32];
+        let (router_key,bump)=Pubkey::find_program_address(
+            &[factory::ROUTER_SEED,creator.as_ref(),&salt,mint_key.as_ref()],
+            &program_id
+        );
+        let vault_key=factory::collateral_vault_address(&program_id,&router_key).0;
+        let token_program_id=spl_token::id();
+        let system_id=solana_program::system_program::id();
+        let mut mint_lamports=1;
+        let mut vault_lamports=1;
+        let mut source_lamports=1;
+        let mut token_lamports=1;
+        let mut user_lamports=1;
+        let mut mint_data=[0u8;Mint::LEN];
+        let mut vault_data=[0u8;SplAccount::LEN];
+        let mut source_data=[0u8;SplAccount::LEN];
+        let mut token_data=[];
+        let mut user_data=[];
+        let mint=Mint{
+            mint_authority:COption::None,supply:1_000,
+            decimals:9,is_initialized:true,freeze_authority:COption::None
+        };
+        Mint::pack(mint,&mut mint_data).unwrap();
+        let vault=SplAccount{
+            mint:mint_key,owner:router_key,amount:100,
+            delegate:COption::None,state:AccountState::Initialized,
+            is_native:COption::None,delegated_amount:0,
+            close_authority:COption::None,
+        };
+        SplAccount::pack(vault,&mut vault_data).unwrap();
+        let source=SplAccount{
+            mint:mint_key,owner:user,amount:500,
+            delegate:COption::None,state:AccountState::Initialized,
+            is_native:COption::None,delegated_amount:0,
+            close_authority:COption::None,
+        };
+        SplAccount::pack(source,&mut source_data).unwrap();
+        let mint_info=AccountInfo::new(
+            &mint_key,false,false,&mut mint_lamports,
+            &mut mint_data,&token_program_id,false,0
+        );
+        let vault_info=AccountInfo::new(
+            &vault_key,false,true,&mut vault_lamports,
+            &mut vault_data,&token_program_id,false,0
+        );
+        let source_info=AccountInfo::new(
+            &source_key,false,true,&mut source_lamports,
+            &mut source_data,&token_program_id,false,0
+        );
+        let token_info=AccountInfo::new(
+            &token_program_id,false,false,&mut token_lamports,
+            &mut token_data,&system_id,true,0
+        );
+        let user_info=AccountInfo::new(
+            &user,true,false,&mut user_lamports,
+            &mut user_data,&system_id,false,0
+        );
+        let router=Router{
+            tag:ROUTER_TAG,version:VERSION,bump,kind:1,
+            creator:creator.to_bytes(),mint:mint_key.to_bytes(),
+            asset_id:codec::asset_id(mint_key.to_bytes(),1).unwrap(),
+            salt,decimals:9
+        };
+        let identity=validate_collateral_accounts(
+            &program_id,&router_key,&router,
+            &mint_info,&vault_info,&token_info
+        ).unwrap();
+        assert_eq!(identity.vault,vault_key);
+        assert_eq!(validate_source_account(
+            &source_info,&user_info,&identity
+        ).unwrap().amount,500);
+        let wrong_router=Pubkey::new_unique();
+        assert!(validate_collateral_accounts(
+            &program_id,&wrong_router,&router,
+            &mint_info,&vault_info,&token_info
+        ).is_err());
+        let fake_vault=SplAccount{
+            delegate:COption::Some(rogue),
+            delegated_amount:1,
+            ..SplAccount::unpack(&vault_info.try_borrow_data().unwrap()).unwrap()
+        };
+        SplAccount::pack(fake_vault,&mut **vault_info.try_borrow_mut_data().unwrap()).unwrap();
+        assert!(validate_collateral_accounts(
+            &program_id,&router_key,&router,
+            &mint_info,&vault_info,&token_info
+        ).is_err());
+        let honest=SplAccount{
+            delegate:COption::None,delegated_amount:0,
+            close_authority:COption::Some(rogue),
+            ..SplAccount::unpack(&vault_info.try_borrow_data().unwrap()).unwrap()
+        };
+        SplAccount::pack(honest,&mut **vault_info.try_borrow_mut_data().unwrap()).unwrap();
+        assert!(validate_collateral_accounts(
+            &program_id,&router_key,&router,
+            &mint_info,&vault_info,&token_info
+        ).is_err());
+    }
+
 }
