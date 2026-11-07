@@ -9,6 +9,8 @@ pub const VERSION: u8 = 1;
 pub const ROUTER_TAG: u8 = 0x52;
 pub const ROUTE_TAG: u8 = 0x54;
 pub const FEE_TAG: u8 = 0x46;
+pub const EPOCH_TAG: u8 = 0x45;
+pub const RECEIPT_TAG: u8 = 0x4f;
 
 #[derive(Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Clone)]
 pub struct Router {
@@ -45,6 +47,33 @@ pub struct FeeVault {
     pub route_id: [u8; 32],
     pub allocated_lamports: u64,
     pub validator_set_id: u64,
+}
+
+/// Each historical validator-set epoch has independent accounting, as in
+/// XGRILNFeeVault. The recipient order is committed by a separately
+/// authenticated validator-set snapshot, not a mutable operator mapping.
+#[derive(Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Clone)]
+pub struct FeeEpoch {
+    pub tag: u8,
+    pub version: u8,
+    pub bump: u8,
+    pub route_id: [u8; 32],
+    pub set_id: u64,
+    pub recipients: u32,
+    pub total_lamports: u64,
+}
+
+/// One append-only fee receipt per source message prevents duplicate allocation.
+/// The receipt PDA must be derived from fee-vault key and full message ID.
+#[derive(Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize, Clone)]
+pub struct OperationReceipt {
+    pub tag: u8,
+    pub version: u8,
+    pub bump: u8,
+    pub route_id: [u8; 32],
+    pub message_id: [u8; 32],
+    pub set_id: u64,
+    pub fee_lamports: u64,
 }
 
 pub fn load<T: BorshDeserialize>(
