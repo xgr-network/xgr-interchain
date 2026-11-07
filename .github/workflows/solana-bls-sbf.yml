@@ -1,0 +1,39 @@
+name: Solana BLS SBF / Mollusk feasibility (experimental)
+
+on:
+  pull_request:
+    paths:
+      - 'chains/solana/sbf-bench/**'
+      - '.github/workflows/solana-bls-sbf.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solana-bls-sbf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Agave 4.4.0 toolchain (local SBF only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://release.anza.xyz/v4.4.0/install -o /tmp/agave-install.sh
+          sh /tmp/agave-install.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Verify tools
+        run: |
+          solana --version
+          cargo build-sbf --version
+      - name: Build native host tests
+        run: cargo test --manifest-path chains/solana/sbf-bench/Cargo.toml -p xita-bls-sbf-probe --lib
+      - name: Compile actual SBFv3 program
+        working-directory: chains/solana/sbf-bench/program
+        run: cargo build-sbf --arch v3
+      - name: Mollusk positive and adversarial BLS/CU tests
+        working-directory: chains/solana/sbf-bench
+        run: cargo test -p xita-bls-sbf-probe-tests --test xita_bls -- --nocapture
