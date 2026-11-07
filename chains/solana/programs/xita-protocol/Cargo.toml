@@ -1,0 +1,19 @@
+[package]
+name = "xita-solana-protocol"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "XITA V315 Solana-native modules; deployment/transfer gated until Direct-BLS is audited"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+default = []
+no-entrypoint = []
+
+[dependencies]
+solana-program = "=2.3.0"
+borsh = { version = "=1.5.5", features = ["derive"] }
+spl-token = { version = "=7.0.0", features = ["no-entrypoint"] }
+
