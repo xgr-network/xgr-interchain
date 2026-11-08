@@ -150,6 +150,24 @@ contract XITASolanaNativeXGRHubTest is Test {
         assertEq(hub.lockedPrincipalWei(),0);
         assertTrue(hub.consumedInbound(a.messageId));
     }
+    function testRejectNonCanonicalEvmRecipientWithoutConsumingProof() public {
+        _lock();
+        bytes32 id=bytes32(uint256(0x9123));
+        XITASolanaCodec.Authorization memory a=_auth(id);
+        // A Solana-originated 32-byte value must not be truncated into an
+        // EVM recipient by Solidity's explicit uint160 conversion.
+        a.recipient=bytes32((uint256(1) << 160) | uint256(uint160(address(this))));
+        vm.expectRevert(XITASolanaNativeXGRHub.InvalidTransfer.selector);
+        hub.releaseFromSolana(a,hex"03",hex"0102");
+        assertEq(hub.lockedPrincipalWei(),PRINCIPAL);
+        assertFalse(hub.consumedInbound(id));
+        // The exact same message ID with the intended canonical EVM
+        // recipient is independently valid and may settle once.
+        a.recipient=XITASolanaCodec.evmAddress32(address(this));
+        hub.releaseFromSolana(a,hex"03",hex"0102");
+        assertTrue(hub.consumedInbound(id));
+        assertEq(hub.lockedPrincipalWei(),0);
+    }
     function testUnknownHistoricalValidatorEpochCannotRelease() public {
         _lock();
         XITASolanaCodec.Authorization memory a=_auth(bytes32(uint256(71)));
