@@ -19,6 +19,7 @@ pub mod registry;
 pub mod router;
 pub mod state;
 pub mod validator_registry;
+pub mod trusted_validators;
 
 use solana_program::{
     account_info::AccountInfo,entrypoint::ProgramResult,
