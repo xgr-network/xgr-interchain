@@ -1,6 +1,7 @@
 //! XITA V315 Solana endpoint codec. EVM signing and EVM-only route hashes
 //! remain byte-for-byte unchanged. No BLS signer is exposed here.
 use solana_program::keccak;
+use borsh::{BorshSerialize,BorshDeserialize};
 
 pub const XGR_DOMAIN: u32 = 1643;
 pub const SOLANA_DOMAIN: u32 = 1399811149;
@@ -62,7 +63,7 @@ pub fn route_id(
     Some(hashv(&[&scope,&asset_id,&word_u32(source_domain),
         &word_u32(dest_domain),&src_router,&dst_router,&GENESIS]))
 }
-#[derive(Clone)]
+#[derive(Clone,Debug,PartialEq,Eq,BorshSerialize,BorshDeserialize)]
 pub struct Authorization {
     pub source_domain:u32,
     pub destination_domain:u32,

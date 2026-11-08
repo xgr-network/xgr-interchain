@@ -69,4 +69,14 @@ pub enum XitaInstruction {
     /// No relayer, sponsor or GmbH execution gateway is required.
     BridgeSourceV1{recipient:[u8;32],amount:u64},
 
+    /// Full inbound XGR->Solana proof path, no relayer whitelist.
+    /// The historical destination registry set is looked up by immutable
+    /// setId PDA; a fresh replay PDA must not already exist.
+    ExecuteInboundSolanaV1{
+        authorization:crate::codec::Authorization,
+        bitmap:Vec<u8>,
+        signature:Vec<u8>,
+        witness:Vec<u8>,
+    },
+
 }

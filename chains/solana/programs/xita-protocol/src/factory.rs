@@ -372,6 +372,12 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             crate::source_gateway::execute(
                 program_id,accounts,recipient,amount
             ),
+        XitaInstruction::ExecuteInboundSolanaV1{
+            authorization,bitmap,signature,witness
+        }=>crate::inbound_gateway::execute(
+            program_id,accounts,authorization,bitmap,signature,witness
+        ),
+
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(
