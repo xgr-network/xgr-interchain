@@ -59,6 +59,15 @@ impl ImmutableAnchor {
         Ok(a)
     }
 }
+/// Public Borsh wire for a membership update. The quorum signature is
+/// verified against the prior program-owned set, never calldata keys.
+#[derive(Debug,Clone,PartialEq,Eq,BorshSerialize,BorshDeserialize)]
+pub struct MembershipProposalWire {
+    pub expected_set_id:u64,
+    pub valid_until:u64,
+    pub action:u8,
+    pub validator:ValidatorRecord,
+}
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct MembershipProposal {
     pub expected_set_id:u64,

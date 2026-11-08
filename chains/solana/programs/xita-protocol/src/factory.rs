@@ -23,7 +23,7 @@ pub const SYNTH_MINT_SEED: &[u8] = b"xita-mint";
 pub const COLLATERAL_VAULT_SEED: &[u8] = b"xita-collateral-vault";
 
 
-fn create_pda<'a>(
+pub(crate) fn create_pda<'a>(
     program_id:&Pubkey, payer:&AccountInfo<'a>, new_account:&AccountInfo<'a>,
     system:&AccountInfo<'a>, rent:&Rent, seeds:&[&[u8]], space:usize,
     owner:&Pubkey
@@ -299,6 +299,36 @@ pub fn register_route(
     Ok(())
 }
 
+/// The only allowed initial validator-PDA creation path. It is intentionally
+/// unavailable with the current unset genesis root, and it cannot be called
+/// with arbitrary user-selected validator material after release.
+pub fn bootstrap_xgr_validators(
+    program_id:&Pubkey,accounts:&[AccountInfo],
+    members:Vec<crate::trusted_validators::ValidatorRecord>,
+)->ProgramResult{
+    let mut it=accounts.iter();
+    let payer=next_account_info(&mut it)?;
+    let registry=next_account_info(&mut it)?;
+    let system=next_account_info(&mut it)?;
+    let rent_account=next_account_info(&mut it)?;
+    if !payer.is_signer||!payer.is_writable||!registry.is_writable||
+       *rent_account.key!=sysvar::rent::id(){
+        return Err(ProgramError::MissingRequiredSignature)
+    }
+    let anchor=crate::trusted_validators::ImmutableAnchor::compiled()?;
+    let snapshot=crate::trusted_validators::initialize(&anchor,members)?;
+    if *registry.key!=crate::trusted_validators::trusted_pda(program_id).0{
+        return Err(ProgramError::InvalidSeeds)
+    }
+    let bytes=borsh::to_vec(&snapshot)
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    let rent=Rent::from_account_info(rent_account)?;
+    create_pda(program_id,payer,registry,system,&rent,
+        &[b"xita-trusted-xgr-validators"],bytes.len(),program_id)?;
+    state::save(registry,program_id,&snapshot)?;
+    Ok(())
+}
+
 pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramResult {
     let ix=XitaInstruction::try_from_slice(data)
         .map_err(|_|ProgramError::InvalidInstructionData)?;
@@ -309,6 +339,8 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             register_route(program_id,accounts,destination_domain,remote_router),
         XitaInstruction::InitCollateralVault =>
             init_collateral_vault(program_id,accounts),
+        XitaInstruction::BootstrapXGRValidators{members} =>
+            bootstrap_xgr_validators(program_id,accounts,members),
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(

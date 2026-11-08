@@ -35,4 +35,19 @@ pub enum XitaInstruction {
         salt:[u8;32], origin_chain_id:u64, origin_token:[u8;20],
         origin_kind:u8, decimals:u8,
     },
+    /// Permissionless bootstrap ONLY against an immutable, independently
+    /// reproduced XGR validator-set root baked into the release ELF.
+    /// No operator key can choose or change the initial members.
+    /// Accounts: payer(signer,w), trusted-validator PDA(w), system, rent.
+    BootstrapXGRValidators {
+        members:Vec<crate::trusted_validators::ValidatorRecord>,
+    },
+    /// Reserved for audited native BLS quorum/PoP controlled update.
+    /// Current code leaves this disabled until on-chain CU and source
+    /// registry-state binding are fully regression-tested.
+    ApplyValidatorMembership {
+        proposal:crate::trusted_validators::MembershipProposalWire,
+        bitmap:Vec<u8>, signature:Vec<u8>, possession_proof:Vec<u8>,
+    },
+
 }
