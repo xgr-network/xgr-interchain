@@ -9,10 +9,10 @@ deployment topology is *not* Solana's execution model.
 | --- | --- | --- |
 | `XGRILNProtocol.sol` + Solana codec | `codec.rs` | Full additive Solana asset, route, signing-preimage and decimals codec; golden vectors |
 | `XETATokenFactoryV315.sol` | `factory.rs` | Permissionless creator-bound collateral router, ZERO-supply synthetic SPL mint (mint-authority PDA, freeze=None), and paired route/fee PDAs |
-| `XGRILNRegistryV315.sol` | `registry.rs` | Append-only, PDA-validated route record; fee changes require future BLS |
+| `XGRILNRegistryV315.sol` | `registry.rs`, `source_fee.rs` | Permissionless append-only route records, chainwide native SOL validator fee PDA; initial policy and every change require current-set Direct-BLS quorum |
 | `XETARouterCore.sol` + guarded routers | `router.rs` | Immutable router identity and route checks; transfer/mint gated |
-| `ILNGateway.sol` | `gateway.rs` | Explicitly disabled pending atomic source custody and fee evidence |
-| `XGRILNFeeVault.sol` | `fee_vault.rs` | Route-scoped fee vault, separate historical epoch state, message receipt PDA replay checks and exact rounding; live allocation/claim gated |
+| `ILNGateway.sol` | `gateway.rs`, `source_gateway.rs`, `inbound_gateway.rs` | Native atomic SPL lock / synthetic burn with SOL source fee, nonce and dispatch receipt; inbound BLS-verified SPL mint / collateral unlock with replay receipt, pending full SBF E2E verification |
+| `XGRILNFeeVault.sol` | `fee_vault.rs`, `validator_fee_claim.rs` | Atomic source SOL fee allocation, immutable epoch and operation receipts, BLS self-authorized historical validator claims; pending integrated SBF balance/rollback and max-set tests |
 | `XGRInterchainValidatorRegistryV3.sol` | `validator_registry.rs`, `trusted_validators.rs`, `membership.rs` | Native ADD/REMOVE with current-set BLS quorum, PoP, pinned-root bootstrap, fixed-capacity current PDA and append-only historic epoch PDAs; production root remains unset |
 | `XITADirectBLSISM.sol` | `direct_bls_ism.rs`, `bls_crypto.rs` | Full MinPk EIP-2537 BLS pairing/hash-to-G2 reference verifier with positive/negative vectors; public bridge verifier stays disabled until authenticated set PDA and SBF compute evidence |
 | EVM storage & ABI | `state.rs`, `instruction.rs`, `lib.rs` | Deterministic Borsh account storage and dispatch |
@@ -33,20 +33,39 @@ fixed golden vectors. GitHub Actions runs a dedicated Solana Rust job.
 
 ## Production admission blocked
 
-This is **NOT a functional bridge and must not be deployed on mainnet**.
-On-chain gateway-activated SPL collateral escrow and synthetic mint/burn, the fee-qualified
-dispatch, independent finalized source proof, complete end-to-end BLS
-and validator governance SBF CU measurement, replay protection, native fee claims, audited
-Solana wallet deployment and on-chain message handling remain required.
+This is **NOT an audited or mainnet-approved bridge**. The Rust program now
+contains public `BridgeSourceV1` and `ExecuteInboundSolanaV1` instructions,
+but the immutable Solana-destination XGR validator bootstrap checkpoint
+`PINNED_XGR_SET_ID`, `PINNED_XGR_SET_COMMITMENT` and
+`PINNED_XGR_REGISTRY` are intentionally all ZERO. **Both directions fail
+closed** until an independently verified release replaces those constants.
 
-The only executable instructions create *non-transferable initialization
-records* or zero-supply SPL synthetic mints. They do not lock, mint, unlock, dispatch or charge bridge fees. A distinct
-`ApplyValidatorMembership` instruction can update only the program-owned
-validator PDA after native current-set BLS quorum and optional ADD PoP checks;
-this stays fail-closed while the Solana-destination immutable anchor is unset.
-There is no owner/pause/upgrade admin in the Rust instruction set. The
-Solana program Upgrade Authority must be permanently revoked before any
-production route activation (see `chains/solana/deploy/README.md`).
+`BridgeSourceV1` requires an actual self-signed SPL lock or synthetic wXGR
+burn in the same Solana instruction as the current governance-set SOL fee,
+monotonic nonce, program-owned `SourceDispatch`, immutable operation receipt
+and historical fee-epoch accounting. A failed CPI or receipt creation causes
+the entire instruction to roll back.
+
+`ExecuteInboundSolanaV1` verifies the full signed XITA message against a
+program-owned historical validator epoch; the registered XGR hub and Solana
+router, exact recipient wallet and mint are checked before SPL mint or
+collateral unlock. A unique inbound receipt PDA blocks a second execution.
+
+`ClaimSolanaValidatorFee` requires the historical validator's OWN BLS key
+on a claim payload that binds program, route, SOL recipient, epoch, validator
+identity and monotonic claim nonce. Its recipient wallet must sign the Solana
+transaction. FeeVault rent stays segregated and unspendable. There is no
+company-controlled SOL sweep.
+
+These are **code implementations, not completed SBF E2E evidence**. Required
+before any activation: actual local Agave/Mollusk SPL and SOL balance checks,
+atomic rollback and replay tests, full gateway+hash-to-G2 Compute Units at
+worst-case validator count, validator-claim payout tests, independent finalized
+XGR/Solana source custody evidence, independently reviewed witness crypto,
+user-wallet deployment/ELF receipts, program upgrade-authority revocation,
+and a full security/delta audit.
+
+Existing EVM contracts and source signing formats are unchanged.
 
 ## EVM continuity
 
@@ -64,19 +83,20 @@ immutable upgrade-authority check. Creator routers, fee vaults and route
 records are independent PDAs under that executable. XGR-side Solidity
 components remain distinct executable contracts when actually deployed.
 
-### Native SPL custody and fee accounting building blocks
+### Native SPL custody and fee accounting
 
-`InitCollateralVault` is a permissionless **zero-balance** SPL token account
-initialization owned by the creator router PDA. The code contains guarded
-`transfer_checked` lock/unlock CPI helpers, but the public gateway still
-refuses transfer instructions until it can atomically record the exact message,
-verified route, source-fee escrow and current validator epoch.
+`InitCollateralVault` creates a zero-balance SPL token account owned by a
+creator's router PDA. `BridgeSourceV1` performs a checked SPL collateral
+transfer or a checked synthetic wXGR burn, plus validator SOL fee, immutable
+message/operation receipt, historical fee epoch and nonce, **atomically**.
+`ExecuteInboundSolanaV1` applies the reverse guarded mint/unlock following
+historical Direct-BLS verification and the one-time receipt PDA preflight.
 
-The Rust `FeeEpoch` and `OperationReceipt` types provide separate historical
-validator epochs and receipt PDAs to prevent duplicate message-fee allocation.
-`plan_allocation` is **pure only**; it does not move funds, change lamports or
-create a transferable claim. Its set IDs and recipient counts still need
-trusted, on-chain Direct-BLS-validated snapshots.
+SOL protocol source fees are shared across permissionless routes and cannot
+be selected by the caller or company: `ApplySolanaSourceFee` requires a
+current-validator quorum even at initial bootstrap. Validator payout uses a
+signature from the historical BLS holder plus the payee's own Solana wallet
+signature; no bridge operator can redirect accrued SOL validator fees.
 
 ## XGR Direct-BLS cryptography parity
 

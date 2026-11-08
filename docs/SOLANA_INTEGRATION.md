@@ -49,10 +49,14 @@ treats undeployed plans as live routes.
 Solana mainnet-beta identity is its fixed genesis hash. Domain `1399811149`
 is a messaging domain, not a native chain ID.
 
-Current branch delivers the isolated plan, read-only Admin RPC diagnostics
-and the fail-closed node RPC observation layer. Rust programs, cross-chain
-message codecs, executable wallet deployer and live BLS authorization remain
-subsequent implementation work.
+The branch now contains the native Rust gateway, current and historical
+validator-set governance, native SBF pairing/hash-to-G2 verification, SOL
+source fee quorum policy, atomic SPL custody/fee/dispatch receipts, BLS-bound
+inbound replay protection and historical validator self-claims. The immutable
+Solana validator bootstrap root remains unset, so all value paths remain
+fail-closed. Independent RPC source proof and XGR-node signer integration,
+actual full local SBF end-to-end transfer measurements, the Solana wallet
+deployment adapter, and independent audits are still outstanding.
 
 
 ## Permissionlessness and MiCAR-relevant operational control
