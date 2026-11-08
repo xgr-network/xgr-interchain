@@ -23,6 +23,7 @@ pub mod state;
 pub mod source_fee;
 pub mod source_gateway;
 pub mod inbound_gateway;
+pub mod validator_fee_claim;
 pub mod validator_registry;
 pub mod trusted_validators;
 

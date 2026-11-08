@@ -377,6 +377,12 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
         }=>crate::inbound_gateway::execute(
             program_id,accounts,authorization,bitmap,signature,witness
         ),
+        XitaInstruction::ClaimSolanaValidatorFee{
+            validator_address,nonce,bitmap,signature,witness
+        }=>crate::validator_fee_claim::execute(
+            program_id,accounts,validator_address,nonce,
+            bitmap,signature,witness
+        ),
 
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals

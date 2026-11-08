@@ -79,6 +79,7 @@ pub struct OperationReceipt {
 pub const SOURCE_NONCE_TAG:u8=0x4e;
 pub const SOURCE_DISPATCH_TAG:u8=0x44;
 pub const INBOUND_RECEIPT_TAG:u8=0x49;
+pub const FEE_CLAIM_TAG:u8=0x43;
 
 /// Per-source-signer, per-route monotonic nonce. Source slot is runtime
 /// supplied and never accepted from request calldata.
@@ -127,6 +128,19 @@ pub struct InboundReceipt{
     pub verified_set_id:u64,
     pub source_height:u64,
     pub router:[u8;32],
+}
+
+/// One monotonic claim ledger per historical epoch, route and validator.
+/// Fees remain snapshot-based even after the validator set changes.
+#[derive(Debug,PartialEq,Eq,BorshSerialize,BorshDeserialize,Clone)]
+pub struct ValidatorFeeClaim{
+    pub tag:u8,
+    pub version:u8,
+    pub route_id:[u8;32],
+    pub set_id:u64,
+    pub validator:[u8;20],
+    pub nonce:u64,
+    pub claimed_lamports:u64,
 }
 
 pub fn load<T: BorshDeserialize>(

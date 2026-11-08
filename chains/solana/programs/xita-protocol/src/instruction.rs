@@ -79,4 +79,15 @@ pub enum XitaInstruction {
         witness:Vec<u8>,
     },
 
+    /// Unrestricted validator self-claim for the historical fee epoch. The
+    /// validator uses BLS to authorize their selected signing Solana payee.
+    /// No operator custody, recipient mapping or admin withdrawal allowed.
+    ClaimSolanaValidatorFee{
+        validator_address:[u8;20],
+        nonce:u64,
+        bitmap:Vec<u8>,
+        signature:Vec<u8>,
+        witness:Vec<u8>,
+    },
+
 }
