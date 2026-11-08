@@ -363,6 +363,11 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             program_id,accounts,proposal,bitmap,signature,
             quorum_witness,possession_proof,possession_witness
         ),
+        XitaInstruction::ApplySolanaSourceFee{
+            proposal,bitmap,signature,witness
+        }=>crate::source_fee::apply_source_fee(
+            program_id,accounts,proposal,bitmap,signature,witness
+        ),
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(

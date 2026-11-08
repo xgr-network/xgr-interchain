@@ -54,4 +54,13 @@ pub enum XitaInstruction {
         possession_witness:Vec<u8>,
     },
 
+    /// One shared native SOL source fee for all permissionless source
+    /// routes. Initial fee and every change need current validator quorum.
+    ApplySolanaSourceFee{
+        proposal:crate::source_fee::SourceFeeProposal,
+        bitmap:Vec<u8>,
+        signature:Vec<u8>,
+        witness:Vec<u8>,
+    },
+
 }
