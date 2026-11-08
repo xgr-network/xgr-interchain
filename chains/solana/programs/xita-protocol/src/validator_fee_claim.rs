@@ -182,9 +182,10 @@ pub fn execute(
     // remains locked in the FeeVault. New fees are not double claimed:
     // the immutable historical epoch total and claimed-total ledger
     // independently determine the next delta.
-    **vault_account.try_borrow_mut_lamports()?-=amount;
-    **payee.try_borrow_mut_lamports()?=payee.lamports()
+    let new_payee_balance=payee.lamports()
         .checked_add(amount).ok_or_else(bad)?;
+    **vault_account.try_borrow_mut_lamports()?-=amount;
+    **payee.try_borrow_mut_lamports()?=new_payee_balance;
     state::save(claim_account,program_id,&next)
 }
 #[cfg(test)]
