@@ -168,6 +168,9 @@ contract XITASolanaNativeXGRHub {
             a.setId == 0 || // Historical sets are valid for settled transfers.
             a.sourceHeight == 0 || a.validatorFeeAtomic == 0 ||
             a.messageId == bytes32(0) || a.recipient == bytes32(0) ||
+            // EVM recipients must be canonical 20-byte addresses padded to bytes32.
+            // Otherwise a signed 32-byte recipient would be silently truncated.
+            uint256(a.recipient) >> 160 != 0 ||
             bitmap.length == 0 || aggregateSignature.length == 0)
             revert InvalidTransfer();
 
