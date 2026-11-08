@@ -23,7 +23,10 @@ pub const POSSESSION_SCOPE:&[u8]=b"XGR_INTERCHAIN_BOOTSTRAP_V1";
 /// snapshot BEFORE immutable program deploy. Zero is an intentional lock.
 pub const PINNED_XGR_SET_ID:u64=0;
 pub const PINNED_XGR_SET_COMMITMENT:[u8;32]=[0;32];
-pub const PINNED_XGR_REGISTRY:[u8;20]=[0;20];
+// Address is the existing XGRChain V315 registry recorded in
+// deployments/chains/xgrchain.json. A NONZERO address alone is not
+// enough: unverified setId+commitment remain zero and deny bootstrap.
+pub const PINNED_XGR_REGISTRY:[u8;20]=[0x9b,0x6b,0x92,0xef,0x17,0x45,0x61,0x1f,0x40,0x23,0x41,0x96,0x5f,0x7f,0xc6,0x49,0xcb,0xe0,0xda,0x8c];
 
 #[derive(Debug,Clone,PartialEq,Eq,BorshSerialize,BorshDeserialize)]
 pub struct ValidatorRecord {
