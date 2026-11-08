@@ -129,6 +129,33 @@ pub fn verify_native_with_trusted_pda(
         authorization,&snapshot,bitmap,compressed_signature,witness
     )
 }
+/// Mirrors V3 getValidatorSetForVerification(requestedSetId): historical
+/// validator snapshots are immutable PDA records, not caller-supplied keys.
+/// A new validator set must not retroactively invalidate an already-finalized
+/// and legitimately attested message's original validator epoch.
+pub fn verify_native_with_history_pda(
+    program_id:&solana_program::pubkey::Pubkey,
+    epoch_account:&solana_program::account_info::AccountInfo,
+    authorization:&Authorization,
+    bitmap:&[u8],compressed_signature:&[u8],witness:&[u8],
+)->Result<bool,ProgramError>{
+    let anchor=crate::trusted_validators::ImmutableAnchor::compiled()?;
+    if authorization.set_id<anchor.set_id ||authorization.set_id==0 {
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    let epoch=crate::trusted_validators::load_historical_set(
+        epoch_account,program_id,authorization.set_id
+    )?;
+    if epoch.xgr_registry!=anchor.xgr_registry {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    if epoch.set_id==anchor.set_id &&epoch.commitment!=anchor.commitment {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    crate::bls_sbf::verify_direct(
+        authorization,&epoch,bitmap,compressed_signature,witness
+    )
+}
 pub fn signing_bytes(authorization:&Authorization)->Option<Vec<u8>>{
  signing_preimage(authorization)
 }

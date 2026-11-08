@@ -9,7 +9,7 @@ use crate::{
     factory::create_pda,
     trusted_validators::{
         self,ValidatorSnapshot,MembershipProposal,MembershipProposalWire,
-        CURRENT_SEED,HISTORY_SEED,
+        HISTORY_SEED,
     },
 };
 use solana_program::{
@@ -21,7 +21,6 @@ use solana_program::{
     rent::Rent,
     sysvar::{self,Sysvar},
 };
-use borsh::BorshSerialize;
 
 /// Native Agave 4.4 BLS quorum and hash-to-G2-witness-protected PoP proofs.
 /// The first signer set is ALWAYS read from the pinned program-owned PDA.
