@@ -75,7 +75,13 @@ regression and delta audit.
 - `direct_bls_ism::verify_cryptography_against_snapshot`: verifies the
   cryptography against a **caller-supplied untrusted in-memory view**.
 - `validator_registry::xgr_set_commitment`: parity commitment HASH builder
-  **implemented**, but does **not** prove a trusted initial set.
+  **implemented**. Native `BootstrapXGRValidators` and
+  `ApplyValidatorMembership` instructions are **implemented but remain
+  fail-closed** while the independently verifiable Solana-destination XGR
+  initial registry root is not pinned. Historical epoch PDA snapshots are
+  created append-only, with the current root stored in a fixed-capacity PDA.
+  A full Agave transaction-level CU result for ADD with quorum+PoP and
+  maximum-set cardinality is still required.
 - `direct_bls_ism::verify`: **intentionally disabled**.
 - `XitaInstruction::Bridge`, `ExecuteInbound`, `ApplySourceFee`,
   `ClaimFees`: **intentionally disabled**.

@@ -13,7 +13,7 @@ deployment topology is *not* Solana's execution model.
 | `XETARouterCore.sol` + guarded routers | `router.rs` | Immutable router identity and route checks; transfer/mint gated |
 | `ILNGateway.sol` | `gateway.rs` | Explicitly disabled pending atomic source custody and fee evidence |
 | `XGRILNFeeVault.sol` | `fee_vault.rs` | Route-scoped fee vault, separate historical epoch state, message receipt PDA replay checks and exact rounding; live allocation/claim gated |
-| `XGRInterchainValidatorRegistryV3.sol` | `validator_registry.rs` | 2/3 bitmap validation; state transitions and PoP pending |
+| `XGRInterchainValidatorRegistryV3.sol` | `validator_registry.rs`, `trusted_validators.rs`, `membership.rs` | Native ADD/REMOVE with current-set BLS quorum, PoP, pinned-root bootstrap, fixed-capacity current PDA and append-only historic epoch PDAs; production root remains unset |
 | `XITADirectBLSISM.sol` | `direct_bls_ism.rs`, `bls_crypto.rs` | Full MinPk EIP-2537 BLS pairing/hash-to-G2 reference verifier with positive/negative vectors; public bridge verifier stays disabled until authenticated set PDA and SBF compute evidence |
 | EVM storage & ABI | `state.rs`, `instruction.rs`, `lib.rs` | Deterministic Borsh account storage and dispatch |
 
@@ -35,13 +35,15 @@ fixed golden vectors. GitHub Actions runs a dedicated Solana Rust job.
 
 This is **NOT a functional bridge and must not be deployed on mainnet**.
 On-chain gateway-activated SPL collateral escrow and synthetic mint/burn, the fee-qualified
-dispatch, independent finalized source proof, current-set BLS verification
-and validator governance, replay protection, native fee claims, audited
+dispatch, independent finalized source proof, complete end-to-end BLS
+and validator governance SBF CU measurement, replay protection, native fee claims, audited
 Solana wallet deployment and on-chain message handling remain required.
 
 The only executable instructions create *non-transferable initialization
-records* or zero-supply SPL synthetic mints. They do not lock, mint, unlock, dispatch, charge bridge fees,
-alter validator sets or accept untrusted proof bytes as authorization.
+records* or zero-supply SPL synthetic mints. They do not lock, mint, unlock, dispatch or charge bridge fees. A distinct
+`ApplyValidatorMembership` instruction can update only the program-owned
+validator PDA after native current-set BLS quorum and optional ADD PoP checks;
+this stays fail-closed while the Solana-destination immutable anchor is unset.
 There is no owner/pause/upgrade admin in the Rust instruction set. The
 Solana program Upgrade Authority must be permanently revoked before any
 production route activation (see `chains/solana/deploy/README.md`).
@@ -86,10 +88,34 @@ hash-to-G2. Tests use the positive reference vector from
 and failures for tampered message, invalid bitmap, substituted validator key,
 infinity, invalid curves and bad padding. No tokens or network access needed.
 
-**IMPORTANT:** The pure Rust verifier is the reference implementation. The
-callable SVM instruction remains fail-closed: we have not yet established the
-on-chain validator-set PDA bootstrap/transition trust chain or measured the
-hash-to-G2/pairing CU budget on the activated Agave runtime. A purely
+**IMPORTANT:** The pure Rust verifier is the reference implementation. The local reference and the isolated SBF benchmark are verified (419,690 CU
+for a 2-of-3 BLS proof). The SVM membership instruction is implemented, but
+its real XGR bootstrap is blocked pending verified Solana-destination
+registry commitment and an integrated maximum-validator-count CU benchmark. A purely
 cryptographically valid vote without this chain/route binding cannot authorize
 transfers. The final SVM verifier must use the active SIMD-0388 native syscall
 backend or another audited and budget-tested implementation before release.
+
+## Validator governance (EVM V3 parity)
+
+`BootstrapXGRValidators` creates two accounts atomically: the fixed-space
+current PDA and immutable snapshot PDA for the anchored epoch. It can only be
+called with a hard-pinned current XGR V3 validator-set ID, commitment and
+**Solana-destination** source registry. These release constants are currently
+zero and must not be inferred from the existing XGRChain destination=1643
+registry.
+
+`ApplyValidatorMembership` accepts compressed 96-byte G2 signature plus a
+96-byte RFC9380 witness. It verifies the 2/3 current-set BLS quorum with the
+exact Solidity V3 payload, verifies a separate key PoP for ADD, rejects a
+stale set ID or expired 10-minute deadline, performs swap-and-pop on REMOVE,
+commits the replacement validator list to the fixed-space current PDA and
+creates a one-time historical PDA. All are in one atomic Solana instruction.
+No company/operator signer is needed. Historical BLS verification reads its
+PDA from the requested set ID, matching EVM V3 semantics.
+
+Unlike EVM's dynamic arrays, the current SVM record reserves space for **16**
+validators. This limit is NOT validated for worst-case Compute Units and must
+be audited/benchmarked before admitting public routes. Solidity's optional
+validator deactivation-reserve/reimbursement economics also need an explicit
+Solana-native equivalent; do not claim full economic parity yet.
