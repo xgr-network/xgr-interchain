@@ -320,12 +320,27 @@ pub fn bootstrap_xgr_validators(
     if *registry.key!=crate::trusted_validators::trusted_pda(program_id).0{
         return Err(ProgramError::InvalidSeeds)
     }
-    let bytes=borsh::to_vec(&snapshot)
-        .map_err(|_|ProgramError::InvalidAccountData)?;
+    let bytes=crate::trusted_validators::serialize_current(&snapshot)?;
+    let history=next_account_info(&mut it)?;
+    if !history.is_writable ||
+       *history.key!=crate::trusted_validators::history_pda(
+           program_id,snapshot.set_id
+       ).0{
+        return Err(ProgramError::InvalidSeeds);
+    }
     let rent=Rent::from_account_info(rent_account)?;
     create_pda(program_id,payer,registry,system,&rent,
-        &[b"xita-trusted-xgr-validators"],bytes.len(),program_id)?;
-    state::save(registry,program_id,&snapshot)?;
+        &[crate::trusted_validators::CURRENT_SEED],bytes.len(),program_id)?;
+    let id=snapshot.set_id.to_be_bytes();
+    let historic=borsh::to_vec(&snapshot)
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    create_pda(program_id,payer,history,system,&rent,
+        &[crate::trusted_validators::HISTORY_SEED,&id],
+        historic.len(),program_id)?;
+    state::save(history,program_id,&snapshot)?;
+    crate::trusted_validators::store_current_set(
+        registry,program_id,&snapshot
+    )?;
     Ok(())
 }
 
@@ -341,6 +356,13 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
             init_collateral_vault(program_id,accounts),
         XitaInstruction::BootstrapXGRValidators{members} =>
             bootstrap_xgr_validators(program_id,accounts,members),
+        XitaInstruction::ApplyValidatorMembership{
+            proposal,bitmap,signature,quorum_witness,
+            possession_proof,possession_witness
+        }=>crate::membership::apply_membership(
+            program_id,accounts,proposal,bitmap,signature,
+            quorum_witness,possession_proof,possession_witness
+        ),
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(

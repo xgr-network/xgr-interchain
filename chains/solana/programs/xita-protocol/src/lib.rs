@@ -16,6 +16,7 @@ pub mod factory;
 pub mod fee_vault;
 pub mod gateway;
 pub mod instruction;
+pub mod membership;
 pub mod registry;
 pub mod router;
 pub mod state;

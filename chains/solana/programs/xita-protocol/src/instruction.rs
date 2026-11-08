@@ -42,12 +42,16 @@ pub enum XitaInstruction {
     BootstrapXGRValidators {
         members:Vec<crate::trusted_validators::ValidatorRecord>,
     },
-    /// Reserved for audited native BLS quorum/PoP controlled update.
-    /// Current code leaves this disabled until on-chain CU and source
-    /// registry-state binding are fully regression-tested.
+    /// Callable only after an immutable Solana-specific XGR V3 trust root
+    /// has been verified and pinned at binary build. Native BLS quorum and
+    /// candidate PoP are mandatory; historical set PDAs are append-only.
     ApplyValidatorMembership {
         proposal:crate::trusted_validators::MembershipProposalWire,
-        bitmap:Vec<u8>, signature:Vec<u8>, possession_proof:Vec<u8>,
+        bitmap:Vec<u8>,
+        signature:Vec<u8>,
+        quorum_witness:Vec<u8>,
+        possession_proof:Vec<u8>,
+        possession_witness:Vec<u8>,
     },
 
 }
