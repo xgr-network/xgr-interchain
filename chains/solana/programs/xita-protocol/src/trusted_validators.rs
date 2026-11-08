@@ -157,18 +157,28 @@ pub fn initialize(
 /// A membership transition is a 2-of-3 (or general >=2/3) BLS vote from
 /// the *current* set. ADD additionally proves possession of its new BLS
 /// private key on the destination-bound XGR V3 bootstrap payload.
-pub fn apply_transition(
-    old:&ValidatorSnapshot,p:&MembershipProposal,now:u64,
-    bitmap:&[u8],quorum_signature:&[u8],pop_signature:Option<&[u8]>
+impl From<MembershipProposalWire> for MembershipProposal {
+    fn from(w:MembershipProposalWire)->Self{
+        Self{expected_set_id:w.expected_set_id,valid_until:w.valid_until,
+             action:w.action,validator:w.validator}
+    }
+}
+
+/// Pure transition planner equivalent to Solidity V3 ADD/REMOVE. It does NOT
+/// authorize membership: its caller MUST verify prior-set BLS quorum and
+/// candidate PoP before writing any program-owned PDA. This is shared by
+/// native SBF and reference crypto tests to prevent drift.
+pub fn plan_membership(
+    old:&ValidatorSnapshot,p:&MembershipProposal,now:u64
 )->Result<ValidatorSnapshot,ProgramError>{
     let bad=||ProgramError::InvalidInstructionData;
     if p.expected_set_id!=old.set_id || old.set_id==0 ||
-       old.set_id==u64::MAX || p.valid_until<=now ||
+       old.set_id==u64::MAX || p.valid_until==0 ||
+       now>p.valid_until ||
        p.valid_until>now.saturating_add(MAX_TRANSITION_VALIDITY_SECS) ||
        !valid_member(&p.validator) ||
        (p.action!=1 && p.action!=2) ||
-       commitment_for(&old.members)!=Some(old.commitment) ||
-       !bitmap_has_quorum(bitmap,old.members.len()){
+       commitment_for(&old.members)!=Some(old.commitment) {
         return Err(bad())
     }
     let mut members=old.members.clone();
@@ -177,14 +187,7 @@ pub fn apply_transition(
            members.iter().any(|m|
               m.address==p.validator.address ||
               m.compressed_key==p.validator.compressed_key
-           ) {return Err(bad());}
-        // No rogue-key: possession of the new validator's private key is
-        // independently demonstrated, in addition to old-set quorum.
-        let proof=pop_signature.ok_or_else(bad)?;
-        if !bls_crypto::verify_eip2537_quorum(
-            &possession_payload(&p.validator),
-            &[p.validator.eip2537_key],&[1u8],proof
-        ){return Err(bad());}
+           ){return Err(bad());}
         members.push(p.validator.clone());
     }else{
         let i=members.iter().position(|m|
@@ -192,20 +195,38 @@ pub fn apply_transition(
             m.compressed_key==p.validator.compressed_key &&
             m.eip2537_key==p.validator.eip2537_key
         ).ok_or_else(bad)?;
-        if members.len()==1 {return Err(bad());}
-        // Mirror Solidity swap-and-pop validator order on removal.
-        let last=members.len()-1;members.swap(i,last);members.pop();
+        if members.len()==1{return Err(bad());}
+        // Exactly the EVM V3 swap-and-pop removal order.
+        members.swap_remove(i);
     }
-    let old_keys:Vec<[u8;128]>=old.members.iter()
-        .map(|m|m.eip2537_key).collect();
-    if !bls_crypto::verify_eip2537_quorum(
-        &membership_payload(p),&old_keys,bitmap,quorum_signature
-    ){return Err(bad());}
-    let next=commitment_for(&members).ok_or_else(bad)?;
+    let commitment=commitment_for(&members).ok_or_else(bad)?;
     Ok(ValidatorSnapshot{
-        set_id:old.set_id+1,commitment:next,
-        xgr_registry:old.xgr_registry,members,
+        set_id:old.set_id+1,commitment,
+        xgr_registry:old.xgr_registry,members
     })
+}
+
+/// Offline reference using full EIP-2537 signatures. SBF uses the same
+/// plan_membership and the native 96-byte compressed G2 verifier instead.
+pub fn apply_transition(
+    old:&ValidatorSnapshot,p:&MembershipProposal,now:u64,
+    bitmap:&[u8],quorum_signature:&[u8],pop_signature:Option<&[u8]>
+)->Result<ValidatorSnapshot,ProgramError>{
+    let bad=||ProgramError::InvalidInstructionData;
+    let next=plan_membership(old,p,now)?;
+    if !bitmap_has_quorum(bitmap,old.members.len()){return Err(bad());}
+    if p.action==1 {
+        let proof=pop_signature.ok_or_else(bad)?;
+        if !bls_crypto::verify_eip2537_quorum(
+            &possession_payload(&p.validator),
+            &[p.validator.eip2537_key],&[1u8],proof
+        ){return Err(bad());}
+    }
+    let keys:Vec<[u8;128]>=old.members.iter().map(|m|m.eip2537_key).collect();
+    if !bls_crypto::verify_eip2537_quorum(
+        &membership_payload(p),&keys,bitmap,quorum_signature
+    ){return Err(bad());}
+    Ok(next)
 }
 pub fn trusted_pda(program:&solana_program::pubkey::Pubkey)
  ->(solana_program::pubkey::Pubkey,u8) {
@@ -429,6 +450,18 @@ mod tests {
             Some(&pop)).is_err());
         assert!(apply_transition(&state,&p,2000,&[0b101],&vote,
             Some(&pop)).is_err());
+    }
+    #[test]fn deadline_equal_now_is_valid_like_solidity_v3(){
+        let (state,_) = set();
+        let p=MembershipProposal{
+            expected_set_id:7,valid_until:1000,action:2,
+            validator:state.members[1].clone()
+        };
+        let next=plan_membership(&state,&p,1000).unwrap();
+        assert_eq!(next.set_id,8);
+        assert!(plan_membership(&state,&p,1001).is_err());
+        let mut too_far=p.clone();too_far.valid_until=1601;
+        assert!(plan_membership(&state,&too_far,1000).is_err());
     }
     #[test]fn quorum_remove_preserves_swap_pop_order_and_replay_guard(){
         let (state,keys)=set();
