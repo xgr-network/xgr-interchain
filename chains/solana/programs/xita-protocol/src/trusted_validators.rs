@@ -13,6 +13,13 @@ use crate::{bls_crypto,validator_registry::{
 use solana_program::{keccak::hashv,program_error::ProgramError};
 
 pub const MAX_VALIDATORS:usize=16;
+/// Fixed rent-funded space for all potential members. Solana PDA accounts
+/// cannot grow merely because a member joins; the current account must
+/// support MAX_VALIDATORS from bootstrap onward.
+pub const CURRENT_ACCOUNT_SPACE:usize=8+8+32+20+4+MAX_VALIDATORS*(20+48+128);
+const CURRENT_MAGIC:&[u8;4]=b"XV3S";
+pub const CURRENT_SEED:&[u8]=b"xita-trusted-xgr-validators";
+pub const HISTORY_SEED:&[u8]=b"xita-validator-history";
 pub const MAX_TRANSITION_VALIDITY_SECS:u64=600;
 pub const SOURCE_CHAIN_ID:u64=1643;
 pub const SOLANA_DOMAIN:u32=1399811149;
@@ -23,10 +30,10 @@ pub const POSSESSION_SCOPE:&[u8]=b"XGR_INTERCHAIN_BOOTSTRAP_V1";
 /// snapshot BEFORE immutable program deploy. Zero is an intentional lock.
 pub const PINNED_XGR_SET_ID:u64=0;
 pub const PINNED_XGR_SET_COMMITMENT:[u8;32]=[0;32];
-// Address is the existing XGRChain V315 registry recorded in
-// deployments/chains/xgrchain.json. A NONZERO address alone is not
-// enough: unverified setId+commitment remain zero and deny bootstrap.
-pub const PINNED_XGR_REGISTRY:[u8;20]=[0x9b,0x6b,0x92,0xef,0x17,0x45,0x61,0x1f,0x40,0x23,0x41,0x96,0x5f,0x7f,0xc6,0x49,0xcb,0xe0,0xda,0x8c];
+// Must be pinned to the Solana-destination XGR V3 validator authority
+// checkpoint, NOT the existing XGRChain *destination=1643* registry.
+ // Selection and independent finality proof required before release.
+pub const PINNED_XGR_REGISTRY:[u8;20]=[0;20];
 
 #[derive(Debug,Clone,PartialEq,Eq,BorshSerialize,BorshDeserialize)]
 pub struct ValidatorRecord {
@@ -203,7 +210,7 @@ pub fn apply_transition(
 pub fn trusted_pda(program:&solana_program::pubkey::Pubkey)
  ->(solana_program::pubkey::Pubkey,u8) {
     solana_program::pubkey::Pubkey::find_program_address(
-        &[b"xita-trusted-xgr-validators"],program)
+        &[CURRENT_SEED],program)
 }
 /// Pure receipt bound to the runtime's trusted-PDA root; NEVER a signature
 /// verification shortcut or a substitute for on-chain current-set reads.
@@ -226,6 +233,64 @@ pub fn anchored_message_context(snapshot:&ValidatorSnapshot)
 /// Strict program-owned current-set PDA loader. The account must be pinned to
 /// the same XGR Registry address baked into the immutable executable, and it
 /// must contain a valid self-consistent commitment of every G1 key.
+/// An immutable epoch snapshot is stored at its own PDA. This mirrors EVM
+/// V3's verificationSetSnapshots and lets fee claims resolve historic order.
+pub fn history_pda(program:&solana_program::pubkey::Pubkey,set_id:u64)
+ ->(solana_program::pubkey::Pubkey,u8){
+    solana_program::pubkey::Pubkey::find_program_address(
+        &[HISTORY_SEED,&set_id.to_be_bytes()],program)
+}
+/// Serializes to a **fixed, zero-padded, length-prefixed** account. This is
+/// mandatory for adding validators without reallocating the trusted PDA.
+pub fn serialize_current(snapshot:&ValidatorSnapshot)
+ ->Result<Vec<u8>,ProgramError>{
+    let body=borsh::to_vec(snapshot)
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    if snapshot.members.is_empty()||snapshot.members.len()>MAX_VALIDATORS||
+       body.len()>CURRENT_ACCOUNT_SPACE-8 ||
+       commitment_for(&snapshot.members)!=Some(snapshot.commitment){
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let mut out=vec![0u8;CURRENT_ACCOUNT_SPACE];
+    out[0..4].copy_from_slice(CURRENT_MAGIC);
+    out[4..8].copy_from_slice(&(body.len() as u32).to_le_bytes());
+    out[8..8+body.len()].copy_from_slice(&body);
+    Ok(out)
+}
+pub fn deserialize_current(raw:&[u8])
+ ->Result<ValidatorSnapshot,ProgramError>{
+    if raw.len()!=CURRENT_ACCOUNT_SPACE||&raw[0..4]!=CURRENT_MAGIC{
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let len=u32::from_le_bytes(raw[4..8].try_into()
+        .map_err(|_|ProgramError::InvalidAccountData)?) as usize;
+    if len==0||len>CURRENT_ACCOUNT_SPACE-8 ||
+       raw[8+len..].iter().any(|&x|x!=0) {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let snapshot=ValidatorSnapshot::try_from_slice(&raw[8..8+len])
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    if snapshot.set_id==0 ||snapshot.xgr_registry==[0;20]||
+       commitment_for(&snapshot.members)!=Some(snapshot.commitment){
+        return Err(ProgramError::InvalidAccountData)
+    }
+    Ok(snapshot)
+}
+pub fn store_current_set(
+    account:&solana_program::account_info::AccountInfo,
+    program_id:&solana_program::pubkey::Pubkey,
+    snapshot:&ValidatorSnapshot,
+)->Result<(),ProgramError>{
+    if account.owner!=program_id||!account.is_writable||
+       *account.key!=trusted_pda(program_id).0{
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let bytes=serialize_current(snapshot)?;
+    let mut data=account.try_borrow_mut_data()?;
+    if data.len()!=bytes.len(){return Err(ProgramError::AccountDataTooSmall)}
+    data.copy_from_slice(&bytes);
+    Ok(())
+}
 pub fn load_current_set(
     account:&solana_program::account_info::AccountInfo,
     program_id:&solana_program::pubkey::Pubkey,
@@ -237,19 +302,35 @@ pub fn load_current_set(
        anchor.xgr_registry==[0;20] {
         return Err(ProgramError::InvalidAccountData)
     }
-    let snapshot=ValidatorSnapshot::try_from_slice(&account.try_borrow_data()?)
-        .map_err(|_|ProgramError::InvalidAccountData)?;
+    let snapshot=deserialize_current(&account.try_borrow_data()?)?;
     if snapshot.set_id<anchor.set_id ||
-       snapshot.xgr_registry!=anchor.xgr_registry ||
-       snapshot.commitment==[0;32] ||
-       commitment_for(&snapshot.members)!=Some(snapshot.commitment) {
+       snapshot.xgr_registry!=anchor.xgr_registry {
         return Err(ProgramError::InvalidAccountData)
     }
-    // At the initial epoch, it MUST be the exact verified root. Later
-    // epochs are only trusted if this PDA was initialized by the pinned
-    // bootstrap and updated exclusively by current-set BLS instructions.
+    // Only the transition instruction may modify the PDA post-bootstrap.
+    // Bootstrapped set is exactly the anchor. Historical transitions are
+    // separately pinned to immutable epoch PDAs by the executor.
     if snapshot.set_id==anchor.set_id &&
        snapshot.commitment!=anchor.commitment {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    Ok(snapshot)
+}
+pub fn load_historical_set(
+    account:&solana_program::account_info::AccountInfo,
+    program_id:&solana_program::pubkey::Pubkey,
+    requested_set_id:u64,
+)->Result<ValidatorSnapshot,ProgramError>{
+    if requested_set_id==0||account.owner!=program_id ||
+       *account.key!=history_pda(program_id,requested_set_id).0{
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let snapshot=ValidatorSnapshot::try_from_slice(
+        &account.try_borrow_data()?)
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    if snapshot.set_id!=requested_set_id ||
+       snapshot.xgr_registry==[0;20] ||
+       commitment_for(&snapshot.members)!=Some(snapshot.commitment){
         return Err(ProgramError::InvalidAccountData)
     }
     Ok(snapshot)
@@ -392,7 +473,7 @@ mod tests {
         let program=Pubkey::new_unique();
         let (pda,_)=trusted_pda(&program);
         let mut lamports=1;
-        let mut bytes=borsh::to_vec(&snapshot).unwrap();
+        let mut bytes=serialize_current(&snapshot).unwrap();
         let anchor=ImmutableAnchor{
             set_id:snapshot.set_id,commitment:snapshot.commitment,
             xgr_registry:snapshot.xgr_registry,
@@ -421,10 +502,36 @@ mod tests {
                 &mut bytes,&wrong_owner,false,0);
             assert!(load_current_set(&fake,&program,&anchor).is_err());
         }
+        let valid=bytes.clone();
         bytes.push(0x99);
         let fake=AccountInfo::new(&pda,false,false,&mut lamports,
             &mut bytes,&owner,false,0);
         assert!(load_current_set(&fake,&program,&anchor).is_err());
+        let mut bad_padding=valid;
+        *bad_padding.last_mut().unwrap()=0x99;
+        let fake=AccountInfo::new(&pda,false,false,&mut lamports,
+            &mut bad_padding,&owner,false,0);
+        assert!(load_current_set(&fake,&program,&anchor).is_err());
+    }
+
+    #[test]fn fixed_capacity_current_registry_allows_all_sixteen_members(){
+        let (snapshot,_)=set();
+        let mut extended=snapshot.clone();
+        for i in 4..=MAX_VALIDATORS {
+            let id=i as u8;
+            let sec=Scalar::from(100+i as u64);
+            extended.members.push(validator(id,sec));
+        }
+        extended.commitment=commitment_for(&extended.members).unwrap();
+        let encoded=serialize_current(&extended).unwrap();
+        assert_eq!(encoded.len(),CURRENT_ACCOUNT_SPACE);
+        assert_eq!(deserialize_current(&encoded).unwrap(),extended);
+        let mut truncated=encoded.clone();truncated.truncate(900);
+        assert!(deserialize_current(&truncated).is_err());
+        let mut bad=encoded;bad[4..8].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(deserialize_current(&bad).is_err());
+        extended.members.push(validator(17,Scalar::from(500u64)));
+        assert!(serialize_current(&extended).is_err());
     }
 
 }
