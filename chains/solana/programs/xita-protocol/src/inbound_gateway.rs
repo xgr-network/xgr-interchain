@@ -153,7 +153,7 @@ pub fn execute(
     let local_amount=preflight(
         program_id,router_account.key,&router,&route,&auth
     )?;
-    if *auth.recipient.as_ref()!=*recipient_wallet.key.as_ref() {
+    if auth.recipient!=recipient_wallet.key.to_bytes() {
         return Err(bad())
     }
     if *receipt.key!=receipt_pda(program_id,&auth.message_id).0 ||
