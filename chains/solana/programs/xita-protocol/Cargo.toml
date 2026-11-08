@@ -20,4 +20,8 @@ spl-token = { version = "=7.0.0", features = ["no-entrypoint"] }
 # RFC9380 hash-to-G2 requires experimental feature; pin and audit before mainnet.
 bls12_381 = { version = "=0.8.0", features = ["experimental"] }
 sha2 = "=0.9.9"
+# Same SBFv3 native BLS syscalls and witness verifier as the measured
+# 419,690-CU isolated Agave 4.4.0 benchmark. Pending independent audit.
+solana-define-syscall = "=4.0.1"
+bls381-hash = { git = "https://github.com/crypt0miester/bls12-381-hash", rev = "e1b6e50fee3b1a9d73ac5863e012c5836655c57b", default-features = false, features = ["g2-ro"] }
 

@@ -9,6 +9,7 @@
 #![allow(unexpected_cfgs)]
 pub mod codec;
 pub mod bls_crypto;
+pub mod bls_sbf;
 pub mod collateral;
 pub mod direct_bls_ism;
 pub mod factory;

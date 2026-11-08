@@ -110,6 +110,25 @@ pub fn verify_against_trusted_pda(
         },bitmap,signature
     )
 }
+/// Native Agave 4 SBF verifier gate, pinned to the actual current
+/// program-owned XGR validator-set PDA. Signature/witness are compressed
+/// Solana BLS forms, not EIP-2537 calldata. No public transfer instruction
+/// calls this until XGR bootstrap is anchored, and route/balance/replay gates
+/// are integrated and tested under the complete SBF budget.
+pub fn verify_native_with_trusted_pda(
+    program_id:&solana_program::pubkey::Pubkey,
+    validator_account:&solana_program::account_info::AccountInfo,
+    authorization:&Authorization,
+    bitmap:&[u8],compressed_signature:&[u8],witness:&[u8],
+)->Result<bool,ProgramError>{
+    let anchor=crate::trusted_validators::ImmutableAnchor::compiled()?;
+    let snapshot=crate::trusted_validators::load_current_set(
+        validator_account,program_id,&anchor
+    )?;
+    crate::bls_sbf::verify_direct(
+        authorization,&snapshot,bitmap,compressed_signature,witness
+    )
+}
 pub fn signing_bytes(authorization:&Authorization)->Option<Vec<u8>>{
  signing_preimage(authorization)
 }
