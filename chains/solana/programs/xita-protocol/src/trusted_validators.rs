@@ -210,6 +210,39 @@ pub fn anchored_message_context(snapshot:&ValidatorSnapshot)
 }
 /// Current production deployment must not start until we have independently
 /// verified and pinned the real XGR set root and selected source registry.
+
+/// Strict program-owned current-set PDA loader. The account must be pinned to
+/// the same XGR Registry address baked into the immutable executable, and it
+/// must contain a valid self-consistent commitment of every G1 key.
+pub fn load_current_set(
+    account:&solana_program::account_info::AccountInfo,
+    program_id:&solana_program::pubkey::Pubkey,
+    anchor:&ImmutableAnchor,
+)->Result<ValidatorSnapshot,ProgramError>{
+    if account.owner!=program_id ||
+       *account.key!=trusted_pda(program_id).0 ||
+       anchor.set_id==0 || anchor.commitment==[0;32] ||
+       anchor.xgr_registry==[0;20] {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    let snapshot=ValidatorSnapshot::try_from_slice(&account.try_borrow_data()?)
+        .map_err(|_|ProgramError::InvalidAccountData)?;
+    if snapshot.set_id<anchor.set_id ||
+       snapshot.xgr_registry!=anchor.xgr_registry ||
+       snapshot.commitment==[0;32] ||
+       commitment_for(&snapshot.members)!=Some(snapshot.commitment) {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    // At the initial epoch, it MUST be the exact verified root. Later
+    // epochs are only trusted if this PDA was initialized by the pinned
+    // bootstrap and updated exclusively by current-set BLS instructions.
+    if snapshot.set_id==anchor.set_id &&
+       snapshot.commitment!=anchor.commitment {
+        return Err(ProgramError::InvalidAccountData)
+    }
+    Ok(snapshot)
+}
+
 pub fn bootstrap_unavailable()->Result<(),ProgramError>{
     ImmutableAnchor::compiled().map(|_|())
 }
@@ -341,4 +374,45 @@ mod tests {
         assert!(apply_transition(&old,&p,1000,&[0b011],&vote,
             Some(&pop)).is_err());
     }
+    #[test]fn canonical_current_set_pda_rejects_wrong_owner_address_root_and_trailing_bytes(){
+        use solana_program::{account_info::AccountInfo,pubkey::Pubkey};
+        let (snapshot,_)=set();
+        let program=Pubkey::new_unique();
+        let (pda,_)=trusted_pda(&program);
+        let mut lamports=1;
+        let mut bytes=borsh::to_vec(&snapshot).unwrap();
+        let anchor=ImmutableAnchor{
+            set_id:snapshot.set_id,commitment:snapshot.commitment,
+            xgr_registry:snapshot.xgr_registry,
+        };
+        let owner=program;
+        {
+            let account=AccountInfo::new(&pda,false,false,&mut lamports,
+                &mut bytes,&owner,false,0);
+            assert_eq!(load_current_set(&account,&program,&anchor).unwrap(),snapshot);
+            let mut bad_anchor=anchor.clone();
+            bad_anchor.commitment[0]^=1;
+            assert!(load_current_set(&account,&program,&bad_anchor).is_err());
+            bad_anchor=anchor.clone();
+            bad_anchor.xgr_registry[0]^=1;
+            assert!(load_current_set(&account,&program,&bad_anchor).is_err());
+        }
+        let wrong=Pubkey::new_unique();
+        {
+            let fake=AccountInfo::new(&wrong,false,false,&mut lamports,
+                &mut bytes,&owner,false,0);
+            assert!(load_current_set(&fake,&program,&anchor).is_err());
+        }
+        let wrong_owner=Pubkey::new_unique();
+        {
+            let fake=AccountInfo::new(&pda,false,false,&mut lamports,
+                &mut bytes,&wrong_owner,false,0);
+            assert!(load_current_set(&fake,&program,&anchor).is_err());
+        }
+        bytes.push(0x99);
+        let fake=AccountInfo::new(&pda,false,false,&mut lamports,
+            &mut bytes,&owner,false,0);
+        assert!(load_current_set(&fake,&program,&anchor).is_err());
+    }
+
 }
