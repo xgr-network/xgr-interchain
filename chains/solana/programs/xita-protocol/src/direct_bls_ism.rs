@@ -82,6 +82,34 @@ pub fn verify_cryptography_against_snapshot(
     &message,snapshot.public_keys,bitmap,signature
  ))
 }
+/// Security boundary for the eventual SVM verifier. The caller cannot
+/// supply a substitute validator list: the keys must be read from the
+/// immutable, program-owned XGR registry PDA and match the pinned bootstrap
+/// registry address. The pure Rust BLS backend here is a reference verifier;
+/// it must not be used as a live SBF transfer authorization until the native
+/// syscall backend and complete gateway have been separately CU-tested.
+pub fn verify_against_trusted_pda(
+    program_id:&solana_program::pubkey::Pubkey,
+    validator_account:&solana_program::account_info::AccountInfo,
+    anchor:&crate::trusted_validators::ImmutableAnchor,
+    authorization:&Authorization,
+    bitmap:&[u8],signature:&[u8],
+)->Result<bool,ProgramError>{
+    let snapshot=crate::trusted_validators::load_current_set(
+        validator_account,program_id,anchor
+    )?;
+    if authorization.set_id!=snapshot.set_id ||
+       authorization.destination_domain!=crate::codec::SOLANA_DOMAIN{
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    let keys:Vec<[u8;G1_EIP2537_LEN]>=snapshot.members.iter()
+        .map(|v|v.eip2537_key).collect();
+    verify_cryptography_against_snapshot(
+        authorization,&UntrustedSnapshot{
+            set_id:snapshot.set_id,public_keys:&keys
+        },bitmap,signature
+    )
+}
 pub fn signing_bytes(authorization:&Authorization)->Option<Vec<u8>>{
  signing_preimage(authorization)
 }
