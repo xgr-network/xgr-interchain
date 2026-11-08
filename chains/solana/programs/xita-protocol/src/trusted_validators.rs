@@ -567,4 +567,44 @@ mod tests {
         assert!(serialize_current(&extended).is_err());
     }
 
+    #[test]fn immutable_historical_epoch_loader_rejects_wrong_owner_set_and_address(){
+        use solana_program::{account_info::AccountInfo,pubkey::Pubkey};
+        let (snapshot,_)=set();
+        let program=Pubkey::new_unique();
+        let (historic,_)=history_pda(&program,snapshot.set_id);
+        let mut funds=1;
+        let mut bytes=borsh::to_vec(&snapshot).unwrap();
+        let owner=program;
+        {
+            let acct=AccountInfo::new(&historic,false,false,
+                &mut funds,&mut bytes,&owner,false,0);
+            assert_eq!(load_historical_set(
+                &acct,&program,snapshot.set_id
+            ).unwrap(),snapshot);
+            assert!(load_historical_set(
+                &acct,&program,snapshot.set_id+1
+            ).is_err());
+        }
+        let foreign=Pubkey::new_unique();
+        {
+            let acct=AccountInfo::new(&historic,false,false,
+                &mut funds,&mut bytes,&foreign,false,0);
+            assert!(load_historical_set(
+                &acct,&program,snapshot.set_id
+            ).is_err());
+        }
+        {
+            let acct=AccountInfo::new(&foreign,false,false,
+                &mut funds,&mut bytes,&owner,false,0);
+            assert!(load_historical_set(
+                &acct,&program,snapshot.set_id
+            ).is_err());
+        }
+        bytes[10]^=0x80;
+        let acct=AccountInfo::new(&historic,false,false,
+            &mut funds,&mut bytes,&owner,false,0);
+        assert!(load_historical_set(&acct,&program,snapshot.set_id).is_err());
+        assert_ne!(historic,history_pda(&program,snapshot.set_id+1).0);
+    }
+
 }
