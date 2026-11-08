@@ -34,6 +34,17 @@ pub fn receipt_pda(program:&Pubkey,message_id:&[u8;32])->(Pubkey,u8){
 /// EVM source is always the immutable XGR hub/router paired at registration.
 /// The signed destination ISM and registry are native program and PDA
 /// identities, never chosen by the caller. Amount conversion is exact.
+/// The signed source registry must be the independently verified
+/// Solana-destination XGR V3 registry pinned in the immutable executable.
+/// Route identity alone cannot authenticate the source registry address.
+pub fn pinned_xgr_source_registry(
+    auth:&Authorization,expected:[u8;20]
+)->bool{
+    expected!=[0;20] &&
+    auth.source_registry[..12]==[0;12] &&
+    auth.source_registry[12..]==expected
+}
+
 pub fn preflight(
     program:&Pubkey,
     router_id:&Pubkey,
@@ -150,6 +161,13 @@ pub fn execute(
     }else {return Err(bad())};
     if router_address!=*router_account.key||router.bump!=bump||
        router.mint!=mint.key.to_bytes(){return Err(ProgramError::InvalidSeeds);}
+    // Fail closed unless the immutable binary pins the actual XGR registry
+    // serving Solana destination proofs. An arbitrary EVM-style address is
+    // never sufficient just because a BLS quorum signed some message.
+    let anchor=trusted_validators::ImmutableAnchor::compiled()?;
+    if !pinned_xgr_source_registry(&auth,anchor.xgr_registry){
+        return Err(ProgramError::InvalidAccountData)
+    }
     let local_amount=preflight(
         program_id,router_account.key,&router,&route,&auth
     )?;
@@ -289,6 +307,16 @@ mod tests{
         let (pid,rid,router,route,a)=fixture();
         assert_eq!(preflight(&pid,&rid,&router,&route,&a).unwrap(),1_000_000_000);
         assert!(codec::signing_preimage(&a).is_some());
+    }
+    #[test]fn source_registry_is_fixed_to_immutable_xgr_destination_registry(){
+        let (_,_,_,_,mut a)=fixture();
+        let mut anchor=[0u8;20];anchor[19]=29;
+        assert!(pinned_xgr_source_registry(&a,anchor));
+        assert!(!pinned_xgr_source_registry(&a,[0;20]));
+        anchor[19]=30;
+        assert!(!pinned_xgr_source_registry(&a,anchor));
+        a.source_registry[0]=1;
+        assert!(!pinned_xgr_source_registry(&a,[0x1d;20]));
     }
     #[test]fn inbound_rejects_retargeted_recipient_route_isms_epoch_and_dust(){
         let (pid,rid,router,route,a)=fixture();
