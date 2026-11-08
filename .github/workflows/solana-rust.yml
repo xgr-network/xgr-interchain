@@ -29,7 +29,17 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --retry 3 https://release.anza.xyz/v4.4.0/install -o /tmp/agave-install.sh
-          sh /tmp/agave-install.sh
+          installed=0
+          for attempt in 1 2 3 4; do
+            if sh /tmp/agave-install.sh; then
+              installed=1
+              break
+            fi
+            echo "Agave artifact/install attempt $attempt failed; retrying archive extraction"
+            rm -rf "$HOME/.local/share/solana/install/releases/4.4.0"
+            sleep "$((attempt * 3))"
+          done
+          test "$installed" -eq 1
           echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
       - name: Compile actual XITA SVM protocol binary
         working-directory: chains/solana/programs/xita-protocol
