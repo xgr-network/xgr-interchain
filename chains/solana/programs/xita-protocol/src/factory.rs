@@ -368,6 +368,10 @@ pub fn process(program_id:&Pubkey,accounts:&[AccountInfo],data:&[u8])->ProgramRe
         }=>crate::source_fee::apply_source_fee(
             program_id,accounts,proposal,bitmap,signature,witness
         ),
+        XitaInstruction::BridgeSourceV1{recipient,amount}=>
+            crate::source_gateway::execute(
+                program_id,accounts,recipient,amount
+            ),
         XitaInstruction::DeploySyntheticRouter{
             salt,origin_chain_id,origin_token,origin_kind,decimals
         } => deploy_synthetic_router(

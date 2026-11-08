@@ -21,6 +21,7 @@ pub mod registry;
 pub mod router;
 pub mod state;
 pub mod source_fee;
+pub mod source_gateway;
 pub mod validator_registry;
 pub mod trusted_validators;
 

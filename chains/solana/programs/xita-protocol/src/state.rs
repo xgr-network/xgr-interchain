@@ -76,6 +76,44 @@ pub struct OperationReceipt {
     pub fee_lamports: u64,
 }
 
+pub const SOURCE_NONCE_TAG:u8=0x4e;
+pub const SOURCE_DISPATCH_TAG:u8=0x44;
+
+/// Per-source-signer, per-route monotonic nonce. Source slot is runtime
+/// supplied and never accepted from request calldata.
+#[derive(Debug,PartialEq,Eq,BorshSerialize,BorshDeserialize,Clone)]
+pub struct SourceNonce{
+    pub tag:u8,
+    pub version:u8,
+    pub route_id:[u8;32],
+    pub sender:[u8;32],
+    pub nonce:u64,
+}
+
+/// Durable independent evidence that the native Solana gateway *actually*
+/// performed SPL custody/burn, funded the fee vault and committed receipts in
+/// one atomic transaction. Node attestors additionally verify finalized slot,
+/// token account movements and program ELF identity independently.
+#[derive(Debug,PartialEq,Eq,BorshSerialize,BorshDeserialize,Clone)]
+pub struct SourceDispatch{
+    pub tag:u8,
+    pub version:u8,
+    pub message_id:[u8;32],
+    pub route_id:[u8;32],
+    pub sender:[u8;32],
+    pub recipient:[u8;32],
+    pub source_token_account:[u8;32],
+    pub source_mint:[u8;32],
+    pub token_vault:[u8;32],
+    pub amount_local:u64,
+    pub amount_canonical:[u8;32],
+    pub fee_lamports:u64,
+    pub nonce:u64,
+    pub source_slot:u64,
+    pub validator_set_id:u64,
+    pub custody_kind:u8, // 1=collateral lock, 2=synthetic SPL burn
+}
+
 pub fn load<T: BorshDeserialize>(
     acct: &AccountInfo, program_id: &Pubkey,
 ) -> Result<T, ProgramError> {

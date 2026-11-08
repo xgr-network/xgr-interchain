@@ -63,4 +63,10 @@ pub enum XitaInstruction {
         witness:Vec<u8>,
     },
 
+    /// One atomic, user-signed SPL source operation. Fee, custody/burn,
+    /// monotonic nonce, immutable message receipt and historical fee epoch
+    /// must all succeed together; otherwise the whole instruction rolls back.
+    /// No relayer, sponsor or GmbH execution gateway is required.
+    BridgeSourceV1{recipient:[u8;32],amount:u64},
+
 }
