@@ -165,7 +165,7 @@ contract XITASolanaNativeXGRHub {
             a.destinationIsm != XITASolanaCodec.evmAddress32(address(this)) ||
             a.destinationRegistry !=
                 XITASolanaCodec.evmAddress32(address(validatorRegistry)) ||
-            a.setId != validatorRegistry.setId() ||
+            a.setId == 0 || // Historical sets are valid for settled transfers.
             a.sourceHeight == 0 || a.validatorFeeAtomic == 0 ||
             a.messageId == bytes32(0) || a.recipient == bytes32(0) ||
             bitmap.length == 0 || aggregateSignature.length == 0)

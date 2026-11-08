@@ -20,7 +20,10 @@ contract SolanaMockRegistry {
         external view returns(uint256,uint64) {return(3,setId);}
     function verifyQuorum(uint64 setId_,bytes calldata,
         bytes calldata,bytes calldata)
-        external view returns(bool) {return accept&&setId_==setId;}
+        external view returns(bool) {
+            // EVM Registry V3 preserves historical set snapshots.
+            return accept && setId_ >= 7 && setId_ <= setId;
+        }
     function setAcceptance(bool ok) external {accept=ok;}
     function rotate(uint64 next) external {setId=next;}
 }
@@ -140,8 +143,21 @@ contract XITASolanaNativeXGRHubTest is Test {
         hub.releaseFromSolana(a,hex"03",hex"0102");
         a=_auth(bytes32(uint256(13)));
         registry.rotate(8);
-        vm.expectRevert(XITASolanaNativeXGRHub.InvalidTransfer.selector);
+        // A finalized inbound operation signed in epoch 7 remains
+        // redeemable after the validator set rotates to epoch 8.
+        // Otherwise collateral could be permanently stranded.
         hub.releaseFromSolana(a,hex"03",hex"0102");
+        assertEq(hub.lockedPrincipalWei(),0);
+        assertTrue(hub.consumedInbound(a.messageId));
+    }
+    function testUnknownHistoricalValidatorEpochCannotRelease() public {
+        _lock();
+        XITASolanaCodec.Authorization memory a=_auth(bytes32(uint256(71)));
+        a.setId=6; // No snapshot for epoch 6 in the destination registry.
+        vm.expectRevert(XITASolanaNativeXGRHub.BLSQuorumFailed.selector);
+        hub.releaseFromSolana(a,hex"03",hex"0102");
+        assertEq(hub.lockedPrincipalWei(),PRINCIPAL);
+        assertFalse(hub.consumedInbound(a.messageId));
     }
     function testNoReleaseWithoutBacking() public {
         XITASolanaCodec.Authorization memory a=_auth(bytes32(uint256(13)));
