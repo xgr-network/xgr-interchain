@@ -200,4 +200,24 @@ mod tests{
         next=p;next.nonce+=1;
         assert_ne!(base,signing_payload(&next));
     }
+    #[test]fn solana_pda_cross_language_golden_vectors(){
+        // Must match the independent Go node candidate verifier exactly.
+        let id=Pubkey::new_from_array([17u8;32]);
+        fn bytes(h:&str)->[u8;32]{
+            let mut out=[0u8;32];
+            assert_eq!(h.len(),64);
+            for i in 0..32 {
+                out[i]=u8::from_str_radix(&h[2*i..2*i+2],16).unwrap();
+            }
+            out
+        }
+        assert_eq!(fee_pda(&id).0.to_bytes(),bytes(
+            "7b17712335a7150af4e04f0f57ff7436106485d7ec7dd49eff6d207988e2b7df"
+        ));
+        assert_eq!(
+            crate::trusted_validators::trusted_pda(&id).0.to_bytes(),
+            bytes("f4dbfa8c914254b2c239706fdf89cf673dddd49b6fd2305e45b1a1e64ed68a2e")
+        );
+    }
+
 }
