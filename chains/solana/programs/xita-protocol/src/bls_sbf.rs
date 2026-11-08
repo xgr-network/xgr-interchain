@@ -50,19 +50,37 @@ pub fn verify_direct(
     signature:&[u8],
     witness:&[u8],
 )->Result<bool,ProgramError>{
+    if auth.destination_domain!=codec::SOLANA_DOMAIN ||
+       auth.set_id!=snapshot.set_id{
+        return Err(ProgramError::InvalidInstructionData)
+    }
+    let payload=codec::signing_preimage(auth)
+        .ok_or(ProgramError::InvalidInstructionData)?;
+    verify_payload(&payload,snapshot,bitmap,signature,witness)
+}
+
+/// The same native verifier, but for XGR V3 membership and PoP payloads.
+/// These payloads use the exact Solidity byte codec, not the 501-byte
+/// XITA Direct message. Caller must separately authenticate the current-set
+/// account and enforce the expected action, set ID and 10-minute deadline.
+/// Signatures and witness are *compressed* G2 / hash-to-curve witness.
+pub fn verify_payload(
+    message:&[u8],
+    snapshot:&ValidatorSnapshot,
+    bitmap:&[u8],
+    signature:&[u8],
+    witness:&[u8],
+)->Result<bool,ProgramError>{
     let bad=||ProgramError::InvalidInstructionData;
-    if signature.len()!=96 || witness.len()!=96 ||
-        bitmap.is_empty() ||
-        snapshot.members.is_empty() ||
-        snapshot.members.len()>MAX_VALIDATORS ||
-        auth.destination_domain!=codec::SOLANA_DOMAIN ||
-        auth.set_id!=snapshot.set_id ||
-        !validator_registry::bitmap_has_quorum(bitmap,snapshot.members.len()) ||
-        !signature.iter().any(|&x|x!=0) ||signature[0]&0x40!=0 ||
-        crate::trusted_validators::commitment_for(&snapshot.members)!=Some(snapshot.commitment) {
+    if message.is_empty()||signature.len()!=96||witness.len()!=96||
+        bitmap.is_empty()||snapshot.members.is_empty()||
+        snapshot.members.len()>MAX_VALIDATORS||snapshot.set_id==0||
+        snapshot.xgr_registry==[0;20]||
+        !validator_registry::bitmap_has_quorum(bitmap,snapshot.members.len())||
+        !signature.iter().any(|&x|x!=0)||signature[0]&0x40!=0||
+        crate::trusted_validators::commitment_for(&snapshot.members)!=Some(snapshot.commitment){
         return Err(bad())
     }
-    let message=codec::signing_preimage(auth).ok_or_else(bad)?;
     let mut aggregate=[0u8;G1_LEN];
     let mut populated=false;
     for (i,v) in snapshot.members.iter().enumerate(){
@@ -90,7 +108,7 @@ pub fn verify_direct(
     if !populated || aggregate.iter().all(|&x|x==0){return Err(bad());}
     let mut payload=Vec::with_capacity(96+message.len());
     payload.extend_from_slice(witness);
-    payload.extend_from_slice(&message);
+    payload.extend_from_slice(message);
     let hashed=bls381_hash::hash_to_g2_compact_parity(BLS_DST,&payload)
         .map_err(|_|bad())?;
     if hashed.len()!=G2_LEN{return Err(bad());}
