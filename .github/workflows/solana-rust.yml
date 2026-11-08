@@ -13,7 +13,7 @@ permissions:
 jobs:
   solana-native-rust:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust stable
@@ -24,3 +24,16 @@ jobs:
         run: cargo test --manifest-path chains/solana/programs/Cargo.toml --workspace --all-targets
       - name: Check no-entrypoint build used for test clients
         run: cargo check --manifest-path chains/solana/programs/Cargo.toml -p xita-solana-protocol --features no-entrypoint
+      - name: Install Agave SBFv3 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://release.anza.xyz/v4.4.0/install -o /tmp/agave-install.sh
+          sh /tmp/agave-install.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Compile actual XITA SVM protocol binary
+        working-directory: chains/solana/programs/xita-protocol
+        run: |
+          cargo build-sbf --arch v3
+          test -s ../target/deploy/xita_solana_protocol.so
+          sha256sum ../target/deploy/xita_solana_protocol.so
