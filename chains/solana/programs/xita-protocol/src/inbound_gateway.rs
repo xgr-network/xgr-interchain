@@ -42,7 +42,7 @@ pub fn pinned_xgr_source_registry(
 )->bool{
     expected!=[0;20] &&
     auth.source_registry[..12]==[0;12] &&
-    auth.source_registry[12..]==expected
+    auth.source_registry[12..]==expected[..]
 }
 
 pub fn preflight(
