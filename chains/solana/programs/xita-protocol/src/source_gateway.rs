@@ -196,7 +196,7 @@ pub fn execute(
     )?;
     let message=plan_source(
         program_id,router_account.key,fee_account.key,
-        &router,&route,&old_fee,payer,recipient,amount,
+        &router,&route,&old_fee,payer.key,recipient,amount,
         nonce,slot,source_fee.validator_fee_lamports,current.set_id
     )?;
     let (expected_epoch,epoch_bump)=fee_vault::epoch_pda(
