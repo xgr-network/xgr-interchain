@@ -44,7 +44,7 @@ pub fn preflight_source_operation(
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct SourceIntent {
     pub nonce:u64,
-    pub finalized_slot:u64,
+    pub source_slot:u64,
     pub signer:[u8;32],
     pub recipient:[u8;32],
     pub amount_local:u64,
@@ -62,6 +62,8 @@ pub fn prepare_source_message(
     route:&Route,
     vault:&FeeVault,
     intent:&SourceIntent,
+    trusted_set_id:u64,
+    current_source_fee:u64,
 )->Result<PendingMessage,ProgramError>{
     use crate::{codec,state::{ROUTER_TAG,VERSION}};
     use solana_program::keccak::hashv;
@@ -76,9 +78,11 @@ pub fn prepare_source_message(
        vault.route_id!=route.route_id||
        intent.signer==[0;32]||intent.recipient==[0;32]||
        !codec::is_evm_address_32(&intent.recipient)||
-       intent.nonce==0||intent.finalized_slot==0||
+       intent.nonce==0||intent.source_slot==0||
        intent.amount_local==0||intent.fee_lamports==0||
-       intent.set_id==0||route.remote_router==[0;32]||
+       intent.set_id==0||intent.set_id!=trusted_set_id||
+       intent.fee_lamports!=current_source_fee||
+       current_source_fee==0||route.remote_router==[0;32]||
        codec::route_id(route.asset_id,codec::SOLANA_DOMAIN,
          codec::XGR_DOMAIN,router_id,route.remote_router)!=Some(route.route_id){
         return Err(bad())
@@ -104,7 +108,7 @@ pub fn prepare_source_message(
         &intent.signer,
         &intent.recipient,
         &intent.nonce.to_be_bytes(),
-        &intent.finalized_slot.to_be_bytes(),
+        &intent.source_slot.to_be_bytes(),
         &amount32,
         &intent.fee_lamports.to_be_bytes(),
         &intent.set_id.to_be_bytes(),
@@ -115,7 +119,7 @@ pub fn prepare_source_message(
         validator_set_id:intent.set_id,
     };
     preflight_source_operation(route,vault,&prepared,
-        intent.set_id,intent.fee_lamports)?;
+        trusted_set_id,current_source_fee)?;
     Ok(prepared)
 }
 
@@ -164,33 +168,37 @@ mod tests{
         route_id:canonical,allocated_lamports:0,validator_set_id:0};
     let mut recipient=[0u8;32];recipient[31]=42;
     let intent=SourceIntent{
-        nonce:1,finalized_slot:1000,signer:[1u8;32],
+        nonce:1,source_slot:1000,signer:[1u8;32],
         recipient,amount_local:1_000_000_000,
         fee_lamports:20000,set_id:7,
     };
     let main=prepare_source_message(program,router_id,vault_id,
-        &router,&route,&fee,&intent).unwrap();
+        &router,&route,&fee,&intent,7,20000).unwrap();
     let mut expected=[0u8;32];
     expected[16..].copy_from_slice(&1_000_000_000_000_000_000u128.to_be_bytes());
     assert_eq!(main.amount_canonical,expected);
-    let mut changed=intent.clone();changed.finalized_slot+=1;
+    let mut changed=intent.clone();changed.source_slot+=1;
     assert_ne!(main.message_id,prepare_source_message(program,
-        router_id,vault_id,&router,&route,&fee,&changed).unwrap().message_id);
+        router_id,vault_id,&router,&route,&fee,&changed,7,20000).unwrap().message_id);
     changed=intent.clone();changed.amount_local+=1;
     assert_ne!(main.message_id,prepare_source_message(program,
-        router_id,vault_id,&router,&route,&fee,&changed).unwrap().message_id);
+        router_id,vault_id,&router,&route,&fee,&changed,7,20000).unwrap().message_id);
     changed=intent.clone();changed.fee_lamports+=1;
     assert_ne!(main.message_id,prepare_source_message(program,
-        router_id,vault_id,&router,&route,&fee,&changed).unwrap().message_id);
+        router_id,vault_id,&router,&route,&fee,&changed,7,20000).unwrap().message_id);
+    assert!(prepare_source_message(program,router_id,vault_id,
+        &router,&route,&fee,&intent,8,20000).is_err());
+    assert!(prepare_source_message(program,router_id,vault_id,
+        &router,&route,&fee,&intent,7,19999).is_err());
     changed=intent.clone();changed.nonce=0;
     assert!(prepare_source_message(program,router_id,vault_id,
-        &router,&route,&fee,&changed).is_err());
+        &router,&route,&fee,&changed,7,20000).is_err());
     changed=intent.clone();changed.recipient=[1u8;32];
     assert!(prepare_source_message(program,router_id,vault_id,
-        &router,&route,&fee,&changed).is_err());
+        &router,&route,&fee,&changed,7,20000).is_err());
     let mut wrong=route;wrong.remote_router=[1u8;32];
     assert!(prepare_source_message(program,router_id,vault_id,
-        &router,&wrong,&fee,&intent).is_err());
+        &router,&wrong,&fee,&intent,7,20000).is_err());
  }
 
 }
