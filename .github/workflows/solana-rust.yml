@@ -1,0 +1,62 @@
+name: Solana Rust (offline native tests)
+
+on:
+  pull_request:
+    paths:
+      - 'chains/solana/programs/**'
+      - '.github/workflows/solana-rust.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  solana-native-rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Check native XITA program workspace
+        run: cargo check --manifest-path chains/solana/programs/Cargo.toml --workspace --all-targets
+      - name: Run free local Rust tests (no SOL and no RPC)
+        run: cargo test --manifest-path chains/solana/programs/Cargo.toml --workspace --all-targets
+      - name: Check no-entrypoint build used for test clients
+        run: cargo check --manifest-path chains/solana/programs/Cargo.toml -p xita-solana-protocol --features no-entrypoint
+      - name: Install Agave SBFv3 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://release.anza.xyz/v4.4.0/install -o /tmp/agave-install.sh
+          installed=0
+          for attempt in 1 2 3 4; do
+            if sh /tmp/agave-install.sh; then
+              installed=1
+              break
+            fi
+            echo "Agave artifact/install attempt $attempt failed; retrying archive extraction"
+            rm -rf "$HOME/.local/share/solana/install/releases/4.4.0"
+            sleep "$((attempt * 3))"
+          done
+          test "$installed" -eq 1
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+      - name: Compile actual XITA SVM protocol binary
+        working-directory: chains/solana/programs/xita-protocol
+        run: |
+          for attempt in 1 2 3 4; do
+            if cargo build-sbf --arch v3 > /tmp/xita-sbf-build.log 2>&1; then
+              cat /tmp/xita-sbf-build.log
+              break
+            fi
+            cat /tmp/xita-sbf-build.log
+            if ! grep -Eq 'Failed to install platform-tools|HTTP status server error|download has failed' /tmp/xita-sbf-build.log; then
+              exit 1
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              exit 1
+            fi
+            sleep "$((attempt * 3))"
+          done
+          test -s ../target/deploy/xita_solana_protocol.so
+          sha256sum ../target/deploy/xita_solana_protocol.so

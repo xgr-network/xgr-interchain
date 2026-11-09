@@ -1,0 +1,7 @@
+# Same pinned SBFv3 scheduler as upstream experimental hash-to-G2.
+# Never override RUSTFLAGS in CI without confirming the CU change.
+[target.sbpfv3-solana-solana]
+rustflags = ["-C", "llvm-args=-pre-RA-sched=list-hybrid"]
+
+[target.sbpf-solana-solana]
+rustflags = ["-C", "llvm-args=-pre-RA-sched=list-hybrid"]

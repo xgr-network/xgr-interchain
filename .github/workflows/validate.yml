@@ -78,6 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           node tools/validate-manifests.mjs
+          node --test chains/solana/codec.test.mjs
           node tools/build-xeta-web-catalog.mjs --check
           node --test apps/web/chain-finality.test.mjs runtime/native-relayer/source-finality.test.mjs
           node tools/check-hub-route-expansion.mjs

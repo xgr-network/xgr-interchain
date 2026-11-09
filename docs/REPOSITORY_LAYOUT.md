@@ -65,3 +65,16 @@ reviewed build/deployment evidence before use.
 
 See [XITA_PUBLICATION_POLICY.md](./XITA_PUBLICATION_POLICY.md) for prospect,
 deployed and reversible public visibility rules. No status lives in GitHub.
+
+
+## Solana integration staging (separate from the active EVM catalog)
+
+`config/chains/solana/integration.json` is a strictly validated development
+plan, **not** an active `chain.json`. Programs and deployment tools belong
+under `chains/solana/`. The active chain loader intentionally ignores this
+explicit Solana-only plan and errors on unknown incomplete chain folders.
+Once deployed and independently verified, the Solana program/transaction
+evidence must be stored under the existing `deployments/chains/`,
+`deployments/receipts/solana/` and asset-sharded `deployments/assets/`
+model with Solana-specific receipt validation. Never insert made-up program
+IDs into the current EVM-only `xitaV315` indexes.

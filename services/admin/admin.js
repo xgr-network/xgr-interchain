@@ -112,7 +112,16 @@ const coreTitles={
  collateralRouterDeployer:"Collateral Router Deployer (einmalig)",
  factory:"Permissionless Token Factory",
  sourceRegistry:"ILN Source Registry",
- executionGateway:"Interchain Fee · Execution Gateway (optional)"
+ executionGateway:"Interchain Fee · Execution Gateway (optional)",
+ xitaProtocol:"XITA Solana Protocol (Rust)",
+ mailbox:"Mailbox / Nachrichtentransport",
+ directBlsVerifier:"Direct-BLS Verifier",
+ feeVault:"Validator FeeVault",
+ collateralRouter:"Collateral Token Router",
+ syntheticRouter:"Synthetic Token Router",
+ solanaValidatorRegistry:"ValidatorRegistry V3 · Ziel Solana (XGRChain)",
+ solanaHubFactory:"Solana Native-Hub Factory (XGRChain)",
+ solanaHub:"Solana Native-XGR Hub (XGRChain)"
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
@@ -128,8 +137,9 @@ function renderInfrastructure(){
  if(!workqueue)return;
  const chains=workqueue.inventory.chains;
  el("infrastructure-list").innerHTML=(workqueue.infrastructure||[]).map(c=>{
+  const svm=c.runtime==="svm";
   const cfg=chains.find(x=>x.name===c.name);
-  const native=cfg?.blsVerifierFormat==="compressed";
+  const native=!svm&&cfg?.blsVerifierFormat==="compressed";
   const verifier=(workqueue.bootstrap||[]).find(x=>x.chain===c.name)?.verifierAddress;
   const displayCount=c.documented+Number(Boolean(native&&verifier));
   const displayTotal=c.required+Number(native);
@@ -139,7 +149,10 @@ function renderInfrastructure(){
    ' ⧉</button></span></div>':"";
   const tasks=c.components.map(part=>
    '<div class="component-row'+(part.key==="executionGateway"?' is-fee-gateway':'')+'"><span>'+
+    (svm?'<span class="component-network">'+esc(part.network==="xgrchain"?"XGRChain":"Solana")+'</span> · ':'')+
     esc(coreTitles[part.key]||part.key)+
+    (svm&&Array.isArray(part.modules)?
+      '<small class="chain-program-modules">'+esc(part.modules.join(" · "))+'</small>':"")+
     (part.optional?' · freiwilliger Service':'')+'</span>'+
    '<div class="component-controls">'+
    (part.status==="documented"&&part.address?
@@ -148,8 +161,9 @@ function renderInfrastructure(){
     (part.key==="executionGateway"?
      '<button type="button" class="outline" data-rotate-chain="'+esc(c.name)+
      '" data-rotate-contract="'+esc(part.address)+'">Service-Wallet ändern</button>':"") :
-    '<button class="component-pending" data-open-chain="'+esc(c.name)+
-     '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>')+
+    (svm?'<span class="status" title="Solana-Wallet-Executor und verifizierter Build fehlen">Nicht deployed · gesperrt</span>':
+     '<button class="component-pending" data-open-chain="'+esc(c.name)+
+     '" data-open-component="'+esc(part.key)+'">Nicht deployed →</button>'))+
    '</div></div>').join("");
   const r=deploymentReadiness.get(c.name),live=liveBootstrap.get(c.name);
   const money=n=>n==null?"":moneyInWei(n,c);
@@ -162,15 +176,30 @@ function renderInfrastructure(){
     (live.feeWei?'<div>Live Source-Fee: '+esc(money(live.feeWei))+
        ' · Nonce '+esc(live.feeNonce)+'</div>':'')+
     '</details>':"";
-  return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.name)+'</strong>'+
-   '<span class="status">'+displayCount+'/'+displayTotal+' Komponenten</span>'+
-   (c.documented<c.required?'<button type="button" class="component-pending" data-batch-chain="'+esc(c.name)+'">Chain fertig deployen</button>':"")+'</div>'+
-   '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>'+
-   '<div class="chain-components">'+verifierRow+tasks+'</div>'+    liveRows+
+  const observation=svm?chainObservations.get(c.name):null;
+  const meta=svm?
+   '<small>'+esc(c.network)+' · Domain '+c.domainId+' · SOL · Genesis '+esc(c.genesisHash)+'</small>':
+   '<small>Chain '+c.chainId+' · Domain '+c.domainId+' · '+esc(c.nativeCurrency.symbol)+'</small>';
+  const actions=svm?
+   '<div class="chain-actions"><button type="button" class="outline" data-probe-native="'+esc(c.name)+
+   '">RPC &amp; Finalität prüfen</button><div class="chain-balance">'+
+   (observation?(observation.rpcPreflightOK?'RPCs bestätigt: ':'RPC-Prüfung unvollständig: ')+
+    esc(observation.independentWitnesses)+'/'+esc(observation.rpcWitnessCount):
+    'Wallet-Deployment noch nicht implementiert')+'</div></div>':
    '<div class="chain-actions"><button type="button" class="outline" data-switch="'+esc(c.name)+
    '">Wallet wechseln</button><div class="chain-balance" data-balance="'+esc(c.name)+
-   '"></div></div></article>';
+   '"></div></div>';
+  return '<article class="chain-card"><div class="chain-top"><strong>'+esc(c.displayName||c.name)+'</strong>'+
+   '<span class="status">'+displayCount+'/'+displayTotal+' Komponenten'+(svm?' · In Entwicklung':'')+'</span>'+
+   (c.documented<c.required&&!svm?'<button type="button" class="component-pending" data-batch-chain="'+esc(c.name)+'">Chain fertig deployen</button>':"")+
+   '</div>'+meta+'<div class="chain-components">'+verifierRow+tasks+'</div>'+liveRows+actions+'</article>';
  }).join("");
+ el("infrastructure-list").querySelectorAll("[data-probe-native]").forEach(button=>
+  button.addEventListener("click",async()=>{
+   button.disabled=true;
+   try{await checkLiveInfrastructure(button.dataset.probeNative)}
+   finally{button.disabled=false}
+  }));
  el("infrastructure-list").querySelectorAll("[data-copy]").forEach(b=>b.addEventListener("click",async()=>{
   try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent="Kopiert ✓";
    setTimeout(()=>{b.textContent=displayAddress(b.dataset.copy)+" ⧉";},1200);
@@ -601,7 +630,7 @@ async function refreshWalletBalances(){
   el("wallet-status").textContent=state.address.slice(0,8)+"…"+state.address.slice(-4)+" · Chain "+state.chainId;
   // Wallet balance for its current chain; read-only public RPC for all
   // other chains, to avoid switching chain merely to show gas balances.
-  const balances=await Promise.all((workqueue.infrastructure||[]).map(async c=>{
+  const balances=await Promise.all((workqueue.infrastructure||[]).filter(c=>c.runtime!=="svm").map(async c=>{
    let data=null;
    try{
     if(state.chainId===c.chainId)data=await balanceOnWalletChain(state.address);
@@ -821,7 +850,7 @@ async function loadMainWorkqueue(){
   renderAssets();renderInfrastructure();
   void updateCreatorFactory();
   // Read-only evidence status lives independently from incomplete GitHub config.
-  await Promise.all((data.infrastructure||[]).map(async chain=>{
+  await Promise.all((data.infrastructure||[]).filter(c=>c.runtime!=="svm").map(async chain=>{
    try{
     const report=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
     if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
@@ -1031,17 +1060,27 @@ el("creator-factory-check").addEventListener("click",()=>void runCreatorFactory(
 el("creator-factory-recover").addEventListener("click",()=>void runCreatorFactory("recover"));
 el("creator-factory-cancel").addEventListener("click",()=>void runCreatorFactory("cancel"));
 
-async function checkLiveInfrastructure(){
+async function checkLiveInfrastructure(requestedChain=null){
+ const chain=typeof requestedChain==="string"?requestedChain:null;
  try{
-  const data=await get("/admin/api/infrastructure");
-  chainObservations=new Map(data.chains.map(c=>[c.name,c]));
-  try{const b=await get("/admin/api/bootstrap");liveBootstrap=new Map(b.bootstrap.map(x=>[x.chain,x]));}
-  catch{liveBootstrap=new Map();}
+  const data=await get("/admin/api/infrastructure"+(chain?"?chain="+encodeURIComponent(chain):""));
+  if(chain){for(const item of data.chains)chainObservations.set(item.name,item);}
+  else chainObservations=new Map(data.chains.map(c=>[c.name,c]));
+  if(!chain){
+   try{const b=await get("/admin/api/bootstrap");liveBootstrap=new Map(b.bootstrap.map(x=>[x.chain,x]));}
+   catch{liveBootstrap=new Map();}
+  }
   renderInfrastructure();
-  el("preflight").textContent="On-Chain-Infrastruktur abgeglichen: "+data.chains.filter(x=>x.status==="observed-complete").length+"/"+data.chains.length+" vollständig beobachtet";
+  const evm=data.chains.filter(x=>x.runtime!=="svm");
+  const solana=data.chains.find(x=>x.runtime==="svm");
+  el("preflight").textContent=chain==="solana"&&solana?
+   "Solana: "+solana.independentWitnesses+"/"+solana.rpcWitnessCount+" unabhängige RPCs geprüft · keine Programme deployed":
+   "EVM-Infrastruktur: "+evm.filter(x=>x.status==="observed-complete").length+"/"+evm.length+
+   " vollständig beobachtet"+(solana?" · Solana: "+solana.independentWitnesses+"/"+solana.rpcWitnessCount+" RPCs (noch nicht deployed)":"");
  }catch(e){el("preflight").textContent="Infrastrukturprüfung fehlgeschlagen: "+e.message;}
 }
-el("refresh").addEventListener("click",checkLiveInfrastructure);
+
+el("refresh").addEventListener("click",()=>void checkLiveInfrastructure());
 el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
 if(location.hash==="#treasury")void refreshFeeTreasury();
 if(location.hash==="#health")void refreshOperationsHealth();
