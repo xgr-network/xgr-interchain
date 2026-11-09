@@ -42,12 +42,11 @@
     "syntheticRouter"
   ],
   "xgrChainContracts": [
-    "solanaFactory",
-    "solanaRouteRegistry",
-    "solanaRouter",
-    "solanaDirectBlsIsm"
+    "solanaValidatorRegistry",
+    "solanaHubFactory",
+    "solanaHub"
   ],
-  "notes": "The solanaPrograms list names logical Solidity-parity modules within ONE deployed SVM executable, not eight deployable programs. Factory SPL collateral and zero-supply synthetic mint initialization live under the single Rust program. Source custody, Direct-BLS and claims remain disabled pending proof/audit.",
+  "notes": "One SVM executable hosts all eight logical Rust modules. On XGRChain the destination=Solana XGRInterchainValidatorRegistryV3, XITASolanaNativeXGRHubFactory and XITASolanaNativeXGRHub are three actual deployment units. Router/ISM/route-registry functions are inside the hub, not separately deployed contracts. All remain not-deployable until the verified bootstrap, wallet deployer, independent receipts and E2E gate exist.",
   "authorityPolicy": {
     "programUpgradeAuthority": "none-before-route-activation",
     "programCloseAuthority": "none-before-route-activation",
