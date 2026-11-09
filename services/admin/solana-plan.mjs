@@ -8,7 +8,10 @@ export const SOLANA_GENESIS="5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
 export const SOLANA_PLAN_PATH="config/chains/solana/integration.json";
 const PROGRAMS=["mailbox","validatorRegistry","directBlsVerifier","sourceRegistry",
  "factory","feeVault","collateralRouter","syntheticRouter"];
-const XGR_CONTRACTS=["solanaFactory","solanaRouteRegistry","solanaRouter","solanaDirectBlsIsm"];
+// Actual XGRChain executable units: destination-scoped V3 validator registry,
+// reusable factory, and a native XGR hub. Router/ISM/route-registry are
+// logical functions of the hub, not four fictitious deployable artifacts.
+const XGR_CONTRACTS=["solanaValidatorRegistry","solanaHubFactory","solanaHub"];
 // Exact functional invariants from EVM v3.1.5. Solana may use one Rust program
 // with multiple PDA accounts, but must not invent a second protocol/governance.
 export const EVM_PARITY={
