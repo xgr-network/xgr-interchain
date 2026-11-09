@@ -119,10 +119,9 @@ const coreTitles={
  feeVault:"Validator FeeVault",
  collateralRouter:"Collateral Token Router",
  syntheticRouter:"Synthetic Token Router",
- solanaFactory:"Solana Factory (XGRChain)",
- solanaRouteRegistry:"Solana Route Registry (XGRChain)",
- solanaRouter:"Solana Router (XGRChain)",
- solanaDirectBlsIsm:"Solana Direct-BLS ISM (XGRChain)"
+ solanaValidatorRegistry:"ValidatorRegistry V3 · Ziel Solana (XGRChain)",
+ solanaHubFactory:"Solana Native-Hub Factory (XGRChain)",
+ solanaHub:"Solana Native-XGR Hub (XGRChain)"
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
