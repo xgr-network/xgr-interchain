@@ -29,7 +29,8 @@ test("Solana produces blocked tasks using common deployment workqueue shape",()=
  assert.equal(items.length,solana.required);
  assert.ok(items.every(x=>x.status==="blocked"&&x.runtime==="svm"));
  assert.ok(items.every(x=>x.reason.includes("Wallet-Signer")));
- assert.equal(items.filter(x=>x.network==="xgrchain").length,4);
+ assert.equal(items.filter(x=>x.network==="xgrchain").length,3);
+ assert.ok(items.filter(x=>x.network==="xgrchain").every(x=>x.runtime==="evm"));
  assert.equal(items.filter(x=>x.network==="solana").length,1);
 });
 test("Solana RPC health cannot mark any SVM or XGR components deployed",()=>{
