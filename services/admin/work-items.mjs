@@ -11,7 +11,9 @@ export function buildWorkItems(inventory,infrastructure,bootstrap=[]){
     items.push({kind:"chain",id:chain.name+":"+part.key,chain:chain.name,
      network:part.network,runtime:part.runtime||"svm",component:part.key,
      title:part.network+" / "+part.key,status:"blocked",
-     reason:"Verifizierter SVM-Build, Solana-Wallet-Signer und unabhängiger Deployment-Nachweis fehlen"});
+     reason:part.runtime==="evm" ?
+       "Verifizierter Solidity-Build, Wallet-Signer, XGR Validator-PoP und unabhängiger Deployment-Nachweis fehlen" :
+       "Verifizierter SVM-Build, Solana-Wallet-Signer und unabhängiger Deployment-Nachweis fehlen"});
    }
    continue;
   }
