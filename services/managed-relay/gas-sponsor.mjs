@@ -603,14 +603,17 @@ export async function reconcileSponsorGrants({
  }
  return {checked,confirmed,held,chainFailures,journalErrors};
 }
+// F-08: all monitoring chains start their READ-only preflight together.
+// A stalled chain may time out without delaying a healthy chain's durable
+// status update. Database writes happen only after the read has resolved or
+// timed out; a late RPC resolution never triggers any write or payout.
 export async function reportSponsorReserves({
  pool,catalog,wallet,policy,providers,readTimeoutMs=12000
 }){
- const states=[];
- for(const [chain,cfg] of Object.entries(policy)){
+ const entries=Object.entries(policy);
+ if(entries.length>16)throw Error("Too many sponsor reserve chains");
+ return Promise.all(entries.map(async ([chain,cfg])=>{
   try{
-   // F-08: an unavailable provider must not prevent another chain's reserve
-   // state from being refreshed. The timed operation is read-only.
    const {gasPrice,balance}=await boundedSponsorReconcileRead(async()=>{
     const p=await getProvider(catalog,chain,providers);
     const fee=await p.getFeeData();
@@ -627,17 +630,16 @@ export async function reportSponsorReserves({
      " sponsor_address=EXCLUDED.sponsor_address,gas_ready=EXCLUDED.gas_ready,"+
      " balance_wei=EXCLUDED.balance_wei,checked_at=NOW()",
     values:[chain,wallet.address.toLowerCase(),ready,balance.toString()]});
-   states.push({chain,ready});
+   return {chain,ready};
   }catch{
    await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
     "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
     " VALUES($1,$2,FALSE,0,NOW())"+
     " ON CONFLICT(chain_name) DO UPDATE SET gas_ready=FALSE,checked_at=NOW()",
     values:[chain,wallet.address.toLowerCase()]});
-   states.push({chain,ready:false});
+   return {chain,ready:false};
   }
- }
- return states;
+ }));
 }
 // F-16: quote reservations are never released on expiry time alone.
 // For Base/Arbitrum and future external chains, require two configured RPCs
