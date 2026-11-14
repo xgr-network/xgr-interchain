@@ -200,12 +200,14 @@ export async function verifiedSponsorFinality({provider,chain,receipt,txHash}){
   return true;
  }catch{return false}
 }
-// The worker never accepts an unauthenticated public request, destination
-// address or grant amount. Both come from verified read-only chain evidence.
-export async function sponsorOneCandidate({
- catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
- nativePolicy,stage,chain,afterReserve=null
+// All RPC/canonical finality/quote reads MUST finish before any local
+// signing, durable reservation or broadcast. A raced timeout can abandon
+// only this read-only function: late RPC completions have no side effects.
+const SPONSOR_PREFLIGHT=Symbol("verified-sponsor-read-only-preflight");
+async function inspectFreshSponsorCandidate({
+ catalog,row,db,wallet,providers,fetcher,nativePolicy,stage,chain
 }){
+
  const stageInfo=sponsorStage(row,stage,chain);
  if(!stageInfo)return {status:"ineligible"};
  const cfg=nativePolicy?.[chain];
@@ -250,6 +252,20 @@ export async function sponsorOneCandidate({
  if(noncePending!==nonceLatest)
   return {status:"sponsor-wallet-pending",chain,stage};
  const key=sponsorGrantKey(row,stage);
+ return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
+  noncePending,recipient:row.account,beneficiary:wallet.address};
+}
+// Only the worker's completed authenticated preflight authorizes a new
+// signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
+async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
+ afterReserve=null},preflight){
+ if(preflight?.kind!==SPONSOR_PREFLIGHT||
+    preflight.chain!==chain||preflight.stage!==stage||
+    !same(preflight.recipient,row.account)||
+    !same(preflight.beneficiary,wallet.address)||
+    preflight.key!==sponsorGrantKey(row,stage))
+   throw Error("Unverified or stale sponsor preflight");
+ const {provider,cfg,key,value,gasLimit,noncePending}=preflight;
  const unsigned=await wallet.connect(provider).populateTransaction({
   to:row.account,value,nonce:noncePending,gasLimit
  });
@@ -299,6 +315,15 @@ export async function sponsorOneCandidate({
   await db.recordBroadcastError(key,tiny(error?.message||error)).catch(()=>{});
   throw Error("Sponsorship outcome uncertain; reserved grant requires reconciliation");
  }
+}
+// Preserve the existing direct caller API; only runSponsorSweep uses the
+// bounded, per-chain scheduled read-only preflight path.
+export async function sponsorOneCandidate(args){
+ const providers=args.providers||new Map();
+ const preflight=await inspectFreshSponsorCandidate({...args,providers,
+  fetcher:args.fetcher||globalThis.fetch});
+ return preflight?.kind===SPONSOR_PREFLIGHT?
+  sendFreshSponsorCandidate(args,preflight):preflight;
 }
 export function sponsorDatabase(pool){
  // SQL atomicity: reservation wins exactly once per source parent + stage;
