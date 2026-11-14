@@ -141,3 +141,69 @@ test("existing broad Creator route Draft PR migrates to an independent zero-rout
   assert.equal(published,1);
  }finally{x.cleanup()}
 });
+
+test("F-36 permanently unsignable Creator request is quarantined while healthy sibling advances",async()=>{
+ const x=fixture();let signCount=0;
+ const bad=readPrivate(x.dir,x.id);
+ bad.input={...bad.input,name:"Ä".repeat(50)};
+ savePrivate(x.dir,bad);
+ const created=createPending(x.dir,{...input,name:"Valid Creator",symbol:"HEALTHY"},"creator:healthy",{now});
+ const healthy=readPrivate(x.dir,created.id);
+ healthy.kind="token-creator";healthy.phase="deployment-queued";
+ healthy.logoUrl="https://xita.xgr.network/token-logos/"+"b".repeat(64)+".png";
+ healthy.deployment={status:"queued",chainId:1643,ownerAddress:owner,txHash:null,tokenAddress:null};
+ savePrivate(x.dir,healthy);
+ const call=async(_url,method,params)=>{
+  if(method==="eth_chainId")return "0x66b";
+  if(method==="eth_getCode")return "0x6001";
+  if(method==="eth_gasPrice")return "0x3b9aca00";
+  if(method==="eth_getTransactionCount")return "0x01";
+  if(method==="eth_getBalance")return "0x3635c9adc5dea00000";
+  if(method==="eth_estimateGas")return "0x7a120";
+  if(method==="eth_sendRawTransaction")return txHash;
+  if(method==="eth_getTransactionReceipt")return null;
+  throw Error("Unexpected RPC "+method);
+ };
+ const run=()=>processCreatorQueue({env:env(x.dir),now,call,
+  loadFactory:()=>factory,
+  walletFactory:()=>({address:operator,signTransaction:async()=>{signCount++;return signed}}),
+  loadInventory:loadCatalog,checkSponsorJournal:async()=>{}});
+ try{
+  const first=await run();
+  assert.equal(first.phase,"deployment-submitted");
+  assert.equal(first.id,created.id,"healthy sibling must be selected despite malformed earlier request");
+  const invalid=readPrivate(x.dir,x.id);
+  assert.equal(invalid.phase,"deployment-queued");
+  assert.equal(invalid.deployment.status,"quarantined");
+  assert.match(invalid.deployment.blockedReason,/name|symbol/i);
+  assert.equal(invalid.deployment.txHash,null);
+  assert.equal(readPrivate(x.dir,created.id).deployment.txHash,txHash);
+  assert.equal(signCount,1);
+  // An unresolved signed item always wins after restart; quarantine can
+  // never clear, replace or steal its already reserved nonce.
+  assert.equal((await run()).phase,"broadcast-retry");
+  assert.equal(signCount,1);
+  assert.equal(readPrivate(x.dir,x.id).deployment.status,"quarantined");
+ }finally{x.cleanup()}
+});
+
+test("F-36 invalid solitary Creator entry is retained for manual review, not deleted or signed",async()=>{
+ const x=fixture();let signedCount=0;
+ try{
+  const record=readPrivate(x.dir,x.id);
+  record.input={...record.input,maxSupply:"0",tokenType:"mintable"};
+  savePrivate(x.dir,record);
+  const result=await processCreatorQueue({env:env(x.dir),now,
+   loadFactory:()=>factory,
+   walletFactory:()=>({address:operator,signTransaction:async()=>{signedCount++;throw Error("Must not sign")}}),
+   loadInventory:loadCatalog,checkSponsorJournal:async()=>{}});
+  assert.equal(result.phase,"quarantined");
+  assert.equal(result.quarantined,1);
+  assert.equal(signedCount,0);
+  assert.equal(readPrivate(x.dir,x.id).deployment.status,"quarantined");
+  assert.equal(readPrivate(x.dir,x.id).input.contactEmail,input.contactEmail);
+  assert.equal((await processCreatorQueue({env:env(x.dir),now,
+   loadFactory:()=>factory,walletFactory:()=>({address:operator}),
+   loadInventory:loadCatalog,checkSponsorJournal:async()=>{}})).phase,"idle");
+ }finally{x.cleanup()}
+});
