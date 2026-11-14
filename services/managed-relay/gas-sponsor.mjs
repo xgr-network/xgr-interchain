@@ -816,12 +816,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   max:2,connectionTimeoutMillis:3000,statement_timeout:15000});
  try{
   const rows=await pool.query(
-   "SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
+   "WITH pending AS (SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
    " p.source_tx_hash,p.amount_raw::text AS amount_raw,p.delivered,"+
    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
    " p.quote_nonce::text AS quote_nonce,p.route_id,"+
-   " c.grant_stage,c.grant_chain"+
+   " c.grant_stage,c.grant_chain,p.source_indexed_at,"+
+   " ROW_NUMBER() OVER (PARTITION BY p.source_chain,c.grant_chain"+
+   " ORDER BY p.source_indexed_at,p.message_id,c.grant_stage) AS chain_rank"+
    " FROM xita_transfer_operations p"+
    " JOIN xita_sponsor_quote_intents i ON"+
    " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
@@ -833,8 +835,13 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " WHERE p.parent_message_id IS NULL AND p.delivered IS FALSE"+
    " AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
-   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
-   " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
+   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage))"+
+   " SELECT account,asset,source_chain,destination_chain,message_id,"+
+   " source_tx_hash,amount_raw,delivered,final_destination_chain,"+
+   " onward_route_id,execution_adapter,interchain_fee_wei,"+
+   " quote_nonce,route_id,grant_stage,grant_chain FROM pending"+
+   " WHERE chain_rank<=12 ORDER BY chain_rank,source_indexed_at,"+
+   " source_chain,grant_chain,message_id,grant_stage LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
   const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
@@ -842,14 +849,34 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
   const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
+  // A stalled source/grant RPC cannot starve a healthy lane.
+  // Only read-only preflights have a deadline. Signing, durable reservation
+  // and broadcast are never raced against a timeout.
+  const unavailable=new Set();
   for(const row of rows.rows){
    const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
    if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
    if(!policy[grant.chain])continue;
-   try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy,
-    stage:grant.stage,chain:grant.chain}));}
-   catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
+   const lane=row.source_chain+":"+grant.chain;
+   if(unavailable.has(lane)){outcomes.push({status:"held-for-review",reason:"RPC lane unavailable"});continue}
+   let preflight;
+   try{
+    preflight=await boundedSponsorReconcileRead(()=>
+     inspectFreshSponsorCandidate({catalog,row,db,wallet,
+      providers:providerCache,fetcher,nativePolicy:policy,
+      stage:grant.stage,chain:grant.chain}),12000);
+   }catch(error){
+    unavailable.add(lane);
+    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+    continue;
+   }
+   if(preflight?.kind!==SPONSOR_PREFLIGHT){outcomes.push(preflight);continue}
+   try{
+    outcomes.push(await sendFreshSponsorCandidate({catalog,row,db,wallet,
+     stage:grant.stage,chain:grant.chain},preflight));
+   }catch(error){
+    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+   }
   }
   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
