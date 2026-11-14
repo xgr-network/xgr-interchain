@@ -87,7 +87,11 @@ export function validateQueuedCreator(record,records,catalog){
 }
 async function chooseQueuedCreator(path,records,catalog,now){
  let quarantined=0;
- for(const candidate of records){
+ // Stable oldest-first ordering, independent of UUID filename enumeration.
+ const ordered=[...records].sort((a,b)=>
+  (Date.parse(a.createdAt)||0)-(Date.parse(b.createdAt)||0)||
+  String(a.id).localeCompare(String(b.id)));
+ for(const candidate of ordered){
   if(candidate.kind!=="token-creator"||candidate.phase!=="deployment-queued"||
      candidate.deployment?.status!=="queued")continue;
   let failure;
