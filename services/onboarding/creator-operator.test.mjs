@@ -147,7 +147,7 @@ test("F-36 permanently unsignable Creator request is quarantined while healthy s
  const bad=readPrivate(x.dir,x.id);
  bad.input={...bad.input,name:"Ä".repeat(50)};
  savePrivate(x.dir,bad);
- const created=createPending(x.dir,{...input,name:"Valid Creator",symbol:"HEALTHY"},"creator:healthy",{now});
+ const created=createPending(x.dir,{...input,name:"Valid Creator",symbol:"HEALTHY"},"creator:healthy",{now:now+1000});
  const healthy=readPrivate(x.dir,created.id);
  healthy.kind="token-creator";healthy.phase="deployment-queued";
  healthy.logoUrl="https://xita.xgr.network/token-logos/"+"b".repeat(64)+".png";
