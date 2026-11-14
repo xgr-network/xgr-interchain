@@ -162,3 +162,11 @@ test("real Creator registration accepts no relationship selection or duplicate a
   assert.equal(stored.input.confirmed,true);
  }finally{await new Promise(done=>server.close(done));rmSync(dir,{recursive:true,force:true})}
 });
+
+test("F-36 registration rejects names longer than the on-chain UTF-8 byte limit",()=>{
+ assert.throws(()=>normalizeCreatorApplication({
+  ...input,name:"Ä".repeat(50)
+ }),/name|symbol|supply/i);
+ assert.equal(normalizeCreatorApplication({...input,name:"Ä".repeat(39)}).record.name,
+  "Ä".repeat(39));
+});
