@@ -419,6 +419,12 @@ test("F-08: stalled reserve balance RPC does not prevent healthy chain monitorin
  });
  assert.deepEqual(result,[{chain:"base",ready:false},{chain:"xgrchain",ready:true}]);
  assert.equal(writes.length,2);
+ // Healthy chain publishes before the stuck source's read deadline.
+ // Serial monitoring would write base=false first and then xgrchain=true.
+ assert.equal(writes[0].values[0],"xgrchain");
+ assert.equal(writes[0].values[2],true);
+ assert.equal(writes[1].values[0],"base");
+ assert.equal(writes[1].values.length,2);
 });
 
 test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
