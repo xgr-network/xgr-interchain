@@ -68,6 +68,50 @@ function safeRecord(record){
     record.deployment?.status!=="queued"||record.deployment?.txHash)
   throw Error("Invalid or unauthenticated creator deploy request");
 }
+// F-36: only deterministic, locally checkable request defects may be
+// quarantined. RPC, signer, sponsor-journal or GitHub failures remain global
+// failures and must never discard or relabel an uncertain transaction.
+export function validateQueuedCreator(record,records,catalog){
+ safeRecord(record);
+ const input=record.input;
+ if(typeof input.name!=="string"||Buffer.byteLength(input.name,"utf8")<2||
+    Buffer.byteLength(input.name,"utf8")>80||
+    typeof input.symbol!=="string"||!/^[A-Z][A-Z0-9]{1,10}$/.test(input.symbol))
+  throw Error("Unprocessable token name or symbol");
+ creatorSettings(input); // Same base-unit/cap constraints as the signer.
+ if(Object.hasOwn(catalog.assets,input.symbol)||
+    records.some(x=>x.id!==record.id&&x.kind==="token-creator"&&
+     ["deployment-submitted","deployed","pr-published"].includes(x.phase)&&
+     x.input?.symbol===input.symbol))
+  throw Error("Creator symbol conflicts with existing assets or deployment");
+}
+async function chooseQueuedCreator(path,records,catalog,now){
+ let quarantined=0;
+ for(const candidate of records){
+  if(candidate.kind!=="token-creator"||candidate.phase!=="deployment-queued"||
+     candidate.deployment?.status!=="queued")continue;
+  let failure;
+  try{validateQueuedCreator(candidate,records,catalog)}
+  catch(error){failure=String(error.message||error).slice(0,160)}
+  if(!failure)return {target:candidate,quarantined};
+  // Lock, re-read and revalidate. A concurrent worker may have signed or
+  // changed the item since the snapshot. Never touch submitted tx evidence.
+  await lockedRecord(path,candidate.id,async current=>{
+   if(current.phase!=="deployment-queued"||
+      current.deployment?.status!=="queued"||current.deployment?.txHash)
+    return;
+   try{validateQueuedCreator(current,records,catalog);return}
+   catch(error){
+    current.deployment={...current.deployment,status:"quarantined",
+     blockedAt:new Date(now).toISOString(),
+     blockedReason:String(error.message||error).slice(0,160)};
+    savePrivate(path,current);
+    quarantined++;
+   }
+  });
+ }
+ return {target:null,quarantined};
+}
 async function checkFactoryAcrossRPCs(factory,call,urls){
  const proofs=await Promise.all(urls.map(async url=>{
   const [chain,code]=await Promise.all([
@@ -155,9 +199,15 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
   });
   return {phase:"pr-published",id:ready.id,pr};
  }
- const target=records.find(x=>x.kind==="token-creator"&&x.phase==="deployment-queued");
- if(!target)return {phase:"idle"};
- safeRecord(target);
+ const queued=records.some(x=>x.kind==="token-creator"&&
+  x.phase==="deployment-queued"&&x.deployment?.status==="queued");
+ if(!queued)return {phase:"idle"};
+ // Fail globally if the inventory is bad. Only per-request static defects
+ // are eligible for quarantine.
+ const catalog=loadInventory();
+ if(validateCatalog(catalog).length)throw Error("Main inventory is invalid");
+ const {target,quarantined}=await chooseQueuedCreator(path,records,catalog,now);
+ if(!target)return {phase:quarantined?"quarantined":"idle",quarantined};
  const use=creatorDailyBudget(records,now);
  if(use.count>=limit.dailyCount||use.reservedWei>=limit.dailyWei)
   return {phase:"budget-exhausted"};
@@ -166,13 +216,8 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
  // fee-claim service through a single systemd flock on the same wallet.
  // DB journal disallows creator signing over a missing-mempool sponsor tx.
  await checkSponsorJournal({env,account:wallet.address});
- const catalog=loadInventory();
- if(validateCatalog(catalog).length)throw Error("Main inventory is invalid");
- if(Object.hasOwn(catalog.assets,target.input.symbol)||
-    records.some(x=>x.id!==target.id&&x.kind==="token-creator"&&
-     ["deployment-submitted","deployed","pr-published"].includes(x.phase)&&
-     x.input.symbol===target.input.symbol))
-  throw Error("Creator symbol conflicts with existing assets or deployment");
+ // Recheck before signing. Do not quarantine on RPC or DB failures.
+ validateQueuedCreator(target,records,catalog);
  const url=env.XITA_CREATOR_BROADCAST_RPC||"https://rpc.xgr.network";
  if(!/^https:\/\//.test(url))throw Error("Invalid XGRChain deployment RPC");
  const [chain,gasPriceHex,nonceHex,balanceHex]=await Promise.all([
