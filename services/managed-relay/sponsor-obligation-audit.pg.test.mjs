@@ -5,6 +5,7 @@ import {Pool} from "pg";
 import {Wallet,Transaction} from "ethers";
 import {inspectSponsorObligations,inspectSponsorObligationsCLI} from "./sponsor-obligation-audit.mjs";
 import {recordOvertakenSponsorObligations,sponsorDatabase} from "./gas-sponsor.mjs";
+import {recordSponsorObligationReview} from "./sponsor-obligation-review.mjs";
 const URL_STRING=process.env.XITA_SPONSOR_TEST_DATABASE_URL;
 const A=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
 const H=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
@@ -71,10 +72,11 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     "004_sponsor_grants.sql","009_initial_fee_tax_evidence.sql",
     "010_wallet_aware_sponsor_commitments.sql",
     "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
-    "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql"]){
+    "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql",
+    "017_sponsor_obligation_reviews.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
-  const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
+  const reset=()=>db.query("TRUNCATE xita_sponsor_obligation_reviews,xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations RESTART IDENTITY CASCADE");
   await t.test("F-07 PostgreSQL e2e: signed transaction and reservation commit atomically",async()=>{
    await reset();
    const wallet=new Wallet("0x"+"11".repeat(32));
@@ -226,6 +228,34 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
    const result=await db.query("SELECT stage,chain_name,promised_wei::text AS amount"+
     " FROM xita_sponsor_overtaken_obligations");
    assert.deepEqual(result.rows,[{stage:"first-delivery",chain_name:"xgrchain",amount:"50"}]);
+  });
+  await t.test("F-19: operator review remains append-only across restart and cannot pretend confirmed",async()=>{
+   await reset();
+   await paid(db,72,{delivered:true});
+   const stored=await recordOvertakenSponsorObligations({pool:db,wallet:{address:sponsor}});
+   assert.equal(stored.recorded,1);
+   const key="base:"+H(572)+":first-delivery";
+   const first=await recordSponsorObligationReview({
+    pool:db,grantKey:key,sponsorAddress:sponsor,outcome:"acknowledged"
+   });
+   assert.equal(first.outcome,"acknowledged");
+   const second=await recordSponsorObligationReview({
+    pool:db,grantKey:key,sponsorAddress:sponsor,outcome:"escalated",
+    evidenceSha256:"a".repeat(64)
+   });
+   assert.ok(BigInt(second.reviewId)>BigInt(first.reviewId));
+   const reopened=new Pool({connectionString:URL_STRING,max:1});
+   try{
+    const history=await reopened.query("SELECT outcome,reviewer FROM "+
+     "xita_sponsor_obligation_reviews WHERE grant_key=$1 ORDER BY review_id",[key]);
+    assert.deepEqual(history.rows.map(x=>x.outcome),["acknowledged","escalated"]);
+    const ledger=await reopened.query("SELECT COUNT(*)::int AS n FROM "+
+     "xita_sponsor_overtaken_obligations WHERE grant_key=$1",[key]);
+    assert.equal(ledger.rows[0].n,1,"manual review never extinguishes paid liability");
+    await assert.rejects(()=>recordSponsorObligationReview({
+     pool:reopened,grantKey:key,sponsorAddress:A(999),outcome:"acknowledged"
+    }),/No matching unresolved/);
+   }finally{await reopened.end()}
   });
   await t.test("Healthy paid grants => no alerts",async()=>{
    await reset();
