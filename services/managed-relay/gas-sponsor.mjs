@@ -200,12 +200,14 @@ export async function verifiedSponsorFinality({provider,chain,receipt,txHash}){
   return true;
  }catch{return false}
 }
-// The worker never accepts an unauthenticated public request, destination
-// address or grant amount. Both come from verified read-only chain evidence.
-export async function sponsorOneCandidate({
- catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
- nativePolicy,stage,chain,afterReserve=null
+// All RPC/canonical finality/quote reads MUST finish before any local
+// signing, durable reservation or broadcast. A raced timeout can abandon
+// only this read-only function: late RPC completions have no side effects.
+const SPONSOR_PREFLIGHT=Symbol("verified-sponsor-read-only-preflight");
+async function inspectFreshSponsorCandidate({
+ catalog,row,db,wallet,providers,fetcher,nativePolicy,stage,chain
 }){
+
  const stageInfo=sponsorStage(row,stage,chain);
  if(!stageInfo)return {status:"ineligible"};
  const cfg=nativePolicy?.[chain];
@@ -250,9 +252,32 @@ export async function sponsorOneCandidate({
  if(noncePending!==nonceLatest)
   return {status:"sponsor-wallet-pending",chain,stage};
  const key=sponsorGrantKey(row,stage);
+ // Ethers transaction population can fetch fee/network/nonce state.
+ // Complete it in the timed READ-only phase, never after the deadline.
  const unsigned=await wallet.connect(provider).populateTransaction({
   to:row.account,value,nonce:noncePending,gasLimit
  });
+ if(!same(unsigned.to,row.account)||BigInt(unsigned.value||0)!==value||
+    Number(unsigned.nonce)!==noncePending||
+    BigInt(unsigned.gasLimit||0)!==gasLimit||
+    BigInt(unsigned.chainId||0)!==BigInt(catalog.chains[chain].chainId))
+  throw Error("Sponsor populated transaction conflicts with verified preflight");
+ return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
+  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address};
+}
+// Only the worker's completed authenticated preflight authorizes a new
+// signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
+async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
+ afterReserve=null},preflight){
+ if(preflight?.kind!==SPONSOR_PREFLIGHT||
+    preflight.chain!==chain||preflight.stage!==stage||
+    !same(preflight.recipient,row.account)||
+    !same(preflight.beneficiary,wallet.address)||
+    preflight.key!==sponsorGrantKey(row,stage))
+   throw Error("Unverified or stale sponsor preflight");
+ const {provider,cfg,key,value,gasLimit,noncePending,unsigned}=preflight;
+ // No further unsigned transaction population/RPC reads after this point.
+ // The signed raw bytes must match the completed pinned preflight.
  const rawTx=await wallet.signTransaction(unsigned);
  const prepared=Transaction.from(rawTx);
  if(!same(prepared.from,wallet.address)||!same(prepared.to,row.account)||
@@ -299,6 +324,15 @@ export async function sponsorOneCandidate({
   await db.recordBroadcastError(key,tiny(error?.message||error)).catch(()=>{});
   throw Error("Sponsorship outcome uncertain; reserved grant requires reconciliation");
  }
+}
+// Preserve the existing direct caller API; only runSponsorSweep uses the
+// bounded, per-chain scheduled read-only preflight path.
+export async function sponsorOneCandidate(args){
+ const providers=args.providers||new Map();
+ const preflight=await inspectFreshSponsorCandidate({...args,providers,
+  fetcher:args.fetcher||globalThis.fetch});
+ return preflight?.kind===SPONSOR_PREFLIGHT?
+  sendFreshSponsorCandidate(args,preflight):preflight;
 }
 export function sponsorDatabase(pool){
  // SQL atomicity: reservation wins exactly once per source parent + stage;
@@ -603,14 +637,17 @@ export async function reconcileSponsorGrants({
  }
  return {checked,confirmed,held,chainFailures,journalErrors};
 }
+// F-08: all monitoring chains start their READ-only preflight together.
+// A stalled chain may time out without delaying a healthy chain's durable
+// status update. Database writes happen only after the read has resolved or
+// timed out; a late RPC resolution never triggers any write or payout.
 export async function reportSponsorReserves({
  pool,catalog,wallet,policy,providers,readTimeoutMs=12000
 }){
- const states=[];
- for(const [chain,cfg] of Object.entries(policy)){
+ const entries=Object.entries(policy);
+ if(entries.length>16)throw Error("Too many sponsor reserve chains");
+ return Promise.all(entries.map(async ([chain,cfg])=>{
   try{
-   // F-08: an unavailable provider must not prevent another chain's reserve
-   // state from being refreshed. The timed operation is read-only.
    const {gasPrice,balance}=await boundedSponsorReconcileRead(async()=>{
     const p=await getProvider(catalog,chain,providers);
     const fee=await p.getFeeData();
@@ -627,17 +664,16 @@ export async function reportSponsorReserves({
      " sponsor_address=EXCLUDED.sponsor_address,gas_ready=EXCLUDED.gas_ready,"+
      " balance_wei=EXCLUDED.balance_wei,checked_at=NOW()",
     values:[chain,wallet.address.toLowerCase(),ready,balance.toString()]});
-   states.push({chain,ready});
+   return {chain,ready};
   }catch{
    await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
     "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
     " VALUES($1,$2,FALSE,0,NOW())"+
     " ON CONFLICT(chain_name) DO UPDATE SET gas_ready=FALSE,checked_at=NOW()",
     values:[chain,wallet.address.toLowerCase()]});
-   states.push({chain,ready:false});
+   return {chain,ready:false};
   }
- }
- return states;
+ }));
 }
 // F-16: quote reservations are never released on expiry time alone.
 // For Base/Arbitrum and future external chains, require two configured RPCs
@@ -772,6 +808,37 @@ export async function recordOvertakenSponsorObligations({pool,wallet}){
   values:[wallet.address.toLowerCase()]});
  return {recorded:r.rowCount||0};
 }
+// Execute only successfully completed, authenticated read-only inspections.
+// Timeout callbacks cannot perform wallet operations, and late resolutions
+// cannot authorize a signing step after the deadline.
+export async function processFreshSponsorQueue({rows,policy,read,send,readTimeoutMs=12000}){
+ if(!Array.isArray(rows)||typeof read!=="function"||typeof send!=="function")
+  throw Error("Invalid sponsor work queue");
+ const unavailable=new Set(),outcomes=[];
+ for(const row of rows){
+  const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
+  if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
+  if(!policy[grant.chain])continue;
+  const lane=row.source_chain+":"+grant.chain;
+  if(unavailable.has(lane)){
+   outcomes.push({status:"held-for-review",reason:"RPC lane unavailable"});continue;
+  }
+  let preflight;
+  try{preflight=await boundedSponsorReconcileRead(()=>read(row,grant),readTimeoutMs)}
+  catch(error){
+   unavailable.add(lane);
+   outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+   continue;
+  }
+  if(preflight?.kind!==SPONSOR_PREFLIGHT){outcomes.push(preflight);continue}
+  try{outcomes.push(await send(row,grant,preflight))}
+  catch(error){
+   // An effect already started is uncertain, not cancellable. Do not retry.
+   outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+  }
+ }
+ return outcomes;
+}
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
  assertNoUnresolvedCreatorNonce(env);
  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
@@ -789,12 +856,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   max:2,connectionTimeoutMillis:3000,statement_timeout:15000});
  try{
   const rows=await pool.query(
-   "SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
+   "WITH pending AS (SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
    " p.source_tx_hash,p.amount_raw::text AS amount_raw,p.delivered,"+
    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
    " p.quote_nonce::text AS quote_nonce,p.route_id,"+
-   " c.grant_stage,c.grant_chain"+
+   " c.grant_stage,c.grant_chain,p.source_indexed_at,"+
+   " ROW_NUMBER() OVER (PARTITION BY p.source_chain,c.grant_chain"+
+   " ORDER BY p.source_indexed_at,p.message_id,c.grant_stage) AS chain_rank"+
    " FROM xita_transfer_operations p"+
    " JOIN xita_sponsor_quote_intents i ON"+
    " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
@@ -806,8 +875,13 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
    " WHERE p.parent_message_id IS NULL AND p.delivered IS FALSE"+
    " AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
-   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
-   " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
+   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage))"+
+   " SELECT account,asset,source_chain,destination_chain,message_id,"+
+   " source_tx_hash,amount_raw,delivered,final_destination_chain,"+
+   " onward_route_id,execution_adapter,interchain_fee_wei,"+
+   " quote_nonce,route_id,grant_stage,grant_chain FROM pending"+
+   " WHERE chain_rank<=12 ORDER BY chain_rank,source_indexed_at,"+
+   " source_chain,grant_chain,message_id,grant_stage LIMIT 120");
   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
   const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
@@ -815,15 +889,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
    providers:providerCache});
   const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
-  for(const row of rows.rows){
-   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
-   if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
-   if(!policy[grant.chain])continue;
-   try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
+  outcomes.push(...await processFreshSponsorQueue({
+   rows:rows.rows,policy,
+   read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
     providers:providerCache,fetcher,nativePolicy:policy,
-    stage:grant.stage,chain:grant.chain}));}
-   catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
-  }
+    stage:grant.stage,chain:grant.chain}),
+   send:(row,grant,preflight)=>sendFreshSponsorCandidate({
+    catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
+  }));
   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};

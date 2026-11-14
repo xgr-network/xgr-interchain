@@ -1,7 +1,8 @@
+import {readFileSync} from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {Wallet,Transaction} from "ethers";
-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,verifiedExpiredSponsorQuote,reportSponsorReserves,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
+import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,verifiedExpiredSponsorQuote,reportSponsorReserves,reconcileSponsorGrants,preparedSponsorReplayAllowed,processFreshSponsorQueue} from "./gas-sponsor.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const first={account:addr("a"),asset:"XGR",source_chain:"base",
  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
@@ -419,6 +420,12 @@ test("F-08: stalled reserve balance RPC does not prevent healthy chain monitorin
  });
  assert.deepEqual(result,[{chain:"base",ready:false},{chain:"xgrchain",ready:true}]);
  assert.equal(writes.length,2);
+ // Healthy chain publishes before the stuck source's read deadline.
+ // Serial monitoring would write base=false first and then xgrchain=true.
+ assert.equal(writes[0].values[0],"xgrchain");
+ assert.equal(writes[0].values[2],true);
+ assert.equal(writes[1].values[0],"base");
+ assert.equal(writes[1].values.length,2);
 });
 
 test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
@@ -463,4 +470,38 @@ test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
  unblock(7);
  await new Promise(resolve=>setTimeout(resolve,30));
  assert.equal(broadcasts,0,"deadline-expired callback must never send");
+});
+
+test("F-08: fresh grant scheduling bounds stalled read-only preflight without any late wallet effect",async()=>{
+ const row=(source,id)=>({
+  ...first,source_chain:source,message_id:hash(id),
+  destination_chain:"xgrchain",final_destination_chain:"xgrchain",
+  onward_route_id:null,grant_stage:"first-delivery",grant_chain:"xgrchain"
+ });
+ const slow=row("base","1"),good=row("arbitrum","2");
+ let slowResolve,slowStarted=false,healthyObserved=false,sends=0;
+ const later=new Promise(resolve=>{slowResolve=resolve});
+ const result=await processFreshSponsorQueue({
+  rows:[slow,good],policy:{xgrchain:{maxGrantWei:"1"}},
+  read:async x=>{
+   if(x.source_chain==="base"){slowStarted=true;return later}
+   healthyObserved=true;
+   // A read-only non-authorization must never reach signing.
+   return {status:"no-matching-quote-promise",chain:"xgrchain"};
+  },
+  send:async()=>{sends++;throw Error("No authorized preflight")},
+  readTimeoutMs:10
+ });
+ assert.equal(slowStarted,true);
+ assert.equal(healthyObserved,true);
+ assert.equal(sends,0);
+ assert.equal(result.length,2);
+ assert.equal(result[0].status,"held-for-review");
+ assert.equal(result[1].status,"no-matching-quote-promise");
+ slowResolve({status:"not-authorized"});
+ await Promise.resolve();
+ assert.equal(sends,0,"late completion cannot trigger a wallet side effect");
+ const source=readFileSync(new URL("./gas-sponsor.mjs",import.meta.url),"utf8");
+ assert.match(source,/PARTITION BY p.source_chain,c.grant_chain/);
+ assert.match(source,/chain_rank<=12/);
 });
