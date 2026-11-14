@@ -252,8 +252,18 @@ async function inspectFreshSponsorCandidate({
  if(noncePending!==nonceLatest)
   return {status:"sponsor-wallet-pending",chain,stage};
  const key=sponsorGrantKey(row,stage);
+ // Ethers transaction population can fetch fee/network/nonce state.
+ // Complete it in the timed READ-only phase, never after the deadline.
+ const unsigned=await wallet.connect(provider).populateTransaction({
+  to:row.account,value,nonce:noncePending,gasLimit
+ });
+ if(!same(unsigned.to,row.account)||BigInt(unsigned.value||0)!==value||
+    Number(unsigned.nonce)!==noncePending||
+    BigInt(unsigned.gasLimit||0)!==gasLimit||
+    BigInt(unsigned.chainId||0)!==BigInt(catalog.chains[chain].chainId))
+  throw Error("Sponsor populated transaction conflicts with verified preflight");
  return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
-  noncePending,recipient:row.account,beneficiary:wallet.address};
+  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address};
 }
 // Only the worker's completed authenticated preflight authorizes a new
 // signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
@@ -265,10 +275,9 @@ async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
     !same(preflight.beneficiary,wallet.address)||
     preflight.key!==sponsorGrantKey(row,stage))
    throw Error("Unverified or stale sponsor preflight");
- const {provider,cfg,key,value,gasLimit,noncePending}=preflight;
- const unsigned=await wallet.connect(provider).populateTransaction({
-  to:row.account,value,nonce:noncePending,gasLimit
- });
+ const {provider,cfg,key,value,gasLimit,noncePending,unsigned}=preflight;
+ // No further unsigned transaction population/RPC reads after this point.
+ // The signed raw bytes must match the completed pinned preflight.
  const rawTx=await wallet.signTransaction(unsigned);
  const prepared=Transaction.from(rawTx);
  if(!same(prepared.from,wallet.address)||!same(prepared.to,row.account)||
