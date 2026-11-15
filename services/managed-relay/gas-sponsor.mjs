@@ -815,10 +815,11 @@ export async function processFreshSponsorQueue({rows,policy,read,send,readTimeou
  if(!Array.isArray(rows)||rows.length>120||!policy||
     typeof read!=="function"||typeof send!=="function")
   throw Error("Invalid sponsor work queue");
- // Only one read in flight PER DESTINATION CHAIN: concurrent same-chain
- // nonce/fee preflights would authorize competing signatures for one wallet.
- // Separate destination chains can inspect in parallel; their wallet sends
- // remain strictly sequential across the whole shared operator identity.
+ // A wallet has independent nonce spaces on distinct chains. Serialize
+ // all reads, reservations and sends WITHIN a destination chain, but never
+ // let an unresolved broadcast on one chain block a different chain. Every
+ // reserved signed send remains in its durable journal and its worker lane
+ // stays occupied until its real effect finishes; no Promise.race on effects.
  const destinations=new Map(),outcomes=[];
  for(const row of rows){
   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
@@ -829,7 +830,7 @@ export async function processFreshSponsorQueue({rows,policy,read,send,readTimeou
    lane:row.source_chain+":"+grant.chain});
  }
  if(destinations.size>16)throw Error("Too many sponsor destination lanes");
- let effectQueue=Promise.resolve();
+
  await Promise.all([...destinations.values()].map(async queue=>{
   const unavailable=new Set();
   for(const {row,grant,lane} of queue){
@@ -850,9 +851,9 @@ export async function processFreshSponsorQueue({rows,policy,read,send,readTimeou
    }
    // Do not race a signed transaction, nonce reservation, broadcast or wait
    // against an outer timeout. Preserve the original signed bytes on errors.
-   const effect=effectQueue.then(()=>send(row,grant,preflight));
-   effectQueue=effect.then(()=>{},()=>{});
-   try{outcomes.push(await effect)}
+   // This loop owns this chain's nonce and awaits the actual effect;
+   // another destination can proceed independently in Promise.all above.
+   try{outcomes.push(await send(row,grant,preflight))}
    catch(error){
     outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
    }
