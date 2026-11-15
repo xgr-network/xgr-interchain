@@ -1,4 +1,4 @@
-name: Audit PR419 closure evidence
+name: Publish PR419 closure addendum
 on:
   pull_request:
     branches: [main]
@@ -6,77 +6,86 @@ on:
       - '.github/workflows/audit-pr419-closure.yml'
 permissions:
   contents: read
+concurrency:
+  group: pr419-audit-publication
+  cancel-in-progress: false
 jobs:
-  frozen-source-and-tests:
+  assemble-audit-only:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'audit/xita-v1-pr419-closure-v3.4.1-20261115' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: xita_ci
-          POSTGRES_PASSWORD: local-ci-only
-          POSTGRES_DB: xita_sponsor_ci
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
-          --health-interval 3s --health-timeout 3s --health-retries 20
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
     env:
-      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
+      GH_TOKEN: ${{ github.token }}
+      AUDIT_BRANCH: audit/xita-v1-pr419-closure-v3.4.1-20261115
+      AUDIT_DIR: audits/2026-11-15-xita-v1-closure-v3.4.1
+      EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 6e78cadc631fcdff8605ea0428965e7b911076cd
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+          persist-credentials: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          ref: b7ce5ae849944dec93771e3e7c24730d0b5574de
-          path: audit-harness
-          persist-credentials: false
-      - name: Freeze source and compare actual report targets
+          python-version: '3.13.5'
+      - name: Verify exact evidence archive and preserve collection recipe
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p closure-evidence/logs
-          test "$(git rev-parse HEAD)" = 6e78cadc631fcdff8605ea0428965e7b911076cd
-          git rev-parse HEAD HEAD^{tree} > closure-evidence/revision.txt
-          git ls-tree -r HEAD > closure-evidence/tree.txt
-          git archive --format=tar.gz --prefix=interchain/ HEAD > closure-evidence/source.tar.gz
-          git diff --name-status 233d1b357e1f949ea79647e9b0a852787f2a7e0e HEAD > closure-evidence/changed-paths.txt
-          git diff --binary 233d1b357e1f949ea79647e9b0a852787f2a7e0e HEAD > closure-evidence/pr419.patch
-          test -z "$(git diff --name-only 233d1b357e1f949ea79647e9b0a852787f2a7e0e HEAD -- contracts/ config/ deployments/ apps/web/)"
-          date -u +'%Y-%m-%dT%H:%M:%SZ' > closure-evidence/collected-at.txt
-          node --version > closure-evidence/toolchain.txt
-          npm --version >> closure-evidence/toolchain.txt
-          for dir in services/onboarding services/managed-relay services/indexer; do
-            npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund --package-lock=false
-          done
-          tar -czf closure-evidence/dependencies.tar.gz services/onboarding/node_modules services/managed-relay/node_modules services/indexer/node_modules
-      - name: Repeat affected tests and independent SQL migration replay
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          mkdir -p .audit-input "$AUDIT_DIR/evidence/collector-workflows"
+          gh api /repos/xgr-network/xgr-interchain/actions/artifacts/14170887571/zip > .audit-input.zip
+          echo 'b14d28195128cef8fb97445f430f746ea260b27057328951ca6a13365fd9c1fb  .audit-input.zip' | sha256sum -c -
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('.audit-input.zip') as archive:
+              for name in archive.namelist():
+                  assert not name.startswith('/') and '..' not in Path(name).parts, name
+              archive.extractall('.audit-input')
+          PY
+          git show 9a0abde694103901c19bde64a7eb99a0dcedd64e:.github/workflows/audit-pr419-closure.yml > "$AUDIT_DIR/evidence/collector-workflows/final-collector.yml"
+          cp .github/workflows/audit-pr419-closure.yml "$AUDIT_DIR/evidence/collector-workflows/publication.yml"
+      - name: Render authored report and verify previously reviewed PDF bytes
         shell: bash
         run: |
-          set +e
-          set -uo pipefail
-          failed=0
-          printf 'path\texit_code\n' > closure-evidence/results.tsv
-          for path in services/onboarding/creator-registration.test.mjs services/onboarding/creator-manifests.test.mjs services/onboarding/creator-operator.test.mjs services/onboarding/private-store.test.mjs services/managed-relay/gas-sponsor.test.mjs services/managed-relay/gas-sponsor-f08-effects.test.mjs services/managed-relay/creator-wallet-guard.test.mjs services/managed-relay/sponsor-obligation-review.test.mjs services/managed-relay/sponsor-status.test.mjs services/managed-relay/sponsor-obligation-audit.test.mjs services/managed-relay/sponsor-obligation-audit.pg.test.mjs; do
-            timeout 120s node --test --test-reporter=tap "$path" > "closure-evidence/logs/$(basename "$path").log" 2>&1
-            rc=$?
-            printf '%s\t%s\n' "$path" "$rc" | tee -a closure-evidence/results.tsv
-            if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
-          done
-          node audit-harness/audits/2026-11-15-xita-v1-closure-v3.4.1/probes/reviewer-closure.mjs > closure-evidence/reviewer-closure.log 2>&1
-          rc=$?
-          printf 'independent-reviewer-closure\t%s\n' "$rc" >> closure-evidence/results.tsv
-          if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
-          printf 'failed_files=%s\n' "$failed" > closure-evidence/summary.txt
-          (cd closure-evidence && sha256sum source.tar.gz dependencies.tar.gz pr419.patch results.tsv > sha256sums.txt)
-          test "$failed" -eq 0
+          set -euo pipefail
+          python -m pip install --quiet reportlab==4.4.9
+          python "$AUDIT_DIR/build_reports.py" --evidence .audit-input
+          echo "14b2cbac52e1f92a87323683bc8f94839d87f1c0ef0566910555fc13ca3e3dfc  $AUDIT_DIR/report.pdf" | sha256sum -c -
+          python - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path(os.environ['AUDIT_DIR'])
+          manifest=json.loads((root/'archive-manifest.json').read_text())
+          for entry in manifest['files']:
+              data=(root/entry['path']).read_bytes()
+              assert len(data)==entry['size']
+              assert hashlib.sha256(data).hexdigest()==entry['sha256'],entry['path']
+          print('Verified public manifest files:',len(manifest['files']))
+          PY
+      - name: Commit only new dated audit files to authorized branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$AUDIT_BRANCH" | cut -f1)" = "$EXPECTED_HEAD"
+          git add -- "$AUDIT_DIR"
+          if git diff --cached --name-only | grep -v '^audits/2026-11-15-xita-v1-closure-v3.4.1/'; then
+            echo 'Unexpected non-audit staged path' >&2
+            exit 1
+          fi
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'audit: publish verified PR419 closure PDF, status and retained evidence'
+          git push origin "HEAD:refs/heads/$AUDIT_BRANCH"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: pr419-closure-source-and-regression
-          path: closure-evidence/
-          retention-days: 14
+          name: xita-pr419-closure-v3.4.1-publication
+          path: audits/2026-11-15-xita-v1-closure-v3.4.1/
+          retention-days: 30
           if-no-files-found: error
