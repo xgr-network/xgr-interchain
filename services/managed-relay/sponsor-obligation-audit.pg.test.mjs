@@ -260,7 +260,7 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
   await t.test("F-40 reviewer cannot fabricate sponsor, identity or timestamp via direct SQL",async()=>{
    await reset();
    // Disposable PostgreSQL only, using the exact restricted reviewer role.
-   await db.query("DO $ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_reviewer') THEN CREATE ROLE xita_sponsor_reviewer NOLOGIN NOSUPERUSER NOBYPASSRLS; END IF; END $");
+   await db.query("CREATE ROLE xita_sponsor_reviewer NOLOGIN NOSUPERUSER NOBYPASSRLS");
    await db.query(readFileSync(new URL("../indexer/sql/017_sponsor_obligation_reviews.sql",import.meta.url),"utf8"));
    await db.query(readFileSync(new URL("../indexer/sql/018_sponsor_review_attribution.sql",import.meta.url),"utf8"));
    await paid(db,73,{delivered:true});
