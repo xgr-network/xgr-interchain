@@ -812,31 +812,52 @@ export async function recordOvertakenSponsorObligations({pool,wallet}){
 // Timeout callbacks cannot perform wallet operations, and late resolutions
 // cannot authorize a signing step after the deadline.
 export async function processFreshSponsorQueue({rows,policy,read,send,readTimeoutMs=12000}){
- if(!Array.isArray(rows)||typeof read!=="function"||typeof send!=="function")
+ if(!Array.isArray(rows)||rows.length>120||!policy||
+    typeof read!=="function"||typeof send!=="function")
   throw Error("Invalid sponsor work queue");
- const unavailable=new Set(),outcomes=[];
+ // Only one read in flight PER DESTINATION CHAIN: concurrent same-chain
+ // nonce/fee preflights would authorize competing signatures for one wallet.
+ // Separate destination chains can inspect in parallel; their wallet sends
+ // remain strictly sequential across the whole shared operator identity.
+ const destinations=new Map(),outcomes=[];
  for(const row of rows){
   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
   if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
   if(!policy[grant.chain])continue;
-  const lane=row.source_chain+":"+grant.chain;
-  if(unavailable.has(lane)){
-   outcomes.push({status:"held-for-review",reason:"RPC lane unavailable"});continue;
-  }
-  let preflight;
-  try{preflight=await boundedSponsorReconcileRead(()=>read(row,grant),readTimeoutMs)}
-  catch(error){
-   unavailable.add(lane);
-   outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
-   continue;
-  }
-  if(preflight?.kind!==SPONSOR_PREFLIGHT){outcomes.push(preflight);continue}
-  try{outcomes.push(await send(row,grant,preflight))}
-  catch(error){
-   // An effect already started is uncertain, not cancellable. Do not retry.
-   outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
-  }
+  if(!destinations.has(grant.chain))destinations.set(grant.chain,[]);
+  destinations.get(grant.chain).push({row,grant,
+   lane:row.source_chain+":"+grant.chain});
  }
+ if(destinations.size>16)throw Error("Too many sponsor destination lanes");
+ let effectQueue=Promise.resolve();
+ await Promise.all([...destinations.values()].map(async queue=>{
+  const unavailable=new Set();
+  for(const {row,grant,lane} of queue){
+   if(unavailable.has(lane)){
+    outcomes.push({status:"held-for-review",reason:"RPC lane unavailable"});
+    continue;
+   }
+   let preflight;
+   try{
+    preflight=await boundedSponsorReconcileRead(()=>read(row,grant),readTimeoutMs);
+   }catch(error){
+    unavailable.add(lane);
+    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+    continue;
+   }
+   if(preflight?.kind!==SPONSOR_PREFLIGHT){
+    outcomes.push(preflight);continue;
+   }
+   // Do not race a signed transaction, nonce reservation, broadcast or wait
+   // against an outer timeout. Preserve the original signed bytes on errors.
+   const effect=effectQueue.then(()=>send(row,grant,preflight));
+   effectQueue=effect.then(()=>{},()=>{});
+   try{outcomes.push(await effect)}
+   catch(error){
+    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
+   }
+  }
+ }));
  return outcomes;
 }
 export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
