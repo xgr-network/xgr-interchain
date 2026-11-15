@@ -17,8 +17,8 @@ export async function recordSponsorObligationReview({
   throw Error("Invalid operator sponsorship review input");
  const result=await pool.query({
   text:"INSERT INTO public.xita_sponsor_obligation_reviews "+
-   "(grant_key,sponsor_address,outcome,evidence_sha256)"+
-   " SELECT o.grant_key,o.sponsor_address,$3,$4"+
+   "(grant_key,outcome,evidence_sha256)"+
+   " SELECT o.grant_key,$3,$4"+
    " FROM public.xita_sponsor_overtaken_obligations o"+
    " WHERE o.grant_key=$1 AND o.sponsor_address=$2"+
    " AND NOT EXISTS (SELECT 1 FROM public.xita_sponsor_grants g"+
