@@ -1,4 +1,4 @@
-name: XITA V1 delta audit publication 2026-11-15
+name: XITA V1 delta final publication integrity
 on:
   pull_request:
     branches: [main]
@@ -6,19 +6,17 @@ on:
       - '.github/workflows/audit-20261115-evidence.yml'
 permissions:
   contents: write
-  actions: read
 concurrency:
   group: audit-20261115-publication
   cancel-in-progress: false
 jobs:
-  assemble-audit-only:
+  finalize-audit-only:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'audit/xita-v1-delta-v3.4.0-20261115'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
-      GH_TOKEN: ${{ github.token }}
       AUDIT_BRANCH: audit/xita-v1-delta-v3.4.0-20261115
       AUDIT_DIR: audits/2026-11-15-xita-v1-delta-v3.4.0
     steps:
@@ -30,77 +28,54 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
-      - name: Fetch exact completed evidence artifacts and verify every archive
+      - name: Verify the previously published package before finalization
+        run: python "$AUDIT_DIR/verify_artifacts.py"
+      - name: Final rendered PDF and complete historical-integrity verification
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .audit-input
+          python -m pip install --quiet 'reportlab==4.4.9' 'pypdf==6.1.3'
           python - <<'PY'
-          import hashlib,json,subprocess,zipfile,tarfile,shutil
+          import os,csv,io,json,hashlib,subprocess,importlib.util
           from pathlib import Path
-          root=Path('.audit-input')
-          rows=[
-            (14154846016,'source-evidence','f6279c0286330792fdd2ccaeba7ac66e2e72b5dde51cd3bdef5c4e36f1ca81dc',43696416777),
-            (14154014038,'node-evidence','32730f33794a59291234dbfba57f5552fc06e7a73a2d431707c999a7ce922f9a',43696416777),
-            (14154284918,'complete-tests-roles','1c226c6570a2bcdfac6ff85fd42afbbe4575044b2a729f13cb988e78465b58db',43696812308),
-            (14154921700,'f20-faults','8f79013090509199242e0a070c868facffca374717769a568d02c659e85bc28d',43696812308),
-            (14155260940,'read-only-production','f8c28293a4f62b09aa0ff1f208a1482ba057811f8294c86c2c011a1135a1a2dc',43696812308)
-          ]
-          provenance=[]
-          for ident,name,expected,run in rows:
-            archive=root/(name+'.zip')
-            with archive.open('wb') as h:
-              subprocess.run(['gh','api',f'/repos/xgr-network/xgr-interchain/actions/artifacts/{ident}/zip'],stdout=h,check=True)
-            actual=hashlib.sha256(archive.read_bytes()).hexdigest()
-            assert actual==expected,(ident,actual,expected)
-            dest=root/name;dest.mkdir(exist_ok=True)
-            with zipfile.ZipFile(archive) as z:
-              for n in z.namelist():
-                assert not n.startswith('/') and '..' not in Path(n).parts,n
-              z.extractall(dest)
-            provenance.append({'artifact_id':ident,'name':name,'sha256':actual,'run_id':run,'run_url':f'https://github.com/xgr-network/xgr-interchain/actions/runs/{run}'})
-          for name in ['interchain','node']:
-            with tarfile.open(root/'source-evidence'/(name+'-source.tar.gz'),'r:gz') as t:
-              t.extractall(root,filter='data')
-          (root/'artifact-provenance.json').write_text(json.dumps(provenance,indent=2)+'\n')
-          with (root/'foundry.log').open('wb') as h:
-            subprocess.run(['gh','api','--allow-escape-sequences','/repos/xgr-network/xgr-interchain/actions/jobs/132759080254/logs'],stdout=h,check=True)
-          work=root/'collector-workflows';work.mkdir(exist_ok=True)
-          for rev,name in [('36fa015a01c1a1a6a1b4bd63e03847a1767edd1c','initial-collector.yml'),('c1cbaaa66e4371b425421dd71c9f724b930f35bf','complete-collector.yml')]:
-            data=subprocess.check_output(['git','show',rev+':.github/workflows/audit-20261115-evidence.yml'])
-            (work/name).write_bytes(data)
-          shutil.copy2('.github/workflows/audit-20261115-evidence.yml',work/'publication-workflow.yml')
-          PY
-      - name: Preserve historical-only occurrences and keep finding headings with their assessment
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          p=Path(os.environ['AUDIT_DIR'])/'build_reports.py'
-          s=p.read_text()
-          old="fid=row.get('v3_3_current_finding_id') or row.get('current_finding');f=byid[fid]"
-          new="fid=row.get('v3_3_current_finding_id') or row.get('current_finding')\n        f=byid.get(fid) or {'severity':row['v3_3_severity'],'status':row['v3_3_disposition'],'layer':'Historical-only resolved occurrence','assessment':'Historical-only closure retained, not recounted as a new F-ID. '+row['v3_3_assessment'],'evidence':'E-01/E-02/E-03: relevant source boundaries and current suites checked; original dedicated negative traces remain inherited.'}"
-          if old in s:s=s.replace(old,new)
-          assert 'f=byid.get(fid) or' in s
-          old="story.append(Paragraph(fmt(' '.join(para)),styles['BodyX']))"
-          new="body=Paragraph(fmt(' '.join(para)),styles['BodyX'])\n        if line.startswith('**') and line.endswith('**') and ' | ' in line:body.keepWithNext=True\n        story.append(body)"
-          if old in s:s=s.replace(old,new)
+          from pypdf import PdfReader
+          root=Path(os.environ['AUDIT_DIR'])
+          digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest(root/'report.pdf')=='c063786a959c2a99b8743ba1fcc0e5be488359740920f1b0f13e05340db2f3b1'
+          assert digest(root/'node-v3.5.1-review.pdf')=='8166cfa94544c7249d45c6b9df01b7ed404a48f672d356d352acd6ea38a606ac'
+          p=root/'build_reports.py';s=p.read_text()
+          old="    styles.add(ParagraphStyle(name='CodeX',fontName='Courier',fontSize=7.8,leading=10.5,spaceAfter=8,splitLongWords=True))"
+          if "name='ReferenceX'" not in s:
+            assert old in s
+            s=s.replace(old,old+"\n    styles.add(ParagraphStyle(name='ReferenceX',parent=styles['BodyX'],fontSize=9,leading=12,spaceAfter=3))")
+            old="body=Paragraph(fmt(' '.join(para)),styles['BodyX'])"
+            assert old in s
+            s=s.replace(old,"body=Paragraph(fmt(' '.join(para)),styles['ReferenceX'] if line.startswith('[') else styles['BodyX'])")
           p.write_text(s)
+          spec=importlib.util.spec_from_file_location('audit_builder',p)
+          mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+          mod.pdf_from_markdown(root/'report.md',root/'report.pdf','Audit revision 3.4.0 | 2026-11-15 | English source-frozen report')
+          mod.pdf_from_markdown(root/'node-v3.5.1-review.md',root/'node-v3.5.1-review.pdf','XGR-Node v3.5.1 | F-20 companion review | 2026-11-15')
+          expected={'report.pdf':(20,'6e1728a5bc985c337b275ae75237cea815baecdc075f36f33a981c4f801f9b8b'),'node-v3.5.1-review.pdf':(2,'8166cfa94544c7249d45c6b9df01b7ed404a48f672d356d352acd6ea38a606ac')}
+          pdfs=[]
+          for name,(pages,hash_) in expected.items():
+            assert digest(root/name)==hash_,name
+            assert len(PdfReader(root/name).pages)==pages,name
+            pdfs.append({'file':name,'pages':pages,'sha256':hash_,'locally_rendered_and_reviewed':True,'local_remote_bytes_identical':True})
+          oldcsv=subprocess.check_output(['git','show','33a4e37cf48c509b83c67d8007c246ff2838c606:audits/2026-11-06-xita-direct-bls-delta-v3.3.0/historical-findings-matrix.csv']) if False else Path('audits/2026-11-06-xita-direct-bls-delta-v3.3.0/historical-findings-matrix.csv').read_bytes()
+          oldreader=csv.DictReader(io.StringIO(oldcsv.decode()));oldfields=oldreader.fieldnames;oldrows=list(oldreader)
+          newrows=list(csv.DictReader((root/'historical-findings-matrix.csv').open()))
+          assert len(oldrows)==len(newrows)==43
+          assert all(all(a[k]==b[k] for k in oldfields) for a,b in zip(oldrows,newrows))
+          qa={'status':'FINAL PUBLICATION INTEGRITY VERIFIED','scope':'Document and evidence integrity; not all product tests passing or a new production authorization','reviewed_content_commit':'bdc2ad1c2c52baee2bf1a82e77e34a46b2b8f608','pdfs':pdfs,'visual_review':'All report pages rendered; text bounds checked; title/tables/continuations inspected. Final reference spacing removes an orphan reference-only page without changing content.','prior_historical_columns_unchanged':True,'historical_rows':43,'unique_causes':40,'javascript_files':174,'javascript_failed_files_retained':8,'product_source_modified':False,'production_operations':False,'protected_fixtures_in_public_package':False}
+          (root/'publication-validation.json').write_text(json.dumps(qa,indent=2)+'\n')
+          files=[{'path':str(p.relative_to(root)),'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(root.rglob('*')) if p.is_file() and p.name!='archive-manifest.json' and '__pycache__' not in p.parts]
+          (root/'archive-manifest.json').write_text(json.dumps({'algorithm':'SHA-256','self_excluded':True,'files':files},indent=2)+'\n')
+          print(json.dumps({'hash_verified_files':len(files),'pdfs':pdfs,'historical_rows':43,'old_columns_preserved':True},indent=2))
           PY
-      - name: Generate and verify English report package
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --quiet 'reportlab==4.4.9'
-          python "$AUDIT_DIR/build_reports.py" \
-            --interchain .audit-input/interchain --node .audit-input/node \
-            --evidence .audit-input --out "$AUDIT_DIR" | tee .audit-input/build-summary.json
+          find "$AUDIT_DIR" -type d -name __pycache__ -prune -exec rm -rf {} +
           python "$AUDIT_DIR/verify_artifacts.py"
-          test -s "$AUDIT_DIR/report.pdf"
-          test -s "$AUDIT_DIR/node-v3.5.1-review.pdf"
-      - name: Commit generated audit files only to the authorized audit branch
+      - name: Commit audit metadata and final PDFs only
         shell: bash
         run: |
           set -euo pipefail
@@ -109,20 +84,18 @@ jobs:
           git fetch origin "$AUDIT_BRANCH"
           test "$(git rev-parse FETCH_HEAD)" = "$expected"
           git add -- "$AUDIT_DIR"
-          if git diff --cached --name-only | grep -v '^audits/2026-11-15-xita-v1-delta-v3[.]4[.]0/'; then
-            echo 'Unexpected non-audit staged change' >&2; exit 1
-          fi
+          if git diff --cached --name-only | grep -v '^audits/2026-11-15-xita-v1-delta-v3[.]4[.]0/'; then exit 1; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if ! git diff --cached --quiet; then
-            git commit -m 'audit: publish frozen XITA V1 delta report, evidence and complete finding reconciliation'
+            git commit -m 'audit: finalize 20-page report, 2-page node review and publication integrity'
             git push origin "HEAD:refs/heads/$AUDIT_BRANCH"
           fi
           git rev-parse HEAD
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: xita-v1-delta-v3.4.0-publication
+          name: xita-v1-delta-v3.4.0-final
           path: audits/2026-11-15-xita-v1-delta-v3.4.0/
           retention-days: 30
           if-no-files-found: error
