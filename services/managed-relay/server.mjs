@@ -106,6 +106,14 @@ async function paidQuoteDatabaseReady(){
  finally{if(pool)await pool.end().catch(()=>{})}
 }
 
+// F-19: stop issuing new sponsored quote commitments without interrupting
+// reconciliation of earlier signed promises. The worker's historical service
+// switch remains independent; this flag never deletes or settles liabilities.
+export function sponsorAdmissionState(env=process.env){
+ const servicingExisting=env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ return {servicingExisting,
+  admitting:servicingExisting&&env.XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED!=="false"};
+}
 const previewMemo=new Map();
 async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
  const previewKey=null; // Fresh signer health and wallet balance must not be masked by preview caching.
@@ -126,7 +134,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
  // The keyless public preview reads the LOCAL signed-quote service's health.
  // Do not duplicate a fee/sponsor mode setting or pass signer secrets to 4093.
- let walletAwareEnabled=process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
+ let walletAwareEnabled=sponsorAdmissionState().admitting;
  if(preview&&PREVIEW_ONLY){
   let status;
   try{
@@ -390,8 +398,9 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     paidQuoteReady:dbReadiness.ready,paidQuoteReason:dbReadiness.reason,
     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
-    sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
-     walletAware:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+    sponsorship:{enabled:sponsorAdmissionState().admitting,
+     walletAware:sponsorAdmissionState().admitting,
+     servicingExisting:sponsorAdmissionState().servicingExisting,
      ...await readSponsorAvailability(catalog)}});
   }catch(e){return send(503,{ok:false,error:publicError(e)})}
  }
@@ -461,7 +470,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
    throw Error("Invalid request");
    const clientIP=preview?null:verifiedClientIP(req);
-   if(!preview&&process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true")
+   if(!preview&&sponsorAdmissionState().admitting)
     enforceSignedQuoteRate(clientIP,parsed.payer);
    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
    if(!preview&&reply.status!=="DIRECT_GATEWAY_NO_SERVICE_FEE"){
