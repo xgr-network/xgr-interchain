@@ -23,7 +23,8 @@ export function validateCreatorPublicFields(input){
    throw Error("Invalid public Creator "+field);
  }
  const publicText=JSON.stringify({name:input.name,shortDescription:input.shortDescription,
-  description:input.description,categories:input.categories,tags:input.tags});
+  description:input.description,categories:input.categories,tags:input.tags,
+  website:input.website,links:input.links});
  if(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(publicText))
   throw Error("Personal contact information must never enter public GitHub");
 }
