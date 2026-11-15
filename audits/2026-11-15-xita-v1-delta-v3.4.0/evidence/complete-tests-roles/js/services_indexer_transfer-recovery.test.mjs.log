@@ -1,0 +1,125 @@
+TAP version 13
+# XITA recovery Base failover {"provider":"mainnet.base.org","reason":"PROOF_TIMEOUT","stage":"confirmed-fee-vault-allocation"}
+# Subtest: resolve proof script only from canonical deployed route and configured chain URLs
+ok 1 - resolve proof script only from canonical deployed route and configured chain URLs
+  ---
+  duration_ms: 1.805603
+  type: 'test'
+  ...
+# Subtest: accept exactly authorized unsigned Mailbox.process calldata
+ok 2 - accept exactly authorized unsigned Mailbox.process calldata
+  ---
+  duration_ms: 1.055963
+  type: 'test'
+  ...
+# Subtest: public recovery endpoint never signs or assumes success, only returns source-bound calldata
+ok 3 - public recovery endpoint never signs or assumes success, only returns source-bound calldata
+  ---
+  duration_ms: 0.554416
+  type: 'test'
+  ...
+# Subtest: source transaction hint is optional, syntax validated and only passed as an untrusted locator
+ok 4 - source transaction hint is optional, syntax validated and only passed as an untrusted locator
+  ---
+  duration_ms: 0.230398
+  type: 'test'
+  ...
+# Subtest: transfer recovery handler passes source receipt hints without accepting them as proof
+ok 5 - transfer recovery handler passes source receipt hints without accepting them as proof
+  ---
+  duration_ms: 0.23167
+  type: 'test'
+  ...
+# Subtest: proof CLI failures are categorized without putting raw internals in HTTP responses
+ok 6 - proof CLI failures are categorized without putting raw internals in HTTP responses
+  ---
+  duration_ms: 0.507665
+  type: 'test'
+  ...
+# Subtest: structured JSON-RPC error diagnostics retain nested quotes and exact RPC code
+ok 7 - structured JSON-RPC error diagnostics retain nested quotes and exact RPC code
+  ---
+  duration_ms: 0.194012
+  type: 'test'
+  ...
+# Subtest: ILN validator route identity is derived from immutable domains and route ID, not an ENV alias
+ok 8 - ILN validator route identity is derived from immutable domains and route ID, not an ENV alias
+  ---
+  duration_ms: 0.163577
+  type: 'test'
+  ...
+# Subtest: thousands of on-chain token routes require zero additions to node ENV
+ok 9 - thousands of on-chain token routes require zero additions to node ENV
+  ---
+  duration_ms: 2.941526
+  type: 'test'
+  ...
+# Subtest: rejects externally named proof routes even with otherwise plausible destination calldata
+ok 10 - rejects externally named proof routes even with otherwise plausible destination calldata
+  ---
+  duration_ms: 0.484811
+  type: 'test'
+  ...
+# Subtest: proof builder Base RPC candidates follow canonical approved catalog, never per-token ENV
+ok 11 - proof builder Base RPC candidates follow canonical approved catalog, never per-token ENV
+  ---
+  duration_ms: 0.776792
+  type: 'test'
+  ...
+# Subtest: actual Base source TX qualifies while unrelated historical archive probes are irrelevant
+ok 12 - actual Base source TX qualifies while unrelated historical archive probes are irrelevant
+  ---
+  duration_ms: 0.681468
+  type: 'test'
+  ...
+# Subtest: qualifying Base destination reads actual mailbox delivery state
+ok 13 - qualifying Base destination reads actual mailbox delivery state
+  ---
+  duration_ms: 0.443759
+  type: 'test'
+  ...
+# Subtest: killed recovery CLI surfaces the last stage without exposing RPC internals
+ok 14 - killed recovery CLI surfaces the last stage without exposing RPC internals
+  ---
+  duration_ms: 0.073631
+  type: 'test'
+  ...
+# Subtest: Base recovery retries source FeeVault RPC timeout on next chain-ID-qualified provider
+ok 15 - Base recovery retries source FeeVault RPC timeout on next chain-ID-qualified provider
+  ---
+  duration_ms: 0.824904
+  type: 'test'
+  ...
+# Subtest: RPC timeout on local XGR quorum and conclusive proof failure never switches Base providers
+ok 16 - RPC timeout on local XGR quorum and conclusive proof failure never switches Base providers
+  ---
+  duration_ms: 0.2782
+  type: 'test'
+  ...
+# Subtest: Base destination failure cannot be retried on irrelevant source FeeVault stage
+ok 17 - Base destination failure cannot be retried on irrelevant source FeeVault stage
+  ---
+  duration_ms: 0.120902
+  type: 'test'
+  ...
+# Subtest: Direct-BLS destination failures retain their precise failing contract
+ok 18 - Direct-BLS destination failures retain their precise failing contract
+  ---
+  duration_ms: 0.254284
+  type: 'test'
+  ...
+# Subtest: only retry transient Base RPC failures at new Direct-BLS simulation stage
+ok 19 - only retry transient Base RPC failures at new Direct-BLS simulation stage
+  ---
+  duration_ms: 0.109304
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 84.302703

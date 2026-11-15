@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: notify applicant only on verified phase changes, retry failures and prevent repeats
+ok 1 - notify applicant only on verified phase changes, retry failures and prevent repeats
+  ---
+  duration_ms: 8.248202
+  type: 'test'
+  ...
+# Subtest: XGR Creator second email contains working public token page, not a premature PR URL
+ok 2 - XGR Creator second email contains working public token page, not a premature PR URL
+  ---
+  duration_ms: 1.806926
+  type: 'test'
+  ...
+# Subtest: profile update email waits for the exact published CoinGecko profile snapshot
+ok 3 - profile update email waits for the exact published CoinGecko profile snapshot
+  ---
+  duration_ms: 1.397268
+  type: 'test'
+  ...
+# Subtest: Creator sends deployment confirmation before any PR and independently of public catalog, retry-safe
+ok 4 - Creator sends deployment confirmation before any PR and independently of public catalog, retry-safe
+  ---
+  duration_ms: 1.368655
+  type: 'test'
+  ...
+# Subtest: Creator creation mail blocks forged/unverified receipts and safely catches legacy already-merged records
+ok 5 - Creator creation mail blocks forged/unverified receipts and safely catches legacy already-merged records
+  ---
+  duration_ms: 1.782398
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 63.16269

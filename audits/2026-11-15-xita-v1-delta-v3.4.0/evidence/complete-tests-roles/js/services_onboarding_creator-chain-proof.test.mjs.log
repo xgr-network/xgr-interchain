@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: verify independently checks signed factory calldata, ERC20 code, supply and designated owner
+ok 1 - verify independently checks signed factory calldata, ERC20 code, supply and designated owner
+  ---
+  duration_ms: 9.427301
+  type: 'test'
+  ...
+# Subtest: wrong owner, factory bytecode, nonfinal receipts and conflicting nodes never publish Join
+ok 2 - wrong owner, factory bytecode, nonfinal receipts and conflicting nodes never publish Join
+  ---
+  duration_ms: 25.99962
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 148.118516

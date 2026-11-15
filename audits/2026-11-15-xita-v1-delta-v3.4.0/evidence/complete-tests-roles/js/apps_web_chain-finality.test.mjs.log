@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: chain-native policy requires L2 safe and XGR committed latest
+ok 1 - chain-native policy requires L2 safe and XGR committed latest
+  ---
+  duration_ms: 1.699139
+  type: 'test'
+  ...
+# Subtest: Source above safe, mismatched receipt hash or unavailable safe never gets finalized
+ok 2 - Source above safe, mismatched receipt hash or unavailable safe never gets finalized
+  ---
+  duration_ms: 0.436658
+  type: 'test'
+  ...
+# Subtest: Mailbox delivery is read at pinned safe height, not latest; stale or reorg evidence rejected
+ok 3 - Mailbox delivery is read at pinned safe height, not latest; stale or reorg evidence rejected
+  ---
+  duration_ms: 0.33863
+  type: 'test'
+  ...
+# Subtest: native-safe delivery reorg during eth_call is rejected and not persisted
+ok 4 - native-safe delivery reorg during eth_call is rejected and not persisted
+  ---
+  duration_ms: 0.179741
+  type: 'test'
+  ...
+# Subtest: all GitHub-main chain finality policies are supported by the web/indexer verifier
+ok 5 - all GitHub-main chain finality policies are supported by the web/indexer verifier
+  ---
+  duration_ms: 0.543208
+  type: 'test'
+  ...
+# Subtest: Optimism destination Mailbox state is read at a pinned safe block
+ok 6 - Optimism destination Mailbox state is read at a pinned safe block
+  ---
+  duration_ms: 0.455096
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 47.59339

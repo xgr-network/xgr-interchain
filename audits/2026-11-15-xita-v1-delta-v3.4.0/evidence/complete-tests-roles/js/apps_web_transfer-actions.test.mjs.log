@@ -1,0 +1,190 @@
+TAP version 13
+# Subtest: a documented route whose destination rejects its identity blocks a source lock before wallet interaction
+ok 1 - a documented route whose destination rejects its identity blocks a source lock before wallet interaction
+  ---
+  duration_ms: 3.451348
+  type: 'test'
+  ...
+# Subtest: destination inbound route verification binds exact canonical source chain, router and route ID
+ok 2 - destination inbound route verification binds exact canonical source chain, router and route ID
+  ---
+  duration_ms: 0.817881
+  type: 'test'
+  ...
+# Subtest: amount conversion and Gateway ABI are fixed, with no floating point
+ok 3 - amount conversion and Gateway ABI are fixed, with no floating point
+  ---
+  duration_ms: 1.252877
+  type: 'test'
+  ...
+# Subtest: source bridge quotes, checks native gas and sends exactly one canonical Gateway call
+ok 4 - source bridge quotes, checks native gas and sends exactly one canonical Gateway call
+  ---
+  duration_ms: 5.760847
+  type: 'test'
+  ...
+# Subtest: unresolved MetaMask source nonce blocks any second lock while no canonical receipt exists
+ok 5 - unresolved MetaMask source nonce blocks any second lock while no canonical receipt exists
+  ---
+  duration_ms: 0.941679
+  type: 'test'
+  ...
+# Subtest: one wei of destination gas is NOT enough to safely lock source assets
+ok 6 - one wei of destination gas is NOT enough to safely lock source assets
+  ---
+  duration_ms: 0.754116
+  type: 'test'
+  ...
+# Subtest: wallet with no destination-native gas never submits source lock
+ok 7 - wallet with no destination-native gas never submits source lock
+  ---
+  duration_ms: 0.576107
+  type: 'test'
+  ...
+# Subtest: if source is confirmed but proof is pending, retry never sends a source or destination transaction
+ok 8 - if source is confirmed but proof is pending, retry never sends a source or destination transaction
+  ---
+  duration_ms: 1.966592
+  type: 'test'
+  ...
+# Subtest: an unresolved wallet nonce blocks a second source lock after reload
+ok 9 - an unresolved wallet nonce blocks a second source lock after reload
+  ---
+  duration_ms: 0.979265
+  type: 'test'
+  ...
+# Subtest: missing unsigned recovery service must prevent any source token lock
+ok 10 - missing unsigned recovery service must prevent any source token lock
+  ---
+  duration_ms: 0.284338
+  type: 'test'
+  ...
+# Subtest: stale MetaMask pending nonce can be reconciled by an independent source-chain RPC
+ok 11 - stale MetaMask pending nonce can be reconciled by an independent source-chain RPC
+  ---
+  duration_ms: 3.940575
+  type: 'test'
+  ...
+# Subtest: invalid wallet nonce is not bypassed if the canonical RPC is unavailable
+ok 12 - invalid wallet nonce is not bypassed if the canonical RPC is unavailable
+  ---
+  duration_ms: 0.919885
+  type: 'test'
+  ...
+# Subtest: unsigned automatic delivery polling is bounded and never initiates source or target signing
+ok 13 - unsigned automatic delivery polling is bounded and never initiates source or target signing
+  ---
+  duration_ms: 0.323818
+  type: 'test'
+  ...
+# Subtest: temporary proof service error keeps immutable source lock and retries
+ok 14 - temporary proof service error keeps immutable source lock and retries
+  ---
+  duration_ms: 0.120131
+  type: 'test'
+  ...
+# Subtest: fatal backend configuration mismatch blocks automated signing
+ok 15 - fatal backend configuration mismatch blocks automated signing
+  ---
+  duration_ms: 0.125318
+  type: 'test'
+  ...
+# Subtest: raw second-hop token amount roundtrips exactly without float loss
+ok 16 - raw second-hop token amount roundtrips exactly without float loss
+  ---
+  duration_ms: 0.239831
+  type: 'test'
+  ...
+# Subtest: only a confirmed, adapter-proven first hop can initiate a second user call
+ok 17 - only a confirmed, adapter-proven first hop can initiate a second user call
+  ---
+  duration_ms: 0.250978
+  type: 'test'
+  ...
+# Subtest: deployed Interchain Fee adapter owns first TX and no direct Gateway fee bypass occurs
+ok 18 - deployed Interchain Fee adapter owns first TX and no direct Gateway fee bypass occurs
+  ---
+  duration_ms: 6.988014
+  type: 'test'
+  ...
+# Subtest: adapter fee quote refuses altered transaction bytes, even with valid EIP-712 quoted fields
+ok 19 - adapter fee quote refuses altered transaction bytes, even with valid EIP-712 quoted fields
+  ---
+  duration_ms: 0.327653
+  type: 'test'
+  ...
+# Subtest: commercial transfer refuses fee-free fallback when either execution gateway is missing
+ok 20 - commercial transfer refuses fee-free fallback when either execution gateway is missing
+  ---
+  duration_ms: 0.34554
+  type: 'test'
+  ...
+# Subtest: RPC failure is not mislabeled as a missing validator quorum
+ok 21 - RPC failure is not mislabeled as a missing validator quorum
+  ---
+  duration_ms: 0.227613
+  type: 'test'
+  ...
+# Subtest: unsupported quorum RPC fails promptly without a wallet transaction
+ok 22 - unsupported quorum RPC fails promptly without a wallet transaction
+  ---
+  duration_ms: 0.15915
+  type: 'test'
+  ...
+# Subtest: quorum pending remains distinct from proof-service outage
+ok 23 - quorum pending remains distinct from proof-service outage
+  ---
+  duration_ms: 0.101382
+  type: 'test'
+  ...
+# Subtest: spoke-to-spoke preflight checks BOTH hub and final destination before any source lock
+ok 24 - spoke-to-spoke preflight checks BOTH hub and final destination before any source lock
+  ---
+  duration_ms: 0.972625
+  type: 'test'
+  ...
+# Subtest: spoke-to-spoke live preflight accepts both routed destinations independent of wallet holdings
+ok 25 - spoke-to-spoke live preflight accepts both routed destinations independent of wallet holdings
+  ---
+  duration_ms: 0.489698
+  type: 'test'
+  ...
+# Subtest: ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum regression)
+ok 26 - ERC20 allowance accepts 32-byte ABI words with leading zeros (Arbitrum regression)
+  ---
+  duration_ms: 4511.131001
+  type: 'test'
+  ...
+# Subtest: temporary source safe RPC outage returns a waiting reason without wallet signing
+ok 27 - temporary source safe RPC outage returns a waiting reason without wallet signing
+  ---
+  duration_ms: 0.877732
+  type: 'test'
+  ...
+# Subtest: fully funded direct XGR transfer sends canonical gateway with zero service fee
+ok 28 - fully funded direct XGR transfer sends canonical gateway with zero service fee
+  ---
+  duration_ms: 3.977792
+  type: 'test'
+  ...
+# Subtest: N-05 onward gas exception requires a paid parent-specific final gift
+ok 29 - N-05 onward gas exception requires a paid parent-specific final gift
+  ---
+  duration_ms: 0.807987
+  type: 'test'
+  ...
+# Subtest: N-05 parent-bound final gas authorization fails closed without final-stage promise
+ok 30 - N-05 parent-bound final gas authorization fails closed without final-stage promise
+  ---
+  duration_ms: 0.086961
+  type: 'test'
+  ...
+1..30
+# tests 30
+# suites 0
+# pass 30
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4595.179077

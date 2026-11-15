@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: native source fee price maps XGR to CoinGecko xgr and Base gas to ETH
+ok 1 - native source fee price maps XGR to CoinGecko xgr and Base gas to ETH
+  ---
+  duration_ms: 0.534476
+  type: 'test'
+  ...
+# Subtest: tiny native gas coin prices preserve precision and reject zero
+ok 2 - tiny native gas coin prices preserve precision and reject zero
+  ---
+  duration_ms: 3.826711
+  type: 'test'
+  ...
+# Subtest: gas quote is round-up source-native, no tokens or fractions of wei
+ok 3 - gas quote is round-up source-native, no tokens or fractions of wei
+  ---
+  duration_ms: 0.209235
+  type: 'test'
+  ...
+# Subtest: quote rejects suspicious zero gas, extremely large gas cap or arbitrary risk margin
+ok 4 - quote rejects suspicious zero gas, extremely large gas cap or arbitrary risk margin
+  ---
+  duration_ms: 0.151999
+  type: 'test'
+  ...
+# Subtest: VAT is charged on full net fee and missing tax policy fails closed
+ok 5 - VAT is charged on full net fee and missing tax policy fails closed
+  ---
+  duration_ms: 0.135264
+  type: 'test'
+  ...
+# Subtest: CoinGecko snapshot freshness is checked for BOTH chain gas coins
+ok 6 - CoinGecko snapshot freshness is checked for BOTH chain gas coins
+  ---
+  duration_ms: 0.222045
+  type: 'test'
+  ...
+# Subtest: single CoinGecko ETH price can support Base and Arbitrum without duplicate feeds
+ok 7 - single CoinGecko ETH price can support Base and Arbitrum without duplicate feeds
+  ---
+  duration_ms: 0.08575
+  type: 'test'
+  ...
+# Subtest: XGR to BSC prices native BNB with a fresh CoinGecko snapshot
+ok 8 - XGR to BSC prices native BNB with a fresh CoinGecko snapshot
+  ---
+  duration_ms: 0.199401
+  type: 'test'
+  ...
+# Subtest: BSC to XGR uses BNB as the source gas coin
+ok 9 - BSC to XGR uses BNB as the source gas coin
+  ---
+  duration_ms: 0.16569
+  type: 'test'
+  ...
+# Subtest: integer ceil division never rounds under cost
+ok 10 - integer ceil division never rounds under cost
+  ---
+  duration_ms: 0.197498
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.919529

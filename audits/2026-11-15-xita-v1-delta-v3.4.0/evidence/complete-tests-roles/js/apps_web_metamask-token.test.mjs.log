@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: only receipt-backed synthetic token with valid chain metadata is importable
+not ok 1 - only receipt-backed synthetic token with valid chain metadata is importable
+  ---
+  duration_ms: 1.251755
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/apps/web/metamask-token.test.mjs:8:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '0xd7443427ca21ae0907d2aa55446470307c990092'
+    - '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+  actual: '0xd7443427ca21ae0907d2aa55446470307c990092'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/apps/web/metamask-token.test.mjs:10:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.start (node:internal/test_runner/test:1262:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+  ...
+# Subtest: wallet watchAsset never requests accounts or signs and only switches chains on explicit click
+not ok 2 - wallet watchAsset never requests accounts or signs and only switches chains on explicit click
+  ---
+  duration_ms: 1.098365
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/apps/web/metamask-token.test.mjs:23:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      {
+    +   address: '0xd7443427ca21ae0907d2aa55446470307c990092',
+    -   address: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d',
+        decimals: 18,
+        symbol: 'wXGR'
+      }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    address: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+    symbol: 'wXGR'
+    decimals: 18
+  actual:
+    address: '0xd7443427ca21ae0907d2aa55446470307c990092'
+    symbol: 'wXGR'
+    decimals: 18
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/apps/web/metamask-token.test.mjs:32:9)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: wrong network, invalid address and rejected switches never send wallet_watchAsset
+ok 3 - wrong network, invalid address and rejected switches never send wallet_watchAsset
+  ---
+  duration_ms: 0.61085
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 1
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 57.969897

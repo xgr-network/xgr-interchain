@@ -1,0 +1,328 @@
+TAP version 13
+# Subtest: fee display uses real chain names and native gas denominations from the published catalog
+ok 1 - fee display uses real chain names and native gas denominations from the published catalog
+  ---
+  duration_ms: 2.43023
+  type: 'test'
+  ...
+# Subtest: universe always includes the hub and filters forbidden direct spoke routes
+ok 2 - universe always includes the hub and filters forbidden direct spoke routes
+  ---
+  duration_ms: 5.506903
+  type: 'test'
+  ...
+# Subtest: BSC shows its configured public name on the planet while preserving the chain slug
+ok 3 - BSC shows its configured public name on the planet while preserving the chain slug
+  ---
+  duration_ms: 2.247244
+  type: 'test'
+  ...
+# Subtest: spoke-to-spoke paths are exactly two directed operations
+ok 4 - spoke-to-spoke paths are exactly two directed operations
+  ---
+  duration_ms: 0.336817
+  type: 'test'
+  ...
+# Subtest: unknown or unverified routes never become executable
+ok 5 - unknown or unverified routes never become executable
+  ---
+  duration_ms: 0.207983
+  type: 'test'
+  ...
+# Subtest: dashboard and inventory do not invent real-time operational metrics
+ok 6 - dashboard and inventory do not invent real-time operational metrics
+  ---
+  duration_ms: 0.329065
+  type: 'test'
+  ...
+# Subtest: catalog-sourced strings are escaped in markup
+ok 7 - catalog-sourced strings are escaped in markup
+  ---
+  duration_ms: 0.211218
+  type: 'test'
+  ...
+# Subtest: token page links to the only transfer workflow without duplicate signing inputs
+ok 8 - token page links to the only transfer workflow without duplicate signing inputs
+  ---
+  duration_ms: 0.237248
+  type: 'test'
+  ...
+# Subtest: selected chain details distinguish native and wrapped asset symbols
+ok 9 - selected chain details distinguish native and wrapped asset symbols
+  ---
+  duration_ms: 0.204388
+  type: 'test'
+  ...
+# Subtest: CoinGecko market cap in Universe is asset-wide and independent of route activation
+ok 10 - CoinGecko market cap in Universe is asset-wide and independent of route activation
+  ---
+  duration_ms: 261.252095
+  type: 'test'
+  ...
+# Subtest: Northstar home and Universe share the immersive stage without changing route data
+ok 11 - Northstar home and Universe share the immersive stage without changing route data
+  ---
+  duration_ms: 0.606113
+  type: 'test'
+  ...
+# Subtest: Transfer Tokens and FAQ use a single canonical transaction UI
+ok 12 - Transfer Tokens and FAQ use a single canonical transaction UI
+  ---
+  duration_ms: 0.843891
+  type: 'test'
+  ...
+# Subtest: Join XITA navigation consistently highlights the free project application
+ok 13 - Join XITA navigation consistently highlights the free project application
+  ---
+  duration_ms: 1.33463
+  type: 'test'
+  ...
+# Subtest: FAQ: no XGR purchase required for external chains with quote-bound sponsorship
+ok 14 - FAQ: no XGR purchase required for external chains with quote-bound sponsorship
+  ---
+  duration_ms: 0.242475
+  type: 'test'
+  ...
+# Subtest: public ranking requires DB-qualified full deployments and sourced caps
+ok 15 - public ranking requires DB-qualified full deployments and sourced caps
+  ---
+  duration_ms: 0.918624
+  type: 'test'
+  ...
+# Subtest: dashboard never treats partial TVL as verified and planner stays on its own page
+ok 16 - dashboard never treats partial TVL as verified and planner stays on its own page
+  ---
+  duration_ms: 0.257097
+  type: 'test'
+  ...
+# Subtest: Northstar hero explains holders and projects with matching actions
+ok 17 - Northstar hero explains holders and projects with matching actions
+  ---
+  duration_ms: 0.155615
+  type: 'test'
+  ...
+# Subtest: partner program describes review, sponsorship and threshold-based listing
+ok 18 - partner program describes review, sponsorship and threshold-based listing
+  ---
+  duration_ms: 0.252931
+  type: 'test'
+  ...
+# Subtest: single action stays non-signing in read-only planner HTML
+ok 19 - single action stays non-signing in read-only planner HTML
+  ---
+  duration_ms: 0.224388
+  type: 'test'
+  ...
+# Subtest: wallet-driven open transfer is one destination continuation, no browser WAL
+ok 20 - wallet-driven open transfer is one destination continuation, no browser WAL
+  ---
+  duration_ms: 0.448986
+  type: 'test'
+  ...
+# Subtest: no catalog deployment does not invent actionable transfer routes
+ok 21 - no catalog deployment does not invent actionable transfer routes
+  ---
+  duration_ms: 0.137827
+  type: 'test'
+  ...
+# Subtest: Transfer CTA follows structured route fees without old gas diagnostics
+ok 22 - Transfer CTA follows structured route fees without old gas diagnostics
+  ---
+  duration_ms: 0.294964
+  type: 'test'
+  ...
+# Subtest: old awaiting-proof operations never replace a new verified XGR/Base transfer
+ok 23 - old awaiting-proof operations never replace a new verified XGR/Base transfer
+  ---
+  duration_ms: 1.66028
+  type: 'test'
+  ...
+# Subtest: transfer screen has only route fees, status is exclusively modal
+ok 24 - transfer screen has only route fees, status is exclusively modal
+  ---
+  duration_ms: 1.34089
+  type: 'test'
+  ...
+# Subtest: Dashboard hides wallet contracts; token inventory derives verified addresses from generated receipts
+ok 25 - Dashboard hides wallet contracts; token inventory derives verified addresses from generated receipts
+  ---
+  duration_ms: 1.752119
+  type: 'test'
+  ...
+# Subtest: customer-facing transfers never label the route quote as GmbH fee
+ok 26 - customer-facing transfers never label the route quote as GmbH fee
+  ---
+  duration_ms: 0.164808
+  type: 'test'
+  ...
+# Subtest: transfer derives wXGR and fee spender from in-memory deployment receipts
+ok 27 - transfer derives wXGR and fee spender from in-memory deployment receipts
+  ---
+  duration_ms: 0.685032
+  type: 'test'
+  ...
+# Subtest: untrusted project URL and conflicting receipt-backed routers fail closed
+ok 28 - untrusted project URL and conflicting receipt-backed routers fail closed
+  ---
+  duration_ms: 0.930592
+  type: 'test'
+  ...
+# Subtest: verified test-route identity is collapsed but its derived contract remains inspectable
+ok 29 - verified test-route identity is collapsed but its derived contract remains inspectable
+  ---
+  duration_ms: 0.528165
+  type: 'test'
+  ...
+# Subtest: resume query intent never becomes a new source transaction when index unavailable
+ok 30 - resume query intent never becomes a new source transaction when index unavailable
+  ---
+  duration_ms: 1.57366
+  type: 'test'
+  ...
+# Subtest: completed Base to XGR delivery is success, never unresolved or repeat-signable
+ok 31 - completed Base to XGR delivery is success, never unresolved or repeat-signable
+  ---
+  duration_ms: 1.705609
+  type: 'test'
+  ...
+# Subtest: dashboard derives active directions from generated receipts, never mutable activation flags
+ok 32 - dashboard derives active directions from generated receipts, never mutable activation flags
+  ---
+  duration_ms: 1.436173
+  type: 'test'
+  ...
+# Subtest: TVL chart draws observed snapshots but never invents missing history
+ok 33 - TVL chart draws observed snapshots but never invents missing history
+  ---
+  duration_ms: 1.608612
+  type: 'test'
+  ...
+# Subtest: transfer status can be reopened without a new wallet action
+ok 34 - transfer status can be reopened without a new wallet action
+  ---
+  duration_ms: 1.475102
+  type: 'test'
+  ...
+# Subtest: failed input preflight stays inline with NO modal or status reopening
+ok 35 - failed input preflight stays inline with NO modal or status reopening
+  ---
+  duration_ms: 1.339988
+  type: 'test'
+  ...
+# Subtest: TVL 24h change requires a genuine nearby baseline and colors gain/loss
+ok 36 - TVL 24h change requires a genuine nearby baseline and colors gain/loss
+  ---
+  duration_ms: 2.283109
+  type: 'test'
+  ...
+# Subtest: TVL chart spreads actual short-window measurements across full plot
+ok 37 - TVL chart spreads actual short-window measurements across full plot
+  ---
+  duration_ms: 0.918914
+  type: 'test'
+  ...
+# Subtest: 24h delta uses final verified observations even if current snapshot unavailable
+ok 38 - 24h delta uses final verified observations even if current snapshot unavailable
+  ---
+  duration_ms: 0.997572
+  type: 'test'
+  ...
+# Subtest: last verified collateral is marked historic for a fixture-public asset
+ok 39 - last verified collateral is marked historic for a fixture-public asset
+  ---
+  duration_ms: 0.875739
+  type: 'test'
+  ...
+# Subtest: two-hop resume dropdown names the final Base destination, never the hub
+ok 40 - two-hop resume dropdown names the final Base destination, never the hub
+  ---
+  duration_ms: 1.167529
+  type: 'test'
+  ...
+# Subtest: Top Tokens shows approved profile logos only for receipt-backed public fixture assets
+ok 41 - Top Tokens shows approved profile logos only for receipt-backed public fixture assets
+  ---
+  duration_ms: 1.618949
+  type: 'test'
+  ...
+# Subtest: verified direct routes have neutral CTA; undeployed direct and two-hop routes never become signable
+ok 42 - verified direct routes have neutral CTA; undeployed direct and two-hop routes never become signable
+  ---
+  duration_ms: 1.241099
+  type: 'test'
+  ...
+# Subtest: transfer form never offers identical origin and destination, including Arbitrum
+ok 43 - transfer form never offers identical origin and destination, including Arbitrum
+  ---
+  duration_ms: 0.841137
+  type: 'test'
+  ...
+# Subtest: select destination Arbitrum then source Arbitrum reconciles to XGRChain
+ok 44 - select destination Arbitrum then source Arbitrum reconciles to XGRChain
+  ---
+  duration_ms: 1.199907
+  type: 'test'
+  ...
+# Subtest: repeated chain edits preserve feasible destinations, never self-transfer
+ok 45 - repeated chain edits preserve feasible destinations, never self-transfer
+  ---
+  duration_ms: 0.17914
+  type: 'test'
+  ...
+# Subtest: selected unfinished journey displays exactly one status action and no new fee quote
+ok 46 - selected unfinished journey displays exactly one status action and no new fee quote
+  ---
+  duration_ms: 0.45135
+  type: 'test'
+  ...
+# Subtest: completed journey loses stale status CTA and can reset to new transfer
+ok 47 - completed journey loses stale status CTA and can reset to new transfer
+  ---
+  duration_ms: 0.540744
+  type: 'test'
+  ...
+# Subtest: outreach FAQ covers finality, recovery and sponsorship
+ok 48 - outreach FAQ covers finality, recovery and sponsorship
+  ---
+  duration_ms: 0.135153
+  type: 'test'
+  ...
+# Subtest: live TVL without an evidence timestamp never borrows an old history timestamp
+ok 49 - live TVL without an evidence timestamp never borrows an old history timestamp
+  ---
+  duration_ms: 0.157357
+  type: 'test'
+  ...
+# Subtest: mobile Northstar uses a static illustration without changing desktop 3D stage
+ok 50 - mobile Northstar uses a static illustration without changing desktop 3D stage
+  ---
+  duration_ms: 0.609648
+  type: 'test'
+  ...
+# Subtest: dashboard displays verified partial 24h movement with explicit incomplete coverage
+ok 51 - dashboard displays verified partial 24h movement with explicit incomplete coverage
+  ---
+  duration_ms: 0.660444
+  type: 'test'
+  ...
+# Subtest: dashboard refuses unverified or internally inconsistent partial movement objects
+ok 52 - dashboard refuses unverified or internally inconsistent partial movement objects
+  ---
+  duration_ms: 0.56455
+  type: 'test'
+  ...
+# Subtest: dashboard asynchronously refreshes read-only evidence after startup without modifying transfers
+ok 53 - dashboard asynchronously refreshes read-only evidence after startup without modifying transfers
+  ---
+  duration_ms: 0.560604
+  type: 'test'
+  ...
+1..53
+# tests 53
+# suites 0
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 378.151942

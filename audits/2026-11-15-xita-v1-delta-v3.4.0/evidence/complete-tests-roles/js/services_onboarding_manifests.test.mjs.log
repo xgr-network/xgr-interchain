@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: route bundle matches authoritative main schemas and transits XGR
+ok 1 - route bundle matches authoritative main schemas and transits XGR
+  ---
+  duration_ms: 9.494423
+  type: 'test'
+  ...
+# Subtest: Join proposals exclude undeployed Polygon and accept BSC as original chain
+ok 2 - Join proposals exclude undeployed Polygon and accept BSC as original chain
+  ---
+  duration_ms: 2.385469
+  type: 'test'
+  ...
+# Subtest: reject direct bridge and duplicate canonical token
+ok 3 - reject direct bridge and duplicate canonical token
+  ---
+  duration_ms: 11.611095
+  type: 'test'
+  ...
+# Subtest: profile URL is generated server-side, not from applicant input
+ok 4 - profile URL is generated server-side, not from applicant input
+  ---
+  duration_ms: 4.979471
+  type: 'test'
+  ...
+# Subtest: reject unsafe public metadata
+ok 5 - reject unsafe public metadata
+  ---
+  duration_ms: 0.267994
+  type: 'test'
+  ...
+# Subtest: never leak private contact information into generated public files
+ok 6 - never leak private contact information into generated public files
+  ---
+  duration_ms: 2.291386
+  type: 'test'
+  ...
+# Subtest: CoinGecko pricing metadata is recorded in generated profile
+ok 7 - CoinGecko pricing metadata is recorded in generated profile
+  ---
+  duration_ms: 1.694166
+  type: 'test'
+  ...
+# Subtest: multiline project descriptions are safe and normalized before publication
+ok 8 - multiline project descriptions are safe and normalized before publication
+  ---
+  duration_ms: 1.673564
+  type: 'test'
+  ...
+# Subtest: Join proposal preserves catalog order and every existing asset unchanged
+ok 9 - Join proposal preserves catalog order and every existing asset unchanged
+  ---
+  duration_ms: 2.029842
+  type: 'test'
+  ...
+# Subtest: uploaded logo is rejected even when an HTTPS URL is provided
+ok 10 - uploaded logo is rejected even when an HTTPS URL is provided
+  ---
+  duration_ms: 5.148987
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 92.839988

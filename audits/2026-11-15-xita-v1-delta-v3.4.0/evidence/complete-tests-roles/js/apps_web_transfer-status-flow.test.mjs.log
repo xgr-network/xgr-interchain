@@ -1,0 +1,196 @@
+TAP version 13
+# Subtest: spoke-to-spoke opens six status stages but only four MetaMask transactions
+ok 1 - spoke-to-spoke opens six status stages but only four MetaMask transactions
+  ---
+  duration_ms: 1.647041
+  type: 'test'
+  ...
+# Subtest: source confirmed is not mistaken for successful two-hop delivery
+ok 2 - source confirmed is not mistaken for successful two-hop delivery
+  ---
+  duration_ms: 0.12619
+  type: 'test'
+  ...
+# Subtest: awaiting TX3 tells the wallet user exactly what is next
+ok 3 - awaiting TX3 tells the wallet user exactly what is next
+  ---
+  duration_ms: 0.160392
+  type: 'test'
+  ...
+# Subtest: first XGR delivery never advertises Base delivery
+ok 4 - first XGR delivery never advertises Base delivery
+  ---
+  duration_ms: 0.609057
+  type: 'test'
+  ...
+# Subtest: linked onward source requires real second-hop hash and message
+ok 5 - linked onward source requires real second-hop hash and message
+  ---
+  duration_ms: 0.134352
+  type: 'test'
+  ...
+# Subtest: only canonical journey-delivered proves full Base delivery
+ok 6 - only canonical journey-delivered proves full Base delivery
+  ---
+  duration_ms: 0.232551
+  type: 'test'
+  ...
+# Subtest: RPC unknown and proof failure are never complete
+ok 7 - RPC unknown and proof failure are never complete
+  ---
+  duration_ms: 0.14635
+  type: 'test'
+  ...
+# Subtest: direct XGR to Base uses three statuses and two wallet transactions
+ok 8 - direct XGR to Base uses three statuses and two wallet transactions
+  ---
+  duration_ms: 0.110366
+  type: 'test'
+  ...
+# Subtest: status content escapes errors while transient notices stay out of compact banner
+ok 9 - status content escapes errors while transient notices stay out of compact banner
+  ---
+  duration_ms: 3.442846
+  type: 'test'
+  ...
+# Subtest: mined but unfinalized Arbitrum parent stays at first step and shows count
+ok 10 - mined but unfinalized Arbitrum parent stays at first step and shows count
+  ---
+  duration_ms: 0.205991
+  type: 'test'
+  ...
+# Subtest: verified validator proof advances to MetaMask delivery before source receipt changes
+ok 11 - verified validator proof advances to MetaMask delivery before source receipt changes
+  ---
+  duration_ms: 0.136205
+  type: 'test'
+  ...
+# Subtest: absent proof observer entry cannot render validator proof ready
+ok 12 - absent proof observer entry cannot render validator proof ready
+  ---
+  duration_ms: 0.065639
+  type: 'test'
+  ...
+# Subtest: persistent background proof observation waits without asking for wallet signature
+ok 13 - persistent background proof observation waits without asking for wallet signature
+  ---
+  duration_ms: 0.299481
+  type: 'test'
+  ...
+# Subtest: unavailable proof never says Base was delivered
+ok 14 - unavailable proof never says Base was delivered
+  ---
+  duration_ms: 0.108062
+  type: 'test'
+  ...
+# Subtest: stale server observer does not permanently disable independent manual recovery
+ok 15 - stale server observer does not permanently disable independent manual recovery
+  ---
+  duration_ms: 0.138198
+  type: 'test'
+  ...
+# Subtest: optional sponsorship appears strictly after confirmed initial fee payment
+ok 16 - optional sponsorship appears strictly after confirmed initial fee payment
+  ---
+  duration_ms: 0.311459
+  type: 'test'
+  ...
+# Subtest: 12 of 12 confirmations does not claim Base safe finality or unlock delivery
+ok 17 - 12 of 12 confirmations does not claim Base safe finality or unlock delivery
+  ---
+  duration_ms: 0.133141
+  type: 'test'
+  ...
+# Subtest: disabled but promised gas warrants attention
+ok 18 - disabled but promised gas warrants attention
+  ---
+  duration_ms: 0.091508
+  type: 'test'
+  ...
+# Subtest: pending gas sponsorship is not rendered as actively checking forever
+ok 19 - pending gas sponsorship is not rendered as actively checking forever
+  ---
+  duration_ms: 0.075513
+  type: 'test'
+  ...
+# Subtest: no sponsor claim cannot be displayed as confirmed adequate gas
+ok 20 - no sponsor claim cannot be displayed as confirmed adequate gas
+  ---
+  duration_ms: 0.053691
+  type: 'test'
+  ...
+# Subtest: status modal never renders wallet, refresh, or proof action buttons
+ok 21 - status modal never renders wallet, refresh, or proof action buttons
+  ---
+  duration_ms: 0.195094
+  type: 'test'
+  ...
+# Subtest: final-hop modal retains canonical proof details in model without verbose flickering banner
+ok 22 - final-hop modal retains canonical proof details in model without verbose flickering banner
+  ---
+  duration_ms: 8.616019
+  type: 'test'
+  ...
+# Subtest: compact transfer status identifies which chain controls waiting
+ok 23 - compact transfer status identifies which chain controls waiting
+  ---
+  duration_ms: 0.312931
+  type: 'test'
+  ...
+# Subtest: error is never hidden by generic waiting animation
+ok 24 - error is never hidden by generic waiting animation
+  ---
+  duration_ms: 0.105138
+  type: 'test'
+  ...
+# Subtest: scheduled transient proof error remains calm but stale or missing retry raises attention
+ok 25 - scheduled transient proof error remains calm but stale or missing retry raises attention
+  ---
+  duration_ms: 0.420203
+  type: 'test'
+  ...
+# Subtest: wallet index success notice never becomes a transfer warning
+ok 26 - wallet index success notice never becomes a transfer warning
+  ---
+  duration_ms: 0.2191
+  type: 'test'
+  ...
+# Subtest: Base observed and observer rechecking both retain finality wording
+ok 27 - Base observed and observer rechecking both retain finality wording
+  ---
+  duration_ms: 0.155023
+  type: 'test'
+  ...
+# Subtest: temporary destination RPC read failures remain waiting, not transfer failures
+ok 28 - temporary destination RPC read failures remain waiting, not transfer failures
+  ---
+  duration_ms: 0.108293
+  type: 'test'
+  ...
+# Subtest: normal background proof retries and ready handoff keep stable status
+ok 29 - normal background proof retries and ready handoff keep stable status
+  ---
+  duration_ms: 0.221333
+  type: 'test'
+  ...
+# Subtest: elapsed clock and positive footer appear only in active verified flow
+ok 30 - elapsed clock and positive footer appear only in active verified flow
+  ---
+  duration_ms: 0.130536
+  type: 'test'
+  ...
+# Subtest: broadcast and mined Base Mint must not revert to preparatory wallet messaging
+ok 31 - broadcast and mined Base Mint must not revert to preparatory wallet messaging
+  ---
+  duration_ms: 0.184838
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 65.554589

@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: F-07: only stale unjournaled nonces and review-worthy grants are reported
+ok 1 - F-07: only stale unjournaled nonces and review-worthy grants are reported
+  ---
+  duration_ms: 0.524061
+  type: 'test'
+  ...
+# Subtest: F-19: only independently indexed paid and quote-matched promises are counted
+ok 2 - F-19: only independently indexed paid and quote-matched promises are counted
+  ---
+  duration_ms: 0.750191
+  type: 'test'
+  ...
+# Subtest: auditor uses exactly three SELECT queries, no write, keys or customer identities
+ok 3 - auditor uses exactly three SELECT queries, no write, keys or customer identities
+  ---
+  duration_ms: 0.826396
+  type: 'test'
+  ...
+# Subtest: clear result does not claim audited settlement; invalid aggregates fail closed
+ok 4 - clear result does not claim audited settlement; invalid aggregates fail closed
+  ---
+  duration_ms: 0.411121
+  type: 'test'
+  ...
+# Subtest: risk-audit entrypoint cannot send payments, load signer or touch Join
+ok 5 - risk-audit entrypoint cannot send payments, load signer or touch Join
+  ---
+  duration_ms: 0.247043
+  type: 'test'
+  ...
+# Subtest: F-19 overtaken register uses immutable sponsor identity and never settles liabilities
+ok 6 - F-19 overtaken register uses immutable sponsor identity and never settles liabilities
+  ---
+  duration_ms: 0.1321
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 50.986583

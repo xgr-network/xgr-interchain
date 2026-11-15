@@ -1,0 +1,8 @@
+{
+  "status": "generated; final rendered-PDF visual review and repository readback required",
+  "expected_findings": 40,
+  "expected_historical_rows": 43,
+  "assertions_passed": true,
+  "product_source_modified": false,
+  "public_evidence_contains_protected_fixtures": false
+}

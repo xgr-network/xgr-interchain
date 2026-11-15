@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: add exact fee quote and status, not a broad public signer proxy
+ok 1 - add exact fee quote and status, not a broad public signer proxy
+  ---
+  duration_ms: 1.487504
+  type: 'test'
+  ...
+# Subtest: upgrade existing signer location with trusted client IP, reject spoofable headers
+ok 2 - upgrade existing signer location with trusted client IP, reject spoofable headers
+  ---
+  duration_ms: 0.877473
+  type: 'test'
+  ...
+# Subtest: reject unsafe existing quote route or duplicate and wrong host
+ok 3 - reject unsafe existing quote route or duplicate and wrong host
+  ---
+  duration_ms: 0.207753
+  type: 'test'
+  ...
+# Subtest: exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whitelisted once in CSP
+ok 4 - exact configured Polygon/Arbitrum/Base JSON-RPC HTTPS hosts are whitelisted once in CSP
+  ---
+  duration_ms: 0.273532
+  type: 'test'
+  ...
+# Subtest: keyless preview installs only POST /preview on isolated 4093, not signer on 4092
+ok 5 - keyless preview installs only POST /preview on isolated 4093, not signer on 4092
+  ---
+  duration_ms: 0.170197
+  type: 'test'
+  ...
+# Subtest: later fee signer route setup keeps preview isolated and existing signer proxy
+ok 6 - later fee signer route setup keeps preview isolated and existing signer proxy
+  ---
+  duration_ms: 0.148434
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.270665

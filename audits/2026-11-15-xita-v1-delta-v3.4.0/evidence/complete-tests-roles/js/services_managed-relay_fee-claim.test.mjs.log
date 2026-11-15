@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: aggregate fee claim monitor checks periodically, with no per-message claims
+ok 1 - aggregate fee claim monitor checks periodically, with no per-message claims
+  ---
+  duration_ms: 0.612664
+  type: 'test'
+  ...
+# Subtest: unbounded aggressive claim polling is prohibited
+ok 2 - unbounded aggressive claim polling is prohibited
+  ---
+  duration_ms: 0.29815
+  type: 'test'
+  ...
+# Subtest: invalid claim threshold cannot incur a live transaction
+ok 3 - invalid claim threshold cannot incur a live transaction
+  ---
+  duration_ms: 0.238771
+  type: 'test'
+  ...
+# Subtest: canonical catalog discovers deployed fee gateways and checks actual receipt files
+ok 4 - canonical catalog discovers deployed fee gateways and checks actual receipt files
+  ---
+  duration_ms: 1.053719
+  type: 'test'
+  ...
+# Subtest: receipt-backed BSC is eligible and undeployed OP is never considered a fee-claim target
+ok 5 - receipt-backed BSC is eligible and undeployed OP is never considered a fee-claim target
+  ---
+  duration_ms: 1.270076
+  type: 'test'
+  ...
+# Subtest: ENV cannot replace the receipt-backed claim adapter and all thresholds validate before any claim
+ok 6 - ENV cannot replace the receipt-backed claim adapter and all thresholds validate before any claim
+  ---
+  duration_ms: 2.244655
+  type: 'test'
+  ...
+# Subtest: tampered address, hash, receipt path or receipt body abort all automatic claims
+ok 7 - tampered address, hash, receipt path or receipt body abort all automatic claims
+  ---
+  duration_ms: 1.423717
+  type: 'test'
+  ...
+# Subtest: deactivated claims do not require a private key, thresholds or RPC
+ok 8 - deactivated claims do not require a private key, thresholds or RPC
+  ---
+  duration_ms: 0.315326
+  type: 'test'
+  ...
+# Subtest: claim refuses wrong deployed runtime before connecting wallet or estimating gas
+ok 9 - claim refuses wrong deployed runtime before connecting wallet or estimating gas
+  ---
+  duration_ms: 0.293572
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 136.510907

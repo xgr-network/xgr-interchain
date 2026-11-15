@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: read-only roundtrip accepts any documented hub/spoke source pair, not only Base or XGR
+ok 1 - read-only roundtrip accepts any documented hub/spoke source pair, not only Base or XGR
+  ---
+  duration_ms: 0.792285
+  type: 'test'
+  ...
+# Subtest: receipt auditor never requires relayer or database state
+ok 2 - receipt auditor never requires relayer or database state
+  ---
+  duration_ms: 0.2917
+  type: 'test'
+  ...
+# Subtest: any same-asset roundtrip must confirm both destination deliveries
+ok 3 - any same-asset roundtrip must confirm both destination deliveries
+  ---
+  duration_ms: 0.222956
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 48.848127

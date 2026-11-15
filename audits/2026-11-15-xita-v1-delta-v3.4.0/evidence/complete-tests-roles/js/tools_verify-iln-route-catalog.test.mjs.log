@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: Arbitrum L2 route is independently verified at the documented deployment without trusting L1 block.number
+ok 1 - Arbitrum L2 route is independently verified at the documented deployment without trusting L1 block.number
+  ---
+  duration_ms: 0.698073
+  type: 'test'
+  ...
+# Subtest: reject mismatched source route, unconfirmed factory receipt and missing code
+ok 2 - reject mismatched source route, unconfirmed factory receipt and missing code
+  ---
+  duration_ms: 0.321675
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.703388

@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: XITA configured XGR/wXGR plan validates
+ok 1 - XITA configured XGR/wXGR plan validates
+  ---
+  duration_ms: 11.049278
+  type: 'test'
+  ...
+# Subtest: eight directed XGR hub routes exist for four deployed spokes
+ok 2 - eight directed XGR hub routes exist for four deployed spokes
+  ---
+  duration_ms: 1.287161
+  type: 'test'
+  ...
+# Subtest: rejects missing reverse route
+ok 3 - rejects missing reverse route
+  ---
+  duration_ms: 2.880726
+  type: 'test'
+  ...
+# Subtest: rejects external-to-external direct routes
+ok 4 - rejects external-to-external direct routes
+  ---
+  duration_ms: 2.12758
+  type: 'test'
+  ...
+# Subtest: rejects phantom chain
+ok 5 - rejects phantom chain
+  ---
+  duration_ms: 2.039306
+  type: 'test'
+  ...
+# Subtest: asset deployment manifest is keyed by original asset ID
+ok 6 - asset deployment manifest is keyed by original asset ID
+  ---
+  duration_ms: 1.950973
+  type: 'test'
+  ...
+# Subtest: rejects legacy infrastructure metadata
+ok 7 - rejects legacy infrastructure metadata
+  ---
+  duration_ms: 1.841889
+  type: 'test'
+  ...
+# Subtest: legacy Hyperlane addresses cannot enter a fresh XITA deployment manifest
+ok 8 - legacy Hyperlane addresses cannot enter a fresh XITA deployment manifest
+  ---
+  duration_ms: 1.931113
+  type: 'test'
+  ...
+# Subtest: recorded XITA deployments are valid; unauthorized metadata or malformed bindings fail
+ok 9 - recorded XITA deployments are valid; unauthorized metadata or malformed bindings fail
+  ---
+  duration_ms: 5.076218
+  type: 'test'
+  ...
+# Subtest: BSC public label is configured independently of canonical chain identity
+ok 10 - BSC public label is configured independently of canonical chain identity
+  ---
+  duration_ms: 5.967542
+  type: 'test'
+  ...
+# Subtest: rejects duplicate domains
+ok 11 - rejects duplicate domains
+  ---
+  duration_ms: 1.765974
+  type: 'test'
+  ...
+# Subtest: XGR deployment receipts stay tied to recorded contract bindings, without assumed deployment counts
+ok 12 - XGR deployment receipts stay tied to recorded contract bindings, without assumed deployment counts
+  ---
+  duration_ms: 0.725955
+  type: 'test'
+  ...
+# Subtest: rejects missing token profile logo
+ok 13 - rejects missing token profile logo
+  ---
+  duration_ms: 1.691371
+  type: 'test'
+  ...
+# Subtest: rejects unsafe public profile URL
+ok 14 - rejects unsafe public profile URL
+  ---
+  duration_ms: 1.632973
+  type: 'test'
+  ...
+# Subtest: rejects mismatched token profile
+ok 15 - rejects mismatched token profile
+  ---
+  duration_ms: 1.676048
+  type: 'test'
+  ...
+# Subtest: legacy manual listing controls are rejected
+ok 16 - legacy manual listing controls are rejected
+  ---
+  duration_ms: 1.574365
+  type: 'test'
+  ...
+# Subtest: no public threshold is hardcoded in configuration
+ok 17 - no public threshold is hardcoded in configuration
+  ---
+  duration_ms: 1.561876
+  type: 'test'
+  ...
+# Subtest: collateral tokens must have an original ERC20 address in the asset catalog
+ok 18 - collateral tokens must have an original ERC20 address in the asset catalog
+  ---
+  duration_ms: 2.418308
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 93.23887

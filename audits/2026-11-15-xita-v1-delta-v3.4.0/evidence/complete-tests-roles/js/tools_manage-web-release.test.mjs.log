@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: XITA static publication cannot roll back when Admin restart or readiness fails
+ok 1 - XITA static publication cannot roll back when Admin restart or readiness fails
+  ---
+  duration_ms: 0.82253
+  type: 'test'
+  ...
+# Subtest: Admin readiness uses a lightweight local endpoint, not the chain inventory
+ok 2 - Admin readiness uses a lightweight local endpoint, not the chain inventory
+  ---
+  duration_ms: 0.181714
+  type: 'test'
+  ...
+# Subtest: manage.sh retains its executable bit in Git
+ok 3 - manage.sh retains its executable bit in Git
+  ---
+  duration_ms: 0.100892
+  type: 'test'
+  ...
+# Subtest: temporary service cleanup cannot leak a RETURN trap into update()
+ok 4 - temporary service cleanup cannot leak a RETURN trap into update()
+  ---
+  duration_ms: 0.235766
+  type: 'test'
+  ...
+# Subtest: update always reloads the checkout after pull before publishing or restarting
+ok 5 - update always reloads the checkout after pull before publishing or restarting
+  ---
+  duration_ms: 0.233753
+  type: 'test'
+  ...
+# Subtest: updating the published XITA release refreshes both proof and historical transfer indexer
+ok 6 - updating the published XITA release refreshes both proof and historical transfer indexer
+  ---
+  duration_ms: 0.115233
+  type: 'test'
+  ...
+# Subtest: optional global Interchain Fee install is separate from blockchain deployment and protects private keys
+ok 7 - optional global Interchain Fee install is separate from blockchain deployment and protects private keys
+  ---
+  duration_ms: 0.142225
+  type: 'test'
+  ...
+# Subtest: TVL installer checks root-only indexer env with privileged access
+ok 8 - TVL installer checks root-only indexer env with privileged access
+  ---
+  duration_ms: 0.07312
+  type: 'test'
+  ...
+# Subtest: update installs exact read-only RPC Nginx route and refuses public fallback 503
+ok 9 - update installs exact read-only RPC Nginx route and refuses public fallback 503
+  ---
+  duration_ms: 0.205049
+  type: 'test'
+  ...
+# Subtest: indexer installer waits for real HTTP socket readiness before checking proof service
+ok 10 - indexer installer waits for real HTTP socket readiness before checking proof service
+  ---
+  duration_ms: 0.268756
+  type: 'test'
+  ...
+# Subtest: DB repair uses idempotent additive migrations and plain SQL checks without malformed DO quoting
+ok 11 - DB repair uses idempotent additive migrations and plain SQL checks without malformed DO quoting
+  ---
+  duration_ms: 0.176145
+  type: 'test'
+  ...
+# Subtest: Join restart waits for actual HTTP socket before installing nginx and publishing website
+ok 12 - Join restart waits for actual HTTP socket before installing nginx and publishing website
+  ---
+  duration_ms: 0.146481
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 48.643758

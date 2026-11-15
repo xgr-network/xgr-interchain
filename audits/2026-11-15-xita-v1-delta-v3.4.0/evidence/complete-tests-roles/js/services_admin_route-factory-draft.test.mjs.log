@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: first Base route needs exactly one synthetic router, not two
+ok 1 - first Base route needs exactly one synthetic router, not two
+  ---
+  duration_ms: 2.483954
+  type: 'test'
+  ...
+# Subtest: XGRChain native router only on hub, Polygon works with same path
+ok 2 - XGRChain native router only on hub, Polygon works with same path
+  ---
+  duration_ms: 1.640029
+  type: 'test'
+  ...
+# Subtest: each direction gets its own route instance, same two router addresses reversed
+ok 3 - each direction gets its own route instance, same two router addresses reversed
+  ---
+  duration_ms: 0.851697
+  type: 'test'
+  ...
+# Subtest: generic ERC20 synthetic includes origin, metadata and salt
+ok 4 - generic ERC20 synthetic includes origin, metadata and salt
+  ---
+  duration_ms: 0.808612
+  type: 'test'
+  ...
+# Subtest: synthetic second hop resolves canonical origin outside source and destination
+ok 5 - synthetic second hop resolves canonical origin outside source and destination
+  ---
+  duration_ms: 0.437131
+  type: 'test'
+  ...
+# Subtest: only complete GitHub-documented chain pairs offer routers and gateways
+ok 6 - only complete GitHub-documented chain pairs offer routers and gateways
+  ---
+  duration_ms: 1.430062
+  type: 'test'
+  ...
+# Subtest: ARB synthetic router on Base resolves canonical Arbitrum from full chain inventory
+ok 7 - ARB synthetic router on Base resolves canonical Arbitrum from full chain inventory
+  ---
+  duration_ms: 0.607218
+  type: 'test'
+  ...
+# Subtest: asset operator supplies approved chain inventory for every synthetic router
+ok 8 - asset operator supplies approved chain inventory for every synthetic router
+  ---
+  duration_ms: 0.273874
+  type: 'test'
+  ...
+# Subtest: XITA admin requires executionGateway before enabling asset route deployment
+ok 9 - XITA admin requires executionGateway before enabling asset route deployment
+  ---
+  duration_ms: 0.153512
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 50.835271

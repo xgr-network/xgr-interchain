@@ -1,0 +1,172 @@
+TAP version 13
+# Subtest: decode canonical Gateway.bridge amount without rounding or trusting arbitrary calldata
+ok 1 - decode canonical Gateway.bridge amount without rounding or trusting arbitrary calldata
+  ---
+  duration_ms: 1.187501
+  type: 'test'
+  ...
+# Subtest: a finalized source scan only accepts canonical Gateway operation logs
+ok 2 - a finalized source scan only accepts canonical Gateway operation logs
+  ---
+  duration_ms: 0.746065
+  type: 'test'
+  ...
+# Subtest: known endpoint block hash mismatch forces reindex, not silent cursor advance
+ok 3 - known endpoint block hash mismatch forces reindex, not silent cursor advance
+  ---
+  duration_ms: 0.224629
+  type: 'test'
+  ...
+# Subtest: destination delivery uses pinned Base safe block, not latest
+ok 4 - destination delivery uses pinned Base safe block, not latest
+  ---
+  duration_ms: 0.390719
+  type: 'test'
+  ...
+# Subtest: wallet index requires every configured route cursor current and reconciled
+ok 5 - wallet index requires every configured route cursor current and reconciled
+  ---
+  duration_ms: 0.459272
+  type: 'test'
+  ...
+# Subtest: DB row with unknown delivery is never advertised as pending mint
+ok 6 - DB row with unknown delivery is never advertised as pending mint
+  ---
+  duration_ms: 0.201184
+  type: 'test'
+  ...
+# Subtest: wallet API filters by normalized address and counts open events beyond pagination
+ok 7 - wallet API filters by normalized address and counts open events beyond pagination
+  ---
+  duration_ms: 0.620867
+  type: 'test'
+  ...
+# Subtest: atomically persist verified canonical event and cursor, roll back on mismatched message
+ok 8 - atomically persist verified canonical event and cursor, roll back on mismatched message
+  ---
+  duration_ms: 0.535778
+  type: 'test'
+  ...
+# Subtest: Base event index falls back to the second archive-qualified RPC
+ok 9 - Base event index falls back to the second archive-qualified RPC
+  ---
+  duration_ms: 1.278799
+  type: 'test'
+  ...
+# Subtest: failed archive RPCs never silently index an empty block range
+ok 10 - failed archive RPCs never silently index an empty block range
+  ---
+  duration_ms: 0.426273
+  type: 'test'
+  ...
+# Subtest: bounded backfill advances every committed window and stops at finality
+ok 11 - bounded backfill advances every committed window and stops at finality
+  ---
+  duration_ms: 0.219541
+  type: 'test'
+  ...
+# Subtest: known Base tx hash checks skip archive-only gate but still fail over and verify identity
+ok 12 - known Base tx hash checks skip archive-only gate but still fail over and verify identity
+  ---
+  duration_ms: 0.467765
+  type: 'test'
+  ...
+# Subtest: verified transfer RPC routing supports every source and destination backup
+ok 13 - verified transfer RPC routing supports every source and destination backup
+  ---
+  duration_ms: 0.163066
+  type: 'test'
+  ...
+# Subtest: candidate RPC reads confirmed TX from fallback after primary returns null
+ok 14 - candidate RPC reads confirmed TX from fallback after primary returns null
+  ---
+  duration_ms: 0.186491
+  type: 'test'
+  ...
+# Subtest: Arbitrum indexer converts safe block timestamp without fractional BigInt
+ok 15 - Arbitrum indexer converts safe block timestamp without fractional BigInt
+  ---
+  duration_ms: 0.228484
+  type: 'test'
+  ...
+# Subtest: direct transfers never write a commercial tax fee
+ok 16 - direct transfers never write a commercial tax fee
+  ---
+  duration_ms: 0.169345
+  type: 'test'
+  ...
+# Subtest: successful finalized initial adapter fee is recorded once, without assuming delivery
+ok 17 - successful finalized initial adapter fee is recorded once, without assuming delivery
+  ---
+  duration_ms: 0.222095
+  type: 'test'
+  ...
+# Subtest: M-02: finality-qualified false reopens a previously completed delivery
+ok 18 - M-02: finality-qualified false reopens a previously completed delivery
+  ---
+  duration_ms: 0.400183
+  type: 'test'
+  ...
+# Subtest: F-26: retired routes cannot starve active deliveries in a bounded sweep
+ok 19 - F-26: retired routes cannot starve active deliveries in a bounded sweep
+  ---
+  duration_ms: 0.458902
+  type: 'test'
+  ...
+# Subtest: F-26: an empty active route catalog does not alter historical delivery rows
+ok 20 - F-26: an empty active route catalog does not alter historical delivery rows
+  ---
+  duration_ms: 0.101293
+  type: 'test'
+  ...
+# Subtest: F-26: active route keys are selected as pairs, not independent lists
+ok 21 - F-26: active route keys are selected as pairs, not independent lists
+  ---
+  duration_ms: 0.162375
+  type: 'test'
+  ...
+# Subtest: shared observer scans two routes using one verified safe head and one Gateway query
+ok 22 - shared observer scans two routes using one verified safe head and one Gateway query
+  ---
+  duration_ms: 0.456248
+  type: 'test'
+  ...
+# Subtest: shared observer keeps lagging route independent of already advanced route
+ok 23 - shared observer keeps lagging route independent of already advanced route
+  ---
+  duration_ms: 0.192
+  type: 'test'
+  ...
+# Subtest: shared observer rejects failed logs and does not synthesize a successful window
+ok 24 - shared observer rejects failed logs and does not synthesize a successful window
+  ---
+  duration_ms: 0.167883
+  type: 'test'
+  ...
+# Subtest: canonical provider cooldown prevents repeated identity and archive probes
+ok 25 - canonical provider cooldown prevents repeated identity and archive probes
+  ---
+  duration_ms: 0.2919
+  type: 'test'
+  ...
+# Subtest: release-reviewed Base and Arbitrum provider pools use four independent endpoints
+ok 26 - release-reviewed Base and Arbitrum provider pools use four independent endpoints
+  ---
+  duration_ms: 1.171647
+  type: 'test'
+  ...
+# Subtest: four Base providers fail over on HTTP 429 without treating rejected logs as empty
+ok 27 - four Base providers fail over on HTTP 429 without treating rejected logs as empty
+  ---
+  duration_ms: 0.287834
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 68.613163

@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: published CSS URL changes whenever stylesheet changes, not just JavaScript
+ok 1 - published CSS URL changes whenever stylesheet changes, not just JavaScript
+  ---
+  duration_ms: 0.851285
+  type: 'test'
+  ...
+# Subtest: missing or duplicate stylesheet URL aborts release before publication
+ok 2 - missing or duplicate stylesheet URL aborts release before publication
+  ---
+  duration_ms: 0.250037
+  type: 'test'
+  ...
+# Subtest: published release contains a fingerprint matching its CSS bytes
+ok 3 - published release contains a fingerprint matching its CSS bytes
+  ---
+  duration_ms: 1.177997
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43.18121

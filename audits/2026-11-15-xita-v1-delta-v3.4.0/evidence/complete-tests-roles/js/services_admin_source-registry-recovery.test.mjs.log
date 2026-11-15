@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: Arbitrum delegated execution is documented using the Factory event without historical tx lookup
+ok 1 - Arbitrum delegated execution is documented using the Factory event without historical tx lookup
+  ---
+  duration_ms: 12.708921
+  type: 'test'
+  ...
+# Subtest: same Registry event works for direct MetaMask Factory transaction
+ok 2 - same Registry event works for direct MetaMask Factory transaction
+  ---
+  duration_ms: 4.775919
+  type: 'test'
+  ...
+# Subtest: event proof rejects failed receipts and foreign Registry events
+ok 3 - event proof rejects failed receipts and foreign Registry events
+  ---
+  duration_ms: 0.567358
+  type: 'test'
+  ...
+# Subtest: Factory.registry zero means a new wallet-confirmed Registry call is still needed
+ok 4 - Factory.registry zero means a new wallet-confirmed Registry call is still needed
+  ---
+  duration_ms: 0.396379
+  type: 'test'
+  ...
+# Subtest: normal chain reconcile documents original Factory deployment despite unrelated latest MetaMask transaction
+ok 5 - normal chain reconcile documents original Factory deployment despite unrelated latest MetaMask transaction
+  ---
+  duration_ms: 14.058542
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 89.648359

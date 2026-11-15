@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: CI accepts an independently verified CoinGecko-only metadata update
+ok 1 - CI accepts an independently verified CoinGecko-only metadata update
+  ---
+  duration_ms: 10.27504
+  type: 'test'
+  ...
+# Subtest: unmodified existing token profiles need no CoinGecko API access
+ok 2 - unmodified existing token profiles need no CoinGecko API access
+  ---
+  duration_ms: 0.133572
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 57.783755

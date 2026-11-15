@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: prospect lacks documentation and cannot be published
+ok 1 - prospect lacks documentation and cannot be published
+  ---
+  duration_ms: 1.628192
+  type: 'test'
+  ...
+# Subtest: any complete route suffices and incomplete future chains do not block
+ok 2 - any complete route suffices and incomplete future chains do not block
+  ---
+  duration_ms: 0.482247
+  type: 'test'
+  ...
+# Subtest: null lists deployed without metrics and positive threshold requires matching proof
+ok 3 - null lists deployed without metrics and positive threshold requires matching proof
+  ---
+  duration_ms: 0.954648
+  type: 'test'
+  ...
+# Subtest: untrusted publication status does not override config policy
+ok 4 - untrusted publication status does not override config policy
+  ---
+  duration_ms: 0.189816
+  type: 'test'
+  ...
+# Subtest: legacy no-policy catalogs still require explicit matching public snapshot
+ok 5 - legacy no-policy catalogs still require explicit matching public snapshot
+  ---
+  duration_ms: 0.247913
+  type: 'test'
+  ...
+# Subtest: reviewed XGR creator enters public token directory even before ILN route deployment
+ok 6 - reviewed XGR creator enters public token directory even before ILN route deployment
+  ---
+  duration_ms: 0.323097
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 50.238393

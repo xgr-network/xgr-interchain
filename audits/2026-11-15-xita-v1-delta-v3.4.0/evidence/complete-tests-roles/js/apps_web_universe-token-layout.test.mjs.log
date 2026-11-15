@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: catalog-listed wrapped tokens appear without ranking or deployment receipts
+ok 1 - catalog-listed wrapped tokens appear without ranking or deployment receipts
+  ---
+  duration_ms: 0.964663
+  type: 'test'
+  ...
+# Subtest: hub native representation also appears without market or custody metrics
+ok 2 - hub native representation also appears without market or custody metrics
+  ---
+  duration_ms: 0.118719
+  type: 'test'
+  ...
+# Subtest: ranked items reorder catalog tokens but never filter out unranked assets or add outsiders
+ok 3 - ranked items reorder catalog tokens but never filter out unranked assets or add outsiders
+  ---
+  duration_ms: 0.19233
+  type: 'test'
+  ...
+# Subtest: search filters from catalog locally even when external ranking is unavailable
+ok 4 - search filters from catalog locally even when external ranking is unavailable
+  ---
+  duration_ms: 0.199711
+  type: 'test'
+  ...
+# Subtest: at most six deterministic selectable planets are placed even for large catalogs
+ok 5 - at most six deterministic selectable planets are placed even for large catalogs
+  ---
+  duration_ms: 0.249396
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 44.809028

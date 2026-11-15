@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: preview-only mode reads public catalog and answers health without a signer
+ok 1 - preview-only mode reads public catalog and answers health without a signer
+  ---
+  duration_ms: 1.285879
+  type: 'test'
+  ...
+# Subtest: preview-only mode refuses signed quotes before even parsing a transfer
+ok 2 - preview-only mode refuses signed quotes before even parsing a transfer
+  ---
+  duration_ms: 0.16607
+  type: 'test'
+  ...
+# Subtest: unsigned preview endpoint is explicitly routed but requires a valid request
+ok 3 - unsigned preview endpoint is explicitly routed but requires a valid request
+  ---
+  duration_ms: 1.944813
+  type: 'test'
+  ...
+# Subtest: new receipt-backed Arbitrum route and adapter become visible without restarting preview service
+ok 4 - new receipt-backed Arbitrum route and adapter become visible without restarting preview service
+  ---
+  duration_ms: 2.108359
+  type: 'test'
+  ...
+# Subtest: adapter discovery supports any future configured chain, without editing service source
+ok 5 - adapter discovery supports any future configured chain, without editing service source
+  ---
+  duration_ms: 0.546003
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 121.327468

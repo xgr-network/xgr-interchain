@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: receipt verifies canonical block, correct chain and artifact runtime keccak
+ok 1 - receipt verifies canonical block, correct chain and artifact runtime keccak
+  ---
+  duration_ms: 11.567205
+  type: 'test'
+  ...
+# Subtest: spoofed chain, failed tx, noncanonical block and altered runtime all fail
+ok 2 - spoofed chain, failed tx, noncanonical block and altered runtime all fail
+  ---
+  duration_ms: 10.106908
+  type: 'test'
+  ...
+# Subtest: cannot publish fake receipt, no GitHub token or mismatched main
+ok 3 - cannot publish fake receipt, no GitHub token or mismatched main
+  ---
+  duration_ms: 0.97212
+  type: 'test'
+  ...
+# Subtest: atomic deployment catalog includes new infrastructure component and asset receipts
+ok 4 - atomic deployment catalog includes new infrastructure component and asset receipts
+  ---
+  duration_ms: 13.380215
+  type: 'test'
+  ...
+# Subtest: deployment catalog generation fails closed on invalid overrides
+ok 5 - deployment catalog generation fails closed on invalid overrides
+  ---
+  duration_ms: 6.006499
+  type: 'test'
+  ...
+# Subtest: receipt proof NEVER requests archived contract state; immutable runtime read at latest
+ok 6 - receipt proof NEVER requests archived contract state; immutable runtime read at latest
+  ---
+  duration_ms: 3.065234
+  type: 'test'
+  ...
+# Subtest: Direct-BLS transport uses actual two-address event and one aliased ProtocolFee receipt
+ok 7 - Direct-BLS transport uses actual two-address event and one aliased ProtocolFee receipt
+  ---
+  duration_ms: 0.341356
+  type: 'test'
+  ...
+# Subtest: Base receipt waits for 12 confirmations without accepting an unconfirmed deployment
+ok 8 - Base receipt waits for 12 confirmations without accepting an unconfirmed deployment
+  ---
+  duration_ms: 2.265935
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.354507

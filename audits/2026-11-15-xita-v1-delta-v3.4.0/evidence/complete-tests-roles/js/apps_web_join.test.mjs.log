@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: CoinGecko Join shows only ID, email, consent and conditional origin choice
+ok 1 - CoinGecko Join shows only ID, email, consent and conditional origin choice
+  ---
+  duration_ms: 1.694001
+  type: 'test'
+  ...
+# Subtest: no arbitrary original chain selection without verified multiple CoinGecko contracts
+ok 2 - no arbitrary original chain selection without verified multiple CoinGecko contracts
+  ---
+  duration_ms: 0.227112
+  type: 'test'
+  ...
+# Subtest: profile management allows only CoinGecko sync; no free text editor
+ok 3 - profile management allows only CoinGecko sync; no free text editor
+  ---
+  duration_ms: 5.649569
+  type: 'test'
+  ...
+# Subtest: email confirmation remains single-use and XGR-reviewed, with no direct route deployment
+ok 4 - email confirmation remains single-use and XGR-reviewed, with no direct route deployment
+  ---
+  duration_ms: 0.252501
+  type: 'test'
+  ...
+# Subtest: Creator launch link is rendered only after explicit readiness
+ok 5 - Creator launch link is rendered only after explicit readiness
+  ---
+  duration_ms: 0.253021
+  type: 'test'
+  ...
+# Subtest: mobile navigation exposes an accessible collapsed menu control
+ok 6 - mobile navigation exposes an accessible collapsed menu control
+  ---
+  duration_ms: 0.220502
+  type: 'test'
+  ...
+# Subtest: Join landing has two equally prominent paths and integration is progressive
+ok 7 - Join landing has two equally prominent paths and integration is progressive
+  ---
+  duration_ms: 0.194703
+  type: 'test'
+  ...
+# Subtest: CoinGecko matching is explained using only receipt-deployed XITA chains
+ok 8 - CoinGecko matching is explained using only receipt-deployed XITA chains
+  ---
+  duration_ms: 0.213081
+  type: 'test'
+  ...
+# Subtest: Join integrates in an exclusive screen with a functional Back action
+ok 9 - Join integrates in an exclusive screen with a functional Back action
+  ---
+  duration_ms: 0.543278
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 53.865055

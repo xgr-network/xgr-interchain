@@ -1,0 +1,62 @@
+TAP version 13
+# Subtest: only documented synthetic routers become wallet-copyable token contracts
+ok 1 - only documented synthetic routers become wallet-copyable token contracts
+  ---
+  duration_ms: 1.160107
+  type: 'test'
+  ...
+# Subtest: published XGR Base synthetic address is grounded in verified route deployments
+not ok 2 - published XGR Base synthetic address is grounded in verified route deployments
+  ---
+  duration_ms: 1.717617
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/apps/web/token-inventory.test.mjs:25:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + '0xd7443427ca21ae0907d2aa55446470307c990092'
+    - '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '0x2ca97eff807744f81f13c59a75a8eb0add1c715d'
+  actual: '0xd7443427ca21ae0907d2aa55446470307c990092'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/apps/web/token-inventory.test.mjs:30:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+# Subtest: wallet balances are read-only, represent zero honestly and never invent missing RPC data
+ok 3 - wallet balances are read-only, represent zero honestly and never invent missing RPC data
+  ---
+  duration_ms: 0.704441
+  type: 'test'
+  ...
+# Subtest: wallet inventory shows original ARB balance without a synthetic prefix
+ok 4 - wallet inventory shows original ARB balance without a synthetic prefix
+  ---
+  duration_ms: 0.103917
+  type: 'test'
+  ...
+# Subtest: explorer links have vetted chain origins and validated contract address
+ok 5 - explorer links have vetted chain origins and validated contract address
+  ---
+  duration_ms: 0.096034
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 4
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 48.121064

@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: asset batch uses the existing server-side nonce and receipt recovery before signing
+ok 1 - asset batch uses the existing server-side nonce and receipt recovery before signing
+  ---
+  duration_ms: 0.876455
+  type: 'test'
+  ...
+# Subtest: a previous submitted transaction stays pending; never interpreted as permission to resend
+ok 2 - a previous submitted transaction stays pending; never interpreted as permission to resend
+  ---
+  duration_ms: 0.117698
+  type: 'test'
+  ...
+# Subtest: a recovered confirmed contract is documented without a new wallet request
+ok 3 - a recovered confirmed contract is documented without a new wallet request
+  ---
+  duration_ms: 0.102374
+  type: 'test'
+  ...
+# Subtest: chain batch shares the exact same continuation gate
+ok 4 - chain batch shares the exact same continuation gate
+  ---
+  duration_ms: 0.138679
+  type: 'test'
+  ...
+# Subtest: missing, failed or malformed recovery does not authorize a new signature
+ok 5 - missing, failed or malformed recovery does not authorize a new signature
+  ---
+  duration_ms: 0.439855
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.169607

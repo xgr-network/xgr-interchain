@@ -1,0 +1,94 @@
+TAP version 13
+# Subtest: same directional route name across different token projects NEVER shares a cursor
+ok 1 - same directional route name across different token projects NEVER shares a cursor
+  ---
+  duration_ms: 1.115132
+  type: 'test'
+  ...
+# Subtest: unknown target delivered state remains UNKNOWN and never invents successful mint
+ok 2 - unknown target delivered state remains UNKNOWN and never invents successful mint
+  ---
+  duration_ms: 0.41093
+  type: 'test'
+  ...
+# Subtest: confirmed first hop with signed onward route stays open, never claims completion
+ok 3 - confirmed first hop with signed onward route stays open, never claims completion
+  ---
+  duration_ms: 0.154754
+  type: 'test'
+  ...
+# Subtest: only the exact canonical onward parent message and route completes a two-hop journey
+ok 4 - only the exact canonical onward parent message and route completes a two-hop journey
+  ---
+  duration_ms: 0.454546
+  type: 'test'
+  ...
+# Subtest: only RPC-observed unconfirmed source hints appear and cannot count as deliveries
+ok 5 - only RPC-observed unconfirmed source hints appear and cannot count as deliveries
+  ---
+  duration_ms: 0.839977
+  type: 'test'
+  ...
+# Subtest: wallet history prioritizes older unfinished transfers before newer completed history
+ok 6 - wallet history prioritizes older unfinished transfers before newer completed history
+  ---
+  duration_ms: 0.303337
+  type: 'test'
+  ...
+# Subtest: wallet joins optional durable proof status only for its canonical indexed messages
+ok 7 - wallet joins optional durable proof status only for its canonical indexed messages
+  ---
+  duration_ms: 0.420404
+  type: 'test'
+  ...
+# Subtest: wallet API remains available when optional proof migration is missing
+ok 8 - wallet API remains available when optional proof migration is missing
+  ---
+  duration_ms: 0.203336
+  type: 'test'
+  ...
+# Subtest: aggregate route health reveals no addresses or signing calldata
+ok 9 - aggregate route health reveals no addresses or signing calldata
+  ---
+  duration_ms: 0.408226
+  type: 'test'
+  ...
+# Subtest: ambiguous competing onward hops remain visible instead of silently disappearing
+ok 10 - ambiguous competing onward hops remain visible instead of silently disappearing
+  ---
+  duration_ms: 0.482608
+  type: 'test'
+  ...
+# Subtest: transfer health coverage always includes token identity for same-name multi-assets
+ok 11 - transfer health coverage always includes token identity for same-name multi-assets
+  ---
+  duration_ms: 0.157357
+  type: 'test'
+  ...
+# Subtest: empty deployment catalog never exposes orphaned pending SQL operations
+ok 12 - empty deployment catalog never exposes orphaned pending SQL operations
+  ---
+  duration_ms: 0.380334
+  type: 'test'
+  ...
+# Subtest: active deployment routes get priority over retired route backlog (N-11)
+ok 13 - active deployment routes get priority over retired route backlog (N-11)
+  ---
+  duration_ms: 0.198009
+  type: 'test'
+  ...
+# Subtest: canonical wallet projection distinguishes exactly matched zero grants from missing quote
+ok 14 - canonical wallet projection distinguishes exactly matched zero grants from missing quote
+  ---
+  duration_ms: 0.388957
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58.077043

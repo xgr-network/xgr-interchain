@@ -1,0 +1,81 @@
+TAP version 13
+# Subtest: catalog-only read allows Arbitrum preflight through loopback without browser CORS
+ok 1 - catalog-only read allows Arbitrum preflight through loopback without browser CORS
+  ---
+  duration_ms: 5.320955
+  type: 'test'
+  ...
+# Subtest: automatic failover must verify destination chain ID before providing data
+ok 2 - automatic failover must verify destination chain ID before providing data
+  ---
+  duration_ms: 0.43122
+  type: 'test'
+  ...
+# Subtest: unknown URLs, private hosts, unsafe methods and broad log scans are refused without network
+not ok 3 - unknown URLs, private hosts, unsafe methods and broad log scans are refused without network
+  ---
+  duration_ms: 0.985056
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/services/indexer/rpc-read.test.mjs:37:1'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected rejection.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'rejects'
+  stack: |-
+    async TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/services/indexer/rpc-read.test.mjs:50:32)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: receipt and filtered bounded event reads remain available for wallet recovery
+ok 4 - receipt and filtered bounded event reads remain available for wallet recovery
+  ---
+  duration_ms: 0.231819
+  type: 'test'
+  ...
+# Subtest: wrong-chain and untrusted RPC responses fail closed
+ok 5 - wrong-chain and untrusted RPC responses fail closed
+  ---
+  duration_ms: 0.328676
+  type: 'test'
+  ...
+# Subtest: latest-only eth_getCode is allowed; archive-state requests remain refused
+ok 6 - latest-only eth_getCode is allowed; archive-state requests remain refused
+  ---
+  duration_ms: 0.196136
+  type: 'test'
+  ...
+# Subtest: many concurrent wallet reads single-flight one verified chain ID
+ok 7 - many concurrent wallet reads single-flight one verified chain ID
+  ---
+  duration_ms: 4.396029
+  type: 'test'
+  ...
+# Subtest: proxy 503 errors preserve safe upstream failure categories, not secrets or request params
+ok 8 - proxy 503 errors preserve safe upstream failure categories, not secrets or request params
+  ---
+  duration_ms: 0.511892
+  type: 'test'
+  ...
+# Subtest: a failed read invalidates the identity cache and independently checks fallback chain
+ok 9 - a failed read invalidates the identity cache and independently checks fallback chain
+  ---
+  duration_ms: 0.270478
+  type: 'test'
+  ...
+# Subtest: native safe block and pinned mailbox finality reads are permitted, but signing is forbidden
+ok 10 - native safe block and pinned mailbox finality reads are permitted, but signing is forbidden
+  ---
+  duration_ms: 0.413003
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 9
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.030432

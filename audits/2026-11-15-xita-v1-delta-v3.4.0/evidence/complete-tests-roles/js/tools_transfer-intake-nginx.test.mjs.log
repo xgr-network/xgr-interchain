@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: exact TX intake route is idempotent and preserves fail-closed API
+ok 1 - exact TX intake route is idempotent and preserves fail-closed API
+  ---
+  duration_ms: 0.639195
+  type: 'test'
+  ...
+# Subtest: refuse malformed host, duplicate or untrusted listener
+ok 2 - refuse malformed host, duplicate or untrusted listener
+  ---
+  duration_ms: 0.336357
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 37.639008

@@ -1,0 +1,35 @@
+{
+  "policy": "Runnable unresolved metadata/proof fixtures are delivered separately in an operator archive, not placed in the public repository. Public hashes and execution summaries bind the retained originals. Third-party independent rerun access is not claimed without that archive. The scripts use only synthetic identities and mocked external effects.",
+  "fixtures": [
+    {
+      "name": "creator-adversarial.mjs",
+      "sha256": "902d527686a70a1ef32e428b8282d21aa7a4c5f6a7466401137affb07ece542b",
+      "supports": [
+        "F-36",
+        "F-37"
+      ],
+      "result": "Positive control progresses; two admitted post-deployment variants block three sweeps each; UTF-8 fix rejects; unresolved retention removal reproduces."
+    },
+    {
+      "name": "sponsor-effects.mjs",
+      "sha256": "14ec164c4548c62f9f13a0cc6ac24aafb0966aad2647282c44f702e90aace3f4",
+      "supports": [
+        "F-08",
+        "F-19",
+        "F-33"
+      ],
+      "result": "Successful preflight/read paths finish; stalled first effect blocks healthy second; queued fresh send can proceed after fixture parent completion; expired-read control sends nothing.",
+      "production_source_sha256": "300c4c9b173bae13a81aab6495656f99f93dd640c0cbe4d5cf437f6efb7f09d7",
+      "export_only_instrumented_sha256": "80c672cbe19753ecd6ba04375d2aa7ce35efde8082b73a84a2c16e778347ed60"
+    },
+    {
+      "name": "creator-provenance.mjs",
+      "sha256": "86da21e94935079967639b89c75ab8991977182d37438131b6610c72f80ab118",
+      "supports": [
+        "F-38"
+      ],
+      "result": "Different internally consistent creation block hashes at identical height pass the current normalized two-RPC projection."
+    }
+  ],
+  "phase_a_original_sha256": "0a357677b235bc0b76f3c202751da59d89298fcecdefc2cac5316c70431baef1"
+}

@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: CoinGecko 404 explains the difference between API ID and ticker
+ok 1 - CoinGecko 404 explains the difference between API ID and ticker
+  ---
+  duration_ms: 1.049133
+  type: 'test'
+  ...
+# Subtest: Join reuses the already configured XITA GitHub writer credential
+ok 2 - Join reuses the already configured XITA GitHub writer credential
+  ---
+  duration_ms: 0.128634
+  type: 'test'
+  ...
+# Subtest: Join status fails closed until private email delivery and writer exist
+ok 3 - Join status fails closed until private email delivery and writer exist
+  ---
+  duration_ms: 0.280493
+  type: 'test'
+  ...
+# Subtest: Join readiness rejects broken operator inventory even with mail and GitHub configured
+ok 4 - Join readiness rejects broken operator inventory even with mail and GitHub configured
+  ---
+  duration_ms: 5.749252
+  type: 'test'
+  ...
+# Subtest: Join preview blocks bad operator inventory before calling CoinGecko
+ok 5 - Join preview blocks bad operator inventory before calling CoinGecko
+  ---
+  duration_ms: 22.687384
+  type: 'test'
+  ...
+# Subtest: multi-contract CoinGecko preview offers a chain choice before manifest validation
+ok 6 - multi-contract CoinGecko preview offers a chain choice before manifest validation
+  ---
+  duration_ms: 23.879542
+  type: 'test'
+  ...
+# Subtest: email confirmation is private, single-use and required before public GitHub Draft PR
+ok 7 - email confirmation is private, single-use and required before public GitHub Draft PR
+  ---
+  duration_ms: 31.505998
+  type: 'test'
+  ...
+# Subtest: unconfirmed email expires and permits a new application after 24 hours
+ok 8 - unconfirmed email expires and permits a new application after 24 hours
+  ---
+  duration_ms: 1.108402
+  type: 'test'
+  ...
+# Subtest: closed or deleted unmerged PR allows reapplication; open or merged PR blocks
+ok 9 - closed or deleted unmerged PR allows reapplication; open or merged PR blocks
+  ---
+  duration_ms: 0.383128
+  type: 'test'
+  ...
+# Subtest: profile update requires verified email, writes metadata-only Draft PR and is idempotent
+ok 10 - profile update requires verified email, writes metadata-only Draft PR and is idempotent
+  ---
+  duration_ms: 19.534718
+  type: 'test'
+  ...
+# Subtest: Creator public CTA stays off until the operator deliberately enables it
+ok 11 - Creator public CTA stays off until the operator deliberately enables it
+  ---
+  duration_ms: 1.765283
+  type: 'test'
+  ...
+# Subtest: CoinGecko Join scans only receipt-deployed XITA original chains and filters unsupported platforms
+ok 12 - CoinGecko Join scans only receipt-deployed XITA original chains and filters unsupported platforms
+  ---
+  duration_ms: 0.684813
+  type: 'test'
+  ...
+# Subtest: CoinGecko-only token on unsupported chains returns a clear 422 with supported XITA networks
+ok 13 - CoinGecko-only token on unsupported chains returns a clear 422 with supported XITA networks
+  ---
+  duration_ms: 3.422843
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 176.681283

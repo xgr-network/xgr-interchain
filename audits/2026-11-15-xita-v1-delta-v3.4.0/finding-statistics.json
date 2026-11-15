@@ -1,0 +1,17 @@
+{
+  "unique_causes": 40,
+  "Critical": 0,
+  "High": 0,
+  "RESOLVED": 11,
+  "Medium": 10,
+  "Low": 16,
+  "Informational": 3,
+  "prior_unique_causes": 39,
+  "new_causes": [
+    "F-40"
+  ],
+  "newly_resolved": [
+    "F-20"
+  ],
+  "note": "Severity is not disposition; F-11 accepted risk remains counted as Medium."
+}

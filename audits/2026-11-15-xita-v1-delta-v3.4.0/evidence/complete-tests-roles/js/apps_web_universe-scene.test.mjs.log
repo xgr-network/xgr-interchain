@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: public Universe hides planned Polygon and includes fully deployed BSC
+ok 1 - public Universe hides planned Polygon and includes fully deployed BSC
+  ---
+  duration_ms: 8.651793
+  type: 'test'
+  ...
+# Subtest: Northstar decoration keeps subtle hub dust and no spoke particle clouds
+ok 2 - Northstar decoration keeps subtle hub dust and no spoke particle clouds
+  ---
+  duration_ms: 2.916674
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 57.533446

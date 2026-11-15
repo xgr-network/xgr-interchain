@@ -1,0 +1,1 @@
+{"scope":"isolated PostgreSQL only","checks":{"normal_cli_succeeds":true,"update_denied":true,"private_column_denied":true,"table_insert_accepts_unbound_actor_time_and_sponsor":true,"liability_preserved":true},"forged_metadata":{"reviewer":"another-operator","recorded_at":"2000-01-01T00:00:00.000Z"}}

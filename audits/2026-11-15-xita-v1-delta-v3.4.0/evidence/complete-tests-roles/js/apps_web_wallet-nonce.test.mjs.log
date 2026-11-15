@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: valid wallet nonces require no fallback
+ok 1 - valid wallet nonces require no fallback
+  ---
+  duration_ms: 1.052675
+  type: 'test'
+  ...
+# Subtest: invalid or missing EIP-1193 nonces are recovered only from verified canonical RPC
+ok 2 - invalid or missing EIP-1193 nonces are recovered only from verified canonical RPC
+  ---
+  duration_ms: 1.016251
+  type: 'test'
+  ...
+# Subtest: unambiguous padded hex, decimal and safe numeric nonces are normalized locally
+ok 3 - unambiguous padded hex, decimal and safe numeric nonces are normalized locally
+  ---
+  duration_ms: 0.267023
+  type: 'test'
+  ...
+# Subtest: stale injected pending nonce can be reconciled with chain RPC
+ok 4 - stale injected pending nonce can be reconciled with chain RPC
+  ---
+  duration_ms: 0.256557
+  type: 'test'
+  ...
+# Subtest: known pending nonce from either source stays blocked
+ok 5 - known pending nonce from either source stays blocked
+  ---
+  duration_ms: 0.587034
+  type: 'test'
+  ...
+# Subtest: unavailable or contradictory canonical source RPC fails closed
+ok 6 - unavailable or contradictory canonical source RPC fails closed
+  ---
+  duration_ms: 0.428775
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.492667

@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: systemd parses loaded and not-installed without inventing uptime
+ok 1 - systemd parses loaded and not-installed without inventing uptime
+  ---
+  duration_ms: 0.813181
+  type: 'test'
+  ...
+# Subtest: indexer health recognizes freshness, historical backlog, stale cursors and missing values
+ok 2 - indexer health recognizes freshness, historical backlog, stale cursors and missing values
+  ---
+  duration_ms: 0.685577
+  type: 'test'
+  ...
+# Subtest: TVL evidence is fresh only with a valid timestamp and schema
+ok 3 - TVL evidence is fresh only with a valid timestamp and schema
+  ---
+  duration_ms: 1.129318
+  type: 'test'
+  ...
+# Subtest: overall health is sound with absent optional services but flags core failure
+ok 4 - overall health is sound with absent optional services but flags core failure
+  ---
+  duration_ms: 3.515954
+  type: 'test'
+  ...
+# Subtest: paid quote signer with responsive HTTP but missing DB permissions is DEGRADED
+ok 5 - paid quote signer with responsive HTTP but missing DB permissions is DEGRADED
+  ---
+  duration_ms: 0.704945
+  type: 'test'
+  ...
+# Subtest: fee timers distinguish disabled, stopped and actually failed
+ok 6 - fee timers distinguish disabled, stopped and actually failed
+  ---
+  duration_ms: 0.250509
+  type: 'test'
+  ...
+# Subtest: Join health separates service readiness, missing configuration and missing installation
+ok 7 - Join health separates service readiness, missing configuration and missing installation
+  ---
+  duration_ms: 1.026963
+  type: 'test'
+  ...
+# Subtest: System Health automatically discovers BSC from chain catalog without a new hardcoded chain entry
+ok 8 - System Health automatically discovers BSC from chain catalog without a new hardcoded chain entry
+  ---
+  duration_ms: 0.39659
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 54.46699

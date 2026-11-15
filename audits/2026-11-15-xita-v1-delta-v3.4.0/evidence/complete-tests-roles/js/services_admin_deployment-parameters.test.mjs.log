@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: Registry values are signed as exact component-scoped Wei, never main config
+ok 1 - Registry values are signed as exact component-scoped Wei, never main config
+  ---
+  duration_ms: 0.634128
+  type: 'test'
+  ...
+# Subtest: Factory accepts source-native fee only; router metadata hint is internal
+ok 2 - Factory accepts source-native fee only; router metadata hint is internal
+  ---
+  duration_ms: 0.597443
+  type: 'test'
+  ...
+# Subtest: malformed fee, mismatched input and reserve relationships fail before signing
+ok 3 - malformed fee, mismatched input and reserve relationships fail before signing
+  ---
+  duration_ms: 0.146882
+  type: 'test'
+  ...
+# Subtest: validator initial reserve must be explicit and at least minimum
+ok 4 - validator initial reserve must be explicit and at least minimum
+  ---
+  duration_ms: 0.167954
+  type: 'test'
+  ...
+# Subtest: GmbH fee recipient, gas sponsor and quote signer share exactly ONE wallet
+ok 5 - GmbH fee recipient, gas sponsor and quote signer share exactly ONE wallet
+  ---
+  duration_ms: 0.290569
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.530272

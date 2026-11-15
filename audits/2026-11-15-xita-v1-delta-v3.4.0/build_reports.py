@@ -72,7 +72,9 @@ def pdf_from_markdown(src:Path,dst:Path,subtitle:str):
         para=[line];i+=1
         while i<len(lines) and lines[i].strip() and not lines[i].startswith(('#','|','```','<!--')):
             para.append(lines[i].strip());i+=1
-        story.append(Paragraph(fmt(' '.join(para)),styles['BodyX']))
+        body=Paragraph(fmt(' '.join(para)),styles['BodyX'])
+        if line.startswith('**') and line.endswith('**') and ' | ' in line:body.keepWithNext=True
+        story.append(body)
     def page(c,doc):
         c.saveState();w,h=A4
         c.setStrokeColor(colors.HexColor('#D2DCE2'));c.line(45,h-35,w-45,h-35)
@@ -122,7 +124,8 @@ def main():
     assert len(history)==43
     appended=['v3_4_current_finding_id','v3_4_severity','v3_4_disposition','v3_4_layer','v3_4_assessment','v3_4_evidence','v3_4_counting_note']
     for row in history:
-        fid=row.get('v3_3_current_finding_id') or row.get('current_finding');f=byid[fid]
+        fid=row.get('v3_3_current_finding_id') or row.get('current_finding')
+        f=byid.get(fid) or {'severity':row['v3_3_severity'],'status':row['v3_3_disposition'],'layer':'Historical-only resolved occurrence','assessment':'Historical-only closure retained, not recounted as a new F-ID. '+row['v3_3_assessment'],'evidence':'E-01/E-02/E-03: relevant source boundaries and current suites checked; original dedicated negative traces remain inherited.'}
         row.update({'v3_4_current_finding_id':fid,'v3_4_severity':f['severity'],'v3_4_disposition':f['status'],'v3_4_layer':f['layer'],'v3_4_assessment':f['assessment'],'v3_4_evidence':f['evidence'],'v3_4_counting_note':'Historical occurrence retained; count once by current unique cause. F-40 is in the current register, not retroactively inserted into historical rows.'})
     writecsv(out/'historical-findings-matrix.csv',oldfields+appended,history)
     dump(evidence/'current-source-comparison.json',list(comparison.values()))

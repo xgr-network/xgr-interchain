@@ -1,0 +1,1191 @@
+{
+  "algorithm": "SHA-256",
+  "self_excluded": true,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 1833,
+      "sha256": "51d926165b3d9fd6f797aaddb9e5fd5265a6a39a598003e16e0098e50d644d90"
+    },
+    {
+      "path": "assessment-data.json",
+      "bytes": 32949,
+      "sha256": "671c1514eff9631ee2f472c43ba8d55d7f30db8fb49f54686c73771cc0bc1400"
+    },
+    {
+      "path": "build_reports.py",
+      "bytes": 35427,
+      "sha256": "fa4af449dfdca21125019a020b134a837b997222b16a739e9813b5327ee89336"
+    },
+    {
+      "path": "change-inventory.csv",
+      "bytes": 36166,
+      "sha256": "9483388468d773074193be6be8d12427ea682a6cc8d49c039846064f3e93a2bc"
+    },
+    {
+      "path": "change-inventory.json",
+      "bytes": 62901,
+      "sha256": "23c1607bf556ad3db202aa452ad3d601ea841eb8703f4969f031b8a81e79b063"
+    },
+    {
+      "path": "evidence/artifact-provenance.json",
+      "bytes": 1351,
+      "sha256": "e7d559322ee6fe1e27ba3afb6e2ac3908ea11e7f387df925d3ffdea003ecfa3d"
+    },
+    {
+      "path": "evidence/collector-workflows/complete-collector.yml",
+      "bytes": 15442,
+      "sha256": "91c0d09f9ea8b4eca5938bfce73350faf077ea4b1258942e1592513cb2832fdc"
+    },
+    {
+      "path": "evidence/collector-workflows/initial-collector.yml",
+      "bytes": 6759,
+      "sha256": "d070a245815ec8f94e8b9fe57f6deccb98618ecc7d881df041113d2c2fd6942d"
+    },
+    {
+      "path": "evidence/collector-workflows/publication-workflow.yml",
+      "bytes": 6928,
+      "sha256": "1696c530f4f8278a6f6cf7cfe56a9fc4f14f33decd3d34ab0e1e00845d442be7"
+    },
+    {
+      "path": "evidence/complete-tests-roles/audit-role-probe.mjs",
+      "bytes": 2638,
+      "sha256": "f43a9e2ec373b555922ed1de669cd32143a11143729383ccd332062d6ba1ef59"
+    },
+    {
+      "path": "evidence/complete-tests-roles/commit.txt",
+      "bytes": 41,
+      "sha256": "67dd80898626b23b5cd934ea8098a9660938e8e09c27d5c4f888c9062f54e000"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_automatic-transfer-step.test.mjs.log",
+      "bytes": 1147,
+      "sha256": "653c5f0b39fbb69ed7e6c5550ee685c0cbbf94539633f1ae4feb8d700130be8d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_browser-smoke.test.mjs.log",
+      "bytes": 566,
+      "sha256": "b2657dcfe32226e40ca5cba5680fcf988e1aadf2933abc759f491ba45d3a13fd"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_chain-finality.test.mjs.log",
+      "bytes": 1450,
+      "sha256": "da27604f955adaa52f2d2ff3a4bb5c8a730205fb7a77c44dfd9b8c1c39de0324"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_experience.test.mjs.log",
+      "bytes": 11729,
+      "sha256": "9b12e513aabba27ca7da8dbdf5c65636bad9da628ce58c5d0afbc0bb3df8947d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_fee-gas-projection.test.mjs.log",
+      "bytes": 1086,
+      "sha256": "676845232d5fb100960a93e62b636250c873bb74001632dd2ad7142eb6c6b3db"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_join.test.mjs.log",
+      "bytes": 2051,
+      "sha256": "83ef7504297e075ee0b125b5f36ce524f801720fcc0378b50e9230c455b1e8b0"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_keccak.test.mjs.log",
+      "bytes": 464,
+      "sha256": "3e45ade74d86ff025370c85fc732d87fbf5f9ea96ba1e04db0e184e0ec339782"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_leaderboard-data.test.mjs.log",
+      "bytes": 1620,
+      "sha256": "93cb3843a7e65079476e09e5bc65e2d0baafaad66ebe6f507fbce7e26b9c4697"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_legal.test.mjs.log",
+      "bytes": 315,
+      "sha256": "eb29b7ebddc5ede20a31ec24dcaadd51be8ee44501aba10408a0eb9f17657f7c"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_listing-visibility.test.mjs.log",
+      "bytes": 1382,
+      "sha256": "5cc701237f82dd737c0af7e6d541c34128ca6a6776b3d11a26b76e9352915adf"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_metamask-token.test.mjs.log",
+      "bytes": 2688,
+      "sha256": "cea315a8877c71023aef6bf19d77846a5a90e9467fc5f8f736fa59922e5ab12c"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_publication-mainnet-regression.test.mjs.log",
+      "bytes": 2268,
+      "sha256": "091d7e006e06e9d17377e1c9fae0537400f2158aac37e3095ffdcb8af3b5e224"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_route-availability.test.mjs.log",
+      "bytes": 9548,
+      "sha256": "6334a5c3a751c8c2f7038a8e2f4e5912f718e02d584216ab4b43bc5303d17664"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_source-tx-hints.test.mjs.log",
+      "bytes": 721,
+      "sha256": "1723042c216cc8dfd46cbb88c02f1e65e858473b2a2afe71a147ff380b2e1f29"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_sponsor-route-readiness.test.mjs.log",
+      "bytes": 711,
+      "sha256": "ab71c13cd01ee1ae29b2545d2b49dd74ffb773c4e67f6c791c038ffb71c1bcc8"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_system-rankings.test.mjs.log",
+      "bytes": 486,
+      "sha256": "b5d4b9961d51028b76ef3716507058872c48a3deddbeed63f97bcb7ec6dc6144"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_token-creator.test.mjs.log",
+      "bytes": 2009,
+      "sha256": "6381304d4d3a4706ff5dd9b9293e68b8192de663a89d5273aca15c4e816a51fa"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_token-inventory.test.mjs.log",
+      "bytes": 2250,
+      "sha256": "488ba0c80405b978d397d1f2b83f156338920e808cd3aae6e4e6bc4532a0d6a4"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_token-representation.test.mjs.log",
+      "bytes": 689,
+      "sha256": "c90128ce8293b491a606c9965c13ad8224169e7bee9c9c7fc6b95fc370e04262"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_token-slug.test.mjs.log",
+      "bytes": 892,
+      "sha256": "df0e23d1ac39adace3eef6429042131d98874b1b4d0f093f73844cbed8c65d8b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-actions.test.mjs.log",
+      "bytes": 6929,
+      "sha256": "d26640ee691bb13f349854cd58b2608cfd11b7e2501e8d3664be24da8be7ea61"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-balance-refresh.test.mjs.log",
+      "bytes": 818,
+      "sha256": "b0d174629ab6984f2ec3d2a2fdcbe617e2e06a63b71fb6d8fb9413124d72386e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-flow-binding.test.mjs.log",
+      "bytes": 1343,
+      "sha256": "a10b04ea998aafc86b54b3e7f91aec87a130acd1c1b3f64826852f1106df9022"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-gas-profile.test.mjs.log",
+      "bytes": 550,
+      "sha256": "43b0be12c169445d19833cf46589468cd650c20c20fdffa9115fedae5d2083b1"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-page.test.mjs.log",
+      "bytes": 2521,
+      "sha256": "2020b7508f8091353346bb0f3fb5385ac7a444a325915a1bfcec1d8df53b903d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-sponsor-evidence.test.mjs.log",
+      "bytes": 929,
+      "sha256": "56652f85f6dce4f4e06583cba6aa6aa7aa0949095bfdad39de10bcf2d807e92a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-status-flow.test.mjs.log",
+      "bytes": 6498,
+      "sha256": "52864c02b8cbb3fe4a1c3fc520965ea29f326a267ff41cbab56e3e80b78e11b9"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-step-timer.test.mjs.log",
+      "bytes": 526,
+      "sha256": "03bbcd7e183586ba669c3a9f5dfeb540390a76eed02445a0a856196412115c73"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_transfer-token-journey.test.mjs.log",
+      "bytes": 1711,
+      "sha256": "b0c1972e753ac88c996995acd78412d4370c38f351fa3e9a9a19d4a922a10e42"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_universe-orbits.test.mjs.log",
+      "bytes": 1586,
+      "sha256": "e50f602c2089c6863c7a38854bba7eb35ee20c7900e59627b73b9e6778009aa0"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_universe-scene.test.mjs.log",
+      "bytes": 540,
+      "sha256": "abe13830d800d29ead3b11400dea3a826b7f40bb6fa0220b32ccc2cadd11c891"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_universe-token-layout.test.mjs.log",
+      "bytes": 1256,
+      "sha256": "67ccc5dd47619faf92e10a7c0939a77134c00486f25ae088def9eea85ae17c90"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_verified-journey.test.mjs.log",
+      "bytes": 2039,
+      "sha256": "74d12270ee91b1f4ebed10fa36b4c8d2d3792fdc33121d976b8bb8e4345b2d8e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-action-attention.test.mjs.log",
+      "bytes": 954,
+      "sha256": "41e838cc84502180f13f7a759083a432f60d278c47633ab6595b49fac5f06ac2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-core.test.mjs.log",
+      "bytes": 939,
+      "sha256": "55425234fde9986e9f78d29487e724d3d2304a8575355f1f0fb6a3a57c91d838"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-gas.test.mjs.log",
+      "bytes": 866,
+      "sha256": "a556f2b1edaaef53f38b1ae9c659e897380a93eb6e4d539c7c94645f9e0d5172"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-index-projection.test.mjs.log",
+      "bytes": 1980,
+      "sha256": "0dbf08cddb79126c301fad340141e25fc0a18cd25658999743cd1ca49f81d33b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-nonce.test.mjs.log",
+      "bytes": 1290,
+      "sha256": "032b822167d5b8f154504b2a7c6cde6aaf1dcb1c70c5e630ae27aa467d7497d2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-pending.test.mjs.log",
+      "bytes": 1588,
+      "sha256": "417610f4a6e9fded737b7d404086f9b0fc5321f26d98b1b6801e97b777c51143"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-token-balances.test.mjs.log",
+      "bytes": 2088,
+      "sha256": "98fe06ff9ea1789dcfbe4b65b1f3db3323c09d9ef696ed15bc87d56d7316cbb4"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-transfer-selection.test.mjs.log",
+      "bytes": 1038,
+      "sha256": "fc3fa109704ddd91a4fb49e0698917d9f79e94d52c6af9458d2731aa4a458966"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/apps_web_wallet-transfers.test.mjs.log",
+      "bytes": 4961,
+      "sha256": "dbb0e9c72fadffb2a9d946e9cab33cc2b6ec74535c060ccc290a34be55251db1"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/discovered.txt",
+      "bytes": 7132,
+      "sha256": "aeb8fc134cf19bb7d986bdd4d851241356bb6404f40fa39cfc3efa59b0d3b3f0"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/results.tsv",
+      "bytes": 7495,
+      "sha256": "b54f8a9adbb4d7fc49ba5e3b4edbf741fd8578f0ac87b292ea9b7bddbee6e229"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/runtime_native-relayer_gas-planner.test.mjs.log",
+      "bytes": 954,
+      "sha256": "614126095532ad12141b057c139e3484c0ff0b8bab6632e094336a78ed6d0f75"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/runtime_native-relayer_receipt-evidence.test.mjs.log",
+      "bytes": 737,
+      "sha256": "b57ef4be8b4f5724c29531909fe480cd79be53bcb2bb760d914fa002c37e6a68"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/runtime_native-relayer_source-finality.test.mjs.log",
+      "bytes": 1199,
+      "sha256": "cdd73298bb4d9fe2a7ee503211dd0af99b65ba9eed954f09d4e8ea61d5dc08ae"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/runtime_native-relayer_xita-direct-codec.test.mjs.log",
+      "bytes": 1046,
+      "sha256": "a835609e4e246a9fbf7acfb1c9c985ebdcc97b3aae861c4cc2b6947f785e051c"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_api-client.test.mjs.log",
+      "bytes": 877,
+      "sha256": "ee4444be7e0d8e57d2ec250d7f87d47b9fb632bfee81702d8c8fb94fedf9c576"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_arbitrum-rpc-failover.test.mjs.log",
+      "bytes": 695,
+      "sha256": "82ff672ec8d0437fd3213292854597c5022e008d47c05c00eb7ddf6e76e349e2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_asset-state.test.mjs.log",
+      "bytes": 953,
+      "sha256": "5506c00484452d48955d99f65104f849993f8516de73293207f629341307f5b8"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_base-bootstrap-from-xgr.test.mjs.log",
+      "bytes": 499,
+      "sha256": "9554372d03c58c36137b63068e236eb7c691a473888e4494b49dbe0843bf5c9c"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_base-fee-quote.test.mjs.log",
+      "bytes": 538,
+      "sha256": "45ceb4888d4655d9624f32f955da0ed48b8407bd85db60e9bb95832515e6664f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_base-rpc-failover.test.mjs.log",
+      "bytes": 1386,
+      "sha256": "e2b3bc57fedf6ae0d0db13ff2249344a09bb4e3e4ac0935e4f30fe1eb0ec6537"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_bls-bootstrap-proof.test.mjs.log",
+      "bytes": 785,
+      "sha256": "a0fb13156866de873df1fb096a0680ca70005e72b755d94f2ce3638dcf4d6489"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_bootstrap-evidence.test.mjs.log",
+      "bytes": 775,
+      "sha256": "6e6ce0a2617f30b1f1f4b74f6d40f6ebf914dd592a5fef8fc7ba98cc5b97c5fe"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_bootstrap-suggestions.test.mjs.log",
+      "bytes": 759,
+      "sha256": "6308a70af55f335bf3aed869ec14e2dcb2be9ed67263b72fb12e707ecf2639cc"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_bootstrap.test.mjs.log",
+      "bytes": 826,
+      "sha256": "56267fd1f29b7f687d03f2be1875694d4ea43dba3a68c6fae355546fcf1e886a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_bsc-onboarding.test.mjs.log",
+      "bytes": 764,
+      "sha256": "e8b78de4849b726479da8304a60463ad5a4cfffef220e51ef2dc28b9ceec3d2d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-finality.test.mjs.log",
+      "bytes": 908,
+      "sha256": "5fee90d5c499a09404ec12da9a779156c87a799b4ca014255d2de05174a711c5"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-intent-view.test.mjs.log",
+      "bytes": 737,
+      "sha256": "5b066ed4aeb15c9cddd3ed97cbde96e15ba6de0b5ee2fdda5b14a08ddebac199"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-preflight.test.mjs.log",
+      "bytes": 858,
+      "sha256": "7fe78339857c92a8b61e16be38e8047b411bc9b2326629668e73dfaaeae81abb"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-reconcile.test.mjs.log",
+      "bytes": 2930,
+      "sha256": "85b03643178ff7644954bfca329a930269c58af8e372bf858576314d53c1645a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-state.test.mjs.log",
+      "bytes": 758,
+      "sha256": "25f8ba246422e56dd5eacb425544b5fedf401fdaf111ce32441e13cc33cd5969"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_chain-transaction-draft.test.mjs.log",
+      "bytes": 2089,
+      "sha256": "e009e287983595eccdcbf5ecbb3831eb73dff6f170f174bbb07bb8a147ee2763"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_creator-factory-deploy.test.mjs.log",
+      "bytes": 1213,
+      "sha256": "ccc4a7348139c869bccbe4aa6b8d5ae27d6fc47a315d078a849ac13c77282e81"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_creator-factory-github.test.mjs.log",
+      "bytes": 592,
+      "sha256": "65ebeb8db6a484f8e88c358c4c8652ba1b8580d3ebeca943a261f0bd804afe17"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-auto-recovery.test.mjs.log",
+      "bytes": 3885,
+      "sha256": "4f4560130e9526d87641822c0c13a7d04107fe3d1c4e038fe49b4341f66e654b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-auto-sync.test.mjs.log",
+      "bytes": 2350,
+      "sha256": "285b3b15c3885d1a7bc4b98e84e799e0b9cee179c7a627900582fd0ff720d804"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-batch.test.mjs.log",
+      "bytes": 797,
+      "sha256": "e838b5d4867b95f5ff6d5c7f37745ef087e27849e134fa075afd22fc97d749a1"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-generation.test.mjs.log",
+      "bytes": 517,
+      "sha256": "961802afe44122c2380022971c44d1aba45aeddb830d163f559e9489cecccd37"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-intents.test.mjs.log",
+      "bytes": 4819,
+      "sha256": "d7ec1248a977c571c5ebbe923d34e0645ade2ddc3a7fc484cfd465d1354ec763"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-journal.test.mjs.log",
+      "bytes": 516,
+      "sha256": "969e185522d70f07b91a43c4d02b8aa1174ef59232eb7a1a1a932f4210b4fc24"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-ledger.test.mjs.log",
+      "bytes": 1911,
+      "sha256": "c78feb4c447b2f9a2e9e6129940d655ab5b36b8f240d1b019d40a6b683f28fd9"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-parameters.test.mjs.log",
+      "bytes": 1193,
+      "sha256": "18475fadac4159559deee7e4f3de37ee7dc302ba4c40a3aa63af5a5c47935698"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-poll.test.mjs.log",
+      "bytes": 682,
+      "sha256": "26c973e74f863c984673820043682d41cbbf83256379cc3c99317ae0d0f27315"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-readiness.test.mjs.log",
+      "bytes": 1017,
+      "sha256": "84f5ddd7d467f8b317ddacab019f215d2ccc456e69fdf08be745f8585e819c6f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-resume-gate.test.mjs.log",
+      "bytes": 1209,
+      "sha256": "b9a39171fa0eadd89f72ae8b556f35c0a576e2c226c08f80a115d0c033fefe71"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-retry.test.mjs.log",
+      "bytes": 952,
+      "sha256": "e38f6d198a3dbfb96cbc43fa45b2576cd73a7a8f9ef38dc3c9391bc8550ec71c"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-sequence.test.mjs.log",
+      "bytes": 566,
+      "sha256": "dbf3751314225bb9e86ff60f3d3600e6cc25271813ed27a952ab627538e991e2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-sync-wait.test.mjs.log",
+      "bytes": 851,
+      "sha256": "ebdb1e164efd5cee83c3be1f24c43ba437265be40496b170fbf6dd3fc5f86b2e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_deployment-wallet-transaction.test.mjs.log",
+      "bytes": 2086,
+      "sha256": "7391abe5315705281815a5cf49bdcf73b1992844202d0402e294a40d96161962"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_destination-validator-set.test.mjs.log",
+      "bytes": 359,
+      "sha256": "c413bbf4dd674ce1989376a699d036c632cf88b966868e9535791051148ea488"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_factory-defaults.test.mjs.log",
+      "bytes": 654,
+      "sha256": "449755a5cd3dfd744295599e7257098b6e58f706ebb739230370c503f7a53412"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_fee-treasury.test.mjs.log",
+      "bytes": 1016,
+      "sha256": "fd147719d8c9e64a3a614d4fd80ccbfc7ba823d539026329ab13123730149529"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_forge-tooling.test.mjs.log",
+      "bytes": 882,
+      "sha256": "490ad8f0bfea028ba55d6e1a3827ce7db4c53e19f96c3353f83fb05419b2c995"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_forge-vendor-runtime.test.mjs.log",
+      "bytes": 566,
+      "sha256": "8dd0fa8ae9c20260f0e5e5bd62d788544692cf4d82d11bb74252eb0247811d64"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_main-gate.test.mjs.log",
+      "bytes": 1878,
+      "sha256": "920eebf2f7bcd204aca2fb16a57f31400d2f4306d922e27a01a9589c07417363"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_no-archive-state.test.mjs.log",
+      "bytes": 307,
+      "sha256": "e168e1ffe0f20d9c9c031e451c015e14ed8d9c42513cd1d03c8c22ffba6a7a71"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_operations-health.test.mjs.log",
+      "bytes": 1902,
+      "sha256": "fc249b6df493d6cb8e252c71e92c0be8d72d539c7640f3caeb2c3587850efd83"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_plan.test.mjs.log",
+      "bytes": 751,
+      "sha256": "d4523c32f21658be66db9cbe86c4ced1a3a27a7e3d5d84acad27360cf7f3de96"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_reconcile-readonly.test.mjs.log",
+      "bytes": 311,
+      "sha256": "1419b1bebcbba2fcf081ab61eded81bcae64ee0f8ee172260049e9092c0cc4fb"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_route-factory-draft.test.mjs.log",
+      "bytes": 2035,
+      "sha256": "e4812607214d2b2817a6a96724d07b443db6df75d72ac509e43fc23bd09e3efc"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_route-lifecycle.test.mjs.log",
+      "bytes": 1278,
+      "sha256": "1fe49b8b549a5e22107b22024a2466ba414cc3e4661a6599e3629e52e57e48bf"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_route-live.test.mjs.log",
+      "bytes": 533,
+      "sha256": "dd39981ce0a222c7f7644d8902092eaaf4f021062daecff446370eb40752372b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_sealed-artifacts.test.mjs.log",
+      "bytes": 792,
+      "sha256": "d16b3ee29605050a0eff5038589f1a0024832965d9a8cfb201beb16457e73171"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_service-wallet-rotation.test.mjs.log",
+      "bytes": 538,
+      "sha256": "d8e3a4b90ec14674c81b0842688a9d9a06686d24768dc9e05f16caa840f90732"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_solidity-imports.test.mjs.log",
+      "bytes": 687,
+      "sha256": "460d28687add3664a963ed3410b8a61871eb35ca6faeb80627ca0d428ba195d2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_source-registry-recovery.test.mjs.log",
+      "bytes": 1293,
+      "sha256": "37837b4ba40f367482d8e463baa7882807ea3c6fd7c42d1f7de180345a553d8b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_static-modules.test.mjs.log",
+      "bytes": 341,
+      "sha256": "acf5ddda52b44fa9508fb7db62330ab7a3f40fdd22748bf45bce816e8fe31a7b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_trusted-artifacts.test.mjs.log",
+      "bytes": 974,
+      "sha256": "15dd10e06030988c7627a89d955204204cec18bc6bfa8ffa7218f9ae5d02ca0b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_validator-indexer-health.test.mjs.log",
+      "bytes": 1193,
+      "sha256": "f1b60a4af678c93a6bf484ceadcfdab8e41268b54cd8fcfe293808d8b284a37a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_validator-reference-lag.test.mjs.log",
+      "bytes": 582,
+      "sha256": "c954af2493c9f5c52ed204d9951cb51f9453be448edcaf3c29d0c4c6495262db"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_wallet-executor.test.mjs.log",
+      "bytes": 500,
+      "sha256": "189d952516d795d71d98ffa28616d75c24308779aaec279a4b81ce702a382cb6"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_admin_work-items.test.mjs.log",
+      "bytes": 328,
+      "sha256": "e1c96c382557db1a48cad51c22703115c9fab1fb98573ee4e0d45153bcfc5314"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_coingecko.test.mjs.log",
+      "bytes": 812,
+      "sha256": "5295768926f1f09a7a2d8a1478ba6d1826448bc78aa2f8e3aa5e03b432855286"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_escrow-flow-24h.test.mjs.log",
+      "bytes": 755,
+      "sha256": "554c995b4aa5db5ef8b50217132bd807f5101d73320f8fdbe8bfeb3766583e81"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_explorer-wallet-discovery.test.mjs.log",
+      "bytes": 1420,
+      "sha256": "87338f9d9be846e447b0adadfada82c86f63425bc751622ba96ec50007fb1b76"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_finality-observer.test.mjs.log",
+      "bytes": 693,
+      "sha256": "12835f5349bbd4056425a916fd7e73b3d6a77197d5e2f343f88c6c8891aa85c7"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_gas-observer.test.mjs.log",
+      "bytes": 732,
+      "sha256": "9d87a260123d96630bbea6bf6eaf6d2af76c59b44d6d903129c8384d67f3792f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_indexed-flow-24h.test.mjs.log",
+      "bytes": 768,
+      "sha256": "16c29f7e6c7c34d14f15dfafab4f47a33bc49ab1e31744bb5ec50086fad97b3e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_publication.test.mjs.log",
+      "bytes": 1376,
+      "sha256": "4e5e3e21bf96cb05f1a6ed77be79cd4a8e8c203c0ce039222de5ba9cab24856b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_route-readiness.test.mjs.log",
+      "bytes": 1251,
+      "sha256": "290aa0dc13f42b5083d748d1fbb1775867082fcf5b1fa606507c5d1365c388c3"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_rpc-read.test.mjs.log",
+      "bytes": 2919,
+      "sha256": "0b7fab874a01a40748acaaf7bb3a3bd5c00f758999f1c1d0552544d528c0a9db"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_server.test.mjs.log",
+      "bytes": 2042,
+      "sha256": "ef5d3ab02d98fad681caf2a1fab594edcde293731e6c7b53df758a7dd69e59d9"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-announcements.test.mjs.log",
+      "bytes": 2152,
+      "sha256": "a7f2dccc4f38fe260cf7825c37648bef9712577bc8bd042c2536ed1217a7e01a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-index-store.test.mjs.log",
+      "bytes": 3305,
+      "sha256": "b7fb09e1b6b6e852cbef878fde85903d7fdbd22539f7444c34d4144288adc053"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-index.test.mjs.log",
+      "bytes": 6019,
+      "sha256": "9ca79eca8bde3e9e5fef577a2bdee5cd578f4aa5afb0db8d02e73761843f229d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-intake.test.mjs.log",
+      "bytes": 705,
+      "sha256": "6fb4b213f51f989571fe8ea5870e0078a546723b2aec3afe48071bd327dfa202"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-proof-observer.test.mjs.log",
+      "bytes": 2138,
+      "sha256": "ef278330ceb951ed4cc3fc694fd7316da534c3ec7baec1358e68bba01e87a639"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_transfer-recovery.test.mjs.log",
+      "bytes": 4657,
+      "sha256": "07740029db99b16a1a72371c92104f110a40992e8025976ca5a0e01d0c03c02a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_tvl-history.test.mjs.log",
+      "bytes": 528,
+      "sha256": "3ae5ccf34b3ef15e18222c361ed70384a5841a25fa15a5d365a4146592cb35d0"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_tvl-verifier.test.mjs.log",
+      "bytes": 1936,
+      "sha256": "f4cb672d35fc7863662b561552c0e4b75ceb14eb0ff81ea0318282aa63ae1ba4"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_indexer_xgr-quorum-poll.test.mjs.log",
+      "bytes": 537,
+      "sha256": "c1da07c45adc0e0473ae5e82dca06d4e5f79a51a30a4db23c69ac52f687c2ed3"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_creator-wallet-guard.test.mjs.log",
+      "bytes": 590,
+      "sha256": "e84e29ee15cb76a93b41e95a58e467509a6c8140e298bad378ac505e892e8c64"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_delivery.test.mjs.log",
+      "bytes": 1480,
+      "sha256": "da9569ebcb440979c40341934e19c6380a681fca901e856ce244c38af6974f70"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_fee-claim.test.mjs.log",
+      "bytes": 2089,
+      "sha256": "3584bbdffe43be593f3cb4384fec5b35a55e815fc2080d4a8f2c59cef7bafd69"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_fee-quote.test.mjs.log",
+      "bytes": 2104,
+      "sha256": "91756670e2f783c8d5d5b93d98e043e94bdff05dc9d461e9ffef4f3248b88fd1"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_gas-sponsor.test.mjs.log",
+      "bytes": 5262,
+      "sha256": "7803aa045273cac1742316adc83cdb5886c576be5dff5448ea6e117a76b945b1"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_managed-index.test.mjs.log",
+      "bytes": 809,
+      "sha256": "afe71f9e8bad1276ed4910289d2c3ab0d1f170b915a29a41a051ed2cf6baab5a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_managed-indexer.test.mjs.log",
+      "bytes": 981,
+      "sha256": "0c5d2cf82d17f91383525494da4888e17c929a0b406ccd5dc8f2bffcb69db615"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_price-cache.test.mjs.log",
+      "bytes": 677,
+      "sha256": "eb5c90901f59fc3fc0aa2667fa7a89f46b24887ba025f3bba07bcbc5c79e8675"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_quote-service.test.mjs.log",
+      "bytes": 5114,
+      "sha256": "fe177e6338f8cb858629253b5e362a2f05e1c26dc6d37be1476104dd2b27f41e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_server-preview.test.mjs.log",
+      "bytes": 1273,
+      "sha256": "0a7b2c32272a686482e3a5006bbec7b64b67f85aa23f001f3a34b9f2676d9072"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-funding.test.mjs.log",
+      "bytes": 707,
+      "sha256": "f61d09867eb387eae8f516b55bb632d558111e0970de0192d98bd2e51ab405fd"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-obligation-audit.pg.test.mjs.log",
+      "bytes": 3133,
+      "sha256": "de971149b51f8ff3a7c62f17520e65cee311c1cd9a5299fa37e59b631bdac875"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-obligation-audit.test.mjs.log",
+      "bytes": 1464,
+      "sha256": "9656b45c4a212c9a6bb078a445cb30480b4297512900d9c761b7088b5a74aa07"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-obligation-review.test.mjs.log",
+      "bytes": 602,
+      "sha256": "bf387dc030b13fef1722573bea968f28e0727d39dc73e47d324cadaab2fad616"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-policy.test.mjs.log",
+      "bytes": 789,
+      "sha256": "27f2ac551b1e8ab2ba4e20d65ccaeb83c0893b7237a464f857963e44a7eb7f01"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-quote-atomic.test.mjs.log",
+      "bytes": 949,
+      "sha256": "1a418ee14b59b8410dd28be97945c224e23c86ee7f39234ad4a95007976c24ba"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_sponsor-status.test.mjs.log",
+      "bytes": 1707,
+      "sha256": "b9630be2f912716c60820d27bf6a44a36c9da19b44bacaf457b06ba3a09457e5"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_tax-evidence.test.mjs.log",
+      "bytes": 1263,
+      "sha256": "1cef60d1a5b0c833210814246f47d0ae778c1643f1cebea85bb510c775882fab"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_wallet-aware-sponsorship.test.mjs.log",
+      "bytes": 960,
+      "sha256": "91c4b9cefc3888956fd72225a93a50a9fa72f6171d251e74801a8202319c3eba"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_worker.test.mjs.log",
+      "bytes": 798,
+      "sha256": "beb96d179b32757dbf950807a3f3b0b248074ea97e4cd0b58b2d9d9010a8b36f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_managed-relay_xgr-launch-fee.test.mjs.log",
+      "bytes": 1076,
+      "sha256": "cddec22eb648b7514476f8a4504003b74ef9a31ac1567ae702a835163e9cc186"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_coingecko-identity.test.mjs.log",
+      "bytes": 1094,
+      "sha256": "803db06a14b60ffe64fbbef633bee7b6e70c91651ca25bec69aeaf1109a9bc1e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-canary.test.mjs.log",
+      "bytes": 1424,
+      "sha256": "44e41c1328a7aab240d42043456d17528e48111a63cd3fbe266e8d842d88ddfd"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-chain-proof.test.mjs.log",
+      "bytes": 623,
+      "sha256": "8bbd3f5112f08d1610969dff7bf7f1900b707f2e1a6e589c3cffbc6709f7f2db"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-logo-png.test.mjs.log",
+      "bytes": 767,
+      "sha256": "52e715e7e2ada0832cfb6196b8d9f167002974ba94acdfd1bb83e77a0b52305f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-manifests.test.mjs.log",
+      "bytes": 1357,
+      "sha256": "6f321bd251947089b9a348a9fdae1e3a48f8691e4b5149b4f42529a114f5537b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-operator.test.mjs.log",
+      "bytes": 2048,
+      "sha256": "2a2f95da369be6a8f5461c9abe8452cbe8ed1cddbc02afa6aee4442dd940b5a4"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_creator-registration.test.mjs.log",
+      "bytes": 1722,
+      "sha256": "3d150c3384eb4bb6efdbfca746e8c12302e859bbc22d28671e205d6ee7a81a86"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_mail-template.test.mjs.log",
+      "bytes": 548,
+      "sha256": "10ef68202acf8173effd416d81b15143313f8af02531a7303721eba929cb352f"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_manifests.test.mjs.log",
+      "bytes": 2051,
+      "sha256": "222d1733c23ce608a222d06b3c2b4fbf4decb475d97b9ec2af3fbfbf35b12ce5"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_private-store.test.mjs.log",
+      "bytes": 960,
+      "sha256": "b69cb67db2e220ece30a3f68b13203b2b423ef5737b0a08dccaafad3a39277f2"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_server.test.mjs.log",
+      "bytes": 3065,
+      "sha256": "252e62f3524dea1d4ade45aae4a30ef5df8f3fd4489d1a98c056403a1345b527"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_status-notifier.integration.test.mjs.log",
+      "bytes": 1364,
+      "sha256": "50c8432db8ead19a342dcc6566935bc71af75a4f6aae5c856a0f939f2461577d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/services_onboarding_status-notifier.test.mjs.log",
+      "bytes": 1078,
+      "sha256": "7f8896076ceedf8ca3013e645c403b2b9f8c71c8c8a969dfc3060cfe4149e846"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/summary.txt",
+      "bytes": 16,
+      "sha256": "931d35a42ed1aee19b2782ac24ef819f633af60af5c9d86fef06ae4bc88c07a7"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_assert-xita-v320-compatible-deploy.test.mjs.log",
+      "bytes": 2225,
+      "sha256": "0bc5bf0468a55b798f289f4be3d66604cc4e49a07a67cd3c2072f79e70c8f045"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_auto-hub-routes.test.mjs.log",
+      "bytes": 1482,
+      "sha256": "100b59cd5a48870a722818ee53ef9aeb4cae8dce6b4c3ae56802e05da4af458e"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_interchain-fee-nginx.test.mjs.log",
+      "bytes": 1444,
+      "sha256": "6132d902229a7e6eecc24683d099b9c86af476e1a243f07b14620052682f83cc"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_join-nginx.test.mjs.log",
+      "bytes": 748,
+      "sha256": "bcf6a7b9487e2d58db5f3bc47b3fab509cc36d8b8c6b7f7c29995d2d69cf9dfe"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_manage-web-release.test.mjs.log",
+      "bytes": 2852,
+      "sha256": "215d1f7e37e2bfc6dae1c7f20a69e5d0dcc7f2a70b632134c44f6f792137b577"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_manifest-layout.test.mjs.log",
+      "bytes": 581,
+      "sha256": "4c5f8a81360dcf0686c82d6174764b71cd05d90a5f734dca422ae0b573396960"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_optimism-predeploy.test.mjs.log",
+      "bytes": 579,
+      "sha256": "a3d8e696760875e0a5f0fd869eb4ff5efda0130328c00582769c0ab0285408cd"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_probe-base-rpc.test.mjs.log",
+      "bytes": 728,
+      "sha256": "8a165f0d138ad0801056b108f667b6f534e2019e5a76f39c85047656e5fe9cad"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_quote-db-role.test.mjs.log",
+      "bytes": 1077,
+      "sha256": "02323d3e37fdf960552909de6000e6429a62e9643bb99ae8678be94085d8ad8a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_stamp-xita-web-modules.test.mjs.log",
+      "bytes": 805,
+      "sha256": "e589c89d6dd8c89484421a10958652083223aa85538e2b3e39cde30cc6933ea4"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_stamp-xita-web-style.test.mjs.log",
+      "bytes": 742,
+      "sha256": "94e04fef099972aea6badcb0d77f4824fe039ee45a0d4157b60b898ce0da4a2b"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_transfer-intake-nginx.test.mjs.log",
+      "bytes": 498,
+      "sha256": "f49e7d54c6cebd0f7ac92dd0ae22d0b9b7b735865ff2a702f75ba3e10a175dc7"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_transfer-recovery-nginx.test.mjs.log",
+      "bytes": 2224,
+      "sha256": "490e93f35470b6383addad76d72b49293671d27d7428b76d59df852367eb505d"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_validate-join-pr.test.mjs.log",
+      "bytes": 815,
+      "sha256": "381c5b842cbc0c1e54e5dab28a6e3a34784e263e8f8dc4b91ff7be579aeb1b33"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_validate-manifests.test.mjs.log",
+      "bytes": 3209,
+      "sha256": "c76f68c117e84bdbbbbc5c11f0b07ba595da89aebd0f0e296a403132c79fe378"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_validate-profile-pr.test.mjs.log",
+      "bytes": 520,
+      "sha256": "34801cd646e385430a391949d4332e992dcad31f1665038e4336552a72dd03a8"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_verify-iln-route-catalog.test.mjs.log",
+      "bytes": 622,
+      "sha256": "9f05c64e3db3d5db42ddf5d34a8f9f8e6dc5cc41424a5eb8c97500afa7b7b850"
+    },
+    {
+      "path": "evidence/complete-tests-roles/js/tools_verify-xita-roundtrip.test.mjs.log",
+      "bytes": 743,
+      "sha256": "5480af35f54d333249cedc8e19a89700654fea6eca74c429b4d2e13630852683"
+    },
+    {
+      "path": "evidence/complete-tests-roles/reviewer-role.json",
+      "bytes": 362,
+      "sha256": "b1149d256906bb229df26330d07f04fad72e3aab018259df1f739f40bfe9b49a"
+    },
+    {
+      "path": "evidence/complete-tests-roles/reviewer-role.log",
+      "bytes": 302,
+      "sha256": "9191e9914c0c7fcc2a6d07e30afb7dc54f3bf8d7cc6bb26be421a586b2674a56"
+    },
+    {
+      "path": "evidence/complete-tests-roles/toolchain.txt",
+      "bytes": 9,
+      "sha256": "6a0cec2e157365c1a8ac6d1715733b7c3321a7c5565862a701ca71ef00359d04"
+    },
+    {
+      "path": "evidence/current-source-comparison.json",
+      "bytes": 28445,
+      "sha256": "7259f0001eb28a95254d049173338a7d209619492047b35d01b46bc3fd510a2f"
+    },
+    {
+      "path": "evidence/f20-faults/audit_f20_test.go",
+      "bytes": 1647,
+      "sha256": "23fdc935a8c59aa84ef768d93849e74740d7f7fdb1622a57da1f77852c780d0b"
+    },
+    {
+      "path": "evidence/f20-faults/commit.txt",
+      "bytes": 41,
+      "sha256": "6b0769437cf8488f8067f84bcd1930acac1b816de5d2e4e3bd1fa7960a53cc0f"
+    },
+    {
+      "path": "evidence/f20-faults/f20-faults.jsonl",
+      "bytes": 9147,
+      "sha256": "13af4f0157d95143422d225ffa34c6b7dfe993e8993e5d25e1d7dbd68c7318de"
+    },
+    {
+      "path": "evidence/f20-faults/toolchain.txt",
+      "bytes": 33,
+      "sha256": "9f161eff18f3e12a2e622b6f0fd90d1f36e4b9b89d8516cfc67ce4442c478c6a"
+    },
+    {
+      "path": "evidence/foundry.log",
+      "bytes": 121268,
+      "sha256": "0d769aed631e1347b257c425960c78d76514901139bef010dc3e513babcf0710"
+    },
+    {
+      "path": "evidence/node-evidence/commit.txt",
+      "bytes": 41,
+      "sha256": "6b0769437cf8488f8067f84bcd1930acac1b816de5d2e4e3bd1fa7960a53cc0f"
+    },
+    {
+      "path": "evidence/node-evidence/f20-repeat.jsonl",
+      "bytes": 5138,
+      "sha256": "4bab7ebb2ab889123be36f82ce06337ac7402ba00f08fb5496c4faf740805ef0"
+    },
+    {
+      "path": "evidence/node-evidence/node-regressions.jsonl",
+      "bytes": 881597,
+      "sha256": "290cb15891aa6e2b273413b55140217a3893959bb9506597a79b31fa3f886482"
+    },
+    {
+      "path": "evidence/node-evidence/toolchain.txt",
+      "bytes": 33,
+      "sha256": "9f161eff18f3e12a2e622b6f0fd90d1f36e4b9b89d8516cfc67ce4442c478c6a"
+    },
+    {
+      "path": "evidence/read-only-production/audit-public-probe.mjs",
+      "bytes": 4341,
+      "sha256": "03e9612e1c0d8a2a4f2ccc4605a858377e5f06a9c02ebea5a5aaa47982e3cad0"
+    },
+    {
+      "path": "evidence/read-only-production/read-only-production.json",
+      "bytes": 137484,
+      "sha256": "ef30b7796e1965ad1dddd04910ef8b547d4f7fa3adb5b4789e0ef547c263a2bb"
+    },
+    {
+      "path": "evidence/read-only-production/read-only-production.log",
+      "bytes": 1387,
+      "sha256": "c0bcf4e966738cbfd176131c87aa3294fcce5687f14e9c0f9b3a8ceca75b53d6"
+    },
+    {
+      "path": "evidence/source/collected-at.txt",
+      "bytes": 21,
+      "sha256": "acaf9cabceb86e7493f5bbd5b77ebdf776eb9d29260959dad71af7d20f42678f"
+    },
+    {
+      "path": "evidence/source/interchain-name-status.txt",
+      "bytes": 23435,
+      "sha256": "29248f329a4bcead8b486ae85a608b61420752faff76880b01c887d2a328dbea"
+    },
+    {
+      "path": "evidence/source/interchain-product.patch",
+      "bytes": 48636,
+      "sha256": "479a7f683c2bf8e54f48248ff65128693decbc03148f2c734f226959f37f512a"
+    },
+    {
+      "path": "evidence/source/interchain-revision.txt",
+      "bytes": 82,
+      "sha256": "9ea6830411a2fcf14cee277d3a7b9e37a73263f95c7a644b171ab6d11cc00dcc"
+    },
+    {
+      "path": "evidence/source/interchain-tree.txt",
+      "bytes": 131507,
+      "sha256": "d4c491b87b9ea4a372c69785fe56244c4e5e07914620eb068033567124b69cc0"
+    },
+    {
+      "path": "evidence/source/node-name-status.txt",
+      "bytes": 542,
+      "sha256": "2beb45128d70b146bab5f487adcf5707e2d9c326d5ce7d43af5dca28f758385b"
+    },
+    {
+      "path": "evidence/source/node-product.patch",
+      "bytes": 88594,
+      "sha256": "ccd8fe871db5124ac49ecefb14c69f26fe733dd8436d09a13551a7a93b84bc17"
+    },
+    {
+      "path": "evidence/source/node-revision.txt",
+      "bytes": 82,
+      "sha256": "d25bb078be22be8f5c004bc635113121b88962feebc1975dd355f0df08f96973"
+    },
+    {
+      "path": "evidence/source/node-tree.txt",
+      "bytes": 68224,
+      "sha256": "ae571ca6f4c3679a17b693dc677ccafbf2518aeb75fa6e2e24b8d4fab5b7045c"
+    },
+    {
+      "path": "evidence/source/source-sha256.txt",
+      "bytes": 698,
+      "sha256": "42683aeaa4e4194536f58f8d8aba58b723e2b4e5496f7a4ac4b9998cf73479bb"
+    },
+    {
+      "path": "evidence-public.zip",
+      "bytes": 353309,
+      "sha256": "620bfed3436bbbb676f154f154177d0085647757b895fc800395ae35e0586cd1"
+    },
+    {
+      "path": "evidence-summary.json",
+      "bytes": 947,
+      "sha256": "c8bb53dbce87f95b7fa7ca832d496b3e556d853316ee0422c0acf1861f9ce413"
+    },
+    {
+      "path": "finding-details.json",
+      "bytes": 111649,
+      "sha256": "b72f6d7f2cb1585929e6e4f1b671307f5bb4fcdc886eed67cc8f1b0c1ef19f77"
+    },
+    {
+      "path": "finding-statistics.json",
+      "bytes": 314,
+      "sha256": "4285111b4a18cad6499e14357fb04195a5d77f7f9a286f93eeee736f72c79a3d"
+    },
+    {
+      "path": "findings.csv",
+      "bytes": 29789,
+      "sha256": "658ac0a5172ebeb97bcd1d0c17410031621d949ea46c384eaa41f09594723349"
+    },
+    {
+      "path": "historical-findings-matrix.csv",
+      "bytes": 295194,
+      "sha256": "bacda6612ca3b215f69f1b95daf76bfa25b68481eb32a66e7229ea28af163218"
+    },
+    {
+      "path": "launch-decision.md",
+      "bytes": 2913,
+      "sha256": "53c9ad73e42faccdb1e03f85a0912ba2d5f91d16b625d197a6d287058965cda2"
+    },
+    {
+      "path": "node-v3.5.1-review.md",
+      "bytes": 6888,
+      "sha256": "550ad37cb9f4c37a78afac731e0f01913e1fed0b7b6210c5350136fff69aedf3"
+    },
+    {
+      "path": "node-v3.5.1-review.pdf",
+      "bytes": 7776,
+      "sha256": "8166cfa94544c7249d45c6b9df01b7ed404a48f672d356d352acd6ea38a606ac"
+    },
+    {
+      "path": "phase-a-publication.md",
+      "bytes": 931,
+      "sha256": "5066d25bc1648646a1f2f97a5deb9095d86397b2de02a1277f69dbd207fd38c1"
+    },
+    {
+      "path": "phase-a-seal.md",
+      "bytes": 581,
+      "sha256": "ac721e971672b9368dd8acda807e4898bb0920651fd822d1573581f2a9388d39"
+    },
+    {
+      "path": "prior-findings-matrix.md",
+      "bytes": 1813,
+      "sha256": "94ff254ecd3c97a0573271dfe1ab877abd35b064580ec295becd76ef4c6250c9"
+    },
+    {
+      "path": "protected-evidence-reference.json",
+      "bytes": 1788,
+      "sha256": "f889a0871fc7a9d73856c54fa6e7c7109ef9f57ad2a689d76c7a0879471df75d"
+    },
+    {
+      "path": "protected-results-manifest.json",
+      "bytes": 1209,
+      "sha256": "3010b7338c0284abf0b1d30c8e753989e2ff6afd32da7acefc653fb9def9ff52"
+    },
+    {
+      "path": "publication-validation.json",
+      "bytes": 277,
+      "sha256": "43e311a8be8afbb75d0a5c8804a3927aad99c44bd7e7b2a912629d11b34cec7d"
+    },
+    {
+      "path": "remediation.md",
+      "bytes": 9693,
+      "sha256": "94b08f90cfc1ad57be56993c50e9caee119ef04026aa28262a7ee1a5f392ad02"
+    },
+    {
+      "path": "report.md",
+      "bytes": 81342,
+      "sha256": "53ba7c27ebf24bc0e31801355e8b22afc439b27f5633da968a04243df62510d4"
+    },
+    {
+      "path": "report.pdf",
+      "bytes": 97596,
+      "sha256": "c063786a959c2a99b8743ba1fcc0e5be488359740920f1b0f13e05340db2f3b1"
+    },
+    {
+      "path": "scope-and-baselines.json",
+      "bytes": 1400,
+      "sha256": "284ec0c12dd60bbcbb52edb02cb33026c9f5ea212669a9f4f1b17ac544c320b0"
+    },
+    {
+      "path": "test-failure-triage.json",
+      "bytes": 3864,
+      "sha256": "2719b0425776c1b7634121b241a23030fce9fc3aa6af99bb510a5c2cac14fc29"
+    },
+    {
+      "path": "test-matrix.md",
+      "bytes": 999,
+      "sha256": "69de9bd7de1c7a235e60345a16bb4550124aca2439ad17af393cfdfab70a6f54"
+    },
+    {
+      "path": "verification.md",
+      "bytes": 5347,
+      "sha256": "851c4c0e3b49f70fe6a66e2502c393480227fe78efdc0b2b88d971f9137c81d2"
+    },
+    {
+      "path": "verify_artifacts.py",
+      "bytes": 870,
+      "sha256": "999bb54635096f479ebb01c9580648ea4036afc070b4c772c901e2d732e83c94"
+    }
+  ]
+}
