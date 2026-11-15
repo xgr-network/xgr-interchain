@@ -23,6 +23,10 @@ BEGIN
   GRANT SELECT,INSERT ON public.xita_sponsor_obligation_reviews TO xita_sponsor_reviewer;
   GRANT USAGE ON SEQUENCE public.xita_sponsor_obligation_reviews_review_id_seq TO xita_sponsor_reviewer;
   GRANT SELECT ON public.xita_sponsor_overtaken_obligations TO xita_sponsor_reviewer;
+  -- Column-restricted SELECT permits existence checks for already-paid grants
+  -- without exposing recipient addresses, nonce, signed bytes or audit notes.
+  GRANT SELECT(grant_key,sponsor_address,chain_name,amount_wei,status)
+   ON public.xita_sponsor_grants TO xita_sponsor_reviewer;
  END IF;
  IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_status_reader') THEN
   GRANT SELECT ON public.xita_sponsor_obligation_reviews TO xita_sponsor_status_reader;
