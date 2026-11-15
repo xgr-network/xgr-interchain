@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: ABI encoder handles dynamic bytes[] offsets and typed uint boundaries
+ok 1 - ABI encoder handles dynamic bytes[] offsets and typed uint boundaries
+  ---
+  duration_ms: 1.18406
+  type: 'test'
+  ...
+# Subtest: native verifier cannot be accidentally deployed on XGRChain
+ok 2 - native verifier cannot be accidentally deployed on XGRChain
+  ---
+  duration_ms: 0.270959
+  type: 'test'
+  ...
+# Subtest: factory registry is a call to existing verified Factory, not a new deployment
+ok 3 - factory registry is a call to existing verified Factory, not a new deployment
+  ---
+  duration_ms: 0.791357
+  type: 'test'
+  ...
+# Subtest: missing bootstrap and dependencies fail closed
+ok 4 - missing bootstrap and dependencies fail closed
+  ---
+  duration_ms: 0.286974
+  type: 'test'
+  ...
+# Subtest: gas simulation checks chain, balance and gas before any signing
+ok 5 - gas simulation checks chain, balance and gas before any signing
+  ---
+  duration_ms: 1.086081
+  type: 'test'
+  ...
+# Subtest: real constructor simulation journals explicit null recipient and factory call keeps address
+ok 6 - real constructor simulation journals explicit null recipient and factory call keeps address
+  ---
+  duration_ms: 0.192
+  type: 'test'
+  ...
+# Subtest: Base EIP2537 contract creation quote accounts for L1 data and operator fees
+ok 7 - Base EIP2537 contract creation quote accounts for L1 data and operator fees
+  ---
+  duration_ms: 2.536775
+  type: 'test'
+  ...
+# Subtest: Base Registry create draft deposits three exact, independently specified validator reserves
+ok 8 - Base Registry create draft deposits three exact, independently specified validator reserves
+  ---
+  duration_ms: 0.402979
+  type: 'test'
+  ...
+# Subtest: one optional Interchain Fee Gateway per chain uses one service wallet and separate recovery admin
+ok 9 - one optional Interchain Fee Gateway per chain uses one service wallet and separate recovery admin
+  ---
+  duration_ms: 0.513977
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 54.666052

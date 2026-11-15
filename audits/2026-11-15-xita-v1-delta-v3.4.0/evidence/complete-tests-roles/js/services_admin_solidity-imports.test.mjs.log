@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: detect nested missing Solidity dependency under an installed package
+ok 1 - detect nested missing Solidity dependency under an installed package
+  ---
+  duration_ms: 2.798891
+  type: 'test'
+  ...
+# Subtest: report absent first-party dependency and refuse incomplete source tree
+ok 2 - report absent first-party dependency and refuse incomplete source tree
+  ---
+  duration_ms: 0.806519
+  type: 'test'
+  ...
+# Subtest: unknown non-remapped imports fail closed
+ok 3 - unknown non-remapped imports fail closed
+  ---
+  duration_ms: 0.973552
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.143052

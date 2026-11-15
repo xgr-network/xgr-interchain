@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: new Base spoke creates ONE wrapped router for both directed paths
+ok 1 - new Base spoke creates ONE wrapped router for both directed paths
+  ---
+  duration_ms: 4.487644
+  type: 'test'
+  ...
+# Subtest: return route REUSES existing synthetic mint/burn router
+ok 2 - return route REUSES existing synthetic mint/burn router
+  ---
+  duration_ms: 2.927505
+  type: 'test'
+  ...
+# Subtest: Polygon is the same process without chain-specific branches
+ok 3 - Polygon is the same process without chain-specific branches
+  ---
+  duration_ms: 1.462771
+  type: 'test'
+  ...
+# Subtest: duplicate or mismatched router observations always fail closed
+ok 4 - duplicate or mismatched router observations always fail closed
+  ---
+  duration_ms: 0.868903
+  type: 'test'
+  ...
+# Subtest: unidirectional or direct spoke route is not registrable
+ok 5 - unidirectional or direct spoke route is not registrable
+  ---
+  duration_ms: 0.169977
+  type: 'test'
+  ...
+# Subtest: same canonical pair derives deterministic reverse-distinct route hashes
+ok 6 - same canonical pair derives deterministic reverse-distinct route hashes
+  ---
+  duration_ms: 2.213496
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 50.905418

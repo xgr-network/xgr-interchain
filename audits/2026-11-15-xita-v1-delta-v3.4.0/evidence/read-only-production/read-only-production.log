@@ -1,0 +1,43 @@
+{
+  "nodes": [
+    {
+      "url": "https://rpc1.xgr.network",
+      "web3_clientVersion": "xgrchain/v3.5.1/linux-amd64/go1.23.11",
+      "eth_chainId": "0x66b",
+      "eth_blockNumber": "0xc65e36"
+    },
+    {
+      "url": "https://rpc2.xgr.network",
+      "web3_clientVersion": "xgrchain/v3.5.0/linux-amd64/go1.23.11",
+      "eth_chainId": "0x66b",
+      "eth_blockNumber": "0xc65e37"
+    }
+  ],
+  "receipts": {
+    "unavailable": 83,
+    "verified": 119
+  },
+  "health": [
+    {
+      "path": "/api/xita/v1/managed/health",
+      "status": 200
+    },
+    {
+      "path": "/api/xita/join/status",
+      "status": 200
+    },
+    {
+      "path": "/api/xeta/v1/transfer/health",
+      "status": 200
+    }
+  ],
+  "release": {
+    "commit.txt": "723ff829d7380a29a116fd2f29c3b808ec073c0d\n",
+    "version.txt": "v3.5.1\n",
+    "toolchain.txt": "go version go1.23.12 linux/amd64\n",
+    "sha256sums.txt": "20b99c8946ef3f33150b566957c791fb1a15e72999ef51ac81f8af7da9211ee1  xgrchain-v3.5.1-linux-amd64\n8d4f19f0360053bc83c89a79bd49bcbc4ca3a19d14c67b1f59896da079a45d9f  version.txt\n6b0769437cf8488f8067f84bcd1930acac1b816de5d2e4e3bd1fa7960a53cc0f  commit.txt\n9f161eff18f3e12a2e622b6f0fd90d1f36e4b9b89d8516cfc67ce4442c478c6a  toolchain.txt\n",
+    "binarySha256": "20b99c8946ef3f33150b566957c791fb1a15e72999ef51ac81f8af7da9211ee1",
+    "binaryBytes": 73288622,
+    "matchesManifest": true
+  }
+}

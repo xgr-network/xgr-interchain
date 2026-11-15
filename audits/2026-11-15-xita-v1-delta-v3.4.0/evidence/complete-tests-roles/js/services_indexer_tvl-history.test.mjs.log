@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: planned or partial deployment does not block verified XGR history
+ok 1 - planned or partial deployment does not block verified XGR history
+  ---
+  duration_ms: 1.787245
+  type: 'test'
+  ...
+# Subtest: hard reset with zero deployed routes removes all retained TVL history
+ok 2 - hard reset with zero deployed routes removes all retained TVL history
+  ---
+  duration_ms: 0.131598
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43.530096

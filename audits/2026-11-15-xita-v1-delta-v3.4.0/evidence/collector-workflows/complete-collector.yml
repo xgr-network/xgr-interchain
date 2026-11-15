@@ -1,0 +1,236 @@
+name: XITA V1 delta audit evidence 2026-11-15
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-20261115-evidence.yml'
+permissions:
+  contents: read
+concurrency:
+  group: audit-20261115-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  full-discovery-and-roles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: xita_ci
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: xita_sponsor_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fe3d63603a09197217c57e61961f6434e39ba07f
+          persist-credentials: false
+      - name: Test-only dependencies and source pin
+        run: |
+          set -euo pipefail
+          mkdir -p audit-evidence/js
+          git rev-parse HEAD > audit-evidence/commit.txt
+          node --version > audit-evidence/toolchain.txt
+          for dir in services/onboarding services/managed-relay services/indexer runtime/native-relayer; do
+            npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund --package-lock=false
+          done
+          for browser in google-chrome chromium chromium-browser google-chrome-stable; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              echo "XITA_BROWSER=$(command -v "$browser")" >> "$GITHUB_ENV"
+              break
+            fi
+          done
+      - name: Discover every tracked test and retain failures without aborting discovery
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          printf 'path\texit_code\n' > audit-evidence/js/results.tsv
+          git ls-files 'apps/web/*.test.mjs' 'services/**/*.test.mjs' 'tools/*.test.mjs' 'runtime/native-relayer/*.test.mjs' | sort > audit-evidence/js/discovered.txt
+          while IFS= read -r path; do
+            log="audit-evidence/js/$(printf '%s' "$path" | tr '/' '_').log"
+            rc=0
+            timeout 100s node --test --test-reporter=tap "$path" > "$log" 2>&1 || rc=$?
+            printf '%s\t%s\n' "$path" "$rc" | tee -a audit-evidence/js/results.tsv
+            if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
+          done < audit-evidence/js/discovered.txt
+          printf 'failing_files=%s\n' "$failed" | tee audit-evidence/js/summary.txt
+          test "$failed" -eq 0
+      - name: Exercise actual restricted reviewer role and actor attribution boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > services/managed-relay/audit-role-probe.mjs <<'JS'
+          import assert from 'node:assert/strict';
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {Client} from 'pg';
+          import {recordSponsorObligationReview} from './sponsor-obligation-review.mjs';
+          const db=new Client({connectionString:process.env.XITA_SPONSOR_TEST_DATABASE_URL});
+          const addr='0x'+'a'.repeat(40),other='0x'+'b'.repeat(40);
+          const key='base:0x'+'c'.repeat(64)+':first-delivery';
+          const result={scope:'isolated PostgreSQL only',checks:{}};
+          await db.connect();
+          try{
+            await db.query('CREATE ROLE xita_sponsor_reviewer NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION');
+            await db.query(readFileSync('services/indexer/sql/017_sponsor_obligation_reviews.sql','utf8'));
+            await db.query('TRUNCATE xita_sponsor_obligation_reviews,xita_sponsor_overtaken_obligations,xita_sponsor_grants CASCADE');
+            await db.query('INSERT INTO xita_sponsor_overtaken_obligations(grant_key,chain_name,stage,sponsor_address,promised_wei) VALUES($1,$2,$3,$4,50)',[key,'xgrchain','first-delivery',addr]);
+            await db.query('SET ROLE xita_sponsor_reviewer');
+            const valid=await recordSponsorObligationReview({pool:db,grantKey:key,sponsorAddress:addr,outcome:'acknowledged'});
+            result.checks.normal_cli_succeeds=valid.reviewer==='xita_sponsor_reviewer';
+            try{await db.query('UPDATE xita_sponsor_obligation_reviews SET outcome=\'escalated\'');result.checks.update_denied=false}catch(e){result.checks.update_denied=e.code==='42501'}
+            try{await db.query('SELECT recipient FROM xita_sponsor_grants');result.checks.private_column_denied=false}catch(e){result.checks.private_column_denied=e.code==='42501'}
+            const forged=await db.query('INSERT INTO xita_sponsor_obligation_reviews(grant_key,sponsor_address,outcome,reviewer,recorded_at) VALUES($1,$2,$3,$4,$5) RETURNING sponsor_address,reviewer,recorded_at',[key,other,'escalated','another-operator','2000-01-01T00:00:00Z']);
+            result.checks.table_insert_accepts_unbound_actor_time_and_sponsor=forged.rowCount===1&&forged.rows[0].reviewer==='another-operator'&&forged.rows[0].sponsor_address===other;
+            result.forged_metadata={reviewer:forged.rows[0].reviewer,recorded_at:forged.rows[0].recorded_at};
+            await db.query('RESET ROLE');
+            result.checks.liability_preserved=(await db.query('SELECT COUNT(*)::int AS n FROM xita_sponsor_overtaken_obligations WHERE grant_key=$1',[key])).rows[0].n===1;
+            assert.equal(result.checks.normal_cli_succeeds,true);
+            assert.equal(result.checks.update_denied,true);
+            assert.equal(result.checks.private_column_denied,true);
+            writeFileSync('audit-evidence/reviewer-role.json',JSON.stringify(result,null,2));
+            console.log(JSON.stringify(result));
+          }finally{await db.end()}
+          JS
+          node services/managed-relay/audit-role-probe.mjs | tee audit-evidence/reviewer-role.log
+          cp services/managed-relay/audit-role-probe.mjs audit-evidence/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-20261115-complete-tests-roles
+          path: audit-evidence/
+          retention-days: 14
+          if-no-files-found: error
+  recovery-negatives:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: xgr-network/xgr-node
+          ref: 723ff829d7380a29a116fd2f29c3b808ec073c0d
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.23.12'
+          cache: true
+      - name: Additional journal write failure and restart tests on frozen source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-evidence
+          cat > interchain/runtime/audit_f20_test.go <<'GO'
+          package runtime
+          import (
+            "os"
+            "path/filepath"
+            "testing"
+            "github.com/xgr-network/xgr-node/crypto"
+            "github.com/xgr-network/xgr-node/types"
+          )
+          func TestAuditF20RestartAndWriteFailure(t *testing.T){
+            a:=types.StringToAddress("0x1111111111111111111111111111111111111111")
+            w:=&Worker{dataDir:t.TempDir(),localAddr:a,ilnLocalVotes:make(map[types.Hash]*ilnLocalVoteState)}
+            old,next:=f20Vote(7,a),f20Vote(8,a)
+            oldHash,nextHash:=crypto.Keccak256Hash(old.Payload),crypto.Keccak256Hash(next.Payload)
+            if err:=w.persistILNLocalVote(oldHash,old);err!=nil{t.Fatal(err)}
+            w.ilnLocalVotes[oldHash]=&ilnLocalVoteState{vote:old}
+            tmp:=filepath.Join(w.ilnVoteDir(),nextHash.String()+".json.tmp")
+            if err:=os.Mkdir(tmp,0700);err!=nil{t.Fatal(err)}
+            if err:=w.persistILNLocalVote(nextHash,next);err==nil{t.Fatal("failure fixture unexpectedly wrote successor")}
+            if w.hasDurableILNSuccessorVote(old,8){t.Fatal("failed write authorized retirement")}
+            if _,err:=os.Stat(filepath.Join(w.ilnVoteDir(),oldHash.String()+".json"));err!=nil{t.Fatal("original evidence lost",err)}
+            if err:=os.Remove(tmp);err!=nil{t.Fatal(err)}
+            if err:=w.persistILNLocalVote(nextHash,next);err!=nil{t.Fatal(err)}
+            restarted:=&Worker{dataDir:w.dataDir,localAddr:a,ilnLocalVotes:make(map[types.Hash]*ilnLocalVoteState)}
+            if err:=restarted.recoverILNLocalVotes();err!=nil{t.Fatal(err)}
+            if !restarted.hasDurableILNSuccessorVote(old,8){t.Fatal("valid journal successor unavailable after restart")}
+            restarted.removeILNLocalVote(oldHash)
+            if _,err:=os.Stat(filepath.Join(w.ilnVoteDir(),nextHash.String()+".json"));err!=nil{t.Fatal("retirement removed successor",err)}
+          }
+          GO
+          go test -p 2 -count=5 -timeout=5m -json ./interchain/runtime -run '^(TestAuditF20|TestF20)' 2>&1 | tee audit-evidence/f20-faults.jsonl
+          cp interchain/runtime/audit_f20_test.go audit-evidence/
+          git rev-parse HEAD > audit-evidence/commit.txt
+          go version > audit-evidence/toolchain.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-20261115-f20-faults
+          path: audit-evidence/
+          retention-days: 14
+          if-no-files-found: error
+  live-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fe3d63603a09197217c57e61961f6434e39ba07f
+          persist-credentials: false
+      - name: Install hash library only
+        run: npm install --prefix services/managed-relay --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Read production node versions, canonical receipts and code hashes without signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-evidence
+          cat > services/managed-relay/audit-public-probe.mjs <<'JS'
+          import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
+          import {join} from 'node:path';
+          import {createHash} from 'node:crypto';
+          import {keccak256} from 'ethers';
+          const output={observedAt:new Date().toISOString(),nodes:[],receipts:[],health:[],release:{}};
+          async function rpc(url,method,params=[]){
+            if(!['web3_clientVersion','eth_chainId','eth_blockNumber','eth_getTransactionReceipt','eth_getCode','eth_getBlockByNumber'].includes(method))throw Error('Non-read RPC forbidden');
+            const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},signal:AbortSignal.timeout(10000),body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});
+            if(!r.ok)throw Error('HTTP '+r.status);
+            const x=await r.json();if(x.error||x.result===undefined||x.result===null)throw Error(JSON.stringify(x.error||'missing result'));return x.result;
+          }
+          for(const url of ['https://rpc1.xgr.network','https://rpc2.xgr.network']){
+            const row={url};
+            for(const method of ['web3_clientVersion','eth_chainId','eth_blockNumber']){try{row[method]=await rpc(url,method)}catch(e){row[method]={unavailable:String(e.message).slice(0,150)}}}
+            output.nodes.push(row);
+          }
+          const jobs=[];
+          for(const chain of readdirSync('deployments/receipts')){
+            let cfg;try{cfg=JSON.parse(readFileSync('config/chains/'+chain+'/chain.json','utf8'))}catch{continue}
+            for(const name of readdirSync('deployments/receipts/'+chain).filter(x=>x.endsWith('.json'))){
+              const path=join('deployments/receipts',chain,name),v=JSON.parse(readFileSync(path,'utf8'));
+              if(!v.address||!v.transactionHash||!v.runtimeCodeKeccak256)continue;
+              for(const url of cfg.rpcUrls.slice(0,2))jobs.push({v,url,path});
+            }
+          }
+          let cursor=0;
+          await Promise.all(Array.from({length:4},async()=>{while(cursor<jobs.length){const {v,url,path}=jobs[cursor++];const row={chain:v.chain,component:v.component,address:v.address,url,path,expectedRuntimeHash:v.runtimeCodeKeccak256};try{
+            const [chain,code,receipt,block]=await Promise.all([rpc(url,'eth_chainId'),rpc(url,'eth_getCode',[v.address,'latest']),rpc(url,'eth_getTransactionReceipt',[v.transactionHash]),rpc(url,'eth_getBlockByNumber',['0x'+BigInt(v.blockNumber).toString(16),false])]);
+            row.runtimeHash=keccak256(code);row.chainId=Number(BigInt(chain));row.receiptStatus=receipt.status;row.blockHash=block.hash;row.receiptBlockHash=receipt.blockHash;
+            row.status=row.chainId===v.chainId&&row.runtimeHash.toLowerCase()===v.runtimeCodeKeccak256.toLowerCase()&&BigInt(receipt.status)===1n&&receipt.transactionHash.toLowerCase()===v.transactionHash.toLowerCase()&&receipt.blockHash.toLowerCase()===v.blockHash.toLowerCase()&&block.hash.toLowerCase()===v.blockHash.toLowerCase()?'verified':'mismatch';
+          }catch(e){row.status='unavailable';row.error=String(e.message).slice(0,180)}output.receipts.push(row)}}));
+          for(const path of ['/api/xita/v1/managed/health','/api/xita/join/status','/api/xeta/v1/transfer/health']){const row={path};try{const r=await fetch('https://xita.xgr.network'+path,{signal:AbortSignal.timeout(10000)});row.httpStatus=r.status;row.body=(await r.text()).slice(0,12000)}catch(e){row.error=String(e.message)}output.health.push(row)}
+          try{
+            const base='https://github.com/xgr-network/xgr-node/releases/download/v3.5.1/';
+            for(const n of ['commit.txt','version.txt','toolchain.txt','sha256sums.txt']){const r=await fetch(base+n,{signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error(n+' HTTP '+r.status);output.release[n]=await r.text()}
+            const r=await fetch(base+'xgrchain-v3.5.1-linux-amd64',{signal:AbortSignal.timeout(60000)});if(!r.ok)throw Error('binary HTTP '+r.status);
+            const hash=createHash('sha256');let bytes=0;for await(const b of r.body){hash.update(b);bytes+=b.length}output.release.binarySha256=hash.digest('hex');output.release.binaryBytes=bytes;output.release.matchesManifest=output.release['sha256sums.txt'].includes(output.release.binarySha256+'  xgrchain-v3.5.1-linux-amd64');
+          }catch(e){output.release.error=String(e.message)}
+          output.completedAt=new Date().toISOString();
+          writeFileSync('audit-evidence/read-only-production.json',JSON.stringify(output,null,2));
+          console.log(JSON.stringify({nodes:output.nodes,receipts:output.receipts.reduce((a,x)=>(a[x.status]=(a[x.status]||0)+1,a),{}),health:output.health.map(x=>({path:x.path,status:x.httpStatus,error:x.error})),release:output.release},null,2));
+          JS
+          node services/managed-relay/audit-public-probe.mjs | tee audit-evidence/read-only-production.log
+          cp services/managed-relay/audit-public-probe.mjs audit-evidence/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-20261115-read-only-production
+          path: audit-evidence/
+          retention-days: 14
+          if-no-files-found: error

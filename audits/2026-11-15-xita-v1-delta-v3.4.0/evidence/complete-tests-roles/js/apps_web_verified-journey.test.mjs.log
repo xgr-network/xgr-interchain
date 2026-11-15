@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: one canonical two-hop journey with only one visible pending card
+ok 1 - one canonical two-hop journey with only one visible pending card
+  ---
+  duration_ms: 1.588173
+  type: 'test'
+  ...
+# Subtest: a delayed first-hop SQL observation never hides the already verified second hop
+ok 2 - a delayed first-hop SQL observation never hides the already verified second hop
+  ---
+  duration_ms: 0.209145
+  type: 'test'
+  ...
+# Subtest: fresh canonical progress can advance but cannot revoke the first hop
+ok 3 - fresh canonical progress can advance but cannot revoke the first hop
+  ---
+  duration_ms: 0.074242
+  type: 'test'
+  ...
+# Subtest: an immutable message or onward tx disagreement fails closed
+ok 4 - an immutable message or onward tx disagreement fails closed
+  ---
+  duration_ms: 0.087011
+  type: 'test'
+  ...
+# Subtest: an unverified child cannot collapse a pending card
+ok 5 - an unverified child cannot collapse a pending card
+  ---
+  duration_ms: 0.079971
+  type: 'test'
+  ...
+# Subtest: indexed parent absorbs same independently verified onward TX from stale browser state
+ok 6 - indexed parent absorbs same independently verified onward TX from stale browser state
+  ---
+  duration_ms: 0.138899
+  type: 'test'
+  ...
+# Subtest: an unrelated, unconfirmed, mismatched or ambiguous child is never hidden
+ok 7 - an unrelated, unconfirmed, mismatched or ambiguous child is never hidden
+  ---
+  duration_ms: 0.157397
+  type: 'test'
+  ...
+# Subtest: M-02: a fresh native-finality observation reverses a formerly delivered journey
+ok 8 - M-02: a fresh native-finality observation reverses a formerly delivered journey
+  ---
+  duration_ms: 0.104538
+  type: 'test'
+  ...
+# Subtest: native-safe finality remains an unconfirmed status and is not replaced by stale 12/12
+ok 9 - native-safe finality remains an unconfirmed status and is not replaced by stale 12/12
+  ---
+  duration_ms: 0.141654
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43.375659

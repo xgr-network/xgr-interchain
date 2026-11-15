@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: route discovery only exposes canonical deployed Gateway and paired mailbox
+ok 1 - route discovery only exposes canonical deployed Gateway and paired mailbox
+  ---
+  duration_ms: 1.102671
+  type: 'test'
+  ...
+# Subtest: exact Dispatch ABI payload yields source message ID
+ok 2 - exact Dispatch ABI payload yields source message ID
+  ---
+  duration_ms: 0.488626
+  type: 'test'
+  ...
+# Subtest: verified successful source can be delivered or pending proof
+ok 3 - verified successful source can be delivered or pending proof
+  ---
+  duration_ms: 1.952782
+  type: 'test'
+  ...
+# Subtest: failed and pending source cannot advertise a recoverable proof
+ok 4 - failed and pending source cannot advertise a recoverable proof
+  ---
+  duration_ms: 0.196736
+  type: 'test'
+  ...
+# Subtest: wallet mismatch or untrusted source Dispatch cannot be claimed
+ok 5 - wallet mismatch or untrusted source Dispatch cannot be claimed
+  ---
+  duration_ms: 0.430518
+  type: 'test'
+  ...
+# Subtest: verified source with unavailable destination is unknown, not delivered
+ok 6 - verified source with unavailable destination is unknown, not delivered
+  ---
+  duration_ms: 0.452432
+  type: 'test'
+  ...
+# Subtest: bounded recent scan includes only wallet-owned canonical gateway txs
+ok 7 - bounded recent scan includes only wallet-owned canonical gateway txs
+  ---
+  duration_ms: 0.739945
+  type: 'test'
+  ...
+# Subtest: source fee adapter is verified using canonical Gateway, Mailbox and fee event
+ok 8 - source fee adapter is verified using canonical Gateway, Mailbox and fee event
+  ---
+  duration_ms: 1.984669
+  type: 'test'
+  ...
+# Subtest: mined fee adapter transfer recovers across arbitrary wallet executors on base
+ok 9 - mined fee adapter transfer recovers across arbitrary wallet executors on base
+  ---
+  duration_ms: 0.77048
+  type: 'test'
+  ...
+# Subtest: canonical direct Gateway call remains valid without fee event on base
+ok 10 - canonical direct Gateway call remains valid without fee event on base
+  ---
+  duration_ms: 0.60419
+  type: 'test'
+  ...
+# Subtest: unverified intermediate calls never claim ownership of canonical logs on base
+ok 11 - unverified intermediate calls never claim ownership of canonical logs on base
+  ---
+  duration_ms: 1.034878
+  type: 'test'
+  ...
+# Subtest: route evidence cannot be duplicated or mismatched on base
+ok 12 - route evidence cannot be duplicated or mismatched on base
+  ---
+  duration_ms: 0.627045
+  type: 'test'
+  ...
+# Subtest: mined fee adapter transfer recovers across arbitrary wallet executors on arbitrum
+ok 13 - mined fee adapter transfer recovers across arbitrary wallet executors on arbitrum
+  ---
+  duration_ms: 0.571631
+  type: 'test'
+  ...
+# Subtest: canonical direct Gateway call remains valid without fee event on arbitrum
+ok 14 - canonical direct Gateway call remains valid without fee event on arbitrum
+  ---
+  duration_ms: 0.287343
+  type: 'test'
+  ...
+# Subtest: unverified intermediate calls never claim ownership of canonical logs on arbitrum
+ok 15 - unverified intermediate calls never claim ownership of canonical logs on arbitrum
+  ---
+  duration_ms: 0.495457
+  type: 'test'
+  ...
+# Subtest: route evidence cannot be duplicated or mismatched on arbitrum
+ok 16 - route evidence cannot be duplicated or mismatched on arbitrum
+  ---
+  duration_ms: 0.313562
+  type: 'test'
+  ...
+# Subtest: source RPC failover works for every connected spoke source, not just Base
+ok 17 - source RPC failover works for every connected spoke source, not just Base
+  ---
+  duration_ms: 1.065435
+  type: 'test'
+  ...
+# Subtest: XGRChain source also selects an independently verified backup RPC
+ok 18 - XGRChain source also selects an independently verified backup RPC
+  ---
+  duration_ms: 0.350909
+  type: 'test'
+  ...
+# Subtest: lagging RPC null receipt does not mask a mined canonical source
+ok 19 - lagging RPC null receipt does not mask a mined canonical source
+  ---
+  duration_ms: 0.412361
+  type: 'test'
+  ...
+# Subtest: RPC failover cannot admit a mismatched chain ID or untrusted URL
+ok 20 - RPC failover cannot admit a mismatched chain ID or untrusted URL
+  ---
+  duration_ms: 0.257487
+  type: 'test'
+  ...
+# Subtest: Arbitrum browser preflight uses same-origin read-only RPC proxy, not blocked cross-origin fetch
+ok 21 - Arbitrum browser preflight uses same-origin read-only RPC proxy, not blocked cross-origin fetch
+  ---
+  duration_ms: 0.363187
+  type: 'test'
+  ...
+# Subtest: browser proxy failing is explicitly identified before wallet signing
+ok 22 - browser proxy failing is explicitly identified before wallet signing
+  ---
+  duration_ms: 0.664401
+  type: 'test'
+  ...
+# Subtest: Arbitrum mined two-hop intent survives 64-block finality before unlock
+ok 23 - Arbitrum mined two-hop intent survives 64-block finality before unlock
+  ---
+  duration_ms: 0.63772
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 64.808825

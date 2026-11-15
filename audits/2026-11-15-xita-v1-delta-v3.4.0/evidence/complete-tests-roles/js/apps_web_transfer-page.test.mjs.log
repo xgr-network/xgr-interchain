@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: My Transfers introduction never uses the global navigation header layout
+ok 1 - My Transfers introduction never uses the global navigation header layout
+  ---
+  duration_ms: 1.165716
+  type: 'test'
+  ...
+# Subtest: My Transfers and menu are entirely absent until a valid wallet connects
+ok 2 - My Transfers and menu are entirely absent until a valid wallet connects
+  ---
+  duration_ms: 0.127232
+  type: 'test'
+  ...
+# Subtest: wallet-specific transfer cards never expose previous connected account
+ok 3 - wallet-specific transfer cards never expose previous connected account
+  ---
+  duration_ms: 0.276817
+  type: 'test'
+  ...
+# Subtest: My Transfers never signs and links to the unique transfer recovery flow
+ok 4 - My Transfers never signs and links to the unique transfer recovery flow
+  ---
+  duration_ms: 0.197037
+  type: 'test'
+  ...
+# Subtest: without deployed routes, import is disabled and does not invent wallet history
+ok 5 - without deployed routes, import is disabled and does not invent wallet history
+  ---
+  duration_ms: 0.107592
+  type: 'test'
+  ...
+# Subtest: manual source TX hash is optional while wallet discovery is primary
+ok 6 - manual source TX hash is optional while wallet discovery is primary
+  ---
+  duration_ms: 0.143236
+  type: 'test'
+  ...
+# Subtest: every unresolved transfer links to its own verified wallet recovery intent
+ok 7 - every unresolved transfer links to its own verified wallet recovery intent
+  ---
+  duration_ms: 0.38537
+  type: 'test'
+  ...
+# Subtest: verified linked two-hop Arbitrum to Base renders ONE wallet operation
+ok 8 - verified linked two-hop Arbitrum to Base renders ONE wallet operation
+  ---
+  duration_ms: 0.482777
+  type: 'test'
+  ...
+# Subtest: orphan second hop is not silently discarded as another person's journey
+ok 9 - orphan second hop is not silently discarded as another person's journey
+  ---
+  duration_ms: 0.214413
+  type: 'test'
+  ...
+# Subtest: recent wallet broadcast survives reload as explicitly UNVERIFIED, never as successful bridge
+ok 10 - recent wallet broadcast survives reload as explicitly UNVERIFIED, never as successful bridge
+  ---
+  duration_ms: 0.382216
+  type: 'test'
+  ...
+# Subtest: linked TX3 and already indexed TXs cannot appear as independent broadcasts
+ok 11 - linked TX3 and already indexed TXs cannot appear as independent broadcasts
+  ---
+  duration_ms: 0.225119
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 54.201888

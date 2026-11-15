@@ -1,0 +1,34 @@
+TAP version 13
+# Subtest: XITA notifications arise only from merged GitHub proposal and independently validated visibility
+ok 1 - XITA notifications arise only from merged GitHub proposal and independently validated visibility
+  ---
+  duration_ms: 0.564431
+  type: 'test'
+  ...
+# Subtest: listed and delisted history is not mistaken for a fresh deployed milestone
+ok 2 - listed and delisted history is not mistaken for a fresh deployed milestone
+  ---
+  duration_ms: 0.104267
+  type: 'test'
+  ...
+# Subtest: deployed/first-lock mail requires an executable route gate
+ok 3 - deployed/first-lock mail requires an executable route gate
+  ---
+  duration_ms: 0.057257
+  type: 'test'
+  ...
+# Subtest: route milestones require both directions of the canonical home route and ALL planned directions for completion
+ok 4 - route milestones require both directions of the canonical home route and ALL planned directions for completion
+  ---
+  duration_ms: 0.987249
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 49.572371

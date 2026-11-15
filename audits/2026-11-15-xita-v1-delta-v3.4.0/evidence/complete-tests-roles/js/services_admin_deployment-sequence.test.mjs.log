@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: all chains in GitHub configs get independent generic steps and format-specific verifier
+ok 1 - all chains in GitHub configs get independent generic steps and format-specific verifier
+  ---
+  duration_ms: 12.529319
+  type: 'test'
+  ...
+# Subtest: unknown verifier format fails closed without chain-name exceptions
+ok 2 - unknown verifier format fails closed without chain-name exceptions
+  ---
+  duration_ms: 3.52617
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 62.258458

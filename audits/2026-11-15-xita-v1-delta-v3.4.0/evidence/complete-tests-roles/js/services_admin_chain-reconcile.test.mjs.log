@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: main-pinned Polygon Factory constructor getters verify without Base exceptions
+ok 1 - main-pinned Polygon Factory constructor getters verify without Base exceptions
+  ---
+  duration_ms: 3.403227
+  type: 'test'
+  ...
+# Subtest: unexpected fee or malicious constructor address fails closed
+ok 2 - unexpected fee or malicious constructor address fails closed
+  ---
+  duration_ms: 1.970348
+  type: 'test'
+  ...
+# Subtest: SourceRegistry live BLS-governed fee overrides the original Factory constructor fee
+ok 3 - SourceRegistry live BLS-governed fee overrides the original Factory constructor fee
+  ---
+  duration_ms: 1.816566
+  type: 'test'
+  ...
+# Subtest: initial SourceRegistry fee must equal deployed Factory when nonce zero
+ok 4 - initial SourceRegistry fee must equal deployed Factory when nonce zero
+  ---
+  duration_ms: 2.485964
+  type: 'test'
+  ...
+# Subtest: every independent module reconciles without a bogus constructor-binding requirement
+ok 5 - every independent module reconciles without a bogus constructor-binding requirement
+  ---
+  duration_ms: 0.189715
+  type: 'test'
+  ...
+# Subtest: factory may not bind a substituted router deployment module
+ok 6 - factory may not bind a substituted router deployment module
+  ---
+  duration_ms: 2.677364
+  type: 'test'
+  ...
+# Subtest: factory must have all three independently documented router modules
+ok 7 - factory must have all three independently documented router modules
+  ---
+  duration_ms: 1.727722
+  type: 'test'
+  ...
+# Subtest: receipt absence returns resumable pending without touching chain constructor
+ok 8 - receipt absence returns resumable pending without touching chain constructor
+  ---
+  duration_ms: 0.973647
+  type: 'test'
+  ...
+# Subtest: RPC indexing delay after wallet returned hash is an ordinary resumable pending state
+ok 9 - RPC indexing delay after wallet returned hash is an ordinary resumable pending state
+  ---
+  duration_ms: 0.217087
+  type: 'test'
+  ...
+# Subtest: RPC outage during transaction indexing never triggers another broadcast
+ok 10 - RPC outage during transaction indexing never triggers another broadcast
+  ---
+  duration_ms: 0.313412
+  type: 'test'
+  ...
+# Subtest: Base Registry V3 checks initial reserve per validator against signed value
+ok 11 - Base Registry V3 checks initial reserve per validator against signed value
+  ---
+  duration_ms: 8.871454
+  type: 'test'
+  ...
+# Subtest: fee contract deployment must bind all three service roles to ONE address
+ok 12 - fee contract deployment must bind all three service roles to ONE address
+  ---
+  duration_ms: 2.309538
+  type: 'test'
+  ...
+# Subtest: deployment verifier never reads historic eth_getCode or eth_call
+ok 13 - deployment verifier never reads historic eth_getCode or eth_call
+  ---
+  duration_ms: 4.207599
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 85.960099

@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: prepared proof remains unsigned: the journal never stores calldata
+ok 1 - prepared proof remains unsigned: the journal never stores calldata
+  ---
+  duration_ms: 0.93495
+  type: 'test'
+  ...
+# Subtest: a transient RPC failure is not a failed transfer or missing funds
+ok 2 - a transient RPC failure is not a failed transfer or missing funds
+  ---
+  duration_ms: 0.255635
+  type: 'test'
+  ...
+# Subtest: the observer only enqueues canonically finalized and undelivered messages
+ok 3 - the observer only enqueues canonically finalized and undelivered messages
+  ---
+  duration_ms: 0.207423
+  type: 'test'
+  ...
+# Subtest: concurrent observers claim a transactionally leased, crash-recoverable job
+ok 4 - concurrent observers claim a transactionally leased, crash-recoverable job
+  ---
+  duration_ms: 0.252611
+  type: 'test'
+  ...
+# Subtest: proof process failure persists only classified retry diagnostics and no signing data
+ok 5 - proof process failure persists only classified retry diagnostics and no signing data
+  ---
+  duration_ms: 0.405742
+  type: 'test'
+  ...
+# Subtest: bounded queue skips previously observed old events to prevent new-transfer starvation
+ok 6 - bounded queue skips previously observed old events to prevent new-transfer starvation
+  ---
+  duration_ms: 0.092179
+  type: 'test'
+  ...
+# Subtest: provisional destination delivery does not suppress future finalized-state checks
+ok 7 - provisional destination delivery does not suppress future finalized-state checks
+  ---
+  duration_ms: 0.570861
+  type: 'test'
+  ...
+# Subtest: pending BLS signatures poll XGR locally without invoking full Base recovery
+ok 8 - pending BLS signatures poll XGR locally without invoking full Base recovery
+  ---
+  duration_ms: 1.662507
+  type: 'test'
+  ...
+# Subtest: local quorum availability triggers full independent validation, never automatic signature
+ok 9 - local quorum availability triggers full independent validation, never automatic signature
+  ---
+  duration_ms: 0.774008
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 60.009138

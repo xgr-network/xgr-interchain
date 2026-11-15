@@ -1,0 +1,33 @@
+TAP version 13
+# Subtest: canary dry run permits only restricted private XITA Canary payload
+ok 1 - canary dry run permits only restricted private XITA Canary payload
+  ---
+  duration_ms: 3.111654
+  type: 'test'
+  ...
+# Subtest: isolated canary sends exactly one real-flow verification email and leaves queue pending
+not ok 2 - isolated canary sends exactly one real-flow verification email and leaves queue pending
+  ---
+  duration_ms: 86.877394
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/services/onboarding/creator-canary.test.mjs:42:1'
+  failureType: 'testCodeFailure'
+  error: 'Canary registration rejected (HTTP 503): Email verification unavailable'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    fail (file:///home/runner/work/xgr-interchain/xgr-interchain/services/onboarding/creator-canary.mjs:14:28)
+    submitCanary (file:///home/runner/work/xgr-interchain/xgr-interchain/services/onboarding/creator-canary.mjs:50:4)
+    process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    async TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/services/onboarding/creator-canary.test.mjs:46:11)
+    async Test.run (node:internal/test_runner/test:1409:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 1
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 149.445086

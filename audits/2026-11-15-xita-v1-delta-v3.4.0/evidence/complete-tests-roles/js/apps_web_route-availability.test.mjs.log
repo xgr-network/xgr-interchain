@@ -1,0 +1,66 @@
+TAP version 13
+# Subtest: two fully documented directed routes are transfer candidates immediately
+ok 1 - two fully documented directed routes are transfer candidates immediately
+  ---
+  duration_ms: 1.669004
+  type: 'test'
+  ...
+# Subtest: a configured-only spoke is never offered as a transferable route
+ok 2 - a configured-only spoke is never offered as a transferable route
+  ---
+  duration_ms: 0.323728
+  type: 'test'
+  ...
+# Subtest: incomplete or forged deployment documentation never unlocks transfers
+ok 3 - incomplete or forged deployment documentation never unlocks transfers
+  ---
+  duration_ms: 0.686023
+  type: 'test'
+  ...
+# Subtest: the public commercial transfer UI remains closed until BOTH execution gateways are documented
+ok 4 - the public commercial transfer UI remains closed until BOTH execution gateways are documented
+  ---
+  duration_ms: 6.367459
+  type: 'test'
+  ...
+# Subtest: old source locks stay recoverable when the new commercial gateway is absent
+not ok 5 - old source locks stay recoverable when the new commercial gateway is absent
+  ---
+  duration_ms: 0.859585
+  type: 'test'
+  location: '/home/runner/work/xgr-interchain/xgr-interchain/apps/web/route-availability.test.mjs:77:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Continue delivery/. Input:
+    
+    '<div class="ux-app ux-plan-page ux-northstar-page"><section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro"><span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1><p class="ux-muted">Move your tokens between supported networks using your own wallet.</p></div><div class="ux-ns-operations-grid is-recovery"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div><div class="ux-transfer-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-asset">Token</label><select id="ux-asset" disabled><option value="ABC" selected>ABC (ABC)</option></select></div><div class="ux-transfer-network-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-origin">From</label><select id="ux-origin" disabled><option value="xgrchain" selected>XGRChain</option><option value="base">Base</option></select></div><div class="ux-transfer-direction" aria-hidden="true">→</div><div class="ux-transfer-field"><label class="ux-field" for="ux-destination">To</label><select id="ux-destination" disabled><option value="base" selected>Base</option></select></div></div><div class="ux-transfer-field"><label class="ux-field" for="ux-transfer-amount">Amount (ABC)</label><input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="Original amount already locked/burned" value="" readonly><div class="ux-transfer-available" aria-live="polite"><span>Available on XGRChain</span><strong>Unavailable</strong></div></div></div><div class="ux-transfer-outstanding"><span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span><label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery (1)</label><select id="xita-open-transfer"><option value="">New transfer</option><option value="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" selected>ABC · xgrchain → base · 0xbbbbbbbb…</option></select><p class="ux-small">Older deliveries are optional to continue here. They do not disable a new transfer. The original source lock is never repeated.</p></div><div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary" data-transfer-action="resume" aria-haspopup="dialog" aria-controls="xita-flow-dialog">Continue transfer · view status</button><p class="ux-transfer-action-hint">Continue this verified transfer in the status window. Never repeat the original source lock.</p></div><p class="ux-transfer-error">The Interchain Fee · Execution Gateway is not verified on both chains. New XITA transfers are disabled. Previously locked transfers remain accessible through My Transfers.</p><p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p></section></div><section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section></section></div>'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="ux-app ux-plan-page ux-northstar-page"><section class="ux-ns-operations" id="ux-journey-planner"><div class="ux-ns-ops-intro"><span class="ux-kicker">XITA · INTERCHAIN TRANSFERS</span><h1>Transfer Tokens</h1><p class="ux-muted">Move your tokens between supported networks using your own wallet.</p></div><div class="ux-ns-operations-grid is-recovery"><section class="ux-panel ux-route-panel"><div class="ux-panel-head"><span class="ux-kicker">TRANSFER</span><span class="ux-label">XGR HUB</span></div><div class="ux-transfer-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-asset">Token</label><select id="ux-asset" disabled><option value="ABC" selected>ABC (ABC)</option></select></div><div class="ux-transfer-network-fields"><div class="ux-transfer-field"><label class="ux-field" for="ux-origin">From</label><select id="ux-origin" disabled><option value="xgrchain" selected>XGRChain</option><option value="base">Base</option></select></div><div class="ux-transfer-direction" aria-hidden="true">→</div><div class="ux-transfer-field"><label class="ux-field" for="ux-destination">To</label><select id="ux-destination" disabled><option value="base" selected>Base</option></select></div></div><div class="ux-transfer-field"><label class="ux-field" for="ux-transfer-amount">Amount (ABC)</label><input type="text" id="ux-transfer-amount" inputmode="decimal" autocomplete="off" placeholder="Original amount already locked/burned" value="" readonly><div class="ux-transfer-available" aria-live="polite"><span>Available on XGRChain</span><strong>Unavailable</strong></div></div></div><div class="ux-transfer-outstanding"><span class="ux-kicker">UNFINISHED ON-CHAIN TRANSFER</span><label class="ux-field" for="xita-open-transfer">Previous transfers awaiting delivery (1)</label><select id="xita-open-transfer"><option value="">New transfer</option><option value="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" selected>ABC · xgrchain → base · 0xbbbbbbbb…</option></select><p class="ux-small">Older deliveries are optional to continue here. They do not disable a new transfer. The original source lock is never repeated.</p></div><div class="ux-transfer-action"><button type="button" class="ux-button" id="xita-transfer-primary" data-transfer-action="resume" aria-haspopup="dialog" aria-controls="xita-flow-dialog">Continue transfer · view status</button><p class="ux-transfer-action-hint">Continue this verified transfer in the status window. Never repeat the original source lock.</p></div><p class="ux-transfer-error">The Interchain Fee · Execution Gateway is not verified on both chains. New XITA transfers are disabled. Previously locked transfers remain accessible through My Transfers.</p><p class="ux-small">Past transfers and outstanding delivery proofs: <a data-nav href="/my-transfers">My Transfers</a>. History indexing does not block a new transaction.</p></section></div><section class="ux-risk-disclosure" aria-label="Transfer custody and risk information"><strong>Self-custody · Public smart contracts · Your responsibility</strong><p>XGR.Network GmbH provides this web interface only. It does not take custody through the interface, manage your wallet, or receive private keys. All transactions are authorized directly in your wallet and executed by public smart contracts, which can hold locked collateral during a transfer. Smart-contract vulnerabilities, network disruption, delayed delivery, fees and loss of funds are risks. Use at your own risk. Successful delivery is not guaranteed; statutory rights remain unaffected.</p></section></section></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/runner/work/xgr-interchain/xgr-interchain/apps/web/route-availability.test.mjs:85:9)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1402:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+    Test.postRun (node:internal/test_runner/test:1542:19)
+    Test.run (node:internal/test_runner/test:1467:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+  ...
+# Subtest: collateral source must use underlying ERC20 rather than the router address
+ok 6 - collateral source must use underlying ERC20 rather than the router address
+  ---
+  duration_ms: 0.635116
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 56.892074

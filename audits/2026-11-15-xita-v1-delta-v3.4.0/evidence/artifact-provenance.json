@@ -1,0 +1,37 @@
+[
+  {
+    "artifact_id": 14154846016,
+    "name": "source-evidence",
+    "sha256": "f6279c0286330792fdd2ccaeba7ac66e2e72b5dde51cd3bdef5c4e36f1ca81dc",
+    "run_id": 43696416777,
+    "run_url": "https://github.com/xgr-network/xgr-interchain/actions/runs/43696416777"
+  },
+  {
+    "artifact_id": 14154014038,
+    "name": "node-evidence",
+    "sha256": "32730f33794a59291234dbfba57f5552fc06e7a73a2d431707c999a7ce922f9a",
+    "run_id": 43696416777,
+    "run_url": "https://github.com/xgr-network/xgr-interchain/actions/runs/43696416777"
+  },
+  {
+    "artifact_id": 14154284918,
+    "name": "complete-tests-roles",
+    "sha256": "1c226c6570a2bcdfac6ff85fd42afbbe4575044b2a729f13cb988e78465b58db",
+    "run_id": 43696812308,
+    "run_url": "https://github.com/xgr-network/xgr-interchain/actions/runs/43696812308"
+  },
+  {
+    "artifact_id": 14154921700,
+    "name": "f20-faults",
+    "sha256": "8f79013090509199242e0a070c868facffca374717769a568d02c659e85bc28d",
+    "run_id": 43696812308,
+    "run_url": "https://github.com/xgr-network/xgr-interchain/actions/runs/43696812308"
+  },
+  {
+    "artifact_id": 14155260940,
+    "name": "read-only-production",
+    "sha256": "f8c28293a4f62b09aa0ff1f208a1482ba057811f8294c86c2c011a1135a1a2dc",
+    "run_id": 43696812308,
+    "run_url": "https://github.com/xgr-network/xgr-interchain/actions/runs/43696812308"
+  }
+]

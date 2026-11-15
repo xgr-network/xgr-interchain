@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: one click deploys only first missing infrastructure component in canonical order
+ok 1 - one click deploys only first missing infrastructure component in canonical order
+  ---
+  duration_ms: 1.086693
+  type: 'test'
+  ...
+# Subtest: asset batch creates routers once and registers both directions only after both exist
+ok 2 - asset batch creates routers once and registers both directions only after both exist
+  ---
+  duration_ms: 0.193783
+  type: 'test'
+  ...
+# Subtest: batch constructor inputs use destination approved and verified values
+ok 3 - batch constructor inputs use destination approved and verified values
+  ---
+  duration_ms: 0.140242
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 40.490134

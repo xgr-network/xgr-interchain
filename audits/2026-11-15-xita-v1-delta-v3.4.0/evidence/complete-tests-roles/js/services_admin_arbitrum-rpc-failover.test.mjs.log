@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: Arbitrum RPC 403 falls back only after verifying official chainId 42161
+ok 1 - Arbitrum RPC 403 falls back only after verifying official chainId 42161
+  ---
+  duration_ms: 1.262061
+  type: 'test'
+  ...
+# Subtest: wrong-chain fallback cannot authorize any receipt
+ok 2 - wrong-chain fallback cannot authorize any receipt
+  ---
+  duration_ms: 0.419972
+  type: 'test'
+  ...
+# Subtest: RPC transport never forwards signing or transaction broadcasts
+ok 3 - RPC transport never forwards signing or transaction broadcasts
+  ---
+  duration_ms: 0.160893
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 44.441795

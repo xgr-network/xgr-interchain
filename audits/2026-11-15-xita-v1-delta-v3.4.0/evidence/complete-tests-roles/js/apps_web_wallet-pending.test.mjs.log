@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: header alert only counts genuine confirmed locks without delivery
+ok 1 - header alert only counts genuine confirmed locks without delivery
+  ---
+  duration_ms: 1.266738
+  type: 'test'
+  ...
+# Subtest: indexed pending count cannot be suppressed by stale or incomplete wallet rows
+ok 2 - indexed pending count cannot be suppressed by stale or incomplete wallet rows
+  ---
+  duration_ms: 0.1333
+  type: 'test'
+  ...
+# Subtest: confirmed XGR transit delivery remains visibly unfinished until final journey proof
+ok 3 - confirmed XGR transit delivery remains visibly unfinished until final journey proof
+  ---
+  duration_ms: 0.099009
+  type: 'test'
+  ...
+# Subtest: confirmed source with unknown destination remains visibly pending
+ok 4 - confirmed source with unknown destination remains visibly pending
+  ---
+  duration_ms: 0.112439
+  type: 'test'
+  ...
+# Subtest: second-hop uncertain after XGR hub delivery is still pending
+ok 5 - second-hop uncertain after XGR hub delivery is still pending
+  ---
+  duration_ms: 0.098889
+  type: 'test'
+  ...
+# Subtest: one verified two-hop journey is exactly one pending wallet operation
+ok 6 - one verified two-hop journey is exactly one pending wallet operation
+  ---
+  duration_ms: 0.24534
+  type: 'test'
+  ...
+# Subtest: hidden exact active source remains visible before indexed confirmation
+ok 7 - hidden exact active source remains visible before indexed confirmation
+  ---
+  duration_ms: 0.260002
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.233518

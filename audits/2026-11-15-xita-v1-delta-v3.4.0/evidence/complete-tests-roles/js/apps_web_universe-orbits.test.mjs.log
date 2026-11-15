@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: the gateway stays central and spokes use distinct inclined 3D orbital planes
+ok 1 - the gateway stays central and spokes use distinct inclined 3D orbital planes
+  ---
+  duration_ms: 5.807137
+  type: 'test'
+  ...
+# Subtest: reduced-motion setting freezes orbital positions
+ok 2 - reduced-motion setting freezes orbital positions
+  ---
+  duration_ms: 0.210778
+  type: 'test'
+  ...
+# Subtest: XGR remains fixed while spokes and their decorative moons move consistently
+ok 3 - XGR remains fixed while spokes and their decorative moons move consistently
+  ---
+  duration_ms: 0.941798
+  type: 'test'
+  ...
+# Subtest: illumination is one normalized fixed world-space direction
+ok 4 - illumination is one normalized fixed world-space direction
+  ---
+  duration_ms: 0.079209
+  type: 'test'
+  ...
+# Subtest: overview only draws real configured hub-to-spoke edges, never loose fragments
+ok 5 - overview only draws real configured hub-to-spoke edges, never loose fragments
+  ---
+  duration_ms: 0.618061
+  type: 'test'
+  ...
+# Subtest: orbital planes, speeds and phases stay generic for arbitrary configured systems
+ok 6 - orbital planes, speeds and phases stay generic for arbitrary configured systems
+  ---
+  duration_ms: 0.733965
+  type: 'test'
+  ...
+# Subtest: every spoke gets a different star distance and independent angular motion
+ok 7 - every spoke gets a different star distance and independent angular motion
+  ---
+  duration_ms: 0.19883
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 55.371528

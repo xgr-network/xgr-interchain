@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: UI trusted build compiles production contracts without forge-std scripts or tests
+ok 1 - UI trusted build compiles production contracts without forge-std scripts or tests
+  ---
+  duration_ms: 0.577243
+  type: 'test'
+  ...
+# Subtest: server update provisions Hyperlane and OpenZeppelin before restarting UI
+ok 2 - server update provisions Hyperlane and OpenZeppelin before restarting UI
+  ---
+  duration_ms: 0.673188
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 39.143198

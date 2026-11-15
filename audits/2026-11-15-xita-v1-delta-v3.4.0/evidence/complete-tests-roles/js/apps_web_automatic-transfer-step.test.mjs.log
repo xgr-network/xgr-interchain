@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: only verified wallet-ready transitions issue intent
+ok 1 - only verified wallet-ready transitions issue intent
+  ---
+  duration_ms: 0.853927
+  type: 'test'
+  ...
+# Subtest: automatic step key binds wallet + original source + exact source message
+ok 2 - automatic step key binds wallet + original source + exact source message
+  ---
+  duration_ms: 0.159821
+  type: 'test'
+  ...
+# Subtest: paid but unsponsored source starts preflight when proof is ready
+ok 3 - paid but unsponsored source starts preflight when proof is ready
+  ---
+  duration_ms: 0.811142
+  type: 'test'
+  ...
+# Subtest: unsigned wallet preflight retries without consuming a MetaMask intent
+ok 4 - unsigned wallet preflight retries without consuming a MetaMask intent
+  ---
+  duration_ms: 0.197247
+  type: 'test'
+  ...
+# Subtest: MetaMask intent is never automatically retried, even on rejection or slow receipt
+ok 5 - MetaMask intent is never automatically retried, even on rejection or slow receipt
+  ---
+  duration_ms: 0.109104
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.207771

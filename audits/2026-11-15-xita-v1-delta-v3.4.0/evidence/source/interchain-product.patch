@@ -1,0 +1,905 @@
+diff --git a/services/indexer/sql/017_sponsor_obligation_reviews.sql b/services/indexer/sql/017_sponsor_obligation_reviews.sql
+new file mode 100644
+index 0000000..5c3e689
+--- /dev/null
++++ b/services/indexer/sql/017_sponsor_obligation_reviews.sql
+@@ -0,0 +1,34 @@
++-- F-19: append-only, operator-controlled disposition history of independently
++-- recorded overtaken sponsorship promises. This ledger does NOT settle,
++-- delete, waive or authorize a late payment of the financial obligation.
++-- A separate, least-privileged database identity is needed for manual writes.
++CREATE TABLE IF NOT EXISTS public.xita_sponsor_obligation_reviews (
++ review_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
++ grant_key TEXT NOT NULL REFERENCES public.xita_sponsor_overtaken_obligations(grant_key),
++ sponsor_address CHAR(42) NOT NULL CHECK(sponsor_address ~ '^0x[0-9a-f]{40}$'),
++ outcome TEXT NOT NULL CHECK(outcome IN (
++  'acknowledged','escalated','customer-contacted','evidence-requested')),
++ evidence_sha256 CHAR(64) CHECK(evidence_sha256 IS NULL OR evidence_sha256 ~ '^[a-f0-9]{64}$'),
++ reviewer TEXT NOT NULL DEFAULT current_user,
++ recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
++ CHECK(length(reviewer) BETWEEN 3 AND 128)
++);
++CREATE INDEX IF NOT EXISTS xita_sponsor_reviews_grant_history
++ ON public.xita_sponsor_obligation_reviews(grant_key,review_id DESC);
++REVOKE ALL ON public.xita_sponsor_obligation_reviews FROM PUBLIC;
++REVOKE ALL ON SEQUENCE public.xita_sponsor_obligation_reviews_review_id_seq FROM PUBLIC;
++DO $migration$
++BEGIN
++ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_reviewer') THEN
++  GRANT SELECT,INSERT ON public.xita_sponsor_obligation_reviews TO xita_sponsor_reviewer;
++  GRANT USAGE ON SEQUENCE public.xita_sponsor_obligation_reviews_review_id_seq TO xita_sponsor_reviewer;
++  GRANT SELECT ON public.xita_sponsor_overtaken_obligations TO xita_sponsor_reviewer;
++  -- Column-restricted SELECT permits existence checks for already-paid grants
++  -- without exposing recipient addresses, nonce, signed bytes or audit notes.
++  GRANT SELECT(grant_key,sponsor_address,chain_name,amount_wei,status)
++   ON public.xita_sponsor_grants TO xita_sponsor_reviewer;
++ END IF;
++ IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='xita_sponsor_status_reader') THEN
++  GRANT SELECT ON public.xita_sponsor_obligation_reviews TO xita_sponsor_status_reader;
++ END IF;
++END $migration$;
+diff --git a/services/managed-relay/SPONSOR_F19_OPERATIONS.md b/services/managed-relay/SPONSOR_F19_OPERATIONS.md
+new file mode 100644
+index 0000000..ef71f70
+--- /dev/null
++++ b/services/managed-relay/SPONSOR_F19_OPERATIONS.md
+@@ -0,0 +1,71 @@
++# F-19 – Sponsored quote admission and outstanding obligation review
++
++This procedure applies to the **existing EVM XITA V1**, not Solana. It does
++not authorize new wallet signatures, late gas gifts, nonce replacement, or
++financial settlement. Paid promises remain enforceable regardless of the
++current admission switch. Follow local incident policy and obtain an explicit
++operator decision before attempting any remediation.
++
++## Stop creating new sponsorship obligations, continue existing servicing
++
++On the **managed quote signer** service, set:
++
++```
++XITA_INTERCHAIN_SPONSOR_ENABLED=true
++XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED=false
++```
++
++This prevents new wallet-aware sponsored quotes while retaining the existing
++sponsor sweep and its immutable quote/grant journal. Do **not** use
++`XITA_INTERCHAIN_SPONSOR_ENABLED=false` as an admission-only kill switch:
++it also disables ongoing sweep servicing. Check the managed `/health`
++response for `sponsorship.enabled=false` (new admission) and
++`sponsorship.servicingExisting=true`.
++
++Previously signed quotes remain valid. Disabling admission must not suppress
++reporting of pending/reverted/overtaken commitments or change source/gateway
++signatures.
++
++## Operator escalation (manual, append-only)
++
++1. Confirm that the canonical TX1, the signed quote, amount, grant stage and
++   destination match. Use the existing read-only
++   `sponsor-obligation-audit.mjs` against the restricted status database.
++2. For each independently recorded overtaken obligation, inspect the grant
++   journal and exact prepared raw transaction; determine whether the grant
++   was confirmed, pending, or never broadcast. Never fabricate a success
++   status from a generic RPC receipt.
++3. Review the matching `grant_key` from the **private** operator database.
++   Do not place user wallet addresses or sensitive transaction evidence in Git.
++4. After the reviewed migration `017_sponsor_obligation_reviews.sql` is
++   installed, use a separate PostgreSQL login restricted to role
++   `xita_sponsor_reviewer`, and deliberately run:
++
++```sh
++XITA_SPONSOR_REVIEW_DATABASE_URL=<restricted-reviewer-db-url> \
++XITA_INTERCHAIN_FEE_ADDRESS=<configured-public-sponsor-address> \
++node services/managed-relay/sponsor-obligation-review.mjs \
++  '<verified-grant-key>' escalated '<sha256-of-private-evidence>'
++```
++
++Supported outcomes are `acknowledged`, `escalated`,
++`customer-contacted`, and `evidence-requested`. These are workflow
++states **only**, never a declaration of payment, waiver, resolution or
++on-chain finality. No automatic refund is provided.
++
++The SQL uses the immutable overtaken commitment identity, sponsor address,
++and verified absence of an already-confirmed matching grant. Only INSERT and
++SELECT are granted to the reviewer identity; the grant and payment tables
++remain outside its write permissions. Each action has a database actor and
++append-only timestamp; the application refuses an invalid or now-fulfilled
++obligation. The schema does not grant write permissions to public API or
++ordinary status-reader roles.
++
++## Remaining release gate
++
++Document and approve who owns follow-up, evidence storage/retention, customer
++communication, and any separately authorized compensation procedure. Record
++the actual paid-obligation outcome independently of this escalation history.
++The existence of a reviewer entry does **not** close F-19 or establish
++unrestricted unattended sponsorship readiness. Re-run restricted PostgreSQL
++and quote-admission regression tests before activation.
+diff --git a/services/managed-relay/gas-sponsor.mjs b/services/managed-relay/gas-sponsor.mjs
+index e7cff22..b6d388c 100644
+--- a/services/managed-relay/gas-sponsor.mjs
++++ b/services/managed-relay/gas-sponsor.mjs
+@@ -200,12 +200,14 @@ export async function verifiedSponsorFinality({provider,chain,receipt,txHash}){
+   return true;
+  }catch{return false}
+ }
+-// The worker never accepts an unauthenticated public request, destination
+-// address or grant amount. Both come from verified read-only chain evidence.
+-export async function sponsorOneCandidate({
+- catalog,row,db,wallet,providers=new Map(),fetcher=globalThis.fetch,
+- nativePolicy,stage,chain,afterReserve=null
++// All RPC/canonical finality/quote reads MUST finish before any local
++// signing, durable reservation or broadcast. A raced timeout can abandon
++// only this read-only function: late RPC completions have no side effects.
++const SPONSOR_PREFLIGHT=Symbol("verified-sponsor-read-only-preflight");
++async function inspectFreshSponsorCandidate({
++ catalog,row,db,wallet,providers,fetcher,nativePolicy,stage,chain
+ }){
++
+  const stageInfo=sponsorStage(row,stage,chain);
+  if(!stageInfo)return {status:"ineligible"};
+  const cfg=nativePolicy?.[chain];
+@@ -250,9 +252,32 @@ export async function sponsorOneCandidate({
+  if(noncePending!==nonceLatest)
+   return {status:"sponsor-wallet-pending",chain,stage};
+  const key=sponsorGrantKey(row,stage);
++ // Ethers transaction population can fetch fee/network/nonce state.
++ // Complete it in the timed READ-only phase, never after the deadline.
+  const unsigned=await wallet.connect(provider).populateTransaction({
+   to:row.account,value,nonce:noncePending,gasLimit
+  });
++ if(!same(unsigned.to,row.account)||BigInt(unsigned.value||0)!==value||
++    Number(unsigned.nonce)!==noncePending||
++    BigInt(unsigned.gasLimit||0)!==gasLimit||
++    BigInt(unsigned.chainId||0)!==BigInt(catalog.chains[chain].chainId))
++  throw Error("Sponsor populated transaction conflicts with verified preflight");
++ return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
++  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address};
++}
++// Only the worker's completed authenticated preflight authorizes a new
++// signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
++async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
++ afterReserve=null},preflight){
++ if(preflight?.kind!==SPONSOR_PREFLIGHT||
++    preflight.chain!==chain||preflight.stage!==stage||
++    !same(preflight.recipient,row.account)||
++    !same(preflight.beneficiary,wallet.address)||
++    preflight.key!==sponsorGrantKey(row,stage))
++   throw Error("Unverified or stale sponsor preflight");
++ const {provider,cfg,key,value,gasLimit,noncePending,unsigned}=preflight;
++ // No further unsigned transaction population/RPC reads after this point.
++ // The signed raw bytes must match the completed pinned preflight.
+  const rawTx=await wallet.signTransaction(unsigned);
+  const prepared=Transaction.from(rawTx);
+  if(!same(prepared.from,wallet.address)||!same(prepared.to,row.account)||
+@@ -300,6 +325,15 @@ export async function sponsorOneCandidate({
+   throw Error("Sponsorship outcome uncertain; reserved grant requires reconciliation");
+  }
+ }
++// Preserve the existing direct caller API; only runSponsorSweep uses the
++// bounded, per-chain scheduled read-only preflight path.
++export async function sponsorOneCandidate(args){
++ const providers=args.providers||new Map();
++ const preflight=await inspectFreshSponsorCandidate({...args,providers,
++  fetcher:args.fetcher||globalThis.fetch});
++ return preflight?.kind===SPONSOR_PREFLIGHT?
++  sendFreshSponsorCandidate(args,preflight):preflight;
++}
+ export function sponsorDatabase(pool){
+  // SQL atomicity: reservation wins exactly once per source parent + stage;
+  // unresolved reservations also consume the rolling native budget.
+@@ -603,14 +637,17 @@ export async function reconcileSponsorGrants({
+  }
+  return {checked,confirmed,held,chainFailures,journalErrors};
+ }
++// F-08: all monitoring chains start their READ-only preflight together.
++// A stalled chain may time out without delaying a healthy chain's durable
++// status update. Database writes happen only after the read has resolved or
++// timed out; a late RPC resolution never triggers any write or payout.
+ export async function reportSponsorReserves({
+  pool,catalog,wallet,policy,providers,readTimeoutMs=12000
+ }){
+- const states=[];
+- for(const [chain,cfg] of Object.entries(policy)){
++ const entries=Object.entries(policy);
++ if(entries.length>16)throw Error("Too many sponsor reserve chains");
++ return Promise.all(entries.map(async ([chain,cfg])=>{
+   try{
+-   // F-08: an unavailable provider must not prevent another chain's reserve
+-   // state from being refreshed. The timed operation is read-only.
+    const {gasPrice,balance}=await boundedSponsorReconcileRead(async()=>{
+     const p=await getProvider(catalog,chain,providers);
+     const fee=await p.getFeeData();
+@@ -627,17 +664,16 @@ export async function reportSponsorReserves({
+      " sponsor_address=EXCLUDED.sponsor_address,gas_ready=EXCLUDED.gas_ready,"+
+      " balance_wei=EXCLUDED.balance_wei,checked_at=NOW()",
+     values:[chain,wallet.address.toLowerCase(),ready,balance.toString()]});
+-   states.push({chain,ready});
++   return {chain,ready};
+   }catch{
+    await pool.query({text:"INSERT INTO xita_sponsor_monitor_state "+
+     "(chain_name,sponsor_address,gas_ready,balance_wei,checked_at)"+
+     " VALUES($1,$2,FALSE,0,NOW())"+
+     " ON CONFLICT(chain_name) DO UPDATE SET gas_ready=FALSE,checked_at=NOW()",
+     values:[chain,wallet.address.toLowerCase()]});
+-   states.push({chain,ready:false});
++   return {chain,ready:false};
+   }
+- }
+- return states;
++ }));
+ }
+ // F-16: quote reservations are never released on expiry time alone.
+ // For Base/Arbitrum and future external chains, require two configured RPCs
+@@ -772,6 +808,58 @@ export async function recordOvertakenSponsorObligations({pool,wallet}){
+   values:[wallet.address.toLowerCase()]});
+  return {recorded:r.rowCount||0};
+ }
++// Execute only successfully completed, authenticated read-only inspections.
++// Timeout callbacks cannot perform wallet operations, and late resolutions
++// cannot authorize a signing step after the deadline.
++export async function processFreshSponsorQueue({rows,policy,read,send,readTimeoutMs=12000}){
++ if(!Array.isArray(rows)||rows.length>120||!policy||
++    typeof read!=="function"||typeof send!=="function")
++  throw Error("Invalid sponsor work queue");
++ // Only one read in flight PER DESTINATION CHAIN: concurrent same-chain
++ // nonce/fee preflights would authorize competing signatures for one wallet.
++ // Separate destination chains can inspect in parallel; their wallet sends
++ // remain strictly sequential across the whole shared operator identity.
++ const destinations=new Map(),outcomes=[];
++ for(const row of rows){
++  const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
++  if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
++  if(!policy[grant.chain])continue;
++  if(!destinations.has(grant.chain))destinations.set(grant.chain,[]);
++  destinations.get(grant.chain).push({row,grant,
++   lane:row.source_chain+":"+grant.chain});
++ }
++ if(destinations.size>16)throw Error("Too many sponsor destination lanes");
++ let effectQueue=Promise.resolve();
++ await Promise.all([...destinations.values()].map(async queue=>{
++  const unavailable=new Set();
++  for(const {row,grant,lane} of queue){
++   if(unavailable.has(lane)){
++    outcomes.push({status:"held-for-review",reason:"RPC lane unavailable"});
++    continue;
++   }
++   let preflight;
++   try{
++    preflight=await boundedSponsorReconcileRead(()=>read(row,grant),readTimeoutMs);
++   }catch(error){
++    unavailable.add(lane);
++    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
++    continue;
++   }
++   if(preflight?.kind!==SPONSOR_PREFLIGHT){
++    outcomes.push(preflight);continue;
++   }
++   // Do not race a signed transaction, nonce reservation, broadcast or wait
++   // against an outer timeout. Preserve the original signed bytes on errors.
++   const effect=effectQueue.then(()=>send(row,grant,preflight));
++   effectQueue=effect.then(()=>{},()=>{});
++   try{outcomes.push(await effect)}
++   catch(error){
++    outcomes.push({status:"held-for-review",reason:tiny(error?.message||error)});
++   }
++  }
++ }));
++ return outcomes;
++}
+ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}={}){
+  assertNoUnresolvedCreatorNonce(env);
+  if(env.XITA_INTERCHAIN_SPONSOR_ENABLED!=="true")return {status:"disabled"};
+@@ -789,12 +877,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
+   max:2,connectionTimeoutMillis:3000,statement_timeout:15000});
+  try{
+   const rows=await pool.query(
+-   "SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
++   "WITH pending AS (SELECT p.account,p.asset,p.source_chain,p.destination_chain,p.message_id,"+
+    " p.source_tx_hash,p.amount_raw::text AS amount_raw,p.delivered,"+
+    " p.final_destination_chain,p.onward_route_id,p.execution_adapter,"+
+    " p.interchain_fee_wei::text AS interchain_fee_wei,"+
+    " p.quote_nonce::text AS quote_nonce,p.route_id,"+
+-   " c.grant_stage,c.grant_chain"+
++   " c.grant_stage,c.grant_chain,p.source_indexed_at,"+
++   " ROW_NUMBER() OVER (PARTITION BY p.source_chain,c.grant_chain"+
++   " ORDER BY p.source_indexed_at,p.message_id,c.grant_stage) AS chain_rank"+
+    " FROM xita_transfer_operations p"+
+    " JOIN xita_sponsor_quote_intents i ON"+
+    " i.source_chain=p.source_chain AND i.execution_adapter=p.execution_adapter"+
+@@ -806,8 +896,13 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
+    " WHERE p.parent_message_id IS NULL AND p.delivered IS FALSE"+
+    " AND p.execution_adapter IS NOT NULL AND p.interchain_fee_wei>0"+
+    " AND NOT EXISTS (SELECT 1 FROM xita_sponsor_grants g WHERE"+
+-   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage)"+
+-   " ORDER BY p.source_indexed_at ASC,c.grant_stage ASC LIMIT 120");
++   " g.grant_key=p.source_chain||':'||p.message_id||':'||c.grant_stage))"+
++   " SELECT account,asset,source_chain,destination_chain,message_id,"+
++   " source_tx_hash,amount_raw,delivered,final_destination_chain,"+
++   " onward_route_id,execution_adapter,interchain_fee_wei,"+
++   " quote_nonce,route_id,grant_stage,grant_chain FROM pending"+
++   " WHERE chain_rank<=12 ORDER BY chain_rank,source_indexed_at,"+
++   " source_chain,grant_chain,message_id,grant_stage LIMIT 120");
+   const providerCache=new Map(),db=sponsorDatabase(pool),outcomes=[];
+   const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
+   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
+@@ -815,15 +910,14 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
+   const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
+    providers:providerCache});
+   const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
+-  for(const row of rows.rows){
+-   const grant=sponsorStage(row,row.grant_stage,row.grant_chain);
+-   if(!grant){outcomes.push({status:"held-for-review",reason:"Invalid signed grant stage"});continue}
+-   if(!policy[grant.chain])continue;
+-   try{outcomes.push(await sponsorOneCandidate({catalog,row,db,wallet,
++  outcomes.push(...await processFreshSponsorQueue({
++   rows:rows.rows,policy,
++   read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
+     providers:providerCache,fetcher,nativePolicy:policy,
+-    stage:grant.stage,chain:grant.chain}));}
+-   catch(e){outcomes.push({status:"held-for-review",reason:tiny(e?.message||e)})}
+-  }
++    stage:grant.stage,chain:grant.chain}),
++   send:(row,grant,preflight)=>sendFreshSponsorCandidate({
++    catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
++  }));
+   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
+    grants:outcomes.filter(x=>x.status==="submitted"),
+    held:outcomes.filter(x=>x.status==="held-for-review").length};
+diff --git a/services/managed-relay/gas-sponsor.test.mjs b/services/managed-relay/gas-sponsor.test.mjs
+index ba8c39a..8875e35 100644
+--- a/services/managed-relay/gas-sponsor.test.mjs
++++ b/services/managed-relay/gas-sponsor.test.mjs
+@@ -1,7 +1,8 @@
++import {readFileSync} from "node:fs";
+ import test from "node:test";
+ import assert from "node:assert/strict";
+ import {Wallet,Transaction} from "ethers";
+-import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,verifiedExpiredSponsorQuote,reportSponsorReserves,reconcileSponsorGrants,preparedSponsorReplayAllowed} from "./gas-sponsor.mjs";
++import {sponsorStage,sponsorGrantNeed,sponsorGrantKey,sponsorDatabase,verifiedCommittedGrant,verifiedSponsorFinality,verifiedSponsorInclusion,reconcileExpiredSponsorQuotes,verifiedExpiredSponsorQuote,reportSponsorReserves,reconcileSponsorGrants,preparedSponsorReplayAllowed,processFreshSponsorQueue} from "./gas-sponsor.mjs";
+ const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
+ const first={account:addr("a"),asset:"XGR",source_chain:"base",
+  destination_chain:"xgrchain",message_id:hash("1"),source_tx_hash:hash("2"),
+@@ -419,6 +420,12 @@ test("F-08: stalled reserve balance RPC does not prevent healthy chain monitorin
+  });
+  assert.deepEqual(result,[{chain:"base",ready:false},{chain:"xgrchain",ready:true}]);
+  assert.equal(writes.length,2);
++ // Healthy chain publishes before the stuck source's read deadline.
++ // Serial monitoring would write base=false first and then xgrchain=true.
++ assert.equal(writes[0].values[0],"xgrchain");
++ assert.equal(writes[0].values[2],true);
++ assert.equal(writes[1].values[0],"base");
++ assert.equal(writes[1].values.length,2);
+ });
+ 
+ test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
+@@ -464,3 +471,66 @@ test("F-33: stalled preflight cannot broadcast after the deadline",async()=>{
+  await new Promise(resolve=>setTimeout(resolve,30));
+  assert.equal(broadcasts,0,"deadline-expired callback must never send");
+ });
++
++test("F-08: fresh grant scheduling bounds stalled read-only preflight without any late wallet effect",async()=>{
++ const row=(source,id)=>({
++  ...first,source_chain:source,message_id:hash(id),
++  destination_chain:"xgrchain",final_destination_chain:"xgrchain",
++  onward_route_id:null,grant_stage:"first-delivery",grant_chain:"xgrchain"
++ });
++ const slow=row("base","1"),good=row("arbitrum","2");
++ let slowResolve,slowStarted=false,healthyObserved=false,sends=0;
++ const later=new Promise(resolve=>{slowResolve=resolve});
++ const result=await processFreshSponsorQueue({
++  rows:[slow,good],policy:{xgrchain:{maxGrantWei:"1"}},
++  read:async x=>{
++   if(x.source_chain==="base"){slowStarted=true;return later}
++   healthyObserved=true;
++   // A read-only non-authorization must never reach signing.
++   return {status:"no-matching-quote-promise",chain:"xgrchain"};
++  },
++  send:async()=>{sends++;throw Error("No authorized preflight")},
++  readTimeoutMs:10
++ });
++ assert.equal(slowStarted,true);
++ assert.equal(healthyObserved,true);
++ assert.equal(sends,0);
++ assert.equal(result.length,2);
++ assert.equal(result[0].status,"held-for-review");
++ assert.equal(result[1].status,"no-matching-quote-promise");
++ slowResolve({status:"not-authorized"});
++ await Promise.resolve();
++ assert.equal(sends,0,"late completion cannot trigger a wallet side effect");
++ const source=readFileSync(new URL("./gas-sponsor.mjs",import.meta.url),"utf8");
++ assert.match(source,/PARTITION BY p.source_chain,c.grant_chain/);
++ assert.match(source,/chain_rank<=12/);
++});
++
++test("F-08: healthy destination executes read while unrelated destination RPC is stalled",async()=>{
++ const row=(source,destination,id)=>({
++  ...first,source_chain:source,message_id:hash(id),
++  destination_chain:destination,final_destination_chain:destination,
++  onward_route_id:null,grant_stage:"first-delivery",grant_chain:destination
++ });
++ const stalled=row("base","xgrchain","1");
++ const healthy=row("arbitrum","polygon","2");
++ let unblock,slowEntered=false,healthyResolved=false;
++ const stuck=new Promise(resolve=>{unblock=resolve});
++ const statuses=await processFreshSponsorQueue({
++  rows:[stalled,healthy],
++  policy:{xgrchain:{},polygon:{}},
++  read:async input=>{
++   if(input.source_chain==="base"){slowEntered=true;return stuck}
++   healthyResolved=true;
++   return {status:"no-matching-quote-promise",chain:"polygon"};
++  },
++  send:async()=>{throw Error("Unexpected wallet effect")},
++  readTimeoutMs:10
++ });
++ assert.equal(slowEntered,true);
++ assert.equal(healthyResolved,true);
++ assert.deepEqual(statuses.map(x=>x.status).sort(),
++  ["held-for-review","no-matching-quote-promise"].sort());
++ unblock({status:"late-read"});
++ await Promise.resolve();
++});
+diff --git a/services/managed-relay/server.mjs b/services/managed-relay/server.mjs
+index 8082fd1..2935d20 100644
+--- a/services/managed-relay/server.mjs
++++ b/services/managed-relay/server.mjs
+@@ -106,6 +106,14 @@ async function paidQuoteDatabaseReady(){
+  finally{if(pool)await pool.end().catch(()=>{})}
+ }
+ 
++// F-19: stop issuing new sponsored quote commitments without interrupting
++// reconciliation of earlier signed promises. The worker's historical service
++// switch remains independent; this flag never deletes or settles liabilities.
++export function sponsorAdmissionState(env=process.env){
++ const servicingExisting=env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
++ return {servicingExisting,
++  admitting:servicingExisting&&env.XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED!=="false"};
++}
+ const previewMemo=new Map();
+ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}={}){
+  const previewKey=null; // Fresh signer health and wallet balance must not be masked by preview caching.
+@@ -126,7 +134,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
+   throw Error("Fee gateway is not backed by the deployed GitHub receipt");
+  // The keyless public preview reads the LOCAL signed-quote service's health.
+  // Do not duplicate a fee/sponsor mode setting or pass signer secrets to 4093.
+- let walletAwareEnabled=process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true";
++ let walletAwareEnabled=sponsorAdmissionState().admitting;
+  if(preview&&PREVIEW_ONLY){
+   let status;
+   try{
+@@ -390,8 +398,9 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
+     paidQuoteReady:dbReadiness.ready,paidQuoteReason:dbReadiness.reason,
+     enabledChains:Object.entries(sourceExecutionAddressesFromCatalog(catalog)).filter(x=>
+      /^0x[0-9a-f]{40}$/i.test(x[1])).map(x=>x[0]),
+-    sponsorship:{enabled:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
+-     walletAware:process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true",
++    sponsorship:{enabled:sponsorAdmissionState().admitting,
++     walletAware:sponsorAdmissionState().admitting,
++     servicingExisting:sponsorAdmissionState().servicingExisting,
+      ...await readSponsorAvailability(catalog)}});
+   }catch(e){return send(503,{ok:false,error:publicError(e)})}
+  }
+@@ -461,7 +470,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
+    Object.keys(parsed).some(k=>!["asset","source","destination","payer","recipient","amountRaw"].includes(k)))
+    throw Error("Invalid request");
+    const clientIP=preview?null:verifiedClientIP(req);
+-   if(!preview&&process.env.XITA_INTERCHAIN_SPONSOR_ENABLED==="true")
++   if(!preview&&sponsorAdmissionState().admitting)
+     enforceSignedQuoteRate(clientIP,parsed.payer);
+    const reply=await createQuote(parsed,{preview,catalog:loadCatalog()});
+    if(!preview&&reply.status!=="DIRECT_GATEWAY_NO_SERVICE_FEE"){
+diff --git a/services/managed-relay/sponsor-obligation-audit.pg.test.mjs b/services/managed-relay/sponsor-obligation-audit.pg.test.mjs
+index d9e0de8..d36ce54 100644
+--- a/services/managed-relay/sponsor-obligation-audit.pg.test.mjs
++++ b/services/managed-relay/sponsor-obligation-audit.pg.test.mjs
+@@ -5,6 +5,7 @@ import {Pool} from "pg";
+ import {Wallet,Transaction} from "ethers";
+ import {inspectSponsorObligations,inspectSponsorObligationsCLI} from "./sponsor-obligation-audit.mjs";
+ import {recordOvertakenSponsorObligations,sponsorDatabase} from "./gas-sponsor.mjs";
++import {recordSponsorObligationReview} from "./sponsor-obligation-review.mjs";
+ const URL_STRING=process.env.XITA_SPONSOR_TEST_DATABASE_URL;
+ const A=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
+ const H=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
+@@ -71,10 +72,11 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
+     "004_sponsor_grants.sql","009_initial_fee_tax_evidence.sql",
+     "010_wallet_aware_sponsor_commitments.sql",
+     "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
+-    "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql"]){
++    "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql",
++    "017_sponsor_obligation_reviews.sql"]){
+    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
+   }
+-  const reset=()=>db.query("TRUNCATE xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations CASCADE");
++  const reset=()=>db.query("TRUNCATE xita_sponsor_obligation_reviews,xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations RESTART IDENTITY CASCADE");
+   await t.test("F-07 PostgreSQL e2e: signed transaction and reservation commit atomically",async()=>{
+    await reset();
+    const wallet=new Wallet("0x"+"11".repeat(32));
+@@ -227,6 +229,34 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
+     " FROM xita_sponsor_overtaken_obligations");
+    assert.deepEqual(result.rows,[{stage:"first-delivery",chain_name:"xgrchain",amount:"50"}]);
+   });
++  await t.test("F-19: operator review remains append-only across restart and cannot pretend confirmed",async()=>{
++   await reset();
++   await paid(db,72,{delivered:true});
++   const stored=await recordOvertakenSponsorObligations({pool:db,wallet:{address:sponsor}});
++   assert.equal(stored.recorded,1);
++   const key="base:"+H(572)+":first-delivery";
++   const first=await recordSponsorObligationReview({
++    pool:db,grantKey:key,sponsorAddress:sponsor,outcome:"acknowledged"
++   });
++   assert.equal(first.outcome,"acknowledged");
++   const second=await recordSponsorObligationReview({
++    pool:db,grantKey:key,sponsorAddress:sponsor,outcome:"escalated",
++    evidenceSha256:"a".repeat(64)
++   });
++   assert.ok(BigInt(second.reviewId)>BigInt(first.reviewId));
++   const reopened=new Pool({connectionString:URL_STRING,max:1});
++   try{
++    const history=await reopened.query("SELECT outcome,reviewer FROM "+
++     "xita_sponsor_obligation_reviews WHERE grant_key=$1 ORDER BY review_id",[key]);
++    assert.deepEqual(history.rows.map(x=>x.outcome),["acknowledged","escalated"]);
++    const ledger=await reopened.query("SELECT COUNT(*)::int AS n FROM "+
++     "xita_sponsor_overtaken_obligations WHERE grant_key=$1",[key]);
++    assert.equal(ledger.rows[0].n,1,"manual review never extinguishes paid liability");
++    await assert.rejects(()=>recordSponsorObligationReview({
++     pool:reopened,grantKey:key,sponsorAddress:A(999),outcome:"acknowledged"
++    }),/No matching unresolved/);
++   }finally{await reopened.end()}
++  });
+   await t.test("Healthy paid grants => no alerts",async()=>{
+    await reset();
+    await paid(db,50,{grantStatus:"confirmed"});
+diff --git a/services/managed-relay/sponsor-obligation-review.mjs b/services/managed-relay/sponsor-obligation-review.mjs
+new file mode 100644
+index 0000000..ec09a13
+--- /dev/null
++++ b/services/managed-relay/sponsor-obligation-review.mjs
+@@ -0,0 +1,61 @@
++// Operator-only F-19 escalation journal. No signer, wallet, HTTP endpoint,
++// retry, waiver or payment code is imported here. Every manual action must
++// refer to the immutable stored paid obligation, never a caller-made claim.
++export const REVIEW_OUTCOMES=Object.freeze([
++ "acknowledged","escalated","customer-contacted","evidence-requested"
++]);
++const KEY=/^[a-z][a-z0-9-]{0,39}:0x[a-f0-9]{64}:(first-delivery|hub-onward|final-delivery)$/;
++const ADDRESS=/^0x[a-f0-9]{40}$/;
++const SHA=/^[a-f0-9]{64}$/;
++export async function recordSponsorObligationReview({
++ pool,grantKey,sponsorAddress,outcome,evidenceSha256=null
++}={}){
++ if(!pool||typeof pool.query!=="function"||!KEY.test(grantKey||"")||
++    !ADDRESS.test(sponsorAddress||"")||
++    !REVIEW_OUTCOMES.includes(outcome)||
++    (evidenceSha256!==null&&!SHA.test(evidenceSha256)))
++  throw Error("Invalid operator sponsorship review input");
++ const result=await pool.query({
++  text:"INSERT INTO public.xita_sponsor_obligation_reviews "+
++   "(grant_key,sponsor_address,outcome,evidence_sha256)"+
++   " SELECT o.grant_key,o.sponsor_address,$3,$4"+
++   " FROM public.xita_sponsor_overtaken_obligations o"+
++   " WHERE o.grant_key=$1 AND o.sponsor_address=$2"+
++   " AND NOT EXISTS (SELECT 1 FROM public.xita_sponsor_grants g"+
++   " WHERE g.grant_key=o.grant_key AND g.sponsor_address=o.sponsor_address"+
++   " AND g.chain_name=o.chain_name AND g.amount_wei=o.promised_wei"+
++   " AND g.status='confirmed')"+
++   " RETURNING review_id,grant_key,outcome,reviewer,recorded_at",
++  values:[grantKey,sponsorAddress,outcome,evidenceSha256]});
++ if(result.rows?.length!==1)throw Error("No matching unresolved paid obligation for review");
++ // Only operator metadata, no customer identity or signed wallet details.
++ return {reviewId:String(result.rows[0].review_id),
++  grantKey:result.rows[0].grant_key,
++  outcome:result.rows[0].outcome,
++  reviewer:result.rows[0].reviewer,recordedAt:result.rows[0].recorded_at};
++}
++export async function reviewSponsorObligationCLI({
++ env=process.env,args=process.argv.slice(2),print=console.log
++}={}){
++ const [grantKey,outcome,evidenceSha256]=args;
++ if(args.length<2||args.length>3)throw Error("Usage: grant-key outcome [sha256]");
++ const dbUrl=env.XITA_SPONSOR_REVIEW_DATABASE_URL;
++ const sponsorAddress=String(env.XITA_INTERCHAIN_FEE_ADDRESS||"").toLowerCase();
++ if(!dbUrl)throw Error("Separate restricted sponsor reviewer database URL required");
++ const {Pool}=await import("pg");
++ const pool=new Pool({connectionString:dbUrl,max:1,
++  connectionTimeoutMillis:3000,statement_timeout:8000});
++ try{
++  const row=await recordSponsorObligationReview({
++   pool,grantKey,sponsorAddress,outcome,evidenceSha256:evidenceSha256||null
++  });
++  print(JSON.stringify(row));
++  return row;
++ }finally{await pool.end()}
++}
++if(process.argv[1]&&import.meta.url===new URL("file://"+process.argv[1]).href){
++ reviewSponsorObligationCLI().catch(error=>{
++  console.error("Sponsor review not recorded:",String(error?.message||error).slice(0,170));
++  process.exitCode=1;
++ });
++}
+diff --git a/services/managed-relay/sponsor-obligation-review.test.mjs b/services/managed-relay/sponsor-obligation-review.test.mjs
+new file mode 100644
+index 0000000..82b8109
+--- /dev/null
++++ b/services/managed-relay/sponsor-obligation-review.test.mjs
+@@ -0,0 +1,52 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import {readFileSync} from "node:fs";
++import {recordSponsorObligationReview,REVIEW_OUTCOMES} from "./sponsor-obligation-review.mjs";
++
++const key="base:0x"+"a".repeat(64)+":first-delivery";
++const addr="0x"+"b".repeat(40);
++
++test("F-19 operator reviews are explicit, append-only, and require immutable unsettled promise",async()=>{
++ const queries=[];
++ const pool={query:async q=>{
++  queries.push(q);
++  return {rows:[{review_id:17,grant_key:key,outcome:"escalated",
++   reviewer:"xita_sponsor_reviewer",recorded_at:"2026-11-14T18:00:00Z"}]};
++ }};
++ const row=await recordSponsorObligationReview({
++  pool,grantKey:key,sponsorAddress:addr,outcome:"escalated"
++ });
++ assert.equal(row.reviewId,"17");
++ assert.equal(row.outcome,"escalated");
++ assert.equal(queries.length,1);
++ const q=queries[0];
++ assert.match(q.text,/INSERT INTO public\.xita_sponsor_obligation_reviews/);
++ assert.match(q.text,/FROM public\.xita_sponsor_overtaken_obligations o/);
++ assert.match(q.text,/o\.sponsor_address=\$2/);
++ assert.match(q.text,/g\.status='confirmed'/);
++ assert.deepEqual(q.values,[key,addr,"escalated",null]);
++ assert.doesNotMatch(q.text,/UPDATE |DELETE |broadcastTransaction|sendTransaction/i);
++});
++test("F-19 unmatched, confirmed, fabricated or invalid manual outcomes cannot be recorded",async()=>{
++ const none={query:async()=>({rows:[]})};
++ await assert.rejects(()=>recordSponsorObligationReview({
++  pool:none,grantKey:key,sponsorAddress:addr,outcome:"acknowledged"
++ }),/No matching unresolved/);
++ for(const props of [
++  {grantKey:"unknown"},{sponsorAddress:"0x"+"0".repeat(40)+"x"},
++  {outcome:"paid"},{outcome:"settled"},
++  {evidenceSha256:"abcd"}
++ ]){
++  await assert.rejects(()=>recordSponsorObligationReview({
++   pool:none,grantKey:key,sponsorAddress:addr,outcome:"escalated",...props
++  }),/Invalid operator/);
++ }
++ assert.deepEqual(REVIEW_OUTCOMES,
++  ["acknowledged","escalated","customer-contacted","evidence-requested"]);
++ const src=readFileSync(new URL("./sponsor-obligation-review.mjs",import.meta.url),"utf8");
++ assert.doesNotMatch(src,/signTransaction|broadcastTransaction|sendTransaction|PRIVATE_KEY|processCreatorQueue/);
++ const migration=readFileSync(new URL("../indexer/sql/017_sponsor_obligation_reviews.sql",import.meta.url),"utf8");
++ assert.match(migration,/REVOKE ALL ON public\.xita_sponsor_obligation_reviews FROM PUBLIC/);
++ assert.match(migration,/GRANT SELECT,INSERT ON public\.xita_sponsor_obligation_reviews TO xita_sponsor_reviewer/);
++ assert.doesNotMatch(migration,/GRANT UPDATE|GRANT DELETE/);
++});
+diff --git a/services/managed-relay/sponsor-status.test.mjs b/services/managed-relay/sponsor-status.test.mjs
+index 0f2117c..b47c8ff 100644
+--- a/services/managed-relay/sponsor-status.test.mjs
++++ b/services/managed-relay/sponsor-status.test.mjs
+@@ -1,6 +1,6 @@
+ import test from "node:test";
+ import assert from "node:assert/strict";
+-import {publicSponsorshipView,enforceSignedQuoteRate} from "./server.mjs";
++import {publicSponsorshipView,enforceSignedQuoteRate,sponsorAdmissionState} from "./server.mjs";
+ const message="base:0x"+"a".repeat(64);
+ test("sponsor status is not falsely green when no grant journal exists",()=>{
+  assert.deepEqual(publicSponsorshipView([]),{ok:true,status:"unavailable"});
+@@ -71,3 +71,17 @@ test("N-05 returns only chain-bound promised stage names",()=>{
+  assert.equal(s.status,"pending");
+  assert.deepEqual(s.promisedStages,["hub-onward","final-delivery"]);
+ });
++
++test("F-19 quote admission freeze preserves existing sponsor servicing",()=>{
++ assert.deepEqual(sponsorAdmissionState({
++  XITA_INTERCHAIN_SPONSOR_ENABLED:"true"
++ }),{admitting:true,servicingExisting:true});
++ assert.deepEqual(sponsorAdmissionState({
++  XITA_INTERCHAIN_SPONSOR_ENABLED:"true",
++  XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED:"false"
++ }),{admitting:false,servicingExisting:true});
++ assert.deepEqual(sponsorAdmissionState({
++  XITA_INTERCHAIN_SPONSOR_ENABLED:"false",
++  XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED:"true"
++ }),{admitting:false,servicingExisting:false});
++});
+diff --git a/services/onboarding/creator-operator.mjs b/services/onboarding/creator-operator.mjs
+index 56260b3..ab519d5 100644
+--- a/services/onboarding/creator-operator.mjs
++++ b/services/onboarding/creator-operator.mjs
+@@ -68,6 +68,54 @@ function safeRecord(record){
+     record.deployment?.status!=="queued"||record.deployment?.txHash)
+   throw Error("Invalid or unauthenticated creator deploy request");
+ }
++// F-36: only deterministic, locally checkable request defects may be
++// quarantined. RPC, signer, sponsor-journal or GitHub failures remain global
++// failures and must never discard or relabel an uncertain transaction.
++export function validateQueuedCreator(record,records,catalog){
++ safeRecord(record);
++ const input=record.input;
++ if(typeof input.name!=="string"||Buffer.byteLength(input.name,"utf8")<2||
++    Buffer.byteLength(input.name,"utf8")>80||
++    typeof input.symbol!=="string"||!/^[A-Z][A-Z0-9]{1,10}$/.test(input.symbol))
++  throw Error("Unprocessable token name or symbol");
++ creatorSettings(input); // Same base-unit/cap constraints as the signer.
++ if(Object.hasOwn(catalog.assets,input.symbol)||
++    records.some(x=>x.id!==record.id&&x.kind==="token-creator"&&
++     ["deployment-submitted","deployed","pr-published"].includes(x.phase)&&
++     x.input?.symbol===input.symbol))
++  throw Error("Creator symbol conflicts with existing assets or deployment");
++}
++async function chooseQueuedCreator(path,records,catalog,now){
++ let quarantined=0;
++ // Stable oldest-first ordering, independent of UUID filename enumeration.
++ const ordered=[...records].sort((a,b)=>
++  (Date.parse(a.createdAt)||0)-(Date.parse(b.createdAt)||0)||
++  String(a.id).localeCompare(String(b.id)));
++ for(const candidate of ordered){
++  if(candidate.kind!=="token-creator"||candidate.phase!=="deployment-queued"||
++     candidate.deployment?.status!=="queued")continue;
++  let failure;
++  try{validateQueuedCreator(candidate,records,catalog)}
++  catch(error){failure=String(error.message||error).slice(0,160)}
++  if(!failure)return {target:candidate,quarantined};
++  // Lock, re-read and revalidate. A concurrent worker may have signed or
++  // changed the item since the snapshot. Never touch submitted tx evidence.
++  await lockedRecord(path,candidate.id,async current=>{
++   if(current.phase!=="deployment-queued"||
++      current.deployment?.status!=="queued"||current.deployment?.txHash)
++    return;
++   try{validateQueuedCreator(current,records,catalog);return}
++   catch(error){
++    current.deployment={...current.deployment,status:"quarantined",
++     blockedAt:new Date(now).toISOString(),
++     blockedReason:String(error.message||error).slice(0,160)};
++    savePrivate(path,current);
++    quarantined++;
++   }
++  });
++ }
++ return {target:null,quarantined};
++}
+ async function checkFactoryAcrossRPCs(factory,call,urls){
+  const proofs=await Promise.all(urls.map(async url=>{
+   const [chain,code]=await Promise.all([
+@@ -155,9 +203,15 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
+   });
+   return {phase:"pr-published",id:ready.id,pr};
+  }
+- const target=records.find(x=>x.kind==="token-creator"&&x.phase==="deployment-queued");
+- if(!target)return {phase:"idle"};
+- safeRecord(target);
++ const queued=records.some(x=>x.kind==="token-creator"&&
++  x.phase==="deployment-queued"&&x.deployment?.status==="queued");
++ if(!queued)return {phase:"idle"};
++ // Fail globally if the inventory is bad. Only per-request static defects
++ // are eligible for quarantine.
++ const catalog=loadInventory();
++ if(validateCatalog(catalog).length)throw Error("Main inventory is invalid");
++ const {target,quarantined}=await chooseQueuedCreator(path,records,catalog,now);
++ if(!target)return {phase:quarantined?"quarantined":"idle",quarantined};
+  const use=creatorDailyBudget(records,now);
+  if(use.count>=limit.dailyCount||use.reservedWei>=limit.dailyWei)
+   return {phase:"budget-exhausted"};
+@@ -166,13 +220,8 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
+  // fee-claim service through a single systemd flock on the same wallet.
+  // DB journal disallows creator signing over a missing-mempool sponsor tx.
+  await checkSponsorJournal({env,account:wallet.address});
+- const catalog=loadInventory();
+- if(validateCatalog(catalog).length)throw Error("Main inventory is invalid");
+- if(Object.hasOwn(catalog.assets,target.input.symbol)||
+-    records.some(x=>x.id!==target.id&&x.kind==="token-creator"&&
+-     ["deployment-submitted","deployed","pr-published"].includes(x.phase)&&
+-     x.input.symbol===target.input.symbol))
+-  throw Error("Creator symbol conflicts with existing assets or deployment");
++ // Recheck before signing. Do not quarantine on RPC or DB failures.
++ validateQueuedCreator(target,records,catalog);
+  const url=env.XITA_CREATOR_BROADCAST_RPC||"https://rpc.xgr.network";
+  if(!/^https:\/\//.test(url))throw Error("Invalid XGRChain deployment RPC");
+  const [chain,gasPriceHex,nonceHex,balanceHex]=await Promise.all([
+diff --git a/services/onboarding/creator-operator.test.mjs b/services/onboarding/creator-operator.test.mjs
+index 3ed810f..76c53ed 100644
+--- a/services/onboarding/creator-operator.test.mjs
++++ b/services/onboarding/creator-operator.test.mjs
+@@ -141,3 +141,69 @@ test("existing broad Creator route Draft PR migrates to an independent zero-rout
+   assert.equal(published,1);
+  }finally{x.cleanup()}
+ });
++
++test("F-36 permanently unsignable Creator request is quarantined while healthy sibling advances",async()=>{
++ const x=fixture();let signCount=0;
++ const bad=readPrivate(x.dir,x.id);
++ bad.input={...bad.input,name:"Ä".repeat(50)};
++ savePrivate(x.dir,bad);
++ const created=createPending(x.dir,{...input,name:"Valid Creator",symbol:"HEALTHY"},"creator:healthy",{now:now+1000});
++ const healthy=readPrivate(x.dir,created.id);
++ healthy.kind="token-creator";healthy.phase="deployment-queued";
++ healthy.logoUrl="https://xita.xgr.network/token-logos/"+"b".repeat(64)+".png";
++ healthy.deployment={status:"queued",chainId:1643,ownerAddress:owner,txHash:null,tokenAddress:null};
++ savePrivate(x.dir,healthy);
++ const call=async(_url,method,params)=>{
++  if(method==="eth_chainId")return "0x66b";
++  if(method==="eth_getCode")return "0x6001";
++  if(method==="eth_gasPrice")return "0x3b9aca00";
++  if(method==="eth_getTransactionCount")return "0x01";
++  if(method==="eth_getBalance")return "0x3635c9adc5dea00000";
++  if(method==="eth_estimateGas")return "0x7a120";
++  if(method==="eth_sendRawTransaction")return txHash;
++  if(method==="eth_getTransactionReceipt")return null;
++  throw Error("Unexpected RPC "+method);
++ };
++ const run=()=>processCreatorQueue({env:env(x.dir),now,call,
++  loadFactory:()=>factory,
++  walletFactory:()=>({address:operator,signTransaction:async()=>{signCount++;return signed}}),
++  loadInventory:loadCatalog,checkSponsorJournal:async()=>{}});
++ try{
++  const first=await run();
++  assert.equal(first.phase,"deployment-submitted");
++  assert.equal(first.id,created.id,"healthy sibling must be selected despite malformed earlier request");
++  const invalid=readPrivate(x.dir,x.id);
++  assert.equal(invalid.phase,"deployment-queued");
++  assert.equal(invalid.deployment.status,"quarantined");
++  assert.match(invalid.deployment.blockedReason,/name|symbol/i);
++  assert.equal(invalid.deployment.txHash,null);
++  assert.equal(readPrivate(x.dir,created.id).deployment.txHash,txHash);
++  assert.equal(signCount,1);
++  // An unresolved signed item always wins after restart; quarantine can
++  // never clear, replace or steal its already reserved nonce.
++  assert.equal((await run()).phase,"broadcast-retry");
++  assert.equal(signCount,1);
++  assert.equal(readPrivate(x.dir,x.id).deployment.status,"quarantined");
++ }finally{x.cleanup()}
++});
++
++test("F-36 invalid solitary Creator entry is retained for manual review, not deleted or signed",async()=>{
++ const x=fixture();let signedCount=0;
++ try{
++  const record=readPrivate(x.dir,x.id);
++  record.input={...record.input,maxSupply:"0",tokenType:"mintable"};
++  savePrivate(x.dir,record);
++  const result=await processCreatorQueue({env:env(x.dir),now,
++   loadFactory:()=>factory,
++   walletFactory:()=>({address:operator,signTransaction:async()=>{signedCount++;throw Error("Must not sign")}}),
++   loadInventory:loadCatalog,checkSponsorJournal:async()=>{}});
++  assert.equal(result.phase,"quarantined");
++  assert.equal(result.quarantined,1);
++  assert.equal(signedCount,0);
++  assert.equal(readPrivate(x.dir,x.id).deployment.status,"quarantined");
++  assert.equal(readPrivate(x.dir,x.id).input.contactEmail,input.contactEmail);
++  assert.equal((await processCreatorQueue({env:env(x.dir),now,
++   loadFactory:()=>factory,walletFactory:()=>({address:operator}),
++   loadInventory:loadCatalog,checkSponsorJournal:async()=>{}})).phase,"idle");
++ }finally{x.cleanup()}
++});
+diff --git a/services/onboarding/creator-registration.mjs b/services/onboarding/creator-registration.mjs
+index 7880de6..2c3aeca 100644
+--- a/services/onboarding/creator-registration.mjs
++++ b/services/onboarding/creator-registration.mjs
+@@ -37,7 +37,8 @@ export function normalizeCreatorApplication(data){
+  const name=String(data.name||"").trim(),symbol=String(data.symbol||"").trim(),
+   initialSupply=String(data.initialSupply||"").trim(),ownerAddress=String(data.ownerAddress||"").trim().toLowerCase(),contactEmail=String(data.contactEmail||"").trim().toLowerCase();
+  if(!ADDRESS.test(ownerAddress)||/^0x0{40}$/i.test(ownerAddress))throw Error("Valid project owner wallet address required");
+- if(!NAME.test(name)||!SYMBOL.test(symbol)||!SUPPLY.test(initialSupply))
++ if(!NAME.test(name)||Buffer.byteLength(name,"utf8")>80||
++  !SYMBOL.test(symbol)||!SUPPLY.test(initialSupply))
+   throw Error("Invalid token name, symbol or initial supply");
+  const config=creatorSettings({...data,initialSupply,ownerAddress});
+  if(!EMAIL.test(contactEmail)||contactEmail.length>254)throw Error("Valid contact email required");
+diff --git a/services/onboarding/creator-registration.test.mjs b/services/onboarding/creator-registration.test.mjs
+index 97529f3..b11e6d5 100644
+--- a/services/onboarding/creator-registration.test.mjs
++++ b/services/onboarding/creator-registration.test.mjs
+@@ -162,3 +162,11 @@ test("real Creator registration accepts no relationship selection or duplicate a
+   assert.equal(stored.input.confirmed,true);
+  }finally{await new Promise(done=>server.close(done));rmSync(dir,{recursive:true,force:true})}
+ });
++
++test("F-36 registration rejects names longer than the on-chain UTF-8 byte limit",()=>{
++ assert.throws(()=>normalizeCreatorApplication({
++  ...input,name:"Ä".repeat(50)
++ }),/name|symbol|supply/i);
++ assert.equal(normalizeCreatorApplication({...input,name:"Ä".repeat(39)}).record.name,
++  "Ä".repeat(39));
++});

@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: source XGR cap is exactly 100 native XGR, never 1% of amount
+ok 1 - source XGR cap is exactly 100 native XGR, never 1% of amount
+  ---
+  duration_ms: 0.650912
+  type: 'test'
+  ...
+# Subtest: small normal fees stay unchanged; no fee floor is invented
+ok 2 - small normal fees stay unchanged; no fee floor is invented
+  ---
+  duration_ms: 0.100281
+  type: 'test'
+  ...
+# Subtest: Base and Arbitrum source fees are exactly capped by fresh XGR/ETH price
+ok 3 - Base and Arbitrum source fees are exactly capped by fresh XGR/ETH price
+  ---
+  duration_ms: 0.545753
+  type: 'test'
+  ...
+# Subtest: sub-gwei cap cannot be rounded up above 100 XGR value
+ok 4 - sub-gwei cap cannot be rounded up above 100 XGR value
+  ---
+  duration_ms: 0.151438
+  type: 'test'
+  ...
+# Subtest: invalid or unavailable FX or nonsensical invoice fail closed
+ok 5 - invalid or unavailable FX or nonsensical invoice fail closed
+  ---
+  duration_ms: 0.219091
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.85141

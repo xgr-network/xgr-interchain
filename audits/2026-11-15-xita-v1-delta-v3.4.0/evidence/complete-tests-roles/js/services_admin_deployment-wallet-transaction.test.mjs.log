@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: persist wallet hash synchronously before any RPC lookup; idempotent recovery
+ok 1 - persist wallet hash synchronously before any RPC lookup; idempotent recovery
+  ---
+  duration_ms: 5.601337
+  type: 'test'
+  ...
+# Subtest: matching transaction can proceed to independent receipt verification
+ok 2 - matching transaction can proceed to independent receipt verification
+  ---
+  duration_ms: 0.698866
+  type: 'test'
+  ...
+# Subtest: RPC propagation gaps and outages are pending, not failed
+ok 3 - RPC propagation gaps and outages are pending, not failed
+  ---
+  duration_ms: 0.156586
+  type: 'test'
+  ...
+# Subtest: wrong wallet, calldata, chain or target is permanently rejected
+ok 4 - wrong wallet, calldata, chain or target is permanently rejected
+  ---
+  duration_ms: 0.240043
+  type: 'test'
+  ...
+# Subtest: original tx is recovered from its receipt block when hash indexing has expired
+ok 5 - original tx is recovered from its receipt block when hash indexing has expired
+  ---
+  duration_ms: 0.190538
+  type: 'test'
+  ...
+# Subtest: MetaMask may assign a newer nonce without invalidating the exact returned hash
+ok 6 - MetaMask may assign a newer nonce without invalidating the exact returned hash
+  ---
+  duration_ms: 0.134223
+  type: 'test'
+  ...
+# Subtest: wallet-assigned nonce does not override wrong destination or calldata
+ok 7 - wallet-assigned nonce does not override wrong destination or calldata
+  ---
+  duration_ms: 0.197378
+  type: 'test'
+  ...
+# Subtest: Base smart wallet envelope accepts exact target and calldata, but rejects substituted payloads
+ok 8 - Base smart wallet envelope accepts exact target and calldata, but rejects substituted payloads
+  ---
+  duration_ms: 0.278381
+  type: 'test'
+  ...
+# Subtest: Arbitrum MetaMask delegated executor preserves original wallet, target and calldata
+ok 9 - Arbitrum MetaMask delegated executor preserves original wallet, target and calldata
+  ---
+  duration_ms: 0.226923
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 60.03615

@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: invalid initial membership fails before any RPC
+ok 1 - invalid initial membership fails before any RPC
+  ---
+  duration_ms: 0.67702
+  type: 'test'
+  ...
+# Subtest: Base public Genesis PoPs validate with NO PoS snapshot or source registry
+ok 2 - Base public Genesis PoPs validate with NO PoS snapshot or source registry
+  ---
+  duration_ms: 1.833773
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 45.364426

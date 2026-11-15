@@ -1,0 +1,1467 @@
+﻿2026-11-15T08:56:24.5612901Z Current runner version: '2.338.2'
+2026-11-15T08:56:24.5649333Z ##[group]Runner Image Provisioner
+2026-11-15T08:56:24.5650761Z Hosted Compute Agent
+2026-11-15T08:56:24.5652073Z Version: 20261103.629
+2026-11-15T08:56:24.5653225Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-15T08:56:24.5654586Z Build Date: 2026-11-03T17:26:59Z
+2026-11-15T08:56:24.5655758Z Worker ID: {325ca75d-9075-4384-91f9-54b6fea1b191}
+2026-11-15T08:56:24.5657125Z Region: eastus
+2026-11-15T08:56:24.5658078Z Cloud: Azure
+2026-11-15T08:56:24.5658978Z ##[endgroup]
+2026-11-15T08:56:24.5661808Z ##[group]Operating System
+2026-11-15T08:56:24.5662849Z Ubuntu
+2026-11-15T08:56:24.5663909Z 26.04.1
+2026-11-15T08:56:24.5664794Z LTS
+2026-11-15T08:56:24.5665720Z ##[endgroup]
+2026-11-15T08:56:24.5666679Z ##[group]Runner Image
+2026-11-15T08:56:24.5667680Z Image: ubuntu-26.04
+2026-11-15T08:56:24.5668820Z Version: 20261111.196.1
+2026-11-15T08:56:24.5671268Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261111.196/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-15T08:56:24.5673999Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261111.196
+2026-11-15T08:56:24.5675803Z ##[endgroup]
+2026-11-15T08:56:24.5677778Z ##[group]GITHUB_TOKEN Permissions
+2026-11-15T08:56:24.5680486Z Contents: read
+2026-11-15T08:56:24.5681677Z Metadata: read
+2026-11-15T08:56:24.5682818Z ##[endgroup]
+2026-11-15T08:56:24.5685977Z Secret source: Actions
+2026-11-15T08:56:24.5687669Z Cache mode: write
+2026-11-15T08:56:24.5688848Z Prepare workflow directory
+2026-11-15T08:56:24.6188606Z Prepare all required actions
+2026-11-15T08:56:24.6262642Z Getting action download info
+2026-11-15T08:56:24.7699754Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-15T08:56:24.8768392Z Download action repository 'foundry-rs/foundry-toolchain@v1' (SHA:dba66c27052e63476d886f22216e119ba7e615bf)
+2026-11-15T08:56:25.1461423Z Complete job name: forge-test
+2026-11-15T08:56:25.2384321Z ##[group]Run actions/checkout@v4
+2026-11-15T08:56:25.2385249Z with:
+2026-11-15T08:56:25.2385745Z   repository: xgr-network/xgr-interchain
+2026-11-15T08:56:25.2389619Z   token: ***
+2026-11-15T08:56:25.2390072Z   ssh-strict: true
+2026-11-15T08:56:25.2390541Z   ssh-user: git
+2026-11-15T08:56:25.2391188Z   persist-credentials: true
+2026-11-15T08:56:25.2391698Z   clean: true
+2026-11-15T08:56:25.2392167Z   sparse-checkout-cone-mode: true
+2026-11-15T08:56:25.2392712Z   fetch-depth: 1
+2026-11-15T08:56:25.2393163Z   fetch-tags: false
+2026-11-15T08:56:25.2393635Z   show-progress: true
+2026-11-15T08:56:25.2394116Z   lfs: false
+2026-11-15T08:56:25.2394550Z   submodules: false
+2026-11-15T08:56:25.2395028Z   set-safe-directory: true
+2026-11-15T08:56:25.2395573Z   allow-unsafe-pr-checkout: false
+2026-11-15T08:56:25.2396363Z ##[endgroup]
+2026-11-15T08:56:25.5150391Z Syncing repository: xgr-network/xgr-interchain
+2026-11-15T08:56:25.5153553Z ##[group]Getting Git version info
+2026-11-15T08:56:25.5155071Z Working directory is '/home/runner/work/xgr-interchain/xgr-interchain'
+2026-11-15T08:56:25.5157100Z [command]/usr/bin/git version
+2026-11-15T08:56:25.5158691Z git version 2.56.1
+2026-11-15T08:56:25.5179605Z ##[endgroup]
+2026-11-15T08:56:25.5194496Z Temporarily overriding HOME='/home/runner/work/_temp/7991d896-41df-4d3d-9631-d07556c06225' before making global git config changes
+2026-11-15T08:56:25.5197455Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T08:56:25.5199803Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/xgr-interchain/xgr-interchain
+2026-11-15T08:56:25.5278134Z Deleting the contents of '/home/runner/work/xgr-interchain/xgr-interchain'
+2026-11-15T08:56:25.5302569Z ##[group]Initializing the repository
+2026-11-15T08:56:25.5322275Z [command]/usr/bin/git init /home/runner/work/xgr-interchain/xgr-interchain
+2026-11-15T08:56:25.5417704Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-15T08:56:25.5419472Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-15T08:56:25.5421288Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-15T08:56:25.5422369Z hint: call:
+2026-11-15T08:56:25.5422963Z hint:
+2026-11-15T08:56:25.5423678Z hint: 	git config --global init.defaultBranch <name>
+2026-11-15T08:56:25.5424521Z hint:
+2026-11-15T08:56:25.5425288Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-15T08:56:25.5426449Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-15T08:56:25.5427623Z hint:
+2026-11-15T08:56:25.5428658Z hint: 	git branch -m <name>
+2026-11-15T08:56:25.5429833Z hint:
+2026-11-15T08:56:25.5431500Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-15T08:56:25.5433934Z Initialized empty Git repository in /home/runner/work/xgr-interchain/xgr-interchain/.git/
+2026-11-15T08:56:25.5443042Z [command]/usr/bin/git remote add origin https://github.com/xgr-network/xgr-interchain
+2026-11-15T08:56:25.5514423Z ##[endgroup]
+2026-11-15T08:56:25.5516316Z ##[group]Disabling automatic garbage collection
+2026-11-15T08:56:25.5517915Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-15T08:56:25.5555830Z ##[endgroup]
+2026-11-15T08:56:25.5557660Z ##[group]Setting up auth
+2026-11-15T08:56:25.5559584Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T08:56:25.5595194Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T08:56:25.6107325Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T08:56:25.6200670Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T08:56:25.6511741Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T08:56:25.6550560Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T08:56:25.6834984Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-15T08:56:25.6876570Z ##[endgroup]
+2026-11-15T08:56:25.6878752Z ##[group]Fetching the repository
+2026-11-15T08:56:25.6888515Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +835864e7e228bdb10b1854757da120efdcd337b6:refs/remotes/pull/418/merge
+2026-11-15T08:56:26.1075004Z From https://github.com/xgr-network/xgr-interchain
+2026-11-15T08:56:26.1078432Z  * [new ref]         835864e7e228bdb10b1854757da120efdcd337b6 -> pull/418/merge
+2026-11-15T08:56:26.1084756Z ##[endgroup]
+2026-11-15T08:56:26.1087350Z ##[group]Determining the checkout info
+2026-11-15T08:56:26.1090205Z ##[endgroup]
+2026-11-15T08:56:26.1091836Z [command]/usr/bin/git sparse-checkout disable
+2026-11-15T08:56:26.1148201Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-15T08:56:26.1180700Z ##[group]Checking out the ref
+2026-11-15T08:56:26.1182651Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/418/merge
+2026-11-15T08:56:26.2039671Z Note: switching to 'refs/remotes/pull/418/merge'.
+2026-11-15T08:56:26.2041569Z 
+2026-11-15T08:56:26.2042977Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-15T08:56:26.2045649Z changes and commit them, and you can discard any commits you make in this
+2026-11-15T08:56:26.2049548Z state without impacting any branches by switching back to a branch.
+2026-11-15T08:56:26.2052008Z 
+2026-11-15T08:56:26.2053536Z If you want to create a new branch to retain commits you create, you may
+2026-11-15T08:56:26.2056714Z do so (now or later) by using -c with the switch command. Example:
+2026-11-15T08:56:26.2058667Z 
+2026-11-15T08:56:26.2059514Z   git switch -c <new-branch-name>
+2026-11-15T08:56:26.2060712Z 
+2026-11-15T08:56:26.2061927Z Or undo this operation with:
+2026-11-15T08:56:26.2063245Z 
+2026-11-15T08:56:26.2064147Z   git switch -
+2026-11-15T08:56:26.2065153Z 
+2026-11-15T08:56:26.2066614Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-15T08:56:26.2068792Z 
+2026-11-15T08:56:26.2071244Z HEAD is now at 835864e Merge c1cbaaa66e4371b425421dd71c9f724b930f35bf into fe3d63603a09197217c57e61961f6434e39ba07f
+2026-11-15T08:56:26.2076994Z ##[endgroup]
+2026-11-15T08:56:26.2111331Z [command]/usr/bin/git log -1 --format=%H
+2026-11-15T08:56:26.2138802Z 835864e7e228bdb10b1854757da120efdcd337b6
+2026-11-15T08:56:26.2536476Z ##[group]Run foundry-rs/foundry-toolchain@v1
+2026-11-15T08:56:26.2537983Z with:
+2026-11-15T08:56:26.2538959Z   version: stable
+2026-11-15T08:56:26.2540114Z   network: ethereum
+2026-11-15T08:56:26.2541382Z   cache: true
+2026-11-15T08:56:26.2542837Z   cache-key: forge-test-835864e7e228bdb10b1854757da120efdcd337b6
+2026-11-15T08:56:26.2544710Z   cache-restore-keys: forge-test-
+2026-11-15T08:56:26.2545998Z ##[endgroup]
+2026-11-15T08:56:26.3947023Z Installing Foundry (version: stable)
+2026-11-15T08:56:26.3951243Z Downloading foundryup installer from foundry-rs/foundryup@a27902ef04dcb43061fabf343365cb5afc95fc48...
+2026-11-15T08:56:26.4462975Z Running foundryup installer...
+2026-11-15T08:56:26.6702114Z Running: foundryup 
+2026-11-15T08:56:29.0905032Z Added /home/runner/.foundry/bin to PATH
+2026-11-15T08:56:29.0906440Z Primary key: linux-foundry-chain-fork-forge-test-835864e7e228bdb10b1854757da120efdcd337b6
+2026-11-15T08:56:29.0913751Z Restore keys: linux-foundry-chain-fork-forge-test-
+2026-11-15T08:56:29.1435989Z Cache hit for restore-key: linux-foundry-chain-fork-forge-test-24b8bd3bdb6342ea1791acd4f27d8d7d3880e0a1
+2026-11-15T08:56:29.2195606Z Received 8107 of 8107 (100.0%), 0.2 MBs/sec
+2026-11-15T08:56:29.2196197Z Cache Size: ~0 MB (8107 B)
+2026-11-15T08:56:29.2228102Z [command]/usr/bin/tar -xf /home/runner/work/_temp/ff0fd652-7146-4ccc-8758-e80abf3f7049/cache.tzst -P -C /home/runner/work/xgr-interchain/xgr-interchain --use-compress-program unzstd
+2026-11-15T08:56:29.2284306Z Cache restored successfully
+2026-11-15T08:56:29.2287854Z Cache restored from key: linux-foundry-chain-fork-forge-test-24b8bd3bdb6342ea1791acd4f27d8d7d3880e0a1
+2026-11-15T08:56:29.2288884Z Running: forge --version
+2026-11-15T08:56:29.2356299Z forge Version: 1.9.0
+2026-11-15T08:56:29.2356723Z Commit SHA: 6056c5845d34205a83cf7108042adb137325c9df
+2026-11-15T08:56:29.2357185Z Build Timestamp: 2026-11-02T20:28:32.434285913Z (1793651312)
+2026-11-15T08:56:29.2357598Z Build Profile: dist
+2026-11-15T08:56:29.2363605Z Running: cast --version
+2026-11-15T08:56:29.2459510Z cast Version: 1.9.0
+2026-11-15T08:56:29.2459954Z Commit SHA: 6056c5845d34205a83cf7108042adb137325c9df
+2026-11-15T08:56:29.2460535Z Build Timestamp: 2026-11-02T20:28:32.434285913Z (1793651312)
+2026-11-15T08:56:29.2461331Z Build Profile: dist
+2026-11-15T08:56:29.2469731Z Running: anvil --version
+2026-11-15T08:56:29.2510647Z anvil Version: 1.9.0
+2026-11-15T08:56:29.2511286Z Commit SHA: 6056c5845d34205a83cf7108042adb137325c9df
+2026-11-15T08:56:29.2511754Z Build Timestamp: 2026-11-02T20:28:32.434285913Z (1793651312)
+2026-11-15T08:56:29.2512185Z Build Profile: dist
+2026-11-15T08:56:29.2515356Z Running: chisel --version
+2026-11-15T08:56:29.2556131Z chisel Version: 1.9.0
+2026-11-15T08:56:29.2556606Z Commit SHA: 6056c5845d34205a83cf7108042adb137325c9df
+2026-11-15T08:56:29.2557097Z Build Timestamp: 2026-11-02T20:28:32.434285913Z (1793651312)
+2026-11-15T08:56:29.2557564Z Build Profile: dist
+2026-11-15T08:56:29.2722375Z ##[group]Run forge install foundry-rs/forge-std --no-commit
+2026-11-15T08:56:29.2722913Z [36;1mforge install foundry-rs/forge-std --no-commit[0m
+2026-11-15T08:56:29.2778768Z shell: /usr/bin/bash -e {0}
+2026-11-15T08:56:29.2779077Z ##[endgroup]
+2026-11-15T08:56:29.3485426Z Installing forge-std in /home/runner/work/xgr-interchain/xgr-interchain/lib/forge-std (url: https://github.com/foundry-rs/forge-std, tag: None)
+2026-11-15T08:56:29.4370685Z Cloning into '/home/runner/work/xgr-interchain/xgr-interchain/lib/forge-std'...
+2026-11-15T08:56:29.7808446Z     Installed forge-std tag=v1.17.0@f3dae6e6ee381f25eb6a246f7da9b85c91a68219
+2026-11-15T08:56:29.7862564Z ##[group]Run npm install --prefix vendor --ignore-scripts --no-audit --no-fund
+2026-11-15T08:56:29.7863164Z [36;1mnpm install --prefix vendor --ignore-scripts --no-audit --no-fund[0m
+2026-11-15T08:56:29.7914193Z shell: /usr/bin/bash -e {0}
+2026-11-15T08:56:29.7914455Z ##[endgroup]
+2026-11-15T08:56:45.9205875Z 
+2026-11-15T08:56:45.9206480Z added 45 packages in 16s
+2026-11-15T08:56:45.9934959Z ##[group]Run node services/admin/verify-solidity-runtime.mjs .
+2026-11-15T08:56:45.9935496Z [36;1mnode services/admin/verify-solidity-runtime.mjs .[0m
+2026-11-15T08:56:45.9935881Z [36;1mforge build --force --skip test script[0m
+2026-11-15T08:56:45.9936387Z [36;1mnode services/admin/seal-build-cli.mjs . "$(forge --version)" "$(git rev-parse HEAD)"[0m
+2026-11-15T08:56:45.9938038Z [36;1mnode --input-type=module -e 'import {readSealedArtifacts} from "./services/admin/sealed-artifacts.mjs"; import {NAMES} from "./services/admin/sealed-artifacts.mjs"; import {execFileSync} from "node:child_process"; const sha=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(); if(Object.keys(readSealedArtifacts(".",sha).raws).length!==NAMES.length)process.exit(1);'[0m
+2026-11-15T08:56:45.9939583Z [36;1mnode services/admin/verify-sealed-constructors.mjs .[0m
+2026-11-15T08:56:45.9994666Z shell: /usr/bin/bash -e {0}
+2026-11-15T08:56:45.9994930Z ##[endgroup]
+2026-11-15T08:56:46.0423568Z Complete Solidity imports: 82 source files checked
+2026-11-15T08:56:46.2538161Z Compiling 82 files with Solc 0.8.24
+2026-11-15T08:57:26.3552613Z Solc 0.8.24 finished in 40.10s
+2026-11-15T08:57:26.3703114Z Compiler run successful with warnings:
+2026-11-15T08:57:26.3707225Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:57:26.3708758Z    --> contracts/XGRInterchainBLSVerifier.sol:119:67:
+2026-11-15T08:57:26.3709175Z     |
+2026-11-15T08:57:26.3709631Z 119 |         return (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0;
+2026-11-15T08:57:26.3710555Z     |                                                                   ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:57:26.3711181Z 
+2026-11-15T08:57:26.3712338Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:57:26.3713785Z    --> contracts/XGRInterchainValidatorRegistryV3.sol:697:68:
+2026-11-15T08:57:26.3714203Z     |
+2026-11-15T08:57:26.3714566Z 697 |                 (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0
+2026-11-15T08:57:26.3715221Z     |                                                                    ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:57:26.3715465Z 
+2026-11-15T08:57:26.3716360Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:57:26.3717510Z    --> contracts/XGRInterchainValidatorRegistryV3.sol:709:68:
+2026-11-15T08:57:26.3717841Z     |
+2026-11-15T08:57:26.3718167Z 709 |                 (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0
+2026-11-15T08:57:26.3718623Z     |                                                                    ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:57:26.3719098Z 
+2026-11-15T08:57:26.3719269Z Warning (2018): Function state mutability can be restricted to view
+2026-11-15T08:57:26.3719657Z    --> contracts/XITAExecutionGateway.sol:160:5:
+2026-11-15T08:57:26.3719936Z     |
+2026-11-15T08:57:26.3720201Z 160 |     function renounceOwnership() public override onlyOwner {
+2026-11-15T08:57:26.3720646Z     |     ^ (Relevant source part starts here and spans across multiple lines).
+2026-11-15T08:57:26.3721210Z 
+2026-11-15T08:57:26.4078373Z warning[incorrect-strict-equality]: dangerous strict equality check on an externally-influenced value
+2026-11-15T08:57:26.4080195Z    ╭▸ contracts/XETAGuardedCollateralWarpRouterV315.sol:50:13
+2026-11-15T08:57:26.4080623Z    │
+2026-11-15T08:57:26.4081309Z 50 │         if (underlying.balanceOf(address(this)) != beforeBalance + amount)
+2026-11-15T08:57:26.4081911Z    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4082264Z    │
+2026-11-15T08:57:26.4082658Z    ╰ help: https://getfoundry.sh/forge/linting/incorrect-strict-equality
+2026-11-15T08:57:26.4083012Z 
+2026-11-15T08:57:26.4083279Z warning[reentrancy-no-eth]: external call can be reentered before `unlocked` is updated
+2026-11-15T08:57:26.4083781Z     ╭▸ contracts/ILNGateway.sol:320:40
+2026-11-15T08:57:26.4084041Z     │
+2026-11-15T08:57:26.4084313Z 320 │           (bool ok, bytes memory data) = token.call(
+2026-11-15T08:57:26.4084713Z     │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4085056Z 321 │ ┃             abi.encodeWithSelector(
+2026-11-15T08:57:26.4085507Z 322 │ ┃                 bytes4(keccak256("transferFrom(address,address,uint256)")),
+2026-11-15T08:57:26.4085937Z 323 │ ┃                 from,
+2026-11-15T08:57:26.4086191Z     ‡ ┃
+2026-11-15T08:57:26.4086385Z 327 │ ┃         );
+2026-11-15T08:57:26.4086602Z     │ ┗━━━━━━━━━┛
+2026-11-15T08:57:26.4086790Z     │
+2026-11-15T08:57:26.4087115Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-no-eth
+2026-11-15T08:57:26.4087386Z 
+2026-11-15T08:57:26.4087646Z warning[reentrancy-no-eth]: external call can be reentered before `unlocked` is updated
+2026-11-15T08:57:26.4088141Z     ╭▸ contracts/ILNGateway.sol:351:40
+2026-11-15T08:57:26.4088401Z     │
+2026-11-15T08:57:26.4088670Z 351 │           (bool ok, bytes memory data) = token.call(
+2026-11-15T08:57:26.4089062Z     │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4089390Z 352 │ ┃             abi.encodeWithSelector(
+2026-11-15T08:57:26.4089781Z 353 │ ┃                 bytes4(keccak256("approve(address,uint256)")),
+2026-11-15T08:57:26.4090149Z 354 │ ┃                 spender,
+2026-11-15T08:57:26.4090398Z     ‡ ┃
+2026-11-15T08:57:26.4090605Z 357 │ ┃         );
+2026-11-15T08:57:26.4091076Z     │ ┗━━━━━━━━━┛
+2026-11-15T08:57:26.4091299Z     │
+2026-11-15T08:57:26.4091638Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-no-eth
+2026-11-15T08:57:26.4091908Z 
+2026-11-15T08:57:26.4102089Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4111820Z     ╭▸ contracts/ILNGateway.sol:232:9
+2026-11-15T08:57:26.4112309Z     │
+2026-11-15T08:57:26.4112717Z 232 │ ┏         emit ILNOperation(
+2026-11-15T08:57:26.4113350Z 233 │ ┃             routeId,
+2026-11-15T08:57:26.4113845Z 234 │ ┃             messageId,
+2026-11-15T08:57:26.4114343Z 235 │ ┃             destinationDomain,
+2026-11-15T08:57:26.4114920Z 236 │ ┃             route.validatorFeeWei
+2026-11-15T08:57:26.4115429Z 237 │ ┃         );
+2026-11-15T08:57:26.4115838Z     │ ┗━━━━━━━━━━┛
+2026-11-15T08:57:26.4116242Z     │
+2026-11-15T08:57:26.4116960Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4117469Z 
+2026-11-15T08:57:26.4117729Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4118463Z     ╭▸ contracts/ILNGateway.sol:266:36
+2026-11-15T08:57:26.4118933Z     │
+2026-11-15T08:57:26.4119511Z 266 │             route.sourceChainId != uint64(block.chainid) ||
+2026-11-15T08:57:26.4120610Z     │                                    ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4121336Z     │
+2026-11-15T08:57:26.4121958Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4122638Z     │       
+2026-11-15T08:57:26.4123147Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4123875Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4124442Z     │       
+2026-11-15T08:57:26.4124777Z     │       
+2026-11-15T08:57:26.4125318Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4125796Z 
+2026-11-15T08:57:26.4126428Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4127115Z     ╭▸ contracts/ILNGateway.sol:296:17
+2026-11-15T08:57:26.4127378Z     │
+2026-11-15T08:57:26.4127631Z 296 │                 tokenQuote += quotes[i].amount;
+2026-11-15T08:57:26.4127953Z     │                 ━━━━━━━━━━
+2026-11-15T08:57:26.4128204Z     │
+2026-11-15T08:57:26.4128536Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4128819Z 
+2026-11-15T08:57:26.4129022Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4129441Z     ╭▸ contracts/ILNGateway.sol:298:17
+2026-11-15T08:57:26.4129705Z     │
+2026-11-15T08:57:26.4130056Z 298 │                 revert UnsupportedWarpFee();
+2026-11-15T08:57:26.4130499Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4130944Z     │
+2026-11-15T08:57:26.4131316Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4131607Z 
+2026-11-15T08:57:26.4131788Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4132162Z     ╭▸ contracts/ILNGateway.sol:322:17
+2026-11-15T08:57:26.4132417Z     │
+2026-11-15T08:57:26.4132760Z 322 │                 bytes4(keccak256("transferFrom(address,address,uint256)")),
+2026-11-15T08:57:26.4133257Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4133583Z     │
+2026-11-15T08:57:26.4133923Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4134309Z     │       
+2026-11-15T08:57:26.4134604Z     │       // casting to 'bytes4' is safe because [explain why]
+2026-11-15T08:57:26.4135029Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4135356Z     │       
+2026-11-15T08:57:26.4135585Z     │       
+2026-11-15T08:57:26.4135896Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4136145Z 
+2026-11-15T08:57:26.4136303Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4136670Z     ╭▸ contracts/ILNGateway.sol:353:17
+2026-11-15T08:57:26.4136927Z     │
+2026-11-15T08:57:26.4137214Z 353 │                 bytes4(keccak256("approve(address,uint256)")),
+2026-11-15T08:57:26.4137633Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4137935Z     │
+2026-11-15T08:57:26.4138264Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4138640Z     │       
+2026-11-15T08:57:26.4138927Z     │       // casting to 'bytes4' is safe because [explain why]
+2026-11-15T08:57:26.4139340Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4139660Z     │       
+2026-11-15T08:57:26.4139853Z     │       
+2026-11-15T08:57:26.4140156Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4140412Z 
+2026-11-15T08:57:26.4140638Z warning[locked-ether]: contract can receive ETH but has no mechanism to send it out
+2026-11-15T08:57:26.4141368Z   ╭▸ contracts/test/MockILNNativeWarpRouter.sol:6:10
+2026-11-15T08:57:26.4141683Z   │
+2026-11-15T08:57:26.4141966Z 6 │ contract MockILNNativeWarpRouter is IILNWarpRouter {
+2026-11-15T08:57:26.4142330Z   │          ━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4142568Z   │
+2026-11-15T08:57:26.4142860Z   ╰ help: https://getfoundry.sh/forge/linting/locked-ether
+2026-11-15T08:57:26.4143280Z 
+2026-11-15T08:57:26.4143507Z warning[locked-ether]: contract can receive ETH but has no mechanism to send it out
+2026-11-15T08:57:26.4143985Z   ╭▸ contracts/test/MockILNWarpRouter.sol:6:10
+2026-11-15T08:57:26.4144266Z   │
+2026-11-15T08:57:26.4144529Z 6 │ contract MockILNWarpRouter is IILNWarpRouter {
+2026-11-15T08:57:26.4144861Z   │          ━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4145082Z   │
+2026-11-15T08:57:26.4145360Z   ╰ help: https://getfoundry.sh/forge/linting/locked-ether
+2026-11-15T08:57:26.4145611Z 
+2026-11-15T08:57:26.4146098Z warning[missing-events-access-control]: `balanceOf` is changed without an event but is used for access control
+2026-11-15T08:57:26.4146719Z    ╭▸ contracts/test/MockILNWarpRouter.sol:82:9
+2026-11-15T08:57:26.4147009Z    │
+2026-11-15T08:57:26.4147272Z 82 │         balanceOf[msg.sender] -= amount;
+2026-11-15T08:57:26.4147599Z    │         ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4147834Z    │
+2026-11-15T08:57:26.4148195Z    ╰ help: https://getfoundry.sh/forge/linting/missing-events-access-control
+2026-11-15T08:57:26.4148522Z 
+2026-11-15T08:57:26.4148872Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4149493Z    ╭▸ contracts/XITAStarterTokenCreator.sol:91:24
+2026-11-15T08:57:26.4149790Z    │
+2026-11-15T08:57:26.4150076Z 91 │     function setMinter(address next) external onlyOwner {
+2026-11-15T08:57:26.4150443Z    │                        ━━━━━━━━━━━━
+2026-11-15T08:57:26.4150694Z    │
+2026-11-15T08:57:26.4151299Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4151593Z 
+2026-11-15T08:57:26.4152020Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4152709Z     ╭▸ contracts/XITAStarterTokenCreator.sol:196:9
+2026-11-15T08:57:26.4153011Z     │
+2026-11-15T08:57:26.4153443Z 196 │         emit TokenCreated(msg.sender, token, owner_, name_, symbol_, initialSupplyBaseUnits);
+2026-11-15T08:57:26.4154081Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4154428Z     │
+2026-11-15T08:57:26.4154740Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4154998Z 
+2026-11-15T08:57:26.4155423Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4156110Z     ╭▸ contracts/XITAStarterTokenCreator.sol:197:9
+2026-11-15T08:57:26.4156410Z     │
+2026-11-15T08:57:26.4156638Z 197 │ ┏         emit TokenConfigured(
+2026-11-15T08:57:26.4157010Z 198 │ ┃             token, type_, decimals_, lifetimeCapBaseUnits,
+2026-11-15T08:57:26.4157420Z 199 │ ┃             permitEnabled_, minter_, token.codehash
+2026-11-15T08:57:26.4157737Z 200 │ ┃         );
+2026-11-15T08:57:26.4157957Z     │ ┗━━━━━━━━━━┛
+2026-11-15T08:57:26.4158308Z     │
+2026-11-15T08:57:26.4158617Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4158880Z 
+2026-11-15T08:57:26.4159066Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4159525Z     ╭▸ contracts/XITAStarterTokenCreator.sol:178:49
+2026-11-15T08:57:26.4159825Z     │
+2026-11-15T08:57:26.4160125Z 178 │                 !(i > 0 && c >= 48 && c <= 57)) revert InvalidSymbol();
+2026-11-15T08:57:26.4160552Z     │                                                 ━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4161011Z     │
+2026-11-15T08:57:26.4161479Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4161791Z 
+2026-11-15T08:57:26.4162010Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4162498Z    ╭▸ contracts/XGRInterchainBLSVerifier.sol:64:18
+2026-11-15T08:57:26.4162803Z    │
+2026-11-15T08:57:26.4163017Z 64 │             if (!haveSigner) {
+2026-11-15T08:57:26.4163308Z    │                  ━━━━━━━━━━
+2026-11-15T08:57:26.4163535Z    │
+2026-11-15T08:57:26.4163864Z    ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4164131Z 
+2026-11-15T08:57:26.4164259Z warning[calls-loop]: external call inside a loop
+2026-11-15T08:57:26.4164633Z    ╭▸ contracts/XGRInterchainBLSVerifier.sol:71:17
+2026-11-15T08:57:26.4164929Z    │
+2026-11-15T08:57:26.4165332Z 71 │                 BLS12_G1ADD.staticcall(bytes.concat(aggregatePublicKey, publicKeys[i]));
+2026-11-15T08:57:26.4165911Z    │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4166259Z    │
+2026-11-15T08:57:26.4166544Z    ╰ help: https://getfoundry.sh/forge/linting/calls-loop
+2026-11-15T08:57:26.4166783Z 
+2026-11-15T08:57:26.4166928Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4167323Z    ╭▸ contracts/XGRInterchainBLSVerifier.sol:89:67
+2026-11-15T08:57:26.4167614Z    │
+2026-11-15T08:57:26.4168050Z 89 │         return pairingOK && pairingResult.length == 32 && uint256(bytes32(pairingResult)) == 1;
+2026-11-15T08:57:26.4168621Z    │                                                                   ━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4168981Z    │
+2026-11-15T08:57:26.4169310Z    ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4169704Z    │       
+2026-11-15T08:57:26.4169994Z    │       // casting to 'bytes32' is safe because [explain why]
+2026-11-15T08:57:26.4170432Z    │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4170867Z    │       
+2026-11-15T08:57:26.4171077Z    │       
+2026-11-15T08:57:26.4171387Z    ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4171647Z 
+2026-11-15T08:57:26.4171867Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4172368Z     ╭▸ contracts/XGRInterchainBLSVerifier.sol:100:13
+2026-11-15T08:57:26.4172677Z     │
+2026-11-15T08:57:26.4172902Z 100 │             nonzero |= word;
+2026-11-15T08:57:26.4173176Z     │             ━━━━━━━
+2026-11-15T08:57:26.4173398Z     │
+2026-11-15T08:57:26.4173721Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4174000Z 
+2026-11-15T08:57:26.4174216Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4174700Z    ╭▸ contracts/XGRInterchainBLSVerifier.sol:97:25
+2026-11-15T08:57:26.4175005Z    │
+2026-11-15T08:57:26.4175272Z 97 │         for (uint256 i; i < point.length; i += 32) {
+2026-11-15T08:57:26.4175608Z    │                         ━
+2026-11-15T08:57:26.4175841Z    │
+2026-11-15T08:57:26.4176163Z    ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4176429Z 
+2026-11-15T08:57:26.4176644Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4177129Z     ╭▸ contracts/XGRInterchainBLSVerifier.sol:110:13
+2026-11-15T08:57:26.4177428Z     │
+2026-11-15T08:57:26.4177785Z 110 │             nonzero |= word;
+2026-11-15T08:57:26.4178055Z     │             ━━━━━━━
+2026-11-15T08:57:26.4178267Z     │
+2026-11-15T08:57:26.4178583Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4178854Z 
+2026-11-15T08:57:26.4179071Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4179553Z     ╭▸ contracts/XGRInterchainBLSVerifier.sol:107:25
+2026-11-15T08:57:26.4179922Z     │
+2026-11-15T08:57:26.4180191Z 107 │         for (uint256 i; i < point.length; i += 32) {
+2026-11-15T08:57:26.4180523Z     │                         ━
+2026-11-15T08:57:26.4180989Z     │
+2026-11-15T08:57:26.4181340Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4181621Z 
+2026-11-15T08:57:26.4181761Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4182171Z     ╭▸ contracts/XGRInterchainBLSVerifier.sol:152:82
+2026-11-15T08:57:26.4182469Z     │
+2026-11-15T08:57:26.4182989Z 152 │         bytes memory dstPrime = bytes.concat(BLS_SIGNATURE_DST, abi.encodePacked(uint8(BLS_SIGNATURE_DST.length)));
+2026-11-15T08:57:26.4183678Z     │                                                                                  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4184031Z     │
+2026-11-15T08:57:26.4184364Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4184745Z     │       
+2026-11-15T08:57:26.4185034Z     │       // casting to 'uint8' is safe because [explain why]
+2026-11-15T08:57:26.4185464Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4185797Z     │       
+2026-11-15T08:57:26.4185991Z     │       
+2026-11-15T08:57:26.4186294Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4186558Z 
+2026-11-15T08:57:26.4186749Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4187167Z     ╭▸ contracts/XETARouterCore.sol:123:13
+2026-11-15T08:57:26.4187444Z     │
+2026-11-15T08:57:26.4188223Z 123 │             IXETARouteAssetLookup(address(xetaRegistry)).assetRoute(originDomain, localRouteId);
+2026-11-15T08:57:26.4190109Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4195480Z     │
+2026-11-15T08:57:26.4196176Z     ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4196660Z 
+2026-11-15T08:57:26.4196973Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4197752Z     ╭▸ contracts/XETARouterCore.sol:128:51
+2026-11-15T08:57:26.4198282Z     │
+2026-11-15T08:57:26.4198913Z 128 │             assetId, originChainId, originDomain, uint64(block.chainid),
+2026-11-15T08:57:26.4225595Z     │                                                   ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4226055Z     │
+2026-11-15T08:57:26.4226467Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4227169Z     │       
+2026-11-15T08:57:26.4227490Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4227922Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4228262Z     │       
+2026-11-15T08:57:26.4228472Z     │       
+2026-11-15T08:57:26.4228806Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4229072Z 
+2026-11-15T08:57:26.4229223Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4229611Z     ╭▸ contracts/XETARouterCore.sol:180:36
+2026-11-15T08:57:26.4229887Z     │
+2026-11-15T08:57:26.4230311Z 180 │             route.sourceChainId != uint64(block.chainid) ||
+2026-11-15T08:57:26.4230735Z     │                                    ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4231333Z     │
+2026-11-15T08:57:26.4231685Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4232096Z     │       
+2026-11-15T08:57:26.4232393Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4232836Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4233389Z     │       
+2026-11-15T08:57:26.4233911Z     │       
+2026-11-15T08:57:26.4234566Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4234986Z 
+2026-11-15T08:57:26.4235293Z warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+2026-11-15T08:57:26.4235866Z     ╭▸ contracts/XITAExecutionGateway.sol:208:32
+2026-11-15T08:57:26.4236161Z     │
+2026-11-15T08:57:26.4236512Z 208 │         if (q.issuedAt == 0 || uint256(q.issuedAt) > block.timestamp ||
+2026-11-15T08:57:26.4236974Z     │                                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4237283Z     │
+2026-11-15T08:57:26.4237589Z     ╰ help: https://getfoundry.sh/forge/linting/block-timestamp
+2026-11-15T08:57:26.4237854Z 
+2026-11-15T08:57:26.4238143Z warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+2026-11-15T08:57:26.4238705Z     ╭▸ contracts/XITAExecutionGateway.sol:209:13
+2026-11-15T08:57:26.4238996Z     │
+2026-11-15T08:57:26.4239445Z 209 │             block.timestamp - uint256(q.issuedAt) > quoteLifetimeSeconds) revert QuoteExpired();
+2026-11-15T08:57:26.4240034Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4240352Z     │
+2026-11-15T08:57:26.4240660Z     ╰ help: https://getfoundry.sh/forge/linting/block-timestamp
+2026-11-15T08:57:26.4241177Z 
+2026-11-15T08:57:26.4241636Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4242328Z     ╭▸ contracts/XITAExecutionGateway.sol:244:9
+2026-11-15T08:57:26.4242613Z     │
+2026-11-15T08:57:26.4242993Z 244 │ ┏         emit InterchainFeeCharged(messageId, msg.sender, q.gateway, q.routeId,
+2026-11-15T08:57:26.4243558Z 245 │ ┃             q.destinationDomain, q.recipient, q.finalDestinationDomain,
+2026-11-15T08:57:26.4244101Z 246 │ ┃             q.finalRecipient, q.onwardRouteId, q.amount, validatorFeeWei,
+2026-11-15T08:57:26.4244589Z 247 │ ┃             bridgeNativeWei, q.interchainFeeWei, q.nonce);
+2026-11-15T08:57:26.4245020Z     │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4245308Z     │
+2026-11-15T08:57:26.4245626Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4245889Z 
+2026-11-15T08:57:26.4246074Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4246518Z     ╭▸ contracts/XITAExecutionGateway.sol:221:13
+2026-11-15T08:57:26.4246808Z     │
+2026-11-15T08:57:26.4247130Z 221 │             sourceRegistry.getRoute(q.destinationDomain, q.routeId);
+2026-11-15T08:57:26.4247610Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4247952Z     │
+2026-11-15T08:57:26.4248246Z     ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4248688Z 
+2026-11-15T08:57:26.4248828Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4249226Z     ╭▸ contracts/XITAExecutionGateway.sol:222:36
+2026-11-15T08:57:26.4249511Z     │
+2026-11-15T08:57:26.4249792Z 222 │         if (!enabled || chainId != uint64(block.chainid) ||
+2026-11-15T08:57:26.4250186Z     │                                    ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4250469Z     │
+2026-11-15T08:57:26.4251022Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4251465Z     │       
+2026-11-15T08:57:26.4251903Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4252329Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4252659Z     │       
+2026-11-15T08:57:26.4252859Z     │       
+2026-11-15T08:57:26.4253174Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4253446Z 
+2026-11-15T08:57:26.4253626Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4254068Z     ╭▸ contracts/XITAExecutionGateway.sol:226:13
+2026-11-15T08:57:26.4254356Z     │
+2026-11-15T08:57:26.4254698Z 226 │             gateway.quoteILN(q.destinationDomain, q.recipient, q.amount);
+2026-11-15T08:57:26.4255203Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4255522Z     │
+2026-11-15T08:57:26.4255811Z     ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4256058Z 
+2026-11-15T08:57:26.4256488Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4257167Z     ╭▸ contracts/XITAExecutionGateway.sol:287:9
+2026-11-15T08:57:26.4257451Z     │
+2026-11-15T08:57:26.4257819Z 287 │ ┏         emit OnwardJourneyDispatched(parentMessageId,messageId,msg.sender,
+2026-11-15T08:57:26.4258498Z 288 │ ┃             expectedRouteId,destination,recipient,amount,validatorFeeWei,bridgeNativeWei);
+2026-11-15T08:57:26.4259182Z     │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4259529Z     │
+2026-11-15T08:57:26.4259838Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4260099Z 
+2026-11-15T08:57:26.4260276Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4260714Z     ╭▸ contracts/XITAExecutionGateway.sol:275:13
+2026-11-15T08:57:26.4261261Z     │
+2026-11-15T08:57:26.4261601Z 275 │             sourceRegistry.getRoute(destination,expectedRouteId);
+2026-11-15T08:57:26.4262144Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4262662Z     │
+2026-11-15T08:57:26.4263156Z     ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4263580Z 
+2026-11-15T08:57:26.4263825Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4264769Z     ╭▸ contracts/XITAExecutionGateway.sol:276:36
+2026-11-15T08:57:26.4265330Z     │
+2026-11-15T08:57:26.4265833Z 276 │         if (!enabled || chainId != uint64(block.chainid) ||
+2026-11-15T08:57:26.4266255Z     │                                    ━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4266541Z     │
+2026-11-15T08:57:26.4266886Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4267272Z     │       
+2026-11-15T08:57:26.4267567Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4268131Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4268467Z     │       
+2026-11-15T08:57:26.4268661Z     │       
+2026-11-15T08:57:26.4269035Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4269297Z 
+2026-11-15T08:57:26.4269477Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4269919Z     ╭▸ contracts/XITAExecutionGateway.sol:279:13
+2026-11-15T08:57:26.4270224Z     │
+2026-11-15T08:57:26.4270524Z 279 │             gateway.quoteILN(destination,recipient,amount);
+2026-11-15T08:57:26.4271185Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4271485Z     │
+2026-11-15T08:57:26.4271793Z     ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4272042Z 
+2026-11-15T08:57:26.4272378Z warning[arbitrary-send-eth]: ETH is sent to a user-controlled destination; restrict the destination or the caller
+2026-11-15T08:57:26.4272961Z     ╭▸ contracts/XITAExecutionGateway.sol:305:25
+2026-11-15T08:57:26.4273277Z     │
+2026-11-15T08:57:26.4273581Z 305 │               messageId = gateway.bridge{value:bridgeNativeWei}(
+2026-11-15T08:57:26.4273962Z     │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4274284Z 306 │ ┃                 destination,recipient,amount);
+2026-11-15T08:57:26.4274663Z     │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4274950Z     │
+2026-11-15T08:57:26.4275263Z     ╰ help: https://getfoundry.sh/forge/linting/arbitrary-send-eth
+2026-11-15T08:57:26.4275534Z 
+2026-11-15T08:57:26.4275860Z warning[arbitrary-send-eth]: ETH is sent to a user-controlled destination; restrict the destination or the caller
+2026-11-15T08:57:26.4276441Z     ╭▸ contracts/XITAExecutionGateway.sol:311:25
+2026-11-15T08:57:26.4276723Z     │
+2026-11-15T08:57:26.4277020Z 311 │               messageId = gateway.bridge{value:bridgeNativeWei}(
+2026-11-15T08:57:26.4277389Z     │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4277704Z 312 │ ┃                 destination,recipient,amount);
+2026-11-15T08:57:26.4278095Z     │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4278365Z     │
+2026-11-15T08:57:26.4278677Z     ╰ help: https://getfoundry.sh/forge/linting/arbitrary-send-eth
+2026-11-15T08:57:26.4278943Z 
+2026-11-15T08:57:26.4279256Z warning[incorrect-strict-equality]: dangerous strict equality check on an externally-influenced value
+2026-11-15T08:57:26.4279831Z     ╭▸ contracts/XITAExecutionGateway.sol:302:17
+2026-11-15T08:57:26.4280115Z     │
+2026-11-15T08:57:26.4280471Z 302 │             if (asset.balanceOf(address(this)) - beforeBalance != amount)
+2026-11-15T08:57:26.4281299Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4281627Z     │
+2026-11-15T08:57:26.4281980Z     ╰ help: https://getfoundry.sh/forge/linting/incorrect-strict-equality
+2026-11-15T08:57:26.4282283Z 
+2026-11-15T08:57:26.4282585Z warning[incorrect-strict-equality]: dangerous strict equality check on an externally-influenced value
+2026-11-15T08:57:26.4283174Z     ╭▸ contracts/XITAExecutionGateway.sol:308:17
+2026-11-15T08:57:26.4283462Z     │
+2026-11-15T08:57:26.4283868Z 308 │             if (asset.balanceOf(address(this)) != beforeBalance)
+2026-11-15T08:57:26.4284313Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4284609Z     │
+2026-11-15T08:57:26.4284952Z     ╰ help: https://getfoundry.sh/forge/linting/incorrect-strict-equality
+2026-11-15T08:57:26.4285400Z 
+2026-11-15T08:57:26.4285736Z warning[arbitrary-send-eth]: ETH is sent to a user-controlled destination; restrict the destination or the caller
+2026-11-15T08:57:26.4286329Z     ╭▸ contracts/XITAExecutionGateway.sol:324:24
+2026-11-15T08:57:26.4286623Z     │
+2026-11-15T08:57:26.4286925Z 324 │         (bool paid,) = serviceWallet.call{value:amount}("");
+2026-11-15T08:57:26.4287359Z     │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4287653Z     │
+2026-11-15T08:57:26.4287975Z     ╰ help: https://getfoundry.sh/forge/linting/arbitrary-send-eth
+2026-11-15T08:57:26.4288349Z 
+2026-11-15T08:57:26.4288616Z warning[reentrancy-eth]: uncapped ETH transfer can be reentered before `entered` is updated
+2026-11-15T08:57:26.4289144Z     ╭▸ contracts/XITAExecutionGateway.sol:324:24
+2026-11-15T08:57:26.4289433Z     │
+2026-11-15T08:57:26.4289729Z 324 │         (bool paid,) = serviceWallet.call{value:amount}("");
+2026-11-15T08:57:26.4290153Z     │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4290433Z     │
+2026-11-15T08:57:26.4290729Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-eth
+2026-11-15T08:57:26.4291220Z 
+2026-11-15T08:57:26.4291655Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4292339Z     ╭▸ contracts/XITAExecutionGateway.sol:326:9
+2026-11-15T08:57:26.4292629Z     │
+2026-11-15T08:57:26.4292923Z 326 │         emit InterchainFeeClaimed(serviceWallet, amount);
+2026-11-15T08:57:26.4293363Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4293648Z     │
+2026-11-15T08:57:26.4293957Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4294217Z 
+2026-11-15T08:57:26.4294548Z warning[arbitrary-send-eth]: ETH is sent to a user-controlled destination; restrict the destination or the caller
+2026-11-15T08:57:26.4295174Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:34:24
+2026-11-15T08:57:26.4295493Z    │
+2026-11-15T08:57:26.4295810Z 34 │         (bool paid,) = payoutRecipient.call{value: amount}("");
+2026-11-15T08:57:26.4296240Z    │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4296528Z    │
+2026-11-15T08:57:26.4296839Z    ╰ help: https://getfoundry.sh/forge/linting/arbitrary-send-eth
+2026-11-15T08:57:26.4297101Z 
+2026-11-15T08:57:26.4297362Z warning[reentrancy-eth]: uncapped ETH transfer can be reentered before `claimLock` is updated
+2026-11-15T08:57:26.4297902Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:34:24
+2026-11-15T08:57:26.4298223Z    │
+2026-11-15T08:57:26.4298516Z 34 │         (bool paid,) = payoutRecipient.call{value: amount}("");
+2026-11-15T08:57:26.4298945Z    │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4299229Z    │
+2026-11-15T08:57:26.4299525Z    ╰ help: https://getfoundry.sh/forge/linting/reentrancy-eth
+2026-11-15T08:57:26.4299922Z 
+2026-11-15T08:57:26.4300342Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4301334Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:36:9
+2026-11-15T08:57:26.4301646Z    │
+2026-11-15T08:57:26.4302016Z 36 │         emit PendingNativeXGRWithdrawn(msg.sender, payoutRecipient, amount);
+2026-11-15T08:57:26.4302547Z    │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4302865Z    │
+2026-11-15T08:57:26.4303178Z    ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4303578Z 
+2026-11-15T08:57:26.4303910Z warning[arbitrary-send-eth]: ETH is sent to a user-controlled destination; restrict the destination or the caller
+2026-11-15T08:57:26.4304521Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:80:24
+2026-11-15T08:57:26.4304832Z    │
+2026-11-15T08:57:26.4305176Z 80 │         (bool paid,) = payable(recipient).call{value: amount, gas: 30_000}("");
+2026-11-15T08:57:26.4305690Z    │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4306009Z    │
+2026-11-15T08:57:26.4306318Z    ╰ help: https://getfoundry.sh/forge/linting/arbitrary-send-eth
+2026-11-15T08:57:26.4306577Z 
+2026-11-15T08:57:26.4307000Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4307695Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:84:13
+2026-11-15T08:57:26.4308011Z    │
+2026-11-15T08:57:26.4308310Z 84 │             emit NativeDeliveryDeferred(recipient, amount);
+2026-11-15T08:57:26.4308730Z    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4309014Z    │
+2026-11-15T08:57:26.4309314Z    ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4309569Z 
+2026-11-15T08:57:26.4309800Z warning[return-bomb]: external call with a gas limit may copy unbounded return data
+2026-11-15T08:57:26.4310315Z    ╭▸ contracts/XETAGuardedNativeWarpRouter.sol:80:24
+2026-11-15T08:57:26.4310648Z    │
+2026-11-15T08:57:26.4311229Z 80 │         (bool paid,) = payable(recipient).call{value: amount, gas: 30_000}("");
+2026-11-15T08:57:26.4311751Z    │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4312070Z    │
+2026-11-15T08:57:26.4312357Z    ╰ help: https://getfoundry.sh/forge/linting/return-bomb
+2026-11-15T08:57:26.4312601Z 
+2026-11-15T08:57:26.4312960Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4313561Z    ╭▸ contracts/XETATokenFactoryV315.sol:58:27
+2026-11-15T08:57:26.4313843Z    │
+2026-11-15T08:57:26.4314219Z 58 │         address mailbox_, address hook_, address ism_, uint256 initialSourceFeeWei_,
+2026-11-15T08:57:26.4314683Z    │                           ━━━━━━━━━━━━━
+2026-11-15T08:57:26.4314940Z    │
+2026-11-15T08:57:26.4315262Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4315534Z 
+2026-11-15T08:57:26.4315869Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4316472Z    ╭▸ contracts/XETATokenFactoryV315.sol:58:42
+2026-11-15T08:57:26.4316757Z    │
+2026-11-15T08:57:26.4317135Z 58 │         address mailbox_, address hook_, address ism_, uint256 initialSourceFeeWei_,
+2026-11-15T08:57:26.4317611Z    │                                          ━━━━━━━━━━━━
+2026-11-15T08:57:26.4317892Z    │
+2026-11-15T08:57:26.4318212Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4318475Z 
+2026-11-15T08:57:26.4318824Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4319519Z    ╭▸ contracts/XETATokenFactoryV315.sol:57:42
+2026-11-15T08:57:26.4319867Z    │
+2026-11-15T08:57:26.4320345Z 57 │         uint64 chainId_, uint32 domain_, address validatorRegistry_,
+2026-11-15T08:57:26.4320975Z    │                                          ━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4321320Z    │
+2026-11-15T08:57:26.4321635Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4321895Z 
+2026-11-15T08:57:26.4322239Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4322824Z    ╭▸ contracts/XETATokenFactoryV315.sol:58:9
+2026-11-15T08:57:26.4323100Z    │
+2026-11-15T08:57:26.4323692Z 58 │         address mailbox_, address hook_, address ism_, uint256 initialSourceFeeWei_,
+2026-11-15T08:57:26.4324138Z    │         ━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4324364Z    │
+2026-11-15T08:57:26.4324745Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4325237Z 
+2026-11-15T08:57:26.4326018Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4327345Z     ╭▸ contracts/XETATokenFactoryV315.sol:115:9
+2026-11-15T08:57:26.4327718Z     │
+2026-11-15T08:57:26.4327976Z 115 │         emit RegistryDeployed(address(r));
+2026-11-15T08:57:26.4328331Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4328591Z     │
+2026-11-15T08:57:26.4328910Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4329178Z 
+2026-11-15T08:57:26.4329453Z warning[reentrancy-no-eth]: external call can be reentered before `representedAssetId` is updated
+2026-11-15T08:57:26.4330006Z     ╭▸ contracts/XETATokenFactoryV315.sol:145:18
+2026-11-15T08:57:26.4330293Z     │
+2026-11-15T08:57:26.4330962Z 145 │           router = collateralDeployer.deploy(originalToken, address(registry), mailbox, dispatchHook,
+2026-11-15T08:57:26.4331542Z     │ ┏━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4331914Z 146 │ ┃             destinationIsm, HYPERLANE_DESTINATION_GAS_HINT, salt);
+2026-11-15T08:57:26.4332402Z     │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4332712Z     │
+2026-11-15T08:57:26.4333027Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-no-eth
+2026-11-15T08:57:26.4333290Z 
+2026-11-15T08:57:26.4333714Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4334389Z     ╭▸ contracts/XETATokenFactoryV315.sol:131:9
+2026-11-15T08:57:26.4334672Z     │
+2026-11-15T08:57:26.4334964Z 131 │         emit RouterDeployed(assetId, router, msg.sender);
+2026-11-15T08:57:26.4335396Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4335683Z     │
+2026-11-15T08:57:26.4335989Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4336246Z 
+2026-11-15T08:57:26.4336661Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4337511Z     ╭▸ contracts/XETATokenFactoryV315.sol:229:9
+2026-11-15T08:57:26.4337788Z     │
+2026-11-15T08:57:26.4338081Z 229 │         emit RouteRegistered(routeId, sourceRouter, gateway);
+2026-11-15T08:57:26.4338519Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4338803Z     │
+2026-11-15T08:57:26.4339100Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4339354Z 
+2026-11-15T08:57:26.4339699Z warning[missing-zero-check]: address parameter is used in a state write or value transfer without a zero-address check
+2026-11-15T08:57:26.4340408Z    ╭▸ contracts/XITADirectTransport.sol:24:33
+2026-11-15T08:57:26.4340690Z    │
+2026-11-15T08:57:26.4341227Z 24 │     constructor(uint32 domain_, address ism_) {
+2026-11-15T08:57:26.4341589Z    │                                 ━━━━━━━━━━━━
+2026-11-15T08:57:26.4341862Z    │
+2026-11-15T08:57:26.4342231Z    ╰ help: https://getfoundry.sh/forge/linting/missing-zero-check
+2026-11-15T08:57:26.4342601Z 
+2026-11-15T08:57:26.4343027Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4343699Z    ╭▸ contracts/XITADirectTransport.sol:43:9
+2026-11-15T08:57:26.4344042Z    │
+2026-11-15T08:57:26.4344575Z 43 │         emit TransportDeployed(address(m), address(hook));
+2026-11-15T08:57:26.4345433Z    │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4345986Z    │
+2026-11-15T08:57:26.4346701Z    ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4347015Z 
+2026-11-15T08:57:26.4347210Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4347648Z    ╭▸ contracts/XGRILNFeeVault.sol:62:28
+2026-11-15T08:57:26.4347915Z    │
+2026-11-15T08:57:26.4348284Z 62 │         (uint256 count,) = validatorRegistry.getFeeRecipientCountAndSetId();
+2026-11-15T08:57:26.4348811Z    │                            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4349122Z    │
+2026-11-15T08:57:26.4349418Z    ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4349667Z 
+2026-11-15T08:57:26.4349853Z warning[unused-return]: return value of an external call is not used
+2026-11-15T08:57:26.4350267Z    ╭▸ contracts/XGRILNFeeVault.sol:67:27
+2026-11-15T08:57:26.4350530Z    │
+2026-11-15T08:57:26.4351120Z 67 │         (,uint64 epoch) = validatorRegistry.getFeeRecipientCountAndSetId();
+2026-11-15T08:57:26.4351650Z    │                           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4351970Z    │
+2026-11-15T08:57:26.4352263Z    ╰ help: https://getfoundry.sh/forge/linting/unused-return
+2026-11-15T08:57:26.4352509Z 
+2026-11-15T08:57:26.4352727Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4353190Z     ╭▸ contracts/XGRILNFeeVault.sol:122:13
+2026-11-15T08:57:26.4353469Z     │
+2026-11-15T08:57:26.4353686Z 122 │             balance += amount;
+2026-11-15T08:57:26.4353964Z     │             ━━━━━━━
+2026-11-15T08:57:26.4354186Z     │
+2026-11-15T08:57:26.4354505Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4354772Z 
+2026-11-15T08:57:26.4354900Z warning[calls-loop]: external call inside a loop
+2026-11-15T08:57:26.4355247Z    ╭▸ contracts/XGRILNFeeVault.sol:98:13
+2026-11-15T08:57:26.4355510Z    │
+2026-11-15T08:57:26.4355867Z 98 │             validatorRegistry.getFeeRecipientIndexForSet(setId, validator);
+2026-11-15T08:57:26.4356398Z    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4356705Z    │
+2026-11-15T08:57:26.4357004Z    ╰ help: https://getfoundry.sh/forge/linting/calls-loop
+2026-11-15T08:57:26.4357240Z 
+2026-11-15T08:57:26.4357429Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4357849Z    ╭▸ contracts/XGRILNFeeVault.sol:99:36
+2026-11-15T08:57:26.4358301Z    │
+2026-11-15T08:57:26.4358610Z 99 │         if (count != e.recipients) revert InvalidValidatorSet();
+2026-11-15T08:57:26.4359031Z    │                                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4359316Z    │
+2026-11-15T08:57:26.4359637Z    ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4359911Z 
+2026-11-15T08:57:26.4360099Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4360519Z     ╭▸ contracts/XGRILNFeeVault.sol:101:35
+2026-11-15T08:57:26.4360998Z     │
+2026-11-15T08:57:26.4361455Z 101 │         if (indexPlusOne > count) revert InvalidValidatorSet();
+2026-11-15T08:57:26.4361894Z     │                                   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4362183Z     │
+2026-11-15T08:57:26.4362510Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4362790Z 
+2026-11-15T08:57:26.4362969Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4363399Z     ╭▸ contracts/XGRILNFeeVault.sol:119:36
+2026-11-15T08:57:26.4363663Z     │
+2026-11-15T08:57:26.4363952Z 119 │                 if (paid > amount) revert InvalidValidatorSet();
+2026-11-15T08:57:26.4364365Z     │                                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4364657Z     │
+2026-11-15T08:57:26.4364974Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4365247Z 
+2026-11-15T08:57:26.4365387Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4365754Z     ╭▸ contracts/XGRILNFeeVault.sol:117:49
+2026-11-15T08:57:26.4366036Z     │
+2026-11-15T08:57:26.4366316Z 117 │             uint256 amount = _earned(validator, uint64(i));
+2026-11-15T08:57:26.4366704Z     │                                                 ━━━━━━━━━
+2026-11-15T08:57:26.4366985Z     │
+2026-11-15T08:57:26.4367322Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4367710Z     │       
+2026-11-15T08:57:26.4368002Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4368491Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4368858Z     │       
+2026-11-15T08:57:26.4369056Z     │       
+2026-11-15T08:57:26.4369357Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4369609Z 
+2026-11-15T08:57:26.4369790Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4370214Z     ╭▸ contracts/XGRILNFeeVault.sol:143:36
+2026-11-15T08:57:26.4370481Z     │
+2026-11-15T08:57:26.4371003Z 143 │                 if (paid > earned) revert InvalidValidatorSet();
+2026-11-15T08:57:26.4371464Z     │                                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4371764Z     │
+2026-11-15T08:57:26.4372090Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4372366Z 
+2026-11-15T08:57:26.4372698Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4373079Z     ╭▸ contracts/XGRILNFeeVault.sol:140:48
+2026-11-15T08:57:26.4373350Z     │
+2026-11-15T08:57:26.4373629Z 140 │             uint256 earned = _earned(validator,uint64(i));
+2026-11-15T08:57:26.4374020Z     │                                                ━━━━━━━━━
+2026-11-15T08:57:26.4374298Z     │
+2026-11-15T08:57:26.4374637Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4375012Z     │       
+2026-11-15T08:57:26.4375295Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4375820Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4376152Z     │       
+2026-11-15T08:57:26.4376346Z     │       
+2026-11-15T08:57:26.4376652Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4376902Z 
+2026-11-15T08:57:26.4377040Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4377421Z     ╭▸ contracts/XGRILNFeeVault.sol:149:31
+2026-11-15T08:57:26.4377681Z     │
+2026-11-15T08:57:26.4377950Z 149 │         nextSetId = hasMore ? uint64(end + 1) : latest;
+2026-11-15T08:57:26.4378315Z     │                               ━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4378585Z     │
+2026-11-15T08:57:26.4378921Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4379290Z     │       
+2026-11-15T08:57:26.4379569Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4379968Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4380298Z     │       
+2026-11-15T08:57:26.4380490Z     │       
+2026-11-15T08:57:26.4380984Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4381294Z 
+2026-11-15T08:57:26.4381553Z warning[reentrancy-eth]: uncapped ETH transfer can be reentered before `entered` is updated
+2026-11-15T08:57:26.4382070Z     ╭▸ contracts/XGRILNFeeVault.sol:190:26
+2026-11-15T08:57:26.4382344Z     │
+2026-11-15T08:57:26.4382651Z 190 │             (bool ok,) = payable(msg.sender).call{value: amount}("");
+2026-11-15T08:57:26.4383095Z     │                          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4383404Z     │
+2026-11-15T08:57:26.4383701Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-eth
+2026-11-15T08:57:26.4383949Z 
+2026-11-15T08:57:26.4384166Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4384616Z     ╭▸ contracts/XGRILNFeeVault.sol:186:47
+2026-11-15T08:57:26.4384891Z     │
+2026-11-15T08:57:26.4385204Z 186 │         paidAtCursor[msg.sender] = caughtUp ? lastEarned : 0;
+2026-11-15T08:57:26.4385616Z     │                                               ━━━━━━━━━━
+2026-11-15T08:57:26.4385892Z     │
+2026-11-15T08:57:26.4386205Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4386465Z 
+2026-11-15T08:57:26.4386684Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4387147Z     ╭▸ contracts/XGRILNFeeVault.sol:176:17
+2026-11-15T08:57:26.4387413Z     │
+2026-11-15T08:57:26.4387656Z 176 │                 amount += earned - paid;
+2026-11-15T08:57:26.4387966Z     │                 ━━━━━━
+2026-11-15T08:57:26.4388192Z     │
+2026-11-15T08:57:26.4388505Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4388769Z 
+2026-11-15T08:57:26.4389207Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4389867Z     ╭▸ contracts/XGRILNFeeVault.sol:192:13
+2026-11-15T08:57:26.4390130Z     │
+2026-11-15T08:57:26.4390376Z 192 │             emit Claimed(msg.sender, amount);
+2026-11-15T08:57:26.4390734Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4391229Z     │
+2026-11-15T08:57:26.4391543Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4391961Z 
+2026-11-15T08:57:26.4392372Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4393033Z     ╭▸ contracts/XGRILNFeeVault.sol:195:9
+2026-11-15T08:57:26.4393300Z     │
+2026-11-15T08:57:26.4393583Z 195 │         emit ClaimAdvanced(msg.sender, next, caughtUp);
+2026-11-15T08:57:26.4393991Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4394278Z     │
+2026-11-15T08:57:26.4394585Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4394844Z 
+2026-11-15T08:57:26.4395146Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4395580Z     ╭▸ contracts/XGRILNFeeVault.sol:175:36
+2026-11-15T08:57:26.4395855Z     │
+2026-11-15T08:57:26.4396153Z 175 │                 if (paid > earned) revert InvalidValidatorSet();
+2026-11-15T08:57:26.4396567Z     │                                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4396874Z     │
+2026-11-15T08:57:26.4397204Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4397472Z 
+2026-11-15T08:57:26.4397619Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4397989Z     ╭▸ contracts/XGRILNFeeVault.sol:173:49
+2026-11-15T08:57:26.4398252Z     │
+2026-11-15T08:57:26.4398546Z 173 │             uint256 earned = _earned(msg.sender,uint64(i));
+2026-11-15T08:57:26.4398932Z     │                                                 ━━━━━━━━━
+2026-11-15T08:57:26.4399213Z     │
+2026-11-15T08:57:26.4399552Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4399938Z     │       
+2026-11-15T08:57:26.4400412Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4401032Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4401369Z     │       
+2026-11-15T08:57:26.4401575Z     │       
+2026-11-15T08:57:26.4401902Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4402158Z 
+2026-11-15T08:57:26.4402300Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4402836Z     ╭▸ contracts/XGRILNFeeVault.sol:182:43
+2026-11-15T08:57:26.4403127Z     │
+2026-11-15T08:57:26.4403477Z 182 │         uint64 next = caughtUp ? latest : uint64(end + 1);
+2026-11-15T08:57:26.4403984Z     │                                           ━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4404306Z     │
+2026-11-15T08:57:26.4404758Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4405234Z     │       
+2026-11-15T08:57:26.4405592Z     │       // casting to 'uint64' is safe because [explain why]
+2026-11-15T08:57:26.4406104Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4406476Z     │       
+2026-11-15T08:57:26.4406669Z     │       
+2026-11-15T08:57:26.4407119Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4407391Z 
+2026-11-15T08:57:26.4407690Z warning[divide-before-multiply]: division before multiplication may lose precision
+2026-11-15T08:57:26.4408333Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:146:13
+2026-11-15T08:57:26.4408818Z     │
+2026-11-15T08:57:26.4409338Z 146 │         if (reservePerValidator * initialValidators_.length != msg.value) revert InvalidBootstrap();
+2026-11-15T08:57:26.4410011Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4410431Z     │
+2026-11-15T08:57:26.4410965Z     ╰ help: https://getfoundry.sh/forge/linting/divide-before-multiply
+2026-11-15T08:57:26.4411499Z 
+2026-11-15T08:57:26.4411643Z warning[calls-loop]: external call inside a loop
+2026-11-15T08:57:26.4412256Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:187:14
+2026-11-15T08:57:26.4412660Z     │
+2026-11-15T08:57:26.4412952Z 187 │               !verifier.verify(
+2026-11-15T08:57:26.4413239Z     │ ┏━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4414095Z 188 │ ┃                 encodeBootstrapPayload(originChainId_, destinationDomain_, validator, blsKey, blsKeyEIP2537),
+2026-11-15T08:57:26.4414812Z 189 │ ┃                 bootstrapKeys,
+2026-11-15T08:57:26.4415175Z 190 │ ┃                 hex"01",
+2026-11-15T08:57:26.4415535Z 191 │ ┃                 possessionProof
+2026-11-15T08:57:26.4415815Z 192 │ ┃             )
+2026-11-15T08:57:26.4416182Z     │ ┗━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4416404Z     │
+2026-11-15T08:57:26.4416712Z     ╰ help: https://getfoundry.sh/forge/linting/calls-loop
+2026-11-15T08:57:26.4417105Z 
+2026-11-15T08:57:26.4417321Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4417972Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:182:11
+2026-11-15T08:57:26.4418309Z     │
+2026-11-15T08:57:26.4418674Z 182 │         ) revert InvalidBootstrap();
+2026-11-15T08:57:26.4419013Z     │           ━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4419310Z     │
+2026-11-15T08:57:26.4419757Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4420059Z 
+2026-11-15T08:57:26.4420374Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4421116Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:476:11
+2026-11-15T08:57:26.4421475Z     │
+2026-11-15T08:57:26.4421797Z 476 │         ) revert InvalidBootstrap();
+2026-11-15T08:57:26.4422190Z     │           ━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4422446Z     │
+2026-11-15T08:57:26.4422919Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4423215Z 
+2026-11-15T08:57:26.4423511Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4424061Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:193:11
+2026-11-15T08:57:26.4424532Z     │
+2026-11-15T08:57:26.4424774Z 193 │         ) revert InvalidBootstrap();
+2026-11-15T08:57:26.4425212Z     │           ━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4425496Z     │
+2026-11-15T08:57:26.4425856Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4426275Z 
+2026-11-15T08:57:26.4426554Z warning[reentrancy-eth]: uncapped ETH transfer can be reentered before `claimableWei` is updated
+2026-11-15T08:57:26.4427290Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:218:22
+2026-11-15T08:57:26.4427744Z     │
+2026-11-15T08:57:26.4428075Z 218 │         (bool ok,) = payable(msg.sender).call{value: amount}("");
+2026-11-15T08:57:26.4428656Z     │                      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4428968Z     │
+2026-11-15T08:57:26.4429398Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-eth
+2026-11-15T08:57:26.4429679Z 
+2026-11-15T08:57:26.4430202Z warning[reentrancy-events]: event emitted after an external call; reentrancy can reorder or fabricate logs that off-chain consumers rely on
+2026-11-15T08:57:26.4431204Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:224:9
+2026-11-15T08:57:26.4431812Z     │
+2026-11-15T08:57:26.4432147Z 224 │         emit Claimed(msg.sender, amount);
+2026-11-15T08:57:26.4432500Z     │         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4432905Z     │
+2026-11-15T08:57:26.4433245Z     ╰ help: https://getfoundry.sh/forge/linting/reentrancy-events
+2026-11-15T08:57:26.4433638Z 
+2026-11-15T08:57:26.4433875Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4434549Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:372:50
+2026-11-15T08:57:26.4434887Z     │
+2026-11-15T08:57:26.4435528Z 372 │             _settleRemoval(transition.validator, removedReserve, gasStart);
+2026-11-15T08:57:26.4436174Z     │                                                  ━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4436480Z     │
+2026-11-15T08:57:26.4436918Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4437214Z 
+2026-11-15T08:57:26.4437515Z warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+2026-11-15T08:57:26.4438279Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:384:13
+2026-11-15T08:57:26.4438750Z     │
+2026-11-15T08:57:26.4439045Z 384 │             block.timestamp > transition.validUntil ||
+2026-11-15T08:57:26.4439584Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4439874Z     │
+2026-11-15T08:57:26.4440315Z     ╰ help: https://getfoundry.sh/forge/linting/block-timestamp
+2026-11-15T08:57:26.4440579Z 
+2026-11-15T08:57:26.4441086Z warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+2026-11-15T08:57:26.4441813Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:385:13
+2026-11-15T08:57:26.4442192Z     │
+2026-11-15T08:57:26.4442641Z 385 │             transition.validUntil > block.timestamp + MAX_MEMBERSHIP_VALIDITY
+2026-11-15T08:57:26.4443226Z     │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4443682Z     │
+2026-11-15T08:57:26.4444008Z     ╰ help: https://getfoundry.sh/forge/linting/block-timestamp
+2026-11-15T08:57:26.4444406Z 
+2026-11-15T08:57:26.4444808Z warning[encode-packed-collision]: `abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible
+2026-11-15T08:57:26.4445646Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:448:16
+2026-11-15T08:57:26.4445976Z     │
+2026-11-15T08:57:26.4446210Z 448 │           return abi.encodePacked(
+2026-11-15T08:57:26.4446512Z     │ ┏━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4446905Z 449 │ ┃             DOMAIN_V2,
+2026-11-15T08:57:26.4447200Z 450 │ ┃             bytes8(originChainId_),
+2026-11-15T08:57:26.4447548Z 451 │ ┃             bytes4(destinationDomain_),
+2026-11-15T08:57:26.4447841Z     ‡ ┃
+2026-11-15T08:57:26.4448097Z 459 │ ┃             validatorBLSPublicKeyEIP2537
+2026-11-15T08:57:26.4448409Z 460 │ ┃         );
+2026-11-15T08:57:26.4448627Z     │ ┗━━━━━━━━━┛
+2026-11-15T08:57:26.4448817Z     │
+2026-11-15T08:57:26.4449302Z     ╰ help: https://getfoundry.sh/forge/linting/encode-packed-collision
+2026-11-15T08:57:26.4449616Z 
+2026-11-15T08:57:26.4449763Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4450205Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:456:20
+2026-11-15T08:57:26.4450538Z     │
+2026-11-15T08:57:26.4451017Z 456 │             bytes2(uint16(validatorBLSPublicKey.length)),
+2026-11-15T08:57:26.4451453Z     │                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4451736Z     │
+2026-11-15T08:57:26.4452072Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4452452Z     │       
+2026-11-15T08:57:26.4452845Z     │       // casting to 'uint16' is safe because [explain why]
+2026-11-15T08:57:26.4453339Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4453663Z     │       
+2026-11-15T08:57:26.4453859Z     │       
+2026-11-15T08:57:26.4454177Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4454588Z 
+2026-11-15T08:57:26.4454734Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4455170Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:458:20
+2026-11-15T08:57:26.4455495Z     │
+2026-11-15T08:57:26.4455817Z 458 │             bytes2(uint16(validatorBLSPublicKeyEIP2537.length)),
+2026-11-15T08:57:26.4456258Z     │                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4456555Z     │
+2026-11-15T08:57:26.4456888Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4457272Z     │       
+2026-11-15T08:57:26.4457670Z     │       // casting to 'uint16' is safe because [explain why]
+2026-11-15T08:57:26.4458086Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4458400Z     │       
+2026-11-15T08:57:26.4458598Z     │       
+2026-11-15T08:57:26.4458902Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4459152Z 
+2026-11-15T08:57:26.4459550Z warning[encode-packed-collision]: `abi.encodePacked()` called with multiple dynamic type arguments; hash collisions possible
+2026-11-15T08:57:26.4460388Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:478:16
+2026-11-15T08:57:26.4460719Z     │
+2026-11-15T08:57:26.4461177Z 478 │           return abi.encodePacked(
+2026-11-15T08:57:26.4461486Z     │ ┏━━━━━━━━━━━━━━━━┛
+2026-11-15T08:57:26.4461750Z 479 │ ┃             BOOTSTRAP_DOMAIN_V1,
+2026-11-15T08:57:26.4462078Z 480 │ ┃             bytes8(originChainId_),
+2026-11-15T08:57:26.4462413Z 481 │ ┃             bytes4(destinationDomain_),
+2026-11-15T08:57:26.4462701Z     ‡ ┃
+2026-11-15T08:57:26.4462971Z 486 │ ┃             validatorBLSPublicKeyEIP2537
+2026-11-15T08:57:26.4463279Z 487 │ ┃         );
+2026-11-15T08:57:26.4463502Z     │ ┗━━━━━━━━━┛
+2026-11-15T08:57:26.4463697Z     │
+2026-11-15T08:57:26.4464038Z     ╰ help: https://getfoundry.sh/forge/linting/encode-packed-collision
+2026-11-15T08:57:26.4464333Z 
+2026-11-15T08:57:26.4464475Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4464927Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:483:20
+2026-11-15T08:57:26.4465259Z     │
+2026-11-15T08:57:26.4465552Z 483 │             bytes2(uint16(validatorBLSPublicKey.length)),
+2026-11-15T08:57:26.4465969Z     │                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4466255Z     │
+2026-11-15T08:57:26.4466593Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4466972Z     │       
+2026-11-15T08:57:26.4467267Z     │       // casting to 'uint16' is safe because [explain why]
+2026-11-15T08:57:26.4467698Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4468018Z     │       
+2026-11-15T08:57:26.4468217Z     │       
+2026-11-15T08:57:26.4468524Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4468817Z 
+2026-11-15T08:57:26.4468968Z warning[unsafe-typecast]: typecast can truncate values
+2026-11-15T08:57:26.4469566Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:485:20
+2026-11-15T08:57:26.4469899Z     │
+2026-11-15T08:57:26.4470219Z 485 │             bytes2(uint16(validatorBLSPublicKeyEIP2537.length)),
+2026-11-15T08:57:26.4470675Z     │                    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4471201Z     │
+2026-11-15T08:57:26.4471543Z     ├ note: consider disabling this lint if you're certain the cast is safe
+2026-11-15T08:57:26.4471919Z     │       
+2026-11-15T08:57:26.4472210Z     │       // casting to 'uint16' is safe because [explain why]
+2026-11-15T08:57:26.4472753Z     │       // forge-lint: disable-next-line(unsafe-typecast)
+2026-11-15T08:57:26.4473082Z     │       
+2026-11-15T08:57:26.4473368Z     │       
+2026-11-15T08:57:26.4473749Z     ╰ help: https://getfoundry.sh/forge/linting/unsafe-typecast
+2026-11-15T08:57:26.4474010Z 
+2026-11-15T08:57:26.4474206Z warning[require-revert-in-loop]: `require` or `revert` inside a loop
+2026-11-15T08:57:26.4474701Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:500:17
+2026-11-15T08:57:26.4475046Z     │
+2026-11-15T08:57:26.4475291Z 500 │                 revert InvalidTransition();
+2026-11-15T08:57:26.4475643Z     │                 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4475902Z     │
+2026-11-15T08:57:26.4476230Z     ╰ help: https://getfoundry.sh/forge/linting/require-revert-in-loop
+2026-11-15T08:57:26.4476513Z 
+2026-11-15T08:57:26.4476730Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4477253Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:598:56
+2026-11-15T08:57:26.4477580Z     │
+2026-11-15T08:57:26.4477967Z 598 │         return ((uint8(compressed[0]) & 0x20) != 0) == yIsLexicographicallyLargest;
+2026-11-15T08:57:26.4478498Z     │                                                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4478811Z     │
+2026-11-15T08:57:26.4479134Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4479421Z 
+2026-11-15T08:57:26.4479634Z warning[uninitialized-local]: local variable is read before being initialized
+2026-11-15T08:57:26.4480152Z     ╭▸ contracts/XGRInterchainValidatorRegistryV3.sol:699:17
+2026-11-15T08:57:26.4480477Z     │
+2026-11-15T08:57:26.4480689Z 699 │                 count++;
+2026-11-15T08:57:26.4481218Z     │                 ━━━━━
+2026-11-15T08:57:26.4481451Z     │
+2026-11-15T08:57:26.4481783Z     ╰ help: https://getfoundry.sh/forge/linting/uninitialized-local
+2026-11-15T08:57:26.4482052Z 
+2026-11-15T08:57:26.4482348Z warning[block-timestamp]: usage of `block.timestamp` in a comparison may be manipulated by validators
+2026-11-15T08:57:26.4483150Z    ╭▸ contracts/XGRILNRegistryV315.sol:78:13
+2026-11-15T08:57:26.4483573Z    │
+2026-11-15T08:57:26.4483996Z 78 │         if (block.timestamp > p.validUntil) revert ExpiredFeeProposal();
+2026-11-15T08:57:26.4484636Z    │             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2026-11-15T08:57:26.4484998Z    │
+2026-11-15T08:57:26.4485442Z    ╰ help: https://getfoundry.sh/forge/linting/block-timestamp
+2026-11-15T08:57:26.4485805Z 
+2026-11-15T08:57:26.4920440Z Sealed 18 artifacts at 835864e7e228bdb10b1854757da120efdcd337b6
+2026-11-15T08:57:27.0881724Z PASS: every trusted constructor ABI and creation/runtime artifact matches the sealed Foundry build (19 contracts)
+2026-11-15T08:57:27.1007272Z ##[group]Run node services/admin/assert-evm-deployability.mjs .
+2026-11-15T08:57:27.1007779Z [36;1mnode services/admin/assert-evm-deployability.mjs .[0m
+2026-11-15T08:57:27.1057779Z shell: /usr/bin/bash -e {0}
+2026-11-15T08:57:27.1058033Z ##[endgroup]
+2026-11-15T08:57:27.1386239Z XGRInterchainBLSVerifier: init 3378 B; runtime 3351 B; PASS
+2026-11-15T08:57:27.1394609Z XGRInterchainValidatorRegistryV3: init 15916 B; runtime 11298 B; PASS
+2026-11-15T08:57:27.1397330Z XITADirectBLSISM: init 4368 B; runtime 3830 B; PASS
+2026-11-15T08:57:27.1442581Z XETATokenFactoryV315: init 26448 B; runtime 24352 B; PASS
+2026-11-15T08:57:27.1447063Z XETANativeRouterDeployer: init 14034 B; runtime 14007 B; PASS
+2026-11-15T08:57:27.1452832Z XETASyntheticRouterDeployer: init 18627 B; runtime 18600 B; PASS
+2026-11-15T08:57:27.1459834Z XETACollateralRouterDeployer: init 14152 B; runtime 14125 B; PASS
+2026-11-15T08:57:27.1463070Z XGRILNRegistryV315: init 6145 B; runtime 5114 B; PASS
+2026-11-15T08:57:27.1472679Z XETAGuardedNativeWarpRouter: init 13670 B; runtime 12026 B; PASS
+2026-11-15T08:57:27.1481259Z XETAGuardedSyntheticWarpRouter: init 18002 B; runtime 15126 B; PASS
+2026-11-15T08:57:27.1491348Z XETAGuardedCollateralWarpRouterV315: init 13769 B; runtime 12058 B; PASS
+2026-11-15T08:57:27.1493933Z ILNGateway: init 10695 B; runtime 4684 B; PASS
+2026-11-15T08:57:27.1496346Z XGRILNFeeVault: init 5108 B; runtime 4692 B; PASS
+2026-11-15T08:57:27.1578006Z ##[group]Run forge test -vvv
+2026-11-15T08:57:27.1578335Z [36;1mforge test -vvv[0m
+2026-11-15T08:57:27.1632184Z shell: /usr/bin/bash -e {0}
+2026-11-15T08:57:27.1632634Z ##[endgroup]
+2026-11-15T08:57:27.2862212Z Compiling 35 files with Solc 0.8.24
+2026-11-15T08:59:28.9669763Z Solc 0.8.24 finished in 121.68s
+2026-11-15T08:59:28.9892293Z Compiler run successful with warnings:
+2026-11-15T08:59:28.9894643Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:59:28.9896572Z    --> contracts/XGRInterchainBLSVerifier.sol:119:67:
+2026-11-15T08:59:28.9897342Z     |
+2026-11-15T08:59:28.9897933Z 119 |         return (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0;
+2026-11-15T08:59:28.9898906Z     |                                                                   ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9899403Z 
+2026-11-15T08:59:28.9901204Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:59:28.9903714Z    --> contracts/XGRInterchainValidatorRegistryV3.sol:697:68:
+2026-11-15T08:59:28.9904408Z     |
+2026-11-15T08:59:28.9905107Z 697 |                 (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0
+2026-11-15T08:59:28.9906110Z     |                                                                    ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9906555Z 
+2026-11-15T08:59:28.9907803Z Warning (3149): The result type of the shift operation is equal to the type of the first operand (uint8) ignoring the (larger) type of the second operand (uint256) which might be unexpected. Silence this warning by either converting the first or the second operand to the type of the other.
+2026-11-15T08:59:28.9909382Z    --> contracts/XGRInterchainValidatorRegistryV3.sol:709:68:
+2026-11-15T08:59:28.9909941Z     |
+2026-11-15T08:59:28.9910761Z 709 |                 (uint8(bitmap[bitmap.length - 1 - byteFromEnd]) & (uint8(1) << bitIndex)) != 0
+2026-11-15T08:59:28.9911803Z     |                                                                    ^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9912236Z 
+2026-11-15T08:59:28.9912771Z Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+2026-11-15T08:59:28.9913746Z   --> test/XGRILNFeeVault.t.sol:37:24:
+2026-11-15T08:59:28.9914195Z    |
+2026-11-15T08:59:28.9914769Z 37 |     function _snapshot(uint64 setId, uint64 nonce, address[] memory list) internal {
+2026-11-15T08:59:28.9915238Z    |                        ^^^^^^^^^^^^
+2026-11-15T08:59:28.9915418Z 
+2026-11-15T08:59:28.9915750Z Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+2026-11-15T08:59:28.9916264Z   --> test/XGRILNFeeVault.t.sol:37:38:
+2026-11-15T08:59:28.9916524Z    |
+2026-11-15T08:59:28.9916848Z 37 |     function _snapshot(uint64 setId, uint64 nonce, address[] memory list) internal {
+2026-11-15T08:59:28.9917562Z    |                                      ^^^^^^^^^^^^
+2026-11-15T08:59:28.9917747Z 
+2026-11-15T08:59:28.9917849Z Warning (2072): Unused local variable.
+2026-11-15T08:59:28.9918138Z    --> test/XITAExecutionGateway.t.sol:174:9:
+2026-11-15T08:59:28.9918408Z     |
+2026-11-15T08:59:28.9918622Z 174 |         bytes32 message = _execute(_quote(8));
+2026-11-15T08:59:28.9918902Z     |         ^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9919049Z 
+2026-11-15T08:59:28.9919145Z Warning (2072): Unused local variable.
+2026-11-15T08:59:28.9919430Z    --> test/XITAExecutionGateway.t.sol:215:9:
+2026-11-15T08:59:28.9919703Z     |
+2026-11-15T08:59:28.9920165Z 215 |         bytes memory signature = _signature(atBoundary, RELAYER_KEY);
+2026-11-15T08:59:28.9920535Z     |         ^^^^^^^^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9920700Z 
+2026-11-15T08:59:28.9921397Z Warning (5667): Unused function parameter. Remove or comment out the variable name to silence this warning.
+2026-11-15T08:59:28.9921969Z    --> test/XITATwoHopTokenAccounting.t.sol:145:53:
+2026-11-15T08:59:28.9922265Z     |
+2026-11-15T08:59:28.9922539Z 145 |         address originRouter, address targetRouter, bytes32 routeId,
+2026-11-15T08:59:28.9923206Z     |                                                     ^^^^^^^^^^^^^^^
+2026-11-15T08:59:28.9923624Z 
+2026-11-15T08:59:28.9923959Z Warning (2018): Function state mutability can be restricted to view
+2026-11-15T08:59:28.9924752Z    --> contracts/XITAExecutionGateway.sol:160:5:
+2026-11-15T08:59:28.9925265Z     |
+2026-11-15T08:59:28.9925712Z 160 |     function renounceOwnership() public override onlyOwner {
+2026-11-15T08:59:28.9926514Z     |     ^ (Relevant source part starts here and spans across multiple lines).
+2026-11-15T08:59:28.9927020Z 
+2026-11-15T08:59:28.9927313Z Warning (2018): Function state mutability can be restricted to view
+2026-11-15T08:59:28.9927970Z   --> test/XITAXGRHubTopologyV315.t.sol:41:5:
+2026-11-15T08:59:28.9928424Z    |
+2026-11-15T08:59:28.9928912Z 41 |     function testBothHubTransferDirectionsAreAllowed() public {
+2026-11-15T08:59:28.9929701Z    |     ^ (Relevant source part starts here and spans across multiple lines).
+2026-11-15T08:59:28.9930195Z 
+2026-11-15T08:59:28.9930478Z Warning (2018): Function state mutability can be restricted to view
+2026-11-15T08:59:28.9931312Z   --> test/XITAXGRHubTopologyV315.t.sol:49:5:
+2026-11-15T08:59:28.9931775Z    |
+2026-11-15T08:59:28.9932214Z 49 |     function testHubAlsoConnectsToOtherEVMChains() public {
+2026-11-15T08:59:28.9932984Z    |     ^ (Relevant source part starts here and spans across multiple lines).
+2026-11-15T08:59:28.9933486Z 
+2026-11-15T08:59:29.0701785Z 
+2026-11-15T08:59:29.0731903Z Ran 5 tests for test/ILNGateway.t.sol:ILNGatewayTest
+2026-11-15T08:59:29.0760372Z [PASS] testBridgeAtomicallyCreditsVaultAndFormerValidatorCanClaim() (gas: 689110)
+2026-11-15T08:59:29.0781548Z [PASS] testDisabledRouteRejected() (gas: 75267)
+2026-11-15T08:59:29.0791566Z [PASS] testGatewayUsesSharedCanonicalRegistry() (gas: 104473)
+2026-11-15T08:59:29.0812723Z [PASS] testSyntheticBridgeEscrowsCanonicalRouteFee() (gas: 340751)
+2026-11-15T08:59:29.0813383Z [PASS] testWrongGatewayBindingRejected() (gas: 79160)
+2026-11-15T08:59:29.0814381Z Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 2.95ms (1.81ms CPU time)
+2026-11-15T08:59:29.0815065Z 
+2026-11-15T08:59:29.0815480Z Ran 1 test for test/ILNGatewayNative.t.sol:ILNGatewayNativeTest
+2026-11-15T08:59:29.0816218Z [PASS] testNativeGatewayUsesSharedRouteState() (gas: 4002144)
+2026-11-15T08:59:29.0817100Z Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.06ms (930.94µs CPU time)
+2026-11-15T08:59:29.0817557Z 
+2026-11-15T08:59:29.0818006Z Ran 3 tests for test/XGRInterchainValidatorRegistryV3.t.sol:XGRInterchainValidatorRegistryV3Test
+2026-11-15T08:59:29.0818773Z [PASS] testProofCannotBeReusedForDifferentValidatorAddress() (gas: 232979)
+2026-11-15T08:59:29.0819475Z [PASS] testProofOfPossessionAllowsQuorumAdmittedValidator() (gas: 1012317)
+2026-11-15T08:59:29.0820527Z [PASS] testUnknownValidatorKeyCannotJoinWithValidOldQuorum() (gas: 159145)
+2026-11-15T08:59:29.0821488Z Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 5.32ms (2.64ms CPU time)
+2026-11-15T08:59:29.0821929Z 
+2026-11-15T08:59:29.0822301Z Ran 3 tests for test/XETAGuardedWarpRouterIntegration.t.sol:XETARouterIntegrationTest
+2026-11-15T08:59:29.0822968Z [PASS] testMultiSpokeNativeSameRouterAndInbound() (gas: 1574877)
+2026-11-15T08:59:29.0823566Z [PASS] testSyntheticSpokeMustRouteOnlyToHub() (gas: 4602841)
+2026-11-15T08:59:29.0824083Z [PASS] testWrongBindingAndDisabledRoute() (gas: 568721)
+2026-11-15T08:59:29.0825006Z Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 3.08ms (2.34ms CPU time)
+2026-11-15T08:59:29.0825993Z 
+2026-11-15T08:59:29.0826588Z Ran 8 tests for test/XITAStarterTokenCreator.t.sol:XITAStarterTokenCreatorTest
+2026-11-15T08:59:29.0827758Z [PASS] testBurnableOnlyHolderOrApprovedSpenderCanBurn() (gas: 1742065)
+2026-11-15T08:59:29.0829041Z [PASS] testConfiguredCreationEvidenceRecordsActualFeaturesAndRuntimeHash() (gas: 1546560)
+2026-11-15T08:59:29.0830385Z [PASS] testFixedTokenOperatorPaysButCannotControlOwnerOrMint() (gas: 1712297)
+2026-11-15T08:59:29.0831705Z [PASS] testInvalidConfigurationsNeverDeploy() (gas: 278528)
+2026-11-15T08:59:29.0832742Z [PASS] testMintLifetimeCapNeverReopensAfterBurn() (gas: 1765251)
+2026-11-15T08:59:29.0833498Z [PASS] testNoFactoryFeesOrUnprivilegedAdminMethods() (gas: 1572985)
+2026-11-15T08:59:29.0834132Z [PASS] testOnlyProjectOwnerRotatesOrDisablesMinter() (gas: 1825750)
+2026-11-15T08:59:29.0834727Z [PASS] testPermitDisabledAndOptionalEIP2612Works() (gas: 3093959)
+2026-11-15T08:59:29.0835359Z Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 6.31ms (5.46ms CPU time)
+2026-11-15T08:59:29.0835809Z 
+2026-11-15T08:59:29.0836095Z Ran 10 tests for test/XITADirectBLSISM.t.sol:XITADirectBLSISMTest
+2026-11-15T08:59:29.0836675Z [PASS] testDirectMessageWithCurrentBLSSetPasses() (gas: 100373)
+2026-11-15T08:59:29.0837324Z [PASS] testDirectTransportHasSingleZeroFeeHookNoMerkleTree() (gas: 2610447)
+2026-11-15T08:59:29.0838009Z [PASS] testNeverAcceptDifferentMessageOrForgedAuthorizedID() (gas: 103098)
+2026-11-15T08:59:29.0838637Z [PASS] testNoCrossDestinationOrCrossRouteReplay() (gas: 143590)
+2026-11-15T08:59:29.0839157Z [PASS] testNoMessageWithoutRouteOrFee() (gas: 31395)
+2026-11-15T08:59:29.0839761Z [PASS] testRecipientSenderAndSignatureTamperingFailClosed() (gas: 119457)
+2026-11-15T08:59:29.0840342Z [PASS] testRetiredValidatorSetFailsClosed() (gas: 146509)
+2026-11-15T08:59:29.0841144Z [PASS] testSignatureCannotBeUsedForAnotherISMDeployment() (gas: 1025782)
+2026-11-15T08:59:29.0841755Z [PASS] testWireMatchesGoCanonicalDirectVector() (gas: 6754)
+2026-11-15T08:59:29.0842347Z [PASS] testWrongAssetCannotMintEvenWithMatchingBLSPayload() (gas: 118822)
+2026-11-15T08:59:29.0843005Z Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 4.19ms (3.68ms CPU time)
+2026-11-15T08:59:29.0843435Z 
+2026-11-15T08:59:29.0843754Z Ran 3 tests for test/XITAPredeployReview.t.sol:XITAPredeployCryptoReview
+2026-11-15T08:59:29.0844344Z [PASS] testMustRejectBootstrapWithInfinityKeys() (gas: 1519957)
+2026-11-15T08:59:29.0844968Z [PASS] testMustRejectDifferentCompressedAliasesOfSameRealKey() (gas: 2109231)
+2026-11-15T08:59:29.0845615Z [PASS] testMustRejectInfinityPublicKeyAndSignature() (gas: 818214)
+2026-11-15T08:59:29.0846081Z Logs:
+2026-11-15T08:59:29.0846399Z   Infinity proof accepted (must be 0): 0
+2026-11-15T08:59:29.0846701Z 
+2026-11-15T08:59:29.0847034Z Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 13.07ms (12.53ms CPU time)
+2026-11-15T08:59:29.0847466Z 
+2026-11-15T08:59:29.0847809Z Ran 5 tests for test/XETAOpenRouteFactoryV315.t.sol:XETAOpenRouteFactoryV315Test
+2026-11-15T08:59:29.0848485Z [PASS] testActivatedCollateralRouteDoesNotUseOtherEscrow() (gas: 10632925)
+2026-11-15T08:59:29.0849136Z [PASS] testIndependentSyntheticClaimsBeginWithZeroSupply() (gas: 6630285)
+2026-11-15T08:59:29.0849761Z [PASS] testNoDirectBaseToPolygonRouteThroughFactory() (gas: 2659946)
+2026-11-15T08:59:29.0850625Z [PASS] testPermissionlessRegistrationWithoutValidatorVote() (gas: 5122538)
+2026-11-15T08:59:29.0851857Z [PASS] testSameAssetCanHaveIndependentRegisteredRoutes() (gas: 10260726)
+2026-11-15T08:59:29.0852814Z Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 9.06ms (6.88ms CPU time)
+2026-11-15T08:59:29.0853395Z 
+2026-11-15T08:59:29.0853737Z Ran 6 tests for test/XETATokenFactoryV315.t.sol:XETATokenFactoryV315Test
+2026-11-15T08:59:29.0854555Z [PASS] testCannotDeployNativeXGRRouterOnSpoke() (gas: 30073)
+2026-11-15T08:59:29.0855449Z [PASS] testCannotRegisterUnconfiguredOrForeignOwnedRouter() (gas: 3442419)
+2026-11-15T08:59:29.0856247Z [PASS] testInitialFeeAllowsRegistrationWithoutQuorum() (gas: 5744652)
+2026-11-15T08:59:29.0856700Z [PASS] testRegistryIsFactoryBoundSingleton() (gas: 59115)
+2026-11-15T08:59:29.0857181Z [PASS] testRouteRegistersAndBootstrapsAtomicallyWithoutQuorum() (gas: 5857125)
+2026-11-15T08:59:29.0857743Z [PASS] testWrappedXGRIsZeroSupplyAndEveryRouterIsIndependent() (gas: 6633370)
+2026-11-15T08:59:29.0858289Z Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 5.65ms (3.70ms CPU time)
+2026-11-15T08:59:29.0858630Z 
+2026-11-15T08:59:29.0858796Z Ran 7 tests for test/XGRILNFeeVault.t.sol:XGRILNFeeVaultTest
+2026-11-15T08:59:29.0859224Z [PASS] testAccrualGasIsIndependentOfActiveSetSize() (gas: 2070579)
+2026-11-15T08:59:29.0859571Z Logs:
+2026-11-15T08:59:29.0859771Z   3 validator allocation gas: 153764
+2026-11-15T08:59:29.0860040Z   32 validator allocation gas: 132141
+2026-11-15T08:59:29.0860210Z 
+2026-11-15T08:59:29.0860446Z [PASS] testCannotAllocateOperationTwiceOrFromUntrustedCaller() (gas: 327744)
+2026-11-15T08:59:29.0861190Z [PASS] testClaimCannotBeRepeated() (gas: 451065)
+2026-11-15T08:59:29.0861988Z [PASS] testEqualSplitAndHistoricalWithdrawalAfterSetRotation() (gas: 935665)
+2026-11-15T08:59:29.0862550Z [PASS] testPublicClaimableGetterDoesNotTransferUntilClaim() (gas: 568442)
+2026-11-15T08:59:29.0863101Z [PASS] testReadsLiveLocalRegistryWithoutSeparateGovernanceQuorum() (gas: 249187)
+2026-11-15T08:59:29.0863682Z [PASS] testRejectsIncompleteValidatorRegistryWithoutV2FeeGetter() (gas: 1361333)
+2026-11-15T08:59:29.0864242Z Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 4.02ms (3.48ms CPU time)
+2026-11-15T08:59:29.0864556Z 
+2026-11-15T08:59:29.0864747Z Ran 8 tests for test/XGRILNRegistryV315.t.sol:XGRILNRegistryV315Test
+2026-11-15T08:59:29.0865227Z [PASS] testExternalCallerCannotBypassThePublicFactory() (gas: 112346)
+2026-11-15T08:59:29.0865690Z [PASS] testInitialFeeIsPresentWithoutQuorum() (gas: 260058)
+2026-11-15T08:59:29.0866098Z [PASS] testNoDirectSpokeToSpokeRegistration() (gas: 111917)
+2026-11-15T08:59:29.0866559Z [PASS] testRegistrationIsActiveWithoutValidatorApproval() (gas: 350091)
+2026-11-15T08:59:29.0867064Z [PASS] testRotatedValidatorSetCannotSignOldFeeProposal() (gas: 158258)
+2026-11-15T08:59:29.0867568Z [PASS] testSourceFeeSignatureQuorumAndReplayProtection() (gas: 219849)
+2026-11-15T08:59:29.0868066Z [PASS] testTwoRegistrationsCannotClaimTheSameRouterPair() (gas: 354852)
+2026-11-15T08:59:29.0868500Z [PASS] testZeroInitialFeeRejected() (gas: 283654)
+2026-11-15T08:59:29.0868921Z Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 2.31ms (1.72ms CPU time)
+2026-11-15T08:59:29.0869235Z 
+2026-11-15T08:59:29.0869440Z Ran 23 tests for test/XITAExecutionGateway.t.sol:XITAExecutionGatewayTest
+2026-11-15T08:59:29.0869961Z [PASS] testAtomicERC20DispatchNativeFeeVaultAndOwnerPayout() (gas: 696230)
+2026-11-15T08:59:29.0870508Z [PASS] testDifferentSignerOrTamperedFeeCannotStartBridge() (gas: 237428)
+2026-11-15T08:59:29.0871299Z [PASS] testDirectILNBridgeWithoutMandatoryValidatorFeeReverts() (gas: 190460)
+2026-11-15T08:59:29.0871887Z [PASS] testDirectPermissionlessILNBridgeNeverPaysXITAServiceFee() (gas: 408029)
+2026-11-15T08:59:29.0872491Z [PASS] testFakeOrDisabledGatewayFailsWithoutAcceptingServiceFee() (gas: 190208)
+2026-11-15T08:59:29.0873063Z [PASS] testHubOnwardHopEmitsParentAndPreservesSingleFeeReceipt() (gas: 544933)
+2026-11-15T08:59:29.0873912Z [PASS] testHubOnwardRejectsWrongRouteAndNeverConsumesParent() (gas: 263604)
+2026-11-15T08:59:29.0874432Z [PASS] testHubOnwardUnavailableOnAnyOtherSourceChain() (gas: 42733)
+2026-11-15T08:59:29.0874948Z [PASS] testNativeSourcePrincipalAndServiceFeesRemainSeparated() (gas: 3231507)
+2026-11-15T08:59:29.0875480Z [PASS] testNewFeesCanBeClaimedAsTheNextAggregateBalance() (gas: 1086192)
+2026-11-15T08:59:29.0876002Z [PASS] testNonceReplayAndCrossAdapterSignatureAreRejected() (gas: 2930214)
+2026-11-15T08:59:29.0876512Z [PASS] testOldQuotesRevokedAndOldFeesPaidToNewWallet() (gas: 1124937)
+2026-11-15T08:59:29.0876989Z [PASS] testOneClaimWithdrawsEveryAccruedTransferFee() (gas: 1068705)
+2026-11-15T08:59:29.0877567Z [PASS] testOnlyRecoveryAdminCanChangeServiceWallet() (gas: 112413)
+2026-11-15T08:59:29.0878078Z [PASS] testOnlySourceNativeCurrencyIsAcceptedForServiceFees() (gas: 548535)
+2026-11-15T08:59:29.0878619Z [PASS] testOwnerCanAdjustLifetimeButNeverExceedNinetySeconds() (gas: 748203)
+2026-11-15T08:59:29.0879161Z [PASS] testServiceWalletSharesQuoteFeeAndSponsorshipAddress() (gas: 27030)
+2026-11-15T08:59:29.0879725Z [PASS] testSignedIssueTimeBoundariesAndFutureTimestampsFailClosed() (gas: 847430)
+2026-11-15T08:59:29.0880286Z [PASS] testSignedTwoHopJourneyIdentityCannotBeRetargeted() (gas: 115095)
+2026-11-15T08:59:29.0881054Z [PASS] testSourceBridgePriceChangeFailsClosedWithoutConsumingNonce() (gas: 235593)
+2026-11-15T08:59:29.0881611Z [PASS] testTamperedIssuedAtDoesNotAuthorizeTransfer() (gas: 156258)
+2026-11-15T08:59:29.0882098Z [PASS] testUnauthorizedUserCannotTakeManagedServiceFees() (gas: 593700)
+2026-11-15T08:59:29.0882624Z [PASS] testWrongNativeValueCannotProduceMessageOrFeeReceipt() (gas: 180405)
+2026-11-15T08:59:29.0883169Z Suite result: ok. 23 passed; 0 failed; 0 skipped; finished in 26.13ms (24.42ms CPU time)
+2026-11-15T08:59:29.0883503Z 
+2026-11-15T08:59:29.0883733Z Ran 8 tests for test/XITANativeUnlockFallback.t.sol:XITANativeUnlockFallbackTest
+2026-11-15T08:59:29.0884251Z [PASS] testBeneficiaryMayRedirectToDifferentWallet() (gas: 173182)
+2026-11-15T08:59:29.0884760Z [PASS] testFurtherDeliveriesSucceedWhileOneReceiverRejects() (gas: 167237)
+2026-11-15T08:59:29.0885302Z [PASS] testInsufficientNativeEscrowRevertsInsteadOfCreatingIOU() (gas: 51096)
+2026-11-15T08:59:29.0885816Z [PASS] testNoThirdPartyCanClaimAnotherBeneficiary() (gas: 129363)
+2026-11-15T08:59:29.0886306Z [PASS] testPreviouslyReservedNativeXGRCannotFundNewUnlock() (gas: 312115)
+2026-11-15T08:59:29.0886810Z [PASS] testRejectingRecipientDefersAndClaimsNativeXGR() (gas: 242600)
+2026-11-15T08:59:29.0887290Z [PASS] testRevertingWithdrawalPreservesPendingCredit() (gas: 159361)
+2026-11-15T08:59:29.0887810Z [PASS] testTwoDeferredTransfersAccumulateWithoutDoublePayment() (gas: 260043)
+2026-11-15T08:59:29.0888352Z Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 2.54ms (1.46ms CPU time)
+2026-11-15T08:59:29.0888659Z 
+2026-11-15T08:59:29.0888881Z Ran 4 tests for test/XITAPredeployReview.t.sol:XITAPredeployOperationalReview
+2026-11-15T08:59:29.0889361Z [PASS] testFactoryRuntimeMustFitStandardEVM() (gas: 17904850)
+2026-11-15T08:59:29.0889690Z Logs:
+2026-11-15T08:59:29.0889891Z   Factory runtime bytes: 24352
+2026-11-15T08:59:29.0890068Z 
+2026-11-15T08:59:29.0890228Z [PASS] testFeeGasWith3_32_128Validators() (gas: 14023097)
+2026-11-15T08:59:29.0890524Z Logs:
+2026-11-15T08:59:29.0890701Z   Validator count: 3
+2026-11-15T08:59:29.0891053Z   Allocation gas first (same-tx benchmark): 149152
+2026-11-15T08:59:29.0891373Z   Allocation gas second (warm same-tx): 98994
+2026-11-15T08:59:29.0891646Z   Validator count: 32
+2026-11-15T08:59:29.0891941Z   Allocation gas first (same-tx benchmark): 149152
+2026-11-15T08:59:29.0892403Z   Allocation gas second (warm same-tx): 98994
+2026-11-15T08:59:29.0892679Z   Validator count: 128
+2026-11-15T08:59:29.0892921Z   Allocation gas first (same-tx benchmark): 149152
+2026-11-15T08:59:29.0893221Z   Allocation gas second (warm same-tx): 98994
+2026-11-15T08:59:29.0893413Z 
+2026-11-15T08:59:29.0893593Z [PASS] testNativePrincipalIsQuotedExactlyOnce() (gas: 23038760)
+2026-11-15T08:59:29.0894119Z Logs:
+2026-11-15T08:59:29.0894309Z   Native router value: 1000000000000000000
+2026-11-15T08:59:29.0894492Z 
+2026-11-15T08:59:29.0894697Z [PASS] testTwoHopRoundTripAccountingWithoutRouteVotes() (gas: 75004801)
+2026-11-15T08:59:29.0895216Z Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 29.12ms (27.85ms CPU time)
+2026-11-15T08:59:29.0895531Z 
+2026-11-15T08:59:29.0895748Z Ran 8 tests for test/XITAXGRHubTopologyV315.t.sol:XITAXGRHubTopologyV315Test
+2026-11-15T08:59:29.0896218Z [PASS] testBothHubTransferDirectionsAreAllowed() (gas: 7457)
+2026-11-15T08:59:29.0896635Z [PASS] testDomain1643CannotImpersonateXGRChain() (gas: 12122)
+2026-11-15T08:59:29.0897226Z [PASS] testFactoryRejectsMismatchedHubIdentityAtDeployment() (gas: 12249569)
+2026-11-15T08:59:29.0897757Z [PASS] testFactoryRejectsSpokeToSpokeAndHubDomainSpoof() (gas: 21192151)
+2026-11-15T08:59:29.0898209Z [PASS] testHubAlsoConnectsToOtherEVMChains() (gas: 7202)
+2026-11-15T08:59:29.0898608Z [PASS] testHubToHubAndSameChainAlwaysRejected() (gas: 12010)
+2026-11-15T08:59:29.0899004Z [PASS] testNoDirectSpokeToSpokeTransfer() (gas: 12485)
+2026-11-15T08:59:29.0899402Z [PASS] testXGRChainId1643NeedsMatchingDomain1643() (gas: 12044)
+2026-11-15T08:59:29.0899868Z Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 4.09ms (3.85ms CPU time)
+2026-11-15T08:59:29.0900182Z 
+2026-11-15T08:59:29.0900417Z Ran 4 tests for test/XGRInterchainBLSVerifier.t.sol:XGRInterchainBLSVerifierTest
+2026-11-15T08:59:29.0901194Z [PASS] testKryptologyVectorRejectsChangedMessage() (gas: 277398)
+2026-11-15T08:59:29.0901604Z [PASS] testKryptologyVectorVerifies() (gas: 277631)
+2026-11-15T08:59:29.0902045Z [PASS] testKryptologyVectorVerifiesAggregatedMultiKeyPath() (gas: 559425)
+2026-11-15T08:59:29.0902588Z [PASS] testRejectsPairingIdentityForgeryAndInfinityMembers() (gas: 26191)
+2026-11-15T08:59:29.0903108Z Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 14.56ms (14.45ms CPU time)
+2026-11-15T08:59:29.0918861Z 
+2026-11-15T08:59:29.0919343Z Ran 5 tests for test/XITATwoHopTokenAccounting.t.sol:XITATwoHopTokenAccountingTest
+2026-11-15T08:59:29.0920286Z [PASS] testArbitrumOriginalBurnMintBurnUnlock() (gas: 27834157)
+2026-11-15T08:59:29.0921339Z [PASS] testBaseOriginalERC20LockMintBurnMintSixDecimals() (gas: 26422722)
+2026-11-15T08:59:29.0922171Z [PASS] testBaseToArbitrumNativeXGRBurnUnlockLockMint() (gas: 26146840)
+2026-11-15T08:59:29.0922647Z [PASS] testHubOriginalERC20BurnUnlockLockMint() (gas: 27081020)
+2026-11-15T08:59:29.0923083Z [PASS] testThirdChainOriginalBurnMintBurnMint() (gas: 54283241)
+2026-11-15T08:59:29.0923560Z Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 46.22ms (48.39ms CPU time)
+2026-11-15T08:59:29.0924803Z 
+2026-11-15T08:59:29.0925387Z Ran 17 test suites in 55.42ms (179.67ms CPU time): 111 tests passed, 0 failed, 0 skipped (111 total tests)
+2026-11-15T08:59:29.1166274Z Post job cleanup.
+2026-11-15T08:59:29.2664978Z [command]/usr/bin/tar --posix -cf cache.tzst --exclude cache.tzst -P -C /home/runner/work/xgr-interchain/xgr-interchain --files-from manifest.txt --use-compress-program zstdmt
+2026-11-15T08:59:29.4085317Z Sent 8109 of 8109 (100.0%), 0.1 MBs/sec
+2026-11-15T08:59:29.4686779Z Cache saved with the key: linux-foundry-chain-fork-forge-test-835864e7e228bdb10b1854757da120efdcd337b6
+2026-11-15T08:59:29.4904154Z Post job cleanup.
+2026-11-15T08:59:29.5772964Z [command]/usr/bin/git version
+2026-11-15T08:59:29.5816311Z git version 2.56.1
+2026-11-15T08:59:29.5862054Z Temporarily overriding HOME='/home/runner/work/_temp/42f01921-9c8a-4c44-9ad8-2e08de84326f' before making global git config changes
+2026-11-15T08:59:29.5863063Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-15T08:59:29.5868333Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/xgr-interchain/xgr-interchain
+2026-11-15T08:59:29.5913517Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-15T08:59:29.5964398Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-15T08:59:29.6261078Z Entering 'lib/forge-std'
+2026-11-15T08:59:29.6328553Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-15T08:59:29.6371521Z http.https://github.com/.extraheader
+2026-11-15T08:59:29.6381240Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-15T08:59:29.6424413Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-15T08:59:29.6802266Z Entering 'lib/forge-std'
+2026-11-15T08:59:29.6871124Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T08:59:29.6912431Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-15T08:59:29.7191678Z Entering 'lib/forge-std'
+2026-11-15T08:59:29.7212142Z file:/home/runner/work/xgr-interchain/xgr-interchain/.git/modules/lib/forge-std/config	remote.origin.url
+2026-11-15T08:59:29.7254218Z [command]/usr/bin/git config --file /home/runner/work/xgr-interchain/xgr-interchain/.git/modules/lib/forge-std/config --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-15T08:59:29.7474085Z Cleaning up orphan processes
+2026-11-15T08:59:29.7854888Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

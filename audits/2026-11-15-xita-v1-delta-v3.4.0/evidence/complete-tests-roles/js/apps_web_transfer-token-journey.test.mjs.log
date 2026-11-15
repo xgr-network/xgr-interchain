@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: XGR two-hop burns wrapped Base, unlocks and re-locks native hub, mints Arbitrum
+ok 1 - XGR two-hop burns wrapped Base, unlocks and re-locks native hub, mints Arbitrum
+  ---
+  duration_ms: 1.820532
+  type: 'test'
+  ...
+# Subtest: reversed XGR and ARB collateral journeys use actual token representation types
+ok 2 - reversed XGR and ARB collateral journeys use actual token representation types
+  ---
+  duration_ms: 0.221113
+  type: 'test'
+  ...
+# Subtest: direct one-hop token journey does not invent synthetic mint before delivery
+ok 3 - direct one-hop token journey does not invent synthetic mint before delivery
+  ---
+  duration_ms: 0.171539
+  type: 'test'
+  ...
+# Subtest: unsigned / unconfirmed and unverified representations never become token claims
+ok 4 - unsigned / unconfirmed and unverified representations never become token claims
+  ---
+  duration_ms: 0.214754
+  type: 'test'
+  ...
+# Subtest: modal shows exactly four main token actions and one live status, without secondary timeline
+ok 5 - modal shows exactly four main token actions and one live status, without secondary timeline
+  ---
+  duration_ms: 0.647996
+  type: 'test'
+  ...
+# Subtest: one-hop modal shows exactly two token actions and current step status
+ok 6 - one-hop modal shows exactly two token actions and current step status
+  ---
+  duration_ms: 0.195245
+  type: 'test'
+  ...
+# Subtest: safe and IBFT finality appear on the relevant token action, not only the last
+ok 7 - safe and IBFT finality appear on the relevant token action, not only the last
+  ---
+  duration_ms: 0.183407
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 44.745894

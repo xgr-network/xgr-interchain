@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: unsent rejected MetaMask nonce is immediately safe for a new Wallet attempt
+ok 1 - unsent rejected MetaMask nonce is immediately safe for a new Wallet attempt
+  ---
+  duration_ms: 1.509852
+  type: 'test'
+  ...
+# Subtest: untraceable occupied pending nonce permits a new explicitly MetaMask-confirmed deployment
+ok 2 - untraceable occupied pending nonce permits a new explicitly MetaMask-confirmed deployment
+  ---
+  duration_ms: 0.242186
+  type: 'test'
+  ...
+# Subtest: pending block recovers original wallet hash by exact nonce and calldata
+ok 3 - pending block recovers original wallet hash by exact nonce and calldata
+  ---
+  duration_ms: 0.241235
+  type: 'test'
+  ...
+# Subtest: consumed nonce with unavailable original hash does not query historical state
+ok 4 - consumed nonce with unavailable original hash does not query historical state
+  ---
+  duration_ms: 0.167463
+  type: 'test'
+  ...
+# Subtest: untraceable consumed original nonce allows a NEW explicitly confirmed wallet deploy
+ok 5 - untraceable consumed original nonce allows a NEW explicitly confirmed wallet deploy
+  ---
+  duration_ms: 0.188876
+  type: 'test'
+  ...
+# Subtest: failed on-chain receipt is reusable, successful receipt is always reconciled
+ok 6 - failed on-chain receipt is reusable, successful receipt is always reconciled
+  ---
+  duration_ms: 0.290169
+  type: 'test'
+  ...
+# Subtest: a saved hash with wrong transaction bytes never grants an automatic retry
+ok 7 - a saved hash with wrong transaction bytes never grants an automatic retry
+  ---
+  duration_ms: 0.37087
+  type: 'test'
+  ...
+# Subtest: confirmed-but-not-published entry must be reconciled, never retired
+ok 8 - confirmed-but-not-published entry must be reconciled, never retired
+  ---
+  duration_ms: 0.154173
+  type: 'test'
+  ...
+# Subtest: normal deploy click automatically removes unsent draft without a manual dialog
+ok 9 - normal deploy click automatically removes unsent draft without a manual dialog
+  ---
+  duration_ms: 0.387946
+  type: 'test'
+  ...
+# Subtest: normal deploy click automatically recovers a submitted receipt without rebroadcast
+ok 10 - normal deploy click automatically recovers a submitted receipt without rebroadcast
+  ---
+  duration_ms: 1.136578
+  type: 'test'
+  ...
+# Subtest: unknown mempool transaction is auditable and permits an explicit new wallet nonce
+ok 11 - unknown mempool transaction is auditable and permits an explicit new wallet nonce
+  ---
+  duration_ms: 0.176107
+  type: 'test'
+  ...
+# Subtest: an unused earlier draft is retired but a second IDENTIFIED pending transaction is reconciled first
+ok 12 - an unused earlier draft is retired but a second IDENTIFIED pending transaction is reconciled first
+  ---
+  duration_ms: 4.553953
+  type: 'test'
+  ...
+# Subtest: saved Base SourceRegistry hash with stale unrelated tx is retired ONLY if factory has no registry
+ok 13 - saved Base SourceRegistry hash with stale unrelated tx is retired ONLY if factory has no registry
+  ---
+  duration_ms: 1.932001
+  type: 'test'
+  ...
+# Subtest: sourceRegistry wrong signed tx with missing receipt cannot be rebroadcast
+ok 14 - sourceRegistry wrong signed tx with missing receipt cannot be rebroadcast
+  ---
+  duration_ms: 0.737175
+  type: 'test'
+  ...
+# Subtest: approved Factory with empty registry enables new wallet attempt despite mismatching saved hash
+ok 15 - approved Factory with empty registry enables new wallet attempt despite mismatching saved hash
+  ---
+  duration_ms: 0.910036
+  type: 'test'
+  ...
+# Subtest: already deployed SourceRegistry never initiates another wallet attempt without receipt provenance
+ok 16 - already deployed SourceRegistry never initiates another wallet attempt without receipt provenance
+  ---
+  duration_ms: 1.167755
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 60.198363

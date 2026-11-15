@@ -1,0 +1,249 @@
+repository,path,change,classification,review_depth
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/README.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/archive-manifest.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/assessment-data.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/build_reports.py,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/change-inventory.csv,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/change-inventory.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence-public.zip,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/canonical-activation.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/current-source-comparison.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/historical-source-comparison.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/input-artifacts.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/node-repeat.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/node-validation.exit,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/node-validation.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/protected-evidence-reference.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/read-only-deployments.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/restricted-roles.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/restricted-roles.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/solidity.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__automatic-transfer-step.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__browser-smoke.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__chain-finality.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__experience.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__fee-gas-projection.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__join.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__keccak.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__leaderboard-data.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__legal.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__listing-visibility.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__metamask-token.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__publication-mainnet-regression.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__route-availability.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__source-tx-hints.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__sponsor-route-readiness.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__system-rankings.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__token-creator.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__token-inventory.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__token-representation.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__token-slug.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-actions.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-balance-refresh.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-flow-binding.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-gas-profile.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-page.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-sponsor-evidence.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-status-flow.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-step-timer.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__transfer-token-journey.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__universe-orbits.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__universe-scene.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__universe-token-layout.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__verified-journey.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-action-attention.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-core.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-gas.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-index-projection.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-nonce.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-pending.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-token-balances.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-transfer-selection.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/apps__web__wallet-transfers.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/runtime__native-relayer__gas-planner.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/runtime__native-relayer__receipt-evidence.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/runtime__native-relayer__source-finality.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/runtime__native-relayer__xita-direct-codec.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__api-client.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__arbitrum-rpc-failover.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__asset-state.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__base-bootstrap-from-xgr.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__base-fee-quote.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__base-rpc-failover.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__bls-bootstrap-proof.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__bootstrap-evidence.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__bootstrap-suggestions.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__bootstrap.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__bsc-onboarding.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-finality.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-intent-view.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-preflight.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-reconcile.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-state.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__chain-transaction-draft.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__creator-factory-deploy.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__creator-factory-github.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-auto-recovery.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-auto-sync.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-batch.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-generation.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-intents.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-journal.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-ledger.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-parameters.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-poll.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-readiness.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-resume-gate.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-retry.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-sequence.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-sync-wait.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__deployment-wallet-transaction.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__destination-validator-set.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__factory-defaults.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__fee-treasury.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__forge-tooling.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__forge-vendor-runtime.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__main-gate.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__no-archive-state.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__operations-health.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__plan.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__reconcile-readonly.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__route-factory-draft.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__route-lifecycle.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__route-live.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__sealed-artifacts.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__service-wallet-rotation.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__solidity-imports.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__source-registry-recovery.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__static-modules.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__trusted-artifacts.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__validator-indexer-health.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__validator-reference-lag.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__wallet-executor.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__admin__work-items.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__coingecko.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__escrow-flow-24h.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__explorer-wallet-discovery.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__finality-observer.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__gas-observer.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__indexed-flow-24h.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__publication.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__route-readiness.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__rpc-read.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__server.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-announcements.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-index-store.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-index.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-intake.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-proof-observer.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__transfer-recovery.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__tvl-history.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__tvl-verifier.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__indexer__xgr-quorum-poll.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__creator-wallet-guard.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__delivery.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__fee-claim.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__fee-quote.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__gas-sponsor.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__managed-index.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__managed-indexer.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__price-cache.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__quote-service.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__server-preview.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-funding.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-obligation-audit.pg.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-obligation-audit.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-policy.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-quote-atomic.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__sponsor-status.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__tax-evidence.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__wallet-aware-sponsorship.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__worker.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__managed-relay__xgr-launch-fee.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__coingecko-identity.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-canary.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-chain-proof.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-logo-png.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-manifests.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-operator.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__creator-registration.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__mail-template.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__manifests.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__private-store.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__server.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__status-notifier.integration.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/services__onboarding__status-notifier.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__assert-xita-v320-compatible-deploy.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__auto-hub-routes.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__interchain-fee-nginx.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__join-nginx.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__manage-web-release.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__manifest-layout.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__optimism-predeploy.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__probe-base-rpc.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__quote-db-role.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__stamp-xita-web-modules.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__stamp-xita-web-style.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__transfer-intake-nginx.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__transfer-recovery-nginx.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__validate-join-pr.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__validate-manifests.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__validate-profile-pr.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__verify-iln-route-catalog.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/tests/tools__verify-xita-roundtrip.test.mjs.log,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/workflows/audit-20261106-publish.yml,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/workflows/audit-20261106-reports.yml,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/workflows/audit-20261106-supplement.yml,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/workflows/audit-20261106.yml,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/xgr-interchain-commits.tsv,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/xgr-node-commits.tsv,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/evidence/xita-test-results.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/finding-details.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/finding-statistics.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/findings.csv,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/historical-findings-matrix.csv,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/launch-decision.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/node-v3.5.0-review.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/node-v3.5.0-review.pdf,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/phase-a-publication.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/phase-a-seal.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/prior-findings-matrix.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/publication-readback.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/publication-record.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/publication-validation.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/remediation.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/report.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/report.pdf,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/scope-and-baselines.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/test-failure-triage.json,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/test-matrix.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/verification.md,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-06-xita-direct-bls-delta-v3.3.0/verify_artifacts.py,A,audit publication,inventory only
+xgr-interchain,audits/2026-11-15-xita-v1-remediation-handoff/AUDIT_REQUEST.md,A,audit publication,inventory only
+xgr-interchain,audits/README.md,M,audit publication,inventory only
+xgr-interchain,services/indexer/sql/017_sponsor_obligation_reviews.sql,A,product,targeted source and regression review
+xgr-interchain,services/managed-relay/SPONSOR_F19_OPERATIONS.md,A,documentation,inventory only
+xgr-interchain,services/managed-relay/gas-sponsor.mjs,M,product,targeted source and regression review
+xgr-interchain,services/managed-relay/gas-sponsor.test.mjs,M,test,targeted source and regression review
+xgr-interchain,services/managed-relay/server.mjs,M,product,targeted source and regression review
+xgr-interchain,services/managed-relay/sponsor-obligation-audit.pg.test.mjs,M,test,targeted source and regression review
+xgr-interchain,services/managed-relay/sponsor-obligation-review.mjs,A,product,targeted source and regression review
+xgr-interchain,services/managed-relay/sponsor-obligation-review.test.mjs,A,test,targeted source and regression review
+xgr-interchain,services/managed-relay/sponsor-status.test.mjs,M,test,targeted source and regression review
+xgr-interchain,services/onboarding/creator-operator.mjs,M,product,targeted source and regression review
+xgr-interchain,services/onboarding/creator-operator.test.mjs,M,test,targeted source and regression review
+xgr-interchain,services/onboarding/creator-registration.mjs,M,product,targeted source and regression review
+xgr-interchain,services/onboarding/creator-registration.test.mjs,M,test,targeted source and regression review
+xgr-node,.github/workflows/release-light-v333.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v334.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v335.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v336.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v337.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v338.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v341.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v342.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v343.yml,D,workflow,inventory only
+xgr-node,.github/workflows/release-light-v351.yml,A,workflow,inventory only
+xgr-node,RELEASE_NOTES_v3.5.1.md,A,documentation,inventory only
+xgr-node,interchain/runtime/iln_checkpoint.go,M,product,targeted source and regression review
+xgr-node,interchain/runtime/iln_f20_successor_test.go,A,test,targeted source and regression review

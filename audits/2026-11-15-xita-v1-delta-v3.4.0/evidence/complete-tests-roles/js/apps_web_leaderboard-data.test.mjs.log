@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: complete, independently verified collateral and journeys are shown
+ok 1 - complete, independently verified collateral and journeys are shown
+  ---
+  duration_ms: 1.156622
+  type: 'test'
+  ...
+# Subtest: duplicated custody vault cannot inflate TVL
+ok 2 - duplicated custody vault cannot inflate TVL
+  ---
+  duration_ms: 0.213131
+  type: 'test'
+  ...
+# Subtest: duplicate bridge journeys and mismatched totals fail closed
+ok 3 - duplicate bridge journeys and mismatched totals fail closed
+  ---
+  duration_ms: 0.146201
+  type: 'test'
+  ...
+# Subtest: wrapped supply alone cannot be construed as custody
+ok 4 - wrapped supply alone cannot be construed as custody
+  ---
+  duration_ms: 0.104447
+  type: 'test'
+  ...
+# Subtest: missing price and supply never invent market cap
+ok 5 - missing price and supply never invent market cap
+  ---
+  duration_ms: 0.088754
+  type: 'test'
+  ...
+# Subtest: unknown always last for either sort direction
+ok 6 - unknown always last for either sort direction
+  ---
+  duration_ms: 0.164728
+  type: 'test'
+  ...
+# Subtest: only DB-qualified deployed tokens appear; no fabricated metrics
+ok 7 - only DB-qualified deployed tokens appear; no fabricated metrics
+  ---
+  duration_ms: 0.814076
+  type: 'test'
+  ...
+# Subtest: unknown XGR Creator market cap is $0 display placeholder without inventing a verified metric
+ok 8 - unknown XGR Creator market cap is $0 display placeholder without inventing a verified metric
+  ---
+  duration_ms: 0.248404
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 51.766714

@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE profile-only PR
+ok 1 - verified XGR creator queue writes signed tx BEFORE broadcast, replays exactly same hash and then creates ONE profile-only PR
+  ---
+  duration_ms: 21.046368
+  type: 'test'
+  ...
+# Subtest: explicit daily gas caps and signer segregation reject unsafe deployment
+ok 2 - explicit daily gas caps and signer segregation reject unsafe deployment
+  ---
+  duration_ms: 1.051756
+  type: 'test'
+  ...
+# Subtest: shared Sponsor wallet must be exactly configured; no separate Creator key
+ok 3 - shared Sponsor wallet must be exactly configured; no separate Creator key
+  ---
+  duration_ms: 0.149405
+  type: 'test'
+  ...
+# Subtest: creator fails closed when XGR sponsor has durable unresolved nonce
+ok 4 - creator fails closed when XGR sponsor has durable unresolved nonce
+  ---
+  duration_ms: 0.488537
+  type: 'test'
+  ...
+# Subtest: Creator service loads only the two existing privileged env files
+ok 5 - Creator service loads only the two existing privileged env files
+  ---
+  duration_ms: 0.213572
+  type: 'test'
+  ...
+# Subtest: existing broad Creator route Draft PR migrates to an independent zero-route profile without signing again
+ok 6 - existing broad Creator route Draft PR migrates to an independent zero-route profile without signing again
+  ---
+  duration_ms: 6.177348
+  type: 'test'
+  ...
+# Subtest: F-36 permanently unsignable Creator request is quarantined while healthy sibling advances
+ok 7 - F-36 permanently unsignable Creator request is quarantined while healthy sibling advances
+  ---
+  duration_ms: 6.631673
+  type: 'test'
+  ...
+# Subtest: F-36 invalid solitary Creator entry is retained for manual review, not deleted or signed
+ok 8 - F-36 invalid solitary Creator entry is retained for manual review, not deleted or signed
+  ---
+  duration_ms: 3.596525
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 159.047781

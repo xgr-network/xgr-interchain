@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: Ethereum Keccak standard vectors and selectors
+ok 1 - Ethereum Keccak standard vectors and selectors
+  ---
+  duration_ms: 2.629981
+  type: 'test'
+  ...
+# Subtest: Wallet-only functions have no bridge execution authority
+ok 2 - Wallet-only functions have no bridge execution authority
+  ---
+  duration_ms: 0.532262
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.319577

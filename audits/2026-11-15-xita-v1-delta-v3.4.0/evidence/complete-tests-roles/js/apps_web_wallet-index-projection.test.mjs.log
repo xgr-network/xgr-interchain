@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: the actual indexed 50-XGR Arbitrum-Base journey replaces stale child history
+ok 1 - the actual indexed 50-XGR Arbitrum-Base journey replaces stale child history
+  ---
+  duration_ms: 1.767682
+  type: 'test'
+  ...
+# Subtest: a simultaneous wallet broadcast is transient only until SQL indexes it
+ok 2 - a simultaneous wallet broadcast is transient only until SQL indexes it
+  ---
+  duration_ms: 0.23935
+  type: 'test'
+  ...
+# Subtest: unknown, foreign and unverified index rows cannot enter canonical history
+ok 3 - unknown, foreign and unverified index rows cannot enter canonical history
+  ---
+  duration_ms: 0.12618
+  type: 'test'
+  ...
+# Subtest: parent already indexed prevents active onward TX becoming a second selectable journey
+ok 4 - parent already indexed prevents active onward TX becoming a second selectable journey
+  ---
+  duration_ms: 0.094733
+  type: 'test'
+  ...
+# Subtest: verified onward receipt survives lagging SQL parent, without creating duplicate child
+ok 5 - verified onward receipt survives lagging SQL parent, without creating duplicate child
+  ---
+  duration_ms: 0.157727
+  type: 'test'
+  ...
+# Subtest: finalized direct BSC delivery stays complete while SQL row lags; unrelated or conflicting rows do not
+ok 6 - finalized direct BSC delivery stays complete while SQL row lags; unrelated or conflicting rows do not
+  ---
+  duration_ms: 0.198359
+  type: 'test'
+  ...
+# Subtest: pending source parent must survive an incomplete, stale or paginated SQL result
+ok 7 - pending source parent must survive an incomplete, stale or paginated SQL result
+  ---
+  duration_ms: 0.224388
+  type: 'test'
+  ...
+# Subtest: never invent a pending transfer for a different wallet or unconfirmed operation
+ok 8 - never invent a pending transfer for a different wallet or unconfirmed operation
+  ---
+  duration_ms: 0.080301
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 46.648008

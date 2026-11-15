@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: official explorer request is read-only, fixed endpoint, chain-bound and paginated
+ok 1 - official explorer request is read-only, fixed endpoint, chain-bound and paginated
+  ---
+  duration_ms: 1.015495
+  type: 'test'
+  ...
+# Subtest: wallet and documented target must match before receipt verification
+ok 2 - wallet and documented target must match before receipt verification
+  ---
+  duration_ms: 0.586026
+  type: 'test'
+  ...
+# Subtest: adapter discovery never turns unverified explorer claim into actionable transfer
+ok 3 - adapter discovery never turns unverified explorer claim into actionable transfer
+  ---
+  duration_ms: 0.481458
+  type: 'test'
+  ...
+# Subtest: verified transfer returned only after original verifier confirms wallet and chain
+ok 4 - verified transfer returned only after original verifier confirms wallet and chain
+  ---
+  duration_ms: 0.286773
+  type: 'test'
+  ...
+# Subtest: DB record wins over explorer duplicate and wallet filters enforce scope
+ok 5 - DB record wins over explorer duplicate and wallet filters enforce scope
+  ---
+  duration_ms: 0.227444
+  type: 'test'
+  ...
+# Subtest: rate-limit errors do not fabricate empty canonical history
+ok 6 - rate-limit errors do not fabricate empty canonical history
+  ---
+  duration_ms: 0.248506
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 52.191221

@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: Validator indexer health reports honest ready, lag and source outage separately
+ok 1 - Validator indexer health reports honest ready, lag and source outage separately
+  ---
+  duration_ms: 0.680589
+  type: 'test'
+  ...
+# Subtest: Validator RPC targets are opt-in and validated before a request
+ok 2 - Validator RPC targets are opt-in and validated before a request
+  ---
+  duration_ms: 0.54899
+  type: 'test'
+  ...
+# Subtest: Admin validator RPC probe keeps individual node outage visible
+ok 3 - Admin validator RPC probe keeps individual node outage visible
+  ---
+  duration_ms: 0.920412
+  type: 'test'
+  ...
+# Subtest: Direct BLS health reports source block lag independently of quorum requests
+ok 4 - Direct BLS health reports source block lag independently of quorum requests
+  ---
+  duration_ms: 0.106
+  type: 'test'
+  ...
+# Subtest: XGRChain source alias is normalized at the RPC boundary, not mislabeled unreachable
+ok 5 - XGRChain source alias is normalized at the RPC boundary, not mislabeled unreachable
+  ---
+  duration_ms: 0.081844
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 41.226696

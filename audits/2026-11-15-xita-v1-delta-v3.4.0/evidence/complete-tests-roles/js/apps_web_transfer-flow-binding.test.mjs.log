@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: hide A, select B: modal and continuation bind ONLY B
+ok 1 - hide A, select B: modal and continuation bind ONLY B
+  ---
+  duration_ms: 0.709409
+  type: 'test'
+  ...
+# Subtest: reselect original two-hop parent after another transfer preserves full destination
+ok 2 - reselect original two-hop parent after another transfer preserves full destination
+  ---
+  duration_ms: 0.124047
+  type: 'test'
+  ...
+# Subtest: new transfer with no selected hash must not inherit hidden old modal
+ok 3 - new transfer with no selected hash must not inherit hidden old modal
+  ---
+  duration_ms: 0.662227
+  type: 'test'
+  ...
+# Subtest: wallet switch and foreign wallet record never opens previous modal
+ok 4 - wallet switch and foreign wallet record never opens previous modal
+  ---
+  duration_ms: 0.10671
+  type: 'test'
+  ...
+# Subtest: broadcast without indexer evidence can reopen only exact wallet/session hash
+ok 5 - broadcast without indexer evidence can reopen only exact wallet/session hash
+  ---
+  duration_ms: 0.153912
+  type: 'test'
+  ...
+# Subtest: unconfirmed pending source never authorizes continuation
+ok 6 - unconfirmed pending source never authorizes continuation
+  ---
+  duration_ms: 0.075274
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 46.362247

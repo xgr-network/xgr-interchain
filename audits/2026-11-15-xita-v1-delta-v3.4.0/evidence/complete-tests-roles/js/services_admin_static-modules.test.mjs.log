@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: Admin serves the entire browser module dependency graph with JavaScript MIME
+ok 1 - Admin serves the entire browser module dependency graph with JavaScript MIME
+  ---
+  duration_ms: 4.831152
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 41.408232

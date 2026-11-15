@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: Base 403 is retried on verified 8453 fallback, preserving receipt hash
+ok 1 - Base 403 is retried on verified 8453 fallback, preserving receipt hash
+  ---
+  duration_ms: 1.274259
+  type: 'test'
+  ...
+# Subtest: Base failover rejects wrong chain without querying transaction receipt
+ok 2 - Base failover rejects wrong chain without querying transaction receipt
+  ---
+  duration_ms: 0.469798
+  type: 'test'
+  ...
+# Subtest: A JSON-RPC execution error is never silently bypassed
+ok 3 - A JSON-RPC execution error is never silently bypassed
+  ---
+  duration_ms: 0.223376
+  type: 'test'
+  ...
+# Subtest: configured Tenderly Base HTTP 429 retries a chain-verified independent RPC
+ok 4 - configured Tenderly Base HTTP 429 retries a chain-verified independent RPC
+  ---
+  duration_ms: 1.030382
+  type: 'test'
+  ...
+# Subtest: Tenderly JSON-RPC 429 quota error is transient but execution revert is not
+ok 5 - Tenderly JSON-RPC 429 quota error is transient but execution revert is not
+  ---
+  duration_ms: 0.275185
+  type: 'test'
+  ...
+# Subtest: Tenderly 429 fallback on wrong chain is blocked before any deployment simulation
+ok 6 - Tenderly 429 fallback on wrong chain is blocked before any deployment simulation
+  ---
+  duration_ms: 0.263226
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 47.029945

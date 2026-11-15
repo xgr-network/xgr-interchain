@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: only XGRChain can serve as exactly one hop endpoint
+ok 1 - only XGRChain can serve as exactly one hop endpoint
+  ---
+  duration_ms: 0.543431
+  type: 'test'
+  ...
+# Subtest: requires the LIVE GitHub main SHA, not PRs or cached branch commits
+ok 2 - requires the LIVE GitHub main SHA, not PRs or cached branch commits
+  ---
+  duration_ms: 0.401897
+  type: 'test'
+  ...
+# Subtest: no deploy on a PR branch or stale checkout
+ok 3 - no deploy on a PR branch or stale checkout
+  ---
+  duration_ms: 0.368337
+  type: 'test'
+  ...
+# Subtest: GitHub outage and dirty checkout block deployment
+ok 4 - GitHub outage and dirty checkout block deployment
+  ---
+  duration_ms: 0.186852
+  type: 'test'
+  ...
+# Subtest: main work inventory returns assets by canonical key
+ok 5 - main work inventory returns assets by canonical key
+  ---
+  duration_ms: 10.227289
+  type: 'test'
+  ...
+# Subtest: stale main still renders read-only inventory while never approving Deploy
+ok 6 - stale main still renders read-only inventory while never approving Deploy
+  ---
+  duration_ms: 5.854079
+  type: 'test'
+  ...
+# Subtest: GitHub outage still allows a local read-only inventory but denies authorization
+ok 7 - GitHub outage still allows a local read-only inventory but denies authorization
+  ---
+  duration_ms: 2.305766
+  type: 'test'
+  ...
+# Subtest: HTTP 403 uses only a verified LIVE Git main ref for deploy authorization
+ok 8 - HTTP 403 uses only a verified LIVE Git main ref for deploy authorization
+  ---
+  duration_ms: 0.329438
+  type: 'test'
+  ...
+# Subtest: origin spoofing, fallback failure and cached main never authorize deployment
+ok 9 - origin spoofing, fallback failure and cached main never authorize deployment
+  ---
+  duration_ms: 0.267715
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 63.372973

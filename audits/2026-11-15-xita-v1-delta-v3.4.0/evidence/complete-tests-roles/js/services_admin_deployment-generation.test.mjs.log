@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: pre-reset deployment WAL is ignored only with proven Git ancestry
+ok 1 - pre-reset deployment WAL is ignored only with proven Git ancestry
+  ---
+  duration_ms: 0.64807
+  type: 'test'
+  ...
+# Subtest: unknown, pruned or malformed Git history cannot retire an intent
+ok 2 - unknown, pruned or malformed Git history cannot retire an intent
+  ---
+  duration_ms: 0.130688
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.795489

@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: unavailable evidence never invents zero TVL or movement
+ok 1 - unavailable evidence never invents zero TVL or movement
+  ---
+  duration_ms: 1.66431
+  type: 'test'
+  ...
+# Subtest: fully verified unique assets produce totals only with complete coverage
+ok 2 - fully verified unique assets produce totals only with complete coverage
+  ---
+  duration_ms: 0.476138
+  type: 'test'
+  ...
+# Subtest: a single unverifiable asset invalidates aggregate totals
+ok 3 - a single unverifiable asset invalidates aggregate totals
+  ---
+  duration_ms: 0.214413
+  type: 'test'
+  ...
+# Subtest: CoinGecko public market data does not fabricate locked collateral
+ok 4 - CoinGecko public market data does not fabricate locked collateral
+  ---
+  duration_ms: 0.110336
+  type: 'test'
+  ...
+# Subtest: newly accepted asset with partial receipts does not zero valid XGR 24h turnover
+ok 5 - newly accepted asset with partial receipts does not zero valid XGR 24h turnover
+  ---
+  duration_ms: 0.463158
+  type: 'test'
+  ...
+# Subtest: undeployed post-reset asset cannot inherit verified TVL or movement
+ok 6 - undeployed post-reset asset cannot inherit verified TVL or movement
+  ---
+  duration_ms: 0.160853
+  type: 'test'
+  ...
+# Subtest: fresh verified TVL exposes its own observation timestamp for 24h comparisons
+ok 7 - fresh verified TVL exposes its own observation timestamp for 24h comparisons
+  ---
+  duration_ms: 0.182425
+  type: 'test'
+  ...
+# Subtest: verified partial 24h volume is an explicitly incomplete lower bound while TVL remains complete
+ok 8 - verified partial 24h volume is an explicitly incomplete lower bound while TVL remains complete
+  ---
+  duration_ms: 0.176657
+  type: 'test'
+  ...
+# Subtest: partial 24h volume never invents a value without independently verified movement
+ok 9 - partial 24h volume never invents a value without independently verified movement
+  ---
+  duration_ms: 0.262286
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71.696462

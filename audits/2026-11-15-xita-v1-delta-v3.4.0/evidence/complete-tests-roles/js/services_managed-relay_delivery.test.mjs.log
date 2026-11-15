@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: persist signed transaction before broadcasting, never sign twice
+ok 1 - persist signed transaction before broadcasting, never sign twice
+  ---
+  duration_ms: 1.344398
+  type: 'test'
+  ...
+# Subtest: after crash rebroadcast exact same signed tx without taking a new nonce
+ok 2 - after crash rebroadcast exact same signed tx without taking a new nonce
+  ---
+  duration_ms: 0.187883
+  type: 'test'
+  ...
+# Subtest: do not send or sign after any third-party delivery
+ok 3 - do not send or sign after any third-party delivery
+  ---
+  duration_ms: 0.107262
+  type: 'test'
+  ...
+# Subtest: on uncertain mailbox state never send
+ok 4 - on uncertain mailbox state never send
+  ---
+  duration_ms: 0.333382
+  type: 'test'
+  ...
+# Subtest: if validator quorum pending, do not broadcast or second-source-lock
+ok 5 - if validator quorum pending, do not broadcast or second-source-lock
+  ---
+  duration_ms: 0.108464
+  type: 'test'
+  ...
+# Subtest: unsigned destination calldata is strictly message/chain/mailbox bound
+ok 6 - unsigned destination calldata is strictly message/chain/mailbox bound
+  ---
+  duration_ms: 0.114543
+  type: 'test'
+  ...
+# Subtest: failed destination tx requires human review, never automatic new gas nonce
+ok 7 - failed destination tx requires human review, never automatic new gas nonce
+  ---
+  duration_ms: 0.187162
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 139.840899

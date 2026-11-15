@@ -1,0 +1,12 @@
+{
+  "audit_id": "2026-11-15-xita-v1-delta-v3.4.0",
+  "report_version": "3.4.0",
+  "date": "2026-11-15",
+  "interchain_target": "fe3d63603a09197217c57e61961f6434e39ba07f",
+  "node_target": "723ff829d7380a29a116fd2f29c3b808ec073c0d",
+  "interchain_baseline": "33a4e37cf48c509b83c67d8007c246ff2838c606",
+  "node_baseline": "a84c82737dc3ca195192a96498eab0e170f8bb5a",
+  "prior_directory": "2026-11-06-xita-direct-bls-delta-v3.3.0",
+  "disclosure": "AI-assisted source-frozen delta reassessment, not an external audit-firm certificate. The reviewer had the prior conversation, finding register and some implementation history; this is neither blind nor independent of all prior development. New executions and contradictory outcomes are recorded separately from inherited evidence. No production transactions, service restarts, contract deployments or product-code changes were performed.",
+  "separation": "Neither immutable contract source nor browser application source changed in the remediation delta. A UI/email maintenance commit is not evidence of compromised collateral or BLS forgery. Conversely, node signing, proof-to-wallet binding and service transaction construction retain their real security consequences regardless of directory. Bytecode matching does not prove every mutable configuration value, all historical balances, all validator installations or independence of RPC upstreams."
+}

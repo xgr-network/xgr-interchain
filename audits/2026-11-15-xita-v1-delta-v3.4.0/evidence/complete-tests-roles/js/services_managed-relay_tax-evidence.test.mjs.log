@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: trusted quote IP cannot be spoofed by forwarded headers
+ok 1 - trusted quote IP cannot be spoofed by forwarded headers
+  ---
+  duration_ms: 2.908437
+  type: 'test'
+  ...
+# Subtest: OTC-style local CIDR lookup returns ISO country and provenance
+ok 2 - OTC-style local CIDR lookup returns ISO country and provenance
+  ---
+  duration_ms: 5.021264
+  type: 'test'
+  ...
+# Subtest: native source fee fixed to eight-decimal EUR value
+ok 3 - native source fee fixed to eight-decimal EUR value
+  ---
+  duration_ms: 0.262536
+  type: 'test'
+  ...
+# Subtest: unknown customer country or EUR rate cannot cancel a signed fee
+ok 4 - unknown customer country or EUR rate cannot cancel a signed fee
+  ---
+  duration_ms: 0.230077
+  type: 'test'
+  ...
+# Subtest: ZZ synthetic CIDR cannot override country match
+ok 5 - ZZ synthetic CIDR cannot override country match
+  ---
+  duration_ms: 7.176996
+  type: 'test'
+  ...
+# Subtest: F-17 wallet-aware quotes enforce durable pending limit inside database transaction
+ok 6 - F-17 wallet-aware quotes enforce durable pending limit inside database transaction
+  ---
+  duration_ms: 0.707117
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 125.996563

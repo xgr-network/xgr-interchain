@@ -1,0 +1,89 @@
+TAP version 13
+# Subtest: F-07/F-19: disposable PostgreSQL regression suite (real schema)
+    # Subtest: F-07 PostgreSQL e2e: signed transaction and reservation commit atomically
+    ok 1 - F-07 PostgreSQL e2e: signed transaction and reservation commit atomically
+      ---
+      duration_ms: 52.931714
+      type: 'test'
+      ...
+    # Subtest: Gas observations cap at 1000, deduplicate receipts and recalculate p95
+    ok 2 - Gas observations cap at 1000, deduplicate receipts and recalculate p95
+      ---
+      duration_ms: 25218.633705
+      type: 'test'
+      ...
+    # Subtest: Mined gas persists spendable independently of safe confirmation
+    ok 3 - Mined gas persists spendable independently of safe confirmation
+      ---
+      duration_ms: 18.122828
+      type: 'test'
+      ...
+    # Subtest: F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart
+    ok 4 - F-07: orphan nonce, needs review, delayed receipt; fresh states excluded; survives restart
+      ---
+      duration_ms: 31.231302
+      type: 'test'
+      ...
+    # Subtest: F-30: monitoring uses immutable creation age despite heartbeat
+    ok 5 - F-30: monitoring uses immutable creation age despite heartbeat
+      ---
+      duration_ms: 19.597302
+      type: 'test'
+      ...
+    # Subtest: F-19: external delivery, unresolved payment, wrong fee, route, fresh or unindexed
+    ok 6 - F-19: external delivery, unresolved payment, wrong fee, route, fresh or unindexed
+      ---
+      duration_ms: 28.150414
+      type: 'test'
+      ...
+    # Subtest: F-19: false confirmed if sponsor, chain, recipient or amount differs
+    ok 7 - F-19: false confirmed if sponsor, chain, recipient or amount differs
+      ---
+      duration_ms: 25.636763
+      type: 'test'
+      ...
+    # Subtest: 2-hop promises: only unmatched stage triggers alert
+    ok 8 - 2-hop promises: only unmatched stage triggers alert
+      ---
+      duration_ms: 20.207283
+      type: 'test'
+      ...
+    # Subtest: Sponsoring disabled: obligation remains; monitor is read-only even on writable DB login
+    ok 9 - Sponsoring disabled: obligation remains; monitor is read-only even on writable DB login
+      ---
+      duration_ms: 32.592595
+      type: 'test'
+      ...
+    # Subtest: F-19: overtaken paid obligations are durable and idempotent
+    ok 10 - F-19: overtaken paid obligations are durable and idempotent
+      ---
+      duration_ms: 21.093279
+      type: 'test'
+      ...
+    # Subtest: F-19: operator review remains append-only across restart and cannot pretend confirmed
+    ok 11 - F-19: operator review remains append-only across restart and cannot pretend confirmed
+      ---
+      duration_ms: 24.575233
+      type: 'test'
+      ...
+    # Subtest: Healthy paid grants => no alerts
+    ok 12 - Healthy paid grants => no alerts
+      ---
+      duration_ms: 21.059919
+      type: 'test'
+      ...
+    1..12
+ok 1 - F-07/F-19: disposable PostgreSQL regression suite (real schema)
+  ---
+  duration_ms: 25568.179599
+  type: 'test'
+  ...
+1..1
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 25690.69184

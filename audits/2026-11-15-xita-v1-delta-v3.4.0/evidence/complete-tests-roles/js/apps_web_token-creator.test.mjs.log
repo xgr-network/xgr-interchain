@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: creator preview uses 18 precise decimals, full fixed supply and no admin privileges
+ok 1 - creator preview uses 18 precise decimals, full fixed supply and no admin privileges
+  ---
+  duration_ms: 1.531486
+  type: 'test'
+  ...
+# Subtest: invalid or unsafe names, symbols, supplies and owner addresses are rejected
+ok 2 - invalid or unsafe names, symbols, supplies and owner addresses are rejected
+  ---
+  duration_ms: 0.233411
+  type: 'test'
+  ...
+# Subtest: page is directly routable yet absent from navigation, with no unverified deploy request
+ok 3 - page is directly routable yet absent from navigation, with no unverified deploy request
+  ---
+  duration_ms: 0.929981
+  type: 'test'
+  ...
+# Subtest: creator enrollment collects private email, complete Join project metadata and uploaded logo
+ok 4 - creator enrollment collects private email, complete Join project metadata and uploaded logo
+  ---
+  duration_ms: 0.593484
+  type: 'test'
+  ...
+# Subtest: creator variants have exact 6/8/18 decimals and irrecoverable lifetime cap
+ok 5 - creator variants have exact 6/8/18 decimals and irrecoverable lifetime cap
+  ---
+  duration_ms: 0.321564
+  type: 'test'
+  ...
+# Subtest: creator defaults are safe; advanced section stays collapsed without explicit user action
+ok 6 - creator defaults are safe; advanced section stays collapsed without explicit user action
+  ---
+  duration_ms: 0.834937
+  type: 'test'
+  ...
+# Subtest: Creator submission navigates to a dedicated confirmation receipt and visible errors
+ok 7 - Creator submission navigates to a dedicated confirmation receipt and visible errors
+  ---
+  duration_ms: 0.48487
+  type: 'test'
+  ...
+# Subtest: published XGRChain Creator profiles display their verified original token address
+ok 8 - published XGRChain Creator profiles display their verified original token address
+  ---
+  duration_ms: 0.338039
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 46.573824

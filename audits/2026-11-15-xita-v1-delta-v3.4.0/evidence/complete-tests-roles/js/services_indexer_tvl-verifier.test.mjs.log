@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: physical balance is counted once, NOT reduced a second time by unlocks
+ok 1 - physical balance is counted once, NOT reduced a second time by unlocks
+  ---
+  duration_ms: 1.3265
+  type: 'test'
+  ...
+# Subtest: pending reverse unlock retains real escrow backing
+ok 2 - pending reverse unlock retains real escrow backing
+  ---
+  duration_ms: 0.358771
+  type: 'test'
+  ...
+# Subtest: native pending beneficiary payout is excluded only once
+ok 3 - native pending beneficiary payout is excluded only once
+  ---
+  duration_ms: 0.32497
+  type: 'test'
+  ...
+# Subtest: unexpected transfer and incomplete finalized index fail closed
+ok 4 - unexpected transfer and incomplete finalized index fail closed
+  ---
+  duration_ms: 0.434866
+  type: 'test'
+  ...
+# Subtest: ERC20 requires matching underlying token identity and native reserve zero
+ok 5 - ERC20 requires matching underlying token identity and native reserve zero
+  ---
+  duration_ms: 1.122623
+  type: 'test'
+  ...
+# Subtest: price conversion scales native and ERC20 decimals and rejects stale prices
+ok 6 - price conversion scales native and ERC20 decimals and rejects stale prices
+  ---
+  duration_ms: 0.255896
+  type: 'test'
+  ...
+# Subtest: asset evidence remains per token and misses do not become zero
+ok 7 - asset evidence remains per token and misses do not become zero
+  ---
+  duration_ms: 0.293733
+  type: 'test'
+  ...
+# Subtest: new blocks after complete index snapshot do not invalidate balanced custody
+ok 8 - new blocks after complete index snapshot do not invalidate balanced custody
+  ---
+  duration_ms: 0.443739
+  type: 'test'
+  ...
+# Subtest: invalid finalized cursor and a live balance mismatch still fail closed
+ok 9 - invalid finalized cursor and a live balance mismatch still fail closed
+  ---
+  duration_ms: 0.302506
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 55.533127

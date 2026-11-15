@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: OP, Base and Arbitrum require safe; XGRChain uses IBFT latest
+ok 1 - OP, Base and Arbitrum require safe; XGRChain uses IBFT latest
+  ---
+  duration_ms: 1.673371
+  type: 'test'
+  ...
+# Subtest: unsupported safe, noncanonical head, wrong chain ID and unknown chain fail closed
+ok 2 - unsupported safe, noncanonical head, wrong chain ID and unknown chain fail closed
+  ---
+  duration_ms: 0.415536
+  type: 'test'
+  ...
+# Subtest: original receipt must be canonical and inside source safe finality
+ok 3 - original receipt must be canonical and inside source safe finality
+  ---
+  duration_ms: 0.258139
+  type: 'test'
+  ...
+# Subtest: every approved chain has the same native finality in relayer as in GitHub catalog
+ok 4 - every approved chain has the same native finality in relayer as in GitHub catalog
+  ---
+  duration_ms: 0.653985
+  type: 'test'
+  ...
+# Subtest: OP source receipt can be finalized by safe but never by a missing safe tag
+ok 5 - OP source receipt can be finalized by safe but never by a missing safe tag
+  ---
+  duration_ms: 0.183206
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 41.636089

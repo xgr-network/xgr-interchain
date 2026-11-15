@@ -1,0 +1,136 @@
+TAP version 13
+# Subtest: write-ahead wallet intent stores only latest wallet attempt
+ok 1 - write-ahead wallet intent stores only latest wallet attempt
+  ---
+  duration_ms: 65.393368
+  type: 'test'
+  ...
+# Subtest: unapproved chain, malformed nonce and sender mismatch fail before journaling
+ok 2 - unapproved chain, malformed nonce and sender mismatch fail before journaling
+  ---
+  duration_ms: 0.336388
+  type: 'test'
+  ...
+# Subtest: route Gateway and Router use the SAME persistent write-ahead journal
+ok 3 - route Gateway and Router use the SAME persistent write-ahead journal
+  ---
+  duration_ms: 19.393015
+  type: 'test'
+  ...
+# Subtest: simulation-generated creation transaction is accepted by persistent journal
+ok 4 - simulation-generated creation transaction is accepted by persistent journal
+  ---
+  duration_ms: 9.317585
+  type: 'test'
+  ...
+# Subtest: new XITA Registry V3 starts with a clean unarchived wallet journal
+ok 5 - new XITA Registry V3 starts with a clean unarchived wallet journal
+  ---
+  duration_ms: 10.08971
+  type: 'test'
+  ...
+# Subtest: unexpected journal metadata is rejected rather than retained
+ok 6 - unexpected journal metadata is rejected rather than retained
+  ---
+  duration_ms: 0.42315
+  type: 'test'
+  ...
+# Subtest: successful repository publication deletes the local completion record
+ok 7 - successful repository publication deletes the local completion record
+  ---
+  duration_ms: 28.619581
+  type: 'test'
+  ...
+# Subtest: first journal read removes old documented Registry entry without manual path cleanup
+ok 8 - first journal read removes old documented Registry entry without manual path cleanup
+  ---
+  duration_ms: 45.481689
+  type: 'test'
+  ...
+# Subtest: completed-record cleanup preserves all unresolved router and route transactions
+ok 9 - completed-record cleanup preserves all unresolved router and route transactions
+  ---
+  duration_ms: 14.967736
+  type: 'test'
+  ...
+# Subtest: cancel only a matching prepared draft, not a submitted tx
+ok 10 - cancel only a matching prepared draft, not a submitted tx
+  ---
+  duration_ms: 10.432369
+  type: 'test'
+  ...
+# Subtest: every deployable chain component can be journaled before its FIRST wallet signing
+ok 11 - every deployable chain component can be journaled before its FIRST wallet signing
+  ---
+  duration_ms: 28.703828
+  type: 'test'
+  ...
+# Subtest: fresh XITA transport bundle intent survives journal transitions and remains non-rebroadcastable
+ok 12 - fresh XITA transport bundle intent survives journal transitions and remains non-rebroadcastable
+  ---
+  duration_ms: 20.143779
+  type: 'test'
+  ...
+# Subtest: archived Registry V3 record with old two-field reserve schema cannot block a new deployment
+ok 13 - archived Registry V3 record with old two-field reserve schema cannot block a new deployment
+  ---
+  duration_ms: 9.535826
+  type: 'test'
+  ...
+# Subtest: old submitted Registry intent is read with original hash, nonce and calldata intact
+ok 14 - old submitted Registry intent is read with original hash, nonce and calldata intact
+  ---
+  duration_ms: 1.219854
+  type: 'test'
+  ...
+# Subtest: an old signed Registry intent with unprovable reserve value cannot be silently rewritten
+ok 15 - an old signed Registry intent with unprovable reserve value cannot be silently rewritten
+  ---
+  duration_ms: 0.356128
+  type: 'test'
+  ...
+# Subtest: interrupted unused or failed intent is cleared without creating an archive
+ok 16 - interrupted unused or failed intent is cleared without creating an archive
+  ---
+  duration_ms: 38.205019
+  type: 'test'
+  ...
+# Subtest: a confirmed deployment CANNOT be silently retired or replaced
+ok 17 - a confirmed deployment CANNOT be silently retired or replaced
+  ---
+  duration_ms: 19.774951
+  type: 'test'
+  ...
+# Subtest: replacement hash can be adopted only for an unchanged, submitted original intent
+ok 18 - replacement hash can be adopted only for an unchanged, submitted original intent
+  ---
+  duration_ms: 11.369316
+  type: 'test'
+  ...
+# Subtest: operator can replace an unrecorded confirmed WAL with a NEW explicitly signed attempt
+ok 19 - operator can replace an unrecorded confirmed WAL with a NEW explicitly signed attempt
+  ---
+  duration_ms: 9.313079
+  type: 'test'
+  ...
+# Subtest: explicit override replaces only same-wallet undocumented attempt and preserves previous hash
+ok 20 - explicit override replaces only same-wallet undocumented attempt and preserves previous hash
+  ---
+  duration_ms: 10.519872
+  type: 'test'
+  ...
+# Subtest: a confirmed but unpublished on-chain deployment cannot be overridden
+ok 21 - a confirmed but unpublished on-chain deployment cannot be overridden
+  ---
+  duration_ms: 17.502876
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 425.974413

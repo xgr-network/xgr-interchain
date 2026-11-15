@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: native XGR route passes read-only contract, registry, reverse-router and fee checks
+ok 1 - native XGR route passes read-only contract, registry, reverse-router and fee checks
+  ---
+  duration_ms: 10.363255
+  type: 'test'
+  ...
+# Subtest: collateral token does not require operator to own or approve any original ERC20
+ok 2 - collateral token does not require operator to own or approve any original ERC20
+  ---
+  duration_ms: 4.658582
+  type: 'test'
+  ...
+# Subtest: destination rejecting the origin route blocks readiness before a user lock
+ok 3 - destination rejecting the origin route blocks readiness before a user lock
+  ---
+  duration_ms: 3.41397
+  type: 'test'
+  ...
+# Subtest: unexpected runtime bytecode blocks readiness despite correctly shaped catalog receipts
+ok 4 - unexpected runtime bytecode blocks readiness despite correctly shaped catalog receipts
+  ---
+  duration_ms: 2.379968
+  type: 'test'
+  ...
+# Subtest: catalog verification requires the bidirectional real deployed route
+ok 5 - catalog verification requires the bidirectional real deployed route
+  ---
+  duration_ms: 1.50159
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 143.719213

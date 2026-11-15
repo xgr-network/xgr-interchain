@@ -1,0 +1,30 @@
+{
+  "status": "FINAL PUBLICATION INTEGRITY VERIFIED",
+  "scope": "Document and evidence integrity; not all product tests passing or a new production authorization",
+  "reviewed_content_commit": "bdc2ad1c2c52baee2bf1a82e77e34a46b2b8f608",
+  "pdfs": [
+    {
+      "file": "report.pdf",
+      "pages": 20,
+      "sha256": "6e1728a5bc985c337b275ae75237cea815baecdc075f36f33a981c4f801f9b8b",
+      "locally_rendered_and_reviewed": true,
+      "local_remote_bytes_identical": true
+    },
+    {
+      "file": "node-v3.5.1-review.pdf",
+      "pages": 2,
+      "sha256": "8166cfa94544c7249d45c6b9df01b7ed404a48f672d356d352acd6ea38a606ac",
+      "locally_rendered_and_reviewed": true,
+      "local_remote_bytes_identical": true
+    }
+  ],
+  "visual_review": "All report pages rendered; text bounds checked; title/tables/continuations inspected. Final reference spacing removes an orphan reference-only page without changing content.",
+  "prior_historical_columns_unchanged": true,
+  "historical_rows": 43,
+  "unique_causes": 40,
+  "javascript_files": 174,
+  "javascript_failed_files_retained": 8,
+  "product_source_modified": false,
+  "production_operations": false,
+  "protected_fixtures_in_public_package": false
+}
