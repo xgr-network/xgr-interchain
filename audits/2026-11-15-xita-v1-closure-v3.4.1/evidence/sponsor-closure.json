@@ -1,0 +1,40 @@
+{
+  "scope": "exact production scheduler, signed-transaction validation and reconciliation with export-only instrumentation; real synthetic-key signing; source proof pre-satisfied as fixture; network and DB mocked; no live payments",
+  "sourceSha256": "9d06fb1aaae9e1f1fb1886c9bbd28bd98fc5e99a14735c13a33de1be8b9c75ca",
+  "freshCrossChain": {
+    "healthyBroadcastBeforeBlockedRelease": true,
+    "reservations": 2,
+    "eachSignedHashMatchesDurableRecord": true
+  },
+  "sameChain": {
+    "serializedReadAndSend": true,
+    "completed": 2
+  },
+  "readDeadline": {
+    "lateSends": 0
+  },
+  "recoveryResidual": {
+    "blockedReplayStarted": true,
+    "healthyChainReadDuringStall": false,
+    "healthyReplayDuringStall": false,
+    "elapsedReadDeadlines": 6,
+    "afterRelease": {
+      "replays": [
+        "xgrchain",
+        "arbitrum"
+      ],
+      "exactPreparedBytesPreserved": true,
+      "result": {
+        "checked": 0,
+        "confirmed": 0,
+        "held": 2,
+        "chainFailures": 0,
+        "journalErrors": 0
+      }
+    }
+  },
+  "f19": {
+    "externalCompletionDuringReservation": true,
+    "broadcastAfterCompletion": true
+  }
+}

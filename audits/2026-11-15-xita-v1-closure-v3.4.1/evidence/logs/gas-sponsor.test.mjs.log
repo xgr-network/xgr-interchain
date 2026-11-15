@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: all quoted stages are independently eligible after TX1 and never after TX2
+ok 1 - all quoted stages are independently eligible after TX1 and never after TX2
+  ---
+  duration_ms: 1.605609
+  type: 'test'
+  ...
+# Subtest: gas grants may cover gas and validator fee, NEVER a native token principal
+ok 2 - gas grants may cover gas and validator fee, NEVER a native token principal
+  ---
+  duration_ms: 0.559942
+  type: 'test'
+  ...
+# Subtest: durable reserve is committed before any possible payout; duplicate key denied
+ok 3 - durable reserve is committed before any possible payout; duplicate key denied
+  ---
+  duration_ms: 48.166785
+  type: 'test'
+  ...
+# Subtest: tampering with nonce, route, amount, beneficiary or quoted fee never unlocks sponsorship
+ok 4 - tampering with nonce, route, amount, beneficiary or quoted fee never unlocks sponsorship
+  ---
+  duration_ms: 0.513375
+  type: 'test'
+  ...
+# Subtest: quote lookup requires exact nonce and restricts beneficiary in SQL
+ok 5 - quote lookup requires exact nonce and restricts beneficiary in SQL
+  ---
+  duration_ms: 0.458343
+  type: 'test'
+  ...
+# Subtest: L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 constant
+ok 6 - L-02 gas grants must use a bounded dynamic estimate, not an EOA 21000 constant
+  ---
+  duration_ms: 0.534485
+  type: 'test'
+  ...
+# Subtest: N-08 sponsor payout waits for the safe L2 head and canonical block hash
+ok 7 - N-08 sponsor payout waits for the safe L2 head and canonical block hash
+  ---
+  duration_ms: 0.664056
+  type: 'test'
+  ...
+# Subtest: Sponsor inclusion: mined canonical payout is usable before L2 safe finality
+ok 8 - Sponsor inclusion: mined canonical payout is usable before L2 safe finality
+  ---
+  duration_ms: 0.410504
+  type: 'test'
+  ...
+# Subtest: F-08: failing RPC on one chain cannot prevent another chain's verified grant
+ok 9 - F-08: failing RPC on one chain cannot prevent another chain's verified grant
+  ---
+  duration_ms: 2.064523
+  type: 'test'
+  ...
+# Subtest: F-08: a stalled read expires without delaying another chain or releasing an obligation
+ok 10 - F-08: a stalled read expires without delaying another chain or releasing an obligation
+  ---
+  duration_ms: 16.275638
+  type: 'test'
+  ...
+# Subtest: F-08: an unexpected transaction identity is held, not confirmed or retried
+ok 11 - F-08: an unexpected transaction identity is held, not confirmed or retried
+  ---
+  duration_ms: 0.636015
+  type: 'test'
+  ...
+# Subtest: F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2
+ok 12 - F-07: prepared replay fails closed on delivered, unknown or absent canonical TX2
+  ---
+  duration_ms: 1.859361
+  type: 'test'
+  ...
+# Subtest: F-07: prepared signed bytes recover after crash with no user signature and identical tx hash
+ok 13 - F-07: prepared signed bytes recover after crash with no user signature and identical tx hash
+  ---
+  duration_ms: 7.653858
+  type: 'test'
+  ...
+# Subtest: F-07: a consumed nonce holds the exact signed grant for operator review
+ok 14 - F-07: a consumed nonce holds the exact signed grant for operator review
+  ---
+  duration_ms: 5.783126
+  type: 'test'
+  ...
+# Subtest: N-06 expires only after finalized source nonce evidence, never merely by time
+ok 15 - N-06 expires only after finalized source nonce evidence, never merely by time
+  ---
+  duration_ms: 0.384456
+  type: 'test'
+  ...
+# Subtest: F-16: identical independent finalized hashes and nonce permit expiry release evidence
+ok 16 - F-16: identical independent finalized hashes and nonce permit expiry release evidence
+  ---
+  duration_ms: 0.570262
+  type: 'test'
+  ...
+# Subtest: F-16: mismatched witness, conflicting nonce and reorg never release quote
+ok 17 - F-16: mismatched witness, conflicting nonce and reorg never release quote
+  ---
+  duration_ms: 0.559682
+  type: 'test'
+  ...
+# Subtest: F-16: lagging finalized witness retains unresolved promise
+ok 18 - F-16: lagging finalized witness retains unresolved promise
+  ---
+  duration_ms: 0.186046
+  type: 'test'
+  ...
+# Subtest: F-08: expiry work is fairly partitioned across source chains
+ok 19 - F-08: expiry work is fairly partitioned across source chains
+  ---
+  duration_ms: 0.178272
+  type: 'test'
+  ...
+# Subtest: F-08: stalled reserve balance RPC does not prevent healthy chain monitoring
+ok 20 - F-08: stalled reserve balance RPC does not prevent healthy chain monitoring
+  ---
+  duration_ms: 10.149724
+  type: 'test'
+  ...
+# Subtest: F-33: stalled preflight cannot broadcast after the deadline
+ok 21 - F-33: stalled preflight cannot broadcast after the deadline
+  ---
+  duration_ms: 52.282407
+  type: 'test'
+  ...
+# Subtest: F-08: fresh grant scheduling bounds stalled read-only preflight without any late wallet effect
+ok 22 - F-08: fresh grant scheduling bounds stalled read-only preflight without any late wallet effect
+  ---
+  duration_ms: 10.509543
+  type: 'test'
+  ...
+# Subtest: F-08: healthy destination executes read while unrelated destination RPC is stalled
+ok 23 - F-08: healthy destination executes read while unrelated destination RPC is stalled
+  ---
+  duration_ms: 9.876014
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 362.043793

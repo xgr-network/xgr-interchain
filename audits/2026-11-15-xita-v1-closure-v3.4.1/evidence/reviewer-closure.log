@@ -1,0 +1,10 @@
+{
+  "scope": "isolated disposable PostgreSQL, historical positive control then exact migration 018; no production access",
+  "checks": {
+    "historical_017_counterexample_reproduced": true,
+    "spoof_update_delete_private_read_denied": true,
+    "correct_cli_and_database_owned_metadata": true,
+    "wrong_sponsor_and_unknown_obligation_denied": true,
+    "original_liability_and_historical_rows_preserved": true
+  }
+}

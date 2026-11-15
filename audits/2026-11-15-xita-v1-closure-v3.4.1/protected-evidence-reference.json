@@ -1,0 +1,6 @@
+{
+  "file": "XITA_PR419_Operator_Evidence_2026-11-15.zip",
+  "sha256": "9364a0e690b943a172d1a91d86bf8483116d3dc74bb3506530561aa1ca6b77d8",
+  "files": 12,
+  "public_recipe_policy": "Detailed unresolved recovery/TOCTOU input fixtures retained in operator packet, not public repository."
+}

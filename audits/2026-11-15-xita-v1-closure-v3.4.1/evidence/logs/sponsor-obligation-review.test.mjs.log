@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: F-19 operator reviews are explicit, append-only, and require immutable unsettled promise
+ok 1 - F-19 operator reviews are explicit, append-only, and require immutable unsettled promise
+  ---
+  duration_ms: 1.776458
+  type: 'test'
+  ...
+# Subtest: F-19 unmatched, confirmed, fabricated or invalid manual outcomes cannot be recorded
+ok 2 - F-19 unmatched, confirmed, fabricated or invalid manual outcomes cannot be recorded
+  ---
+  duration_ms: 1.847258
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 65.231922

@@ -1,0 +1,61 @@
+[
+  {
+    "id": "F-36",
+    "prior": "PARTIALLY_MITIGATED",
+    "status": "VERIFIED_RESOLVED",
+    "historical_severity": "Medium",
+    "scope": "Original invalid-record / deployed-profile worker monopoly",
+    "evidence": [
+      "E-01",
+      "E-02"
+    ],
+    "production": "Operator-reported deployed; host process not independently inspected"
+  },
+  {
+    "id": "F-40",
+    "prior": "OPEN",
+    "status": "VERIFIED_RESOLVED",
+    "historical_severity": "Low",
+    "scope": "Migration-018 schema and designated restricted reviewer privileges",
+    "evidence": [
+      "E-01",
+      "E-03"
+    ],
+    "production": "Migration 018 and effective role grants not independently read back"
+  },
+  {
+    "id": "F-08",
+    "prior": "PARTIALLY_MITIGATED",
+    "status": "PARTIALLY_MITIGATED",
+    "historical_severity": "Medium",
+    "scope": "Fresh sends repaired; serial stored-transaction replay remains",
+    "evidence": [
+      "E-01",
+      "E-02"
+    ],
+    "production": "Controlled local reproduction; no live outage induced"
+  },
+  {
+    "id": "F-19",
+    "prior": "PARTIALLY_MITIGATED",
+    "status": "PARTIALLY_MITIGATED",
+    "historical_severity": "Medium",
+    "scope": "Outstanding outcomes and current delivery-state gate remain",
+    "evidence": [
+      "E-01",
+      "E-02"
+    ],
+    "production": "No new outcome-policy acceptance or production debt inspection supplied"
+  },
+  {
+    "id": "F-20",
+    "prior": "VERIFIED_RESOLVED",
+    "status": "VERIFIED_RESOLVED",
+    "historical_severity": "Medium",
+    "scope": "Inherited unchanged node source, not a fresh whole-node audit",
+    "evidence": [
+      "prior-v3.4.0"
+    ],
+    "production": "Prior deployment evidence retained, not re-attested"
+  }
+]

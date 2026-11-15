@@ -1,0 +1,45 @@
+{
+  "scope": "real registration, email confirmation, queue and profile code; legacy admission uses frozen pre-PR419 source; all mail, RPC, wallet and publication effects simulated; no live side effects",
+  "results": [
+    {
+      "label": "contact-boundary",
+      "rejectedAtAdmission": true
+    },
+    {
+      "label": "category-boundary",
+      "rejectedAtAdmission": true
+    },
+    {
+      "label": "public-link-contact",
+      "rejectedAtAdmission": true
+    },
+    {
+      "label": "legacy-contact",
+      "legacyAdmissionAccepted": true,
+      "healthySiblingSigned": true,
+      "signatures": 2,
+      "publisherAttempts": 0,
+      "originalProofPreserved": true,
+      "retainedState": "quarantined"
+    },
+    {
+      "label": "legacy-category",
+      "legacyAdmissionAccepted": true,
+      "healthySiblingSigned": true,
+      "signatures": 2,
+      "publisherAttempts": 0,
+      "originalProofPreserved": true,
+      "retainedState": "quarantined"
+    },
+    {
+      "label": "ambiguous-github",
+      "legacyAdmissionAccepted": true,
+      "healthySiblingSigned": true,
+      "signatures": 2,
+      "publisherAttempts": 1,
+      "originalProofPreserved": true,
+      "retainedState": "needs-review"
+    }
+  ],
+  "nodeVersion": "v22.16.0"
+}

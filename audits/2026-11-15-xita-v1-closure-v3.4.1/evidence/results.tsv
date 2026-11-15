@@ -1,0 +1,13 @@
+path	exit_code
+services/onboarding/creator-registration.test.mjs	0
+services/onboarding/creator-manifests.test.mjs	0
+services/onboarding/creator-operator.test.mjs	0
+services/onboarding/private-store.test.mjs	0
+services/managed-relay/gas-sponsor.test.mjs	0
+services/managed-relay/gas-sponsor-f08-effects.test.mjs	0
+services/managed-relay/creator-wallet-guard.test.mjs	0
+services/managed-relay/sponsor-obligation-review.test.mjs	0
+services/managed-relay/sponsor-status.test.mjs	0
+services/managed-relay/sponsor-obligation-audit.test.mjs	0
+services/managed-relay/sponsor-obligation-audit.pg.test.mjs	0
+independent-reviewer-closure	0

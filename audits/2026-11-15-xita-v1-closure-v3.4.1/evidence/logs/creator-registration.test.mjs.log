@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: Creator registration fails closed until separately enabled in Join service
+ok 1 - Creator registration fails closed until separately enabled in Join service
+  ---
+  duration_ms: 44.084653
+  type: 'test'
+  ...
+# Subtest: unverified logo is private; confirmed email publishes sanitized permanent XITA URL exactly once
+ok 2 - unverified logo is private; confirmed email publishes sanitized permanent XITA URL exactly once
+  ---
+  duration_ms: 33.313464
+  type: 'test'
+  ...
+# Subtest: expired confirmation is rejected and no public logo appears
+ok 3 - expired confirmation is rejected and no public logo appears
+  ---
+  duration_ms: 11.65159
+  type: 'test'
+  ...
+# Subtest: server rejects invalid logos and unsafe token/application parameters
+ok 4 - server rejects invalid logos and unsafe token/application parameters
+  ---
+  duration_ms: 11.06607
+  type: 'test'
+  ...
+# Subtest: server normalization retains each immutable token option and rejects invalid mint caps
+ok 5 - server normalization retains each immutable token option and rejects invalid mint caps
+  ---
+  duration_ms: 2.382385
+  type: 'test'
+  ...
+# Subtest: real Creator registration accepts no relationship selection or duplicate acknowledgement checkbox
+ok 6 - real Creator registration accepts no relationship selection or duplicate acknowledgement checkbox
+  ---
+  duration_ms: 6.405695
+  type: 'test'
+  ...
+# Subtest: F-36 registration rejects names longer than the on-chain UTF-8 byte limit
+ok 7 - F-36 registration rejects names longer than the on-chain UTF-8 byte limit
+  ---
+  duration_ms: 0.792695
+  type: 'test'
+  ...
+# Subtest: F-36: reject unsafe public profile fields before email confirmation or token signing
+ok 8 - F-36: reject unsafe public profile fields before email confirmation or token signing
+  ---
+  duration_ms: 0.844563
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 277.018223
