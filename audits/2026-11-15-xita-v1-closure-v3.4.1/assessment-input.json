@@ -1,0 +1,118 @@
+{
+  "revision": "3.4.1",
+  "date": "2026-11-15",
+  "interchain": "6e78cadc631fcdff8605ea0428965e7b911076cd",
+  "node": "723ff829d7380a29a116fd2f29c3b808ec073c0d",
+  "findings": [
+    {
+      "id": "F-36",
+      "prior": "PARTIALLY_MITIGATED",
+      "status": "VERIFIED_RESOLVED",
+      "historical_severity": "Medium",
+      "scope": "Original invalid-record / deployed-profile worker monopoly",
+      "evidence": ["E-01", "E-02"],
+      "production": "Operator-reported deployed; host process not independently inspected"
+    },
+    {
+      "id": "F-40",
+      "prior": "OPEN",
+      "status": "VERIFIED_RESOLVED",
+      "historical_severity": "Low",
+      "scope": "Migration-018 schema and designated restricted reviewer privileges",
+      "evidence": ["E-01", "E-03"],
+      "production": "Migration 018 and effective role grants not independently read back"
+    },
+    {
+      "id": "F-08",
+      "prior": "PARTIALLY_MITIGATED",
+      "status": "PARTIALLY_MITIGATED",
+      "historical_severity": "Medium",
+      "scope": "Fresh sends repaired; serial stored-transaction replay remains",
+      "evidence": ["E-01", "E-02"],
+      "production": "Controlled local reproduction; no live outage induced"
+    },
+    {
+      "id": "F-19",
+      "prior": "PARTIALLY_MITIGATED",
+      "status": "PARTIALLY_MITIGATED",
+      "historical_severity": "Medium",
+      "scope": "Outstanding outcomes and current delivery-state gate remain",
+      "evidence": ["E-01", "E-02"],
+      "production": "No new outcome-policy acceptance or production debt inspection supplied"
+    },
+    {
+      "id": "F-20",
+      "prior": "VERIFIED_RESOLVED",
+      "status": "VERIFIED_RESOLVED",
+      "historical_severity": "Medium",
+      "scope": "Inherited unchanged node source, not a fresh whole-node audit",
+      "evidence": ["prior-v3.4.0"],
+      "production": "Prior deployment evidence retained, not re-attested"
+    }
+  ],
+  "statistics": {
+    "unique_causes": 40,
+    "Critical": 0,
+    "High": 0,
+    "Medium": 9,
+    "Low": 15,
+    "Informational": 3,
+    "RESOLVED": 13,
+    "newly_resolved": ["F-36", "F-40"],
+    "new_causes": [],
+    "note": "Source/schema roll-forward only. All other findings inherited. F-40 production migration not attested; F-11 accepted risk remains Medium."
+  },
+  "protected_packet": {
+    "file": "XITA_PR419_Operator_Evidence_2026-11-15.zip",
+    "sha256": "9364a0e690b943a172d1a91d86bf8483116d3dc74bb3506530561aa1ca6b77d8",
+    "files": 12,
+    "public_recipe_policy": "Detailed unresolved recovery/TOCTOU input fixtures retained in operator packet, not public repository."
+  },
+  "local_results": {
+    "creator": {
+      "scope": "real registration, email confirmation, queue and profile code; legacy admission uses frozen pre-PR419 source; all mail, RPC, wallet and publication effects simulated; no live side effects",
+      "results": [
+        {"label": "contact-boundary", "rejectedAtAdmission": true},
+        {"label": "category-boundary", "rejectedAtAdmission": true},
+        {"label": "public-link-contact", "rejectedAtAdmission": true},
+        {"label": "legacy-contact", "legacyAdmissionAccepted": true, "healthySiblingSigned": true, "signatures": 2, "publisherAttempts": 0, "originalProofPreserved": true, "retainedState": "quarantined"},
+        {"label": "legacy-category", "legacyAdmissionAccepted": true, "healthySiblingSigned": true, "signatures": 2, "publisherAttempts": 0, "originalProofPreserved": true, "retainedState": "quarantined"},
+        {"label": "ambiguous-github", "legacyAdmissionAccepted": true, "healthySiblingSigned": true, "signatures": 2, "publisherAttempts": 1, "originalProofPreserved": true, "retainedState": "needs-review"}
+      ],
+      "nodeVersion": "v22.16.0"
+    },
+    "sponsor": {
+      "scope": "exact production scheduler, signed-transaction validation and reconciliation with export-only instrumentation; real synthetic-key signing; source proof pre-satisfied as fixture; network and DB mocked; no live payments",
+      "sourceSha256": "9d06fb1aaae9e1f1fb1886c9bbd28bd98fc5e99a14735c13a33de1be8b9c75ca",
+      "freshCrossChain": {"healthyBroadcastBeforeBlockedRelease": true, "reservations": 2, "eachSignedHashMatchesDurableRecord": true},
+      "sameChain": {"serializedReadAndSend": true, "completed": 2},
+      "readDeadline": {"lateSends": 0},
+      "recoveryResidual": {
+        "blockedReplayStarted": true,
+        "healthyChainReadDuringStall": false,
+        "healthyReplayDuringStall": false,
+        "elapsedReadDeadlines": 6,
+        "afterRelease": {
+          "replays": ["xgrchain", "arbitrum"],
+          "exactPreparedBytesPreserved": true,
+          "result": {"checked": 0, "confirmed": 0, "held": 2, "chainFailures": 0, "journalErrors": 0}
+        }
+      },
+      "f19": {"externalCompletionDuringReservation": true, "broadcastAfterCompletion": true}
+    }
+  },
+  "ci": {
+    "run_id": 43738410591,
+    "artifact_id": 14170887571,
+    "artifact_sha256": "b14d28195128cef8fb97445f430f746ea260b27057328951ca6a13365fd9c1fb",
+    "harness_sha": "9a0abde694103901c19bde64a7eb99a0dcedd64e",
+    "test_files": 11,
+    "tap_tests": 83,
+    "passed": 83,
+    "failed": 0
+  },
+  "harness_issues": [
+    {"run_id": 43737796502, "kind": "auditor_setup", "reason": "fixture correctly rejected wrong disposable database name"},
+    {"run_id": 43738124885, "kind": "auditor_import", "reason": "standalone CommonJS client import incorrect; product tests passed"}
+  ]
+}
