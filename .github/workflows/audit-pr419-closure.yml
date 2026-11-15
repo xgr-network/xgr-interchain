@@ -16,20 +16,25 @@ jobs:
         env:
           POSTGRES_USER: xita_ci
           POSTGRES_PASSWORD: local-ci-only
-          POSTGRES_DB: xita_closure_ci
+          POSTGRES_DB: xita_sponsor_ci
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U xita_ci -d xita_closure_ci"
+          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
           --health-interval 3s --health-timeout 3s --health-retries 20
     env:
-      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_closure_ci
+      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: 6e78cadc631fcdff8605ea0428965e7b911076cd
           fetch-depth: 0
           persist-credentials: false
-      - name: Freeze source and compare actual deployed report targets
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 518726b7673fa9c1f8a35d23ea7f8f24a3a45dd2
+          path: audit-harness
+          persist-credentials: false
+      - name: Freeze source and compare actual report targets
         shell: bash
         run: |
           set -euo pipefail
@@ -48,9 +53,10 @@ jobs:
             npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund --package-lock=false
           done
           tar -czf closure-evidence/dependencies.tar.gz services/onboarding/node_modules services/managed-relay/node_modules services/indexer/node_modules
-      - name: Repeat all affected service regression files, retain each result
+      - name: Repeat affected tests and independent SQL migration replay
         shell: bash
         run: |
+          set +e
           set -uo pipefail
           failed=0
           printf 'path\texit_code\n' > closure-evidence/results.tsv
@@ -60,6 +66,10 @@ jobs:
             printf '%s\t%s\n' "$path" "$rc" | tee -a closure-evidence/results.tsv
             if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
           done
+          node audit-harness/audits/2026-11-15-xita-v1-closure-v3.4.1/probes/reviewer-closure.mjs > closure-evidence/reviewer-closure.log 2>&1
+          rc=$?
+          printf 'independent-reviewer-closure\t%s\n' "$rc" >> closure-evidence/results.tsv
+          if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
           printf 'failed_files=%s\n' "$failed" > closure-evidence/summary.txt
           (cd closure-evidence && sha256sum source.tar.gz dependencies.tar.gz pr419.patch results.tsv > sha256sums.txt)
           test "$failed" -eq 0
