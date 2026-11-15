@@ -1,0 +1,144 @@
+name: XITA V1 delta audit evidence 2026-11-15
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-20261115-evidence.yml'
+      - 'audits/2026-11-15-xita-v1-delta-v3.4.0/**'
+permissions:
+  contents: read
+concurrency:
+  group: audit-20261115-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  frozen-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fe3d63603a09197217c57e61961f6434e39ba07f
+          path: interchain
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: xgr-network/xgr-node
+          ref: 723ff829d7380a29a116fd2f29c3b808ec073c0d
+          path: node
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Archive exact tracked sources and source deltas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          test "$(git -C interchain rev-parse HEAD)" = fe3d63603a09197217c57e61961f6434e39ba07f
+          test "$(git -C node rev-parse HEAD)" = 723ff829d7380a29a116fd2f29c3b808ec073c0d
+          git -C interchain archive --format=tar.gz --prefix=interchain/ HEAD > evidence/interchain-source.tar.gz
+          git -C node archive --format=tar.gz --prefix=node/ HEAD > evidence/node-source.tar.gz
+          git -C interchain diff --name-status 33a4e37cf48c509b83c67d8007c246ff2838c606 HEAD > evidence/interchain-name-status.txt
+          git -C interchain diff --binary 33a4e37cf48c509b83c67d8007c246ff2838c606 HEAD -- . ':!audits' > evidence/interchain-product.patch
+          git -C node diff --name-status a84c82737dc3ca195192a96498eab0e170f8bb5a HEAD > evidence/node-name-status.txt
+          git -C node diff --binary a84c82737dc3ca195192a96498eab0e170f8bb5a HEAD > evidence/node-product.patch
+          git -C interchain ls-tree -r HEAD > evidence/interchain-tree.txt
+          git -C node ls-tree -r HEAD > evidence/node-tree.txt
+          git -C interchain rev-parse HEAD HEAD^{tree} > evidence/interchain-revision.txt
+          git -C node rev-parse HEAD HEAD^{tree} > evidence/node-revision.txt
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > evidence/collected-at.txt
+          (cd evidence && sha256sum *.tar.gz *.patch *-tree.txt *-name-status.txt > source-sha256.txt)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: audit-20261115-frozen-sources
+          path: evidence/
+          retention-days: 14
+          if-no-files-found: error
+  fresh-javascript:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: xita_ci
+          POSTGRES_PASSWORD: local-ci-only
+          POSTGRES_DB: xita_sponsor_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U xita_ci -d xita_sponsor_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      XITA_SPONSOR_TEST_DATABASE_URL: postgresql://xita_ci:local-ci-only@127.0.0.1:5432/xita_sponsor_ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fe3d63603a09197217c57e61961f6434e39ba07f
+          persist-credentials: false
+      - name: Install isolated test-only dependencies and retain their manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-evidence/js
+          node --version > audit-evidence/js/toolchain.txt
+          npm --version >> audit-evidence/js/toolchain.txt
+          for dir in services/onboarding services/managed-relay services/indexer runtime/native-relayer; do
+            npm install --prefix "$dir" --ignore-scripts --no-audit --no-fund --package-lock=false
+          done
+          for browser in google-chrome chromium chromium-browser google-chrome-stable; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              echo "XITA_BROWSER=$(command -v "$browser")" >> "$GITHUB_ENV"
+              break
+            fi
+          done
+          tar -czf audit-evidence/js-dependencies.tar.gz services/onboarding/node_modules services/managed-relay/node_modules services/indexer/node_modules runtime/native-relayer/node_modules
+      - name: Independently discover and execute every JavaScript test file
+        shell: bash
+        run: |
+          set -uo pipefail
+          failed=0
+          printf 'path\texit_code\n' > audit-evidence/js/results.tsv
+          while IFS= read -r path; do
+            log="audit-evidence/js/$(printf '%s' "$path" | tr '/' '_').log"
+            timeout 100s node --test --test-reporter=tap "$path" > "$log" 2>&1
+            rc=$?
+            printf '%s\t%s\n' "$path" "$rc" | tee -a audit-evidence/js/results.tsv
+            if [ "$rc" -ne 0 ]; then failed=$((failed+1)); fi
+          done < <(git ls-files 'apps/web/*.test.mjs' 'services/**/*.test.mjs' 'tools/*.test.mjs' 'runtime/native-relayer/*.test.mjs' | sort)
+          printf 'failing_files=%s\n' "$failed" | tee audit-evidence/js/summary.txt
+          test "$failed" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-20261115-javascript
+          path: audit-evidence/
+          retention-days: 14
+          if-no-files-found: error
+  fresh-node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: xgr-network/xgr-node
+          ref: 723ff829d7380a29a116fd2f29c3b808ec073c0d
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.23.12'
+          cache: true
+      - name: Repeat current node recovery and cross-layer regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-evidence
+          go version > audit-evidence/toolchain.txt
+          git rev-parse HEAD > audit-evidence/commit.txt
+          go test -p 2 -count=1 -timeout=10m -json ./interchain/... ./consensus/ibft/interchain ./jsonrpc 2>&1 | tee audit-evidence/node-regressions.jsonl
+          go test -p 2 -count=5 -timeout=5m -json ./interchain/runtime -run 'TestF20' 2>&1 | tee audit-evidence/f20-repeat.jsonl
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: audit-20261115-node
+          path: audit-evidence/
+          retention-days: 14
+          if-no-files-found: error
