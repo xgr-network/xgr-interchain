@@ -31,7 +31,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 518726b7673fa9c1f8a35d23ea7f8f24a3a45dd2
+          ref: b7ce5ae849944dec93771e3e7c24730d0b5574de
           path: audit-harness
           persist-credentials: false
       - name: Freeze source and compare actual report targets
