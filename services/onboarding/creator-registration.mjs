@@ -37,7 +37,8 @@ export function normalizeCreatorApplication(data){
  const name=String(data.name||"").trim(),symbol=String(data.symbol||"").trim(),
   initialSupply=String(data.initialSupply||"").trim(),ownerAddress=String(data.ownerAddress||"").trim().toLowerCase(),contactEmail=String(data.contactEmail||"").trim().toLowerCase();
  if(!ADDRESS.test(ownerAddress)||/^0x0{40}$/i.test(ownerAddress))throw Error("Valid project owner wallet address required");
- if(!NAME.test(name)||!SYMBOL.test(symbol)||!SUPPLY.test(initialSupply))
+ if(!NAME.test(name)||Buffer.byteLength(name,"utf8")>80||
+  !SYMBOL.test(symbol)||!SUPPLY.test(initialSupply))
   throw Error("Invalid token name, symbol or initial supply");
  const config=creatorSettings({...data,initialSupply,ownerAddress});
  if(!EMAIL.test(contactEmail)||contactEmail.length>254)throw Error("Valid contact email required");
