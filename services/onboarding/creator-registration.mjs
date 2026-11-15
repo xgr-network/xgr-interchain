@@ -10,6 +10,7 @@ import {applicationMail} from "./mail-template.mjs";
 import {sendMail,mailConfigured} from "./mail-gateway.mjs";
 import {normalizeJoinDescription} from "../../apps/web/join-description.js";
 import {creatorSettings} from "../../apps/web/creator-token-config.js";
+import {validateCreatorPublicFields} from "./creator-manifests.mjs";
 
 const SHA=/^[a-f0-9]{64}$/;
 const ID=/^[0-9a-f-]{36}$/;
@@ -62,6 +63,7 @@ export function normalizeCreatorApplication(data){
   decimals:config.decimals,maxSupply:config.maxSupply,minterAddress:config.minterAddress,
   permit:config.permit,contactEmail,applicantRole:ROLES.has(data.applicantRole)?data.applicantRole:"community",
   shortDescription,description,website,categories,tags,links,confirmed:true};
+ validateCreatorPublicFields(record);
  return {record,logo};
 }
 export function creatorLogoPublicUrl(hash){

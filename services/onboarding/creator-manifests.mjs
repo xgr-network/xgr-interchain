@@ -10,8 +10,27 @@ import {creatorSettings} from "../../apps/web/creator-token-config.js";
 import {normalizeJoinDescription} from "../../apps/web/join-description.js";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const valid=s=>typeof s==="string"&&s.length>0&&!/[<>\x00-\x1f]/.test(s);
+// Apply the same public profile policy before irreversible token deployment
+// and again when publishing its receipt-verified profile.
+export function validateCreatorPublicFields(input){
+ if(!input||!valid(input.name)||
+    normalizeJoinDescription(input.shortDescription,15,280)!==input.shortDescription||
+    normalizeJoinDescription(input.description,40,5000)!==input.description)
+  throw Error("Invalid public profile fields");
+ for(const field of ["categories","tags"]){
+  if(!Array.isArray(input[field])||input[field].some(x=>
+     typeof x!=="string"||x.trim()!==x))
+   throw Error("Invalid public Creator "+field);
+ }
+ const publicText=JSON.stringify({name:input.name,shortDescription:input.shortDescription,
+  description:input.description,categories:input.categories,tags:input.tags,
+  website:input.website,links:input.links});
+ if(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(publicText))
+  throw Error("Personal contact information must never enter public GitHub");
+}
 export function buildCreatorProfileBundle(record,proof,catalog){
  const a=record?.input;
+ validateCreatorPublicFields(a);
  const cfg=creatorSettings(a||{});
  if(record?.kind!=="token-creator"||!["deployed","pr-published"].includes(record.phase)||
     !a||!proof||!catalog?.chains?.xgrchain||catalog.chains.xgrchain.chainId!==1643)

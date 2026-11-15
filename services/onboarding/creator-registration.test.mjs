@@ -170,3 +170,11 @@ test("F-36 registration rejects names longer than the on-chain UTF-8 byte limit"
  assert.equal(normalizeCreatorApplication({...input,name:"Ä".repeat(39)}).record.name,
   "Ä".repeat(39));
 });
+
+test("F-36: reject unsafe public profile fields before email confirmation or token signing",()=>{
+ for(const field of [
+  {description:"Example Token publishes assistance at audit@example.org but never intends this private contact to be indexed."},
+  {categories:[" DeFi"]}
+ ])assert.throws(()=>normalizeCreatorApplication({...input,...field}),
+  /public Creator|Personal contact/i);
+});

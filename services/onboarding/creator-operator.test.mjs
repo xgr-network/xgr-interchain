@@ -207,3 +207,78 @@ test("F-36 invalid solitary Creator entry is retained for manual review, not del
    loadInventory:loadCatalog,checkSponsorJournal:async()=>{}})).phase,"idle");
  }finally{x.cleanup()}
 });
+
+test("F-36: invalid verified-deployed profile cannot starve healthy sibling after restart",async()=>{
+ const x=fixture(),bad=readPrivate(x.dir,x.id);
+ const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
+  symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",
+  maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,
+  permit:false,minterAddress:"0x"+"0".repeat(40),factory:factory.address,
+  operator,txHash,tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12000000};
+ bad.phase="deployed";bad.input={...bad.input,description:
+  "An unsafe public profile text includes audit@example.org and must not leak into GitHub."};
+ bad.deployment={status:"verified",txHash,tokenAddress:token,verifiedProof:proof};
+ savePrivate(x.dir,bad);
+ const y=createPending(x.dir,{...input,name:"Healthy Sibling",symbol:"HLTHY"},
+  "creator:healthy",{now:now+1000});
+ const good=readPrivate(x.dir,y.id);
+ good.kind="token-creator";good.phase="deployment-queued";
+ good.logoUrl="https://xita.xgr.network/token-logos/"+"b".repeat(64)+".png";
+ good.deployment={status:"queued",txHash:null,tokenAddress:null};
+ savePrivate(x.dir,good);
+ let signedCount=0,remoteCount=0;
+ const rpc=async(_url,method)=>{
+  if(method==="eth_chainId")return "0x66b";
+  if(method==="eth_getCode")return "0x6001";
+  if(method==="eth_gasPrice")return "0x3b9aca00";
+  if(method==="eth_getTransactionCount")return "0x01";
+  if(method==="eth_getBalance")return "0x3635c9adc5dea00000";
+  if(method==="eth_estimateGas")return "0x7a120";
+  if(method==="eth_sendRawTransaction")return txHash;
+  return null;
+ };
+ const run=(clock=now)=>processCreatorQueue({env:env(x.dir),now:clock,
+  loadFactory:()=>factory,call:rpc,loadInventory:loadCatalog,
+  checkSponsorJournal:async()=>{},verify:async()=>proof,
+  walletFactory:()=>({address:operator,signTransaction:async()=>{signedCount++;return signed}}),
+  mainSha:()=>"a".repeat(40),publisher:async()=>{remoteCount++;throw Error("Unexpected remote publication")}});
+ try{
+  assert.equal((await run()).phase,"deployment-submitted");
+  assert.equal(readPrivate(x.dir,y.id).deployment.txHash,txHash);
+  assert.equal(readPrivate(x.dir,x.id).deployment.verifiedProof.txHash,txHash);
+  assert.equal(readPrivate(x.dir,x.id).publication.status,"backoff");
+  assert.equal(remoteCount,0);assert.equal(signedCount,1);
+  assert.equal((await run()).phase,"broadcast-retry");
+  assert.equal(signedCount,1);
+  const completed=readPrivate(x.dir,y.id);
+  completed.phase="pr-published";completed.pr={number:771,kind:"xgrchain-profile"};
+  completed.deployment={...completed.deployment,status:"verified",verifiedProof:proof};
+  savePrivate(x.dir,completed);
+  await run(now+61e3);await run(now+182e3);
+  assert.equal(readPrivate(x.dir,x.id).publication.status,"quarantined");
+  assert.equal((await run(now+1e7)).phase,"publication-deferred");
+  assert.equal(readPrivate(x.dir,x.id).phase,"deployed");
+ }finally{x.cleanup()}
+});
+
+test("F-36: unknown GitHub result cannot blindly create a duplicate profile PR",async()=>{
+ const x=fixture(),row=readPrivate(x.dir,x.id);
+ const proof={chainId:1643,tokenAddress:token,ownerAddress:owner,name:input.name,
+  symbol:input.symbol,initialSupplyBaseUnits:"10000000000000000000000",
+  maxSupplyBaseUnits:"10000000000000000000000",tokenType:0,decimals:18,
+  permit:false,minterAddress:"0x"+"0".repeat(40),factory:factory.address,
+  operator,txHash,tokenCodeHash:"0x"+"d".repeat(64),blockNumber:12000000};
+ row.phase="deployed";row.deployment={status:"verified",txHash,tokenAddress:token,verifiedProof:proof};
+ savePrivate(x.dir,row);
+ let attempts=0;
+ const run=()=>processCreatorQueue({env:env(x.dir),now,loadFactory:()=>factory,
+  loadInventory:loadCatalog,verify:async()=>proof,mainSha:()=>"a".repeat(40),
+  walletFactory:()=>({address:operator,signTransaction:async()=>{throw Error("Never sign")}}),
+  publisher:async()=>{attempts++;throw Error("Remote publisher outcome unknown")}});
+ try{
+  assert.equal((await run()).phase,"publication-deferred");
+  assert.equal(readPrivate(x.dir,x.id).publication.status,"needs-review");
+  assert.equal((await run()).phase,"publication-deferred");
+  assert.equal(attempts,1);
+ }finally{x.cleanup()}
+});

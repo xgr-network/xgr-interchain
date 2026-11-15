@@ -73,7 +73,7 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     "010_wallet_aware_sponsor_commitments.sql",
     "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
     "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql",
-    "017_sponsor_obligation_reviews.sql"]){
+    "017_sponsor_obligation_reviews.sql","018_sponsor_review_attribution.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
   const reset=()=>db.query("TRUNCATE xita_sponsor_obligation_reviews,xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations RESTART IDENTITY CASCADE");
@@ -256,6 +256,36 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
      pool:reopened,grantKey:key,sponsorAddress:A(999),outcome:"acknowledged"
     }),/No matching unresolved/);
    }finally{await reopened.end()}
+  });
+  await t.test("F-40 reviewer cannot fabricate sponsor, identity or timestamp via direct SQL",async()=>{
+   await reset();
+   // Disposable PostgreSQL only, using the exact restricted reviewer role.
+   await db.query("CREATE ROLE xita_sponsor_reviewer NOLOGIN NOSUPERUSER NOBYPASSRLS");
+   await db.query(readFileSync(new URL("../indexer/sql/017_sponsor_obligation_reviews.sql",import.meta.url),"utf8"));
+   await db.query(readFileSync(new URL("../indexer/sql/018_sponsor_review_attribution.sql",import.meta.url),"utf8"));
+   await paid(db,73,{delivered:true});
+   assert.equal((await recordOvertakenSponsorObligations({pool:db,wallet:{address:sponsor}})).recorded,1);
+   const key="base:"+H(573)+":first-delivery";
+   const cx=await db.connect();
+   try{
+    await cx.query("SET ROLE xita_sponsor_reviewer");
+    await assert.rejects(()=>cx.query(
+     "INSERT INTO public.xita_sponsor_obligation_reviews"+
+     "(grant_key,sponsor_address,outcome,reviewer,recorded_at)"+
+     " VALUES ($1,$2,'escalated','forged','2000-01-01')",
+     [key,A(999)]),e=>e.code==="42501");
+    const row=await recordSponsorObligationReview({
+     pool:cx,grantKey:key,sponsorAddress:sponsor,outcome:"escalated"
+    });
+    assert.equal(row.reviewer,"xita_sponsor_reviewer");
+    const details=await cx.query("SELECT sponsor_address,reviewer,recorded_at FROM"+
+     " public.xita_sponsor_obligation_reviews WHERE review_id=$1",[row.reviewId]);
+    assert.equal(details.rows[0].sponsor_address,sponsor);
+    assert.equal(details.rows[0].reviewer,"xita_sponsor_reviewer");
+    assert.ok(new Date(details.rows[0].recorded_at).getTime()>Date.now()-10000);
+    await assert.rejects(()=>cx.query("UPDATE public.xita_sponsor_obligation_reviews"+
+     " SET outcome='acknowledged' WHERE review_id=$1",[row.reviewId]),e=>e.code==="42501");
+   }finally{await cx.query("RESET ROLE");cx.release()}
   });
   await t.test("Healthy paid grants => no alerts",async()=>{
    await reset();

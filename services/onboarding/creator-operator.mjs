@@ -176,36 +176,64 @@ export async function processCreatorQueue({env=process.env,now=Date.now(),
  // Existing Creator records can already have the former combined Join Draft PR
  // (e.g. XITA Canary #400). Migrate their publication to a separate
  // receipt-verified, route-free profile PR. Never merge or reuse the broad PR.
- const ready=records.find(x=>x.kind==="token-creator"&&x.deployment?.verifiedProof&&(
-   (x.phase==="deployed"&&!x.pr)||
+ // F-36: a malformed deployed profile must not monopolize the operator.
+ // Keep on-chain evidence and advance healthy siblings. GitHub uncertainty
+ // requires operator review, never a blind second publication/redeployment.
+ let deferredPublications=0;
+ const orderedReady=[...records].filter(x=>x.kind==="token-creator"&&
+  x.deployment?.verifiedProof&&((x.phase==="deployed"&&!x.pr)||
    (x.phase==="pr-published"&&Number.isSafeInteger(x.pr?.number)&&
-    x.pr?.kind!=="xgrchain-profile")));
- if(ready){
+    x.pr?.kind!=="xgrchain-profile")))
+  .sort((a,b)=>(Date.parse(a.createdAt)||0)-(Date.parse(b.createdAt)||0)||
+   String(a.id).localeCompare(String(b.id)));
+ if(orderedReady.length){
   const catalog=loadInventory();
   if(validateCatalog(catalog).length)throw Error("Cannot publish Creator profile against invalid GitHub inventory");
-  const verified=await verify({input:ready.input,txHash:ready.deployment.txHash,factory,urls,call:rpc});
-  if(!same(verified.tokenAddress,ready.deployment.tokenAddress))
-   throw Error("Creator proof changed before Join PR creation");
-  const bundle=buildCreatorProfileBundle(ready,verified,catalog);
-  const pr=await publisher(bundle,{expectedMain:mainSha(),applicationId:ready.id});
-  await lockedRecord(path,ready.id,async record=>{
-   const migrating=record.phase==="pr-published"&&
-    Number.isSafeInteger(record.pr?.number)&&record.pr?.kind!=="xgrchain-profile";
-   if((record.phase!=="deployed"&&!migrating)||
-      !same(record.deployment.txHash,verified.txHash))
-    throw Error("Creator profile application state changed");
-   if(migrating)record.supersededInterchainPr=record.pr;
-   record.assetId=bundle.assetId;record.phase="pr-published";
-   record.pr={...pr,kind:"xgrchain-profile"};
-   // The project's second email is the actual public token profile link,
-   // not a premature PR link while the profile is still under review.
-   savePrivate(path,record);
-  });
-  return {phase:"pr-published",id:ready.id,pr};
+  for(const ready of orderedReady){
+   if(["quarantined","needs-review"].includes(ready.publication?.status)||
+      Date.parse(ready.publication?.nextAttemptAt)>now){
+    deferredPublications++;continue;
+   }
+   let remoteAttempted=false;
+   try{
+    const verified=await verify({input:ready.input,txHash:ready.deployment.txHash,factory,urls,call:rpc});
+    if(!same(verified.tokenAddress,ready.deployment.tokenAddress))
+     throw Error("Creator proof changed before Join PR creation");
+    const bundle=buildCreatorProfileBundle(ready,verified,catalog);
+    remoteAttempted=true;
+    const pr=await publisher(bundle,{expectedMain:mainSha(),applicationId:ready.id});
+    await lockedRecord(path,ready.id,async record=>{
+     const migrating=record.phase==="pr-published"&&
+      Number.isSafeInteger(record.pr?.number)&&record.pr?.kind!=="xgrchain-profile";
+     if((record.phase!=="deployed"&&!migrating)||
+        !same(record.deployment.txHash,verified.txHash))
+      throw Error("Creator profile application state changed");
+     if(migrating)record.supersededInterchainPr=record.pr;
+     record.assetId=bundle.assetId;record.phase="pr-published";
+     record.pr={...pr,kind:"xgrchain-profile"};
+     record.publication=null;
+     savePrivate(path,record);
+    });
+    return {phase:"pr-published",id:ready.id,pr};
+   }catch(error){
+    await lockedRecord(path,ready.id,async record=>{
+     if(!["deployed","pr-published"].includes(record.phase)||
+        !same(record.deployment?.txHash,ready.deployment?.txHash))return;
+     const failures=Number(record.publication?.failures||0)+1;
+     const review=remoteAttempted;
+     record.publication={status:review?"needs-review":failures>=3?"quarantined":"backoff",
+      failures,lastAttemptAt:new Date(now).toISOString(),
+      nextAttemptAt:review||failures>=3?null:new Date(now+Math.min(3600000,60000*2**(failures-1))).toISOString(),
+      lastError:String(error?.message||error).slice(0,180)};
+     savePrivate(path,record);
+    });
+    deferredPublications++;
+   }
+  }
  }
  const queued=records.some(x=>x.kind==="token-creator"&&
   x.phase==="deployment-queued"&&x.deployment?.status==="queued");
- if(!queued)return {phase:"idle"};
+ if(!queued)return deferredPublications?{phase:"publication-deferred",deferred:deferredPublications}:{phase:"idle"};
  // Fail globally if the inventory is bad. Only per-request static defects
  // are eligible for quarantine.
  const catalog=loadInventory();
