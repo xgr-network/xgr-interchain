@@ -505,3 +505,32 @@ test("F-08: fresh grant scheduling bounds stalled read-only preflight without an
  assert.match(source,/PARTITION BY p.source_chain,c.grant_chain/);
  assert.match(source,/chain_rank<=12/);
 });
+
+test("F-08: healthy destination executes read while unrelated destination RPC is stalled",async()=>{
+ const row=(source,destination,id)=>({
+  ...first,source_chain:source,message_id:hash(id),
+  destination_chain:destination,final_destination_chain:destination,
+  onward_route_id:null,grant_stage:"first-delivery",grant_chain:destination
+ });
+ const stalled=row("base","xgrchain","1");
+ const healthy=row("arbitrum","polygon","2");
+ let unblock,slowEntered=false,healthyResolved=false;
+ const stuck=new Promise(resolve=>{unblock=resolve});
+ const statuses=await processFreshSponsorQueue({
+  rows:[stalled,healthy],
+  policy:{xgrchain:{},polygon:{}},
+  read:async input=>{
+   if(input.source_chain==="base"){slowEntered=true;return stuck}
+   healthyResolved=true;
+   return {status:"no-matching-quote-promise",chain:"polygon"};
+  },
+  send:async()=>{throw Error("Unexpected wallet effect")},
+  readTimeoutMs:10
+ });
+ assert.equal(slowEntered,true);
+ assert.equal(healthyResolved,true);
+ assert.deepEqual(statuses.map(x=>x.status).sort(),
+  ["held-for-review","no-matching-quote-promise"].sort());
+ unblock({status:"late-read"});
+ await Promise.resolve();
+});
