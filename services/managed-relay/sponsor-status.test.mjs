@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {publicSponsorshipView,enforceSignedQuoteRate} from "./server.mjs";
+import {publicSponsorshipView,enforceSignedQuoteRate,sponsorAdmissionState} from "./server.mjs";
 const message="base:0x"+"a".repeat(64);
 test("sponsor status is not falsely green when no grant journal exists",()=>{
  assert.deepEqual(publicSponsorshipView([]),{ok:true,status:"unavailable"});
@@ -70,4 +70,18 @@ test("N-05 returns only chain-bound promised stage names",()=>{
  const s=publicSponsorshipView([{wallet_aware:true,expected_grants:2,promised_stages:["hub-onward","final-delivery"],grant_key:null}]);
  assert.equal(s.status,"pending");
  assert.deepEqual(s.promisedStages,["hub-onward","final-delivery"]);
+});
+
+test("F-19 quote admission freeze preserves existing sponsor servicing",()=>{
+ assert.deepEqual(sponsorAdmissionState({
+  XITA_INTERCHAIN_SPONSOR_ENABLED:"true"
+ }),{admitting:true,servicingExisting:true});
+ assert.deepEqual(sponsorAdmissionState({
+  XITA_INTERCHAIN_SPONSOR_ENABLED:"true",
+  XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED:"false"
+ }),{admitting:false,servicingExisting:true});
+ assert.deepEqual(sponsorAdmissionState({
+  XITA_INTERCHAIN_SPONSOR_ENABLED:"false",
+  XITA_INTERCHAIN_SPONSOR_ADMISSION_ENABLED:"true"
+ }),{admitting:false,servicingExisting:false});
 });
