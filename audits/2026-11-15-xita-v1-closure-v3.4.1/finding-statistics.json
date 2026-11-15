@@ -1,0 +1,15 @@
+{
+  "unique_causes": 40,
+  "Critical": 0,
+  "High": 0,
+  "Medium": 9,
+  "Low": 15,
+  "Informational": 3,
+  "RESOLVED": 13,
+  "newly_resolved": [
+    "F-36",
+    "F-40"
+  ],
+  "new_causes": [],
+  "note": "Source/schema roll-forward only. All other findings inherited. F-40 production migration not attested; F-11 accepted risk remains Medium."
+}

@@ -1,0 +1,42 @@
+{
+  "ci": {
+    "run_id": 43738410591,
+    "artifact_id": 14170887571,
+    "artifact_sha256": "b14d28195128cef8fb97445f430f746ea260b27057328951ca6a13365fd9c1fb",
+    "harness_sha": "9a0abde694103901c19bde64a7eb99a0dcedd64e",
+    "test_files": 11,
+    "tap_tests": 83,
+    "passed": 83,
+    "failed": 0
+  },
+  "measured_tap": {
+    "tests": 83,
+    "pass": 83,
+    "fail": 0
+  },
+  "independent_sql_replay": {
+    "historical_017_counterexample_reproduced": true,
+    "spoof_update_delete_private_read_denied": true,
+    "correct_cli_and_database_owned_metadata": true,
+    "wrong_sponsor_and_unknown_obligation_denied": true,
+    "original_liability_and_historical_rows_preserved": true
+  },
+  "source_integrity": {
+    "blobs": 1327,
+    "mismatches": 0
+  },
+  "auditor_harness_issues": [
+    {
+      "run_id": 43737796502,
+      "kind": "auditor_setup",
+      "reason": "fixture correctly rejected wrong disposable database name"
+    },
+    {
+      "run_id": 43738124885,
+      "kind": "auditor_import",
+      "reason": "standalone CommonJS client import incorrect; product tests passed"
+    }
+  ],
+  "other_findings": "Inherited from v3.4.0, not a fresh all-cause review",
+  "production_access": false
+}

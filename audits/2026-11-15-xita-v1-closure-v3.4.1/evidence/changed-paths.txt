@@ -1,0 +1,11 @@
+A	services/indexer/sql/018_sponsor_review_attribution.sql
+M	services/managed-relay/SPONSOR_F19_OPERATIONS.md
+A	services/managed-relay/gas-sponsor-f08-effects.test.mjs
+M	services/managed-relay/gas-sponsor.mjs
+M	services/managed-relay/sponsor-obligation-audit.pg.test.mjs
+M	services/managed-relay/sponsor-obligation-review.mjs
+M	services/onboarding/creator-manifests.mjs
+M	services/onboarding/creator-operator.mjs
+M	services/onboarding/creator-operator.test.mjs
+M	services/onboarding/creator-registration.mjs
+M	services/onboarding/creator-registration.test.mjs

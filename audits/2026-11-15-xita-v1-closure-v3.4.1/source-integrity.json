@@ -1,0 +1,62 @@
+{
+  "frozen_commit": "6e78cadc631fcdff8605ea0428965e7b911076cd",
+  "tracked_blobs_checked": 1327,
+  "mismatches": [],
+  "changed_paths": [
+    {
+      "path": "services/indexer/sql/018_sponsor_review_attribution.sql",
+      "change": "A",
+      "sha256": "3013eb4ac86c8f7f929d870008389222b24f04650d245dee3541e8a64667f27e"
+    },
+    {
+      "path": "services/managed-relay/SPONSOR_F19_OPERATIONS.md",
+      "change": "M",
+      "sha256": "346766bb8202c07b798eb45a6fd5b4635fc4de7a9587c1430f456be43a98f58b"
+    },
+    {
+      "path": "services/managed-relay/gas-sponsor-f08-effects.test.mjs",
+      "change": "A",
+      "sha256": "55925a6253581d9f1e015a14be87de9f20439c814cd0db8faf157dbbcefec863"
+    },
+    {
+      "path": "services/managed-relay/gas-sponsor.mjs",
+      "change": "M",
+      "sha256": "9d06fb1aaae9e1f1fb1886c9bbd28bd98fc5e99a14735c13a33de1be8b9c75ca"
+    },
+    {
+      "path": "services/managed-relay/sponsor-obligation-audit.pg.test.mjs",
+      "change": "M",
+      "sha256": "9b80ee70a15530e7b85c37287488e9b389cdcd901b4986f87cb520ee9ac07b43"
+    },
+    {
+      "path": "services/managed-relay/sponsor-obligation-review.mjs",
+      "change": "M",
+      "sha256": "d1e64bbfa41c46a00c1fb70654512016780bf5d43fdd596deb86e5db94a74016"
+    },
+    {
+      "path": "services/onboarding/creator-manifests.mjs",
+      "change": "M",
+      "sha256": "699161750670fe8ca3bee7ca7b9e7a56553159c0b52f5f4789480e94907031d6"
+    },
+    {
+      "path": "services/onboarding/creator-operator.mjs",
+      "change": "M",
+      "sha256": "6e664b8e1bed66a5032c99424533a975b97421575105b841bc419ba3e5b033d7"
+    },
+    {
+      "path": "services/onboarding/creator-operator.test.mjs",
+      "change": "M",
+      "sha256": "487514f4678ffe707d832689f03225abb05b01042ad2bb9ab53c02dc3ba5fbb1"
+    },
+    {
+      "path": "services/onboarding/creator-registration.mjs",
+      "change": "M",
+      "sha256": "a37f362912269479b884994ed6b667f79dab457c6c2807fbfeb63a04ab1a036e"
+    },
+    {
+      "path": "services/onboarding/creator-registration.test.mjs",
+      "change": "M",
+      "sha256": "7d670c80a9baab5dc6273b185df51460444525e0b8c50bdff318e1273af2540b"
+    }
+  ]
+}
