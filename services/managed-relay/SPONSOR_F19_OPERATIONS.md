@@ -37,8 +37,9 @@ signatures.
    status from a generic RPC receipt.
 3. Review the matching `grant_key` from the **private** operator database.
    Do not place user wallet addresses or sensitive transaction evidence in Git.
-4. After the reviewed migration `017_sponsor_obligation_reviews.sql` is
-   installed, use a separate PostgreSQL login restricted to role
+4. After BOTH the previously reviewed migration `017_sponsor_obligation_reviews.sql`
+   and the new `018_sponsor_review_attribution.sql` have been applied by the
+   authorized database migration operator, use a separate PostgreSQL login restricted to role
    `xita_sponsor_reviewer`, and deliberately run:
 
 ```sh
@@ -54,8 +55,9 @@ states **only**, never a declaration of payment, waiver, resolution or
 on-chain finality. No automatic refund is provided.
 
 The SQL uses the immutable overtaken commitment identity, sponsor address,
-and verified absence of an already-confirmed matching grant. Only INSERT and
-SELECT are granted to the reviewer identity; the grant and payment tables
+and verified absence of an already-confirmed matching grant. Only column-scoped INSERT and
+SELECT are granted to the reviewer identity; the database trigger derives
+`sponsor_address` from the immutable obligation and overwrites reviewer/time; the grant and payment tables
 remain outside its write permissions. Each action has a database actor and
 append-only timestamp; the application refuses an invalid or now-fulfilled
 obligation. The schema does not grant write permissions to public API or
@@ -69,3 +71,17 @@ the actual paid-obligation outcome independently of this escalation history.
 The existence of a reviewer entry does **not** close F-19 or establish
 unrestricted unattended sponsorship readiness. Re-run restricted PostgreSQL
 and quote-admission regression tests before activation.
+
+## Migration 018 rollout check (do not skip)
+
+The production schema is NOT automatically updated merely by merging this PR
+or redeploying the Node binary. Apply `018_sponsor_review_attribution.sql`
+through the existing approved SQL migration mechanism with a DDL-capable,
+authorized identity. Preserve all existing review rows. Verify that the
+least-privileged `xita_sponsor_reviewer` cannot INSERT its own
+`sponsor_address`, `reviewer` or `recorded_at`, while a normal
+`recordSponsorObligationReview` call succeeds and the database-provided
+sponsor/time/actor match the linked overtaken obligation and session role.
+Do not apply against a production database without current backup, schema
+inventory and normal operational change controls. Do not grant direct
+`UPDATE`/`DELETE` or unrestricted INSERT as a workaround.
