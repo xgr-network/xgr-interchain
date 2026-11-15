@@ -36,6 +36,7 @@ def pdf_from_markdown(src:Path,dst:Path,subtitle:str):
     styles.add(ParagraphStyle(name='CellX',fontName='Helvetica',fontSize=8.5,leading=11.5,spaceAfter=0,splitLongWords=True))
     styles.add(ParagraphStyle(name='HeadCellX',parent=styles['CellX'],fontName='Helvetica-Bold',textColor=colors.white))
     styles.add(ParagraphStyle(name='CodeX',fontName='Courier',fontSize=7.8,leading=10.5,spaceAfter=8,splitLongWords=True))
+    styles.add(ParagraphStyle(name='ReferenceX',parent=styles['BodyX'],fontSize=9,leading=12,spaceAfter=3))
     def fmt(s):
         s=html.escape(s,quote=False)
         s=re.sub(r'\*\*(.*?)\*\*',r'<b>\1</b>',s)
@@ -72,7 +73,7 @@ def pdf_from_markdown(src:Path,dst:Path,subtitle:str):
         para=[line];i+=1
         while i<len(lines) and lines[i].strip() and not lines[i].startswith(('#','|','```','<!--')):
             para.append(lines[i].strip());i+=1
-        body=Paragraph(fmt(' '.join(para)),styles['BodyX'])
+        body=Paragraph(fmt(' '.join(para)),styles['ReferenceX'] if line.startswith('[') else styles['BodyX'])
         if line.startswith('**') and line.endswith('**') and ' | ' in line:body.keepWithNext=True
         story.append(body)
     def page(c,doc):

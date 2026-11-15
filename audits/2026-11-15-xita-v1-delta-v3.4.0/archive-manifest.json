@@ -14,8 +14,8 @@
     },
     {
       "path": "build_reports.py",
-      "bytes": 35427,
-      "sha256": "fa4af449dfdca21125019a020b134a837b997222b16a739e9813b5327ee89336"
+      "bytes": 35585,
+      "sha256": "1e6a4887e9617c89f44f0216c5561a08c551865523436f802c0873062117e117"
     },
     {
       "path": "change-inventory.csv",
@@ -1144,8 +1144,8 @@
     },
     {
       "path": "publication-validation.json",
-      "bytes": 277,
-      "sha256": "43e311a8be8afbb75d0a5c8804a3927aad99c44bd7e7b2a912629d11b34cec7d"
+      "bytes": 1207,
+      "sha256": "ff0daf9fca86946a532982398fd3ccab69dc7570c40194d99bc8484549878eca"
     },
     {
       "path": "remediation.md",
@@ -1159,8 +1159,8 @@
     },
     {
       "path": "report.pdf",
-      "bytes": 97596,
-      "sha256": "c063786a959c2a99b8743ba1fcc0e5be488359740920f1b0f13e05340db2f3b1"
+      "bytes": 96860,
+      "sha256": "6e1728a5bc985c337b275ae75237cea815baecdc075f36f33a981c4f801f9b8b"
     },
     {
       "path": "scope-and-baselines.json",
