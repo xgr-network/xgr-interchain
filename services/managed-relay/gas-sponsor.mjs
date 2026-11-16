@@ -536,10 +536,14 @@ async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers})
  throw Error("Sponsorship receipt status not authoritative");
 }
 export async function reconcileSponsorGrants({
- pool,catalog,wallet,providers=new Map(),readTimeoutMs=12000
+ pool,catalog,wallet,providers=new Map(),readTimeoutMs=12000,
+ includeChains=[],onChainReady=null
 }){
- if(!Number.isSafeInteger(readTimeoutMs)||readTimeoutMs<1||readTimeoutMs>30000)
-  throw Error("Invalid sponsor reconciliation deadline");
+ if(!Number.isSafeInteger(readTimeoutMs)||readTimeoutMs<1||readTimeoutMs>30000||
+    !Array.isArray(includeChains)||includeChains.length>16||
+    includeChains.some(x=>!/^[-a-z0-9]{1,40}$/.test(x))||
+    (onChainReady!==null&&typeof onChainReady!=="function"))
+  throw Error("Invalid sponsor reconciliation options");
  // Bound each chain independently and rotate unresolved records durably.
  // updated_at on submitted grants is retry scheduling metadata only;
  // created_at, nonce, amount and exact tx_hash remain immutable.
@@ -561,11 +565,22 @@ export async function reconcileSponsorGrants({
   " ORDER BY chain_rank ASC,updated_at ASC,chain_name ASC,grant_key ASC LIMIT 40",
   values:[wallet.address.toLowerCase()]});
  let checked=0,confirmed=0,held=0,chainFailures=0,journalErrors=0;
- const unavailableChains=new Set();
+ // Keep durable nonce/replay effects serialized within a destination chain,
+ // but never await one chain before starting another. Healthy chains can
+ // complete stored-replay processing AND begin fresh payouts independently.
+ const lanes=new Map(includeChains.map(chain=>[chain,[]]));
  for(const row of records.rows){
+  if(!lanes.has(row.chain_name))lanes.set(row.chain_name,[]);
+  lanes.get(row.chain_name).push(row);
+ }
+ if(lanes.size>16)throw Error("Too many sponsor reconciliation chains");
+ await Promise.all([...lanes].map(async ([chain,chainRows])=>{
+  let laneChecked=0,laneConfirmed=0,laneHeld=0,laneFailures=0,laneJournalErrors=0;
+  let unavailable=false;
+  for(const row of chainRows){
   // Foreign rows cannot be promoted by this worker, even under stale SQL.
-  if(!same(row.sponsor_address,wallet.address)){held++;continue;}
-  if(unavailableChains.has(row.chain_name)){held++;continue;}
+  if(!same(row.sponsor_address,wallet.address)){laneHeld++;continue;}
+  if(unavailable){laneHeld++;continue;}
   let lastError=null;
   try{
    let state=await boundedSponsorReconcileRead(()=>
@@ -579,7 +594,7 @@ export async function reconcileSponsorGrants({
      if(await state.provider.getTransaction(state.hash))return false;
      return preparedSponsorReplayAllowed({pool,row,catalog,providers});
     },readTimeoutMs);
-    if(!allowed){held++;continue;}
+    if(!allowed){laneHeld++;continue;}
     // No awaited operation separates the final canonical delivery gate
     // from starting the SAME immutable prepared transaction.
     try{
@@ -591,7 +606,7 @@ export async function reconcileSponsorGrants({
     }
     state="pending";
    }
-   if(state==="pending"){held++;continue;}
+   if(state==="pending"){laneHeld++;continue;}
    if(state==="spendable"){
     const result=await pool.query({text:
      "UPDATE xita_sponsor_grants SET"+
@@ -600,7 +615,7 @@ export async function reconcileSponsorGrants({
      " (tx_hash IS NULL AND status='reserved'))"+
      " AND status IN ('submitted','reserved')",
      values:[row.grant_key,row.tx_hash||row.prepared_hash]});
-    if(result.rowCount===1)checked++;else held++;
+    if(result.rowCount===1)laneChecked++;else laneHeld++;
     continue;
    }
    // Never mark anything confirmed before the complete original transaction
@@ -613,14 +628,14 @@ export async function reconcileSponsorGrants({
    " AND status IN ('submitted','reserved')",
     values:[row.grant_key,state,row.tx_hash||row.prepared_hash]});
    if(result.rowCount===1){
-    checked++;if(state==="confirmed")confirmed++;
-   }else held++;
+    laneChecked++;if(state==="confirmed")laneConfirmed++;
+   }else laneHeld++;
   }catch(e){
-   held++;lastError=tiny(e?.message||e);
+   laneHeld++;lastError=tiny(e?.message||e);
    // A mismatched original transaction is a grant-specific anomaly, not
    // evidence that the entire chain's RPC provider is unavailable.
    if(!lastError.includes("durable signed intent")){
-    unavailableChains.add(row.chain_name);chainFailures++;
+    unavailable=true;laneFailures++;
    }
   }finally{
    // Move a retained unknown result to the back of the bounded worklist.
@@ -632,9 +647,16 @@ export async function reconcileSponsorGrants({
      " WHERE grant_key=$1 AND (tx_hash=$2 OR (tx_hash IS NULL AND status='reserved'))"+
      " AND status IN ('submitted','reserved')",
      values:[row.grant_key,row.tx_hash||row.prepared_hash,lastError]});
-   }catch{journalErrors++;}
+   }catch{laneJournalErrors++;}
   }
- }
+  }
+  // Do not open a fresh nonce lane behind an unresolved stored payment.
+  // An uncertain prepared payment always requires reconciliation first.
+  if(onChainReady&&!unavailable&&laneHeld===0&&laneFailures===0&&laneJournalErrors===0)
+   await onChainReady(chain);
+  checked+=laneChecked;confirmed+=laneConfirmed;held+=laneHeld;
+  chainFailures+=laneFailures;journalErrors+=laneJournalErrors;
+ }));
  return {checked,confirmed,held,chainFailures,journalErrors};
 }
 // F-08: all monitoring chains start their READ-only preflight together.
