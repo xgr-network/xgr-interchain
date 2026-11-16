@@ -93,6 +93,7 @@ test("F-19: delivery overtaking durable reservation prevents a fresh gas broadca
   const wallet={address:signer.address,
    signTransaction:unsigned=>signer.signTransaction(unsigned)};
   const p={kind:auditKind,chain,stage,key,value,gasLimit:21000n,noncePending:7,
+   cfg:{dailyMaxWei:"1000000"},
    recipient:account,beneficiary:wallet.address,
    unsigned:{to:account,value,nonce:7,gasLimit:21000n,chainId:8453,gasPrice:1000000000n},
    provider:{broadcastTransaction:async()=>{broadcasts++;throw Error("Must not broadcast")}}};
