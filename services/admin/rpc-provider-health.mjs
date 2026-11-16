@@ -108,7 +108,7 @@ export function summarizeProviders(name,chainId,rows){
    state==="warning"?"Mindestens ein RPC-Anbieter ist gestört":"Native RPC-Finalität lesbar; kein historischer BLS-Quorumsbeleg"};
 }
 export async function probeChainProviders(chain,{
- fetcher=globalThis.fetch,timeoutMs=3500,now=Date.now(),cacheMs=90000
+ fetcher=globalThis.fetch,timeoutMs=3500,now=Date.now(),cacheMs=25000
 }={}){
  const name=String(chain?.name||"unknown").slice(0,80),chainId=Number(chain?.chainId);
  const providers=[...new Set(Array.isArray(chain?.rpcUrls)?chain.rpcUrls:[])].slice(0,6)
