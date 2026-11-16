@@ -198,7 +198,7 @@ location = /api/xeta/v1/rpc/read {
     location = /createtoken/submitted { try_files /noindex.html =404; }
     location = /createtoken/confirm { try_files /noindex.html =404; }
     location = /xgr { try_files /noindex.html =404; }
-    location ~ ^/token/[a-z0-9-]{1,80}$ { try_files /noindex.html =404; }
+    location ~ "^/token/[a-z0-9-]{1,80}$" { try_files /noindex.html =404; }
     location = /universe { return 301 /; }
     location = /plan-route { return 302 /transfer$is_args$args; }
 
