@@ -30,7 +30,8 @@ test("F-08: stalled Base effect does not block Arbitrum's authorized payout",asy
    signTransaction:async unsigned=>walletSigner.signTransaction(unsigned)};
   const db={reserveGrant:async row=>{effects.push("reserve-"+row.chain);return true},
    recordSubmitted:async()=>{},recordBroadcastError:async()=>{},
-   recordConfirmed:async()=>{},recordSpendable:async()=>{},recordFailed:async()=>{}};
+   recordConfirmed:async()=>{},recordSpendable:async()=>{},recordFailed:async()=>{},
+   canSendReservedGrant:async()=>true,recordNeedsReview:async()=>{}};
   const preflight=(row)=>({kind:auditKind,chain:row.grant_chain,stage:row.grant_stage,
    cfg,key:sponsorGrantKey(row,row.grant_stage),value:5000n,gasLimit:21000n,noncePending:7,
    recipient:account,beneficiary:walletSigner.address,
@@ -63,5 +64,42 @@ test("F-08: stalled Base effect does not block Arbitrum's authorized payout",asy
   assert.equal(done.filter(x=>x.status==="submitted").length,2);
   assert.equal(counts.base,1);
   assert.equal(counts.arbitrum,1);
+ }finally{unlinkSync(probe)}
+});
+
+test("F-19: delivery overtaking durable reservation prevents a fresh gas broadcast",async()=>{
+ const source=new URL("./gas-sponsor.mjs",import.meta.url);
+ const probe=new URL("./.f19-closure-"+process.pid+".mjs",import.meta.url);
+ writeFileSync(probe,readFileSync(source,"utf8")+
+  "\nexport {SPONSOR_PREFLIGHT as auditKind,sendFreshSponsorCandidate as auditSend};\n");
+ try{
+  const {auditKind,auditSend,sponsorGrantKey}=await import(probe.href);
+  const signer=new Wallet("0x"+"11".repeat(32));
+  const account="0x"+"b".repeat(40),chain="base",stage="first-delivery";
+  const row={account,source_chain:"xgrchain",destination_chain:chain,
+   final_destination_chain:chain,message_id:"0x"+"1".repeat(64),
+   source_tx_hash:"0x"+"f".repeat(64),execution_adapter:"0x"+"c".repeat(40),
+   interchain_fee_wei:"100",amount_raw:"1000",delivered:false};
+  const key=sponsorGrantKey(row,stage),value=5000n;
+  const catalog={chains:{base:{chainId:8453}}};
+  let reserved=0,checks=0,broadcasts=0,held=0,seenHash;
+  const db={
+   reserveGrant:async args=>{reserved++;seenHash=Transaction.from(args.rawTx).hash;
+    assert.equal(args.key,key);assert.equal(args.txHash,seenHash);return true;},
+   canSendReservedGrant:async args=>{checks++;assert.equal(args.key,key);return false;},
+   recordNeedsReview:async k=>{assert.equal(k,key);held++},
+   recordBroadcastError:async()=>{throw Error("No broadcast attempted")}
+  };
+  const wallet={address:signer.address,
+   signTransaction:unsigned=>signer.signTransaction(unsigned)};
+  const p={kind:auditKind,chain,stage,key,value,gasLimit:21000n,noncePending:7,
+   recipient:account,beneficiary:wallet.address,
+   unsigned:{to:account,value,nonce:7,gasLimit:21000n,chainId:8453,gasPrice:1000000000n},
+   provider:{broadcastTransaction:async()=>{broadcasts++;throw Error("Must not broadcast")}}};
+  const result=await auditSend({catalog,row,db,wallet,stage,chain},p);
+  assert.equal(result.status,"needs-review");
+  assert.equal(result.reason,"transfer-overtaken");
+  assert.deepEqual([reserved,checks,held,broadcasts],[1,1,1,0]);
+  assert.match(seenHash,/^0x[0-9a-f]{64}$/i);
  }finally{unlinkSync(probe)}
 });
