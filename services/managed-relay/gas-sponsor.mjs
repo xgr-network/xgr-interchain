@@ -302,13 +302,15 @@ async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
   lastCurrent=await db.canSendReservedGrant({key,row,catalog,stage,chain,
    providers:new Map()});
  }catch(error){
-  await db.recordNeedsReview?.(key,"F-19 last-current check: "+
-   tiny(error?.message||error)).catch(()=>{});
+  if(typeof db.recordNeedsReview==="function")
+   await db.recordNeedsReview(key,"F-19 last-current check: "+
+    tiny(error?.message||error)).catch(()=>{});
   return {status:"needs-review",chain,stage,reason:"canonical-state-unavailable"};
  }
  if(!lastCurrent){
-  await db.recordNeedsReview?.(key,"F-19 transfer completed after reservation")
-   .catch(()=>{});
+  if(typeof db.recordNeedsReview==="function")
+   await db.recordNeedsReview(key,"F-19 transfer completed after reservation")
+    .catch(()=>{});
   return {status:"needs-review",chain,stage,reason:"transfer-overtaken"};
  }
  // No further awaited authorization step separates delivery check from
@@ -963,17 +965,22 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
-  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
-   providers:providerCache});
   const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
-  outcomes.push(...await processFreshSponsorQueue({
-   rows:rows.rows,policy,
-   read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy,
-    stage:grant.stage,chain:grant.chain}),
-   send:(row,grant,preflight)=>sendFreshSponsorCandidate({
-    catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
-  }));
+  // F-08: a stuck stored-transaction replay cannot prevent another chain's
+  // stored reconciliation OR fresh paid quote from proceeding. Within each
+  // chain, the durable nonce journal is reconciled before any new send.
+  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
+   providers:providerCache,includeChains:Object.keys(policy),
+   onChainReady:async chain=>{
+    outcomes.push(...await processFreshSponsorQueue({
+     rows:rows.rows.filter(row=>row.grant_chain===chain),policy,
+     read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
+      providers:providerCache,fetcher,nativePolicy:policy,
+      stage:grant.stage,chain:grant.chain}),
+     send:(row,grant,preflight)=>sendFreshSponsorCandidate({
+      catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
+    }));
+   }});
   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};
