@@ -807,10 +807,20 @@ export async function reconcileExpiredSponsorQuotes({
   " FROM due WHERE chain_rank<=12 ORDER BY chain_rank,quote_expires_at"+
   " LIMIT 80"});
  let resolved=0,held=0;
- const unavailableChains=new Set();
+ // F-08: expiry observations are independent per SOURCE chain too. A
+ // time-bounded dead RPC cannot monopolize the worker ahead of healthy
+ // quote-release evidence for other chains. Writes remain post-verification.
+ const sourceLanes=new Map();
  for(const item of items.rows){
-  if(unavailableChains.has(item.source_chain)){held++;continue;}
-  try{
+  if(!sourceLanes.has(item.source_chain))sourceLanes.set(item.source_chain,[]);
+  sourceLanes.get(item.source_chain).push(item);
+ }
+ if(sourceLanes.size>16)throw Error("Too many expiry source chains");
+ await Promise.all([...sourceLanes.values()].map(async lane=>{
+  let unavailable=false;
+  for(const item of lane){
+   if(unavailable){held++;continue;}
+   try{
    const evidence=await boundedSponsorReconcileRead(async()=>{
     const provider=await getProvider(catalog,item.source_chain,providers);
     const witness=item.source_chain==="xgrchain"?null:
@@ -828,12 +838,13 @@ export async function reconcileExpiredSponsorQuotes({
      item.quote_nonce,evidence.used?"used":"expired-unused",
      evidence.blockNumber,evidence.blockHash]});
    if(result.rowCount===1)resolved++;
-  }catch{
-   // Fail closed. No uncertain or single-provider proof releases budget.
-   unavailableChains.add(item.source_chain);
-   held++;
+   }catch{
+    // Fail closed. No uncertain or single-provider proof releases budget.
+    unavailable=true;
+    held++;
+   }
   }
- }
+ }));
  return {resolved,held};
 }
 // F-19: record externally completed transfers with an unfulfilled quote-bound
