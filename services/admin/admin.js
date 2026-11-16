@@ -891,7 +891,7 @@ async function refreshOperationsHealth(){
  el("health-status").textContent="Live-Diagnose läuft …";
  try{
   const d=await get("/admin/api/operations/health");
-  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Automatische Aktualisierung alle 30 Sekunden bei geöffnetem Tab</span>';
+  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Anzeige alle 30 Sekunden · RPC-Messungen höchstens alle 5 Minuten · 429: mindestens 30 Minuten Pause</span>';
   el("health-summary").innerHTML=[
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
@@ -904,7 +904,9 @@ async function refreshOperationsHealth(){
   const pendingRows=(proof.pendingRoutes||[]).map(p=>
     '<tr><td>'+esc(p.source||"—")+' → '+esc(p.destination||"—")+
     '<small>'+esc(p.route||"")+'</small></td><td>'+esc(p.state||"unknown")+
-    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+'</td>'+
+    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+
+    (p.checkedAt?'<small>Messung: '+esc(new Date(p.checkedAt).toLocaleString("de-DE"))+'</small>':"")+
+    (p.retryAt?'<small>Nächster Versuch: '+esc(new Date(p.retryAt).toLocaleString("de-DE"))+'</small>':"")+'</td>'+
     '<td>'+healthValue(p.count)+'</td><td>'+esc(p.checkedAt?
       new Date(p.checkedAt).toLocaleString("de-DE"):"—")+'</td></tr>').join("");
   el("health-proof-alert").innerHTML=unresolved>0?
