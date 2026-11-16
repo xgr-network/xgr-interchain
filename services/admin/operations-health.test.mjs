@@ -150,3 +150,44 @@ test("System Health automatically discovers BSC from chain catalog without a new
  assert.deepEqual(seen.sort(),["bsc","xgrchain"]);
  assert.equal(result.chains.find(x=>x.name==="bsc").chainId,56);
 });
+
+test("unresolved Direct-BLS proof warnings cannot leave overall status green",async()=>{
+ const catalog={chains:{bsc:{chainId:56,rpcUrls:["https://bsc-rpc.publicnode.com"]}}};
+ const result=await collectOperationsHealth({
+  catalog,now,
+  checkValidators:async()=>[],
+  checkChain:async()=>({name:"bsc",chainId:56,state:"warning",
+   reachable:2,configuredEndpoints:3,possibleOperators:2,requiredOperators:2,
+   sourceWitness:"not-checked",providers:[]}),
+  readUnit:async()=> "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n",
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1}),
+  readHTTP:async target=>target.id==="transfer-stats"?
+   {...stats([cursor("2026-10-19T11:59:30Z")]),
+    proofObserver:{status:"available",routes:[{source:"bsc",
+     destination:"xgrchain",route:"bsc_to_xgr",state:"waiting",
+     reason:"PROOF_PENDING",count:2,checkedAt:new Date(now).toISOString()}]}}:
+   {ok:true,paidQuoteReady:true,available:true}
+ });
+ assert.equal(result.proofObserver.unresolvedCount,2);
+ assert.equal(result.proofObserver.state,"warning");
+ assert.notEqual(result.status,"ok");
+ assert.equal(result.summary.unresolvedProofObservations,2);
+});
+test("insufficient independent RPC availability explicitly degrades overall health",async()=>{
+ const catalog={chains:{bsc:{chainId:56,rpcUrls:[
+  "https://bsc-rpc.publicnode.com","https://bsc.drpc.org","https://bnb.api.onfinality.io/public"]}}};
+ const result=await collectOperationsHealth({
+  catalog,now,
+  checkValidators:async()=>[],
+  checkChain:async()=>({name:"bsc",chainId:56,state:"degraded",
+   reachable:1,configuredEndpoints:3,possibleOperators:1,requiredOperators:2,
+   sourceWitness:"not-checked",providers:[]}),
+  readUnit:async()=> "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n",
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1}),
+  readHTTP:async target=>target.id==="transfer-stats"?
+   stats([cursor("2026-10-19T11:59:30Z")]):
+   {ok:true,paidQuoteReady:true,available:true}
+ });
+ assert.equal(result.status,"degraded");
+ assert.equal(result.summary.rpcChainsBelowMinimum,1);
+});
