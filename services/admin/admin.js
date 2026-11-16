@@ -879,7 +879,7 @@ el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
 
 
 let healthBusy=false;
-const healthPill=state=>'<span class="health-pill health-'+esc(state||"unknown")+'">'+esc(({ok:"OK",fallback:"Fallback",down:"Ausgefallen",failed:"Fehlgeschlagen",stopped:"Unerwartet gestoppt",inactive:"Inaktiv", "not-enabled":"Nicht aktiviert",disabled:"Deaktiviert",warning:"Prüfen",degraded:"Gestört",unknown:"Unbekannt",unavailable:"Nicht erreichbar",stalled:"Veraltet", "catching-up":"Holt auf","not-installed":"Nicht installiert","not-configured":"Keine Routen",fresh:"Aktuell",stale:"Veraltet",missing:"Fehlt",invalid:"Ungültig"})[state]||state||"Unbekannt")+'</span>';
+const healthPill=state=>'<span class="health-pill health-'+esc(state||"unknown")+'">'+esc(({ok:"OK",fallback:"Fallback",down:"Ausgefallen",failed:"Fehlgeschlagen",stopped:"Unerwartet gestoppt",inactive:"Inaktiv", "not-enabled":"Nicht aktiviert",disabled:"Deaktiviert",warning:"Prüfen",degraded:"Gestört",unknown:"Unbekannt", "rate-limited":"Rate-Limit",unavailable:"Nicht erreichbar",stalled:"Veraltet", "catching-up":"Holt auf","not-installed":"Nicht installiert","not-configured":"Keine Routen",fresh:"Aktuell",stale:"Veraltet",missing:"Fehlt",invalid:"Ungültig"})[state]||state||"Unbekannt")+'</span>';
 const healthValue=n=>Number.isSafeInteger(n)?n.toLocaleString("de-DE"):"—";
 function healthTile(name,state,info="",detail=""){
  return '<article class="health-tile"><div class="health-tile-head"><strong>'+esc(name)+'</strong>'+healthPill(state)+'</div><p>'+esc(info)+'</p>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</article>';
