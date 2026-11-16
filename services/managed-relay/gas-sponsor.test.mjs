@@ -596,3 +596,31 @@ test("F-08: stalled signed Base replay does not block healthy XGR reconciliation
  assert.deepEqual(result,{checked:1,confirmed:1,held:1,chainFailures:0,journalErrors:0});
  assert.deepEqual(readyChains,["xgrchain"]);
 });
+
+test("F-08: expired-quote read failure on Base cannot delay XGR's verified release",async()=>{
+ const exp=new Date(1792999000000).toISOString();
+ const item=(chain,id)=>({source_chain:chain,execution_adapter:addr("b"),
+  payer:addr("a"),quote_nonce:id,quote_expires_at:exp});
+ const rows=[item("base","41"),item("xgrchain","42")],inserted=[];
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows};
+  if(q.text?.startsWith("INSERT INTO xita_sponsor_quote_resolutions")){
+   inserted.push(q.values[0]);return {rowCount:1};
+  }
+  return {rowCount:0};
+ }};
+ const block={number:100,hash:hash("e"),timestamp:1793000000};
+ const providers=new Map([
+  ["base",{getBlock:async()=>new Promise(()=>{})}],
+  ["xgrchain",{getBlock:async()=>block}]
+ ]);
+ const running=reconcileExpiredSponsorQuotes({pool,catalog:reconciliationCatalog,
+  providers,readTimeoutMs:150,readNonceUsed:async()=>false});
+ const deadline=Date.now()+85;
+ while(inserted.length===0&&Date.now()<deadline)
+  await new Promise(resolve=>setTimeout(resolve,3));
+ assert.deepEqual(inserted,["xgrchain"],
+  "healthy source quote must resolve before another source's RPC read deadline");
+ const result=await running;
+ assert.deepEqual(result,{resolved:1,held:1});
+});
