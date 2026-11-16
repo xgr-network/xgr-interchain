@@ -917,8 +917,14 @@ async function refreshOperationsHealth(){
     (proof.state==="unavailable"?'<p class="health-proof-warning">Proof-Beobachtungen nicht verfügbar. '+
       'Eine grüne Transfer-Zustellung kann nicht abgeleitet werden.</p>':"");
   const routes=d.indexer.routes||[];
-  el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
-   '<tr><td><strong>'+esc(r.asset||"Token unbekannt")+'</strong> · '+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
+  const sourceChains=[...new Set(routes.map(x=>x.source))].length;
+  const routeWarnings=routes.filter(x=>x.state!=="ok").length;
+  el("health-routes").innerHTML=routes.length?
+    '<details class="health-route-details"><summary>Indexer: '+healthValue(routes.length)+
+    ' Routen / '+healthValue(sourceChains)+' Source-Chains · '+
+    healthValue(routeWarnings)+' Hinweise · Einzelne Cursor anzeigen</summary>'+
+    '<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
+   '<tr><td><strong>'+esc(r.asset||"Token unbekannt")+'</strong> · '+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table></details>':
    '<p>Keine verifizierten Cursor vorhanden. '+esc(d.indexer.reason||"")+'</p>';
   const validators=d.validators||[];
   el("health-validators").innerHTML=validators.length?validators.map(v=>{
