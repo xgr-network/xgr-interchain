@@ -21,12 +21,12 @@ test("staged website rewrites dependency edges without modifying repo source",()
  try{
   mkdirSync(join(dir,"releases"));
   const root=join(dir,"releases",sha);mkdirSync(root);
-  writeFileSync(join(root,"index.html"),'<script type="module" src="/app.js"></script>');
+  for(const name of ["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"])writeFileSync(join(root,name),'<script type="module" src="/app.js"></script>');
   writeFileSync(join(root,"app.js"),'import {f} from "./experience.js";');
   writeFileSync(join(root,"experience.js"),'import "./token-representation.js"; export const f=()=>42;');
   writeFileSync(join(root,"token-representation.js"),'export const value=1;');
   assert.equal(stampModuleRelease(root,sha),2);
-  assert.match(readFileSync(join(root,"index.html"),"utf8"),/app\.js\?v=/);
+  for(const name of ["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"])assert.match(readFileSync(join(root,name),"utf8"),/app\.js\?v=/);
   assert.match(readFileSync(join(root,"app.js"),"utf8"),/experience\.js\?v=/);
   assert.match(readFileSync(join(root,"experience.js"),"utf8"),/token-representation\.js\?v=/);
   assert.equal(stampModuleRelease(root,sha),0); // no double stamping
