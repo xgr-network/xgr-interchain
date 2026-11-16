@@ -891,7 +891,7 @@ async function refreshOperationsHealth(){
  el("health-status").textContent="Live-Diagnose läuft …";
  try{
   const d=await get("/admin/api/operations/health");
-  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Automatische Aktualisierung alle 30 Sekunden bei geöffnetem Tab</span>';
+  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Anzeige alle 30 Sekunden · RPC-Messungen höchstens alle 5 Minuten · 429: mindestens 30 Minuten Pause</span>';
   el("health-summary").innerHTML=[
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
