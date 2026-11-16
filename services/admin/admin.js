@@ -895,7 +895,7 @@ async function refreshOperationsHealth(){
   el("health-summary").innerHTML=[
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
-   ["Chain RPC erreichbar",healthValue(d.summary.chainsReachable)+"/"+healthValue(d.summary.chainsConfigured)],
+   ["RPCs mit Finalität",healthValue(d.summary.rpcProvidersHealthy)+"/"+healthValue(d.summary.rpcProvidersConfigured)],
    ["XITA Transfer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
    ["Überwachte ILN-Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
@@ -906,32 +906,54 @@ async function refreshOperationsHealth(){
   const validators=d.validators||[];
   el("health-validators").innerHTML=validators.length?validators.map(v=>{
     const routes=v.routes||[];
-    const rows=routes.map(r=>'<tr><td>'+esc(({
-      arbitrum:"Arbitrum",base:"Base",xgrchain:"XGRChain"
-     })[r.source?.toLowerCase()]||r.source||"Unbekannt")+
-     '<small>'+esc(r.route||"")+'</small></td>'+
-     '<td>'+healthValue(r.sourceHead)+(r.sourceHead===null?'<small>Validator-Head unbekannt</small>':"")+'</td>'+
-     '<td>'+healthValue(r.scanCursor)+(r.scanCursorKnown?'<small>Gespeicherter Cursor</small>':"")+'</td>'+
-     '<td>'+healthValue(r.blockLag)+(r.xitaReferenceLag!==null&&r.xitaReferenceLag!==undefined?'<small>≈ '+healthValue(r.xitaReferenceLag)+' (XITA-Referenz)</small>':"")+'</td>'+
-     '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
+    const counts={ok:routes.filter(x=>x.state==="ok").length,
+     lag:routes.filter(x=>x.state==="catching-up").length,
+     faulty:routes.filter(x=>x.state==="unavailable").length};
+    const routeRows=routes.map(r=>'<tr><td>'+esc(r.source||"—")+' → '+esc(r.destination||"—")+
+      '<small>'+esc(r.route||"")+'</small></td><td>'+healthValue(r.sourceHead)+'</td>'+
+      '<td>'+healthValue(r.scanCursor)+'</td><td>'+healthValue(r.blockLag)+'</td>'+
+      '<td>'+healthPill(r.state)+(r.error?'<small>'+esc(r.error)+'</small>':"")+'</td></tr>').join("");
     return '<div class="health-validator-card"><div class="health-validator-card-head"><strong>'+esc(v.name)+'</strong>'+
       healthPill(v.state)+'<small>Worker: '+esc(v.workerAlive?"aktiv":"nicht erreichbar")+
       ' · Letzte Meldung: '+(Number.isFinite(v.ageMs)?Math.round(v.ageMs/1000)+" s":"—")+'</small></div>'+
-      (routes.length?'<div class="health-table-wrap"><table class="health-table health-validator-table">'+
-       '<thead><tr><th>Source-Chain / Route</th><th>Bestätigter Source-Head</th>'+
-       '<th>Gateway-Scan-Cursor</th><th>Blockrückstand</th><th>Status</th></tr></thead><tbody>'+
-       rows+'</tbody></table></div>':'<p class="tiny">Keine Direct-BLS-Routen registriert.</p>')+
+      '<p class="tiny">Gateway-Scanner: '+healthValue(counts.ok)+' OK · '+healthValue(counts.lag)+
+      ' holen auf · '+healthValue(counts.faulty)+' gestört. Das ist KEIN BLS-Quorum-Nachweis.</p>'+
+      (routes.length?'<details class="health-route-details"><summary>'+healthValue(routes.length)+
+      ' Routen-Cursor anzeigen (technische Details)</summary>'+
+      '<div class="health-table-wrap"><table class="health-table health-validator-table">'+
+      '<thead><tr><th>Quelle → Ziel / Route</th><th>Source-Head</th>'+
+      '<th>Cursor</th><th>Rückstand</th><th>Scan</th></tr></thead><tbody>'+
+      routeRows+'</tbody></table></div></details>':
+      '<p class="tiny">Keine Direct-BLS-Routen registriert.</p>')+
       (v.reason?'<p class="tiny">'+esc(v.reason)+'</p>':"")+'</div>';
-   }).join(""):'<p class="health-validator-empty"><strong>Keine Validator-RPCs konfiguriert.</strong> '+
-    'Das Admin-Backend benötigt XITA_VALIDATOR_RPC_URLS mit vertrauenswürdigen internen '+
-    'RPC-Endpunkten der Validatoren. Ohne diese wird kein Live-Scan-Status angezeigt.</p>';
+  }).join(""):'<p class="health-validator-empty">Keine Validator-RPCs konfiguriert. '+ 
+   'XITA_VALIDATOR_RPC_URLS muss vertrauenswürdige Validatoren für die Source-Scan-Diagnose enthalten.</p>';
    el("health-services").innerHTML=d.services.map(s=>healthTile(s.title,s.state,s.unit+(s.active?" · "+s.active:""),[s.unitFileState?"Autostart: "+s.unitFileState:"",s.nextTrigger?"Nächste Ausführung: "+s.nextTrigger:"",s.lastTrigger?"Letzte Ausführung: "+s.lastTrigger:"",s.restarts!==null?"Neustarts: "+s.restarts:""].filter(Boolean).join(" · "))).join("");
   el("health-checks").innerHTML=d.checks.map(c=>healthTile(c.title,c.state,
    c.installationOnly?"Nur Installationsprüfung – kein Quorum-Beleg":c.optional?"Optionaler lokaler Dienst":"Lokaler API-Endpunkt",
    c.id==="quote-api"?(c.readinessReason||"Paid Quote DB readiness not verified"):c.id==="join-api"?(c.submissionsConfigured?"E-Mail-bestätigte Anträge aktiviert":"Einreichungen nicht verfügbar oder unkonfiguriert"):c.enabledChains?.length?"Aktive Chains: "+c.enabledChains.join(", "):"")).join("");
-  el("health-chains").innerHTML=d.chains.map(c=>healthTile(c.name,c.state,
-   "Chain-ID "+c.chainId+" · Head "+healthValue(c.head),
-   c.attempted+" von "+c.configuredEndpoints+" konfigurierten RPCs getestet")).join("");
+  el("health-chains").innerHTML=(d.chains||[]).map(c=>{
+   const ps=c.providers||[],sourceStatus=c.sourceWitness==="not-checked"?
+    'Source-Witness und BLS-Quorum NICHT geprüft':'Kein vollständiger Source-Witness-Nachweis';
+   const label=healthValue(c.reachable??0)+'/'+healthValue(c.configuredEndpoints)+
+    ' RPC erreichbar · '+healthValue(c.possibleOperators??0)+'/'+healthValue(c.requiredOperators??2)+
+    ' Betreiber potenziell verfügbar';
+   const rows=ps.map(p=>'<tr><td><strong>'+esc(p.operator||"Unbekannt")+'</strong>'+
+    '<small>'+esc(p.host||"")+'</small></td><td>'+healthPill(p.state)+
+    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+'</td>'+
+    '<td>'+esc(p.chainId===null?"—":String(p.chainId))+'</td>'+
+    '<td>'+esc(p.finalityTag||"—")+' · '+healthValue(p.finalityHead)+
+    (p.lagBlocks!==null&&p.lagBlocks!==undefined?'<small>Abstand zu Latest: '+healthValue(p.lagBlocks)+'</small>':"")+
+    '</td><td>'+esc(p.elapsedMs===null?"—":String(p.elapsedMs)+" ms")+'</td></tr>').join("");
+   return '<div class="health-validator-card health-rpc-card"><div class="health-validator-card-head">'+
+    '<strong>'+esc(({bsc:"BNB Smart Chain",base:"Base",arbitrum:"Arbitrum",
+     optimism:"Optimism",xgrchain:"XGRChain"})[c.name]||c.name||"Chain")+'</strong>'+
+    healthPill(c.state)+'<small>'+esc(label)+'</small></div>'+
+    '<p class="health-rpc-note">'+esc(sourceStatus)+'. Erreichbarkeit und native Finalität sind kein Beweis für einen ausführbaren Transfer.</p>'+
+    (rows?'<div class="health-table-wrap"><table class="health-table health-rpc-table"><thead>'+
+    '<tr><th>Betreiber / Endpoint</th><th>Status</th><th>Chain-ID</th><th>Finalität / Head</th><th>Latenz</th></tr>'+
+    '</thead><tbody>'+rows+'</tbody></table></div>':'<p class="tiny">Keine zugelassenen RPC-Endpunkte erfasst.</p>')+'</div>';
+  }).join("");
  }catch(e){el("health-status").textContent="Health-Diagnose nicht verfügbar: "+e.message;}
  finally{healthBusy=false;el("health-refresh").disabled=false;}
 }
