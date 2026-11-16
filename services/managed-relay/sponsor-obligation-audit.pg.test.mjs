@@ -103,6 +103,45 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
      " FROM xita_sponsor_grants WHERE grant_key=$1",[key])).rows[0].n,1);
    }finally{await reopened.end()}
   });
+  await t.test("F-19: canonical delivery and exact signed reservation gate in real PostgreSQL",async()=>{
+   await reset();
+   const id=83,{payer}=await paid(db,id,{delivered:false});
+   const wallet=new Wallet("0x"+"11".repeat(32));
+   const key="base:"+H(500+id)+":first-delivery";
+   const rawTx=await wallet.signTransaction({chainId:1643,nonce:id,to:payer,
+    value:50n,gasLimit:21000n,gasPrice:1000000000n});
+   const hash=Transaction.from(rawTx).hash;
+   const sponsorDb=sponsorDatabase(db);
+   assert.equal(await sponsorDb.reserveGrant({key,chain:"xgrchain",recipient:payer,
+    beneficiary:wallet.address,amountWei:"50",nonce:id,dailyMaxWei:"10000",
+    rawTx,txHash:hash}),true);
+   let deliveredOnChain=false;
+   const provider={send:async method=>{
+    if(method==="eth_chainId")return "0x66b";
+    if(method==="eth_getBlockByNumber")return {number:"0x64",hash:H(999)};
+    if(method==="eth_call")return "0x"+(deliveredOnChain?"1":"0").padStart(64,"0");
+    throw Error("Unexpected non-readonly RPC");
+   }};
+   const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.example.test"]}}};
+   const opts={key,row:{source_chain:"base",message_id:H(500+id),account:payer},
+    catalog,stage:"first-delivery",chain:"xgrchain",beneficiary:wallet.address,
+    amountWei:"50",txHash:hash,providers:new Map([["xgrchain",provider]])};
+   assert.equal(await sponsorDb.canSendReservedGrant(opts),true);
+   await assert.rejects(()=>sponsorDb.canSendReservedGrant({
+    ...opts,txHash:H(333)}),/no longer current/);
+   deliveredOnChain=true;
+   assert.equal(await sponsorDb.canSendReservedGrant(opts),false);
+   deliveredOnChain=false;
+   await db.query("UPDATE xita_transfer_operations SET delivered=TRUE"+
+    " WHERE source_chain='base' AND message_id=$1",[H(500+id)]);
+   assert.equal(await sponsorDb.canSendReservedGrant(opts),false);
+   await db.query("UPDATE xita_sponsor_grants SET status='needs-review'"+
+    " WHERE grant_key=$1",[key]);
+   await assert.rejects(()=>sponsorDb.canSendReservedGrant(opts),/no longer current/);
+   const saved=await db.query("SELECT status FROM xita_sponsor_grants"+
+    " WHERE grant_key=$1",[key]);
+   assert.equal(saved.rows[0].status,"needs-review");
+  });
   await t.test("Gas observations cap at 1000, deduplicate receipts and recalculate p95",async()=>{
    const profile="base|first-delivery|synthetic|synthetic|mint|v1";
    const hex=n=>"0x"+BigInt(n).toString(16).padStart(64,"0");
