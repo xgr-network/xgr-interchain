@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders} from "./rpc-provider-health.mjs";
+import {approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders,createRPCMonitor,RPC_RATE_LIMIT_PAUSE_MS} from "./rpc-provider-health.mjs";
 
 const bsc={name:"bsc",chainId:56,rpcUrls:[
  "https://bsc-rpc.publicnode.com","https://bsc.drpc.org","https://bnb.api.onfinality.io/public"]};
@@ -61,4 +61,66 @@ test("XGR latest is a chain-availability probe, not an independent source witnes
  const s=summarizeProviders("xgrchain",1643,[{operator:"XGR",state:"ok",finalityHead:12}]);
  assert.equal(s.state,"ok");
  assert.equal(s.sourceWitness,"not-checked");
+});
+
+test("production monitor reuses observations across UI refreshes",async()=>{
+ let now=1_000_000;
+ const {fetcher,seen}=fakeFetcher();
+ const monitor=createRPCMonitor({fetcher,clock:()=>now,cacheMs:300000});
+ const first=await monitor(bsc);
+ assert.equal(first.providers.length,3);
+ const count=seen.length;
+ now+=30000;
+ const second=await monitor(bsc);
+ assert.equal(seen.length,count,"refresh must not call source RPC again");
+ assert.deepEqual(first.providers,second.providers);
+ now+=300001;
+ await monitor(bsc);
+ assert.ok(seen.length>count,"5-minute expiration permits fresh measurement");
+});
+test("HTTP 429 pauses every URL of the operator across chains without another call",async()=>{
+ let now=1_000_000,calls=0;
+ const fetcher=async(url,o)=>{
+  calls++;
+  const p=JSON.parse(o.body);
+  if(new URL(url).host.endsWith("drpc.org"))
+   return {ok:false,status:429,headers:{get:()=>null}};
+  const result=p.method==="eth_chainId"?"0x38":
+   p.method==="eth_getBlockByNumber"?{number:"0x60",hash:"0x"+"e".repeat(64)}:"0x60";
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result})};
+ };
+ const monitor=createRPCMonitor({fetcher,clock:()=>now,cacheMs:300000});
+ const first=await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
+ assert.equal(first.providers[0].state,"rate-limited");
+ const count=calls;
+ now+=2*60*1000;
+ const second=await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
+ assert.equal(second.providers[0].state,"rate-limited");
+ assert.equal(calls,count);
+ const differentChain=await monitor({name:"base",chainId:8453,rpcUrls:["https://base.drpc.org"]});
+ assert.equal(differentChain.providers[0].state,"rate-limited");
+ assert.equal(calls,count,"same operator on another chain must remain paused");
+ now+=RPC_RATE_LIMIT_PAUSE_MS+1;
+ await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
+ assert.ok(calls>count);
+});
+test("simultaneous refreshes share the same source RPC requests",async()=>{
+ const {fetcher,seen}=fakeFetcher();
+ const monitor=createRPCMonitor({fetcher});
+ await Promise.all([monitor(bsc),monitor(bsc),monitor(bsc)]);
+ assert.equal(seen.filter(x=>x.method==="eth_chainId").length,3);
+ assert.equal(seen.filter(x=>x.method==="eth_getBlockByNumber").length,3);
+});
+test("HTTP Retry-After is bounded and does not cause rapid retries",async()=>{
+ let now=1_000_000,n=0;
+ const monitor=createRPCMonitor({
+  clock:()=>now,fetcher:async()=>{
+   n++;return {ok:false,status:429,headers:{get:()=>String(600)}};},
+  cacheMs:0
+ });
+ const v=await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
+ assert.match(v.providers[0].retryAt,/Z$/);
+ now+=5*60*1000;
+ await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
+ assert.equal(n,1);
 });
