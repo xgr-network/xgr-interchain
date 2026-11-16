@@ -142,6 +142,9 @@ jobs:
       - name: Validate derived publication policy
         run: node --test services/indexer/publication.test.mjs
 
+      - name: Validate crawlable XITA SEO routes and private path exclusions
+        run: node --test tools/xita-seo-nginx.test.mjs tools/stamp-xita-web-style.test.mjs tools/stamp-xita-web-modules.test.mjs
+
       - name: Validate UI and discovery tests
         shell: bash
         run: |
