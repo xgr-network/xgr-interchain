@@ -263,7 +263,7 @@ async function inspectFreshSponsorCandidate({
     BigInt(unsigned.chainId||0)!==BigInt(catalog.chains[chain].chainId))
   throw Error("Sponsor populated transaction conflicts with verified preflight");
  return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
-  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address};
+  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address,providers};
 }
 // Only the worker's completed authenticated preflight authorizes a new
 // signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
@@ -291,9 +291,31 @@ async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
   dailyMaxWei:String(cfg.dailyMaxWei),rawTx,txHash:prepared.hash
  });
  if(!reserved)return {status:"already-reserved-or-budget",chain,stage};
- // Durable reservation COMMITTED above, before signing or broadcast.
- // If broadcast outcome is unknown, mark needs-review and NEVER retry this key.
+ // F-19: delivery may have completed during signing or durable
+ // reservation. Check canonical destination state a final time before
+ // broadcasting. Failed/uncertain checks hold the exact signed obligation.
  afterReserve?.(key);
+ let lastCurrent=false;
+ try{
+  if(typeof db.canSendReservedGrant!=="function")
+   throw Error("Canonical post-reservation gate missing");
+  lastCurrent=await db.canSendReservedGrant({key,row,catalog,stage,chain,
+   beneficiary:wallet.address,amountWei:value.toString(),txHash:prepared.hash,
+   providers:preflight.providers||new Map()});
+ }catch(error){
+  if(typeof db.recordNeedsReview==="function")
+   await db.recordNeedsReview(key,"F-19 last-current check: "+
+    tiny(error?.message||error)).catch(()=>{});
+  return {status:"needs-review",chain,stage,reason:"canonical-state-unavailable"};
+ }
+ if(!lastCurrent){
+  if(typeof db.recordNeedsReview==="function")
+   await db.recordNeedsReview(key,"F-19 transfer completed after reservation")
+    .catch(()=>{});
+  return {status:"needs-review",chain,stage,reason:"transfer-overtaken"};
+ }
+ // No further awaited authorization step separates delivery check from
+ // broadcasting the unchanged journaled raw transaction.
  try{
   const tx=await provider.broadcastTransaction(rawTx);
   if(!same(tx.hash,prepared.hash))throw Error("Sponsor broadcast hash mismatch");
@@ -403,6 +425,24 @@ export function sponsorDatabase(pool){
     return result.rows.length===1;
    }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
    finally{client.release()}
+  },
+  async canSendReservedGrant({key,row,catalog,stage,chain,beneficiary,amountWei,
+   txHash,providers=new Map()}){
+   if(!row||key!==sponsorGrantKey(row,stage))
+    throw Error("Invalid reserved grant identity");
+   const r=await pool.query({text:
+    "SELECT g.grant_key FROM xita_sponsor_grants g"+
+    " JOIN xita_sponsor_prepared_tx p ON p.grant_key=g.grant_key"+
+    " WHERE g.grant_key=$1 AND g.recipient=$2"+
+    " AND g.chain_name=$3 AND g.sponsor_address=$4"+
+    " AND g.amount_wei=$5 AND p.tx_hash=$6"+
+    " AND g.status='reserved' LIMIT 2",
+    values:[key,row.account.toLowerCase(),chain,
+     String(beneficiary||"").toLowerCase(),amountWei,String(txHash||"").toLowerCase()]});
+   if(r.rows.length!==1)
+    throw Error("Reserved signed payment no longer current");
+   return preparedSponsorReplayAllowed({pool,
+    row:{grant_key:key,recipient:row.account},catalog,providers});
   },
   async recordBroadcastError(key,message){
    await pool.query({text:"UPDATE xita_sponsor_grants SET last_error=$2"+
@@ -536,10 +576,14 @@ async function inspectSubmittedSponsorGrant({pool,row,catalog,wallet,providers})
  throw Error("Sponsorship receipt status not authoritative");
 }
 export async function reconcileSponsorGrants({
- pool,catalog,wallet,providers=new Map(),readTimeoutMs=12000
+ pool,catalog,wallet,providers=new Map(),readTimeoutMs=12000,
+ includeChains=[],onChainReady=null
 }){
- if(!Number.isSafeInteger(readTimeoutMs)||readTimeoutMs<1||readTimeoutMs>30000)
-  throw Error("Invalid sponsor reconciliation deadline");
+ if(!Number.isSafeInteger(readTimeoutMs)||readTimeoutMs<1||readTimeoutMs>30000||
+    !Array.isArray(includeChains)||includeChains.length>16||
+    includeChains.some(x=>!/^[-a-z0-9]{1,40}$/.test(x))||
+    (onChainReady!==null&&typeof onChainReady!=="function"))
+  throw Error("Invalid sponsor reconciliation options");
  // Bound each chain independently and rotate unresolved records durably.
  // updated_at on submitted grants is retry scheduling metadata only;
  // created_at, nonce, amount and exact tx_hash remain immutable.
@@ -561,11 +605,22 @@ export async function reconcileSponsorGrants({
   " ORDER BY chain_rank ASC,updated_at ASC,chain_name ASC,grant_key ASC LIMIT 40",
   values:[wallet.address.toLowerCase()]});
  let checked=0,confirmed=0,held=0,chainFailures=0,journalErrors=0;
- const unavailableChains=new Set();
+ // Keep durable nonce/replay effects serialized within a destination chain,
+ // but never await one chain before starting another. Healthy chains can
+ // complete stored-replay processing AND begin fresh payouts independently.
+ const lanes=new Map(includeChains.map(chain=>[chain,[]]));
  for(const row of records.rows){
+  if(!lanes.has(row.chain_name))lanes.set(row.chain_name,[]);
+  lanes.get(row.chain_name).push(row);
+ }
+ if(lanes.size>16)throw Error("Too many sponsor reconciliation chains");
+ await Promise.all([...lanes].map(async ([chain,chainRows])=>{
+  let laneChecked=0,laneConfirmed=0,laneHeld=0,laneFailures=0,laneJournalErrors=0;
+  let unavailable=false;
+  for(const row of chainRows){
   // Foreign rows cannot be promoted by this worker, even under stale SQL.
-  if(!same(row.sponsor_address,wallet.address)){held++;continue;}
-  if(unavailableChains.has(row.chain_name)){held++;continue;}
+  if(!same(row.sponsor_address,wallet.address)){laneHeld++;continue;}
+  if(unavailable){laneHeld++;continue;}
   let lastError=null;
   try{
    let state=await boundedSponsorReconcileRead(()=>
@@ -579,7 +634,7 @@ export async function reconcileSponsorGrants({
      if(await state.provider.getTransaction(state.hash))return false;
      return preparedSponsorReplayAllowed({pool,row,catalog,providers});
     },readTimeoutMs);
-    if(!allowed){held++;continue;}
+    if(!allowed){laneHeld++;continue;}
     // No awaited operation separates the final canonical delivery gate
     // from starting the SAME immutable prepared transaction.
     try{
@@ -591,7 +646,7 @@ export async function reconcileSponsorGrants({
     }
     state="pending";
    }
-   if(state==="pending"){held++;continue;}
+   if(state==="pending"){laneHeld++;continue;}
    if(state==="spendable"){
     const result=await pool.query({text:
      "UPDATE xita_sponsor_grants SET"+
@@ -600,7 +655,7 @@ export async function reconcileSponsorGrants({
      " (tx_hash IS NULL AND status='reserved'))"+
      " AND status IN ('submitted','reserved')",
      values:[row.grant_key,row.tx_hash||row.prepared_hash]});
-    if(result.rowCount===1)checked++;else held++;
+    if(result.rowCount===1)laneChecked++;else laneHeld++;
     continue;
    }
    // Never mark anything confirmed before the complete original transaction
@@ -613,14 +668,14 @@ export async function reconcileSponsorGrants({
    " AND status IN ('submitted','reserved')",
     values:[row.grant_key,state,row.tx_hash||row.prepared_hash]});
    if(result.rowCount===1){
-    checked++;if(state==="confirmed")confirmed++;
-   }else held++;
+    laneChecked++;if(state==="confirmed")laneConfirmed++;
+   }else laneHeld++;
   }catch(e){
-   held++;lastError=tiny(e?.message||e);
+   laneHeld++;lastError=tiny(e?.message||e);
    // A mismatched original transaction is a grant-specific anomaly, not
    // evidence that the entire chain's RPC provider is unavailable.
    if(!lastError.includes("durable signed intent")){
-    unavailableChains.add(row.chain_name);chainFailures++;
+    unavailable=true;laneFailures++;
    }
   }finally{
    // Move a retained unknown result to the back of the bounded worklist.
@@ -632,9 +687,16 @@ export async function reconcileSponsorGrants({
      " WHERE grant_key=$1 AND (tx_hash=$2 OR (tx_hash IS NULL AND status='reserved'))"+
      " AND status IN ('submitted','reserved')",
      values:[row.grant_key,row.tx_hash||row.prepared_hash,lastError]});
-   }catch{journalErrors++;}
+   }catch{laneJournalErrors++;}
   }
- }
+  }
+  // Do not open a fresh nonce lane behind an unresolved stored payment.
+  // An uncertain prepared payment always requires reconciliation first.
+  if(onChainReady&&!unavailable&&laneHeld===0&&laneFailures===0&&laneJournalErrors===0)
+   await onChainReady(chain);
+  checked+=laneChecked;confirmed+=laneConfirmed;held+=laneHeld;
+  chainFailures+=laneFailures;journalErrors+=laneJournalErrors;
+ }));
  return {checked,confirmed,held,chainFailures,journalErrors};
 }
 // F-08: all monitoring chains start their READ-only preflight together.
@@ -750,10 +812,20 @@ export async function reconcileExpiredSponsorQuotes({
   " FROM due WHERE chain_rank<=12 ORDER BY chain_rank,quote_expires_at"+
   " LIMIT 80"});
  let resolved=0,held=0;
- const unavailableChains=new Set();
+ // F-08: expiry observations are independent per SOURCE chain too. A
+ // time-bounded dead RPC cannot monopolize the worker ahead of healthy
+ // quote-release evidence for other chains. Writes remain post-verification.
+ const sourceLanes=new Map();
  for(const item of items.rows){
-  if(unavailableChains.has(item.source_chain)){held++;continue;}
-  try{
+  if(!sourceLanes.has(item.source_chain))sourceLanes.set(item.source_chain,[]);
+  sourceLanes.get(item.source_chain).push(item);
+ }
+ if(sourceLanes.size>16)throw Error("Too many expiry source chains");
+ await Promise.all([...sourceLanes.values()].map(async lane=>{
+  let unavailable=false;
+  for(const item of lane){
+   if(unavailable){held++;continue;}
+   try{
    const evidence=await boundedSponsorReconcileRead(async()=>{
     const provider=await getProvider(catalog,item.source_chain,providers);
     const witness=item.source_chain==="xgrchain"?null:
@@ -771,12 +843,13 @@ export async function reconcileExpiredSponsorQuotes({
      item.quote_nonce,evidence.used?"used":"expired-unused",
      evidence.blockNumber,evidence.blockHash]});
    if(result.rowCount===1)resolved++;
-  }catch{
-   // Fail closed. No uncertain or single-provider proof releases budget.
-   unavailableChains.add(item.source_chain);
-   held++;
+   }catch{
+    // Fail closed. No uncertain or single-provider proof releases budget.
+    unavailable=true;
+    held++;
+   }
   }
- }
+ }));
  return {resolved,held};
 }
 // F-19: record externally completed transfers with an unfulfilled quote-bound
@@ -908,17 +981,22 @@ export async function runSponsorSweep({env=process.env,fetcher=globalThis.fetch}
   const expiredQuotes=await reconcileExpiredSponsorQuotes({pool,catalog,providers:providerCache});
   const reserves=await reportSponsorReserves({pool,catalog,wallet,policy,
    providers:providerCache});
-  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
-   providers:providerCache});
   const overtaken=await recordOvertakenSponsorObligations({pool,wallet});
-  outcomes.push(...await processFreshSponsorQueue({
-   rows:rows.rows,policy,
-   read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
-    providers:providerCache,fetcher,nativePolicy:policy,
-    stage:grant.stage,chain:grant.chain}),
-   send:(row,grant,preflight)=>sendFreshSponsorCandidate({
-    catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
-  }));
+  // F-08: a stuck stored-transaction replay cannot prevent another chain's
+  // stored reconciliation OR fresh paid quote from proceeding. Within each
+  // chain, the durable nonce journal is reconciled before any new send.
+  const reconciled=await reconcileSponsorGrants({pool,catalog,wallet,
+   providers:providerCache,includeChains:Object.keys(policy),
+   onChainReady:async chain=>{
+    outcomes.push(...await processFreshSponsorQueue({
+     rows:rows.rows.filter(row=>row.grant_chain===chain),policy,
+     read:(row,grant)=>inspectFreshSponsorCandidate({catalog,row,db,wallet,
+      providers:providerCache,fetcher,nativePolicy:policy,
+      stage:grant.stage,chain:grant.chain}),
+     send:(row,grant,preflight)=>sendFreshSponsorCandidate({
+      catalog,row,db,wallet,stage:grant.stage,chain:grant.chain},preflight)
+    }));
+   }});
   return {status:"checked",reviewed:rows.rows.length,expiredQuotes,reserves,reconciled,overtaken,
    grants:outcomes.filter(x=>x.status==="submitted"),
    held:outcomes.filter(x=>x.status==="held-for-review").length};

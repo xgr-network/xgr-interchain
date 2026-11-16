@@ -534,3 +534,93 @@ test("F-08: healthy destination executes read while unrelated destination RPC is
  unblock({status:"late-read"});
  await Promise.resolve();
 });
+
+test("F-08: stalled signed Base replay does not block healthy XGR reconciliation and fresh-work callback",async()=>{
+ const signer=new Wallet("0x"+"11".repeat(32)),target=addr("b");
+ const raw=await signer.signTransaction({chainId:8453,nonce:7,to:target,
+  value:5000n,gasLimit:21000n,gasPrice:1000000000n});
+ const h=Transaction.from(raw).hash;
+ const base={grant_key:"base:"+hash("1")+":first-delivery",chain_name:"base",
+  sponsor_address:signer.address.toLowerCase(),recipient:target,
+  amount_wei:"5000",wallet_nonce:7,tx_hash:null,prepared_hash:h,raw_tx:raw};
+ const xgr={grant_key:"xgrchain:"+hash("2")+":first-delivery",chain_name:"xgrchain",
+  sponsor_address:signer.address.toLowerCase(),recipient:addr("c"),
+  amount_wei:"200",wallet_nonce:5,tx_hash:hash("3")};
+ let release,entered;const stalled=new Promise(resolve=>{release=resolve});
+ const baseEntered=new Promise(resolve=>{entered=resolve});
+ let broadcasts=0,healthyReceipts=0,readyChains=[];
+ const baseProvider={
+  send:async method=>{
+   if(method==="eth_chainId")return "0x2105";
+   if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("e")};
+   if(method==="eth_call")return "0x"+("0".repeat(64));
+   throw Error("Unexpected base RPC");
+  },
+  getTransactionReceipt:async()=>null,
+  getTransactionCount:async()=>7,
+  getTransaction:async()=>null,
+  broadcastTransaction:async bytes=>{
+   broadcasts++;assert.equal(bytes,raw);entered();await stalled;
+   return {hash:h};
+  }
+ };
+ const receipt={hash:xgr.tx_hash,blockHash:hash("e"),blockNumber:100,status:1};
+ const healthy={
+  getTransactionReceipt:async()=>{healthyReceipts++;return receipt},
+  getTransaction:async()=>({from:signer.address,to:xgr.recipient,
+   value:200n,nonce:5}),
+  getBlock:async tag=>tag==="latest"?{number:103}:{number:100,hash:receipt.blockHash}
+ };
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows:[base,xgr]};
+  if(q.text?.startsWith("SELECT account,delivered"))
+   return {rows:[{account:target,delivered:false,
+    destination_chain:"base",destination_mailbox:addr("d")}]};
+  return {rowCount:1,rows:[]};
+ }};
+ const running=reconcileSponsorGrants({pool,wallet:signer,
+  catalog:reconciliationCatalog,
+  providers:new Map([["base",baseProvider],["xgrchain",healthy]]),
+  includeChains:["base","xgrchain"],readTimeoutMs:5000,
+  onChainReady:async chain=>readyChains.push(chain)});
+ await baseEntered;
+ const deadline=Date.now()+1200;
+ while(readyChains.length===0&&Date.now()<deadline)
+  await new Promise(resolve=>setTimeout(resolve,5));
+ assert.deepEqual(readyChains,["xgrchain"],
+  "healthy chain must complete recovery and start fresh work while Base effect is pending");
+ assert.ok(healthyReceipts>=1);
+ assert.equal(broadcasts,1);
+ release();
+ const result=await running;
+ assert.deepEqual(result,{checked:1,confirmed:1,held:1,chainFailures:0,journalErrors:0});
+ assert.deepEqual(readyChains,["xgrchain"]);
+});
+
+test("F-08: expired-quote read failure on Base cannot delay XGR's verified release",async()=>{
+ const exp=new Date(1792999000000).toISOString();
+ const item=(chain,id)=>({source_chain:chain,execution_adapter:addr("b"),
+  payer:addr("a"),quote_nonce:id,quote_expires_at:exp});
+ const rows=[item("base","41"),item("xgrchain","42")],inserted=[];
+ const pool={query:async q=>{
+  if(q.text?.startsWith("WITH due AS"))return {rows};
+  if(q.text?.startsWith("INSERT INTO xita_sponsor_quote_resolutions")){
+   inserted.push(q.values[0]);return {rowCount:1};
+  }
+  return {rowCount:0};
+ }};
+ const block={number:100,hash:hash("e"),timestamp:1793000000};
+ const providers=new Map([
+  ["base",{getBlock:async()=>new Promise(()=>{})}],
+  ["xgrchain",{getBlock:async()=>block}]
+ ]);
+ const running=reconcileExpiredSponsorQuotes({pool,catalog:reconciliationCatalog,
+  providers,readTimeoutMs:150,readNonceUsed:async()=>false});
+ const deadline=Date.now()+85;
+ while(inserted.length===0&&Date.now()<deadline)
+  await new Promise(resolve=>setTimeout(resolve,3));
+ assert.deepEqual(inserted,["xgrchain"],
+  "healthy source quote must resolve before another source's RPC read deadline");
+ const result=await running;
+ assert.deepEqual(result,{resolved:1,held:1});
+});
