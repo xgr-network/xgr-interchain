@@ -896,9 +896,26 @@ async function refreshOperationsHealth(){
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
    ["RPCs mit Finalität",healthValue(d.summary.rpcProvidersHealthy)+"/"+healthValue(d.summary.rpcProvidersConfigured)],
-   ["XITA Transfer-Routen",healthValue(d.indexer.indexedRoutes)+"/"+healthValue(d.indexer.requiredRoutes)],
+   ["Offene Proof-Beobachtungen",healthValue(d.summary.unresolvedProofObservations)],
    ["Überwachte ILN-Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
+  const proof=d.proofObserver||{};
+  const unresolved=proof.unresolvedCount||0;
+  const pendingRows=(proof.pendingRoutes||[]).map(p=>
+    '<tr><td>'+esc(p.source||"—")+' → '+esc(p.destination||"—")+
+    '<small>'+esc(p.route||"")+'</small></td><td>'+esc(p.state||"unknown")+
+    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+'</td>'+
+    '<td>'+healthValue(p.count)+'</td><td>'+esc(p.checkedAt?
+      new Date(p.checkedAt).toLocaleString("de-DE"):"—")+'</td></tr>').join("");
+  el("health-proof-alert").innerHTML=unresolved>0?
+    '<div class="health-proof-warning"><strong>Offene Direct-BLS-Zustellungen: '+
+    healthValue(unresolved)+'</strong><p>Source-Scans und RPC-Erreichbarkeit sind keine Zustellung. '+ 
+    'Diese Nachrichten sind im Proof-Observer noch nicht als abgeschlossen nachgewiesen.</p>'+
+    '<div class="health-table-wrap"><table class="health-table"><thead>'+
+    '<tr><th>Route</th><th>Proof-Status</th><th>Anzahl</th><th>Geprüft</th></tr>'+
+    '</thead><tbody>'+pendingRows+'</tbody></table></div></div>':
+    (proof.state==="unavailable"?'<p class="health-proof-warning">Proof-Beobachtungen nicht verfügbar. '+
+      'Eine grüne Transfer-Zustellung kann nicht abgeleitet werden.</p>':"");
   const routes=d.indexer.routes||[];
   el("health-routes").innerHTML=routes.length?'<table class="health-table"><thead><tr><th>Route</th><th>Cursor</th><th>Finalisiert</th><th>Rückstand</th><th>Letzte Aktualisierung</th><th>Status</th></tr></thead><tbody>'+routes.map(r=>
    '<tr><td><strong>'+esc(r.asset||"Token unbekannt")+'</strong> · '+esc(r.source)+' → '+esc(r.destination)+'<small>'+esc(r.route)+'</small></td><td>'+healthValue(r.scannedTo)+'</td><td>'+healthValue(r.finalizedHead)+'</td><td>'+healthValue(r.lagBlocks)+'</td><td>'+esc(r.updatedAt?new Date(r.updatedAt).toLocaleString("de-DE"):"Unbekannt")+'</td><td>'+healthPill(r.state)+'</td></tr>').join("")+'</tbody></table>':
