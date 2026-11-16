@@ -253,7 +253,20 @@ export async function collectOperationsHealth({
  const stats=observedProbes.find(p=>p.id==="transfer-stats");
  const indexer=summarizeTransferIndex(stats?.data,{now});
  const proofJournalReady=stats?.data?.proofObserver?.status==="available";
- const proofObserver={state:proofJournalReady?"ok":"unavailable",reason:proofJournalReady?"Proof observation journal readable":"Proof observation SQL migration or reader access unavailable"};
+ const pendingProofs=(Array.isArray(stats?.data?.proofObserver?.routes)?stats.data.proofObserver.routes:[])
+  .filter(x=>Number.isSafeInteger(x.count)&&x.count>0)
+  .map(x=>({source:String(x.source||"").slice(0,50),
+   destination:String(x.destination||"").slice(0,50),
+   route:String(x.route||"").slice(0,115),
+   state:String(x.state||"unknown").slice(0,50),
+   reason:x.reason?String(x.reason).slice(0,90):null,
+   count:x.count,checkedAt:safeDate(x.checkedAt)}));
+ const unresolvedProofCount=pendingProofs.reduce((n,x)=>n+x.count,0);
+ const proofObserver={state:!proofJournalReady?"unavailable":unresolvedProofCount>0?"warning":"ok",
+  reason:!proofJournalReady?"Proof observation SQL migration or reader access unavailable":
+   unresolvedProofCount>0?unresolvedProofCount+" unresolved proof observations; NOT destination delivery":
+   "Proof journal available; no unresolved observed rows",
+  unresolvedCount:unresolvedProofCount,pendingRoutes:pendingProofs};
  const evidence=summarizeEvidence({evidence:readEvidence(process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json",{now})});
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
@@ -284,7 +297,10 @@ export async function collectOperationsHealth({
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
  const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
- const status=chains.some(c=>c.state==="degraded")?"degraded":paidQuoteFault||!proofJournalReady?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
+ const status=chains.some(c=>c.state==="degraded")?"degraded":paidQuoteFault||!proofJournalReady?"degraded":
+  validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":
+  (unresolvedProofCount>0&&baseStatus==="ok")?"warning":
+  validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
   services,checks,indexer,proofObserver,evidence,chains,validators,quoteWriter,
@@ -296,6 +312,7 @@ export async function collectOperationsHealth({
    rpcProvidersHealthy:chains.reduce((n,c)=>n+(c.reachable||0),0),
    rpcProvidersConfigured:chains.reduce((n,c)=>n+(c.configuredEndpoints||0),0),
    rpcChainsBelowMinimum:chains.filter(c=>c.state==="degraded").length,
+   unresolvedProofObservations:unresolvedProofCount,
    chainsConfigured:chains.length,
    validatorsHealthy:validators.filter(v=>v.state==="ok").length,
    validatorsConfigured:validators.length},
