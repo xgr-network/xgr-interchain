@@ -263,7 +263,7 @@ async function inspectFreshSponsorCandidate({
     BigInt(unsigned.chainId||0)!==BigInt(catalog.chains[chain].chainId))
   throw Error("Sponsor populated transaction conflicts with verified preflight");
  return {kind:SPONSOR_PREFLIGHT,chain,stage,cfg,provider,key,value,gasLimit,
-  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address};
+  noncePending,unsigned,recipient:row.account,beneficiary:wallet.address,providers};
 }
 // Only the worker's completed authenticated preflight authorizes a new
 // signature. The subsequent effect boundary is NEVER wrapped in Promise.race.
@@ -300,7 +300,8 @@ async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
   if(typeof db.canSendReservedGrant!=="function")
    throw Error("Canonical post-reservation gate missing");
   lastCurrent=await db.canSendReservedGrant({key,row,catalog,stage,chain,
-   providers:new Map()});
+   beneficiary:wallet.address,amountWei:value.toString(),txHash:prepared.hash,
+   providers:preflight.providers||new Map()});
  }catch(error){
   if(typeof db.recordNeedsReview==="function")
    await db.recordNeedsReview(key,"F-19 last-current check: "+
@@ -425,15 +426,19 @@ export function sponsorDatabase(pool){
    }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
    finally{client.release()}
   },
-  async canSendReservedGrant({key,row,catalog,stage,providers=new Map()}){
+  async canSendReservedGrant({key,row,catalog,stage,chain,beneficiary,amountWei,
+   txHash,providers=new Map()}){
    if(!row||key!==sponsorGrantKey(row,stage))
     throw Error("Invalid reserved grant identity");
    const r=await pool.query({text:
     "SELECT g.grant_key FROM xita_sponsor_grants g"+
     " JOIN xita_sponsor_prepared_tx p ON p.grant_key=g.grant_key"+
     " WHERE g.grant_key=$1 AND g.recipient=$2"+
+    " AND g.chain_name=$3 AND g.sponsor_address=$4"+
+    " AND g.amount_wei=$5 AND p.tx_hash=$6"+
     " AND g.status='reserved' LIMIT 2",
-    values:[key,row.account.toLowerCase()]});
+    values:[key,row.account.toLowerCase(),chain,
+     String(beneficiary||"").toLowerCase(),amountWei,String(txHash||"").toLowerCase()]});
    if(r.rows.length!==1)
     throw Error("Reserved signed payment no longer current");
    return preparedSponsorReplayAllowed({pool,
