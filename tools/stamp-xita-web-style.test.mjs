@@ -23,9 +23,9 @@ test("published release contains a fingerprint matching its CSS bytes",()=>{
  const dir=mkdtempSync(join(tmpdir(),"xita-css-release-"));
  try{
   writeFileSync(join(dir,"style.css"),".ux-fee-details{display:block}");
-  writeFileSync(join(dir,"index.html"),'<link rel="stylesheet" href="/style.css?v=old">');
+  for(const name of ["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"])writeFileSync(join(dir,name),'<link rel="stylesheet" href="/style.css?v=old">');
   const version=stampRelease(dir);
-  assert.equal(readFileSync(join(dir,"index.html"),"utf8"),
+  for(const name of ["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"])assert.equal(readFileSync(join(dir,name),"utf8"),
    '<link rel="stylesheet" href="/style.css?v='+version+'">');
   assert.equal(stampRelease(dir),version);
  }finally{rmSync(dir,{recursive:true,force:true});}
