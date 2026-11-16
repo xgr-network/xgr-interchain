@@ -4,6 +4,7 @@ import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {readFileSync,statSync} from "node:fs";
 import {probeILNValidators,attachXitaReferenceLag} from "./validator-indexer-health.mjs";
+import {probeChainProviders} from "./rpc-provider-health.mjs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
@@ -197,7 +198,7 @@ function aggregateState(units,checks,indexer,chains){
 }
 export async function collectOperationsHealth({
  catalog,readUnit=readSystemdUnit,readHTTP=readLocalJSON,
- checkChain=probeChain,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
+ checkChain=probeChainProviders,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
 }={}){
  if(!catalog||typeof catalog!=="object"||!catalog.chains)
   throw Error("Configured chain catalog unavailable");
@@ -283,7 +284,7 @@ export async function collectOperationsHealth({
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
  const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
- const status=paidQuoteFault||!proofJournalReady?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
+ const status=chains.some(c=>c.state==="degraded")?"degraded":paidQuoteFault||!proofJournalReady?"degraded":validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
   services,checks,indexer,proofObserver,evidence,chains,validators,quoteWriter,
@@ -291,9 +292,12 @@ export async function collectOperationsHealth({
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
    servicesNotInstalled:services.filter(s=>s.state==="not-installed").length,
-   chainsReachable:chains.filter(c=>["ok","fallback"].includes(c.state)).length,
+   chainsReachable:chains.filter(c=>["ok","fallback","warning"].includes(c.state)).length,
+   rpcProvidersHealthy:chains.reduce((n,c)=>n+(c.reachable||0),0),
+   rpcProvidersConfigured:chains.reduce((n,c)=>n+(c.configuredEndpoints||0),0),
+   rpcChainsBelowMinimum:chains.filter(c=>c.state==="degraded").length,
    chainsConfigured:chains.length,
    validatorsHealthy:validators.filter(v=>v.state==="ok").length,
    validatorsConfigured:validators.length},
-  note:"Read-only observations. Process active, API answering and finalized indexing are separate signals. A healthy proof-builder installation does not establish validator quorum or delivered funds."};
+  note:"Read-only observations. RPC provider native finality is checked independently per catalog URL but does NOT establish two matching source witnesses, complete ILN evidence, BLS quorum or transfer delivery."};
 }
