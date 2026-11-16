@@ -18,9 +18,14 @@ export function stampStylesheetLink(html,stylesheet){
 }
 export function stampRelease(root){
  const css=readFileSync(join(root,"style.css"));
- const page=join(root,"index.html");
- const {html,version}=stampStylesheetLink(readFileSync(page,"utf8"),css);
- writeFileSync(page,html,"utf8");
+ const pages=["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"];
+ let version=null;
+ for(const name of pages){
+  const page=join(root,name);
+  const stamped=stampStylesheetLink(readFileSync(page,"utf8"),css);
+  writeFileSync(page,stamped.html,"utf8");
+  version=stamped.version;
+ }
  return version;
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){

@@ -25,8 +25,10 @@ export function stampModuleRelease(root,sha){
   const after=stampModuleImports(before,sha);
   if(before!==after){writeFileSync(path,after,"utf8");stamped++}
  }
- const index=join(root,"index.html");
- writeFileSync(index,stampModuleEntrypoint(readFileSync(index,"utf8"),sha),"utf8");
+ for(const name of ["index.html","faq.html","join.html","markets.html","contact.html","noindex.html"]){
+  const page=join(root,name);
+  writeFileSync(page,stampModuleEntrypoint(readFileSync(page,"utf8"),sha),"utf8");
+ }
  return stamped;
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1])){
