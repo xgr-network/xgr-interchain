@@ -172,3 +172,20 @@
 #creator-factory-status{color:var(--accent);overflow-wrap:anywhere}
 #creator-factory-details{overflow-wrap:anywhere}
 #creator-factory-details a{display:inline-block;margin-left:8px}
+
+/* Source RPC operator matrix takes precedence over repetitive route cursors. */
+#health-chains.health-validator-list{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.health-rpc-card .health-table-wrap{margin-top:10px}
+.health-rpc-note{font-size:11px;line-height:1.55;color:var(--muted);margin:4px 0 8px}
+.health-rpc-table{width:100%;min-width:640px;table-layout:fixed}
+.health-rpc-table th:nth-child(1){width:34%}
+.health-rpc-table th:nth-child(2){width:25%}
+.health-rpc-table th:nth-child(3){width:11%}
+.health-rpc-table th:nth-child(4){width:22%}
+.health-rpc-table th:nth-child(5){width:8%}
+.health-rpc-table td{white-space:normal;vertical-align:top;overflow-wrap:anywhere}
+.health-rpc-table td small{white-space:normal;overflow-wrap:anywhere}
+.health-route-details{margin-top:12px}
+.health-route-details summary{font-size:12px;color:var(--blue);padding:7px 0;cursor:pointer}
+.health-route-details[open] summary{margin-bottom:10px}
+.health-rate-limited,.health-unavailable{color:#f3a4a8;border-color:#9f5258}
