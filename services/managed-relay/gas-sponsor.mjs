@@ -291,9 +291,28 @@ async function sendFreshSponsorCandidate({catalog,row,db,wallet,stage,chain,
   dailyMaxWei:String(cfg.dailyMaxWei),rawTx,txHash:prepared.hash
  });
  if(!reserved)return {status:"already-reserved-or-budget",chain,stage};
- // Durable reservation COMMITTED above, before signing or broadcast.
- // If broadcast outcome is unknown, mark needs-review and NEVER retry this key.
+ // F-19: delivery may have completed during signing or durable
+ // reservation. Check canonical destination state a final time before
+ // broadcasting. Failed/uncertain checks hold the exact signed obligation.
  afterReserve?.(key);
+ let lastCurrent=false;
+ try{
+  if(typeof db.canSendReservedGrant!=="function")
+   throw Error("Canonical post-reservation gate missing");
+  lastCurrent=await db.canSendReservedGrant({key,row,catalog,stage,chain,
+   providers:new Map()});
+ }catch(error){
+  await db.recordNeedsReview?.(key,"F-19 last-current check: "+
+   tiny(error?.message||error)).catch(()=>{});
+  return {status:"needs-review",chain,stage,reason:"canonical-state-unavailable"};
+ }
+ if(!lastCurrent){
+  await db.recordNeedsReview?.(key,"F-19 transfer completed after reservation")
+   .catch(()=>{});
+  return {status:"needs-review",chain,stage,reason:"transfer-overtaken"};
+ }
+ // No further awaited authorization step separates delivery check from
+ // broadcasting the unchanged journaled raw transaction.
  try{
   const tx=await provider.broadcastTransaction(rawTx);
   if(!same(tx.hash,prepared.hash))throw Error("Sponsor broadcast hash mismatch");
@@ -403,6 +422,20 @@ export function sponsorDatabase(pool){
     return result.rows.length===1;
    }catch(e){await client.query("ROLLBACK").catch(()=>{});throw e}
    finally{client.release()}
+  },
+  async canSendReservedGrant({key,row,catalog,stage,providers=new Map()}){
+   if(!row||key!==sponsorGrantKey(row,stage))
+    throw Error("Invalid reserved grant identity");
+   const r=await pool.query({text:
+    "SELECT g.grant_key FROM xita_sponsor_grants g"+
+    " JOIN xita_sponsor_prepared_tx p ON p.grant_key=g.grant_key"+
+    " WHERE g.grant_key=$1 AND g.recipient=$2"+
+    " AND g.status='reserved' LIMIT 2",
+    values:[key,row.account.toLowerCase()]});
+   if(r.rows.length!==1)
+    throw Error("Reserved signed payment no longer current");
+   return preparedSponsorReplayAllowed({pool,
+    row:{grant_key:key,recipient:row.account},catalog,providers});
   },
   async recordBroadcastError(key,message){
    await pool.query({text:"UPDATE xita_sponsor_grants SET last_error=$2"+
