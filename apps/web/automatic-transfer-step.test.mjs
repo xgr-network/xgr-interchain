@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {nextVerifiedWalletStep,walletStepKey,automaticWalletPreflightKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
+import {nextVerifiedWalletStep,walletStepKey,recoveryProbeKey,automaticWalletPreflightKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
 const h=c=>"0x"+c.repeat(64),now=Date.parse("2026-10-25T06:00:00Z");
 const parent={confirmed:true,messageId:h("a"),onwardRouteId:h("b"),
  status:"awaiting-onward",delivered:true,finalDestinationChain:"arbitrum"};
@@ -81,4 +81,22 @@ test("MetaMask intent is never automatically retried, even on rejection or slow 
  assert.equal(gate.canStart(onward),true);
  gate.reset(); // Explicit Hide -> reopen permits re-verification, NOT source replay.
  assert.equal(gate.canStart(first),true);
+});
+
+test("modal recovery eligibility requires exact wallet-owned finalized source and never a delivered transfer",()=>{
+ const address="0x"+"1".repeat(40),source=h("c"),message=h("a");
+ const record={account:address,txHash:source,asset:"XGR",routeName:"bsc_to_xgr",
+  sourceChain:"bsc",destinationChain:"xgrchain",messageId:message,
+  confirmed:true,status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"checking"}};
+ const binding={account:address,sourceTxHash:source,key:address.toLowerCase()+":"+source,record};
+ const expected=binding.key+":first-delivery:"+message;
+ assert.equal(nextVerifiedWalletStep(record),null);
+ assert.equal(recoveryProbeKey(binding),expected);
+ for(const patch of [
+  {confirmed:false},{delivered:true},{status:"delivered"},
+  {status:"pending-source"},{messageId:"bad"},
+  {account:"0x"+"2".repeat(40)},{txHash:h("d")}
+ ])assert.equal(recoveryProbeKey({...binding,record:{...record,...patch}}),null);
+ assert.equal(recoveryProbeKey({...binding,sourceTxHash:h("d")}),null);
 });
