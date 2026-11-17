@@ -132,3 +132,17 @@ test("Join restart waits for actual HTTP socket before installing nginx and publ
  assert.ok(installer.includes("systemctl enable --now xita-join.service"));
  assert.ok(installer.includes("wait_xita_join || return 1"));
 });
+
+test("update restores only operator-enabled fee services after reset with paid DB preflight",()=>{
+ const completion=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(completion);
+ assert.match(completion,/systemctl is-enabled --quiet xita-fee-preview\.service/);
+ assert.match(completion,/systemctl is-enabled --quiet xita-interchain-fee-quote\.service/);
+ assert.match(completion,/wait_restored_fee_api xita-fee-preview\.service 4093/);
+ assert.match(completion,/wait_restored_fee_api xita-interchain-fee-quote\.service 4092/);
+ const preflight=completion.indexOf("install_wallet_aware_sponsor_db");
+ const publish=completion.indexOf("publish_web");
+ assert.ok(preflight>=0&&preflight<publish,"Paid quote DB preflight must run before website publication");
+ assert.doesNotMatch(completion,/systemctl enable --now xita-(?:fee-preview|interchain-fee-quote)\.service/);
+ assert.doesNotMatch(completion,/systemctl (?:start|enable|restart) xita-(?:gas-sponsor|interchain-fee-claim)\.(?:service|timer)/);
+});

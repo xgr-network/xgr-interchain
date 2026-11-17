@@ -753,13 +753,28 @@ repair_transfer_db() (
   echo "SUCCESS: XITA transfer DB schema repaired. Worker progress still requires observing fresh indexer cursors."
 )
 
+# A previously enabled fee service is restored after a development reset only
+# if its prior operator opt-in is still present. Never enable optional signers.
+wait_restored_fee_api() {
+  local unit="$1" port="$2" i
+  for ((i=1; i<=10; i++)); do
+    if curl -fsS --connect-timeout 1 --max-time 2 \
+       "http://127.0.0.1:$port/api/xita/v1/managed/health" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: $unit did not respond on 127.0.0.1:$port after restart" >&2
+  return 1
+}
 complete_update() {
   require_clean_main
   # The unsigned website MUST NOT advertise freshly merged fee behavior while
   # an already running paid signer still executes an older code version.
   # Verify signer schema and least-privilege DB identity BEFORE publishing.
   # Keyless preview-only installations require no signer credentials.
-  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+  if systemctl is-enabled --quiet xita-interchain-fee-quote.service 2>/dev/null || \
+     systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
     echo "Preflight: checking restricted paid-quote DB role BEFORE XITA publication ..."
     if ! install_wallet_aware_sponsor_db; then
       echo "ERROR: Paid quote DB preflight failed. Website not published; fee signer not restarted." >&2
@@ -779,7 +794,9 @@ complete_update() {
   fi
   publish_web
   install_sync
-  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
+  if systemctl is-enabled --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-enabled --quiet xita-interchain-fee-quote.service 2>/dev/null || \
      systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
     install_price_cache
   fi
@@ -818,13 +835,17 @@ complete_update() {
   if systemctl is-active --quiet xita-transfer-intake.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-intake.service
   fi
-  if systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
-    # Paid writer role and immutable quote schema have already passed the
-    # pre-publication gate; avoid a late abort after web publication.
-    privileged systemctl restart xita-interchain-fee-quote.service
+  if systemctl is-enabled --quiet xita-interchain-fee-quote.service 2>/dev/null || \
+     systemctl is-active --quiet xita-interchain-fee-quote.service 2>/dev/null; then
+    # Includes the stopped-but-enabled case. The paid DB grant preflight
+    # above MUST pass before any attempted start or website publication.
+    privileged systemctl restart xita-interchain-fee-quote.service || return 1
+    wait_restored_fee_api xita-interchain-fee-quote.service 4092 || return 1
   fi
-  if systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
-    privileged systemctl restart xita-fee-preview.service
+  if systemctl is-enabled --quiet xita-fee-preview.service 2>/dev/null || \
+     systemctl is-active --quiet xita-fee-preview.service 2>/dev/null; then
+    privileged systemctl restart xita-fee-preview.service || return 1
+    wait_restored_fee_api xita-fee-preview.service 4093 || return 1
   fi
   # Existing sponsor installation gets its event listener during normal
   # updates too; retain the periodic one-shot timer as fallback.
