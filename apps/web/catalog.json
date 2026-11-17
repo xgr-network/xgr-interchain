@@ -120,7 +120,8 @@
       "confirmations": 32,
       "blsVerifierFormat": "ecdsa",
       "signatureScheme": "ecdsa",
-      "observedInfrastructure": "deployments/chains/xdc.json"
+      "observedInfrastructure": "deployments/chains/xdc.json",
+      "receiptFinalityTag": "finalized"
     },
     "xgrchain": {
       "schemaVersion": 1,
