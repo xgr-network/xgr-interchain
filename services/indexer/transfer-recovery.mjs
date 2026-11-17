@@ -146,7 +146,9 @@ const sourceRetryStages=new Set([
 export function canRetrySourceRecovery(error,configured){
  const id=Number(configured.env.ORIGIN_CHAIN_ID);
  return id!==1643&&Number.isSafeInteger(id)&&id>0&&
-  ["PROOF_RPC_UNAVAILABLE","PROOF_TIMEOUT"].includes(error?.code)&&
+  (["PROOF_RPC_UNAVAILABLE","PROOF_TIMEOUT"].includes(error?.code)||
+   (error?.code==="PROOF_SOURCE_EVIDENCE_UNAVAILABLE"&&
+    error?.stage==="attested-only-discover-dispatch"))&&
   sourceRetryStages.has(error?.stage);
 }
 export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
@@ -185,7 +187,9 @@ const destinationBaseStages=new Set([
 // Only source/destination Base RPC failures can switch providers. Immutable
 // route failures, invalid fees, Merkle proofs and BLS verification never do.
 export function canRetryBaseRecovery(error,configured){
- if(error?.code!=="PROOF_RPC_UNAVAILABLE"&&error?.code!=="PROOF_TIMEOUT")return false;
+ if(error?.code!=="PROOF_RPC_UNAVAILABLE"&&error?.code!=="PROOF_TIMEOUT"&&
+   !(error?.code==="PROOF_SOURCE_EVIDENCE_UNAVAILABLE"&&
+     error?.stage==="attested-only-discover-dispatch"))return false;
  const sourceBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453;
  const destinationBase=Number(configured.env.DESTINATION_CHAIN_ID)===8453;
  return (sourceBase&&sourceBaseStages.has(error.stage))||
