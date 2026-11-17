@@ -119,7 +119,7 @@ export function classifyRecoveryFailure(err,stderr=""){
   stage==="simulate-destination-delivery"&&/execution reverted|missing revert data|call_exception|transaction execution reverted/i.test(detail)?"PROOF_DESTINATION_REVERT":
    /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
-  /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
+  /rpc|connection|network|request failed|not found|could not coalesce|transport failure|http 403|http 429|forbidden|usage limit|rate limit|too many requests|response status 403|response status 429/.test(t)?"PROOF_RPC_UNAVAILABLE":
   /receipt|dispatch|source route|fee allocation|fee vault/.test(t)?"PROOF_SOURCE_EVIDENCE_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
@@ -131,7 +131,26 @@ const recoveryBaseDefaultUrls=()=>process.env.XITA_RECOVERY_BASE_RPC_URLS||
 export function recoveryBaseUrls(configured,{baseUrls=recoveryBaseDefaultUrls()}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
 }
-// Qualify the actual route, not an unrelated historical Base test block.
+// A source bridge is permissionless regardless of EVM chain.
+// Retry only transient upstream transport/finality/receipt failures and never
+// treat another RPC as an alternative to canonical source verification.
+export function recoverySourceUrls(configured){
+ const id=Number(configured.env.ORIGIN_CHAIN_ID);
+ if(id===1643)throw Error("Local native XGR source does not need external RPC failover");
+ return rpcCandidates({chainId:id,rpcUrls:configured.sourceRpcUrls||[]});
+}
+const sourceRetryStages=new Set([
+ "verify-chain-ids","source-receipt","source-route",
+ "confirmed-fee-vault-allocation","attested-only-discover-dispatch"
+]);
+export function canRetrySourceRecovery(error,configured){
+ const id=Number(configured.env.ORIGIN_CHAIN_ID);
+ return id!==1643&&Number.isSafeInteger(id)&&id>0&&
+  (["PROOF_RPC_UNAVAILABLE","PROOF_TIMEOUT"].includes(error?.code)||
+   (error?.code==="PROOF_SOURCE_EVIDENCE_UNAVAILABLE"&&
+    error?.stage==="attested-only-discover-dispatch"))&&
+  sourceRetryStages.has(error?.stage);
+}
 export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
  try{
   const call=(method,params)=>readPublicRpc(url,method,params,{fetcher,ms});
@@ -140,17 +159,10 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
    configured.env.DESTINATION_CHAIN_ID;
   if(BigInt(await call("eth_chainId",[]))!==BigInt(expected))
    throw Error("Configured route RPC chain identity mismatch");
-  const txHash=sourceIsBase?configured.env.SOURCE_TX_HASH:null;
-  if(txHash){
-   const receipt=await call("eth_getTransactionReceipt",[txHash]);
-   if(!receipt||!same(receipt.transactionHash,txHash)||receipt.status!=="0x1")
-    throw Error("Original source receipt unavailable");
-   const block=receipt.blockNumber;
-   if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
-   // The original receipt is only a locator. Complete Gateway/Dispatch
-   // verification is performed by the recovery CLI, never skipped.
-   // Avoid redundant archive-sensitive eth_getLogs preflight.
-  }else if(!sourceIsBase){
+  // A completed BLS quorum already authenticates the message. No Base
+  // receipt fetch is allowed as an unrelated prerequisite; source data is
+  // discovered from the signed Mailbox.Dispatch block by the shared builder.
+  if(!sourceIsBase){
    const value=await call("eth_call",[{
     to:configured.env.DESTINATION_MAILBOX,
     data:selector("delivered(bytes32)")+configured.messageId.slice(2)
@@ -166,7 +178,7 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
 }
 const sourceBaseStages=new Set([
  "verify-chain-ids","source-receipt","validate-attestation",
- "confirmed-fee-vault-allocation","source-route"
+ "confirmed-fee-vault-allocation","source-route","attested-only-discover-dispatch"
 ]);
 const destinationBaseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",
@@ -175,7 +187,9 @@ const destinationBaseStages=new Set([
 // Only source/destination Base RPC failures can switch providers. Immutable
 // route failures, invalid fees, Merkle proofs and BLS verification never do.
 export function canRetryBaseRecovery(error,configured){
- if(error?.code!=="PROOF_RPC_UNAVAILABLE"&&error?.code!=="PROOF_TIMEOUT")return false;
+ if(error?.code!=="PROOF_RPC_UNAVAILABLE"&&error?.code!=="PROOF_TIMEOUT"&&
+   !(error?.code==="PROOF_SOURCE_EVIDENCE_UNAVAILABLE"&&
+     error?.stage==="attested-only-discover-dispatch"))return false;
  const sourceBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453;
  const destinationBase=Number(configured.env.DESTINATION_CHAIN_ID)===8453;
  return (sourceBase&&sourceBaseStages.has(error.stage))||
@@ -226,6 +240,30 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
  // Base availability merely because Base is in the global catalog.
  const needsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453||
   Number(configured.env.DESTINATION_CHAIN_ID)===8453;
+ if(!needsBase&&Number(configured.env.ORIGIN_CHAIN_ID)!==1643){
+  const candidates=recoverySourceUrls(configured),deadline=Date.now()+timeoutMs;
+  let last=null;
+  for(let i=0;i<candidates.length;i++){
+   const remaining=deadline-Date.now()-1500;
+   if(remaining<3000)break;
+   const url=candidates[i],env={...configured.env,ORIGIN_RPC_URL:url};
+   try{
+    return await runAttempt({...configured,env},
+     i<candidates.length-1?Math.min(8500,remaining):remaining);
+   }catch(error){
+    last=error;
+    if(!canRetrySourceRecovery(error,configured)||i===candidates.length-1)
+     throw error;
+    console.warn("XITA canonical source RPC retry",JSON.stringify({
+     sourceChainId:configured.env.ORIGIN_CHAIN_ID,
+     provider:new URL(url).hostname,stage:error.stage,reason:error.code
+    }));
+   }
+  }
+  throw last||Object.assign(new Error("Canonical source chain RPC unavailable"),{
+   code:"PROOF_RPC_UNAVAILABLE",stage:"source-receipt"
+  });
+ }
  if(!needsBase)return runAttempt(configured,timeoutMs);
  const candidates=recoveryBaseUrls(configured,{baseUrls});
  const deadline=Date.now()+timeoutMs;

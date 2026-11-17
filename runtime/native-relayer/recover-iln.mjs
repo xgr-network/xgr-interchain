@@ -1,7 +1,7 @@
 // Prepare unsigned, wallet-owned Mailbox.process calldata from one canonical
 // fee-qualified source receipt and one current-set Direct BLS attestation.
 // No Merkle, relayer custody, source re-execution or historical eth_call.
-import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256} from "ethers";
+import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256,zeroPadValue,hexlify,Interface} from "ethers";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
@@ -21,6 +21,59 @@ const mark=x=>{stage=x;console.error("XITA_RECOVERY_STAGE:"+x)};
 const cliMessageID=String(process.argv[2]||"").toLowerCase();
 let route="";
 export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
+ const id=String(messageID||"").toLowerCase();
+ check(hash.test(id)&&BigInt(id)>0n,"Invalid source Message ID");
+ const srcChain=BigInt(number("ORIGIN_CHAIN_ID"));
+ const srcDomain=number("ORIGIN_DOMAIN");
+ const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
+ const destDomain=number("DESTINATION_DOMAIN");
+ // A completed Direct-BLS quorum identifies the message without requiring
+ // a transaction hash. The hash remains mandatory only to bootstrap quorum
+ // admission using the legacy receipt-first path.
+ const optionalTx=overrideSourceTxHash||process.env.SOURCE_TX_HASH||null;
+ if(optionalTx!==null)check(hash.test(optionalTx),"Invalid source TX hash");
+ const sourceTxHash=optionalTx?.toLowerCase()||null;
+ const routeId=name("ROUTE_ID").toLowerCase();
+ check(hash.test(routeId)&&BigInt(routeId)>0n,"Invalid canonical route ID");
+ route=name("ATTESTATION_ROUTE").toLowerCase();
+ const srcMailbox=address("ORIGIN_MAILBOX"),gatewayAddress=address("ORIGIN_ILN_GATEWAY");
+ const srcRouter=address("ORIGIN_WARP_ROUTER"),srcRegistryAddress=address("ORIGIN_ILN_REGISTRY");
+ const destMailboxAddress=address("DESTINATION_MAILBOX"),destRouter=address("DESTINATION_WARP_ROUTER");
+ const destISMAddress=address("DESTINATION_ILN_ISM");
+ // Direct BLS is source-authoritative. Prefer the existing current-set
+ // quorum; only if an attestation has NOT YET been assembled may we fall
+ // back to the legacy canonical source confirmation/quorum-request path.
+ const checkXgr=new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
+ const checkDest=new JsonRpcProvider(name("DESTINATION_RPC_URL"));
+ const ism=new Contract(destISMAddress,[
+  "function registry() view returns(address)"
+ ],checkDest);
+ const destRegistry=await ism.registry();
+ const reg=new Contract(destRegistry,["function setId() view returns(uint64)"],checkDest);
+ const setId=await reg.setId();
+ check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid destination validator set");
+ let quorumReady=false;
+ try{
+  await checkXgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
+  quorumReady=true;
+ }catch(error){
+  const msg=[
+   error?.shortMessage,error?.message,error?.info?.error?.message,
+   error?.error?.message
+  ].filter(Boolean).map(String).join(" | ");
+  // Never convert a network outage, invalid signature or any other
+  // verification error into a fallback to weaker proof.
+  if(!/interchain attestation not found|ILN quorum attestation not found/i.test(msg))
+   throw error;
+ }
+ if(quorumReady)return prepareAttestedMessageOnly({id,srcChain,srcDomain,destChain,destDomain,
+  routeId,route,srcMailbox,gatewayAddress,srcRouter,srcRegistryAddress,
+  destMailboxAddress,destRouter,destISMAddress,
+  suppliedMessage:process.env.XITA_RECOVERY_SOURCE_MESSAGE_HEX||null});
+ return prepareReceiptFirstILN(id,overrideSourceTxHash);
+}
+// Retained for no-quorum message admission, not automatic delivery.
+export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null){
  const id=String(messageID||"").toLowerCase();
  check(hash.test(id)&&BigInt(id)>0n,"Invalid source Message ID");
  const srcChain=BigInt(number("ORIGIN_CHAIN_ID"));
@@ -206,6 +259,168 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
   destinationChainId:String(destChain),to:destMailboxAddress,value:"0x0",
   data:destMailbox.interface.encodeFunctionData("process",[metadata,message])};
 }
+const DISPATCH_ABI=new Interface([
+ "event Dispatch(address indexed sender,uint32 indexed destination,bytes32 indexed recipient,bytes message)"
+]);
+// The signed message ID is the cryptographic authority. Source RPCs are
+// untrusted transports of *public* event bytes, never quorum authorities.
+export async function resolveSignedDispatch({
+ suppliedMessage=null,sourceRpcUrl,mailbox,sourceRouter,sourceDomain,
+ destDomain,destRouter,messageId,sourceBlock,sourceProvider=null
+}){
+ const checked=raw=>{
+  check(typeof raw==="string"&&/^0x(?:[0-9a-f]{2}){77,65536}$/i.test(raw),
+   "Malformed or oversized canonical Hyperlane message");
+  const bytes=getBytes(raw);
+  check(keccak256(raw).toLowerCase()===messageId.toLowerCase(),
+   "Dispatch message hash differs from signed Message ID");
+  const u32=i=>(bytes[i]*0x1000000+bytes[i+1]*0x10000+bytes[i+2]*0x100+bytes[i+3])>>>0;
+  check(u32(5)===sourceDomain&&u32(41)===destDomain,
+   "Canonical Dispatch source/destination domains mismatch");
+  check(hexlify(bytes.slice(9,41)).toLowerCase()===zeroPadValue(sourceRouter,32).toLowerCase()&&
+   hexlify(bytes.slice(45,77)).toLowerCase()===zeroPadValue(destRouter,32).toLowerCase(),
+   "Canonical Dispatch source/destination routers mismatch");
+  return raw;
+ };
+ if(suppliedMessage!==null)return checked(suppliedMessage);
+ const at=Number(sourceBlock);
+ check(Number.isSafeInteger(at)&&at>0,"Invalid signed source block number");
+ const provider=sourceProvider||new JsonRpcProvider(sourceRpcUrl);
+ const event=DISPATCH_ABI.getEvent("Dispatch");
+ const topics=DISPATCH_ABI.encodeFilterTopics(event,[
+  sourceRouter,destDomain,zeroPadValue(destRouter,32)
+ ]);
+ const logs=await provider.getLogs({address:mailbox,topics,fromBlock:at,toBlock:at});
+ check(Array.isArray(logs)&&logs.length<=500,"Unbounded source Dispatch response");
+ const matching=[];
+ for(const log of logs){
+  if(!log||Number(log.blockNumber)!==at||
+   String(log.address).toLowerCase()!==mailbox.toLowerCase())continue;
+  try{
+   const decoded=DISPATCH_ABI.parseLog(log);
+   if(decoded?.name!=="Dispatch")continue;
+   matching.push(checked(decoded.args.message));
+  }catch(e){
+   if(/Malformed|Dispatch|signed Message ID/.test(String(e?.message||"")))continue;
+   throw e;
+  }
+ }
+ check(matching.length===1,"Canonical signed source Dispatch unavailable or ambiguous");
+ return matching[0];
+}
+
+// An existing on-chain BLS quorum authorizes the exact source message ID;
+// its signed bytes do not contain the variable-length Hyperlane Dispatch body.
+// The body must therefore be supplied by an untrusted public witness AND
+// independently pinned by keccak256(message)==the signed message ID.
+// This path neither reads nor trusts a new source RPC / explorer / relayer.
+export async function prepareAttestedMessageOnly({
+ id,srcChain,srcDomain,destChain,destDomain,routeId,route,
+ srcMailbox,gatewayAddress,srcRouter,srcRegistryAddress,
+ destMailboxAddress,destRouter,destISMAddress,suppliedMessage,
+ xgrProvider=null,destinationProvider=null
+}){
+ const dest=destinationProvider||new JsonRpcProvider(name("DESTINATION_RPC_URL"));
+ const xgr=xgrProvider||new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
+ const destMailbox=new Contract(destMailboxAddress,[
+  "function delivered(bytes32) view returns(bool)",
+  "function defaultIsm() view returns(address)",
+  "function process(bytes,bytes)"
+ ],dest);
+ mark("attested-only-verify-chain-ids");
+ const [destId,xgrId]=await Promise.all([
+  dest.send("eth_chainId",[]),xgr.send("eth_chainId",[])
+ ]);
+ check(BigInt(destId)===destChain&&BigInt(xgrId)===1643n,
+  "Destination/attestation RPC chain ID mismatch");
+ mark("attested-only-destination-state");
+ if(await destMailbox.delivered(id))return {status:"ALREADY_DELIVERED",messageId:id};
+ equals("Destination Mailbox default ISM",await destMailbox.defaultIsm(),destISMAddress);
+ const ism=new Contract(destISMAddress,[
+  "function registry() view returns(address)",
+  "function destinationDomain() view returns(uint32)",
+  "function verify(bytes,bytes) view returns(bool)"
+ ],dest);
+ const [setRegistry,ismDomain]=await Promise.all([ism.registry(),ism.destinationDomain()]);
+ check(Number(ismDomain)===destDomain,"Destination ISM domain mismatch");
+ const registry=new Contract(setRegistry,[
+  "function setId() view returns(uint64)",
+  "function verifierKeyFormat() view returns(uint8)",
+  "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
+ ],dest);
+ const [setId,signatureFormat]=await Promise.all([
+  registry.setId(),registry.verifierKeyFormat()
+ ]);
+ check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid current destination set ID");
+ mark("attested-only-get-current-quorum");
+ const attestation=await xgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
+ mark("attested-only-discover-dispatch");
+ const message=await resolveSignedDispatch({
+  suppliedMessage,sourceRpcUrl:process.env.ORIGIN_RPC_URL,
+  mailbox:srcMailbox,sourceRouter:srcRouter,sourceDomain:srcDomain,
+  destDomain,destRouter,messageId:id,sourceBlock:attestation.sourceBlockNumber
+ });
+ mark("attested-only-validate-signed-identity");
+ check(attestation?.version==="XITA_DIRECT_MESSAGE_V1","Wrong attestation format");
+ for(const [label,a,b] of [
+  ["Route name",attestation.chain,route],
+  ["Message ID",attestation.authorizedMessageId,id],
+  ["Route ID",attestation.routeId,routeId],
+  ["Source registry",attestation.registry,srcRegistryAddress],
+  ["Source Gateway",attestation.gateway,gatewayAddress],
+  ["Source router",attestation.sourceRouter,srcRouter],
+  ["Source Mailbox",attestation.mailbox,srcMailbox],
+  ["Destination router",attestation.destinationRouter,destRouter],
+  ["Destination ISM",attestation.destinationIsm,destISMAddress],
+  ["Destination registry",attestation.destinationRegistry,setRegistry]
+ ])equals(label,a,b);
+ check(BigInt(attestation.originChainId)===srcChain&&
+  Number(attestation.originDomain)===srcDomain&&
+  Number(attestation.destinationDomain)===destDomain&&
+  BigInt(attestation.setId)===setId&&
+  Number.isSafeInteger(Number(attestation.sourceBlockNumber))&&
+  Number(attestation.sourceBlockNumber)>0&&
+  BigInt(attestation.validatorFeeWei)>0n,
+  "Invalid signed chain domains, validator set, source block or fee");
+ const authorization={
+  sourceChainId:srcChain,sourceDomain:srcDomain,destinationDomain:destDomain,
+  routeId,setId,sourceBlockNumber:BigInt(attestation.sourceBlockNumber),
+  sourceRegistry:srcRegistryAddress,gateway:gatewayAddress,
+  sourceRouter:srcRouter,sourceMailbox:srcMailbox,
+  destinationRouter:destRouter,validatorFeeWei:BigInt(attestation.validatorFeeWei),
+  messageId:id,destinationIsm:destISMAddress,destinationRegistry:setRegistry
+ };
+ const payload=encodeDirectBLSPayload(authorization);
+ equals("Canonical signed authorization payload",payload,attestation.payload);
+ const format=Number(signatureFormat);
+ const signature=format===1?attestation.aggregateSignatureCompressed:
+   format===2?attestation.aggregateSignature:null;
+ check(signature&&getBytes(signature).length===(format===1?96:256),
+  "Invalid current destination BLS signature format");
+ const metadata=encodeDirectISMMetadata({
+  authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
+ });
+ mark("attested-only-verify-destination-route");
+ const router=new Contract(destRouter,[
+  "function verifyInboundRoute(uint64,uint32,address,bytes32) view returns(bool)"
+ ],dest);
+ check(await router.verifyInboundRoute(Number(srcChain),srcDomain,srcRouter,routeId),
+  "Destination router rejects inbound route");
+ mark("attested-only-verify-bonded-quorum");
+ check(await registry.verifyQuorum(setId,payload,attestation.signerBitmap,signature),
+  "Destination registry rejected current set BLS aggregate");
+ mark("attested-only-verify-ism");
+ check(await ism.verify(metadata,message),"Destination ISM rejects current signed message");
+ mark("attested-only-simulate-delivery");
+ await destMailbox.process.staticCall(metadata,message);
+ check(BigInt(await registry.setId())===setId,"Destination validator set rotated during preparation");
+ check(!(await destMailbox.delivered(id)),"Message delivered during preparation");
+ return {status:"READY_UNSIGNED_CALL",route,messageId:id,setId:String(setId),
+  sourceBlockNumber:Number(attestation.sourceBlockNumber),destinationChainId:String(destChain),
+  to:destMailboxAddress,value:"0x0",
+  data:destMailbox.interface.encodeFunctionData("process",[metadata,message])};
+}
+
 if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
  prepareDirectILN(cliMessageID).then(result=>{
   console.log(JSON.stringify(result));
