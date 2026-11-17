@@ -204,12 +204,14 @@ test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
  assert.doesNotMatch(html,/Wallet already has sufficient native gas/);
 });
 
-test("status modal never renders wallet, refresh, or proof action buttons",()=>{
+test("status modal keeps navigation and only offers destination-only retry for verified unresolved source",()=>{
  for(const status of ["awaiting-proof","awaiting-onward","awaiting-final-proof","delivery-unknown"]){
   const record={...base,status,delivered:status!=="awaiting-proof",
    secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
   const html=renderTransferFlow({journey,record});
-  assert.doesNotMatch(html,/id="xita-flow-(continue|refresh)"/);
+  if(status==="awaiting-proof")assert.match(html,/id="xita-flow-continue"/);
+  else assert.doesNotMatch(html,/id="xita-flow-continue"/);
+  assert.doesNotMatch(html,/id="xita-flow-refresh"/);
   assert.match(html,/id="xita-flow-done"/);
   assert.match(html,/id="xita-flow-history"/);
  }
