@@ -380,3 +380,28 @@ test("a previously ready proof requests a wallet preflight rather than showing n
  assert.match(queued,/Waiting for transfer verification/);
  assert.doesNotMatch(queued,/Preparing wallet confirmation/);
 });
+
+test("verified BSC source offers a user-gesture destination-only wallet recovery",()=>{
+ const j={origin:"bsc",destination:"xgrchain",asset:"XGR",sourceTxHash};
+ const confirmed={...base,sourceChain:"bsc",destinationChain:"xgrchain",
+  finalDestinationChain:"xgrchain",status:"awaiting-proof",delivered:false,
+  proofObservation:{state:"ready",checkedAt:new Date().toISOString()}};
+ const pending=renderTransferFlow({journey:j,record:confirmed});
+ assert.match(pending,/id="xita-flow-continue"/);
+ assert.match(pending,/Verify and open MetaMask/);
+ assert.equal((pending.match(/id="xita-flow-continue"/g)||[]).length,1);
+ const slow=renderTransferFlow({journey:j,record:{...confirmed,
+  proofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
+ // The explicit click re-verifies the proof; a waiting SQL row is never
+ // treated as permission to submit a transaction.
+ assert.match(slow,/id="xita-flow-continue"/);
+ for(const record of [
+  {...confirmed,confirmed:false},
+  {...confirmed,delivered:true,status:"delivered"},
+  {...confirmed,status:"pending-source"}
+ ]){
+  assert.doesNotMatch(renderTransferFlow({journey:j,record}),/id="xita-flow-continue"/);
+ }
+ assert.doesNotMatch(renderTransferFlow({journey:j,record:confirmed,working:true}),/id="xita-flow-continue"/);
+ assert.doesNotMatch(renderTransferFlow({journey:j,record:confirmed,scanning:true}),/id="xita-flow-continue"/);
+});
