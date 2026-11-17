@@ -17,7 +17,13 @@ test("only verified wallet-ready transitions issue intent",()=>{
  assert.equal(nextVerifiedWalletStep({...parent,status:"awaiting-final-proof",secondHopTxHash:h("c"),
   secondHopMessageId:h("d"),finalProofObservation:proof},{now})?.kind,"final-delivery");
  assert.equal(nextVerifiedWalletStep({...parent,status:"awaiting-final-proof",secondHopTxHash:h("c"),
-  secondHopMessageId:h("d"),finalProofObservation:{...proof,checkedAt:new Date(now-200000).toISOString()}},{now}),null);
+  secondHopMessageId:h("d"),finalProofObservation:{...proof,checkedAt:new Date(now-200000).toISOString()}},{now})?.kind,"final-delivery");
+ // A positive SQL observation may be older than the former 3-minute UI
+ // cutoff. It only starts read-only/canonical preflight; it never signs.
+ assert.equal(nextVerifiedWalletStep({...parent,status:"awaiting-proof",delivered:false,
+  proofObservation:{...proof,checkedAt:new Date(now-24*60*60*1000).toISOString()}},{now})?.kind,"first-delivery");
+ assert.equal(nextVerifiedWalletStep({...parent,status:"awaiting-proof",delivered:false,
+  proofObservation:{...proof,checkedAt:new Date(now+1000).toISOString()}},{now}),null);
 });
 test("automatic step key binds wallet + original source + exact source message",()=>{
  const binding={key:"wallet:"+h("e"),sourceTxHash:h("e")};
