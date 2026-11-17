@@ -76,8 +76,8 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   (proofObservation.stage?" · "+String(proofObservation.stage):"")+
   (retryAt?" · next check "+retryAt:""):null;
  const observationAt=Date.parse(proofObservation?.updatedAt||"");
- const observationStale=Boolean(proofObservation&&Number.isFinite(observationAt)&&
-  Date.now()-observationAt>300000);
+ const observationStale=Boolean(proofObservation&&proofObservation.state!=="ready"&&
+  Number.isFinite(observationAt)&&Date.now()-observationAt>300000);
  // A previously successful observer check remains a hint to perform the
  // independent current-proof/wallet preflight, even if its timestamp aged.
  // No observer row can authorize signing or imply delivery by itself.
