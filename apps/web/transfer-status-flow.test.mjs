@@ -322,7 +322,12 @@ test("normal background proof retries and ready handoff keep stable status",()=>
   {state:"checking"},{state:"ready",checkedAt:new Date().toISOString()}
  ]){
   const html=renderTransferFlow({journey:j,record:{...common,proofObservation}});
-  assert.match(html,/Waiting for transfer verification/);
+  if(proofObservation.state==="ready"){
+   assert.match(html,/Preparing wallet confirmation/);
+   assert.doesNotMatch(html,/No wallet action is needed right now/);
+  }else{
+   assert.match(html,/Waiting for transfer verification/);
+  }
   assert.doesNotMatch(html,/Verification delayed|needs technical review|Checking Base delivery/);
  }
 });
