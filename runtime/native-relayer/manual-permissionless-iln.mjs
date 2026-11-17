@@ -15,27 +15,28 @@ const HASH=/^0x[0-9a-f]{64}$/i;
 const ROUTE=/^[a-z0-9_-]{1,72}$/;
 const ASSET=/^[A-Za-z0-9_-]{1,48}$/;
 export function configurePermissionlessRecovery({
- catalog,routeName,asset,messageId,sourceTxHash,messageHex,xgrRpc
+ catalog,routeName,asset,messageId,sourceTxHash=null,messageHex,xgrRpc
 }){
  if(!ROUTE.test(routeName||"")||!ASSET.test(asset||"")||
-   !HASH.test(messageId||"")||!HASH.test(sourceTxHash||"")||
+   !HASH.test(messageId||"")||(sourceTxHash!==null&&!HASH.test(sourceTxHash))||
    typeof messageHex!=="string"||
    !/^0x(?:[0-9a-f]{2}){77,65536}$/i.test(messageHex))
   throw Error("Complete original Dispatch bytes and valid canonical source identity required");
  const resolved=resolveRecoveryRoute(catalog,routeName,messageId,asset,sourceTxHash);
  const local=xgrRpc||"http://127.0.0.1:8545";
  if(!/^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(local))
-  throw Error("Attestation/Destination XGR RPC must be a local loopback node");
- if(Number(resolved.destinationChainId)!==1643)
-  throw Error("This manual reconstruction tool is currently limited to XGRChain destination");
+  throw Error("Attestation RPC must be a local loopback XGR node");
+ // Destination is selected exclusively by the audited deployment catalog.
+ // External-chain destinations are NOT forced onto the XGR node.
  return {...resolved.env,
   XITA_RECOVERY_SOURCE_MESSAGE_HEX:messageHex,
   ATTESTATION_RPC_URL:local,
-  DESTINATION_RPC_URL:local};
+  DESTINATION_RPC_URL:resolved.destinationChainId===1643?
+   local:resolved.env.DESTINATION_RPC_URL};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
-  const [routeName,asset,messageId,sourceTxHash]=process.argv.slice(2);
+  const [routeName,asset,messageId,sourceTxHash=null]=process.argv.slice(2);
   const messageHex=process.env.XITA_RECOVERY_SOURCE_MESSAGE_HEX||"";
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));
   const env=configurePermissionlessRecovery({
