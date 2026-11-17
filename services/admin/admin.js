@@ -256,6 +256,9 @@ function moneyInWei(wei,chain){
 }
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
+ // XDC registry has NO BLS reserve constructor arguments.
+ const cfg=workqueue?.inventory?.chains.find(c=>c.name===selectedDeployment?.chainName);
+ if(component==="validatorRegistry"&&cfg?.blsVerifierFormat==="ecdsa")return {};
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
