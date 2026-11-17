@@ -322,7 +322,12 @@ test("normal background proof retries and ready handoff keep stable status",()=>
   {state:"checking"},{state:"ready",checkedAt:new Date().toISOString()}
  ]){
   const html=renderTransferFlow({journey:j,record:{...common,proofObservation}});
-  assert.match(html,/Waiting for transfer verification/);
+  if(proofObservation.state==="ready"){
+   assert.match(html,/Preparing wallet confirmation/);
+   assert.doesNotMatch(html,/No wallet action is needed right now/);
+  }else{
+   assert.match(html,/Waiting for transfer verification/);
+  }
   assert.doesNotMatch(html,/Verification delayed|needs technical review|Checking Base delivery/);
  }
 });
@@ -353,4 +358,25 @@ test("broadcast and mined Base Mint must not revert to preparatory wallet messag
   stage:"first-delivery-pending"});
  assert.match(verified,/Transfer complete/);
  assert.doesNotMatch(verified,/transaction submitted/);
+});
+
+test("a previously ready proof requests a wallet preflight rather than showing no wallet action",()=>{
+ const j={origin:"bsc",destination:"xgrchain",asset:"XGR",sourceTxHash};
+ const oldReady={state:"ready",checkedAt:new Date(Date.now()-3600000).toISOString(),
+   updatedAt:new Date(Date.now()-3600000).toISOString()};
+ const record={...base,sourceChain:"bsc",destinationChain:"xgrchain",
+  finalDestinationChain:"xgrchain",status:"awaiting-proof",delivered:false,
+  proofObservation:oldReady};
+ const flow=deriveTransferFlow({journey:j,record});
+ assert.equal(flow.delivered,false);
+ assert.equal(flow.canContinue,true);
+ assert.match(flow.message,/revalidate the canonical chain state/);
+ const markup=renderTransferFlow({journey:j,record});
+ assert.match(markup,/Preparing wallet confirmation/);
+ assert.match(markup,/will ask MetaMask for your confirmation/);
+ assert.doesNotMatch(markup,/No wallet action is needed right now/);
+ const queued=renderTransferFlow({journey:j,record:{...record,
+  proofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
+ assert.match(queued,/Waiting for transfer verification/);
+ assert.doesNotMatch(queued,/Preparing wallet confirmation/);
 });

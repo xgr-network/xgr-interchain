@@ -2,9 +2,14 @@
 // request. Read-only transfer/status refresh never authorizes a transaction.
 // startTransfer()/resumeDelivery() independently reverify chain evidence.
 const HASH=/^0x[0-9a-f]{64}$/i;
+// A persisted "ready" observation is only a hint to run the bounded
+// destination preflight. It is never authority to sign: resumeDelivery()
+// re-verifies the current validator set, route and Mailbox state before TX2.
+// Do not strand already-ready transfers merely because this observer's last
+// positive timestamp aged past three minutes (e.g. after a process restart).
 const ready=(proof,now)=>proof?.state==="ready"&&
  Number.isFinite(Date.parse(proof.checkedAt||""))&&
- now>=Date.parse(proof.checkedAt)&&now-Date.parse(proof.checkedAt)<180000;
+ now>=Date.parse(proof.checkedAt);
 export function nextVerifiedWalletStep(record,{now=Date.now()}={}){
  if(!record?.confirmed||!HASH.test(record.messageId||""))return null;
  if(record.status==="awaiting-onward"&&record.delivered===true&&

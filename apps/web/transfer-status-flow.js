@@ -76,11 +76,14 @@ export function deriveTransferFlow({journey={},record=null,stage="",working=fals
   (proofObservation.stage?" · "+String(proofObservation.stage):"")+
   (retryAt?" · next check "+retryAt:""):null;
  const observationAt=Date.parse(proofObservation?.updatedAt||"");
- const observationStale=Boolean(proofObservation&&Number.isFinite(observationAt)&&
-  Date.now()-observationAt>300000);
+ const observationStale=Boolean(proofObservation&&proofObservation.state!=="ready"&&
+  Number.isFinite(observationAt)&&Date.now()-observationAt>300000);
+ // A previously successful observer check remains a hint to perform the
+ // independent current-proof/wallet preflight, even if its timestamp aged.
+ // No observer row can authorize signing or imply delivery by itself.
+ const proofCheckedAt=Date.parse(proofObservation?.checkedAt||"");
  const proofReady=proofObservation?.state==="ready"&&
-   Number.isFinite(Date.parse(proofObservation.checkedAt))&&
-   Date.now()-Date.parse(proofObservation.checkedAt)<180000;
+   Number.isFinite(proofCheckedAt)&&proofCheckedAt<=Date.now();
  // A crashed/stopped worker must not freeze the UI in "checking" forever.
  // Manual recovery still revalidates the complete canonical proof on demand.
  const proofWaiting=observing&&!observationStale&&proofObservation.state!=="unavailable";
@@ -214,6 +217,15 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  const scheduledRetry=proof?.state==="unavailable"&&
    Number.isFinite(updatedAt)&&Date.now()-updatedAt<300000&&updatedAt<=Date.now()+60000&&
    Number.isFinite(nextCheckAt)&&nextCheckAt>=Date.now()-30000;
+ // Once the durable observer has a ready proof, do not keep displaying
+ // "no wallet action" merely because the browser has not opened MetaMask yet.
+ // The automatic wallet step still revalidates the live proof, route and gas.
+ if(proof?.state==="ready"&&
+    Number.isFinite(Date.parse(proof.checkedAt||""))&&
+    Date.parse(proof.checkedAt)<=Date.now())
+  return {label:"Preparing wallet confirmation",
+   detail:"Validator proof is available. XITA is verifying the destination transaction and will ask MetaMask for your confirmation while this transfer is open.",
+   kind:"waiting"};
  const repeatedStructuralFailure=proof?.state==="unavailable"&&
    Number(proof?.attempts)>=3&&
    ["PROOF_CONFIG_MISMATCH","PROOF_DESTINATION_QUORUM_REJECTED",
