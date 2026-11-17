@@ -44,7 +44,7 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
   check(!ids.has(c.chainId)&&!domains.has(c.domainId),p+": duplicate chainId or domainId");ids.add(c.chainId);domains.add(c.domainId);
   check(Array.isArray(c.rpcUrls)&&c.rpcUrls.length>0&&c.rpcUrls.every(x=>typeof x==="string"&&x.startsWith("https://")),p+": invalid RPC");
   check(Number.isSafeInteger(c.confirmations)&&c.confirmations>=1,p+": invalid confirmations");
-  check(["compressed","eip2537"].includes(c.blsVerifierFormat),p+": invalid verifier");
+  check(["compressed","eip2537","ecdsa"].includes(c.blsVerifierFormat),p+": invalid verifier");
   check(c.observedInfrastructure===chainDeploymentPath(name),p+": wrong inventory path");
   const inf=infrastructure[name];check(!!inf,p+": infrastructure missing");if(!inf)continue;
   check(inf.kind==="infrastructure-deployment"&&inf.chain===name&&inf.chainId===c.chainId&&inf.domainId===c.domainId,p+": mismatched infrastructure");
@@ -56,7 +56,7 @@ export function validateCatalog({chains,assets,infrastructure,publication}){
     typeof v315?.components==="object"&&v315.components!==null&&!Array.isArray(v315.components)&&
     Object.keys(v315).every(k=>["schemaVersion","components","receiptPaths"].includes(k)),p+": invalid XITA v3.1.5 deployment index");
   if(v315?.components&&typeof v315.components==="object"){
-   const allowed=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
+   const allowed=new Set(["blsVerifier","ecdsaVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
    for(const [component,item] of Object.entries(v315.components)){
     check(allowed.has(component)&&address(item?.address)&&
       hash(item?.runtimeCodeKeccak256)&&

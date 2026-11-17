@@ -67,10 +67,14 @@ export async function inspectConfiguredChain({chain,core,bootstrap,rpc=rpcCall})
    result.eip2537VectorsPassed=vectors.vectorsPassed;
    result.eip2537MalformedInputRejected=vectors.malformedRejected;
    result.verifierStatus="EIP-2537 precompiles verified; deployed BLS verifier and real PoP pending";
-  } else throw Error("Unsupported BLS verifier format");
+  } else if(chain.blsVerifierFormat==="ecdsa" && chain.chainId===50 && chain.domainId===50){
+   result.ecdsaMainnetVerified=true;
+   result.verifierStatus="XDC ECDSA secp256k1; validator genesis source attestation required";
+  } else throw Error("Unsupported verifier format");
   result.basicRpcPreflightOK=Boolean(result.chainIdVerified&&
     (chain.blsVerifierFormat!=="compressed"||result.nativeNegativeVectorRejected)&&
-    (chain.blsVerifierFormat!=="eip2537"||result.eip2537PrecompileVerified));
+    (chain.blsVerifierFormat!=="eip2537"||result.eip2537PrecompileVerified)&&
+    (chain.blsVerifierFormat!=="ecdsa"||result.ecdsaMainnetVerified));
  }catch(e){result.error=String(e.message||e).slice(0,200);result.basicRpcPreflightOK=false;}
  return result;
 }

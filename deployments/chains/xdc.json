@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "infrastructure-deployment",
+  "network": "mainnet",
+  "chain": "xdc",
+  "chainId": 50,
+  "domainId": 50,
+  "xitaV315": {
+    "schemaVersion": 1,
+    "components": {},
+    "receiptPaths": []
+  }
+}
