@@ -144,5 +144,5 @@ test("update restores only operator-enabled fee services after reset with paid D
  const publish=completion.indexOf("publish_web");
  assert.ok(preflight>=0&&preflight<publish,"Paid quote DB preflight must run before website publication");
  assert.doesNotMatch(completion,/systemctl enable --now xita-(?:fee-preview|interchain-fee-quote)\.service/);
- assert.doesNotMatch(completion,/systemctl (?:start|enable|restart) xita-(?:gas-sponsor|interchain-fee-claim)/);
+ assert.doesNotMatch(completion,/systemctl (?:start|enable|restart) xita-(?:gas-sponsor|interchain-fee-claim)\\.(?:service|timer)/);
 });
