@@ -1,6 +1,6 @@
 # XDC mainnet ECDSA integration – draft security and deployment gates
 
-**Status:** WIP / NOT DEPLOYABLE / NO TOKEN ROUTES / NO MAINNET VALIDATOR SIGNING.
+**Status:** Deployment-only feature branch; awaiting CI, code review, merge and Admin software update. NO TOKEN ROUTES / NO MAINNET VALIDATOR SIGNING.
 **Network:** XDC mainnet chain ID/domain 50, XGR mainnet hub chain ID/domain 1643. No Apothem, no alternative XGR validator network.
 
 ## Architecture and immutable boundaries
@@ -36,7 +36,7 @@ XDC cannot query XGR consensus trustlessly using the current contracts. Therefor
 5. Add source fee governance ECDSA quorum, ECDSA membership transitions and destination contract ABI/registry readers to node/Admin/recovery without changing existing BLS routes. Mainnet XDC -> XGR messages are still authorized by the existing XGR destination **BLS** ISM.
 6. Execute adversarial Foundry test matrix: forged validator set, rogue key, replay, duplicate/high bitmap bits, low-S, wrong chain/ISM/registry, expired/stale set, missing proof, self-referential bootstrap, cross-asset unlock, source finality reorg, fee mismatch, stuck relay, restarts and XGR validator join/remove.
 7. Pass the full existing XGR-node and xgr-interchain CI suites, independent delta audit, multi-validator mainnet rollout policy and SMALL controlled XGR <-> XDC native/token transaction evidence. No existing deployment migration.
-8. Until all gates pass: NO XDC mainnet asset route, bridge, token mint/release, node signer activation, upgrade or operator gas spend.
+8. Until all transfer release gates pass: NO XDC mainnet asset route, bridge, token mint/release, validator signer activation or production transfer. Infrastructure-only deployments may require wallet-authorized XDC gas AFTER independent source-commitment verification, reviewed CI and explicitly approved contract artifacts; they do not grant protocol activation.
 
 ## Code and current limited coverage
 
@@ -47,3 +47,9 @@ XDC cannot query XGR consensus trustlessly using the current contracts. Therefor
 - `test/XITAECDSAMainnet.t.sol`: Foundry unit cases. An offline or CI passing test is not live transaction authorization.
 
 The related node branch `xgr-node:feature/xdc-ecdsa-mainnet` includes policy isolation and an offline ECDSA codec/verifier but intentionally NO live signer or activated XDC policy.
+
+## Deployment-only Admin milestone
+
+After this PR is independently reviewed, all CI gates are green, it is merged into GitHub main, and the Admin checkout/compiled seals are refreshed, the existing **Chains & Onboarding** UI can deploy XDC network components in dependency order using its wallet-assisted journal/reconcile workflow. No browser may supply arbitrary constructor bytes or an alternative validator-root; every transaction uses a main-commit-sealed artifact and on-chain verified predecessor. Network ID/domain 50, ECDSA verifier, XGR-root-pinned registry, ECDSA ISM, fresh transport and EVM factory are required. The ECDSA registry is initially **unactivated** (setId = 0); deployment does not collect or request validator private keys, and does not create transferable asset routes.
+
+The XGR bootstrap snapshot is based on the receipt-pinned XGR mainnet Interchain RegistryV3 active set and both configured XGR RPCs at one common recent source block. This is *two-endpoint consistency verification*, **not** a trustless cross-chain light-client proof or proof of independently operated providers. On an RPC disagreement, inability to query source state or missing destination `finalized` support, Admin fails closed. A deployment receipt is only published after canonical receipt, runtime-code and immutable-constructor checks succeed. Full asset routes require a separate release and audit.
