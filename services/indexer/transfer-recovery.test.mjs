@@ -145,9 +145,7 @@ test("source Base RPC preflight never re-fetches historical receipt after signed
   fetcher:async(url,{body})=>{
    const {method,params}=JSON.parse(body);calls.push(method);
    const value=method==="eth_chainId"?"0x2105":
-    method==="eth_getTransactionReceipt"?{
-     transactionHash:tx,status:"0x1",blockNumber:"0x123"}:
-    method==="eth_getLogs"?[{transactionHash:tx,address:addr("6")}]:null;
+    method==="eth_blockNumber"?"0x123":null;
    return {ok:true,status:200,json:async()=>({jsonrpc:"2.0",id:1,result:value})};
   }
  });
