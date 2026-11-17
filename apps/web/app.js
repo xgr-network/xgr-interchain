@@ -306,7 +306,9 @@ async function probeModalRecovery(){
  if(!original.asset||!original.routeName)return;
  const controller=new AbortController();
  recoveryProbeAbort=controller;recoveryProbeBusy=true;
- const timeout=setTimeout(()=>controller.abort(),30000);
+ // The server may legitimately spend up to ~48s verifying current-set BLS
+ // evidence; do not abort a valid proof attempt at 30 seconds.
+ const timeout=setTimeout(()=>controller.abort(),60000);
  try{
   // Read-only: the API only prepares an unsigned call. No RPC signing,
   // source burn, or token transfer occurs inside this poll.
