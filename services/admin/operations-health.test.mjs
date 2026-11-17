@@ -191,3 +191,29 @@ test("insufficient independent RPC availability explicitly degrades overall heal
  assert.equal(result.status,"degraded");
  assert.equal(result.summary.rpcChainsBelowMinimum,1);
 });
+
+test("failed sponsor oneshot degrades admin health even if timer and listener are green",async()=>{
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]}}};
+ const health=await collectOperationsHealth({catalog,now,
+  readUnit:async unit=>{
+   if(unit==="xita-gas-sponsor.service")return "LoadState=loaded\nActiveState=failed\nResult=exit-code\nExecMainStatus=1\n";
+   if(unit==="xita-gas-sponsor.timer"||unit==="xita-gas-sponsor-listener.service")
+    return "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
+   return UNITS.find(x=>x.unit===unit)?.optional?"LoadState=not-found\nActiveState=inactive\n":
+    "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n";
+  },
+  readHTTP:async target=>target.id==="transfer-stats"?stats([cursor("2026-10-19T11:59:30Z")]):{ok:true},
+  checkChain:async()=>({state:"ok",name:"xgrchain",head:2}),
+  checkValidators:async()=>[],
+  readEvidence:()=>({status:"fresh",asOf:new Date(now).toISOString(),verifiedAssets:1})
+ });
+ assert.equal(health.status,"degraded");
+ assert.equal(health.services.find(x=>x.id==="gas-sponsor").state,"failed");
+ assert.equal(health.services.find(x=>x.id==="gas-sponsor-worker").state,"failed");
+ assert.equal(health.sponsorWorker.state,"failed");
+});
+test("successful inactive oneshot remains healthy; never-run oneshot does not claim success",()=>{
+ const def=UNITS.find(x=>x.id==="gas-sponsor-worker");
+ assert.equal(parseUnitShow("LoadState=loaded\nActiveState=inactive\nResult=success\nExecMainStatus=0\n",def).state,"ok");
+ assert.equal(parseUnitShow("LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n",def).state,"warning");
+});
