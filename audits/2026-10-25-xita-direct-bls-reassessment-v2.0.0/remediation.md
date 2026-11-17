@@ -11,7 +11,9 @@ This is a *living* post-audit status register. Historical 24 October findings re
 | New L-02 · launch P0 | FIXED_IN_CODE | Interchain [PR #308](https://github.com/xgr-network/xgr-interchain/pull/308) `4daf33ccf38e2227f9b60015ed94b2e19c9c1038` |
 | N-11 · wallet route prioritization | FIXED_IN_CODE | Interchain [PR #310](https://github.com/xgr-network/xgr-interchain/pull/310) `f353d540519da2a373cd31e86b9a61e1d01cdafb` |
 | N-03/N-04 and other additional findings | NOT_REASSESSED_HERE | Complete finding-specific descriptions and proofs must be taken from the confidential original, not reconstructed from labels |
-| 24 October M/L/I findings | REFER_TO_ORIGINAL_REGISTER | Require finding-specific independent re-assessment before reclassification |
+| 24 October M-01 · source-finality sponsor | FIXED_IN_CODE (prior to re-audit) | [PR #292](https://github.com/xgr-network/xgr-interchain/pull/292) merged `31e5b4116ab58ccd96f78931d762219534401f9d`; native-safe sponsor finality. A source code fix is not a verified live deployed database/runtime. |
+| 24 October M-02 · reorg-aware delivery | FIXED_IN_CODE / previously verified in re-audit | Same [PR #292](https://github.com/xgr-network/xgr-interchain/pull/292): destination delivery reads pinned canonical block and stores block/hash; stale/reorg evidence reopens recovery. Verify production migration/runtime separately. |
+| Other 24 October M/L/I findings | REFER_TO_ORIGINAL_REGISTER | Require finding-specific independent re-assessment before reclassification |
 
 No source merge alone establishes release, installation or a safe live transfer.
 
