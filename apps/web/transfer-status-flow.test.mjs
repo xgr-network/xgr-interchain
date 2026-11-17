@@ -204,14 +204,12 @@ test("no sponsor claim cannot be displayed as confirmed adequate gas",()=>{
  assert.doesNotMatch(html,/Wallet already has sufficient native gas/);
 });
 
-test("status modal keeps navigation and only offers destination-only retry for verified unresolved source",()=>{
+test("status modal never renders an additional wallet CTA",()=>{
  for(const status of ["awaiting-proof","awaiting-onward","awaiting-final-proof","delivery-unknown"]){
   const record={...base,status,delivered:status!=="awaiting-proof",
    secondHopTxHash:"0x"+"d".repeat(64),secondHopMessageId:"0x"+"e".repeat(64)};
   const html=renderTransferFlow({journey,record});
-  if(status==="awaiting-proof")assert.match(html,/id="xita-flow-continue"/);
-  else assert.doesNotMatch(html,/id="xita-flow-continue"/);
-  assert.doesNotMatch(html,/id="xita-flow-refresh"/);
+  assert.doesNotMatch(html,/id="xita-flow-(continue|refresh)"/);
   assert.match(html,/id="xita-flow-done"/);
   assert.match(html,/id="xita-flow-history"/);
  }
@@ -250,7 +248,7 @@ test("compact transfer status identifies which chain controls waiting",()=>{
  assert.doesNotMatch(proof,/Backend proof: waiting/);
  const signing=renderTransferFlow({journey:j,record:child,working:true,
   stage:"final-delivery-sign",walletReady:true});
- assert.match(signing,/Confirm in your wallet/);
+ assert.match(signing,/Waiting for wallet confirmation/);
  const done=renderTransferFlow({journey:j,record:{...child,status:"journey-delivered"}});
  assert.match(done,/Transfer complete/);
  assert.doesNotMatch(done,/is-animated/);
@@ -383,27 +381,19 @@ test("a previously ready proof requests a wallet preflight rather than showing n
  assert.doesNotMatch(queued,/Preparing wallet confirmation/);
 });
 
-test("verified BSC source offers a user-gesture destination-only wallet recovery",()=>{
+test("BSC modal opens no additional CTA and keeps wallet state in front of proof polling",()=>{
  const j={origin:"bsc",destination:"xgrchain",asset:"XGR",sourceTxHash};
- const confirmed={...base,sourceChain:"bsc",destinationChain:"xgrchain",
+ const record={...base,sourceChain:"bsc",destinationChain:"xgrchain",
   finalDestinationChain:"xgrchain",status:"awaiting-proof",delivered:false,
-  proofObservation:{state:"ready",checkedAt:new Date().toISOString()}};
- const pending=renderTransferFlow({journey:j,record:confirmed});
- assert.match(pending,/id="xita-flow-continue"/);
- assert.match(pending,/Verify and open MetaMask/);
- assert.equal((pending.match(/id="xita-flow-continue"/g)||[]).length,1);
- const slow=renderTransferFlow({journey:j,record:{...confirmed,
-  proofObservation:{state:"waiting",reason:"PROOF_PENDING"}}});
- // The explicit click re-verifies the proof; a waiting SQL row is never
- // treated as permission to submit a transaction.
- assert.match(slow,/id="xita-flow-continue"/);
- for(const record of [
-  {...confirmed,confirmed:false},
-  {...confirmed,delivered:true,status:"delivered"},
-  {...confirmed,status:"pending-source"}
- ]){
-  assert.doesNotMatch(renderTransferFlow({journey:j,record}),/id="xita-flow-continue"/);
- }
- assert.doesNotMatch(renderTransferFlow({journey:j,record:confirmed,working:true}),/id="xita-flow-continue"/);
- assert.doesNotMatch(renderTransferFlow({journey:j,record:confirmed,scanning:true}),/id="xita-flow-continue"/);
+  proofObservation:{state:"checking",reason:"PROOF_PENDING"}};
+ const html=renderTransferFlow({journey:j,record});
+ assert.doesNotMatch(html,/id="xita-flow-continue"/);
+ const active=renderTransferFlow({journey:j,record,stage:"first-delivery-sign",working:true});
+ assert.match(active,/Waiting for wallet confirmation/);
+ assert.doesNotMatch(active,/Waiting for transfer verification/);
+ const ready={...record,proofObservation:{state:"ready",checkedAt:new Date().toISOString()}};
+ assert.match(renderTransferFlow({journey:j,record:ready,stage:"first-delivery-sign",working:true}),
+  /Waiting for wallet confirmation/);
+ assert.doesNotMatch(renderTransferFlow({journey:j,record:{...record,delivered:true,status:"delivered"}}),
+  /Waiting for wallet confirmation/);
 });

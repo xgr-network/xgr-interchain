@@ -25,6 +25,18 @@ export function nextVerifiedWalletStep(record,{now=Date.now()}={}){
   return {kind:"final-delivery",identity:record.secondHopMessageId.toLowerCase()};
  return null;
 }
+// A confirmed unresolved source is eligible for a *read-only* server recovery
+// probe even if the SQL observer has not yet published a ready row. A positive
+// server response only starts the normal independently reverified wallet path.
+export function recoveryProbeKey(binding){
+ const row=binding?.record;
+ if(row?.confirmed!==true||row?.delivered!==false||
+    row.status!=="awaiting-proof"||
+    !HASH.test(row.txHash||"")||!HASH.test(row.messageId||"")||
+    row.account?.toLowerCase()!==binding?.account?.toLowerCase()||
+    row.txHash?.toLowerCase()!==binding?.sourceTxHash?.toLowerCase())return null;
+ return walletStepKey(binding,{kind:"first-delivery",identity:row.messageId.toLowerCase()});
+}
 export function walletStepKey(binding,step){
  if(!binding||!step||!HASH.test(binding.sourceTxHash||"")||
     !/^[a-z-]+$/.test(step.kind||"")||!HASH.test(step.identity||""))
