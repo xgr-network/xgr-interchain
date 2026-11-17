@@ -70,14 +70,16 @@ contract XITAECDSAMainnetTest is Test {
     }
 
     function testGenesisRejectsUntrustedOrMissingQuorum() public {
+        bytes memory insufficient = sign(K1, keccak256(registry.bootstrapPayload()));
         vm.expectRevert(XGRInterchainECDSAValidatorRegistry.InvalidBootstrap.selector);
-        registry.activateBootstrap(genesis, keys, hex"01", sign(K1, keccak256(registry.bootstrapPayload())));
+        registry.activateBootstrap(genesis, keys, hex"01", insufficient);
         bytes[] memory altered = keys;
         bytes memory modified = new bytes(48);
         modified[0] = 0xaa;
         altered[0] = modified;
+        bytes memory approved = doubleSign(registry.bootstrapPayload());
         vm.expectRevert(XGRInterchainECDSAValidatorRegistry.InvalidBootstrap.selector);
-        registry.activateBootstrap(genesis, altered, hex"03", doubleSign(registry.bootstrapPayload()));
+        registry.activateBootstrap(genesis, altered, hex"03", approved);
     }
 
     function testBootstrapAndCurrentSet2Of3() public {
