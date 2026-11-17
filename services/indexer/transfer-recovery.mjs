@@ -119,7 +119,7 @@ export function classifyRecoveryFailure(err,stderr=""){
   stage==="simulate-destination-delivery"&&/execution reverted|missing revert data|call_exception|transaction execution reverted/i.test(detail)?"PROOF_DESTINATION_REVERT":
    /missing [A-Z_]+|invalid [A-Z_]+|configuration/i.test(detail)?"PROOF_CONFIG_MISMATCH":
   /quorum|attestation|validator|signature/.test(t)?"PROOF_QUORUM_UNAVAILABLE":
-  /rpc|connection|network|request failed|not found|could not coalesce|transport failure/.test(t)?"PROOF_RPC_UNAVAILABLE":
+  /rpc|connection|network|request failed|not found|could not coalesce|transport failure|http 403|http 429|forbidden|usage limit|rate limit|too many requests|response status 403|response status 429/.test(t)?"PROOF_RPC_UNAVAILABLE":
   /receipt|dispatch|source route|fee allocation|fee vault/.test(t)?"PROOF_SOURCE_EVIDENCE_UNAVAILABLE":"PROOF_NOT_READY";
  return {code,stage,rpcCode,detail};
 }
@@ -130,6 +130,27 @@ const recoveryBaseDefaultUrls=()=>process.env.XITA_RECOVERY_BASE_RPC_URLS||
 // remain fallbacks. Never accept browser-supplied or per-token RPC URLs.
 export function recoveryBaseUrls(configured,{baseUrls=recoveryBaseDefaultUrls()}={}){
  return rpcCandidates({chainId:8453,rpcUrls:configured.baseRpcUrls||[]},{baseUrls});
+}
+// BSC recovery was incorrectly single-provider. Keep all fallback endpoints
+// from the approved immutable catalog, plus the fourth compiled-node witness.
+// This is an availability retry ONLY; canonical source receipt, native finality,
+// fee, BLS and destination checks remain mandatory on every attempt.
+const BSC_1RPC="https://public.1rpc.io/bnb";
+export function recoveryBscUrls(configured){
+ if(Number(configured.env.ORIGIN_CHAIN_ID)!==56)
+  throw Error("BSC recovery only applies to BSC source routes");
+ return rpcCandidates({chainId:56,rpcUrls:[
+  ...(configured.sourceRpcUrls||[]),BSC_1RPC
+ ]});
+}
+const sourceBscStages=new Set([
+ "verify-chain-ids","source-receipt","source-route",
+ "confirmed-fee-vault-allocation"
+]);
+export function canRetryBscRecovery(error,configured){
+ if(Number(configured.env.ORIGIN_CHAIN_ID)!==56||
+   !["PROOF_RPC_UNAVAILABLE","PROOF_TIMEOUT"].includes(error?.code))return false;
+ return sourceBscStages.has(error.stage);
 }
 // Qualify the actual route, not an unrelated historical Base test block.
 export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
@@ -226,6 +247,32 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
  // Base availability merely because Base is in the global catalog.
  const needsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453||
   Number(configured.env.DESTINATION_CHAIN_ID)===8453;
+ if(!needsBase&&Number(configured.env.ORIGIN_CHAIN_ID)===56){
+  const candidates=recoveryBscUrls(configured);
+  const deadline=Date.now()+timeoutMs;
+  let last=null;
+  for(let i=0;i<candidates.length;i++){
+   const url=candidates[i];
+   const remaining=deadline-Date.now()-1500;
+   if(remaining<3000)break;
+   const env={...configured.env,ORIGIN_RPC_URL:url};
+   try{
+    // Bound retries, but leave the full remaining budget to the last source.
+    return await runAttempt({...configured,env},
+     i<candidates.length-1?Math.min(8500,remaining):remaining);
+   }catch(error){
+    last=error;
+    if(!canRetryBscRecovery(error,configured)||i===candidates.length-1)
+     throw error;
+    console.warn("XITA recovery BSC read-only provider failover",JSON.stringify({
+     provider:new URL(url).hostname,stage:error.stage,reason:error.code
+    }));
+   }
+  }
+  throw last||Object.assign(new Error("BSC canonical source RPC unavailable"),{
+   code:"PROOF_RPC_UNAVAILABLE",stage:"source-receipt"
+  });
+ }
  if(!needsBase)return runAttempt(configured,timeoutMs);
  const candidates=recoveryBaseUrls(configured,{baseUrls});
  const deadline=Date.now()+timeoutMs;
