@@ -606,6 +606,9 @@ async function lookupWalletTransfer(sourceChain,txHash){
 function setFlowStage(stage,notice){
  flowView.stage=stage;
  if(notice)transferActivity.notice=notice;
+ // Keep the header's wallet-confirmation badge synchronized with the modal
+ // when an auto-request begins; SQL ready rows can lag this actual stage.
+ refreshTransferLink();
  updateFlowModal();
 }
 function currentFlowBinding(){
