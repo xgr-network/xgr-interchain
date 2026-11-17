@@ -6,6 +6,7 @@ import {checkedLocalMain} from "./main-gate.mjs";
 import {readdirSync,readFileSync} from "node:fs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
+import {readXDCGenesisFromXGR} from "./xdc-genesis-evidence.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {inspectConfiguredChain} from "./chain-preflight.mjs";
@@ -29,6 +30,11 @@ const nonceWord=s=>{
  if(typeof s!=="string"||!/^0x[0-9a-f]+$/i.test(s))throw Error("Invalid pending nonce");
  return s.toLowerCase();
 };
+const chosenArtifact=(built,chain,component)=>{
+ const key=chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"xdcValidatorRegistry":
+  chain.blsVerifierFormat==="ecdsa"&&component==="ism"?"xdcIsm":component;
+ return (chain.blsVerifierFormat==="ecdsa"?built.xdcArtifacts:built.artifacts)?.[key];
+};
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 export function createChainOperator({
  root,stateDir,publicEvidenceDir,rpc=rpcCall,build=trustedBuild,publish=publishDeploymentBatch,
@@ -47,7 +53,7 @@ export function createChainOperator({
   return {commit,inventory:all,chain,infrastructure,bootstrap};
  }
  async function requireVersionThree(chain,infrastructure,component){
-  if(component==="validatorRegistry" || component==="blsVerifier")return;
+  if(component==="validatorRegistry" || component==="blsVerifier"||component==="ecdsaVerifier")return;
   const registry=infrastructure.components.find(p=>p.key==="validatorRegistry")?.address;
   if(!registry)throw Error("Verified ValidatorRegistry V3 required before further deployment");
   // Fail closed until the currently configured V3 is verified on chain.
@@ -60,7 +66,7 @@ export function createChainOperator({
    throw Error("ValidatorRegistry V3 verification failed; do not sign");
   }
   if(typeof version!=="string"||!/^0x[0-9a-f]{64}$/i.test(version)||
-     BigInt(version)!==3n)
+     BigInt(version)!==BigInt(chain.blsVerifierFormat==="ecdsa"?4:3))
    throw Error("ValidatorRegistry V3 not verified on chain; no dependent deployment");
  }
  async function preview({chain:chainName,component,wallet,parameters={}}){
@@ -73,7 +79,13 @@ export function createChainOperator({
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Chain or BLS preflight failed");
   let verified=bootstrap;
-  if(component==="validatorRegistry"){
+  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
+   const genesis=await readXDCGenesisFromXGR(root,{rpc});
+   verified={...bootstrap,xdcGenesis:genesis,
+    initialValidators:genesis.validators.map(v=>v.address),
+    validatorCount:genesis.validators.length,expectedValidatorCount:genesis.validators.length,
+    validatorSnapshot:{validators:genesis.validators,genesisXGR:genesis}};
+  }else if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
      baseDir:publicEvidenceDir,mainCurrent:true,rpc});
    if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
@@ -83,8 +95,8 @@ export function createChainOperator({
     validatorSnapshot:readiness.verifiedSnapshot};
   }
   const compiled=await build(root,commit);
-  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact:compiled.artifacts[component]});
-  const artifact=compiled.artifacts[component];
+  const artifact=chosenArtifact(compiled,chain,component);
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact});
   if(!artifact)throw Error("Missing trusted artifact");
   if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
    throw Error("Creation bytecode differs from trusted artifact");
@@ -114,7 +126,13 @@ export function createChainOperator({
   if(!preflight.basicRpcPreflightOK)throw Error("Destination chain RPC, core or BLS preflight failed");
   const values=deploymentParameters(component,parameters);
   let verified=bootstrap;
-  if(component==="validatorRegistry"){
+  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
+   const genesis=await readXDCGenesisFromXGR(root,{rpc});
+   verified={...bootstrap,xdcGenesis:genesis,
+    initialValidators:genesis.validators.map(v=>v.address),
+    validatorCount:genesis.validators.length,expectedValidatorCount:genesis.validators.length,
+    validatorSnapshot:{validators:genesis.validators,genesisXGR:genesis}};
+  }else if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({
     root,chain,inventory:all,boot:bootstrap,baseDir:publicEvidenceDir,
     mainCurrent:true,rpc
@@ -126,8 +144,8 @@ export function createChainOperator({
      validatorSnapshot:readiness.verifiedSnapshot};
   }
   const artifacts=await build(root,commit);
-  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact:artifacts.artifacts[component]});
-  const artifact=artifacts.artifacts[component];
+  const artifact=chosenArtifact(artifacts,chain,component);
+  const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact});
   if(!artifact)throw Error("No verified contract artifact");
   if(component!=="sourceRegistry"&&!eq(draft.transaction.data.slice(0,artifact.creation.length),artifact.creation))
    throw Error("Creation bytecode does not match trusted artifact");
@@ -253,11 +271,12 @@ export function createChainOperator({
    // only when artifact bytes and on-chain constructor bindings still match.
   }
   const built=await build(root,commit);
-  const artifact=built.artifacts[id.split(":")[1]];
+  const artifact=chosenArtifact(built,chain,id.split(":")[1]);
   if(!artifact||artifact.artifactHash!==entry.artifactHash||
      (commit===entry.sourceCommit&&artifact.buildHash!==entry.buildHash))
    throw Error("Recompiled artifact differs from original wallet-intent build");
   const verified={...bootstrap,
+   ...(chain.blsVerifierFormat==="ecdsa"?{xdcGenesis:entry.validatorSnapshot?.genesisXGR}:{}),
    reserve:entry.parameters?.minimumWei?{minimumWei:entry.parameters.minimumWei,maxExecutorReimbursementWei:entry.parameters.maxExecutorReimbursementWei,perValidatorWei:entry.parameters.perValidatorWei}:bootstrap.reserve,
    proposedFeeWei:entry.parameters?.sourceFeeWei||bootstrap.proposedFeeWei,
    initialValidators:bootstrap.initialValidators};
@@ -272,7 +291,7 @@ export function createChainOperator({
    const transport=await verifyTransportChildren({rpc,url:chain.rpcUrls[0],
     bundle:result.contractAddress,chain,
     ism:infrastructure.components.find(p=>p.key==="ism")?.address,
-    artifacts:built.artifacts,blockNumber:result.verified.blockNumber});
+    artifacts:chain.blsVerifierFormat==="ecdsa"?built.xdcArtifacts:built.artifacts,blockNumber:result.verified.blockNumber});
    for(const [component,child] of Object.entries(transport))inputs.push({
     sourceCommit:commit,chain:chain.name,component,
     contractAddress:child.address,txHash:entry.txHash,

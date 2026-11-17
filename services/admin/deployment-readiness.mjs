@@ -2,6 +2,7 @@
 // operator deployment readiness. No wallet signing or chain state writes.
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
+import {readXDCGenesisFromXGR} from "./xdc-genesis-evidence.mjs";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
 import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
@@ -55,6 +56,19 @@ export async function readDeploymentReadiness({
 }){
  if(!safeChain(chain?.name)||!inventory?.chains?.some(c=>c.name===chain.name&&c.chainId===chain.chainId))
   throw Error("Chain is not in approved GitHub inventory");
+ if(chain.blsVerifierFormat==="ecdsa"){
+  if(chain.chainId!==50||chain.domainId!==50)throw Error("Invalid XDC mainnet");
+  const genesis=await readXDCGenesisFromXGR(root,{rpc});
+  const cfg=loadJSON(join(root,chainBootstrapPath(chain.name)));
+  return {chain:chain.name,chainId:50,mode:"read-only",mainCurrent:Boolean(mainCurrent),
+   evidenceVerified:true,verifiedValidatorCount:genesis.validators.length,
+   originSnapshotBlock:genesis.xgrBlockNumber,genesisXGR:genesis,
+   verifiedSnapshot:{validators:genesis.validators},
+   bootstrapReady:true,deploymentExecutable:false,
+   values:{sourceFeeWei:cfg.sourceFee.targetWei},
+   missing:mainCurrent?[]:["GitHub main nicht bestätigt"],
+   transactionSimulation:mainCurrent?"requires-verified-artifact-and-gas-estimation":"blocked-by-main"};
+ }
  const config=loadJSON(join(root,chainBootstrapPath(chain.name)));
  const initial=approvedValidatorSet(root,config);
  const origin=inventory.chains.find(c=>c.chainId===initial.originChainId);
