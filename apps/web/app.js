@@ -399,7 +399,23 @@ function refreshTransferLink(){
  // an accidental "new transfer" source action.
  const queue=connected?walletSigningQueue({account:state.account,
   items:transferActivity.items,sponsorship:sponsorTransfer}):[];
- const signing=walletSigningNotice(queue);
+ const indexedSigning=walletSigningNotice(queue);
+ // SQL observer updates can lag behind a freshly revalidated proof. Once
+ // MetaMask has been requested for the exact confirmed source in this
+ // active modal, retain the wallet-confirmation badge without trusting a
+ // stale observer's "waiting" state.
+ const activeBinding=connected&&flowView.open?currentFlowBinding():null;
+ const activeWalletPrompt=transferActivity.working&&
+   ["first-delivery-sign","final-delivery-sign"].includes(flowView.stage)&&
+   activeBinding?.record?.confirmed===true&&
+   activeBinding.record.account?.toLowerCase()===state.account.toLowerCase()&&
+   activeBinding.record.delivered!==true;
+ const signing=activeWalletPrompt?{
+  label:"1 wallet confirmation pending →",
+  title:"MetaMask confirmation requested for the existing transfer. Check the wallet extension.",
+  href:"/transfer?token="+encodeURIComponent(activeBinding.journey.asset)+
+   "&resume="+encodeURIComponent(activeBinding.sourceTxHash)
+ }:indexedSigning;
  const provisional=connected?activeSourceConfirmation({account:state.account,
   selectedTxHash:transferActivity.selectedTxHash,items:transferActivity.items,
   session:flowView}):null;
