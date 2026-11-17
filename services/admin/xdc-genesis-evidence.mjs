@@ -62,7 +62,7 @@ export function computeXGRSetCommitment(validators){
  }
  return root;
 }
-export async function readXDCGenesisFromXGR(root,{rpc=rpcCall}={}){
+export async function readXDCGenesisFromXGR(root,{rpc=rpcCall,now=()=>Date.now()}={}){
  const source=JSON.parse(readFileSync(join(root,"config/chains/xgrchain/chain.json"),"utf8"));
  const deployed=JSON.parse(readFileSync(join(root,"deployments/chains/xgrchain.json"),"utf8"));
  const approved=deployed.xitaV315?.components?.validatorRegistry;
@@ -78,8 +78,14 @@ export async function readXDCGenesisFromXGR(root,{rpc=rpcCall}={}){
   if(BigInt(id)!==1643n||BigInt(head)<10n)throw Error("XGR mainnet chain/head unavailable");
   return BigInt(head);
  }));
- // Both XGR endpoints MUST serve the SAME historical committed height.
+ // A lagging or stale RPC must never silently select former XGR validators.
+ // XGR mainnet targets 2s blocks; allow modest inter-provider delay, but
+ // require a RECENT common committed block before pinning the XDC genesis.
+ const spread=heads[0]>heads[1]?heads[0]-heads[1]:heads[1]-heads[0];
+ if(spread>64n)throw Error("XGR mainnet RPC heads are too far apart");
  const height=(heads[0]<heads[1]?heads[0]:heads[1])-2n;
+ const nowMs=BigInt(now());
+ if(nowMs<1_000_000_000_000n)throw Error("Invalid source verification clock");
  const blockTag="0x"+height.toString(16);
  const results=await Promise.all(urls.map(async url=>{
   const [block,bytecode,version,domain,origin,setWord,validatorData]=await Promise.all([
@@ -92,6 +98,9 @@ export async function readXDCGenesisFromXGR(root,{rpc=rpcCall}={}){
    rpc(url,"eth_call",[{to:approved.address,data:selector("getValidatorSet()")},blockTag])
   ]);
   if(!H.test(block?.hash||"")||BigInt(block.number)!==height||
+   !/^0x[0-9a-f]+$/i.test(block.timestamp||"")||
+   BigInt(block.timestamp)*1000n>nowMs+30_000n||
+   nowMs-BigInt(block.timestamp)*1000n>300_000n||
    !equal(digest(bytecode),approved.runtimeCodeKeccak256)||
    BigInt(version)!==3n||BigInt(domain)!==1643n||BigInt(origin)!==1643n)
    throw Error("XGR source registry fingerprint or canonical header mismatch");
