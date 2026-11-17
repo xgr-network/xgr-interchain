@@ -98,6 +98,30 @@
       "blsVerifierFormat": "eip2537",
       "observedInfrastructure": "deployments/chains/optimism.json"
     },
+    "xdc": {
+      "schemaVersion": 1,
+      "kind": "chain-config",
+      "name": "xdc",
+      "displayName": "XDC Mainnet",
+      "environment": "mainnet",
+      "chainId": 50,
+      "domainId": 50,
+      "rpcUrls": [
+        "https://erpc.xinfin.network",
+        "https://rpc.xdc.blocksscan.io",
+        "https://rpc.ankr.com/xdc"
+      ],
+      "explorer": "https://xdcscan.com",
+      "nativeCurrency": {
+        "name": "XDC",
+        "symbol": "XDC",
+        "decimals": 18
+      },
+      "confirmations": 32,
+      "blsVerifierFormat": "ecdsa",
+      "signatureScheme": "ecdsa",
+      "observedInfrastructure": "deployments/chains/xdc.json"
+    },
     "xgrchain": {
       "schemaVersion": 1,
       "kind": "chain-config",
@@ -1446,6 +1470,20 @@
           "deployments/receipts/optimism/f83376a7c7a8086f8f903432398da45cee299673bf8c9c3c0b9228e650e5266b-fec805da314ea6ccbaf942c9965362b5de842610.json",
           "deployments/receipts/optimism/fcadce8a7a46e8065523903053ac85e7b3b4c5ca7242e0174d07a706d26de210-3b83687d77170d42feddfe221629cc21e771e021.json"
         ]
+      },
+      "present": true
+    },
+    "xdc": {
+      "schemaVersion": 1,
+      "kind": "infrastructure-deployment",
+      "network": "mainnet",
+      "chain": "xdc",
+      "chainId": 50,
+      "domainId": 50,
+      "xitaV315": {
+        "schemaVersion": 1,
+        "components": {},
+        "receiptPaths": []
       },
       "present": true
     },
