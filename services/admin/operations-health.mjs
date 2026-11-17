@@ -20,6 +20,8 @@ export const UNITS=Object.freeze([
  {id:"preview",title:"Fee Preview",group:"Managed Services",unit:"xita-fee-preview.service",optional:true},
  {id:"managed-relayer",title:"Managed Relay Worker",group:"Managed Services",unit:"xita-managed-relayer.service",optional:true},
  {id:"gas-sponsor",title:"Gas Sponsoring Timer",group:"Managed Services",unit:"xita-gas-sponsor.timer",optional:true},
+ {id:"gas-sponsor-worker",title:"Gas Sponsor Execution",group:"Managed Services",unit:"xita-gas-sponsor.service",optional:true},
+ {id:"gas-sponsor-listener",title:"Gas Sponsor Event Listener",group:"Managed Services",unit:"xita-gas-sponsor-listener.service",optional:true},
  {id:"fee-claim",title:"Fee Claim Timer",group:"Managed Services",unit:"xita-interchain-fee-claim.timer",optional:true},
  {id:"join",title:"Join Application API",group:"Onboarding",unit:"xita-join.service",optional:true},
  {id:"join-notifier",title:"Join Status Notification Timer",group:"Onboarding",unit:"xita-join-notifier.timer",optional:true},
@@ -63,12 +65,24 @@ export function parseUnitShow(text,definition){
  }else if(load==="loaded"&&["activating","deactivating","reloading"].includes(active))
   state="warning";
  const timer=definition.unit.endsWith(".timer");
+ const worker=definition.unit==="xita-gas-sponsor.service";
+ const exitCode=/^-?\d+$/.test(fields.ExecMainStatus||"")?Number(fields.ExecMainStatus):null;
+ const lastResult=fields.Result||null;
+ // A successful Type=oneshot worker is inactive by design. Inspect its
+ // *last* systemd result instead of treating an active timer as proof of work.
+ if(worker&&load==="loaded"){
+  if(active==="failed"||lastResult==="exit-code"||lastResult==="signal"||
+   (Number.isInteger(exitCode)&&exitCode!==0))state="failed";
+  else if(lastResult==="success"&&exitCode===0)state="ok";
+  else state="warning"; // includes never-run enabled worker
+ }
  const systemdTime=x=>typeof x==="string"&&x!=="n/a"&&x!=="0"&&x.length<110?x:null;
  return {
   id:definition.id,title:definition.title,group:definition.group,
   unit:definition.unit,optional:Boolean(definition.optional),
   state,active:active||null,sub,unitFileState,
   restarts:safeNumber(fields.NRestarts),
+  ...(worker?{lastResult,exitCode,lastCompleted:systemdTime(fields.ExecMainExitTimestamp)}:{}),
   ...(timer?{lastTrigger:systemdTime(fields.LastTriggerUSec),
    nextTrigger:systemdTime(fields.NextElapseUSecRealtime)}:{})
  };
@@ -76,7 +90,7 @@ export function parseUnitShow(text,definition){
 export async function readSystemdUnit(unit){
  if(!UNIT_NAMES.has(unit))throw Error("Unrecognized monitoring unit");
  const {stdout}=await execFileAsync("systemctl",[
-  "show",unit,"--no-pager","--property=LoadState,ActiveState,SubState,UnitFileState,NRestarts,LastTriggerUSec,NextElapseUSecRealtime"
+  "show",unit,"--no-pager","--property=LoadState,ActiveState,SubState,UnitFileState,NRestarts,Result,ExecMainStatus,ExecMainExitTimestamp,LastTriggerUSec,NextElapseUSecRealtime"
  ],{timeout:2500,maxBuffer:16000,encoding:"utf8"});
  return stdout;
 }
@@ -268,6 +282,10 @@ export async function collectOperationsHealth({
    "Proof journal available; no unresolved observed rows",
   unresolvedCount:unresolvedProofCount,pendingRoutes:pendingProofs};
  const evidence=summarizeEvidence({evidence:readEvidence(process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json",{now})});
+ const sponsorTimer=units.find(x=>x.id==="gas-sponsor");
+ const sponsorWorker=units.find(x=>x.id==="gas-sponsor-worker");
+ const sponsorInstalled=Boolean(sponsorTimer&&["ok","warning","failed","stopped","inactive"].includes(sponsorTimer.state));
+ const sponsorHealthy=!sponsorInstalled||sponsorWorker?.state==="ok";
  const services=units.map(unit=>{
   const linked={admin:[], "metrics-api":["indexer-api","proof-builder","transfer-stats"],
    "transfer-intake":["transfer-intake-api"],quote:["quote-api"],preview:["preview-api"],
@@ -276,6 +294,7 @@ export async function collectOperationsHealth({
   let state=unit.state;
   if(unit.state==="ok"&&observed.some(p=>p.state!=="ok"))
    state="warning";
+  if(unit.id==="gas-sponsor"&&sponsorInstalled&&!sponsorHealthy)state="failed";
   if(unit.id==="proof-observer"&&unit.state==="ok"&&!proofJournalReady)state="warning";
   if(unit.id==="transfer-worker"&&unit.state==="ok"&&["stalled","unavailable"].includes(indexer.state))
    state="warning";
@@ -297,13 +316,18 @@ export async function collectOperationsHealth({
  const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
  const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
- const status=chains.some(c=>c.state==="degraded")?"degraded":paidQuoteFault||!proofJournalReady?"degraded":
+ const sponsorFault=sponsorInstalled&&!sponsorHealthy;
+ const status=chains.some(c=>c.state==="degraded")?"degraded":paidQuoteFault||sponsorFault||!proofJournalReady?"degraded":
   validators.some(v=>["unavailable","degraded","stalled"].includes(v.state))?"degraded":
   (unresolvedProofCount>0&&baseStatus==="ok")?"warning":
   validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
   services,checks,indexer,proofObserver,evidence,chains,validators,quoteWriter,
+  sponsorWorker:{state:!sponsorInstalled?"not-installed":sponsorWorker?.state||"unknown",
+   reason:!sponsorInstalled?"Gas sponsorship not installed":sponsorHealthy?
+    "Last sponsor execution completed successfully":
+    "Sponsor worker has failed or has no verified successful run"},
   summary:{servicesHealthy:services.filter(s=>s.state==="ok").length,
    servicesInstalled:services.filter(s=>s.state!=="not-installed").length,
    servicesDown:services.filter(s=>["failed","stopped"].includes(s.state)).length,
