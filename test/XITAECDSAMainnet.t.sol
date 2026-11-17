@@ -103,9 +103,10 @@ contract XITAECDSAMainnetTest is Test {
         bytes memory approval = registry.membershipPayload(8, root);
         vm.expectRevert(XGRInterchainECDSAValidatorRegistry.InvalidMembership.selector);
         registry.applyXGRValidatorSet(8, newSet, newKeys, hex"03", doubleSign(approval));
+        bytes memory proof = sign(K4,
+            keccak256(registry.possessionPayload(8, root, vm.addr(K4))));
         vm.prank(vm.addr(K4));
-        registry.provePossession(8, root, sign(K4,
-            keccak256(registry.possessionPayload(8, root, vm.addr(K4)))));
+        registry.provePossession(8, root, proof);
         registry.applyXGRValidatorSet(8, newSet, newKeys, hex"03", doubleSign(approval));
         assertEq(registry.setId(), 8);
         (bool wasMember,) = registry.getValidatorStatus(vm.addr(K3));

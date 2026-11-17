@@ -17,13 +17,13 @@ contract XGRInterchainECDSAValidatorRegistry is IXGRInterchainValidatorSetV2 {
     bytes private constant POSSESSION = "XITA_ECDSA_POSSESSION_V1";
     XGRInterchainECDSAVerifier private immutable engine;
 
-    uint64 public immutable originChainId;
-    uint32 public immutable destinationDomain;
+    uint64 public immutable override originChainId;
+    uint32 public immutable override destinationDomain;
     bytes32 public immutable genesisXGRSetCommitment;
     uint64 public immutable genesisXGRSetId;
 
-    uint64 public setId;
-    mapping(uint64 => bytes32) public validatorSetCommitment;
+    uint64 public override setId;
+    mapping(uint64 => bytes32) public override validatorSetCommitment;
     mapping(uint64 => bool) private snapshotExists;
     mapping(uint64 => address[]) private historical;
     mapping(address => bool) private member;
@@ -58,8 +58,8 @@ contract XGRInterchainECDSAValidatorRegistry is IXGRInterchainValidatorSetV2 {
         genesisXGRSetCommitment = genesisCommitment_;
     }
 
-    function verifier() external view returns (address) { return address(engine); }
-    function verifierKeyFormat() external pure returns (uint8) { return ECDSA_FORMAT; }
+    function verifier() external view override returns (address) { return address(engine); }
+    function verifierKeyFormat() external pure override returns (uint8) { return ECDSA_FORMAT; }
     function registryVersion() external pure returns (uint256) { return 4; }
 
     /// @notice Deterministic commitment identical to XGR BLS V3 registry.
@@ -191,36 +191,36 @@ contract XGRInterchainECDSAValidatorRegistry is IXGRInterchainValidatorSetV2 {
     function verifyQuorum(
         uint64 requestedSetId, bytes calldata payload,
         bytes calldata signerBitmap, bytes calldata signatures
-    ) external view returns (bool) {
+    ) external view override returns (bool) {
         if (!snapshotExists[requestedSetId]) return false;
         // Caller must independently require current set where applicable.
         return engine.verify(payload, historical[requestedSetId], signerBitmap, signatures);
     }
 
-    function quorumThreshold() external view returns (uint256) {
+    function quorumThreshold() external view override returns (uint256) {
         return (2 * current.length + 2) / 3;
     }
 
     function getValidatorStatus(address validator)
-        external view returns (bool active, uint64 currentSetId)
+        external view override returns (bool active, uint64 currentSetId)
     {
         return (member[validator], setId);
     }
 
     function getFeeRecipients()
-        external view returns (address[] memory validators, uint64 currentSetId)
+        external view override returns (address[] memory validators, uint64 currentSetId)
     {
         return (current, setId);
     }
 
     function getFeeRecipientCountAndSetId()
-        external view returns (uint256 count, uint64 currentSetId)
+        external view override returns (uint256 count, uint64 currentSetId)
     {
         return (current.length, setId);
     }
 
     function getFeeRecipientIndexForSet(uint64 requestedSetId, address validator)
-        external view returns (uint256 indexPlusOne, uint256 count)
+        external view override returns (uint256 indexPlusOne, uint256 count)
     {
         address[] storage members = historical[requestedSetId];
         count = members.length;
@@ -231,19 +231,19 @@ contract XGRInterchainECDSAValidatorRegistry is IXGRInterchainValidatorSetV2 {
     /// @dev ABI compatibility; key bytes here hold 20-byte ECDSA addresses,
     ///      NOT BLS public keys. Select by verifierKeyFormat, never infer.
     function getValidatorSet()
-        external view returns (address[] memory validators, bytes[] memory keys, uint64 currentSetId)
+        external view override returns (address[] memory validators, bytes[] memory keys, uint64 currentSetId)
     {
         return _encodedSet(setId);
     }
 
     function getValidatorSetForVerification()
-        external view returns (address[] memory validators, bytes[] memory keys, uint64 currentSetId)
+        external view override returns (address[] memory validators, bytes[] memory keys, uint64 currentSetId)
     {
         return _encodedSet(setId);
     }
 
     function getValidatorSetForVerification(uint64 requestedSetId)
-        external view returns (address[] memory validators, bytes[] memory keys, uint64 resolvedSetId)
+        external view override returns (address[] memory validators, bytes[] memory keys, uint64 resolvedSetId)
     {
         return _encodedSet(requestedSetId);
     }
