@@ -52,7 +52,7 @@ test("XDC Registry constructor is derived from verified XGR epoch/root, without 
  assert.throws(()=>deploymentParameters("validatorRegistry",{perValidatorWei:"1"},{scheme:"ecdsa"}),/no economic/);
  assert.throws(()=>chainDraft({root,chain,infrastructure:infra([["ecdsaVerifier",a(99)]]),
    bootstrap:{chain:"xdc",xdcGenesis:{...genesis,commitment:h(0)}},
-   component:"validatorRegistry",artifact:artifact("xdcValidatorRegistry")}),/canonical XGR/);
+   component:"validatorRegistry",artifact:artifact("xdcValidatorRegistry")}),/Canonical XGR/);
 });
 
 test("XDC ISM binds only the receipt-verified destination ECDSA registry",()=>{
