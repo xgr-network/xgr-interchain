@@ -78,6 +78,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
   const source=bootstrap.xdcGenesis;
   if(chain.chainId!==50||!source||!/^0x[0-9a-f]{64}$/i.test(source.commitment||"")||
+     /^0x0{64}$/i.test(source.commitment||"")||
      !Number.isSafeInteger(Number(source.setId))||BigInt(source.setId)===0n||
      !Array.isArray(source.validators)||source.validators.length<3)
    throw Error("Canonical XGR mainnet validator snapshot required");
