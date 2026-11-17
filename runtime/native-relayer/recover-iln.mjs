@@ -27,8 +27,12 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcDomain=number("ORIGIN_DOMAIN");
  const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
  const destDomain=number("DESTINATION_DOMAIN");
- const sourceTxHash=String(overrideSourceTxHash||name("SOURCE_TX_HASH")).toLowerCase();
- check(hash.test(sourceTxHash),"Original Source TX hash required");
+ // A completed Direct-BLS quorum identifies the message without requiring
+ // a transaction hash. The hash remains mandatory only to bootstrap quorum
+ // admission using the legacy receipt-first path.
+ const optionalTx=overrideSourceTxHash||process.env.SOURCE_TX_HASH||null;
+ if(optionalTx!==null)check(hash.test(optionalTx),"Invalid source TX hash");
+ const sourceTxHash=optionalTx?.toLowerCase()||null;
  const routeId=name("ROUTE_ID").toLowerCase();
  check(hash.test(routeId)&&BigInt(routeId)>0n,"Invalid canonical route ID");
  route=name("ATTESTATION_ROUTE").toLowerCase();
