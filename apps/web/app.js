@@ -23,7 +23,7 @@ import {renderTransferFlow,deriveTransferFlow} from "./transfer-status-flow.js";
 import {transferStepStartedAt,formatTransferStepElapsed} from "./transfer-step-timer.js";
 import {downstreamGasProjection,formatWeiFee} from "./fee-gas-projection.js";
 import {transferFlowBinding} from "./transfer-flow-binding.js";
-import {nextVerifiedWalletStep,walletStepKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
+import {nextVerifiedWalletStep,walletStepKey,recoveryProbeKey,createAutomaticWalletAttemptLedger} from "./automatic-transfer-step.js";
 import {transferSponsorVisible,sponsorAllowsContinuation,verifiedZeroGrantSource} from "./transfer-sponsor-evidence.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
@@ -270,6 +270,76 @@ const flowView={open:false,journey:null,stage:"",sourceTxHash:null,account:null}
 // an automatic step. Attempts are scoped to the wallet+source+message+stage.
 const autoWalletAttempts=createAutomaticWalletAttemptLedger();
 let automaticWalletQueued=false,automaticWalletRetryTimer=null;
+let recoveryProbeTimer=null,recoveryProbeAbort=null,recoveryProbeEpoch=0,recoveryProbeBusy=false;
+function stopRecoveryProbe(){
+ recoveryProbeEpoch++;
+ if(recoveryProbeTimer!==null)clearTimeout(recoveryProbeTimer);
+ recoveryProbeTimer=null;
+ recoveryProbeAbort?.abort();recoveryProbeAbort=null;
+ // An old aborted request may finish later; the generation guard rejects it.
+}
+function scheduleModalRecoveryProbe({immediate=false}={}){
+ if(recoveryProbeTimer!==null||recoveryProbeBusy||!flowView.open||
+    document.visibilityState==="hidden"||transferActivity.working||transferActivity.scanning)return;
+ const binding=currentFlowBinding(),key=recoveryProbeKey(binding);
+ if(!key||nextVerifiedWalletStep(binding?.record)||autoWalletAttempts.walletRequested(key))return;
+ const retryAt=autoWalletAttempts.retryAt(key)||0;
+ const delay=Math.max(retryAt-Date.now(),immediate?0:8000,0);
+ recoveryProbeTimer=setTimeout(()=>{
+  recoveryProbeTimer=null;
+  void probeModalRecovery();
+ },delay);
+}
+async function probeModalRecovery(){
+ if(recoveryProbeBusy||!flowView.open||document.visibilityState==="hidden"||
+    transferActivity.working||transferActivity.scanning)return;
+ const binding=currentFlowBinding(),key=recoveryProbeKey(binding);
+ if(!key||nextVerifiedWalletStep(binding?.record)||autoWalletAttempts.walletRequested(key))return;
+ if(!autoWalletAttempts.canStart(key)){
+  scheduleModalRecoveryProbe();return;
+ }
+ const original=binding.record,epoch=recoveryProbeEpoch;
+ const query=new URLSearchParams({
+  asset:original.asset,route:original.routeName,
+  messageId:original.messageId,sourceTxHash:original.txHash
+ });
+ if(!original.asset||!original.routeName)return;
+ const controller=new AbortController();
+ recoveryProbeAbort=controller;recoveryProbeBusy=true;
+ const timeout=setTimeout(()=>controller.abort(),30000);
+ try{
+  // Read-only: the API only prepares an unsigned call. No RPC signing,
+  // source burn, or token transfer occurs inside this poll.
+  const response=await fetch("/api/xeta/v1/transfer/recovery?"+query,{
+   cache:"no-store",credentials:"omit",headers:{accept:"application/json"},
+   signal:controller.signal
+  });
+  if(!response.ok)return;
+  const proof=await response.json();
+  const current=currentFlowBinding();
+  if(epoch!==recoveryProbeEpoch||!flowView.open||
+     document.visibilityState==="hidden"||transferActivity.working||
+     recoveryProbeKey(current)!==key||!autoWalletAttempts.canStart(key))return;
+  if(proof?.ok===true&&proof.status==="READY_UNSIGNED_CALL"&&
+     proof.messageId?.toLowerCase()===original.messageId.toLowerCase()){
+   // The signed wallet path rechecks the canonical source, the destination
+   // Mailbox, proof, gas, nonce and sponsorship before requesting MetaMask.
+   void performTransferAction({automaticStepKey:key,fromRecoveryProbe:true});
+  }else if(proof?.ok===true&&proof.status==="ALREADY_DELIVERED"){
+   void scanWalletHistory();
+  }
+ }catch(error){
+  if(!controller.signal.aborted)
+   console.warn("[xita-modal-proof-poll]",String(error?.message||error).slice(0,160));
+ }finally{
+  clearTimeout(timeout);
+  if(recoveryProbeAbort===controller)recoveryProbeAbort=null;
+  recoveryProbeBusy=false;
+  if(epoch===recoveryProbeEpoch&&flowView.open&&
+     !transferActivity.working&&!autoWalletAttempts.walletRequested(key))
+   scheduleModalRecoveryProbe();
+ }
+}
 function clearAutomaticWalletRetryTimer(){
  if(automaticWalletRetryTimer)clearTimeout(automaticWalletRetryTimer.id);
  automaticWalletRetryTimer=null;
@@ -279,7 +349,11 @@ function scheduleAutomaticWalletStep(){
     transferActivity.working||transferActivity.scanning)return;
  const binding=currentFlowBinding();
  const key=walletStepKey(binding,nextVerifiedWalletStep(binding?.record));
- if(!key)return;
+ if(!key){
+  scheduleModalRecoveryProbe({immediate:true});
+  return;
+ }
+ stopRecoveryProbe();
  if(!autoWalletAttempts.canStart(key)){
   const retryAt=autoWalletAttempts.retryAt(key);
   if(retryAt&&retryAt>Date.now()){
@@ -523,6 +597,7 @@ function currentFlowBinding(){
   items:transferActivity.items,session:flowView});
 }
 function resetFlowView(){
+ stopRecoveryProbe();
  clearAutomaticWalletRetryTimer();
  flowView.open=false;flowView.journey=null;flowView.sourceTxHash=null;
  flowView.account=null;flowView.stage="";
@@ -657,20 +732,10 @@ function updateFlowModal(){
  dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
- // A direct user gesture provides a predictable MetaMask path even when the
- // background microtask prompt was suppressed by the wallet/browser.
- dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
-  clearAutomaticWalletRetryTimer();
-  if(!flowView.open||transferActivity.working||transferActivity.scanning)return;
-  const selected=currentFlowBinding();
-  if(!selected?.record?.confirmed||selected.record.delivered!==false||
-     !["awaiting-proof","awaiting-final-proof"].includes(selected.record.status))return;
-  transferActivity.error="";
-  void performTransferAction();
- });
  scheduleAutomaticWalletStep();
 }
 function closeFlowModal(){
+ stopRecoveryProbe();
  clearAutomaticWalletRetryTimer();
  flowView.open=false;document.getElementById("xita-flow-dialog")?.close();
  refreshTransferLink();
@@ -687,13 +752,13 @@ function openFlowModal(){
  flowView.journey=binding.journey;
  flowView.sourceTxHash=binding.sourceTxHash;
  flowView.account=state.account;
- autoWalletAttempts.reset();clearAutomaticWalletRetryTimer();
+ autoWalletAttempts.reset();clearAutomaticWalletRetryTimer();stopRecoveryProbe();
  flowView.open=true;updateFlowModal();
 }
 function requireVisibleSigningModal(){
  if(!flowView.open||document.visibilityState==="hidden")throw Error("MetaMask signing paused while the transfer view is inactive. Return to the existing transfer to continue; never repeat TX1.");
 }
-async function performTransferAction({automaticStepKey=null}={}){
+async function performTransferAction({automaticStepKey=null,fromRecoveryProbe=false}={}){
  if(transferActivity.working||!state.catalog)return;
  if(!state.account){document.querySelector("#connect")?.click();return;}
  const account=state.account;
@@ -701,7 +766,8 @@ async function performTransferAction({automaticStepKey=null}={}){
  const binding=currentFlowBinding();
  const walletKey=automaticStepKey||walletStepKey(binding,nextVerifiedWalletStep(binding?.record));
  if(automaticStepKey&&(!selected||
-    walletStepKey(binding,nextVerifiedWalletStep(binding?.record))!==automaticStepKey||
+    (walletStepKey(binding,nextVerifiedWalletStep(binding?.record))!==automaticStepKey&&
+     !(fromRecoveryProbe&&recoveryProbeKey(binding)===automaticStepKey))||
     !autoWalletAttempts.canStart(automaticStepKey)))return;
  if(blocksUnverifiedSourceRepeat(transferActivity.selectedTxHash,selected)){
   transferActivity.error="A previous source TX is selected but not independently verified for continuation. Never submit another source burn/lock. Refresh My Transfers instead.";
@@ -924,7 +990,8 @@ async function performTransferAction({automaticStepKey=null}={}){
   // index) is a read-only retry, never a consumed wallet confirmation.
   if(automaticStepKey&&!broadcastKnown&&
      !autoWalletAttempts.walletRequested(automaticStepKey)&&flowView.open&&
-     walletStepKey(currentFlowBinding(),nextVerifiedWalletStep(currentFlowBinding()?.record))===automaticStepKey)
+     (walletStepKey(currentFlowBinding(),nextVerifiedWalletStep(currentFlowBinding()?.record))===automaticStepKey||
+      recoveryProbeKey(currentFlowBinding())===automaticStepKey))
    autoWalletAttempts.schedulePreflightRetry(automaticStepKey);
   if(state.account?.toLowerCase()===account.toLowerCase()){
    transferActivity.working=false;
