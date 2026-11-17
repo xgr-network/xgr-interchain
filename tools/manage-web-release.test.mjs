@@ -41,6 +41,18 @@ test("update always reloads the checkout after pull before publishing or restart
  assert.match(shell,/_complete-update\)[\s\S]*?XITA_UPDATE_MAIN_SHA[\s\S]*?complete_update/);
 });
 
+test("updating XITA restarts an already running read-only proof observer, without enabling an inactive one",()=>{
+ const done=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
+ assert.ok(done);
+ assert.match(done,/if systemctl is-active --quiet xita-transfer-proof-observer\.service/);
+ assert.match(done,/privileged systemctl restart xita-transfer-proof-observer\.service \|\| return 1/);
+ assert.match(done,/privileged systemctl is-active --quiet xita-transfer-proof-observer\.service/);
+ assert.match(done,/XITA transfer proof observer did not remain active/);
+ assert.doesNotMatch(done,/systemctl (?:enable|start) xita-transfer-proof-observer\.service/);
+ assert.ok(done.indexOf("restart xita-transfer-indexer.service") <
+   done.indexOf("restart xita-transfer-proof-observer.service"));
+});
+
 test("updating the published XITA release refreshes both proof and historical transfer indexer",()=>{
  const done=shell.split("\ncomplete_update() {")[1]?.split("\n}\n")[0];
  assert.match(done,/restart xita-indexer\.service/);
