@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
-import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc,canRetryBaseRecovery,runRecoveryProcess} from "./transfer-recovery.mjs";
+import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc,canRetryBaseRecovery,recoverySourceUrls,canRetrySourceRecovery,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 function entry(chain,i){const address=addr(i);
@@ -135,7 +135,7 @@ test("proof builder Base RPC candidates follow canonical approved catalog, never
  assert.equal(conf.env.DESTINATION_RPC_URL,c.chains.base.rpcUrls[0]);
 });
 
-test("actual Base source TX qualifies while unrelated historical archive probes are irrelevant",async()=>{
+test("source Base RPC preflight never re-fetches historical receipt after signed quorum",async()=>{
  const c=fixture(),tx=hash("5"),message=hash("7");
  const conf=resolveRecoveryRoute(c,"xgr_to_base",message,"ABC",tx);
  const calls=[];
@@ -152,7 +152,7 @@ test("actual Base source TX qualifies while unrelated historical archive probes 
   }
  });
  assert.equal(result.ok,true);
- assert.deepEqual(calls,["eth_chainId","eth_getTransactionReceipt"]);
+ assert.deepEqual(calls,["eth_chainId","eth_blockNumber"]);
 });
 test("qualifying Base destination reads actual mailbox delivery state",async()=>{
  const c=fixture(),conf=resolveRecoveryRoute(c,"xgr_to_base",hash("8"),"ABC");
@@ -256,5 +256,42 @@ test("only retry transient Base RPC failures at new Direct-BLS simulation stage"
  },conf),false);
  assert.equal(canRetryBaseRecovery({
   code:"PROOF_DESTINATION_QUORUM_REJECTED",stage:"verify-destination-quorum"
+ },conf),false);
+});
+
+test("source-agnostic recovery retries transient signed Dispatch lookup on different approved chain RPC",async()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("b"),"ABC",hash("a"));
+ conf.env.ORIGIN_CHAIN_ID="42161";
+ conf.env.DESTINATION_CHAIN_ID="1643";
+ conf.sourceRpcUrls=["https://arb1.example.test","https://arb2.example.test"];
+ assert.deepEqual(recoverySourceUrls(conf),conf.sourceRpcUrls);
+ assert.equal(canRetrySourceRecovery({
+  code:"PROOF_RPC_UNAVAILABLE",stage:"attested-only-discover-dispatch"
+ },conf),true);
+ assert.equal(canRetrySourceRecovery({
+  code:"PROOF_DESTINATION_QUORUM_REJECTED",stage:"attested-only-discover-dispatch"
+ },conf),false);
+ let attempts=0;
+ const output=await runRecoveryProcess(conf,{timeoutMs:40000,runAttempt:async current=>{
+  attempts++;
+  if(attempts===1)throw Object.assign(new Error("Read failed"),{
+   code:"PROOF_RPC_UNAVAILABLE",stage:"attested-only-discover-dispatch"
+  });
+  return {status:"READY_UNSIGNED_CALL",provider:current.env.ORIGIN_RPC_URL};
+ }});
+ assert.equal(output.provider,"https://arb2.example.test");
+ assert.equal(attempts,2);
+});
+test("BSC, Base, Arbitrum, Optimism share one source RPC retry gate",()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("e"),"ABC",hash("f"));
+ for(const id of [56,8453,42161,10]){
+  conf.env.ORIGIN_CHAIN_ID=String(id);
+  assert.equal(canRetrySourceRecovery({
+   code:"PROOF_RPC_UNAVAILABLE",stage:"attested-only-discover-dispatch"
+  },conf),true);
+ }
+ conf.env.ORIGIN_CHAIN_ID="1643";
+ assert.equal(canRetrySourceRecovery({
+  code:"PROOF_RPC_UNAVAILABLE",stage:"attested-only-discover-dispatch"
  },conf),false);
 });
