@@ -355,7 +355,7 @@ export async function publishDeploymentBatch(root,inputs,{
   updatedAssets.set(asset,normalized);
  }
  // Non-XGR chains get their first deployment file ONLY on the first receipt.
- const infraParts=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer",
+ const infraParts=new Set(["blsVerifier","ecdsaVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer",
    "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
    "executionGateway"]);
  const byChain=new Map(),updatedInfrastructure=new Map();

@@ -7,7 +7,7 @@
   "chainId": 50,
   "domainId": 50,
   "rpcUrls": [
-    "https://rpc.xinfin.network",
+    "https://erpc.xinfin.network",
     "https://rpc.xdc.blocksscan.io",
     "https://rpc.ankr.com/xdc"
   ],

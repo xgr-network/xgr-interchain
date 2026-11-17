@@ -33,7 +33,7 @@ const nonceWord=s=>{
 const chosenArtifact=(built,chain,component)=>{
  const key=chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"xdcValidatorRegistry":
   chain.blsVerifierFormat==="ecdsa"&&component==="ism"?"xdcIsm":component;
- return (chain.blsVerifierFormat==="ecdsa"?built.xdcArtifacts:built.artifacts)?.[key];
+ return built.artifacts?.[key];
 };
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 export function createChainOperator({
@@ -73,7 +73,7 @@ export function createChainOperator({
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName,{previewOnly:true});
   await requireVersionThree(chain,infrastructure,component);
-  const values=deploymentParameters(component,parameters);
+  const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
@@ -124,7 +124,7 @@ export function createChainOperator({
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
    bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Destination chain RPC, core or BLS preflight failed");
-  const values=deploymentParameters(component,parameters);
+  const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
   let verified=bootstrap;
   if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
    const genesis=await readXDCGenesisFromXGR(root,{rpc});
@@ -291,7 +291,7 @@ export function createChainOperator({
    const transport=await verifyTransportChildren({rpc,url:chain.rpcUrls[0],
     bundle:result.contractAddress,chain,
     ism:infrastructure.components.find(p=>p.key==="ism")?.address,
-    artifacts:chain.blsVerifierFormat==="ecdsa"?built.xdcArtifacts:built.artifacts,blockNumber:result.verified.blockNumber});
+    artifacts:built.artifacts,blockNumber:result.verified.blockNumber});
    for(const [component,child] of Object.entries(transport))inputs.push({
     sourceCommit:commit,chain:chain.name,component,
     contractAddress:child.address,txHash:entry.txHash,

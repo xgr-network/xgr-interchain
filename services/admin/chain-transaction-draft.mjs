@@ -18,11 +18,13 @@ const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  syntheticRouterDeployer:"XETASyntheticRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",ecdsaVerifier:"XGRInterchainECDSAVerifier",
+ xdcValidatorRegistry:"XGRInterchainECDSAValidatorRegistry",xdcIsm:"XITADirectECDSAISM",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XITADirectBLSISM",transportBundle:"XITADirectTransport",factory:"XETATokenFactoryV315",
  executionGateway:"XITAExecutionGateway"};
 const typesFor={
  blsVerifier:[],ecdsaVerifier:[],
+ xdcValidatorRegistry:["uint64","uint32","address","uint64","bytes32"],xdcIsm:["address"],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
@@ -82,7 +84,7 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
   const verifier=requirePresent(infrastructure,"ecdsaVerifier");
   values=[1643,50,verifier,source.setId,source.commitment];
  }else if(component==="validatorRegistry"){
-  const p=deploymentParameters(component,parameters);
+  const p=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"?"ecdsa":"bls"});
   if(!bootstrap.initialValidators||bootstrap.validatorCount!==bootstrap.expectedValidatorCount)
    throw Error("Independently verified destination Genesis BLS signer set required");
   if(!bootstrap.validatorSnapshot?.validators?.length)throw Error("Missing verified validator proof records");

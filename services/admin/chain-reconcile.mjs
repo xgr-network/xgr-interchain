@@ -181,7 +181,10 @@ export async function reconcileDeployedContract({
 }){
  if(!["submitted","confirmed"].includes(entry.stage)||!H32.test(entry.txHash||""))
   throw Error("Only submitted, hash-journaled transactions can reconcile");
- if(entry.chainId!==chain.chainId||entry.id!==chain.name+":"+artifact.component)
+ const expectedArtifact=chain.blsVerifierFormat==="ecdsa"&&entry.id.endsWith(":validatorRegistry")?"xdcValidatorRegistry":
+  chain.blsVerifierFormat==="ecdsa"&&entry.id.endsWith(":ism")?"xdcIsm":entry.id.split(":")[1];
+ if(entry.chainId!==chain.chainId||artifact.component!==expectedArtifact||
+    entry.id!==chain.name+":"+entry.id.split(":")[1])
   throw Error("Deployment identity differs from approved chain");
  const chainId=await rpc(url,"eth_chainId",[]);
  if(BigInt(chainId)!==BigInt(chain.chainId))throw Error("RPC network mismatch");
