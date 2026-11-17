@@ -36,13 +36,34 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcRouter=address("ORIGIN_WARP_ROUTER"),srcRegistryAddress=address("ORIGIN_ILN_REGISTRY");
  const destMailboxAddress=address("DESTINATION_MAILBOX"),destRouter=address("DESTINATION_WARP_ROUTER");
  const destISMAddress=address("DESTINATION_ILN_ISM");
- // One canonical permissionless path for both automation and any wallet:
- // source message is reconstructed at the signed source block, not via a
- // historical receipt RPC. Supplying previously observed bytes is optional.
- return prepareAttestedMessageOnly({id,srcChain,srcDomain,destChain,destDomain,
+ // Direct BLS is source-authoritative. Prefer the existing current-set
+ // quorum; only if an attestation has NOT YET been assembled may we fall
+ // back to the legacy canonical source confirmation/quorum-request path.
+ const checkXgr=new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
+ const checkDest=new JsonRpcProvider(name("DESTINATION_RPC_URL"));
+ const ism=new Contract(destISMAddress,[
+  "function registry() view returns(address)"
+ ],checkDest);
+ const destRegistry=await ism.registry();
+ const reg=new Contract(destRegistry,["function setId() view returns(uint64)"],checkDest);
+ const setId=await reg.setId();
+ check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid destination validator set");
+ let quorumReady=false;
+ try{
+  await checkXgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
+  quorumReady=true;
+ }catch(error){
+  const msg=String(error?.shortMessage||error?.message||"");
+  // Never convert a network outage, invalid signature or any other
+  // verification error into a fallback to weaker proof.
+  if(!/interchain attestation not found|ILN quorum attestation not found/i.test(msg))
+   throw error;
+ }
+ if(quorumReady)return prepareAttestedMessageOnly({id,srcChain,srcDomain,destChain,destDomain,
   routeId,route,srcMailbox,gatewayAddress,srcRouter,srcRegistryAddress,
   destMailboxAddress,destRouter,destISMAddress,
   suppliedMessage:process.env.XITA_RECOVERY_SOURCE_MESSAGE_HEX||null});
+ return prepareReceiptFirstILN(id,overrideSourceTxHash);
 }
 // Retained for no-quorum message admission, not automatic delivery.
 export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null){
