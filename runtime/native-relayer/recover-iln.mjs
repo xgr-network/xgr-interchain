@@ -57,7 +57,10 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
   await checkXgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
   quorumReady=true;
  }catch(error){
-  const msg=String(error?.shortMessage||error?.message||"");
+  const msg=[
+   error?.shortMessage,error?.message,error?.info?.error?.message,
+   error?.error?.message
+  ].filter(Boolean).map(String).join(" | ");
   // Never convert a network outage, invalid signature or any other
   // verification error into a fallback to weaker proof.
   if(!/interchain attestation not found|ILN quorum attestation not found/i.test(msg))
