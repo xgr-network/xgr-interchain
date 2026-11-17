@@ -141,7 +141,7 @@ export function recoverySourceUrls(configured){
 }
 const sourceRetryStages=new Set([
  "verify-chain-ids","source-receipt","source-route",
- "confirmed-fee-vault-allocation"
+ "confirmed-fee-vault-allocation","attested-only-discover-dispatch"
 ]);
 export function canRetrySourceRecovery(error,configured){
  const id=Number(configured.env.ORIGIN_CHAIN_ID);
@@ -157,17 +157,10 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
    configured.env.DESTINATION_CHAIN_ID;
   if(BigInt(await call("eth_chainId",[]))!==BigInt(expected))
    throw Error("Configured route RPC chain identity mismatch");
-  const txHash=sourceIsBase?configured.env.SOURCE_TX_HASH:null;
-  if(txHash){
-   const receipt=await call("eth_getTransactionReceipt",[txHash]);
-   if(!receipt||!same(receipt.transactionHash,txHash)||receipt.status!=="0x1")
-    throw Error("Original source receipt unavailable");
-   const block=receipt.blockNumber;
-   if(!/^0x[0-9a-f]+$/i.test(block||""))throw Error("Source block missing");
-   // The original receipt is only a locator. Complete Gateway/Dispatch
-   // verification is performed by the recovery CLI, never skipped.
-   // Avoid redundant archive-sensitive eth_getLogs preflight.
-  }else if(!sourceIsBase){
+  // A completed BLS quorum already authenticates the message. No Base
+  // receipt fetch is allowed as an unrelated prerequisite; source data is
+  // discovered from the signed Mailbox.Dispatch block by the shared builder.
+  if(!sourceIsBase){
    const value=await call("eth_call",[{
     to:configured.env.DESTINATION_MAILBOX,
     data:selector("delivered(bytes32)")+configured.messageId.slice(2)
@@ -183,7 +176,7 @@ export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fet
 }
 const sourceBaseStages=new Set([
  "verify-chain-ids","source-receipt","validate-attestation",
- "confirmed-fee-vault-allocation","source-route"
+ "confirmed-fee-vault-allocation","source-route","attested-only-discover-dispatch"
 ]);
 const destinationBaseStages=new Set([
  "verify-chain-ids","destination-delivery","destination-ism-registry",
