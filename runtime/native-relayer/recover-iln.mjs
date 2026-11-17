@@ -1,7 +1,7 @@
 // Prepare unsigned, wallet-owned Mailbox.process calldata from one canonical
 // fee-qualified source receipt and one current-set Direct BLS attestation.
 // No Merkle, relayer custody, source re-execution or historical eth_call.
-import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256,zeroPadValue,hexlify} from "ethers";
+import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256,zeroPadValue,hexlify,Interface} from "ethers";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
@@ -36,15 +36,31 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcRouter=address("ORIGIN_WARP_ROUTER"),srcRegistryAddress=address("ORIGIN_ILN_REGISTRY");
  const destMailboxAddress=address("DESTINATION_MAILBOX"),destRouter=address("DESTINATION_WARP_ROUTER");
  const destISMAddress=address("DESTINATION_ILN_ISM");
- // Optional permissionless route: caller supplies ONLY the original public
- // Dispatch bytes. No source RPC is queried. All authorities are derived from
- // a current-set attestation and verified by the destination contracts.
- const suppliedMessage=process.env.XITA_RECOVERY_SOURCE_MESSAGE_HEX;
- if(suppliedMessage!==undefined){
-  return prepareAttestedMessageOnly({id,srcChain,srcDomain,destChain,destDomain,
-   routeId,route,srcMailbox,gatewayAddress,srcRouter,srcRegistryAddress,
-   destMailboxAddress,destRouter,destISMAddress,suppliedMessage});
- }
+ // One canonical permissionless path for both automation and any wallet:
+ // source message is reconstructed at the signed source block, not via a
+ // historical receipt RPC. Supplying previously observed bytes is optional.
+ return prepareAttestedMessageOnly({id,srcChain,srcDomain,destChain,destDomain,
+  routeId,route,srcMailbox,gatewayAddress,srcRouter,srcRegistryAddress,
+  destMailboxAddress,destRouter,destISMAddress,
+  suppliedMessage:process.env.XITA_RECOVERY_SOURCE_MESSAGE_HEX||null});
+}
+// Retained for no-quorum message admission, not automatic delivery.
+export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null){
+ const id=String(messageID||"").toLowerCase();
+ check(hash.test(id)&&BigInt(id)>0n,"Invalid source Message ID");
+ const srcChain=BigInt(number("ORIGIN_CHAIN_ID"));
+ const srcDomain=number("ORIGIN_DOMAIN");
+ const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
+ const destDomain=number("DESTINATION_DOMAIN");
+ const sourceTxHash=String(overrideSourceTxHash||name("SOURCE_TX_HASH")).toLowerCase();
+ check(hash.test(sourceTxHash),"Original Source TX hash required");
+ const routeId=name("ROUTE_ID").toLowerCase();
+ check(hash.test(routeId)&&BigInt(routeId)>0n,"Invalid canonical route ID");
+ route=name("ATTESTATION_ROUTE").toLowerCase();
+ const srcMailbox=address("ORIGIN_MAILBOX"),gatewayAddress=address("ORIGIN_ILN_GATEWAY");
+ const srcRouter=address("ORIGIN_WARP_ROUTER"),srcRegistryAddress=address("ORIGIN_ILN_REGISTRY");
+ const destMailboxAddress=address("DESTINATION_MAILBOX"),destRouter=address("DESTINATION_WARP_ROUTER");
+ const destISMAddress=address("DESTINATION_ILN_ISM");
  const src=new JsonRpcProvider(name("ORIGIN_RPC_URL"));
  const dest=new JsonRpcProvider(name("DESTINATION_RPC_URL"));
  const xgr=new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
@@ -215,6 +231,56 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
   destinationChainId:String(destChain),to:destMailboxAddress,value:"0x0",
   data:destMailbox.interface.encodeFunctionData("process",[metadata,message])};
 }
+const DISPATCH_ABI=new Interface([
+ "event Dispatch(address indexed sender,uint32 indexed destination,bytes32 indexed recipient,bytes message)"
+]);
+// The signed message ID is the cryptographic authority. Source RPCs are
+// untrusted transports of *public* event bytes, never quorum authorities.
+export async function resolveSignedDispatch({
+ suppliedMessage=null,sourceRpcUrl,mailbox,sourceRouter,sourceDomain,
+ destDomain,destRouter,messageId,sourceBlock,sourceProvider=null
+}){
+ const checked=raw=>{
+  check(typeof raw==="string"&&/^0x(?:[0-9a-f]{2}){77,65536}$/i.test(raw),
+   "Malformed or oversized canonical Hyperlane message");
+  const bytes=getBytes(raw);
+  check(keccak256(raw).toLowerCase()===messageId.toLowerCase(),
+   "Dispatch message hash differs from signed Message ID");
+  const u32=i=>(bytes[i]*0x1000000+bytes[i+1]*0x10000+bytes[i+2]*0x100+bytes[i+3])>>>0;
+  check(u32(5)===sourceDomain&&u32(41)===destDomain,
+   "Canonical Dispatch source/destination domains mismatch");
+  check(hexlify(bytes.slice(9,41)).toLowerCase()===zeroPadValue(sourceRouter,32).toLowerCase()&&
+   hexlify(bytes.slice(45,77)).toLowerCase()===zeroPadValue(destRouter,32).toLowerCase(),
+   "Canonical Dispatch source/destination routers mismatch");
+  return raw;
+ };
+ if(suppliedMessage!==null)return checked(suppliedMessage);
+ const at=Number(sourceBlock);
+ check(Number.isSafeInteger(at)&&at>0,"Invalid signed source block number");
+ const provider=sourceProvider||new JsonRpcProvider(sourceRpcUrl);
+ const event=DISPATCH_ABI.getEvent("Dispatch");
+ const topics=DISPATCH_ABI.encodeFilterTopics(event,[
+  sourceRouter,destDomain,zeroPadValue(destRouter,32)
+ ]);
+ const logs=await provider.getLogs({address:mailbox,topics,fromBlock:at,toBlock:at});
+ check(Array.isArray(logs)&&logs.length<=500,"Unbounded source Dispatch response");
+ const matching=[];
+ for(const log of logs){
+  if(!log||Number(log.blockNumber)!==at||
+   String(log.address).toLowerCase()!==mailbox.toLowerCase())continue;
+  try{
+   const decoded=DISPATCH_ABI.parseLog(log);
+   if(decoded?.name!=="Dispatch")continue;
+   matching.push(checked(decoded.args.message));
+  }catch(e){
+   if(/Malformed|Dispatch|signed Message ID/.test(String(e?.message||"")))continue;
+   throw e;
+  }
+ }
+ check(matching.length===1,"Canonical signed source Dispatch unavailable or ambiguous");
+ return matching[0];
+}
+
 // An existing on-chain BLS quorum authorizes the exact source message ID;
 // its signed bytes do not contain the variable-length Hyperlane Dispatch body.
 // The body must therefore be supplied by an untrusted public witness AND
@@ -226,19 +292,6 @@ export async function prepareAttestedMessageOnly({
  destMailboxAddress,destRouter,destISMAddress,suppliedMessage,
  xgrProvider=null,destinationProvider=null
 }){
- const checkInput=(x,re)=>typeof x==="string"&&re.test(x);
- check(checkInput(suppliedMessage,/^0x(?:[a-f0-9]{2})+$/i)&&
-  suppliedMessage.length<=131074,"Invalid or oversized canonical Dispatch message");
- const message=String(suppliedMessage);
- const rawMsg=getBytes(message);
- check(rawMsg.length>=77&&rawMsg.length<=65536,"Invalid Hyperlane source message length");
- check(keccak256(message).toLowerCase()===id,"Dispatch message hash differs from requested Message ID");
- const u32=i=>(rawMsg[i]*0x1000000+rawMsg[i+1]*0x10000+rawMsg[i+2]*0x100+rawMsg[i+3])>>>0;
- check(u32(5)===srcDomain&&u32(41)===destDomain,"Dispatch domain mismatch");
- check(hexlify(rawMsg.slice(9,41)).toLowerCase()===zeroPadValue(srcRouter,32).toLowerCase()&&
-  hexlify(rawMsg.slice(45,77)).toLowerCase()===zeroPadValue(destRouter,32).toLowerCase(),
-  "Dispatch route sender/recipient mismatch");
-
  const dest=destinationProvider||new JsonRpcProvider(name("DESTINATION_RPC_URL"));
  const xgr=xgrProvider||new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
  const destMailbox=new Contract(destMailboxAddress,[
@@ -272,8 +325,13 @@ export async function prepareAttestedMessageOnly({
  ]);
  check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid current destination set ID");
  mark("attested-only-get-current-quorum");
- // No quorum admission or re-signing is done by this offline reconstruction.
  const attestation=await xgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
+ mark("attested-only-discover-dispatch");
+ const message=await resolveSignedDispatch({
+  suppliedMessage,sourceRpcUrl:process.env.ORIGIN_RPC_URL,
+  mailbox:srcMailbox,sourceRouter:srcRouter,sourceDomain:srcDomain,
+  destDomain,destRouter,messageId:id,sourceBlock:attestation.sourceBlockNumber
+ });
  mark("attested-only-validate-signed-identity");
  check(attestation?.version==="XITA_DIRECT_MESSAGE_V1","Wrong attestation format");
  for(const [label,a,b] of [
