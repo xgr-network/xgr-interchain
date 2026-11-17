@@ -832,6 +832,18 @@ complete_update() {
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
   fi
+  # The unsigned Direct-BLS proof observer is an independent long-running
+  # process. Restart an already running observer so it loads the same
+  # freshly published recovery/quorum code as the indexer. Do not start,
+  # enable, or install an operator-disabled observer implicitly.
+  if systemctl is-active --quiet xita-transfer-proof-observer.service 2>/dev/null; then
+    privileged systemctl restart xita-transfer-proof-observer.service || return 1
+    privileged systemctl is-active --quiet xita-transfer-proof-observer.service || {
+      echo "ERROR: XITA transfer proof observer did not remain active after restart." >&2
+      return 1
+    }
+    echo "OK: XITA read-only proof observer restarted with current code."
+  fi
   if systemctl is-active --quiet xita-transfer-intake.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-intake.service
   fi
