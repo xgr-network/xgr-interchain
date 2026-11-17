@@ -212,6 +212,11 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
  if(stage==="source-pending"&&working)
   return {label:source+" transaction submitted",
    detail:"Source transaction submitted. Waiting for chain confirmation.",kind:"waiting"};
+ // A confirmed on-screen wallet step outranks a temporarily stale SQL
+ // observer. Never regress from MetaMask confirmation to proof waiting.
+ if(["first-delivery-sign","final-delivery-sign","onward-source-sign","source-sign","source-approval","onward-approval"].includes(stage)&&working)
+  return {label:"Waiting for wallet confirmation",
+   detail:"XITA has requested a MetaMask transaction. Review the wallet extension; the source transfer must not be repeated.",kind:"wallet"};
  const updatedAt=Date.parse(proof?.updatedAt||"");
  const nextCheckAt=Date.parse(proof?.nextCheckAt||"");
  const scheduledRetry=proof?.state==="unavailable"&&
@@ -243,8 +248,7 @@ export function transferDisplayStatus(flow,{record=null,stage="",working=false,w
   return {label:"Waiting for "+source+" "+tokenFinalityName(flow.origin),
    detail:"",kind:"waiting"};
 
- if(["first-delivery-sign","final-delivery-sign","onward-source-sign","source-sign","source-approval","onward-approval"].includes(stage)&&working)
-  return {label:"Confirm in your wallet",detail:"",kind:"wallet"};
+
  if(status==="awaiting-onward")
   return {label:"Preparing XGRChain wallet transaction",detail:"",kind:"waiting"};
  if(proof?.state==="checking")
@@ -277,13 +281,6 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
    "Gas sponsorship status unavailable; own native gas may still be required";
  const sponsorState=["needs-review","disabled"].includes(sponsorship?.status)?"attention":
    ["confirmed","spendable","not-required"].includes(sponsorship?.status)?"complete":"pending";
- // This manual fallback never performs a source lock/burn. It is available
- // only for an independently confirmed, wallet-owned transfer with an
- // unresolved destination; the click starts fresh chain/recovery preflight.
- const canRequestDestinationWallet=!working&&!scanning&&record?.confirmed===true&&
-   record?.delivered===false&&
-   ["awaiting-proof","awaiting-final-proof"].includes(record?.status)&&
-   HASH.test(record?.txHash||"")&&HASH.test(record?.messageId||"");
  const activeIndex=tokenJourney.verified<tokenJourney.steps.length?
    tokenJourney.verified:tokenJourney.steps.length-1;
  const rows=tokenJourney.steps.map((step,i)=>{
@@ -324,10 +321,6 @@ export function renderTransferFlow({journey,record,stage,working,scanning,notice
   '</section>'+
   '<div class="ux-flow-footer"><p>Blockchain confirmations can take a few minutes. Decentralized transfers involve multiple wallet approvals. Return anytime via My Transfers to confirm the next step.</p>'+
    '<div class="ux-flow-actions">'+
-    // A genuine user click can recover if browser restrictions suppress the
-    // automatically queued MetaMask request. Same checked destination path.
-    (canRequestDestinationWallet?
-      '<button id="xita-flow-continue" type="button">Verify and open MetaMask</button>':"")+
     '<button id="xita-flow-history" class="ux-outline-button" type="button">My Transfers</button>'+
     '<button id="xita-flow-done" class="ux-outline-button" type="button">'+(flow.delivered?"Close":"Hide status")+'</button>'+
    '</div></div></div>';
