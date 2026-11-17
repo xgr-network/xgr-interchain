@@ -657,6 +657,17 @@ function updateFlowModal(){
  dialog.querySelector("#xita-flow-close")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-done")?.addEventListener("click",closeFlowModal);
  dialog.querySelector("#xita-flow-history")?.addEventListener("click",()=>{closeFlowModal();history.pushState(null,"","/my-transfers");render();});
+ // A direct user gesture provides a predictable MetaMask path even when the
+ // background microtask prompt was suppressed by the wallet/browser.
+ dialog.querySelector("#xita-flow-continue")?.addEventListener("click",()=>{
+  clearAutomaticWalletRetryTimer();
+  if(!flowView.open||transferActivity.working||transferActivity.scanning)return;
+  const selected=currentFlowBinding();
+  if(!selected?.record?.confirmed||selected.record.delivered!==false||
+     !["awaiting-proof","awaiting-final-proof"].includes(selected.record.status))return;
+  transferActivity.error="";
+  void performTransferAction();
+ });
  scheduleAutomaticWalletStep();
 }
 function closeFlowModal(){
@@ -799,7 +810,7 @@ async function performTransferAction({automaticStepKey=null}={}){
     await requireUpfrontSponsorship(selected,account);
     const result=await resumeDelivery({catalog:state.catalog,account,record:selected,
     provider:globalThis.ethereum,waitForProof:false,
-    onWalletReady:()=>{requireVisibleSigningModal();markWalletIntent();setFlowStage("first-delivery-sign","TX2: proof verified. Confirm XGRChain delivery in MetaMask.");},
+    onWalletReady:()=>{requireVisibleSigningModal();markWalletIntent();setFlowStage("first-delivery-sign","TX2: proof verified. Opening the MetaMask request now; check the extension for a pending confirmation.");},
     onStatus:notice=>{
      transferActivity.notice=notice;if(path()==="/transfer")render();
     },onBroadcast:({txHash})=>{
@@ -895,8 +906,13 @@ async function performTransferAction({automaticStepKey=null}={}){
  }catch(error){
   if(automaticStepKey&&!autoWalletAttempts.walletRequested(automaticStepKey)&&!broadcastKnown){
    console.warn("[xita-auto-wallet-preflight]",String(error?.message||error).slice(0,240));
-   transferActivity.error="";
-   transferActivity.notice="Read-only verification is retrying; no wallet action was requested.";
+   // Never hide the reason for an unsigned automatic preflight failure.
+   // The next auto retry stays bounded; the explicit destination-only
+   // button remains available for a new user gesture.
+   transferActivity.error="Wallet preflight did not open MetaMask: "+
+    String(error?.message||error).slice(0,240)+
+    ". Use Verify and open MetaMask to retry this destination only.";
+   transferActivity.notice="";
   }else transferActivity.error=String(error.message||error);
   if(!broadcastKnown&&!selected&&!flowView.sourceTxHash)resetFlowView();
   updateFlowModal();
