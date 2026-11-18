@@ -18,7 +18,7 @@ test("Base 403 is retried on verified 8453 fallback, preserving receipt hash",as
   const receipt=await rpcCall("https://base-rpc.publicnode.com","eth_getTransactionReceipt",[hash]);
   assert.equal(receipt.transactionHash,hash);
   assert.deepEqual(calls.map(x=>x.method),
-   ["eth_getTransactionReceipt","eth_chainId","eth_getTransactionReceipt"]);
+   ["eth_chainId","eth_chainId","eth_getTransactionReceipt"]);
   assert.deepEqual(calls[2].params,[hash]);
  }finally{globalThis.fetch=original}
 });
@@ -31,7 +31,7 @@ test("Base failover rejects wrong chain without querying transaction receipt",as
    return {ok:true,json:async()=>({result:"0x1"})};
   };
   await assert.rejects(()=>rpcCall("https://base-rpc.publicnode.com","eth_getTransactionReceipt",["0x"+"b".repeat(64)]),/fallback chain ID/);
-  assert.equal(calls.filter(x=>x.method==="eth_getTransactionReceipt").length,1);
+  assert.equal(calls.filter(x=>x.method==="eth_getTransactionReceipt").length,0);
  }finally{globalThis.fetch=original}
 });
 test("A JSON-RPC execution error is never silently bypassed",async()=>{
@@ -58,7 +58,7 @@ test("configured Tenderly Base HTTP 429 retries a chain-verified independent RPC
   };
   const value=await rpcCall("https://gateway.tenderly.co/public/base","eth_estimateGas",[{}]);
   assert.equal(value,"0x5208");
-  assert.deepEqual(calls.map(x=>x.method),["eth_estimateGas","eth_chainId","eth_estimateGas"]);
+  assert.deepEqual(calls.map(x=>x.method),["eth_chainId","eth_chainId","eth_estimateGas"]);
  }finally{globalThis.fetch=original}
 });
 test("Tenderly JSON-RPC 429 quota error is transient but execution revert is not",async()=>{
@@ -85,6 +85,6 @@ test("Tenderly 429 fallback on wrong chain is blocked before any deployment simu
    return {ok:true,json:async()=>({result:"0x1"})};
   };
   await assert.rejects(()=>rpcCall("https://gateway.tenderly.co/public/base","eth_estimateGas",[{}]),/fallback chain ID/);
-  assert.equal(calls.filter(x=>x.method==="eth_estimateGas").length,1);
+  assert.equal(calls.filter(x=>x.method==="eth_estimateGas").length,0);
  }finally{globalThis.fetch=original}
 });
