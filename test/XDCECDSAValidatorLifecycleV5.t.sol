@@ -19,10 +19,6 @@ contract XDCValidatorRegistryV5Test is Test {
     XGRInterchainECDSAValidatorRegistryV5 registry;
     XITADirectECDSAISM ism;
 
-    function _validator(uint256 key) internal pure returns (address) {
-        return address(uint160(0xA000 + key));
-    }
-
     function _sig(uint256 key, bytes memory payload) internal returns (bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, keccak256(payload));
         return abi.encodePacked(r, s, v);
@@ -37,44 +33,40 @@ contract XDCValidatorRegistryV5Test is Test {
         vm.deal(address(this), 10 ether);
         engine = new XGRInterchainECDSAVerifier();
         address[] memory validators = new address[](3);
-        address[] memory signers = new address[](3);
         bytes[] memory proofs = new bytes[](3);
         uint256[3] memory keys = [K1, K2, K3];
         for (uint256 i; i < 3; i++) {
-            validators[i] = _validator(keys[i]);
-            signers[i] = vm.addr(keys[i]);
+            validators[i] = vm.addr(keys[i]);
             proofs[i] = _sig(
                 keys[i],
                 abi.encodePacked(
                     "XITA_ECDSA_BOOTSTRAP_V2", bytes8(uint64(1643)),
-                    bytes4(uint32(50)), bytes20(validators[i]), bytes20(signers[i])
+                    bytes4(uint32(50)), bytes20(validators[i])
                 )
             );
         }
         registry = new XGRInterchainECDSAValidatorRegistryV5{value:3*RESERVE}(
             1643, 50, address(engine), MIN_RESERVE, MAX_REIMBURSE,
-            validators, signers, proofs
+            validators, proofs
         );
         ism = new XITADirectECDSAISM(address(registry));
     }
 
-    function _transition(uint8 action, address validator, address signer)
+    function _transition(uint8 action, address validator)
         internal view returns (XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory)
     {
         return XGRInterchainECDSAValidatorRegistryV5.MembershipTransition({
             expectedSetId: registry.setId(),
             validUntil: uint64(block.timestamp + 5 minutes),
             action: action,
-            validator: validator,
-            ecdsaSigner: signer
+            validator: validator
         });
     }
 
     function _prove(uint256 key) internal {
-        address v = _validator(key);
-        address signer = vm.addr(key);
-        bytes memory proof = _sig(key, registry.encodePossessionPayload(v, signer));
-        registry.provePossession(v, signer, proof);
+        address v = vm.addr(key);
+        bytes memory proof = _sig(key, registry.encodePossessionPayload(v));
+        registry.provePossession(v, proof);
     }
 
     function testExplicitFundedGenesisAndDestinationMembership() public {
@@ -83,44 +75,36 @@ contract XDCValidatorRegistryV5Test is Test {
         assertEq(registry.minimumDeactivationReserveWei(), MIN_RESERVE);
         assertEq(registry.maxExecutorReimbursementWei(), MAX_REIMBURSE);
         assertEq(address(registry).balance, 3*RESERVE);
-        (bool active, bytes memory publicKey, uint256 reserve) = registry.getValidator(_validator(K1));
+        (bool active, bytes memory publicKey, uint256 reserve) = registry.getValidator(vm.addr(K1));
         assertTrue(active);
         assertEq(publicKey, abi.encodePacked(vm.addr(K1)));
         assertEq(reserve, RESERVE);
         (address[] memory selected, uint64 epoch) = registry.getFeeRecipients();
         assertEq(selected.length, 3);
         assertEq(epoch, 1);
-        assertEq(selected[0], _validator(K1));
-        assertEq(selected[1], _validator(K2));
-        assertEq(selected[2], _validator(K3));
+        assertEq(selected[0], vm.addr(K1));
+        assertEq(selected[1], vm.addr(K2));
+        assertEq(selected[2], vm.addr(K3));
         assertEq(registry.registryVersion(), 5);
         assertEq(registry.verifierKeyFormat(), 3);
         assertEq(ism.destinationDomain(), 50);
-        (address[] memory ids, bytes[] memory ecdsaSigners,) = registry.getValidatorSet();
-        assertEq(ids[0], _validator(K1));
-        assertEq(ecdsaSigners[0], abi.encodePacked(vm.addr(K1)));
-        assertTrue(ids[0] != vm.addr(K1), "separate validator and signing key");
     }
 
     function testGenesisRejectsNonexistentOrDuplicateProof() public {
         address[] memory validators = new address[](3);
-        address[] memory signers = new address[](3);
         bytes[] memory proofs = new bytes[](3);
-        for (uint256 i; i < 3; ++i) {
-            validators[i] = _validator(K1);
-            signers[i] = vm.addr(K1);
-            proofs[i] = _sig(K1, registry.encodeBootstrapPayload(1643, 50, validators[i], signers[i]));
-        }
+        for (uint256 i; i < 3; ++i) validators[i] = vm.addr(K1);
+        for (uint256 i; i < 3; ++i)
+            proofs[i] = _sig(K1, registry.encodeBootstrapPayload(1643, 50, validators[i]));
         vm.expectRevert(XGRInterchainECDSAValidatorRegistryV5.InvalidBootstrap.selector);
         new XGRInterchainECDSAValidatorRegistryV5{value:3*RESERVE}(
-            1643, 50, address(engine), MIN_RESERVE, MAX_REIMBURSE, validators, signers, proofs
+            1643, 50, address(engine), MIN_RESERVE, MAX_REIMBURSE, validators, proofs
         );
     }
 
     function testAddNeedsProofQuorumAndReserve() public {
-        address newcomer = _validator(K4);
-        XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory t =
-            _transition(1, newcomer, vm.addr(K4));
+        address newcomer = vm.addr(K4);
+        XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory t = _transition(1, newcomer);
         bytes memory approval = _quorum(registry.encodeMembershipPayload(t));
         vm.expectRevert(XGRInterchainECDSAValidatorRegistryV5.InvalidTransition.selector);
         registry.applyMembership{value:RESERVE}(t, hex"03", approval);
@@ -151,17 +135,17 @@ contract XDCValidatorRegistryV5Test is Test {
 
     function testRemoveReimbursesExecutorAndRefundsValidator() public {
         XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory t =
-            _transition(2, _validator(K3), vm.addr(K3));
+            _transition(2, vm.addr(K3));
         bytes memory approvals = _quorum(registry.encodeMembershipPayload(t));
         vm.txGasPrice(1 gwei);
         address executor = vm.addr(K4);
         vm.prank(executor);
         registry.applyMembership(t, hex"03", approvals);
-        (bool active,) = registry.getValidatorStatus(_validator(K3));
+        (bool active,) = registry.getValidatorStatus(vm.addr(K3));
         assertFalse(active);
         assertEq(registry.setId(), 2);
         uint256 executorCredit = registry.claimableWei(executor);
-        uint256 validatorCredit = registry.claimableWei(_validator(K3));
+        uint256 validatorCredit = registry.claimableWei(vm.addr(K3));
         assertGt(executorCredit, 0);
         assertLe(executorCredit, MAX_REIMBURSE);
         assertEq(executorCredit + validatorCredit, RESERVE);
@@ -169,16 +153,16 @@ contract XDCValidatorRegistryV5Test is Test {
         vm.prank(executor);
         registry.claim();
         assertEq(executor.balance, executorBalance + executorCredit);
-        vm.prank(_validator(K3));
+        vm.prank(vm.addr(K3));
         registry.claim();
-        assertEq(registry.claimableWei(_validator(K3)), 0);
-        (uint256 oldIndex,uint256 oldCount) = registry.getFeeRecipientIndexForSet(1, _validator(K3));
+        assertEq(registry.claimableWei(vm.addr(K3)), 0);
+        (uint256 oldIndex,uint256 oldCount) = registry.getFeeRecipientIndexForSet(1, vm.addr(K3));
         assertEq(oldIndex, 3);
         assertEq(oldCount, 3);
     }
 
     function testReserveTopupAndHistoricalRecipientSnapshots() public {
-        address v = _validator(K2);
+        address v = vm.addr(K2);
         vm.deal(v, 2 ether);
         vm.prank(v);
         (bool ok,) = address(registry).call{value:RESERVE}("");
@@ -187,14 +171,14 @@ contract XDCValidatorRegistryV5Test is Test {
         assertTrue(active);
         assertEq(reserve, 2*RESERVE);
         XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory t =
-            _transition(2, _validator(K3), vm.addr(K3));
+            _transition(2, vm.addr(K3));
         registry.applyMembership(t, hex"03", _quorum(registry.encodeMembershipPayload(t)));
         (uint256 historicalIndex, uint256 historicalCount) =
-            registry.getFeeRecipientIndexForSet(1, _validator(K3));
+            registry.getFeeRecipientIndexForSet(1, vm.addr(K3));
         assertEq(historicalIndex, 3);
         assertEq(historicalCount, 3);
         (uint256 currentIndex, uint256 currentCount) =
-            registry.getFeeRecipientIndexForSet(2, _validator(K3));
+            registry.getFeeRecipientIndexForSet(2, vm.addr(K3));
         assertEq(currentIndex, 0);
         assertEq(currentCount, 2);
     }
@@ -207,7 +191,7 @@ contract XDCValidatorRegistryV5Test is Test {
         assertFalse(registry.verifyQuorum(1, payload, hex"83", signatures));
         assertFalse(registry.verifyQuorum(1, abi.encodePacked(payload, bytes1(0xff)), hex"03", signatures));
         XGRInterchainECDSAValidatorRegistryV5.MembershipTransition memory t =
-            _transition(2, _validator(K3), vm.addr(K3));
+            _transition(2, vm.addr(K3));
         vm.expectRevert(XGRInterchainECDSAValidatorRegistryV5.InsufficientQuorum.selector);
         registry.applyMembership(t, hex"03", _quorum(abi.encodePacked("not-the-membership-payload")));
     }
