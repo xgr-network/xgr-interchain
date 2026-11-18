@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "7dc7e5466cc5129f2b1863051ab0232392bca3aa"
+  },
+  "chain": "xdc",
+  "chainId": 50,
+  "domainId": 50,
+  "component": "dispatchHook",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0x1b9df66feafaf7f4d49b39abbeccc7146cd27f70",
+  "runtimeCodeKeccak256": "0x315f0cf37d1e9ce06bed7260dd24138c318bef008b348b68933cdf29815923a5",
+  "transactionHash": "0xb8c65c3ccd8f357fa48e930b7357e8ae539c71d917857790805b95a986ee04b8",
+  "blockNumber": 109507333,
+  "blockHash": "0x2354a783db3a12a1fc9cba0ddf346c87eb80ac0d9dbdd277639efc17c046c717",
+  "confirmations": 34,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "transport-dispatch-hook",
+    "factory": "0x119f5533d40889b23769b3c2d507cdfc90fff8ca"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-11-18T07:23:10.615Z"
+}
