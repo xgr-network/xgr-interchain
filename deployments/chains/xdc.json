@@ -47,11 +47,17 @@
         "address": "0xe4baed23f8b9262eb71ade74a26322288e6a0cb3",
         "runtimeCodeKeccak256": "0xaa45a514b8fa3d0b659b1c07f26a2ad7750ef1f13f502c2f7efb7746ed5f5ede",
         "receiptPath": "deployments/receipts/xdc/aefb81710bbbadeac34dfa93a1ef10cdb13133407295cd94a73036243f5cc51d-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json"
+      },
+      "syntheticRouterDeployer": {
+        "address": "0x62567be722f5ef9df0dac5eefe6965b007be155d",
+        "runtimeCodeKeccak256": "0x5d9998ba24efbd871b09c599702cc4f679948adb96d68c20a5df4b7a76ac25e2",
+        "receiptPath": "deployments/receipts/xdc/2980e790077287166457ad1718e3b5cee4e70c78ed88626e67b4638341eed11a-62567be722f5ef9df0dac5eefe6965b007be155d.json"
       }
     },
     "receiptPaths": [
       "deployments/receipts/xdc/041738c349e59b85c110e2ea812b5e39d3bfe795e8911c00ec26f572d9cca20f-70f5752326735b31641f21d174ba035e904db93c.json",
       "deployments/receipts/xdc/1113067cfeda439f67f3114a1589da66969d2b4020835938b6c584e1a0bd391e-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json",
+      "deployments/receipts/xdc/2980e790077287166457ad1718e3b5cee4e70c78ed88626e67b4638341eed11a-62567be722f5ef9df0dac5eefe6965b007be155d.json",
       "deployments/receipts/xdc/6db524b289a0120b514534ff50347320b318000dc1a26e52a503c46f5d29bbb2-3d2add3a7dacb82c11338b6731b22d2afed4e1cc.json",
       "deployments/receipts/xdc/aefb81710bbbadeac34dfa93a1ef10cdb13133407295cd94a73036243f5cc51d-e4baed23f8b9262eb71ade74a26322288e6a0cb3.json",
       "deployments/receipts/xdc/b8c65c3ccd8f357fa48e930b7357e8ae539c71d917857790805b95a986ee04b8-119f5533d40889b23769b3c2d507cdfc90fff8ca.json",
