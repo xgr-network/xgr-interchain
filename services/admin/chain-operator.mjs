@@ -77,7 +77,7 @@ export function createChainOperator({
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
-  if(!preflight.basicRpcPreflightOK)throw Error("Chain or BLS preflight failed");
+  if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
   let verified=bootstrap;
   if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
    const genesis=await readXDCGenesisFromXGR(root,{rpc});
@@ -123,7 +123,7 @@ export function createChainOperator({
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
    bootstrap});
-  if(!preflight.basicRpcPreflightOK)throw Error("Destination chain RPC, core or BLS preflight failed");
+  if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
   const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
   let verified=bootstrap;
   if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
