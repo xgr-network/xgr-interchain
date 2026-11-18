@@ -59,7 +59,7 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
 });
 
-test("mainnet XDC ECDSA is a deployed-contract candidate, not an authorized XGR transfer route",()=>{
+test("mainnet XDC ECDSA V5 remains undeployed with no authorized XGR transfer routes",()=>{
  const catalog=loadCatalog(root);
  assert.equal(catalog.chains.xdc.chainId,50);
  assert.equal(catalog.chains.xdc.domainId,50);
