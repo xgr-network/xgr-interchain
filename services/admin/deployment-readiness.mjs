@@ -2,7 +2,6 @@
 // operator deployment readiness. No wallet signing or chain state writes.
 import {lstatSync,readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
-import {readXDCGenesisFromXGR} from "./xdc-genesis-evidence.mjs";
 import {prepareBootstrapEvidence} from "./bootstrap-evidence.mjs";
 import {approvedValidatorSet} from "./bootstrap.mjs";
 import {rpcCall} from "./inspector.mjs";
@@ -58,16 +57,17 @@ export async function readDeploymentReadiness({
   throw Error("Chain is not in approved GitHub inventory");
  if(chain.blsVerifierFormat==="ecdsa"){
   if(chain.chainId!==50||chain.domainId!==50)throw Error("Invalid XDC mainnet");
-  const genesis=await readXDCGenesisFromXGR(root,{rpc});
   const cfg=loadJSON(join(root,chainBootstrapPath(chain.name)));
   return {chain:chain.name,chainId:50,mode:"read-only",mainCurrent:Boolean(mainCurrent),
-   evidenceVerified:true,verifiedValidatorCount:genesis.validators.length,
-   originSnapshotBlock:genesis.xgrBlockNumber,genesisXGR:genesis,
-   verifiedSnapshot:{validators:genesis.validators},
-   bootstrapReady:true,deploymentExecutable:false,
-   values:{sourceFeeWei:cfg.sourceFee.targetWei},
-   missing:mainCurrent?[]:["GitHub main nicht bestätigt"],
-   transactionSimulation:mainCurrent?"requires-verified-artifact-and-gas-estimation":"blocked-by-main"};
+   evidenceVerified:false,verifiedValidatorCount:0,
+   originSnapshotBlock:null,verifiedSnapshot:null,
+   bootstrapReady:false,deploymentExecutable:false,
+   values:{sourceFeeWei:cfg.sourceFee?.targetWei??null,
+    minimumReserveWei:cfg.reserve?.minimumWei??null,
+    maxExecutorReimbursementWei:cfg.reserve?.maxExecutorReimbursementWei??null,
+    perValidatorReserveWei:cfg.reserve?.perValidatorWei??null},
+   missing:[...boot.missing, "V5 ECDSA destination bootstrap requires approved individual PoS validators and signed possession proofs"],
+   transactionSimulation:"blocked-by-bootstrap"};
  }
  const config=loadJSON(join(root,chainBootstrapPath(chain.name)));
  const initial=approvedValidatorSet(root,config);

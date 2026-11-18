@@ -24,18 +24,18 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
   assert.equal(plan.proposedFeeWei,cfg.sourceFee.targetWei);
   assert.equal(plan.feeInitialization,"factory-constructor-no-quorum");
   if(chain.blsVerifierFormat==="ecdsa"){
-   // XDC MUST NOT inherit an independent, hardcoded BLS genesis roster.
-   // Membership is reconstructed from the receipt-pinned live XGR V3 registry
-   // during the executable Admin prepare and on-chain constructor checks.
+   // XDC has its OWN explicit destination validator Genesis, just as
+   // each BLS destination does. There is no global validator roster.
    assert.equal(chain.chainId,50);
-   assert.equal(cfg.validatorSource,"xgr-mainnet-v3-commitment");
+   assert.equal(cfg.validatorSource,"explicit-destination-genesis");
    assert.equal(cfg.sourceFee.governance,"validator-ecdsa-quorum");
    assert.deepEqual(plan.initialValidators,[]);
    assert.equal(plan.validatorCount,0);
    assert.equal(plan.expectedValidatorCount,0);
-   assert.equal(plan.reserveWei,"0");
-   assert.equal(plan.ready,true);
-   assert.deepEqual(plan.missing,[]);
+   assert.equal(plan.reserveWei,null);
+   assert.equal(plan.ready,false);
+   assert.ok(plan.missing.length>0);
+   assert.equal(cfg.genesisValidatorManifest,null);
   }else{
    assert.deepEqual(plan.initialValidators,pinned);
    assert.equal(plan.expectedValidatorCount,pinned.length);

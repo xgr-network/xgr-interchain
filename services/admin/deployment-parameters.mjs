@@ -13,11 +13,6 @@ export function deploymentParameters(component,raw={}, {scheme="bls"}={}){
  if(raw===null||typeof raw!=="object"||Array.isArray(raw))
   throw Error("Invalid deployment parameter object");
  if(scheme!=="bls"&&scheme!=="ecdsa")throw Error("Unknown signature scheme");
- if(scheme==="ecdsa"){
-  if(component!=="validatorRegistry"||Object.keys(raw).length)
-   throw Error("ECDSA registry has no economic constructor parameters");
-  return {};
- }
  const keys=requiredDeploymentFields(component);
  if(Object.keys(raw).some(key=>!keys.includes(key)))
   throw Error("Parameters supplied for wrong component");

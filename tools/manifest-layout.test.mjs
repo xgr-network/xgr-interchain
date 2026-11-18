@@ -59,13 +59,15 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
 });
 
-test("mainnet XDC ECDSA is a deployed-contract candidate, not an authorized XGR transfer route",()=>{
+test("mainnet XDC ECDSA V5 remains undeployed with no authorized XGR transfer routes",()=>{
  const catalog=loadCatalog(root);
  assert.equal(catalog.chains.xdc.chainId,50);
  assert.equal(catalog.chains.xdc.domainId,50);
  assert.equal(catalog.chains.xdc.blsVerifierFormat,"ecdsa");
- assert.deepEqual(catalog.infrastructure.xdc.xitaV315.components,{});
- assert.deepEqual(catalog.infrastructure.xdc.xitaV315.receiptPaths,[]);
+ const record=catalog.infrastructure.xdc;
+ assert.equal(record.present,false);
+ assert.deepEqual(record.xitaV315.components,{});
+ assert.deepEqual(record.xitaV315.receiptPaths,[]);
  for(const asset of Object.values(catalog.assets)){
   assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
  }

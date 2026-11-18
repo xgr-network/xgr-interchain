@@ -29,18 +29,39 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
      "collateralRouterDeployer"].includes(component))return true;
  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
   const v=infra.components.find(c=>c.key==="ecdsaVerifier")?.address;
-  const source=bootstrap.xdcGenesis;
-  if(chain.chainId!==50||!ADDR.test(v||"")||!source||
-      !/^0x[0-9a-f]{64}$/i.test(source.commitment||""))
-   throw Error("XDC genesis source or verifier missing");
+  if(chain.chainId!==50||!ADDR.test(v||""))
+   throw Error("XDC ECDSA verifier missing");
   await check("originChainId()",1643);
   await check("destinationDomain()",50);
   await check("verifier()",v,"address");
   await check("verifierKeyFormat()",3);
-  await check("registryVersion()",4);
-  await check("genesisXGRSetId()",source.setId);
-  await check("genesisXGRSetCommitment()",source.commitment,"bytes32");
-  await check("setId()",0);
+  await check("registryVersion()",5);
+  await check("setId()",1);
+  if(!bootstrap.reserve?.minimumWei||!bootstrap.reserve?.maxExecutorReimbursementWei||
+      !bootstrap.reserve?.perValidatorWei||!Array.isArray(bootstrap.initialValidators)||
+      bootstrap.initialValidators.length<3)
+   throw Error("Approved destination ECDSA genesis and reserves missing");
+  await check("minimumDeactivationReserveWei()",bootstrap.reserve.minimumWei);
+  await check("maxExecutorReimbursementWei()",bootstrap.reserve.maxExecutorReimbursementWei);
+  await check("quorumThreshold()",Math.ceil(2*bootstrap.initialValidators.length/3));
+  for(const validator of bootstrap.initialValidators){
+   const status=await rpc(url,"eth_call",[{
+    to:address,data:selector("getValidatorStatus(address)")+
+       encodeAbi(["address"],[validator]).slice(2)
+   },"latest"]);
+   if(!/^0x[0-9a-f]{128}$/i.test(status||"")||
+      BigInt("0x"+status.slice(2,66))!==1n||
+      BigInt("0x"+status.slice(66,130))!==1n)
+    throw Error("Destination Genesis validator not active");
+   const detail=await rpc(url,"eth_call",[{
+    to:address,data:selector("getValidator(address)")+
+       encodeAbi(["address"],[validator]).slice(2)
+   },"latest"]);
+   if(!/^0x[0-9a-f]{192,}$/i.test(detail||"")||
+      BigInt("0x"+detail.slice(2,66))!==1n||
+      BigInt("0x"+detail.slice(130,194))!==BigInt(bootstrap.reserve.perValidatorWei))
+    throw Error("Destination validator reserve differs from funded genesis");
+  }
  }else if(component==="validatorRegistry"){
   const v=infra.components.find(c=>c.key==="blsVerifier")?.address||bootstrap.verifierAddress;
   if(!ADDR.test(v||""))throw Error("Verifier address not established");
