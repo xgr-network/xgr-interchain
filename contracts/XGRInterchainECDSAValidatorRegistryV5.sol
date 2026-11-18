@@ -243,7 +243,6 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         delete activeIndexPlusOne[validator];
         reserve = validatorInfo[validator].deactivationReserveWei;
         validatorInfo[validator] = Validator(false, 0);
-        emit ValidatorRemoved(validator, setId + 1, msg.sender, 0);
     }
 
     function _settleRemoval(address validator, uint256 reserve, uint256 gasStart) private {
