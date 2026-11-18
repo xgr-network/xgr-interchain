@@ -116,10 +116,9 @@ contract XDCValidatorRegistryV5Test is Test {
             )
         );
         registry.applyMembership{value:1}(t, hex"03", approval);
+        bytes memory single = _sig(K1, registry.encodeMembershipPayload(t));
         vm.expectRevert(XGRInterchainECDSAValidatorRegistryV5.InsufficientQuorum.selector);
-        registry.applyMembership{value:RESERVE}(
-            t, hex"01", _sig(K1, registry.encodeMembershipPayload(t))
-        );
+        registry.applyMembership{value:RESERVE}(t, hex"01", single);
         registry.applyMembership{value:RESERVE}(t, hex"03", approval);
         (bool active, uint64 epoch) = registry.getValidatorStatus(newcomer);
         assertTrue(active);
@@ -137,18 +136,21 @@ contract XDCValidatorRegistryV5Test is Test {
             _transition(2, vm.addr(K3));
         bytes memory approvals = _quorum(registry.encodeMembershipPayload(t));
         vm.txGasPrice(1 gwei);
+        address executor = vm.addr(K4);
+        vm.prank(executor);
         registry.applyMembership(t, hex"03", approvals);
         (bool active,) = registry.getValidatorStatus(vm.addr(K3));
         assertFalse(active);
         assertEq(registry.setId(), 2);
-        uint256 executorCredit = registry.claimableWei(address(this));
+        uint256 executorCredit = registry.claimableWei(executor);
         uint256 validatorCredit = registry.claimableWei(vm.addr(K3));
         assertGt(executorCredit, 0);
         assertLe(executorCredit, MAX_REIMBURSE);
         assertEq(executorCredit + validatorCredit, RESERVE);
-        uint256 executorBalance = address(this).balance;
+        uint256 executorBalance = executor.balance;
+        vm.prank(executor);
         registry.claim();
-        assertEq(address(this).balance, executorBalance + executorCredit);
+        assertEq(executor.balance, executorBalance + executorCredit);
         vm.prank(vm.addr(K3));
         registry.claim();
         assertEq(registry.claimableWei(vm.addr(K3)), 0);
