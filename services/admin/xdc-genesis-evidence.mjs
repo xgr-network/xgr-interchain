@@ -72,9 +72,13 @@ export async function readXDCGenesisFromXGR(root,{rpc=rpcCall,now=()=>Date.now()
   !H.test(approved?.runtimeCodeKeccak256||"")||
   !String(approved.receiptPath||"").startsWith("deployments/receipts/xgrchain/"))
   throw Error("Receipt-pinned XGR Registry V3 and two source RPCs are required");
+ // Independent witness queries must NOT use generic failover: otherwise
+ // both nominally distinct source RPCs could silently read from the SAME
+ // fallback provider and defeat the XGR-mainnet quorum evidence check.
+ const strictRpc=(url,method,params=[])=>rpc(url,method,params,{noFailover:true});
  const urls=source.rpcUrls.slice(0,2);
  const heads=await Promise.all(urls.map(async url=>{
-  const [id,head]=await Promise.all([rpc(url,"eth_chainId",[]),rpc(url,"eth_blockNumber",[])]);
+  const [id,head]=await Promise.all([strictRpc(url,"eth_chainId",[]),strictRpc(url,"eth_blockNumber",[])]);
   if(BigInt(id)!==1643n||BigInt(head)<10n)throw Error("XGR mainnet chain/head unavailable");
   return BigInt(head);
  }));
@@ -89,13 +93,13 @@ export async function readXDCGenesisFromXGR(root,{rpc=rpcCall,now=()=>Date.now()
  const blockTag="0x"+height.toString(16);
  const results=await Promise.all(urls.map(async url=>{
   const [block,bytecode,version,domain,origin,setWord,validatorData]=await Promise.all([
-   rpc(url,"eth_getBlockByNumber",[blockTag,false]),
-   rpc(url,"eth_getCode",[approved.address,blockTag]),
-   rpc(url,"eth_call",[{to:approved.address,data:selector("registryVersion()")},blockTag]),
-   rpc(url,"eth_call",[{to:approved.address,data:selector("destinationDomain()")},blockTag]),
-   rpc(url,"eth_call",[{to:approved.address,data:selector("originChainId()")},blockTag]),
-   rpc(url,"eth_call",[{to:approved.address,data:selector("setId()")},blockTag]),
-   rpc(url,"eth_call",[{to:approved.address,data:selector("getValidatorSet()")},blockTag])
+   strictRpc(url,"eth_getBlockByNumber",[blockTag,false]),
+   strictRpc(url,"eth_getCode",[approved.address,blockTag]),
+   strictRpc(url,"eth_call",[{to:approved.address,data:selector("registryVersion()")},blockTag]),
+   strictRpc(url,"eth_call",[{to:approved.address,data:selector("destinationDomain()")},blockTag]),
+   strictRpc(url,"eth_call",[{to:approved.address,data:selector("originChainId()")},blockTag]),
+   strictRpc(url,"eth_call",[{to:approved.address,data:selector("setId()")},blockTag]),
+   strictRpc(url,"eth_call",[{to:approved.address,data:selector("getValidatorSet()")},blockTag])
   ]);
   if(!H.test(block?.hash||"")||BigInt(block.number)!==height||
    !/^0x[0-9a-f]+$/i.test(block.timestamp||"")||
@@ -107,7 +111,7 @@ export async function readXDCGenesisFromXGR(root,{rpc=rpcCall,now=()=>Date.now()
   const set=decodeXGRValidatorSet(validatorData);
   if(BigInt(set.setId)!==BigInt(setWord))throw Error("XGR validator epoch mismatch");
   const rootCommit=computeXGRSetCommitment(set.validators);
-  const onchain=await rpc(url,"eth_call",[{
+  const onchain=await strictRpc(url,"eth_call",[{
    to:approved.address,
    data:selector("validatorSetCommitment(uint64)")+encodeAbi(["uint64"],[set.setId]).slice(2)
   },blockTag]);

@@ -1,5 +1,8 @@
 // Read-only chain inspection; NEVER treats code existence as a deployed XITA contract audit.
 import {createHash} from "node:crypto";
+import {readFileSync,readdirSync} from "node:fs";
+import {dirname,resolve,join} from "node:path";
+import {fileURLToPath} from "node:url";
 import {selector} from "../../apps/web/keccak.mjs";
 
 const ADDRESS=/^0x[0-9a-fA-F]{40}$/;
@@ -15,24 +18,39 @@ function decode(data,type){
  if(type==="bytes32")return data.toLowerCase();
  return BigInt(data).toString();
 }
-// Read-only, allowlisted EVM RPC failover. NEVER send a wallet transaction.
-// A fallback is used ONLY for transient transport failures, and its actual
-// chain ID is independently confirmed before accepting any returned data.
-const RPC_NETWORKS=[
- {chainId:8453n,endpoints:[
-  "https://mainnet.base.org",
-  "https://base.llamarpc.com",
-  "https://gateway.tenderly.co/public/base",
-  "https://base.gateway.tenderly.co",
-  "https://base-rpc.publicnode.com"
- ]},
- {chainId:42161n,endpoints:[
-  "https://arb1.arbitrum.io/rpc",
-  "https://arbitrum-one-rpc.publicnode.com"
- ]}
-];
+// One generic read-only RPC failover for every configured EVM chain.
+// Endpoint membership and expected chain IDs come ONLY from approved
+// config/chains/<name>/chain.json. New chains need no JavaScript special-case.
+// Wallet signing/broadcasts are NOT allowed through this RPC client.
+const CONFIG_DIR=resolve(dirname(fileURLToPath(import.meta.url)),"../../config/chains");
 const READ_METHOD=/^(?:eth_(?:chainId|blockNumber|gasPrice|getTransactionByHash|getTransactionReceipt|getBlockByNumber|getTransactionCount|getBalance|getCode|getLogs|call|estimateGas|feeHistory|syncing)|net_version)$/;
-const resolveNetwork=url=>RPC_NETWORKS.find(n=>n.endpoints.includes(url))||null;
+function configuredNetworks(){
+ const networks=[],seen=new Map();
+ for(const dir of readdirSync(CONFIG_DIR,{withFileTypes:true})){
+  if(!dir.isDirectory()||!/^[a-z][a-z0-9-]*$/.test(dir.name))continue;
+  const c=JSON.parse(readFileSync(join(CONFIG_DIR,dir.name,"chain.json"),"utf8"));
+  if(c.name!==dir.name||!Number.isSafeInteger(c.chainId)||c.chainId<1||
+     !Array.isArray(c.rpcUrls)||c.rpcUrls.length<1||c.rpcUrls.length>12)
+   throw Error("Invalid configured RPC policy: "+dir.name);
+  const endpoints=[];
+  for(const url of c.rpcUrls){
+   if(typeof url!=="string"||!/^https:\/\//.test(url))
+    throw Error("Unsafe configured RPC URL: "+dir.name);
+   const parsed=new URL(url);
+   if(parsed.username||parsed.password||parsed.hash||parsed.protocol!=="https:")
+    throw Error("Unsafe configured RPC authority: "+dir.name);
+   if(seen.has(url)&&seen.get(url)!==c.chainId)
+    throw Error("RPC endpoint belongs to conflicting chain IDs");
+   seen.set(url,c.chainId);
+   if(!endpoints.includes(url))endpoints.push(url);
+  }
+  networks.push({chainId:BigInt(c.chainId),name:dir.name,endpoints});
+ }
+ return networks;
+}
+function configuredNetwork(url){
+ return configuredNetworks().find(n=>n.endpoints.includes(url))||null;
+}
 async function rpcOnce(url,method,params){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
  try{
@@ -46,6 +64,7 @@ async function rpcOnce(url,method,params){
   const payload=await response.json();
   if(payload.error){
    const error=new Error("RPC error: "+String(payload.error.message||"unknown").slice(0,120));
+   error.rpcErrorCode=payload.error.code;
    error.rpcRateLimit=payload.error.code===-32005||
     /(?:rate.?limit|too many requests|429|quota exceeded|request limit)/i.test(error.message);
    throw error;
@@ -53,34 +72,59 @@ async function rpcOnce(url,method,params){
   return payload.result;
  }finally{clearTimeout(timer)}
 }
-export async function rpcCall(url,method,params=[]){
+export async function rpcCall(url,method,params=[],options={}){
  if(typeof url!=="string"||!/^https:\/\//.test(url))throw Error("RPC URL must use HTTPS");
  if(!READ_METHOD.test(method||""))throw Error("Only approved read-only EVM RPC methods are available");
- const network=resolveNetwork(url),endpoints=network?
-  [url,...network.endpoints.filter(endpoint=>endpoint!==url)]:[url];
+ if(options==null||typeof options!=="object"||Array.isArray(options)||
+    Object.keys(options).some(k=>k!=="noFailover")||
+    options.noFailover!=null&&typeof options.noFailover!=="boolean")
+  throw Error("Invalid read-only RPC options");
+ const network=configuredNetwork(url);
+ const endpoints=network&&!options.noFailover?
+  [url,...network.endpoints.filter(e=>e!==url)]:[url];
+ const finalizedQuery=method==="eth_getBlockByNumber"&&params[0]==="finalized";
  let last;
  for(const endpoint of endpoints){
   try{
-   if(network&&endpoint!==url){
-    const id=await rpcOnce(endpoint,"eth_chainId",[]);
-    if(BigInt(id)!==network.chainId)throw Error("Unexpected fallback chain ID");
+   // Verify every endpoint, INCLUDING the primary, before accepting data.
+   // A misconfigured provider on another chain is never a fallback.
+   let identity=null;
+   if(network){
+    identity=await rpcOnce(endpoint,"eth_chainId",[]);
+    if(BigInt(identity)!==network.chainId)
+     throw Error(endpoint===url?"Unexpected configured RPC chain ID":"Unexpected fallback chain ID");
    }
-   const value=await rpcOnce(endpoint,method,params);
+   const value=method==="eth_chainId"&&network?identity:
+    await rpcOnce(endpoint,method,params);
    if(network&&method==="eth_chainId"&&BigInt(value)!==network.chainId)
     throw Error("Unexpected configured RPC chain ID");
+   if(finalizedQuery&&(value==null||value===false)){
+    const error=new Error("RPC finalized head unavailable");
+    error.rpcUnsupportedFinalized=true;
+    throw error;
+   }
    return value;
   }catch(e){
-   if(String(e.message).includes("Unexpected fallback chain ID")||
-      String(e.message).includes("Unexpected configured RPC chain ID"))
+   if(/Unexpected (?:configured RPC|fallback) chain ID/.test(String(e.message)))
     throw e;
    const code=e.rpcHttpStatus;
-   const transient=code===403||code===408||code===429||code>=500||
-    e.rpcRateLimit===true||e.name==="AbortError"||e instanceof TypeError;
-   if(!transient||!network)throw e;
+   const transient=code===401||code===403||code===404||code===408||
+    code===429||code>=500||e.rpcRateLimit===true||
+    e.name==="AbortError"||e instanceof TypeError;
+   // Only a FINALIZED block query may retry on unsupported RPC semantics.
+   // Never downgrade to "latest", "safe" or arbitrary confirmation counts.
+   const unsupportedFinalized=finalizedQuery&&
+    (e.rpcUnsupportedFinalized===true||e.rpcErrorCode===-32601||
+     e.rpcErrorCode===-32602||
+     /(?:finalized|unsupported block|not supported)/i.test(String(e.message)));
+   if((!transient&&!unsupportedFinalized)||!network||options.noFailover)
+    throw e;
    last=e;
   }
  }
- throw Error("Chain "+String(network?.chainId)+" RPC unavailable on all approved read-only endpoints: "+String(last?.message||"unknown"));
+ throw Error("Chain "+String(network?.chainId||"unknown")+
+  " RPC unavailable on all approved read-only endpoints: "+
+  String(last?.message||"unknown"));
 }
 export async function probeChain(catalog,chainName,rpc=rpcCall){
  const chain=catalog.chains[chainName],infra=catalog.infrastructure[chainName];
