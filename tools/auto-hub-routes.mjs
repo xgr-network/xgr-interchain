@@ -30,7 +30,10 @@ export function deriveMissingHubRoutes(catalog){
  if(!catalog?.chains?.xgrchain||!catalog.assets||!catalog.infrastructure)
   throw Error("Canonical XGRChain hub inventory missing");
  if(!ready(catalog,"xgrchain"))return new Map();
- const targets=Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&ready(catalog,name)).sort();
+ // ECDSA spokes require a separately audited validator-signing and source-finality
+ // release gate. Deploying their infrastructure does NOT authorize public routes.
+ const targets=Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&
+  catalog.chains[name]?.blsVerifierFormat!=="ecdsa"&&ready(catalog,name)).sort();
  const updates=new Map();
  for(const [key,entry] of Object.entries(catalog.assets)){
   const meta=entry.metadata,routes=entry.routes;

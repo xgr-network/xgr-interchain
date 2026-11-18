@@ -21,20 +21,35 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
   assert.equal(plan.chain,chain.name);
   assert.equal(plan.chainId,chain.chainId);
   assert.equal(plan.domainId,chain.domainId);
-  assert.deepEqual(plan.initialValidators,pinned);
-  assert.equal(plan.expectedValidatorCount,pinned.length);
-  assert.equal(plan.validatorCount,pinned.length);
-  assert.equal(cfg.genesisValidatorManifest,"config/validators/initial.json");
-  assert.equal(cfg.validatorSource,"explicit-interchain-genesis");
   assert.equal(plan.proposedFeeWei,cfg.sourceFee.targetWei);
   assert.equal(plan.feeInitialization,"factory-constructor-no-quorum");
-  if(plan.ready){
-   assert.equal(plan.validatorCount,pinned.length);
-   assert.equal(plan.missing.length,0);
-   assert.match(plan.reserveWei,/^[1-9][0-9]*$/);
+  if(chain.blsVerifierFormat==="ecdsa"){
+   // XDC MUST NOT inherit an independent, hardcoded BLS genesis roster.
+   // Membership is reconstructed from the receipt-pinned live XGR V3 registry
+   // during the executable Admin prepare and on-chain constructor checks.
+   assert.equal(chain.chainId,50);
+   assert.equal(cfg.validatorSource,"xgr-mainnet-v3-commitment");
+   assert.equal(cfg.sourceFee.governance,"validator-ecdsa-quorum");
+   assert.deepEqual(plan.initialValidators,[]);
+   assert.equal(plan.validatorCount,0);
+   assert.equal(plan.expectedValidatorCount,0);
+   assert.equal(plan.reserveWei,"0");
+   assert.equal(plan.ready,true);
+   assert.deepEqual(plan.missing,[]);
   }else{
-   assert.ok(plan.missing.length>0);
-   assert.equal(plan.reserveWei,null);
+   assert.deepEqual(plan.initialValidators,pinned);
+   assert.equal(plan.expectedValidatorCount,pinned.length);
+   assert.equal(plan.validatorCount,pinned.length);
+   assert.equal(cfg.genesisValidatorManifest,"config/validators/initial.json");
+   assert.equal(cfg.validatorSource,"explicit-interchain-genesis");
+   if(plan.ready){
+    assert.equal(plan.validatorCount,pinned.length);
+    assert.equal(plan.missing.length,0);
+    assert.match(plan.reserveWei,/^[1-9][0-9]*$/);
+   }else{
+    assert.ok(plan.missing.length>0);
+    assert.equal(plan.reserveWei,null);
+   }
   }
  }
  const items=buildWorkItems(inventory,infrastructureInventory(root,inventory.chains),bootstraps);

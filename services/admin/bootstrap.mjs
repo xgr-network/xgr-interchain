@@ -37,6 +37,16 @@ export function bootstrapPlan(root,chain){
     cfg.destinationDomain!==chain.domainId||cfg.membershipOriginChainId!==1643||
     cfg.verifierFormat!==chain.blsVerifierFormat)
   throw Error("Validator bootstrap manifest identity mismatch: "+chain.name);
+ if(chain.blsVerifierFormat==="ecdsa"){
+  if(chain.chainId!==50||cfg.validatorSource!=="xgr-mainnet-v3-commitment"||
+     cfg.sourceFee?.governance!=="validator-ecdsa-quorum"||
+     !uint(cfg.sourceFee?.targetWei))throw Error("Invalid XDC ECDSA mainnet bootstrap");
+  return {chain:chain.name,chainId:50,domainId:50,validatorCount:0,
+   expectedValidatorCount:0,initialValidators:[],setId:null,ready:true,missing:[],
+   reserveWei:"0",reserve:cfg.reserve,proposedFeeWei:cfg.sourceFee.targetWei,
+   verifierAddress:null,feeGovernance:cfg.sourceFee.governance,
+   feeInitialization:cfg.sourceFee.initialization};
+ }
  const expected=approvedValidatorSet(root,cfg).validators;
  const snapshot=cfg.validatorSnapshot||{},validators=snapshot.validators||[];
  if(validators.length && (validators.length!==expected.length ||
@@ -86,6 +96,24 @@ export function bootstrapPlan(root,chain){
 export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}={}){
  const chain=chains.find(c=>c.name===plan.chain);
  if(!chain)throw Error("Unknown chain");
+ if(chain.blsVerifierFormat==="ecdsa"){
+  const obs=infrastructure.find(c=>c.name===plan.chain);
+  const registry=obs?.components.find(x=>x.key==="validatorRegistry")?.address;
+  const sourceRegistry=obs?.components.find(x=>x.key==="sourceRegistry")?.address;
+  let setId=null,threshold=null;
+  if(registry){
+   const url=chain.rpcUrls[0];
+   const [d,s,t]=await Promise.all([
+    abiView(rpc,url,registry,"destinationDomain()"),
+    abiView(rpc,url,registry,"setId()"),
+    abiView(rpc,url,registry,"quorumThreshold()")]);
+   if(decodeUint(d)!==50n)throw Error("XDC registry domain mismatch");
+   setId=decodeUint(s).toString();threshold=decodeUint(t).toString();
+  }
+  return {...plan,validatorRegistry:registry,sourceRegistry,verified:false,
+   validatorSetId:setId,quorumThreshold:threshold,liveValidatorReservesWei:{},
+   missing:["ECDSA-Signer- und Quorum-Freigabe ausstehend"]};
+ }
  const url=chain.rpcUrls?.[0];
  if(!url?.startsWith("https://"))throw Error("No HTTPS RPC");
  const observed=infrastructure.find(c=>c.name===plan.chain);

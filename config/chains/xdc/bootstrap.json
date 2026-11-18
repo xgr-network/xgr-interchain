@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-validator-fee-bootstrap",
+  "chain": "xdc",
+  "chainId": 50,
+  "destinationDomain": 50,
+  "membershipOriginChainId": 1643,
+  "validatorSource": "xgr-mainnet-v3-commitment",
+  "verifierFormat": "ecdsa",
+  "verifierAddress": null,
+  "validatorSnapshot": {
+    "blockNumber": null,
+    "validators": [],
+    "notes": "Read only XGR Mainnet V3 receipt-pinned epoch evidence: never manually select another validator set."
+  },
+  "reserve": {
+    "minimumWei": "1",
+    "maxExecutorReimbursementWei": "1",
+    "perValidatorWei": "1"
+  },
+  "sourceFee": {
+    "targetWei": "100000000000000",
+    "governance": "validator-ecdsa-quorum",
+    "ttlSeconds": 300,
+    "initialization": "factory-constructor-no-quorum"
+  },
+  "genesisValidatorManifest": "config/validators/initial.json",
+  "notes": "Mainnet only: initial XGR validator set is read live from XGR registry. NO token routes or signing activated by this config."
+}

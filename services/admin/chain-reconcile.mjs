@@ -19,15 +19,29 @@ async function getter(rpc,url,address,signature){
 export async function verifyChainBindings({rpc,url,component,address,chain,bootstrap,infra,parameters={}}){
  const check=async(signature,expected,kind="uint")=>{
   const result=await getter(rpc,url,address,signature);
-  const observed=kind==="address"?asAddr(result):asWord(result);
-  if(kind==="address"?!same(observed,expected):observed!==BigInt(expected))
+  const observed=kind==="address"?asAddr(result):kind==="bytes32"?result:asWord(result);
+  if(kind==="address"||kind==="bytes32"?!same(observed,expected):observed!==BigInt(expected))
    throw Error("On-chain constructor binding mismatch: "+signature);
  };
  // These three immutable deployment modules have no constructor bindings.
  // Exact compiler-pinned runtime verification is mandatory in reconcileDeployedContract.
- if(["blsVerifier","nativeRouterDeployer","syntheticRouterDeployer",
+ if(["blsVerifier","ecdsaVerifier","nativeRouterDeployer","syntheticRouterDeployer",
      "collateralRouterDeployer"].includes(component))return true;
- if(component==="validatorRegistry"){
+ if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
+  const v=infra.components.find(c=>c.key==="ecdsaVerifier")?.address;
+  const source=bootstrap.xdcGenesis;
+  if(chain.chainId!==50||!ADDR.test(v||"")||!source||
+      !/^0x[0-9a-f]{64}$/i.test(source.commitment||""))
+   throw Error("XDC genesis source or verifier missing");
+  await check("originChainId()",1643);
+  await check("destinationDomain()",50);
+  await check("verifier()",v,"address");
+  await check("verifierKeyFormat()",3);
+  await check("registryVersion()",4);
+  await check("genesisXGRSetId()",source.setId);
+  await check("genesisXGRSetCommitment()",source.commitment,"bytes32");
+  await check("setId()",0);
+ }else if(component==="validatorRegistry"){
   const v=infra.components.find(c=>c.key==="blsVerifier")?.address||bootstrap.verifierAddress;
   if(!ADDR.test(v||""))throw Error("Verifier address not established");
   await check("originChainId()",1643);
@@ -167,7 +181,10 @@ export async function reconcileDeployedContract({
 }){
  if(!["submitted","confirmed"].includes(entry.stage)||!H32.test(entry.txHash||""))
   throw Error("Only submitted, hash-journaled transactions can reconcile");
- if(entry.chainId!==chain.chainId||entry.id!==chain.name+":"+artifact.component)
+ const expectedArtifact=chain.blsVerifierFormat==="ecdsa"&&entry.id.endsWith(":validatorRegistry")?"xdcValidatorRegistry":
+  chain.blsVerifierFormat==="ecdsa"&&entry.id.endsWith(":ism")?"xdcIsm":entry.id.split(":")[1];
+ if(entry.chainId!==chain.chainId||artifact.component!==expectedArtifact||
+    entry.id!==chain.name+":"+entry.id.split(":")[1])
   throw Error("Deployment identity differs from approved chain");
  const chainId=await rpc(url,"eth_chainId",[]);
  if(BigInt(chainId)!==BigInt(chain.chainId))throw Error("RPC network mismatch");

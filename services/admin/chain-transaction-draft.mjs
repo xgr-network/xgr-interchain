@@ -13,16 +13,18 @@ const ZERO="0x"+"0".repeat(40);
 const deployed=(infra,key)=>infra.components.find(p=>p.key===key)?.address||null;
 const nonzero=x=>ADDR.test(x||"")&&x.toLowerCase()!==ZERO;
 const load=(root,path)=>JSON.parse(readFileSync(join(root,path),"utf8"));
-export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
+export const CHAIN_COMPONENTS=Object.freeze(["blsVerifier","ecdsaVerifier","validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry","executionGateway"]);
 const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  syntheticRouterDeployer:"XETASyntheticRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
- blsVerifier:"XGRInterchainBLSVerifier",
+ blsVerifier:"XGRInterchainBLSVerifier",ecdsaVerifier:"XGRInterchainECDSAVerifier",
+ xdcValidatorRegistry:"XGRInterchainECDSAValidatorRegistry",xdcIsm:"XITADirectECDSAISM",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XITADirectBLSISM",transportBundle:"XITADirectTransport",factory:"XETATokenFactoryV315",
  executionGateway:"XITAExecutionGateway"};
 const typesFor={
- blsVerifier:[],
+ blsVerifier:[],ecdsaVerifier:[],
+ xdcValidatorRegistry:["uint64","uint32","address","uint64","bytes32"],xdcIsm:["address"],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
@@ -67,12 +69,23 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
    component,transaction:{to:factory,data:encodeFunctionCall("deployRegistry()",[],[],selector),value:"0x0"},
    operation:"factory-call",mustVerify:"Factory RegistryDeployed event and on-chain registry() getter"};
  }
+ if(component==="ecdsaVerifier" && chain.blsVerifierFormat!=="ecdsa")
+  throw Error("ECDSA verifier is only for ECDSA destination chains");
  if(component==="blsVerifier" && chain.blsVerifierFormat!=="eip2537")
   throw Error("Native verifier must never be redeployed");
  if(deployed(infrastructure,component))throw Error("Component already documented");
  let values=[],value="0x0";
- if(component==="validatorRegistry"){
-  const p=deploymentParameters(component,parameters);
+ if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
+  const source=bootstrap.xdcGenesis;
+  if(chain.chainId!==50||!source||!/^0x[0-9a-f]{64}$/i.test(source.commitment||"")||
+     /^0x0{64}$/i.test(source.commitment||"")||
+     !Number.isSafeInteger(Number(source.setId))||BigInt(source.setId)===0n||
+     !Array.isArray(source.validators)||source.validators.length<3)
+   throw Error("Canonical XGR mainnet validator snapshot required");
+  const verifier=requirePresent(infrastructure,"ecdsaVerifier");
+  values=[1643,50,verifier,source.setId,source.commitment];
+ }else if(component==="validatorRegistry"){
+  const p=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"?"ecdsa":"bls"});
   if(!bootstrap.initialValidators||bootstrap.validatorCount!==bootstrap.expectedValidatorCount)
    throw Error("Independently verified destination Genesis BLS signer set required");
   if(!bootstrap.validatorSnapshot?.validators?.length)throw Error("Missing verified validator proof records");
@@ -112,10 +125,12 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
    requirePresent(infrastructure,"syntheticRouterDeployer"),
    requirePresent(infrastructure,"collateralRouterDeployer")];
  }
- const artifactData=exactArtifact(root,component,artifact);
+ const artifactKey=chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"xdcValidatorRegistry":
+  chain.blsVerifierFormat==="ecdsa"&&component==="ism"?"xdcIsm":component;
+ const artifactData=exactArtifact(root,artifactKey,artifact);
  return {id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,
   component,operation:"create",contract:artifactData.name,
-  transaction:{to:null,data:artifactData.hex+encodeAbi(typesFor[component],values).slice(2),value},
+  transaction:{to:null,data:artifactData.hex+encodeAbi(typesFor[artifactKey],values).slice(2),value},
   mustVerify:"finalized receipt, canonical block, constructor bindings and deployed runtime"};
 }
 export async function simulateChainDraft(draft,{rpc,url,from}){

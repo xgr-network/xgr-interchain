@@ -104,8 +104,8 @@ let currentWallet=null;
 let chainObservations=new Map();
 let liveBootstrap=new Map();
 const coreTitles={
- blsVerifier:"BLS-Verifier",
- validatorRegistry:"ValidatorRegistry V3",
+ blsVerifier:"BLS-Verifier",ecdsaVerifier:"ECDSA-Verifier (XDC)",
+ validatorRegistry:"ValidatorRegistry V3 / ECDSA V4",
  ism:"Interchain Security Module",
  nativeRouterDeployer:"Native Router Deployer (einmalig)",
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
@@ -256,6 +256,9 @@ function moneyInWei(wei,chain){
 }
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
+ // XDC registry has NO BLS reserve constructor arguments.
+ const cfg=workqueue?.inventory?.chains.find(c=>c.name===selectedDeployment?.chainName);
+ if(component==="validatorRegistry"&&cfg?.blsVerifierFormat==="ecdsa")return {};
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
@@ -416,17 +419,18 @@ async function openContractModal(chainName,component){
   const existing=chainDeploymentIntent(status,chainName,component);
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
-  const requiresValues=component==="validatorRegistry"||
+  const requiresValues=(component==="validatorRegistry"&&chain.blsVerifierFormat!=="ecdsa")||
    component==="factory"||component==="executionGateway";
   lastModalPreview=null;
-  const fields=component==="validatorRegistry"
+  const fields=component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"?[]:
+   component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
    component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
-     r.verifiedValidatorCount+" Genesis-Validatoren gegen Zielchain-BLS-Verifier geprüft":
+     r.verifiedValidatorCount+(chain.blsVerifierFormat==="ecdsa"?" aktive XGR-Mainnet-Validatoren samt Registry-Commitment geprüft":" Genesis-Validatoren gegen Zielchain-BLS-Verifier geprüft"):
      "Validator-Bootstrap: "+(r.evidenceError||"Prüfung noch nicht abgeschlossen")):"";
   let proposal=null;
   if(requiresValues){

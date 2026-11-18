@@ -24,6 +24,7 @@ export function nextAssetDeployment(queue,tasks,assetKey){
 }
 export function chainDeploymentParameters(component,readiness){
  const values=readiness?.values||{};
+ if(component==="validatorRegistry"&&readiness?.chain==="xdc")return {};
  if(component==="validatorRegistry"){
   if(!readiness?.evidenceVerified||!readiness.verifiedValidatorCount)
    throw Error("Validator-Set nicht verifiziert: "+(readiness?.evidenceError||"fehlende Genesis-BLS-Nachweise"));

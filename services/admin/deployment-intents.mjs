@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {randomUUID} from "node:crypto";
 import {deploymentParameters} from "./deployment-parameters.mjs";
 import {isPreResetIntent} from "./deployment-generation.mjs";
-const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|validatorRegistry|ism|transportBundle|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry|executionGateway)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
+const ID=/^(?:[a-z][a-z0-9-]*:(?:blsVerifier|ecdsaVerifier|validatorRegistry|ism|transportBundle|nativeRouterDeployer|syntheticRouterDeployer|collateralRouterDeployer|factory|sourceRegistry|executionGateway)|[a-z][a-z0-9-]*:[A-Za-z0-9_-]+:(?:nativeRouter|syntheticRouter|collateralRouter|gateway):[A-Za-z0-9_-]+)$/;
 const SHA=/^[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
 const HEX=/^0x(?:[0-9a-f]{2})*$/i;
 const H256=/^[0-9a-f]{64}$/i;
@@ -49,7 +49,8 @@ function validate(e){
     !H256.test(e?.buildHash||"")||!H256.test(e?.artifactHash||""))
    throw Error("Malformed deployment intent identity");
  const component=e.id.split(":").length===2?e.id.split(":")[1]:e.id.split(":")[2];
- const parameters=deploymentParameters(component,e.parameters||{});
+ const parameters=deploymentParameters(component,e.parameters||{},
+  {scheme:e.chainId===50&&component==="validatorRegistry"?"ecdsa":"bls"});
  if(JSON.stringify(parameters)!==JSON.stringify(e.parameters||{}))throw Error("Noncanonical constructor parameters");
  if(e.id.split(":").length===4 && (!e.asset||!e.factory||!ADDR.test(e.factory)|| !["nativeRouter","syntheticRouter","collateralRouter","gateway"].includes(component)))
   throw Error("Invalid asset route journal identity");

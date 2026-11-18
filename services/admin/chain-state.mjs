@@ -23,9 +23,9 @@ export function infrastructureInventory(root,chains) {
   // No historical mailbox/hook or config-supplied address counts as deployment proof.
   const core=freshTransport?{mailbox:verified.mailbox.address,dispatchHook:verified.dispatchHook.address,
    requiredHook:verified.requiredHook.address,transportBundle:verified.transportBundle.address}:{};
-  if(!["compressed","eip2537"].includes(c.blsVerifierFormat))
+  if(!["compressed","eip2537","ecdsa"].includes(c.blsVerifierFormat))
    throw Error("Unsupported configured verifier format: "+c.name);
-  const requiredParts=c.blsVerifierFormat==="compressed"?executableParts:["blsVerifier",...executableParts];
+  const requiredParts=c.blsVerifierFormat==="compressed"?executableParts:[c.blsVerifierFormat==="ecdsa"?"ecdsaVerifier":"blsVerifier",...executableParts];
   const components=[...requiredParts,...optionalParts].map(key=>{
    const ready=valid(key)&&(key!=="transportBundle"||freshTransport);
    return {key,address:ready?verified[key].address:null,status:ready?"documented":"not-deployed",

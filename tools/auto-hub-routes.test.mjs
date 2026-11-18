@@ -68,3 +68,18 @@ test("receipt-verified XGR Creator originals without any Join route remain route
  delete unjoined.assets.XITACAN.metadata.creation;
  assert.ok(deriveMissingHubRoutes(unjoined).has("XITACAN"));
 });
+
+// XDC contract deployment is NOT a permission to add automatic XGR routes.
+test("fully receipt-documented ECDSA XDC spoke never auto-registers desired asset routes",()=>{
+ const catalog=structuredClone(loadCatalog());
+ const copied=structuredClone(catalog.infrastructure.bsc);
+ copied.chain="xdc";copied.chainId=50;copied.domainId=50;copied.present=true;
+ copied.xitaV315.components.ecdsaVerifier=copied.xitaV315.components.blsVerifier;
+ delete copied.xitaV315.components.blsVerifier;
+ for(const item of Object.values(copied.xitaV315.components)){
+  item.receiptPath=item.receiptPath.replaceAll("bsc/","xdc/");
+ }
+ copied.xitaV315.receiptPaths=copied.xitaV315.receiptPaths.map(x=>x.replaceAll("bsc/","xdc/"));
+ catalog.infrastructure.xdc=copied;
+ assert.equal(deriveMissingHubRoutes(catalog).size,0);
+});

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "chain-config",
+  "name": "xdc",
+  "displayName": "XDC Mainnet",
+  "environment": "mainnet",
+  "chainId": 50,
+  "domainId": 50,
+  "rpcUrls": [
+    "https://erpc.xinfin.network",
+    "https://rpc.xdc.blocksscan.io",
+    "https://rpc.ankr.com/xdc"
+  ],
+  "explorer": "https://xdcscan.com",
+  "nativeCurrency": {
+    "name": "XDC",
+    "symbol": "XDC",
+    "decimals": 18
+  },
+  "confirmations": 32,
+  "blsVerifierFormat": "ecdsa",
+  "signatureScheme": "ecdsa",
+  "observedInfrastructure": "deployments/chains/xdc.json",
+  "receiptFinalityTag": "finalized"
+}

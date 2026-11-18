@@ -10,7 +10,7 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   const infra=infraByName.get(chain.name),b=bootByName.get(chain.name);
   if(!infra||!b||infra.chainId!==chain.chainId||infra.domainId!==chain.domainId)
    throw Error("Missing matching main-approved deployment configuration: "+chain.name);
-  if(!["compressed","eip2537"].includes(chain.blsVerifierFormat))
+  if(!["compressed","eip2537","ecdsa"].includes(chain.blsVerifierFormat))
    throw Error("Unsupported configured BLS verifier format: "+chain.name);
   const native=chain.blsVerifierFormat==="compressed";
   if(native&&!b.verifierAddress)throw Error("Missing configured native verifier address: "+chain.name);
@@ -26,11 +26,11 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
     component,title,kind,optional,status:documented?"documented":kind==="verify"?"verification-required":"blocked",
     dependsOn,blockers});
   };
-  const verifierComponent=native?"nativeVerifier":"blsVerifier";
-  add(verifierComponent,native?"Konfigurierten nativen BLS-Verifier prüfen":"EIP-2537-Verifier bereitstellen",
-   native?"verify":"deploy",[],["Positive und negative BLS-Testvektoren erforderlich"]);
+  const verifierComponent=native?"nativeVerifier":chain.blsVerifierFormat==="ecdsa"?"ecdsaVerifier":"blsVerifier";
+  add(verifierComponent,native?"Konfigurierten nativen BLS-Verifier prüfen":chain.blsVerifierFormat==="ecdsa"?"ECDSA-Verifier bereitstellen":"EIP-2537-Verifier bereitstellen",
+   native?"verify":"deploy",[],[chain.blsVerifierFormat==="ecdsa"?"XGR Mainnet Validator-Commitment vor Deployment unabhängig nachweisen":"Positive und negative BLS-Testvektoren erforderlich"]);
   add("validatorRegistry","Initiale ValidatorRegistry", "deploy",[verifierComponent],
-   [...b.missing,"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
+   [...b.missing,chain.blsVerifierFormat==="ecdsa"?"XGR-Mainnet-Validator-Set und unveränderlichen Commitment nachweisen":"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
   add("ism","Interchain Security Module","deploy",["validatorRegistry"]);
   add("transportBundle","XITA Mailbox + DispatchHook (atomar)","deploy",["ism"]);
   add("nativeRouterDeployer","Einmaliger Native-Router-Deployer","deploy",["validatorRegistry","ism"]);

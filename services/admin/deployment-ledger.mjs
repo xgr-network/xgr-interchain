@@ -32,7 +32,7 @@ const SHA=/^[0-9a-f]{40}$/i, H32=/^0x[0-9a-f]{64}$/i;
 const ADDR=/^0x[0-9a-f]{40}$/i;
 const HEXCODE=/^0x(?:[0-9a-f]{2})+$/i;
 const COMPONENTS=new Set([
- "blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
+ "blsVerifier","ecdsaVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
  "nativeRouter","syntheticRouter","collateralRouter","gateway","feeVault","executionGateway"
 ]);
 const EVENTS={
@@ -355,7 +355,7 @@ export async function publishDeploymentBatch(root,inputs,{
   updatedAssets.set(asset,normalized);
  }
  // Non-XGR chains get their first deployment file ONLY on the first receipt.
- const infraParts=new Set(["blsVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer",
+ const infraParts=new Set(["blsVerifier","ecdsaVerifier","validatorRegistry","ism","transportBundle","mailbox","dispatchHook","requiredHook","nativeRouterDeployer",
    "syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry",
    "executionGateway"]);
  const byChain=new Map(),updatedInfrastructure=new Map();
