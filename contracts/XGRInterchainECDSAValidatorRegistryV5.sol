@@ -27,7 +27,6 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
 
     struct Validator {
         bool active;
-        address ecdsaSigner;
         uint256 deactivationReserveWei;
     }
 
@@ -36,7 +35,6 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         uint64 validUntil;
         uint8 action;
         address validator;
-        address ecdsaSigner;
     }
 
     uint64 public immutable override originChainId;
@@ -49,12 +47,10 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
     mapping(address => Validator) private validatorInfo;
     address[] private activeValidators;
     mapping(address => uint256) private activeIndexPlusOne;
-    mapping(address => address) public activeSignerOwner;
-    mapping(bytes32 => bool) public possessionVerified;
+    mapping(address => bool) public possessionVerified;
     mapping(address => uint256) public claimableWei;
     mapping(uint64 => bytes32) public override validatorSetCommitment;
     mapping(uint64 => address[]) private historical;
-    mapping(uint64 => address[]) private historicalSigners;
     mapping(uint64 => bool) private snapshotExists;
 
     event PossessionVerified(address indexed validator);
@@ -82,7 +78,6 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         uint256 minimumDeactivationReserveWei_,
         uint256 maxExecutorReimbursementWei_,
         address[] memory initialValidators_,
-        address[] memory initialECDSASigners_,
         bytes[] memory initialPossessionProofs_
     ) payable {
         if (
@@ -96,7 +91,6 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
             minimumDeactivationReserveWei_ < maxExecutorReimbursementWei_ ||
             initialValidators_.length < 3 ||
             initialValidators_.length > MAX_VALIDATORS ||
-            initialValidators_.length != initialECDSASigners_.length ||
             initialValidators_.length != initialPossessionProofs_.length
         ) revert InvalidBootstrap();
 
@@ -113,22 +107,18 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
 
         for (uint256 i; i < initialValidators_.length; ++i) {
             address validator = initialValidators_[i];
-            address signer = initialECDSASigners_[i];
-            if (validator == address(0) || signer == address(0) ||
-                activeIndexPlusOne[validator] != 0 ||
-                activeSignerOwner[signer] != address(0) ||
+            if (validator == address(0) || activeIndexPlusOne[validator] != 0 ||
                 engine.recover(
                     keccak256(encodeBootstrapPayload(
-                        originChainId_, destinationDomain_, validator, signer
+                        originChainId_, destinationDomain_, validator
                     )),
                     initialPossessionProofs_[i]
-                ) != signer
+                ) != validator
             ) revert InvalidBootstrap();
 
-            validatorInfo[validator] = Validator(true, signer, perValidator);
+            validatorInfo[validator] = Validator(true, perValidator);
             activeValidators.push(validator);
             activeIndexPlusOne[validator] = activeValidators.length;
-            activeSignerOwner[signer] = validator;
         }
 
         setId = 1;
@@ -140,43 +130,34 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
     function verifierKeyFormat() external pure override returns (uint8) { return ECDSA_FORMAT; }
 
     /// @notice Bootstrap proof can be produced before the Registry address
-    ///         exists. It binds both the XGR PoS identity and a separate
-    ///         interchain ECDSA signer to this destination.
-    function encodeBootstrapPayload(
-        uint64 origin, uint32 domain, address validator, address signer
-    ) public pure returns (bytes memory) {
-        if (origin == 0 || domain == 0 ||
-            validator == address(0) || signer == address(0))
+    ///         exists. It is bound to the PoS origin, destination and identity.
+    function encodeBootstrapPayload(uint64 origin, uint32 domain, address validator)
+        public pure returns (bytes memory)
+    {
+        if (origin == 0 || domain == 0 || validator == address(0))
             revert InvalidBootstrap();
         return abi.encodePacked(
-            BOOTSTRAP_DOMAIN, bytes8(origin), bytes4(domain),
-            bytes20(validator), bytes20(signer)
+            BOOTSTRAP_DOMAIN, bytes8(origin), bytes4(domain), bytes20(validator)
         );
     }
 
     /// @notice Subsequent joins require destination-Registry-specific PoP,
     ///         independently of the currently elected signers' quorum.
-    function encodePossessionPayload(address validator, address signer)
+    function encodePossessionPayload(address validator)
         public view returns (bytes memory)
     {
-        if (validator == address(0) || signer == address(0))
-            revert InvalidTransition();
+        if (validator == address(0)) revert InvalidTransition();
         return abi.encodePacked(
             POSSESSION_DOMAIN, bytes8(originChainId), bytes4(destinationDomain),
-            address(this), bytes20(validator), bytes20(signer)
+            address(this), bytes20(validator)
         );
     }
 
-    /// @notice The PoS validator address and the separate interchain signing
-    ///         address are distinct identities. A valid signature proves
-    ///         ownership of the latter but never grants XGR PoS eligibility.
-    function provePossession(
-        address validator, address signer, bytes calldata signature
-    ) external {
-        if (validator == address(0) || signer == address(0) ||
-            engine.recover(keccak256(encodePossessionPayload(validator, signer)), signature) != signer)
+    function provePossession(address validator, bytes calldata signature) external {
+        if (validator == address(0) ||
+            engine.recover(keccak256(encodePossessionPayload(validator)), signature) != validator)
             revert InvalidTransition();
-        possessionVerified[keccak256(abi.encode(validator, signer))] = true;
+        possessionVerified[validator] = true;
         emit PossessionVerified(validator);
     }
 
@@ -185,14 +166,14 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
     {
         if (transition.expectedSetId == 0 || transition.validUntil == 0 ||
             (transition.action != ACTION_ADD && transition.action != ACTION_REMOVE) ||
-            transition.validator == address(0) || transition.ecdsaSigner == address(0))
+            transition.validator == address(0))
             revert InvalidTransition();
         return abi.encodePacked(
             MEMBERSHIP_DOMAIN,
             bytes8(originChainId), bytes4(destinationDomain),
             address(this), bytes8(transition.expectedSetId),
             bytes8(transition.validUntil), bytes1(transition.action),
-            bytes20(transition.validator), bytes20(transition.ecdsaSigner)
+            bytes20(transition.validator)
         );
     }
 
@@ -216,9 +197,9 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
 
         uint256 removedReserve;
         if (transition.action == ACTION_ADD) {
-            _applyAdd(transition.validator, transition.ecdsaSigner);
+            _applyAdd(transition.validator);
         } else if (transition.action == ACTION_REMOVE) {
-            removedReserve = _applyRemove(transition.validator, transition.ecdsaSigner);
+            removedReserve = _applyRemove(transition.validator);
         } else {
             revert InvalidTransition();
         }
@@ -229,29 +210,26 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
             _settleRemoval(transition.validator, removedReserve, gasStart);
     }
 
-    function _applyAdd(address validator, address signer) private {
-        if (validator == address(0) || signer == address(0) ||
-            !possessionVerified[keccak256(abi.encode(validator, signer))] ||
+    function _applyAdd(address validator) private {
+        if (validator == address(0) ||
+            !possessionVerified[validator] ||
             validatorInfo[validator].active ||
             activeIndexPlusOne[validator] != 0 ||
-            activeSignerOwner[signer] != address(0) ||
             activeValidators.length >= MAX_VALIDATORS)
             revert InvalidTransition();
         if (msg.value < minimumDeactivationReserveWei)
             revert InsufficientReserve(minimumDeactivationReserveWei, msg.value);
-        validatorInfo[validator] = Validator(true, signer, msg.value);
+        validatorInfo[validator] = Validator(true, msg.value);
         activeValidators.push(validator);
         activeIndexPlusOne[validator] = activeValidators.length;
-        activeSignerOwner[signer] = validator;
         emit ValidatorAdded(validator, setId + 1, msg.value);
     }
 
-    function _applyRemove(address validator, address signer) private returns (uint256 reserve) {
+    function _applyRemove(address validator) private returns (uint256 reserve) {
         if (msg.value != 0 || activeValidators.length <= 1)
             revert InvalidTransition();
         uint256 indexPlusOne = activeIndexPlusOne[validator];
-        if (indexPlusOne == 0 || !validatorInfo[validator].active ||
-            validatorInfo[validator].ecdsaSigner != signer)
+        if (indexPlusOne == 0 || !validatorInfo[validator].active)
             revert InvalidTransition();
 
         uint256 last = activeValidators.length;
@@ -263,9 +241,8 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         }
         activeValidators.pop();
         delete activeIndexPlusOne[validator];
-        delete activeSignerOwner[signer];
         reserve = validatorInfo[validator].deactivationReserveWei;
-        validatorInfo[validator] = Validator(false, address(0), 0);
+        validatorInfo[validator] = Validator(false, 0);
     }
 
     function _settleRemoval(address validator, uint256 reserve, uint256 gasStart) private {
@@ -308,7 +285,7 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         external view returns (bool active, bytes memory key, uint256 reserveWei)
     {
         Validator storage v = validatorInfo[validator];
-        return (v.active, abi.encodePacked(v.ecdsaSigner), v.deactivationReserveWei);
+        return (v.active, abi.encodePacked(validator), v.deactivationReserveWei);
     }
 
     function quorumThreshold() public view override returns (uint256) {
@@ -318,11 +295,7 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
     function _verifyCurrent(
         bytes memory payload, bytes calldata bitmap, bytes calldata signatures
     ) private view returns (bool) {
-        if (setId == 0) return false;
-        address[] memory signers = new address[](activeValidators.length);
-        for (uint256 i; i < activeValidators.length; ++i)
-            signers[i] = validatorInfo[activeValidators[i]].ecdsaSigner;
-        return engine.verify(payload, signers, bitmap, signatures);
+        return setId != 0 && engine.verify(payload, activeValidators, bitmap, signatures);
     }
 
     function verifyQuorum(
@@ -330,7 +303,7 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         bytes calldata bitmap, bytes calldata signatures
     ) external view override returns (bool) {
         if (!snapshotExists[requestedSetId]) return false;
-        return engine.verify(payload, historicalSigners[requestedSetId], bitmap, signatures);
+        return engine.verify(payload, historical[requestedSetId], bitmap, signatures);
     }
 
     function getFeeRecipients()
@@ -376,7 +349,7 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
     }
 
     /// @dev The legacy ABI calls the second result "blsPublicKeys"; for ECDSA
-    ///      it carries 20-byte DEDICATED interchain secp256k1 signer addresses.
+    ///      it deliberately carries 20-byte secp256k1 signer addresses.
     ///      Consumers MUST branch on verifierKeyFormat() and reject mismatches.
     function _encodedSet(uint64 requestedSetId)
         private view
@@ -385,10 +358,9 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
         if (!snapshotExists[requestedSetId])
             return (new address[](0), new bytes[](0), 0);
         validators = historical[requestedSetId];
-        address[] storage signers = historicalSigners[requestedSetId];
         keys = new bytes[](validators.length);
         for (uint256 i; i < validators.length; ++i)
-            keys[i] = abi.encodePacked(signers[i]);
+            keys[i] = abi.encodePacked(validators[i]);
         return (validators, keys, requestedSetId);
     }
 
@@ -400,11 +372,8 @@ contract XGRInterchainECDSAValidatorRegistryV5 is IXGRInterchainValidatorSetV2 {
             abi.encodePacked(SET_DOMAIN, uint256(activeValidators.length))
         );
         for (uint256 i; i < activeValidators.length; ++i) {
-            address validator = activeValidators[i];
-            address signer = validatorInfo[validator].ecdsaSigner;
-            snapshot.push(validator);
-            historicalSigners[setId].push(signer);
-            commitment = keccak256(abi.encodePacked(commitment, validator, signer));
+            snapshot.push(activeValidators[i]);
+            commitment = keccak256(abi.encodePacked(commitment, activeValidators[i]));
         }
         validatorSetCommitment[setId] = commitment;
         emit ValidatorSetCommitted(setId, commitment);
