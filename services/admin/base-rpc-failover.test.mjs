@@ -66,13 +66,13 @@ test("Tenderly JSON-RPC 429 quota error is transient but execution revert is not
  try{
   globalThis.fetch=async(url,opts)=>{
    const body=JSON.parse(opts.body);calls.push({url,method:body.method});
-   if(url==="https://base.gateway.tenderly.co")return {ok:true,json:async()=>({
+   if(url==="https://gateway.tenderly.co/public/base")return {ok:true,json:async()=>({
     error:{code:-32005,message:"rate limit exceeded"}})};
    if(url==="https://mainnet.base.org")return {ok:true,json:async()=>({
     result:body.method==="eth_chainId"?"0x2105":"0x15"})};
    throw Error("Unexpected endpoint "+url);
   };
-  assert.equal(await rpcCall("https://base.gateway.tenderly.co","eth_blockNumber"),"0x15");
+  assert.equal(await rpcCall("https://gateway.tenderly.co/public/base","eth_blockNumber"),"0x15");
   assert.equal(calls.length,3);
  }finally{globalThis.fetch=original}
 });
