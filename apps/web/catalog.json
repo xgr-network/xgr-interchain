@@ -1483,8 +1483,16 @@
       "domainId": 50,
       "xitaV315": {
         "schemaVersion": 1,
-        "components": {},
-        "receiptPaths": []
+        "components": {
+          "ecdsaVerifier": {
+            "address": "0x202c10bdecf3b796ea4b4025c81952c4f2dd9f93",
+            "runtimeCodeKeccak256": "0x316ee1e29ba7ad51dd282b8dc65d54719944f44b926c9001a6f1798d844a4beb",
+            "receiptPath": "deployments/receipts/xdc/1113067cfeda439f67f3114a1589da66969d2b4020835938b6c584e1a0bd391e-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
+          }
+        },
+        "receiptPaths": [
+          "deployments/receipts/xdc/1113067cfeda439f67f3114a1589da66969d2b4020835938b6c584e1a0bd391e-202c10bdecf3b796ea4b4025c81952c4f2dd9f93.json"
+        ]
       },
       "present": true
     },
