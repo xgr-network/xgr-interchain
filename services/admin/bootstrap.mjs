@@ -38,12 +38,17 @@ export function bootstrapPlan(root,chain){
     cfg.verifierFormat!==chain.blsVerifierFormat)
   throw Error("Validator bootstrap manifest identity mismatch: "+chain.name);
  if(chain.blsVerifierFormat==="ecdsa"){
-  if(chain.chainId!==50||cfg.validatorSource!=="xgr-mainnet-v3-commitment"||
-     cfg.sourceFee?.governance!=="validator-ecdsa-quorum"||
-     !uint(cfg.sourceFee?.targetWei))throw Error("Invalid XDC ECDSA mainnet bootstrap");
+  if(chain.chainId!==50||chain.domainId!==50||
+     cfg.validatorSource!=="explicit-destination-genesis"||
+     cfg.sourceFee?.governance!=="validator-ecdsa-quorum")
+   throw Error("Invalid XDC ECDSA destination bootstrap");
+  // No default validator roster, signing permission or economic parameters.
+  // No wallet deployment until explicit, independently reviewed genesis.
   return {chain:chain.name,chainId:50,domainId:50,validatorCount:0,
-   expectedValidatorCount:0,initialValidators:[],setId:null,ready:true,missing:[],
-   reserveWei:"0",reserve:cfg.reserve,proposedFeeWei:cfg.sourceFee.targetWei,
+   expectedValidatorCount:0,initialValidators:[],setId:null,ready:false,
+   missing:["XDC destination genesis validators and public validator.key proofs not approved",
+    "XDC minimum reserve, executor cap, per-validator reserve and source fee not approved"],
+   reserveWei:null,reserve:cfg.reserve,proposedFeeWei:cfg.sourceFee.targetWei,
    verifierAddress:null,feeGovernance:cfg.sourceFee.governance,
    feeInitialization:cfg.sourceFee.initialization};
  }

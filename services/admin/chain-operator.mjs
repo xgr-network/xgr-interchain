@@ -6,7 +6,6 @@ import {checkedLocalMain} from "./main-gate.mjs";
 import {readdirSync,readFileSync} from "node:fs";
 import {assertCurrentMain,approvedWorkInventory} from "./main-gate.mjs";
 import {infrastructureInventory} from "./chain-state.mjs";
-import {readXDCGenesisFromXGR} from "./xdc-genesis-evidence.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
 import {inspectConfiguredChain} from "./chain-preflight.mjs";
@@ -48,6 +47,11 @@ export function createChainOperator({
   const all=inventory();
   const chain=all.chains.find(c=>c.name===chainName);
   if(!chain)throw Error("Chain absent from current GitHub main");
+  // Unreviewed XDC signing/Genesis/reserve inputs must never reach a wallet.
+  // The approved destination-specific V5 admission path will be enabled only
+  // after economic parameters, public PoP and node quorum are verified.
+  if(chain.blsVerifierFormat==="ecdsa")
+   throw Error("XDC ECDSA V5 wallet deployment disabled until approved chain-local validators, proofs and reserve parameters");
   const infrastructure=infrastructureInventory(root,[chain])[0];
   const bootstrap=bootstrapPlan(root,chain);
   return {commit,inventory:all,chain,infrastructure,bootstrap};
@@ -66,7 +70,7 @@ export function createChainOperator({
    throw Error("ValidatorRegistry V3 verification failed; do not sign");
   }
   if(typeof version!=="string"||!/^0x[0-9a-f]{64}$/i.test(version)||
-     BigInt(version)!==BigInt(chain.blsVerifierFormat==="ecdsa"?4:3))
+     BigInt(version)!==3n)
    throw Error("ValidatorRegistry V3 not verified on chain; no dependent deployment");
  }
  async function preview({chain:chainName,component,wallet,parameters={}}){
@@ -79,13 +83,7 @@ export function createChainOperator({
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
   let verified=bootstrap;
-  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
-   const genesis=await readXDCGenesisFromXGR(root,{rpc});
-   verified={...bootstrap,xdcGenesis:genesis,
-    initialValidators:genesis.validators.map(v=>v.address),
-    validatorCount:genesis.validators.length,expectedValidatorCount:genesis.validators.length,
-    validatorSnapshot:{validators:genesis.validators,genesisXGR:genesis}};
-  }else if(component==="validatorRegistry"){
+  if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
      baseDir:publicEvidenceDir,mainCurrent:true,rpc});
    if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
@@ -126,13 +124,7 @@ export function createChainOperator({
   if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
   const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
   let verified=bootstrap;
-  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
-   const genesis=await readXDCGenesisFromXGR(root,{rpc});
-   verified={...bootstrap,xdcGenesis:genesis,
-    initialValidators:genesis.validators.map(v=>v.address),
-    validatorCount:genesis.validators.length,expectedValidatorCount:genesis.validators.length,
-    validatorSnapshot:{validators:genesis.validators,genesisXGR:genesis}};
-  }else if(component==="validatorRegistry"){
+  if(component==="validatorRegistry"){
    const readiness=await readDeploymentReadiness({
     root,chain,inventory:all,boot:bootstrap,baseDir:publicEvidenceDir,
     mainCurrent:true,rpc
@@ -276,7 +268,6 @@ export function createChainOperator({
      (commit===entry.sourceCommit&&artifact.buildHash!==entry.buildHash))
    throw Error("Recompiled artifact differs from original wallet-intent build");
   const verified={...bootstrap,
-   ...(chain.blsVerifierFormat==="ecdsa"?{xdcGenesis:entry.validatorSnapshot?.genesisXGR}:{}),
    reserve:entry.parameters?.minimumWei?{minimumWei:entry.parameters.minimumWei,maxExecutorReimbursementWei:entry.parameters.maxExecutorReimbursementWei,perValidatorWei:entry.parameters.perValidatorWei}:bootstrap.reserve,
    proposedFeeWei:entry.parameters?.sourceFeeWei||bootstrap.proposedFeeWei,
    initialValidators:bootstrap.initialValidators};

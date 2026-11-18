@@ -64,12 +64,10 @@ test("mainnet XDC ECDSA is a deployed-contract candidate, not an authorized XGR 
  assert.equal(catalog.chains.xdc.chainId,50);
  assert.equal(catalog.chains.xdc.domainId,50);
  assert.equal(catalog.chains.xdc.blsVerifierFormat,"ecdsa");
- // The previous V4 infrastructure is receipt-documented but is NOT a
- // released bridge. Keep historic receipts; prohibit XDC route activation.
- const historical=catalog.infrastructure.xdc.xitaV315;
- assert.ok(Object.keys(historical.components).length>=1);
- assert.ok(historical.receiptPaths.length>=1);
- assert.ok(historical.components.validatorRegistry?.receiptPath);
+ const record=catalog.infrastructure.xdc;
+ assert.equal(record.present,false);
+ assert.deepEqual(record.xitaV315.components,{});
+ assert.deepEqual(record.xitaV315.receiptPaths,[]);
  for(const asset of Object.values(catalog.assets)){
   assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
  }

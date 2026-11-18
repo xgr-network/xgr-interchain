@@ -18,7 +18,7 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  const xdc=chains.find(c=>c.name==="xdc");
  assert.equal(xdc.chainId,50);
- assert.equal(xdc.status,"documented");
+ assert.equal(xdc.status,"not-deployed");
  assert.deepEqual(xdc.components.slice(0,3).map(x=>x.key),["ecdsaVerifier","validatorRegistry","ism"]);
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required+1 && c.components.filter(x=>x.optional).length===1));
  // A verified deployment receipt may now exist. Progress must be derived

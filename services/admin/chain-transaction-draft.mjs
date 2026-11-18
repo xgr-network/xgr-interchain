@@ -18,13 +18,13 @@ const contractFor={nativeRouterDeployer:"XETANativeRouterDeployer",
  syntheticRouterDeployer:"XETASyntheticRouterDeployer",
  collateralRouterDeployer:"XETACollateralRouterDeployer",
  blsVerifier:"XGRInterchainBLSVerifier",ecdsaVerifier:"XGRInterchainECDSAVerifier",
- xdcValidatorRegistry:"XGRInterchainECDSAValidatorRegistry",xdcIsm:"XITADirectECDSAISM",
+ xdcValidatorRegistry:"XGRInterchainECDSAValidatorRegistryV5",xdcIsm:"XITADirectECDSAISM",
  validatorRegistry:"XGRInterchainValidatorRegistryV3",
  ism:"XITADirectBLSISM",transportBundle:"XITADirectTransport",factory:"XETATokenFactoryV315",
  executionGateway:"XITAExecutionGateway"};
 const typesFor={
  blsVerifier:[],ecdsaVerifier:[],
- xdcValidatorRegistry:["uint64","uint32","address","uint64","bytes32"],xdcIsm:["address"],
+ xdcValidatorRegistry:["uint64","uint32","address","uint256","uint256","address[]","bytes[]"],xdcIsm:["address"],
  validatorRegistry:["uint64","uint32","address","uint8","uint256","uint256","address[]","bytes[]","bytes[]","bytes[]"],
  ism:["address"],transportBundle:["uint32","address"],
  nativeRouterDeployer:[],syntheticRouterDeployer:[],collateralRouterDeployer:[],
@@ -76,14 +76,21 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
  if(deployed(infrastructure,component))throw Error("Component already documented");
  let values=[],value="0x0";
  if(component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"){
-  const source=bootstrap.xdcGenesis;
-  if(chain.chainId!==50||!source||!/^0x[0-9a-f]{64}$/i.test(source.commitment||"")||
-     /^0x0{64}$/i.test(source.commitment||"")||
-     !Number.isSafeInteger(Number(source.setId))||BigInt(source.setId)===0n||
-     !Array.isArray(source.validators)||source.validators.length<3)
-   throw Error("Canonical XGR mainnet validator snapshot required");
+  if(chain.chainId!==50||chain.domainId!==50)
+   throw Error("XDC ECDSA destination identity mismatch");
+  const p=deploymentParameters(component,parameters,{scheme:"ecdsa"});
+  const selected=bootstrap.validatorSnapshot?.validators;
+  if(!bootstrap.ready||!Array.isArray(selected)||selected.length<3||
+     selected.length>64||!Array.isArray(bootstrap.initialValidators)||
+     selected.length!==bootstrap.initialValidators.length||
+     selected.some((v,i)=>v.address?.toLowerCase()!==bootstrap.initialValidators[i]?.toLowerCase()||
+       !nonzero(v.address)||!/^0x[0-9a-f]{130}$/i.test(v.possessionProof||""))||
+     new Set(selected.map(v=>v.address.toLowerCase())).size!==selected.length)
+   throw Error("Explicit, verified destination ECDSA genesis validator proofs required");
   const verifier=requirePresent(infrastructure,"ecdsaVerifier");
-  values=[1643,50,verifier,source.setId,source.commitment];
+  values=[1643,50,verifier,p.minimumWei,p.maxExecutorReimbursementWei,
+   selected.map(v=>v.address),selected.map(v=>v.possessionProof)];
+  value="0x"+(BigInt(p.perValidatorWei)*BigInt(selected.length)).toString(16);
  }else if(component==="validatorRegistry"){
   const p=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"?"ecdsa":"bls"});
   if(!bootstrap.initialValidators||bootstrap.validatorCount!==bootstrap.expectedValidatorCount)
