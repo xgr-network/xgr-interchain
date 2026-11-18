@@ -17,7 +17,7 @@ test("Arbitrum RPC 403 falls back only after verifying official chainId 42161",a
  try {
   const receipt=await rpcCall(PUB,"eth_getTransactionReceipt",["0x"+"a".repeat(64)]);
   assert.equal(receipt.status,"0x1");
-  assert.deepEqual(calls,[[PUB,"eth_getTransactionReceipt"],[OFF,"eth_chainId"],[OFF,"eth_getTransactionReceipt"]]);
+  assert.deepEqual(calls,[[PUB,"eth_chainId"],[OFF,"eth_chainId"],[OFF,"eth_getTransactionReceipt"]]);
  }finally{globalThis.fetch=original}
 });
 test("wrong-chain fallback cannot authorize any receipt",async()=>{
