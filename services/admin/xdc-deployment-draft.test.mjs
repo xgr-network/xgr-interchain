@@ -20,7 +20,7 @@ test("XDC mainnet is a separate receipt-free, wallet-deployable ECDSA component 
  const xdc=inv.chains.find(x=>x.name==="xdc");
  assert.equal(xdc.chainId,50);
  const state=infrastructureInventory(root,[xdc])[0];
- assert.equal(state.status,"not-deployed");
+ assert.equal(state.status,"documented");
  assert.deepEqual(state.components.slice(0,3).map(x=>x.key),
   ["ecdsaVerifier","validatorRegistry","ism"]);
  assert.deepEqual(state.components.map(x=>x.key).includes("blsVerifier"),false);
