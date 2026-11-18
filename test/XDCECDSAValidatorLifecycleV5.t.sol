@@ -127,7 +127,9 @@ contract XDCValidatorRegistryV5Test is Test {
         (uint256 index, uint256 count) = registry.getFeeRecipientIndexForSet(1, newcomer);
         assertEq(index, 0);
         assertEq(count, 3);
-        vm.expectRevert(XGRInterchainECDSAValidatorRegistryV5.StaleSetId.selector);
+        vm.expectRevert(abi.encodeWithSelector(
+            XGRInterchainECDSAValidatorRegistryV5.StaleSetId.selector, uint64(2), uint64(1)
+        ));
         registry.applyMembership{value:RESERVE}(t, hex"03", approval);
     }
 
