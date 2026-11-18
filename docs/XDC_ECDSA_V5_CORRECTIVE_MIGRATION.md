@@ -12,9 +12,12 @@ The operator chooses membership with `xgrchain ibft interchain set-active --chai
 The destination contract enforces all existing V3 economic invariants with ECDSA
 rather than BLS proof formats:
 
-1. Three **explicitly selected** genesis validator addresses with **destination-bound**
-   ECDSA PoP; contract construction atomically credits and locks one native XDC
-   reserve per genesis validator and begins at destination setId 1.
+1. Three **explicitly selected** XGR PoS validator identities, each bound
+   to its own **dedicated Interchain ECDSA signer address**, distinct from
+   `validator.key` and from the BLS key. Their chain-bound ECDSA PoP proves
+   possession of the separate signing key. Construction atomically credits and
+   locks one native XDC reserve against each PoS validator identity and begins
+   at destination setId 1.
 2. A single-validator ADD requires a signed old-set quorum, a verifiable
    ECDSA possession proof from the incoming validator, native XDC reserve
    >= minimum, and an unexpired chain+registry+set-bound transition.
@@ -32,6 +35,11 @@ rather than BLS proof formats:
 
 - ECDSA secp256k1 signature recovery replaces BLS aggregate pairing verification.
 - 65-byte low-S r/s/v signatures are attached in canonical signer bitmap order.
+- Quorum and message signing use the dedicated ECDSA signer addresses, while
+  reserve ownership, membership and fee payouts use their paired PoS validator
+  addresses. Signed lifecycle payloads bind BOTH identities to prevent substitution.
+- The node key store adds `consensus/validator-interchain-ecdsa.key`; missing
+  keys must fail closed rather than fall back to the existing PoS key.
 - `getValidatorSetForVerification()` returns the ordered ECDSA validator
   **addresses encoded as bytes**, not 48-byte BLS public keys.
 - All source evidence, on-chain registry binding, source fee governance,
@@ -68,7 +76,9 @@ on-chain constructor getters and finality observations are verified.
   reimbursement, genesis reserve per validator and initial native source fee;
   all four positive values are required. Do not reuse a symbolic 1-wei placeholder.
 - Collect public per-validator ECDSA bootstrap proofs via the validator's
-  local secrets manager; never export validator private keys.
+  local secrets manager; never export validator private keys. The CLI must
+  derive the PoS address from `validator.key` but sign using the distinct
+  `validator-interchain-ecdsa.key`.
 - Implement and verify the node's separate ECDSA quorum, membership,
   CLI opt-in, source-fee governance and durable recovery/finality handling.
 - Complete regression tests for all existing BLS chains, adversarial lifecycle
