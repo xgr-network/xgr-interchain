@@ -177,7 +177,7 @@ export function createRPCMonitor({
     const until=clock()+Math.min(MAX_RETRY_AFTER_MS,delay);
     byOperator.set(provider.operator,{until,strikes});
     row.retryAt=new Date(until).toISOString();
-    row.reason="HTTP 429 · Rate-Limit; Pause bis "+row.retryAt;
+    row.reason=(row.reason||"RPC Rate-Limit")+"; Pause bis "+row.retryAt;
    }else if(row.state==="ok"&&
             byOperator.get(provider.operator)?.until<=clock()){
     byOperator.delete(provider.operator);
