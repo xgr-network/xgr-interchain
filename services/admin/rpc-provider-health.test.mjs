@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders,createRPCMonitor,RPC_RATE_LIMIT_PAUSE_MS} from "./rpc-provider-health.mjs";
+import {approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders,createRPCMonitor,RPC_RATE_LIMIT_PAUSE_MS,adminRPCSources} from "./rpc-provider-health.mjs";
 
 const bsc={name:"bsc",chainId:56,rpcUrls:[
  "https://bsc-rpc.publicnode.com","https://bsc.drpc.org","https://bnb.api.onfinality.io/public"]};
@@ -30,13 +30,13 @@ test("catalog-only RPC URL validation; never forwards injected credentials",()=>
 test("each configured BSC provider is tested with native finalized head",async()=>{
  const {fetcher,seen}=fakeFetcher();
  const value=await probeChainProviders(bsc,{fetcher,cacheMs:0});
- assert.equal(value.providers.length,3);
- assert.equal(value.reachable,3);
- assert.equal(value.possibleOperators,3);
+ assert.equal(value.providers.length,4);
+ assert.equal(value.reachable,4);
+ assert.equal(value.possibleOperators,4);
  assert.equal(value.state,"ok");
  assert.equal(value.sourceWitness,"not-checked");
  assert.equal(value.providers.every(v=>v.finalityTag==="finalized"),true);
- assert.equal(seen.filter(v=>v.method==="eth_getBlockByNumber").length,3);
+ assert.equal(seen.filter(v=>v.method==="eth_getBlockByNumber").length,4);
  assert.equal(seen.filter(v=>v.method==="eth_getBlockByNumber")
   .every(v=>v.params[0]==="finalized"),true);
 });
@@ -44,8 +44,8 @@ test("one working operator cannot claim healthy readiness",async()=>{
  const {fetcher}=fakeFetcher({invalidFinalityHosts:["bsc.drpc.org"],
   rateLimitedHosts:["bnb.api.onfinality.io"]});
  const v=await probeChainProviders(bsc,{fetcher,cacheMs:0});
- assert.equal(v.state,"degraded");
- assert.equal(v.possibleOperators,1);
+ assert.equal(v.state,"warning");
+ assert.equal(v.possibleOperators,2);
  assert.equal(v.providers[1].state,"unavailable");
  assert.equal(v.providers[2].state,"rate-limited");
 });
@@ -68,7 +68,7 @@ test("production monitor reuses observations across UI refreshes",async()=>{
  const {fetcher,seen}=fakeFetcher();
  const monitor=createRPCMonitor({fetcher,clock:()=>now,cacheMs:300000});
  const first=await monitor(bsc);
- assert.equal(first.providers.length,3);
+ assert.equal(first.providers.length,4);
  const count=seen.length;
  now+=30000;
  const second=await monitor(bsc);
@@ -108,8 +108,8 @@ test("simultaneous refreshes share the same source RPC requests",async()=>{
  const {fetcher,seen}=fakeFetcher();
  const monitor=createRPCMonitor({fetcher});
  await Promise.all([monitor(bsc),monitor(bsc),monitor(bsc)]);
- assert.equal(seen.filter(x=>x.method==="eth_chainId").length,3);
- assert.equal(seen.filter(x=>x.method==="eth_getBlockByNumber").length,3);
+ assert.equal(seen.filter(x=>x.method==="eth_chainId").length,4);
+ assert.equal(seen.filter(x=>x.method==="eth_getBlockByNumber").length,4);
 });
 test("HTTP Retry-After is bounded and does not cause rapid retries",async()=>{
  let now=1_000_000,n=0;
@@ -123,4 +123,44 @@ test("HTTP Retry-After is bounded and does not cause rapid retries",async()=>{
  now+=5*60*1000;
  await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
  assert.equal(n,1);
+});
+
+test("BSC admin shows the extra XGR v3.5.4 1RPC witness without altering catalog",async()=>{
+ const original=[...bsc.rpcUrls],{fetcher,seen}=fakeFetcher();
+ const entries=adminRPCSources(bsc);
+ assert.equal(entries.length,4);
+ assert.deepEqual(bsc.rpcUrls,original);
+ assert.equal(entries[3].url,"https://public.1rpc.io/bnb");
+ assert.equal(entries[3].source,"XGR node v3.5.4");
+ assert.equal(entries[0].source,"XITA catalog");
+ const actual=await probeChainProviders(bsc,{fetcher,cacheMs:0});
+ assert.equal(actual.configuredEndpoints,4);
+ assert.equal(actual.providers.find(p=>p.host==="public.1rpc.io").operator,"1RPC");
+ assert.equal(actual.providers.find(p=>p.host==="public.1rpc.io").source,"XGR node v3.5.4");
+ assert.equal(actual.sourceWitness,"not-checked");
+ assert.equal(seen.filter(p=>p.host==="public.1rpc.io"&&p.method==="eth_getBlockByNumber").length,1);
+ const dupe=adminRPCSources({...bsc,rpcUrls:[...bsc.rpcUrls,"https://public.1rpc.io/bnb"]});
+ assert.equal(dupe.length,4);
+ assert.equal(dupe[3].source,"XITA catalog");
+ assert.deepEqual(adminRPCSources({name:"base",rpcUrls:["https://mainnet.base.org"]}),[
+  {url:"https://mainnet.base.org",source:"XITA catalog"}
+ ]);
+});
+
+test("1RPC quota error triggers operator cooldown without repeat requests",async()=>{
+ let now=1_000_000,n=0;
+ const monitor=createRPCMonitor({clock:()=>now,cacheMs:0,fetcher:async(_url,options)=>{
+  n++;
+  const body=JSON.parse(options.body);
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   ...(body.method==="eth_chainId"?{error:{code:-32001,message:"You've reached the usage limit for your current plan"}}:{result:null})})};
+ }});
+ const first=await monitor({name:"bsc",chainId:56,rpcUrls:["https://public.1rpc.io/bnb"]});
+ assert.equal(first.providers.find(p=>p.operator==="1RPC").state,"rate-limited");
+ assert.equal(first.providers.find(p=>p.operator==="1RPC").reason.includes("Pause bis"),true);
+ const count=n;
+ now+=5*60*1000;
+ const second=await monitor({name:"bsc",chainId:56,rpcUrls:["https://public.1rpc.io/bnb"]});
+ assert.equal(n,count,"quota exhaustion must not trigger repeat RPC probes");
+ assert.equal(second.providers.find(p=>p.operator==="1RPC").state,"rate-limited");
 });
