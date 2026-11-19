@@ -20,6 +20,17 @@ let stage="init";
 const mark=x=>{stage=x;console.error("XITA_RECOVERY_STAGE:"+x)};
 const cliMessageID=String(process.argv[2]||"").toLowerCase();
 let route="";
+// Read-only protocol admission request: the hash is an untrusted lookup hint,
+ // not authority to sign. Node validators independently verify full receipts.
+export async function requestReceiptPinnedILNQuorum(xgr,route,messageId,sourceBlock,sourceTxHash){
+ check(typeof xgr?.send==="function","Missing XGR quorum RPC");
+ check(typeof route==="string"&&route.length>0,"Missing ILN route");
+ check(hash.test(messageId)&&BigInt(messageId)>0n,"Invalid source Message ID");
+ check(hash.test(sourceTxHash)&&BigInt(sourceTxHash)>0n,"Invalid source transaction hash");
+ check(Number.isSafeInteger(sourceBlock)&&sourceBlock>0,"Invalid source block");
+ return xgr.send("xgr_requestILNQuorumWithSourceTx",
+  [route,messageId,sourceBlock,sourceTxHash]);
+}
 export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const id=String(messageID||"").toLowerCase();
  check(hash.test(id)&&BigInt(id)>0n,"Invalid source Message ID");
@@ -184,7 +195,7 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
  catch{
   // The transaction hash is an UNTRUSTED locator. Every validator still
   // checks the canonical receipt, finality, Gateway, Dispatch and FeeVault.
-  await xgr.send("xgr_requestILNQuorumWithSourceTx",[route,id,sourceBlock,sourceTxHash]);
+  await requestReceiptPinnedILNQuorum(xgr,route,id,sourceBlock,sourceTxHash);
   return {status:"PENDING",messageId:id,route,
     sourceBlockNumber:sourceBlock,currentSetId:String(setId)};
  }
