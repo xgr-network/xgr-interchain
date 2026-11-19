@@ -182,7 +182,9 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
  let attestation;
  try{attestation=await xgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)])}
  catch{
-  await xgr.send("xgr_requestILNQuorum",[route,id,sourceBlock]);
+  // The transaction hash is an UNTRUSTED locator. Every validator still
+  // checks the canonical receipt, finality, Gateway, Dispatch and FeeVault.
+  await xgr.send("xgr_requestILNQuorumWithSourceTx",[route,id,sourceBlock,sourceTxHash]);
   return {status:"PENDING",messageId:id,route,
     sourceBlockNumber:sourceBlock,currentSetId:String(setId)};
  }
