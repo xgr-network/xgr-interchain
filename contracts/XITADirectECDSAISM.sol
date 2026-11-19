@@ -1,13 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {XITADirectISMCore} from "./XITADirectISMCore.sol";
+import {IXGRInterchainValidatorSetV2} from "./IXGRInterchainValidatorSetV2.sol";
 import {XITADirectProtocol} from "./XITADirectProtocol.sol";
 import {XITADirectECDSAProtocol} from "./XITADirectECDSAProtocol.sol";
 
-/// @notice ECDSA wire adapter for the same direct-message policy as BLS V3.
-contract XITADirectECDSAISM is XITADirectISMCore {
+interface IXITAECDSAInboundRouter {
+    function verifyInboundRoute(
+        uint64 sourceChainId, uint32 sourceDomain,
+        address sourceRouter, bytes32 routeId
+    ) external view returns (bool);
+}
+
+/// @notice Direct ECDSA 2/3 authorization for a configured EVM destination.
+/// @dev No BLS contract or BLS signing domain is modified or replaced.
+contract XITADirectECDSAISM {
+    uint8 private constant MODULE_TYPE_CUSTOM = 0;
     uint8 private constant ECDSA_FORMAT = 3;
+    IXGRInterchainValidatorSetV2 public immutable registry;
+    uint32 public immutable destinationDomain;
+
+    error InvalidConfiguration();
 
     struct Metadata {
         XITADirectProtocol.Authorization authorization;
@@ -15,17 +28,69 @@ contract XITADirectECDSAISM is XITADirectISMCore {
         bytes signatures; // 65-byte r,s,v entries in canonical Registry order
     }
 
-    constructor(address registry_) XITADirectISMCore(registry_) {
-        if (destinationDomain != block.chainid || registry.verifierKeyFormat() != ECDSA_FORMAT)
+    constructor(address registry_) {
+        if (registry_ == address(0) || registry_.code.length == 0)
             revert InvalidConfiguration();
+        IXGRInterchainValidatorSetV2 r = IXGRInterchainValidatorSetV2(registry_);
+        uint32 domain = r.destinationDomain();
+        if (domain == 0 || domain != block.chainid ||
+            r.verifier() == address(0) || r.verifierKeyFormat() != ECDSA_FORMAT)
+            revert InvalidConfiguration();
+        registry = r;
+        destinationDomain = domain;
     }
 
-    function _isCurrentSet(uint64 requestedSetId) internal view override returns (bool) {
-        return requestedSetId != 0 && super._isCurrentSet(requestedSetId);
+    function moduleType() external pure returns (uint8) {
+        return MODULE_TYPE_CUSTOM;
     }
 
-    function _encodeAuthorization(XITADirectProtocol.Authorization memory a)
-        internal view override returns (bytes memory)
+    function verify(bytes calldata metadata, bytes calldata message)
+        external view returns (bool)
+    {
+        if (message.length < 77) return false;
+        Metadata memory signed = abi.decode(metadata, (Metadata));
+        XITADirectProtocol.Authorization memory a = signed.authorization;
+        if (a.setId == 0 || a.setId != registry.setId() ||
+            a.destinationDomain != destinationDomain ||
+            a.sourceDomain == a.destinationDomain ||
+            a.sourceChainId == 0 || a.sourceDomain == 0 ||
+            a.sourceBlockNumber == 0 || a.routeId == bytes32(0) ||
+            a.sourceRegistry == address(0) || a.gateway == address(0) ||
+            a.sourceRouter == address(0) || a.sourceMailbox == address(0) ||
+            a.destinationRouter == address(0) || a.validatorFeeWei == 0 ||
+            a.messageId == bytes32(0) ||
+            signed.signerBitmap.length == 0 || signed.signatures.length == 0)
+            return false;
+
+        // Hyperlane V3 header: version[1], nonce[4], origin[4], sender[32],
+        // destination[4], recipient[32], body[N].
+        if (uint32(bytes4(message[5:9])) != a.sourceDomain ||
+            uint32(bytes4(message[41:45])) != destinationDomain ||
+            bytes32(message[9:41]) != bytes32(uint256(uint160(a.sourceRouter))) ||
+            bytes32(message[45:77]) != bytes32(uint256(uint160(a.destinationRouter))) ||
+            keccak256(message) != a.messageId)
+            return false;
+
+        // Prevent signatures for a different source route/asset from releasing
+        // this recipient's collateral.
+        (bool ok, bytes memory response) = a.destinationRouter.staticcall(
+            abi.encodeCall(
+                IXITAECDSAInboundRouter.verifyInboundRoute,
+                (a.sourceChainId, a.sourceDomain, a.sourceRouter, a.routeId)
+            )
+        );
+        if (!ok || response.length != 32 || !abi.decode(response, (bool)))
+            return false;
+
+        return registry.verifyQuorum(
+            a.setId,
+            XITADirectECDSAProtocol.encode(a, address(this), address(registry)),
+            signed.signerBitmap, signed.signatures
+        );
+    }
+
+    function encodeAuthorization(XITADirectProtocol.Authorization calldata a)
+        external view returns (bytes memory)
     {
         return XITADirectECDSAProtocol.encode(a, address(this), address(registry));
     }

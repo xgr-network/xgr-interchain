@@ -16,6 +16,13 @@ test("all chains in GitHub configs get independent generic steps and format-spec
  const eip=plan.chains.find(c=>c.verifierFormat==="eip2537");
  assert.equal(hub.steps[0].component,"nativeVerifier");
  assert.equal(eip.steps[0].component,"blsVerifier");
+ const xdc=plan.chains.find(c=>c.name==="xdc");
+ assert.equal(xdc.signatureScheme,"ecdsa");
+ assert.equal(xdc.registryContract,"XGRInterchainECDSAValidatorRegistryV5");
+ assert.equal(xdc.ismContract,"XITADirectECDSAISM");
+ assert.equal(xdc.steps[0].component,"ecdsaVerifier");
+ assert.equal(hub.registryContract,"XGRInterchainValidatorRegistryV3");
+ assert.equal(eip.ismContract,"XITADirectBLSISM");
  assert.equal(plan.chains.find(c=>c.name==="base").initialFeeWei,"100000000000");
  for(const c of plan.chains){
   const names=c.steps.map(s=>s.component);
@@ -33,5 +40,5 @@ test("unknown verifier format fails closed without chain-name exceptions",()=>{
  const infrastructure=infrastructureInventory(root,inventory.chains);
  const bootstrap=inventory.chains.map(c=>bootstrapPlan(root,c));
  const bad={...inventory,chains:inventory.chains.map((c,i)=>i===0?{...c,blsVerifierFormat:"unknown"}:c)};
- assert.throws(()=>buildDeploymentPlan(bad,infrastructure,bootstrap),/Unsupported configured BLS verifier/);
+ assert.throws(()=>buildDeploymentPlan(bad,infrastructure,bootstrap),/Unsupported or inconsistent destination chain contract profile/);
 });

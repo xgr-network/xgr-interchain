@@ -1,35 +1,40 @@
-# XDC Mainnet — ECDSA V5 chain integration
+# XDC ECDSA V5 — separate contracts, shared node workflow
 
-**Status: shared V3 protocol architecture implemented in source; XDC integration,
-contract deployment and transfers remain disabled.**
+BLS V3 contracts are the immutable compatibility reference. The existing
+`XGRInterchainValidatorRegistryV3.sol`, `XITADirectBLSISM.sol`,
+`XITADirectProtocol.sol` and all deployed Base/Arbitrum/Optimism/BSC/XGR
+registries and ISMs must remain unchanged.
 
-The contract lifecycle and direct-message policy now use the common cores
-described in [INTERCHAIN_PROTOCOL_CORE.md](INTERCHAIN_PROTOCOL_CORE.md). The
-corresponding node refactor integrates typed BLS/ECDSA adapters into the same
-membership, governance, evidence, gossip and recovery worker. Source-level
-parity tests do not establish live-chain readiness or approve a release.
+The destination-specific ECDSA implementations are independent Solidity
+contracts: `XGRInterchainECDSAVerifier.sol`,
+`XGRInterchainECDSAValidatorRegistryV5.sol`,
+`XITADirectECDSAISM.sol` and `XITADirectECDSAProtocol.sol`.
+They implement the same protocol behavior through ECDSA-specific proofs and
+signatures; they do not inherit a shared registry/ISM state machine.
 
-XDC (chain ID/domain 50) is a destination with its own independently selected
-validator roster. Each participating XGR PoS validator decides separately whether
-to opt in via the standard `ibft interchain set-active --chain xdc` operation.
-Validator signing uses the existing `consensus/validator.key` ECDSA key,
-not a second interchain signing key.
+The Admin resolves the signed chain manifest to one explicit profile:
 
-The destination ValidatorRegistry V5 mirrors BLS V3 economics and governance:
-three explicitly selected genesis validators, proof of possession, native XDC
-deactivation reserves per validator, quorum-authorized individual ADD/REMOVE,
-executor reimbursement limits, top-ups, claims, historical fee-recipient
-snapshots, and replay-bound epochs. ECDSA secp256k1 verification replaces
-only the BLS pairing verification. Validators on other destinations do not
-automatically become XDC validators.
+| Declared format | Registry artifact | Destination ISM | Required version | Key format |
+| --- | --- | --- | --- | --- |
+| `compressed` | `XGRInterchainValidatorRegistryV3` | `XITADirectBLSISM` | 3 | 1 |
+| `eip2537` | `XGRInterchainValidatorRegistryV3` | `XITADirectBLSISM` | 3 | 2 |
+| `ecdsa` + `signatureScheme: ecdsa` | `XGRInterchainECDSAValidatorRegistryV5` | `XITADirectECDSAISM` | 5 | 3 |
 
-The Admin must refuse XDC wallet deployment until the three genesis
-identities, their public destination-bound possession proofs, minimum native
-reserve, maximum executor reimbursement, funded reserve per validator,
-and initial source fee have been explicitly selected and validated. Missing
-values must not be defaulted to arbitrary one-wei amounts.
+All artifact-selection and receipt checks must use that same profile and
+verify the deployed registry's `registryVersion()`,
+`verifierKeyFormat()`, `destinationDomain()` and `originChainId()`
+against the approved manifest before dependent wallet transactions.
 
-The node's production ECDSA worker, source/finality evidence, gossip,
-quorum aggregation, durable recovery and per-chain CLI must pass adversarial
-tests and a separate delta audit before approving a light release.
-No token transfer route is enabled by this document.
+The XGR-Node keeps one generic validator lifecycle / evidence / gossip /
+recovery worker. Only the cryptographic adapter changes per compiled chain
+policy: BLS on existing destinations, ECDSA (using the pre-existing
+`consensus/validator.key`) on a separately authorized XDC deployment.
+The node must never infer the scheme from missing BLS precompiles or an
+untrusted RPC response. The receipt-pinned destination Registry and ISM
+remain the source of truth for on-chain verification.
+
+**XDC is not authorized for deployment or transfers.** Its contract
+selection is prepared but `bootstrap.json` still has empty genesis
+validators, possession proofs and economic parameters. The Admin's wallet
+deployment gate must remain closed. No node release, new routing, source lock
+or contract replacement is authorized by this change.

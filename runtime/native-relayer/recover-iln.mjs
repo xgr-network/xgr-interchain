@@ -1,12 +1,12 @@
 // Prepare unsigned, wallet-owned Mailbox.process calldata from one canonical
-// fee-qualified source receipt and one current-set direct attestation.
+// fee-qualified source receipt and one current-set Direct BLS attestation.
 // No Merkle, relayer custody, source re-execution or historical eth_call.
 import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256,zeroPadValue,hexlify,Interface} from "ethers";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
 import {verifySourceFinalityReceipt} from "./source-finality.mjs";
-import {directVerifierFormat,prepareDirectAttestation} from "./xita-direct-codec.mjs";
+import {encodeDirectBLSPayload,encodeDirectISMMetadata} from "./xita-direct-codec.mjs";
 
 const hash=/^0x[0-9a-f]{64}$/i;
 const name=k=>{const v=process.env[k];if(!v)throw Error("Missing "+k);return v};
@@ -16,25 +16,6 @@ const equals=(label,a,b)=>{
  if(String(a).toLowerCase()!==String(b).toLowerCase())throw Error(label+" mismatch");
 };
 const check=(ok,msg)=>{if(!ok)throw Error(msg)};
-const registryABI=[
- "function setId() view returns(uint64)",
- "function verifierKeyFormat() view returns(uint8)",
- "function getFeeRecipientCountAndSetId() view returns(uint256 count,uint64 currentSetId)",
- "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
-];
-async function readDirectProofContext(registry){
- const [setId,signatureFormat]=await Promise.all([registry.setId(),registry.verifierKeyFormat()]);
- check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid current destination set ID");
- const {format}=directVerifierFormat(signatureFormat);
- let validatorCount;
- if(format===3){
-  const [count,currentSetId]=await registry.getFeeRecipientCountAndSetId();
-  check(currentSetId===setId,"Destination validator set rotated while reading proof context");
-  check(count>0n&&count<=64n,"Invalid current ECDSA validator count");
-  validatorCount=Number(count);
- }
- return {setId,verifierFormat:format,validatorCount};
-}
 let stage="init";
 const mark=x=>{stage=x;console.error("XITA_RECOVERY_STAGE:"+x)};
 const cliMessageID=String(process.argv[2]||"").toLowerCase();
@@ -143,8 +124,11 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
  equals("Current destination Mailbox ISM",await destMailbox.defaultIsm(),destISMAddress);
  const [setRegistry,ismDomain]=await Promise.all([ism.registry(),ism.destinationDomain()]);
  check(Number(ismDomain)===destDomain,"Destination ISM domain mismatch");
- const set=new Contract(setRegistry,registryABI,dest);
- const {setId,...proofContext}=await readDirectProofContext(set);
+ const set=new Contract(setRegistry,[
+  "function setId() view returns(uint64)",
+  "function verifierKeyFormat() view returns(uint8)"
+ ],dest);
+ const [setId,signatureFormat]=await Promise.all([set.setId(),set.verifierKeyFormat()]);
 
  mark("source-receipt");
  const receipt=await src.getTransactionReceipt(sourceTxHash);
@@ -204,7 +188,7 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
  }
 
  mark("validate-attestation");
-
+ check(attestation.version==="XITA_DIRECT_MESSAGE_V1","Unsupported/legacy Merkle attestation");
  equals("Attestation route name",attestation.chain,route);
  equals("Attested Message ID",attestation.authorizedMessageId,id);
  equals("Attested route",attestation.routeId,routeId);
@@ -230,8 +214,16 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
   destinationRouter:destRouter,validatorFeeWei:evidence.validatorFeeWei,
   messageId:id,destinationIsm:destISMAddress,destinationRegistry:setRegistry
  };
- const {payload:raw,signerBitmap,signature,metadata}=prepareDirectAttestation({
-  authorization,attestation,route,...proofContext
+ const raw=encodeDirectBLSPayload(authorization);
+ equals("Exact canonical Direct-BLS signed bytes",raw,attestation.payload);
+ const format=Number(signatureFormat);
+ const signature=format===1?attestation.aggregateSignatureCompressed:
+                 format===2?attestation.aggregateSignature:null;
+ check(signature&&[96,256].includes(getBytes(signature).length)&&
+       getBytes(signature).length===(format===1?96:256),
+       "Destination BLS signature format not supported");
+ const metadata=encodeDirectISMMetadata({
+  authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
  });
 
  // Distinguish a valid aggregated signature from an executable recipient route.
@@ -244,8 +236,11 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
   "Destination router rejects canonical inbound route");
 
  mark("verify-destination-quorum");
- check(await set.verifyQuorum(setId,raw,signerBitmap,signature),
-  "Destination registry rejects current-set quorum");
+ const quorumRegistry=new Contract(setRegistry,[
+  "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
+ ],dest);
+ check(await quorumRegistry.verifyQuorum(setId,raw,attestation.signerBitmap,signature),
+  "Destination registry rejects aggregate BLS quorum");
 
  mark("verify-destination-ism");
  const directISM=new Contract(destISMAddress,[
@@ -348,8 +343,15 @@ export async function prepareAttestedMessageOnly({
  ],dest);
  const [setRegistry,ismDomain]=await Promise.all([ism.registry(),ism.destinationDomain()]);
  check(Number(ismDomain)===destDomain,"Destination ISM domain mismatch");
- const registry=new Contract(setRegistry,registryABI,dest);
- const {setId,...proofContext}=await readDirectProofContext(registry);
+ const registry=new Contract(setRegistry,[
+  "function setId() view returns(uint64)",
+  "function verifierKeyFormat() view returns(uint8)",
+  "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
+ ],dest);
+ const [setId,signatureFormat]=await Promise.all([
+  registry.setId(),registry.verifierKeyFormat()
+ ]);
+ check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid current destination set ID");
  mark("attested-only-get-current-quorum");
  const attestation=await xgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
  mark("attested-only-discover-dispatch");
@@ -359,7 +361,7 @@ export async function prepareAttestedMessageOnly({
   destDomain,destRouter,messageId:id,sourceBlock:attestation.sourceBlockNumber
  });
  mark("attested-only-validate-signed-identity");
-
+ check(attestation?.version==="XITA_DIRECT_MESSAGE_V1","Wrong attestation format");
  for(const [label,a,b] of [
   ["Route name",attestation.chain,route],
   ["Message ID",attestation.authorizedMessageId,id],
@@ -388,8 +390,15 @@ export async function prepareAttestedMessageOnly({
   destinationRouter:destRouter,validatorFeeWei:BigInt(attestation.validatorFeeWei),
   messageId:id,destinationIsm:destISMAddress,destinationRegistry:setRegistry
  };
- const {payload,signerBitmap,signature,metadata}=prepareDirectAttestation({
-  authorization,attestation,route,...proofContext
+ const payload=encodeDirectBLSPayload(authorization);
+ equals("Canonical signed authorization payload",payload,attestation.payload);
+ const format=Number(signatureFormat);
+ const signature=format===1?attestation.aggregateSignatureCompressed:
+   format===2?attestation.aggregateSignature:null;
+ check(signature&&getBytes(signature).length===(format===1?96:256),
+  "Invalid current destination BLS signature format");
+ const metadata=encodeDirectISMMetadata({
+  authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
  });
  mark("attested-only-verify-destination-route");
  const router=new Contract(destRouter,[
@@ -398,7 +407,7 @@ export async function prepareAttestedMessageOnly({
  check(await router.verifyInboundRoute(Number(srcChain),srcDomain,srcRouter,routeId),
   "Destination router rejects inbound route");
  mark("attested-only-verify-bonded-quorum");
- check(await registry.verifyQuorum(setId,payload,signerBitmap,signature),
+ check(await registry.verifyQuorum(setId,payload,attestation.signerBitmap,signature),
   "Destination registry rejected current set BLS aggregate");
  mark("attested-only-verify-ism");
  check(await ism.verify(metadata,message),"Destination ISM rejects current signed message");
