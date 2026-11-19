@@ -1,6 +1,13 @@
 # XDC Mainnet — ECDSA V5 chain integration
 
-**Status: implementation incomplete; contract deployment and transfers disabled.**
+**Status: shared V3 protocol architecture implemented in source; XDC integration,
+contract deployment and transfers remain disabled.**
+
+The contract lifecycle and direct-message policy now use the common cores
+described in [INTERCHAIN_PROTOCOL_CORE.md](INTERCHAIN_PROTOCOL_CORE.md). The
+corresponding node refactor integrates typed BLS/ECDSA adapters into the same
+membership, governance, evidence, gossip and recovery worker. Source-level
+parity tests do not establish live-chain readiness or approve a release.
 
 XDC (chain ID/domain 50) is a destination with its own independently selected
 validator roster. Each participating XGR PoS validator decides separately whether

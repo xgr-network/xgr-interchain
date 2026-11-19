@@ -25,7 +25,15 @@ library XITADirectProtocol {
     function encode(Authorization memory a, address destinationIsm, address destinationRegistry)
         internal pure returns (bytes memory)
     {
-        require(
+        require(isValid(a, destinationIsm, destinationRegistry), "invalid direct message authorization");
+        return encodeFields(DOMAIN, a, destinationIsm, destinationRegistry);
+    }
+
+    /// @dev Shared semantic validation; signature adapters select only a domain.
+    function isValid(Authorization memory a, address destinationIsm, address destinationRegistry)
+        internal pure returns (bool)
+    {
+        return (
             a.sourceChainId != 0 && a.sourceDomain != 0 &&
             a.destinationDomain != 0 && a.sourceDomain != a.destinationDomain &&
             a.routeId != bytes32(0) && a.setId != 0 && a.sourceBlockNumber != 0 &&
@@ -33,14 +41,19 @@ library XITADirectProtocol {
             a.sourceRouter != address(0) && a.sourceMailbox != address(0) &&
             a.destinationRouter != address(0) && a.validatorFeeWei != 0 &&
             a.messageId != bytes32(0) && destinationIsm != address(0) &&
-            destinationRegistry != address(0),
-            "invalid direct message authorization"
+            destinationRegistry != address(0)
         );
+    }
+
+    function encodeFields(
+        bytes memory domain, Authorization memory a,
+        address destinationIsm, address destinationRegistry
+    ) internal pure returns (bytes memory) {
         // Fixed-width canonical signing bytes; no ambiguous abi.encodePacked
         // dynamic types. Destination ISM and registry prevent cross-deployment
         // reuse even when the same validator set happens to be shared.
         return abi.encodePacked(
-            DOMAIN, bytes8(a.sourceChainId), bytes4(a.sourceDomain),
+            domain, bytes8(a.sourceChainId), bytes4(a.sourceDomain),
             bytes4(a.destinationDomain), a.routeId, bytes8(a.setId),
             bytes8(a.sourceBlockNumber), bytes20(a.sourceRegistry),
             bytes20(a.gateway), bytes20(a.sourceRouter),
