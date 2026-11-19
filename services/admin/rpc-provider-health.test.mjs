@@ -120,9 +120,12 @@ test("HTTP Retry-After is bounded and does not cause rapid retries",async()=>{
  });
  const v=await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
  assert.match(v.providers[0].retryAt,/Z$/);
+ // The admin also checks the independent node-only 1RPC endpoint once.
+ // Only the number of NEW requests after the cooldown starts matters.
+ const count=n;
  now+=5*60*1000;
  await monitor({name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]});
- assert.equal(n,1);
+ assert.equal(n,count);
 });
 
 test("BSC admin shows the extra XGR v3.5.4 1RPC witness without altering catalog",async()=>{
