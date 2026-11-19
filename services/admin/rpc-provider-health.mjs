@@ -2,6 +2,7 @@
 // A responsive RPC and a native finality head are NOT sufficient Direct-BLS evidence.
 const KNOWN_OPERATORS=Object.freeze({
  "bsc-rpc.publicnode.com":"PublicNode",
+ "public.1rpc.io":"1RPC",
  "arbitrum-one-rpc.publicnode.com":"PublicNode",
  "base-rpc.publicnode.com":"PublicNode",
  "optimism-rpc.publicnode.com":"PublicNode",
@@ -19,6 +20,24 @@ const KNOWN_OPERATORS=Object.freeze({
  "rpc.xgr.network":"XGR RPC",
  "rpc2.xgr.network":"XGR RPC 2"
 });
+// Display-only supplement from the compiled XGRChain v3.5.4 BSC witness
+// policy. Do not mutate apps/web/catalog.json: transfer routing, recovery and
+// browser RPC allowlists must not change when adding an admin monitor row.
+export const ADMIN_NODE_RPC_ENDPOINTS=Object.freeze({
+ bsc:Object.freeze(["https://public.1rpc.io/bnb"])
+});
+export function adminRPCSources(chain){
+ const catalog=Array.isArray(chain?.rpcUrls)?chain.rpcUrls:[];
+ const node=ADMIN_NODE_RPC_ENDPOINTS[String(chain?.name||"")]||[];
+ const merged=new Map();
+ for(const url of catalog){
+  if(!merged.has(url))merged.set(url,"XITA catalog");
+ }
+ for(const url of node){
+  if(!merged.has(url))merged.set(url,"XGR node v3.5.4");
+ }
+ return [...merged].map(([url,source])=>({url,source}));
+}
 export const RPC_HEALTH_CACHE_MS=5*60*1000;
 export const RPC_RATE_LIMIT_PAUSE_MS=30*60*1000;
 const MAX_RETRY_AFTER_MS=60*60*1000;
@@ -43,6 +62,8 @@ function category(e){
  const s=String(e?.message||"unavailable").slice(0,180);
  if(/^HTTP 429/.test(s))return {state:"rate-limited",reason:"HTTP 429 · Rate-Limit",
   retryAfterMs:Number.isFinite(e?.retryAfterMs)?e.retryAfterMs:null};
+ if(/usage limit|current plan|quota exceeded|resource exhausted|daily limit|monthly limit/i.test(s))
+  return {state:"rate-limited",reason:"RPC-Kontingent erschöpft"};
  if(/timeout|abort/i.test(s))return {state:"unavailable",reason:"Timeout"};
  if(/^HTTP [0-9]{3}/.test(s))return {state:"unavailable",reason:s};
  if(s.includes("chainId"))return {state:"unavailable",reason:"Falsche Chain-ID"};
@@ -75,7 +96,8 @@ async function request(url,method,params,fetcher,timeoutMs){
 }
 export async function probeProvider(provider,chainId,{fetcher=globalThis.fetch,timeoutMs=3500,now=Date.now()}={}){
  const tag=finalityTag(chainId);
- const row={operator:provider.operator,host:provider.host,url:provider.url,state:"unavailable",
+ const row={operator:provider.operator,host:provider.host,url:provider.url,
+  source:provider.source||"XITA catalog",state:"unavailable",
   reason:null,chainId:null,finalityTag:tag,finalityHead:null,finalityHash:null,
   latestHead:null,lagBlocks:null,elapsedMs:null,
   checkedAt:new Date(now).toISOString(),retryAt:null};
@@ -117,7 +139,7 @@ export function summarizeProviders(name,chainId,rows){
 }
 function pausedProvider(provider,chainId,hold,previous){
  return {operator:provider.operator,host:provider.host,url:provider.url,
-  state:"rate-limited",reason:"Betreiber wegen HTTP 429 pausiert (keine neue Anfrage)",
+  source:provider.source||"XITA catalog",state:"rate-limited",reason:"Betreiber wegen HTTP 429 pausiert (keine neue Anfrage)",
   chainId:null,finalityTag:finalityTag(chainId),finalityHead:null,
   finalityHash:null,latestHead:null,lagBlocks:null,elapsedMs:null,
   checkedAt:previous?.checkedAt??null,retryAt:new Date(hold.until).toISOString()};
@@ -178,8 +200,10 @@ export function createRPCMonitor({
  }
  return async function probeChain(chain){
   const name=String(chain?.name||"unknown").slice(0,80),chainId=Number(chain?.chainId);
-  const providers=[...new Set(Array.isArray(chain?.rpcUrls)?chain.rpcUrls:[])].slice(0,6)
-   .map(approvedRPC).filter(Boolean);
+  const providers=adminRPCSources(chain).slice(0,6).map(item=>{
+   const approved=approvedRPC(item.url);
+   return approved?{...approved,source:item.source}:null;
+  }).filter(Boolean);
   if(!validNumber(chainId)||!providers.length)
    return summarizeProviders(name,chainId,[]);
   const rows=await Promise.all(providers.map(p=>observe(p,chainId)));
