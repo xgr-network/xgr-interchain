@@ -968,7 +968,7 @@ async function refreshOperationsHealth(){
     ' RPC erreichbar · '+healthValue(c.possibleOperators??0)+'/'+healthValue(c.requiredOperators??2)+
     ' Betreiber potenziell verfügbar';
    const rows=ps.map(p=>'<tr><td><strong>'+esc(p.operator||"Unbekannt")+'</strong>'+
-    '<small>'+esc(p.host||"")+'</small></td><td>'+healthPill(p.state)+
+    '<small>'+esc(p.host||"")+' · '+esc(p.source||"XITA catalog")+'</small></td><td>'+healthPill(p.state)+
     (p.reason?'<small>'+esc(p.reason)+'</small>':"")+'</td>'+
     '<td>'+esc(p.chainId===null?"—":String(p.chainId))+'</td>'+
     '<td>'+esc(p.finalityTag||"—")+' · '+healthValue(p.finalityHead)+
