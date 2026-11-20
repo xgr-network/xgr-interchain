@@ -605,7 +605,59 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
  }
  return [...totals.values()];
 }
-export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc=candidateRpc(),blockFor,limit=150,batches=4}){
+// Read-only activity hints change scheduling only. Untrusted announcements never
+// authorize chain evidence, BLS signatures, custody, settlement or a transfer.
+// A short 5-minute window bounds the resource impact of repeated stale hints.
+export const INDEXER_IDLE_MS=60000;
+export const INDEXER_ACTIVE_MS=20000;
+export const INDEXER_ACTIVITY_WINDOW_MINUTES=5;
+export async function recentActiveIndexerSources(pool){
+ try{
+  const result=await pool.query({text:`SELECT DISTINCT source_chain FROM (
+   SELECT source_chain FROM xita_transfer_announcements
+    WHERE state IN ('reported','observed')
+      AND first_reported_at >= NOW()-INTERVAL '5 minutes'
+   UNION ALL
+   SELECT source_chain FROM xita_transfer_operations
+    WHERE delivered IS DISTINCT FROM TRUE
+      AND source_indexed_at >= NOW()-INTERVAL '5 minutes'
+  ) a ORDER BY source_chain LIMIT 64`});
+  return new Set(result.rows.map(row=>row.source_chain));
+ }catch(error){
+  if(['42P01','42501'].includes(error?.code))return new Set();
+  throw error;
+ }
+}
+export function dueIndexerSourceChains({sourceChains,activeSources,lastScannedAt,now,
+ idleMs=INDEXER_IDLE_MS,activeMs=INDEXER_ACTIVE_MS}){
+ if(!Array.isArray(sourceChains)||!(activeSources instanceof Set)||
+    !(lastScannedAt instanceof Map)||!Number.isFinite(now)||
+    !Number.isFinite(idleMs)||!Number.isFinite(activeMs)||
+    activeMs<1000||idleMs<activeMs)throw Error("Invalid source scan schedule");
+ const due=new Set();
+ for(const source of new Set(sourceChains)){
+  const last=lastScannedAt.get(source);
+  const interval=activeSources.has(source)?activeMs:idleMs;
+  if(last===undefined||now-last>=interval)due.add(source);
+ }
+ return due;
+}
+// Retain one RPC log window per source chain even when many Gateway routes
+// share it. A fast active chain must not force unrelated chains into 20s scans.
+export function groupedSourceRoutes(routes,scanSourceChains=null){
+ if(scanSourceChains!==null&&!(scanSourceChains instanceof Set))
+  throw Error("Invalid source scan filter");
+ const bySource=new Map();
+ for(const route of routes){
+  if(scanSourceChains!==null&&!scanSourceChains.has(route.sourceChain))continue;
+  const key=String(route.sourceConfig.chainId)+"|"+route.sourceChain;
+  if(!bySource.has(key))bySource.set(key,[]);
+  bySource.get(key).push(route);
+ }
+ return [...bySource.values()];
+}
+
+export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc=candidateRpc(),blockFor,limit=150,batches=4,scanSourceChains=null}){
  const routes=indexedRoutes(catalog,{blockFor});
  let accelerated={status:"not-installed"};
  try{accelerated=await processTransferAnnouncements({catalog,routes,pool,rpc:hintRpc});}
@@ -616,13 +668,7 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
  catch(error){hintsRechecked=["42P01","42501"].includes(error?.code)?
   {status:"not-provisioned"}:{error:String(error.message||error).slice(0,200)};}
  const progress=[];
- const bySource=new Map();
- for(const route of routes){
-  const key=String(route.sourceConfig.chainId)+"|"+route.sourceChain;
-  if(!bySource.has(key))bySource.set(key,[]);
-  bySource.get(key).push(route);
- }
- for(const group of bySource.values()){
+ for(const group of groupedSourceRoutes(routes,scanSourceChains)){
   try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches}));}
   catch(error){for(const route of group)progress.push({
    route:route.routeName,error:String(error.message||error).slice(0,250)})}
@@ -642,7 +688,13 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
          AND p.payer=q.payer AND p.quote_nonce=q.quote_nonce)`}).catch(()=>{});
  return {routes:progress,destinations,accelerated,hintsRechecked,taxBackfill};
 }
-export async function runTransferIndexWorker({intervalMs=12000}={}){
+export async function runTransferIndexWorker({intervalMs=INDEXER_IDLE_MS,
+ activeIntervalMs=INDEXER_ACTIVE_MS,checkIntervalMs=10000}={}){
+ if(!Number.isInteger(intervalMs)||intervalMs<activeIntervalMs||
+   !Number.isInteger(activeIntervalMs)||activeIntervalMs<1000||
+   !Number.isInteger(checkIntervalMs)||checkIntervalMs<1000||
+   checkIntervalMs>activeIntervalMs)
+  throw Error("Invalid adaptive indexer timing");
  const pool=await transferWriterPool();
  const rpc=canonicalRpc(),hintRpc=candidateRpc();
  try{
@@ -655,18 +707,31 @@ export async function runTransferIndexWorker({intervalMs=12000}={}){
  let running=true;
  process.once("SIGTERM",()=>{running=false;});
  process.once("SIGINT",()=>{running=false;});
+ const lastScannedAt=new Map();
  while(running){
   const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
-  const start=Date.now();
-  const result=await tickTransferIndex({catalog,pool,rpc,hintRpc});
-  if(result.accelerated?.error)console.error("[xita-transfer-hints]",result.accelerated.error);
-  if(result.accelerated?.indexed)console.log("[xita-transfer-hints] verified",result.accelerated.indexed);
-  if(result.hintsRechecked?.retracted)console.warn("[xita-transfer-hints] reorg retracted",result.hintsRechecked.retracted);
-  for(const route of result.routes)if(route.error)
-   console.error("[xita-transfer-index]",route.route,route.error);
-  else if(route.indexed)console.log("[xita-transfer-index]",route.route,"indexed",route.indexed);
-  const wait=Math.max(500,intervalMs-(Date.now()-start));
-  if(running)await new Promise(resolve=>setTimeout(resolve,wait));
+  const routes=indexedRoutes(catalog);
+  // This frequent lightweight check is SQL-only. No external RPC in idle time.
+  const activeSources=await recentActiveIndexerSources(pool);
+  const now=Date.now();
+  const due=dueIndexerSourceChains({
+   sourceChains:routes.map(r=>r.sourceChain),activeSources,lastScannedAt,now,
+   idleMs:intervalMs,activeMs:activeIntervalMs
+  });
+  if(due.size){
+   // Mark BEFORE RPC activity. A slow or failed provider must not cause an
+   // immediate retry storm on the next wake-up.
+   for(const source of due)lastScannedAt.set(source,now);
+   const result=await tickTransferIndex({catalog,pool,rpc,hintRpc,scanSourceChains:due});
+   if(result.accelerated?.error)console.error("[xita-transfer-hints]",result.accelerated.error);
+   if(result.accelerated?.indexed)console.log("[xita-transfer-hints] verified",result.accelerated.indexed);
+   if(result.hintsRechecked?.retracted)console.warn("[xita-transfer-hints] reorg retracted",result.hintsRechecked.retracted);
+   for(const route of result.routes)if(route.error)
+    console.error("[xita-transfer-index]",route.route,route.error);
+   else if(route.indexed)console.log("[xita-transfer-index]",route.route,"indexed",route.indexed);
+  }
+  // No chain RPCs are issued by the SQL activity check or idle wait.
+  if(running)await new Promise(resolve=>setTimeout(resolve,checkIntervalMs));
  }
  await pool.end();
 }
