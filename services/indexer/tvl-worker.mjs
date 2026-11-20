@@ -10,6 +10,7 @@ import {escrowDescriptor,reconcileEscrow,priceEscrow,verifiedEvidence} from "./t
 import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
 import {indexedGrossFlow24h} from "./indexed-flow-24h.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
+import {readIndexerTvlSnapshot} from "./indexer-tvl-snapshot.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
@@ -21,21 +22,8 @@ const PENDING=selector("totalPendingNativeXGR()");
 const wordAddress=a=>a.slice(2).toLowerCase().padStart(64,"0");
 const codeInt=x=>WORD.test(x||"")?BigInt(x):null;
 const fmt=n=>"0x"+BigInt(n).toString(16);
-async function rpc(chain,method,params=[],fetcher=fetch){
- const urls=(chain?.rpcUrls||[]).filter(u=>typeof u==="string"&&u.startsWith("https://"));
- if(!Number.isSafeInteger(chain.chainId)||!urls.length)throw Error("No trusted RPC");
- let last;
- for(const url of urls){try{
-   const response=await fetcher(url,{method:"POST",headers:{"content-type":"application/json"},
-    body:JSON.stringify({jsonrpc:"2.0",id:1,method,params}),signal:AbortSignal.timeout(9000)});
-   if(!response.ok)throw Error("RPC "+response.status);
-   const data=await response.json();
-   if(data.error||data.result===undefined||data.result===null)throw Error("Invalid RPC response");
-   return data.result;
-  }catch(e){last=e;}}
- throw Error("All RPC endpoints unavailable: "+String(last?.message||"unknown"));
-}
-export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot,now=Date.now(),routeList=null}){
+export async function scanTokenEscrow({catalog,asset,pool,read,priceSnapshot,now=Date.now(),routeList=null}){
+ if(typeof read!=="function")throw Error("Indexer RPC reader required");
  const d=escrowDescriptor(catalog,asset);
  if(d.status!=="ready")return d;
  if(!d.coingeckoId)return {status:"unavailable",reason:"coingecko-id-unavailable"};
@@ -76,7 +64,8 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
  if(proof.status!=="verified")return proof;
  return priceEscrow(proof,priceSnapshot?.records?.[d.coingeckoId],{now});
 }
-export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
+export async function tvlSnapshot({catalog,pool,read,prices=getCoinGeckoPrices,now=Date.now()}){
+ if(typeof read!=="function")throw Error("Indexer RPC reader required");
  const snap=await prices(catalog),routes=indexedRoutes(catalog),proofs={},flows={};
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
@@ -110,7 +99,8 @@ export async function runTVL({interval=60000}={}){
  while(run){
   try{
    const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
-   const snap=await tvlSnapshot({catalog,pool});
+   // Live chain RPC belongs exclusively to the transfer indexer process.
+   const snap=await readIndexerTvlSnapshot({catalog,pool});
    // Persist only snapshots whose COMPLETE TVL reconciles to verified vaults.
    // Retention, deduplication and monotone timestamps live in tvl-history.mjs.
    const history=appendVerifiedTvlHistory(HISTORY,snap,catalog);
