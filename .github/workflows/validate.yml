@@ -112,7 +112,7 @@ jobs:
         run: node --test tools/interchain-fee-nginx.test.mjs
 
       - name: Validate persisted wallet TX announcement intake
-        run: node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs tools/transfer-intake-nginx.test.mjs
+        run: node --test services/indexer/transfer-intake.test.mjs services/indexer/node-index-projector.test.mjs tools/transfer-intake-nginx.test.mjs
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
       - name: Validate token-agnostic TVL and 24h escrow gross volume
@@ -124,7 +124,7 @@ jobs:
         run: npm install --prefix services/indexer --ignore-scripts --no-audit --no-fund --package-lock=false
 
       - name: Validate unsigned on-chain destination recovery
-        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-proof-observer.test.mjs services/indexer/xgr-quorum-poll.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
+        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-proof-observer.test.mjs services/indexer/xgr-quorum-poll.test.mjs services/indexer/transfer-index-write.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
 
       - name: Validate XGR source-feed SQL projector
         run: node --test services/indexer/node-index-projector.test.mjs
