@@ -196,8 +196,10 @@ export async function scanIndexedRoute({catalog,route,pool,rpc,limit=150}){
 }
 export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
- // F-26: Filter by the exact active source/route PAIRS before LIMIT. Retired
- // routes remain in the historical index, but cannot starve active deliveries.
+ // Only unfinished transfers are eligible; a delivered=TRUE row already
+ // has a finalized destination Mailbox proof and must NEVER be polled again.
+ // F-26: Filter exact active source/route PAIRS before bounding work.
+ // A 60-second per-message schedule avoids repeated checks each 12-second tick.
  if(!all.size)return {checked:0,delivered:0,unknown:0};
  const active=[...all.values()];
  const param=n=>String.fromCharCode(36)+n; // PostgreSQL numbered bind parameter
@@ -208,6 +210,9 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  xita_transfer_operations o
  WHERE EXISTS (SELECT 1 FROM (VALUES ${pairs}) AS active(source_chain,route_id)
    WHERE active.source_chain=o.source_chain AND active.route_id=o.route_id)
+ AND o.delivered IS DISTINCT FROM TRUE
+ AND (o.delivery_attempted_at IS NULL OR
+      o.delivery_attempted_at<=NOW()-INTERVAL '60 seconds')
  ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${limitParam}`,
   values:[...values,limit]});
  let checked=0,delivered=0,unknown=0;
