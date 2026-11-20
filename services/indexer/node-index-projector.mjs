@@ -9,6 +9,7 @@ import {indexedRoutes} from "./transfer-index.mjs";
 import {storeVerifiedOperation} from "./transfer-index-write.mjs";
 import {projectXgrIndexedSource} from "./xgr-node-index-source.mjs";
 import {refreshNodeIndexedDeliveries} from "./xgr-node-index-delivery.mjs";
+import {tickNodeIndexedGas,tickNodeIndexedOnwardGas} from "./xgr-node-index-gas.mjs";
 import {makeNodeIndexRpc,nodeChainName} from "../../tools/verify-node-index-parity.mjs";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 
@@ -206,18 +207,27 @@ export async function runNodeIndexProjector({intervalMs=20000}={}){
  const url=process.env.XITA_XGR_INDEX_RPC_URL;
  const rpc=makeNodeIndexRpc({url});
  const pool=await transferWriterPool();
+ let lastGasAt=0;
  let running=true;
  process.once("SIGTERM",()=>{running=false});
  process.once("SIGINT",()=>{running=false});
  try{
   while(running){
    const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
-   const result=await tickNodeIndexProjection({catalog,pool,rpc});
+   const now=Date.now();
+   const gasProjection=now-lastGasAt>=60000?async args=>{
+    const [delivery,onward]=await Promise.all([
+     tickNodeIndexedGas(args),tickNodeIndexedOnwardGas(args)]);
+    return {delivery,onward};
+   }:null;
+   if(gasProjection)lastGasAt=now;
+   const result=await tickNodeIndexProjection({catalog,pool,rpc,gasProjection});
    for(const item of result.indexes){
     if(item.error)console.warn("[xita-node-index]",item.sourceChain,item.error);
     else if(item.indexed)console.log("[xita-node-index]",item.sourceChain,"indexed",item.indexed);
    }
    if(result.delivery.error)console.warn("[xita-node-delivery]",result.delivery.error);
+   if(result.gas.error)console.warn("[xita-node-gas]",result.gas.error);
    if(running)await sleep(intervalMs);
   }
  }finally{await pool.end();}
