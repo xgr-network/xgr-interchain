@@ -192,31 +192,47 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
 // are rate-limited. Both readers independently verify chain IDs and fail over.
 export function candidateRpc({fetcher=globalThis.fetch,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
- const identities=new Map;
+ const identities=new Map(),cooldowns=new Map();
  return async (chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid candidate source chain");
-  let last=null,missing=false;
+  let last=null,missing=false,skipped=0;
   for(const url of rpcCandidates(chain,{baseUrls})){
+   const key=String(chain.chainId)+"|"+url;
+   const held=cooldowns.get(key);
+   if(held&&held.until>now()){skipped++;continue;}
    try{
-    const prev=identities.get(url);
-    if(!prev||prev.chainId!==chain.chainId||prev.expire<=now()){
-     const id=await publicRead(url,"eth_chainId",[],fetcher);
-     if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
-      throw Error("Candidate RPC chain ID mismatch");
-     identities.set(url,{chainId:chain.chainId,expire:now()+300000});
+     const prev=identities.get(key);
+     if(!prev||prev.expire<=now()){
+      const id=await publicRead(url,"eth_chainId",[],fetcher);
+      if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
+       throw Error("Candidate RPC chain ID mismatch");
+      identities.set(key,{expire:now()+300000});
+     }
+     const result=await publicRead(url,method,params,fetcher);
+     // A null receipt is propagation delay, NOT a provider failure.
+     if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
+       "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
+     cooldowns.delete(key);
+     return result;
+    }catch(error){
+     identities.delete(key);
+     last=error;
+     const count=Math.min(5,(held?.failures||0)+1);
+     const msg=String(error?.message||error).toLowerCase();
+     const exhausted=/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/.test(msg);
+     const forbidden=/403|forbidden/.test(msg);
+     // Network failures: 15/30/60/120s; forbidden 10m; exhausted plans 30m.
+     // Never contaminate the independent validator witness RPC layer.
+     const delay=exhausted?1800000:forbidden?600000:
+      Math.min(120000,15000*2**(count-1));
+     cooldowns.set(key,{failures:count,until:now()+delay});
     }
-    const result=await publicRead(url,method,params,fetcher);
-    // Receipt propagation can lag behind block finalization on one provider.
-    // Before treating a missing source TX as pending, try verified backups.
-    if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
-      "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
-    return result;
-   }catch(error){identities.delete(url);last=error;}
   }
   if(missing)return null;
   throw Error("All candidate RPCs failed for "+String(chain.name||chain.chainId)+": "+
-   String(last?.message||"unknown").slice(0,125));
+   (skipped?"provider cooldown; ":"")+
+   String(last?.message||"retry after cooldown").slice(0,125));
  };
 }
 export function validateIndexedGatewayLog(log,route,from,to){
