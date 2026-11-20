@@ -11,7 +11,7 @@ const word=x=>"0x"+BigInt(x).toString(16).padStart(64,"0");
 const snap={
  version:1,asset:"ARB",chain:d.chain,chainId:d.chainConfig.chainId,
  kind:"erc20",router:d.router,token:d.token,
- finalizedHeadBlock:800,finalizedHeadHash:hash("b"),
+ finalizedHeadBlock:800,latestHeadBlock:812,finalizedHeadHash:hash("b"),
  observedAt:new Date().toISOString(),
  routerCode:"0x60006000",routerToken:"0x"+d.token.slice(2).padStart(64,"0"),
  tokenCode:"0x60006000",tokenDecimals:word(d.decimals),tokenBalance:word(100),
