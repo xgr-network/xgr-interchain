@@ -505,3 +505,52 @@ test("adaptive filter keeps one source-wide scan for all active Gateway routes",
  assert.deepEqual(groups[0],[base,more]);
  assert.equal(groupedSourceRoutes([base,more,bsc]).length,2);
 });
+
+test("candidate RPC cooldown stops repeated failures while other providers remain available",async()=>{
+ let now=100000;
+ const a="https://bsc-rpc.publicnode.com",b="https://bsc.drpc.org";
+ const counts=new Map();
+ const reader=candidateRpc({baseUrls:"",now:()=>now,fetcher:async(url,{body})=>{
+  const method=JSON.parse(body).method;
+  counts.set(url,(counts.get(url)||0)+1);
+  if(url===a)return {ok:false,status:429};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":{transactionHash:hash("a")}})};
+ }});
+ const chain={name:"bsc",chainId:56,rpcUrls:[a,b]};
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ const first=counts.get(a);
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ assert.equal(counts.get(a),first,"429 provider must not be contacted again within cooldown");
+ now+=16000;
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ assert.ok(counts.get(a)>first,"provider may be tried after bounded cooldown");
+});
+test("candidate exhausted quota holds per-provider cooldown across calls",async()=>{
+ let now=100000,requests=0;
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]};
+ const read=candidateRpc({baseUrls:"",now:()=>now,fetcher:async()=>{
+  requests++;throw Error("quota exceeded");
+ }});
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/failed/);
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/cooldown/);
+ assert.equal(requests,1,"do not retry exhausted provider");
+ now+=1800001;
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/failed/);
+ assert.equal(requests,2);
+});
+test("candidate receipt propagation null still checks backup without false cooldown",async()=>{
+ const a="https://bsc-rpc.publicnode.com",b="https://bsc.drpc.org";
+ let first=0;
+ const read=candidateRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);
+  if(url===a)first++;
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":
+    url===a?null:{transactionHash:hash("c")}})};
+ }});
+ const chain={name:"bsc",chainId:56,rpcUrls:[a,b]};
+ await read(chain,"eth_getTransactionReceipt",[hash("c")]);
+ await read(chain,"eth_getTransactionReceipt",[hash("c")]);
+ assert.ok(first>=3,"valid null is not treated as provider outage");
+});
