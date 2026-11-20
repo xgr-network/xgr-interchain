@@ -35,6 +35,8 @@ export async function createNodeIndexedEscrowReader({catalog,rpc,now=Date.now()}
     typeof snap.tokenCode!=="string"||!/^0x(?:[a-f0-9]{2})+$/i.test(snap.tokenCode)||
     snap.evidenceStatus!=="FINALIZED_ESCROW_READ_MODEL_NOT_BLS_EVIDENCE"||
     !Number.isSafeInteger(snap.finalizedHeadBlock)||snap.finalizedHeadBlock<1||
+    !Number.isSafeInteger(snap.latestHeadBlock)||
+    snap.latestHeadBlock<snap.finalizedHeadBlock||
     !/^0x[0-9a-f]{64}$/i.test(snap.finalizedHeadHash||"")||
     !Number.isFinite(Date.parse(snap.observedAt))||
     Math.abs(now-Date.parse(snap.observedAt))>120000)
