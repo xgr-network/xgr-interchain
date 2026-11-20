@@ -11,6 +11,7 @@ import {compareNodeIndexToXita,makeNodeIndexRpc,nodeChainName}
 import {verifyIndexedDelivery} from "../services/indexer/xgr-node-index-delivery.mjs";
 import {createNodeIndexedEscrowReader} from "../services/indexer/xgr-node-index-escrow.mjs";
 import {tvlSnapshot} from "../services/indexer/tvl-worker.mjs";
+import {escrowDescriptor} from "../services/indexer/tvl-verifier.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("..",import.meta.url)));
 const same=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
@@ -62,12 +63,19 @@ export async function checkNodeIndexerCutover({catalog,pool,rpc,verifyTvl=tvlSna
     !tvl.custodyEvidence||
     !Object.keys(tvl.assets||{}).length)
   throw Error("Verified TVL from Node escrow snapshots unavailable");
- const missing=Object.entries(tvl.assets||{}).filter(([,v])=>
-  v.status!=="verified");
+ const required=Object.keys(catalog.assets||{}).filter(asset=>{
+  const d=escrowDescriptor(catalog,asset);
+  return d.status==="ready"&&!!d.coingeckoId;
+ });
+ const missing=required.filter(asset=>{
+  const v=tvl.assets?.[asset];
+  return v?.verified!==true||v.custody?.status!=="verified"||
+   v.custody?.complete!==true;
+ });
  if(missing.length)throw Error("Node escrow custody/price parity incomplete: "+
-  missing.map(([asset])=>asset).join(","));
+  missing.join(","));
  return {ready:true,sourceChains:sources.length,parity,
-  delivered,pending,unknown,verifiedAssets:Object.keys(tvl.assets).length};
+  delivered,pending,unknown,verifiedAssets:required.length};
 }
 async function main(){
  const rpc=makeNodeIndexRpc({url:process.env.XITA_XGR_INDEX_RPC_URL});
