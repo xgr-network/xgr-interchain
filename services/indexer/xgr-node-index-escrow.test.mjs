@@ -29,7 +29,7 @@ test("all foreign TVL reads are served from a single XGR index snapshot",async()
  };
  const read=await createNodeIndexedEscrowReader({catalog,rpc});
  assert.equal(await read(d.chainConfig,"eth_chainId",[]),"0xa4b1");
- assert.equal(await read(d.chainConfig,"eth_blockNumber",[]),"0x320");
+ assert.equal(await read(d.chainConfig,"eth_blockNumber",[]),"0x32c");
  assert.equal(await read(d.chainConfig,"eth_getCode",[d.router,"latest"]),snap.routerCode);
  assert.equal(await read(d.chainConfig,"eth_getCode",[d.token,"latest"]),snap.tokenCode);
  assert.equal(await read(d.chainConfig,"eth_call",[{to:d.router,data:"0xfc0c546a"},"latest"]),snap.routerToken);
