@@ -4,7 +4,8 @@ import {readFileSync} from "node:fs";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {dirname,resolve} from "node:path";
 import {findWalletSourceTx,configuredGatewayRoutes} from "../apps/web/wallet-transfers.js";
-import {canonicalRpc,checkedDelivery} from "../services/indexer/transfer-index.mjs";
+import {checkedDelivery} from "../services/indexer/transfer-index.mjs";
+import {canonicalRpc} from "./manual-canonical-rpc.mjs";
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
 export function roundtripArguments(args,catalog=null){
  if(!Array.isArray(args)||![2,4].includes(args.length))
