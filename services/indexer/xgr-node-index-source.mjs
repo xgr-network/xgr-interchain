@@ -57,7 +57,7 @@ export function nodeIndexSourceRead({route,operation,evidence}){
  };
 }
 export async function projectXgrIndexedSource({catalog,operation,evidence,
- verify=verifiedTransfer}){
+ xgrRpc=null,verify=verifiedTransfer}){
  const matched=indexedRoutes(catalog).filter(route=>
   nodeChain(route.sourceChain)===operation?.source&&
   lower(route.routeId)===lower(operation.routeId)&&
@@ -65,7 +65,31 @@ export async function projectXgrIndexedSource({catalog,operation,evidence,
   nodeChain(route.destinationChain)===operation.destination);
  if(matched.length!==1)throw Error("Node observation has no unique active XITA route");
  const route=matched[0];
- const rpc=nodeIndexSourceRead({route,operation,evidence});
+ let rpc,sourceBlock=evidence?.sourceBlock;
+ if(route.sourceConfig.chainId===1643){
+  if(typeof xgrRpc!=="function"||evidence?.sourceChainId!==1643||
+    evidence?.verifiedAs!=="FINALIZED_LOCAL_IBFT_OBSERVATION_NOT_BLS_EVIDENCE"||
+    !HASH.test(evidence.sourceBlockHash||"")||
+    lower(operation.sourceTxHash)!==lower(evidence.sourceTxHash)||
+    operation.sourceBlockNumber!==evidence.sourceBlockNumber)
+   throw Error("Native XGR source index evidence unavailable");
+  // Native XGR source reads are restricted to the SAME XGR RPC's committed
+  // chain. They never issue an external EVM RPC.
+  const methods=new Set(["eth_chainId","eth_getTransactionByHash",
+   "eth_getTransactionReceipt","eth_blockNumber","eth_getBlockByNumber"]);
+  rpc=async(chain,method,params=[])=>{
+   if(chain?.chainId!==1643||!methods.has(method))
+    throw Error("Non-native or unsafe indexed XGR read");
+   return xgrRpc(method,params);
+  };
+  sourceBlock=await xgrRpc("eth_getBlockByNumber",[
+   "0x"+operation.sourceBlockNumber.toString(16),false]);
+  if(!sourceBlock||lower(sourceBlock.hash)!==lower(evidence.sourceBlockHash)||
+     safeNumber(sourceBlock.number)!==operation.sourceBlockNumber)
+   throw Error("Indexed native source block identity mismatch");
+ }else{
+  rpc=nodeIndexSourceRead({route,operation,evidence});
+ }
  const record=await verify({catalog,route,
   transactionHash:operation.sourceTxHash,rpc});
  if(record.delivered===true)
@@ -74,7 +98,7 @@ export async function projectXgrIndexedSource({catalog,operation,evidence,
     lower(record.sourceTxHash)!==lower(operation.sourceTxHash)||
     lower(record.routeId)!==lower(operation.routeId))
   throw Error("Node source observation and XITA verification disagree");
- const epoch=safeNumber(evidence.sourceBlock.timestamp);
+ const epoch=safeNumber(sourceBlock?.timestamp);
  if(epoch<=0)throw Error("Missing canonical source time");
  return {route,record,event:{
   txHash:lower(operation.sourceTxHash),
