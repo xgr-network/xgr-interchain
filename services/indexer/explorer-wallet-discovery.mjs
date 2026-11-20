@@ -3,8 +3,8 @@
 // Every discoverable source tx must be checked against configured XITA
 // Gateways, successful receipts, Mailbox Dispatch and finality via canonical RPC.
 // This adds no contract, migration, signing, custody, or source TX side effects.
-import {configuredGatewayRoutes,findWalletSourceTx} from "../../apps/web/wallet-transfers.js";
-import {indexedRoutes,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
+import {indexedRoutes} from "./transfer-index.mjs";
+import {transferReaderPool} from "./transfer-index-store.mjs";
 const API="https://api.etherscan.io/v2/api";
 const ADDRESS=/^0x[0-9a-f]{40}$/i,TX=/^0x[0-9a-f]{64}$/i;
 const low=x=>String(x||"").toLowerCase();
@@ -85,10 +85,28 @@ export async function discoverExplorerWallet({
  if(!key)return {status:"not-configured",items:[],warnings:[],truncated:false};
  const sources=groups||explorerSourceGroups(catalog);
  if(!sources.length)return {status:"not-supported",items:[],warnings:[],truncated:false};
+ // Etherscan supplies untrusted discovery hints ONLY. Canonical state is
+ // already indexed by XGR Node and projected into SQL; no separate
+ // foreign-source receipts, RPC failover or Gateway scans are allowed here.
  const canonical=verify||(async(group,txHash)=>{
-  const chainRpc=candidateRpc({fetcher});
-  return findWalletSourceTx({catalog,account,sourceChain:group.sourceChain,txHash,
-   rpc:bindVerifiedTransferRpc(group.routes[0],chainRpc)});
+  const pool=await transferReaderPool();
+  if(!pool)throw Error("Canonical XGR indexed SQL unavailable");
+  const result=await pool.query({text:`SELECT source_chain,source_tx_hash,account,
+    message_id,asset,destination_chain,route_name,delivered,
+    final_destination_chain,amount_raw
+   FROM xita_transfer_operations WHERE source_chain=$1 AND source_tx_hash=$2
+    AND account=$3 LIMIT 2`,values:[group.sourceChain,txHash,low(account)]});
+  if(result.rows.length!==1)throw Error("Unindexed or ambiguous source TX");
+  const row=result.rows[0];
+  return {account:low(row.account),sourceChain:row.source_chain,
+   txHash:low(row.source_tx_hash),messageId:low(row.message_id),
+   asset:row.asset,destinationChain:row.destination_chain,
+   routeName:row.route_name,
+   finalDestinationChain:row.final_destination_chain||null,
+   amountRaw:row.amount_raw==null?null:String(row.amount_raw),
+   delivered:row.delivered,confirmed:true,
+   status:row.delivered===true?"delivered":
+    row.delivered===false?"awaiting-proof":"delivery-unknown"};
  });
  const items=[],warnings=[],seen=new Set();
  let truncated=false,successfulChains=0;
