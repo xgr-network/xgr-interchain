@@ -5,7 +5,8 @@ import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,readSourceWindow,
  checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
-import {commitWindow,catchUpRoute,refreshPendingDeliveries} from "./transfer-index-worker.mjs";
+import {commitWindow,catchUpRoute,refreshPendingDeliveries,recentActiveIndexerSources,
+ dueIndexerSourceChains,groupedSourceRoutes} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const hex=n=>"0x"+BigInt(n).toString(16);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -465,4 +466,42 @@ test("four Base providers fail over on HTTP 429 without treating rejected logs a
  const chain={name:"base",chainId:8453,rpcUrls:urls};
  assert.deepEqual(await read(chain,"eth_getLogs",[{address:"0x"+"1".repeat(40),fromBlock:"0x1",toBlock:"0x3"}]),[]);
  assert.deepEqual(calls.filter(x=>x[1]==="eth_getLogs").map(x=>x[0]),urls.slice(0,3));
+});
+
+test("adaptive indexer polls every 60s idle and 20s for active source only",()=>{
+ const chains=["base","bsc","xgrchain"],last=new Map(chains.map(chain=>[chain,1000]));
+ const due=(now,activeSources)=>dueIndexerSourceChains({
+  sourceChains:chains,activeSources:new Set(activeSources),lastScannedAt:last,now});
+ assert.deepEqual([...due(12999,[])],[]);
+ assert.deepEqual([...due(21000,["base"])],["base"]);
+ assert.deepEqual([...due(41000,["base"])],["base"]);
+ assert.deepEqual([...due(61000,[])],["base","bsc","xgrchain"]);
+ assert.deepEqual([...due(61000,["base"])],["base","bsc","xgrchain"]);
+ const first=dueIndexerSourceChains({sourceChains:chains,
+  activeSources:new Set(),lastScannedAt:new Map(),now:100});
+ assert.deepEqual([...first],chains,"cold startup must scan every source");
+});
+test("active indexer sources come from recent real rows or untrusted hints, never stale history",async()=>{
+ const query=[];
+ const pool={query:async q=>{
+  query.push(q);return {rows:[{source_chain:"bsc"},{source_chain:"xgrchain"}]};
+ }};
+ const active=await recentActiveIndexerSources(pool);
+ assert.deepEqual([...active],["bsc","xgrchain"]);
+ assert.match(query[0].text,/first_reported_at >= NOW\(\)-INTERVAL '5 minutes'/);
+ assert.match(query[0].text,/delivered IS DISTINCT FROM TRUE/);
+ assert.match(query[0].text,/source_indexed_at >= NOW\(\)-INTERVAL '5 minutes'/);
+ const missing=await recentActiveIndexerSources({query:async()=>{
+  throw Object.assign(Error("migration unavailable"),{code:"42P01"});
+ }});
+ assert.equal(missing.size,0);
+});
+test("adaptive filter keeps one source-wide scan for all active Gateway routes",()=>{
+ const base={sourceChain:"base",sourceConfig:{chainId:8453},routeId:hash("1")};
+ const more={...base,routeId:hash("2")};
+ const bsc={...base,sourceChain:"bsc",sourceConfig:{chainId:56}};
+ const groups=groupedSourceRoutes([base,more,bsc],new Set(["base"]));
+ assert.equal(groups.length,1);
+ assert.deepEqual(groups[0],[base,more]);
+ assert.equal(groupedSourceRoutes([base,more,bsc]).length,2);
 });
