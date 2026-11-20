@@ -8,7 +8,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess,ilnValidatorRouteName} from "./transfer-recovery.mjs";
-import {pollLocalQuorum,quorumPollDecision} from "./xgr-quorum-poll.mjs";
+import {pollLocalQuorum,requestIndexedQuorum} from "./xgr-quorum-poll.mjs";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HASH=/^0x[0-9a-f]{64}$/i;
 const REASON=/^PROOF_[A-Z0-9_]{3,48}$/;
@@ -64,66 +64,69 @@ export async function claimProofObservation(pool,{token=randomUUID()}={}){
  if(!item)return null;
  // The FK deletes the job when a finalized source event is reorg-retracted.
  const origin=await pool.query({text:`SELECT o.source_chain,o.message_id,
-  o.route_name,o.asset,o.source_tx_hash FROM xita_transfer_operations o
+  o.route_name,o.asset,o.source_tx_hash,o.source_block_number FROM xita_transfer_operations o
  WHERE o.source_chain=$1 AND o.message_id=$2 AND o.delivered IS FALSE`,
  values:[item.source_chain,item.message_id]});
  if(!origin.rows.length)return null;
  return {...origin.rows[0],attempts:Number(item.attempts),previousReason:item.reason,
   lastFullCheckAt:item.last_checked_at,leaseToken:token};
 }
+// The indexer is only a discovery source. Never infer a validator vote from
+// its SQL data. Admission carries ONLY a source transaction locator; every
+// validator independently authenticates complete source evidence.
 export async function observeProofJob({pool,catalog,job,runner=runRecoveryProcess,
- quorumPoll=pollLocalQuorum,now=Date.now}={}){
+ quorumPoll=pollLocalQuorum,quorumRequest=requestIndexedQuorum}={}){
  if(!pool||!catalog||!job||!HASH.test(job.message_id||"")||
-    !HASH.test(job.source_tx_hash||""))
-  throw Error("Observer requires a finalized canonical source operation");
- let decision,lightweight=false;
+    !HASH.test(job.source_tx_hash||"")||
+    !Number.isSafeInteger(Number(job.source_block_number))||
+    Number(job.source_block_number)<1)
+  throw Error("Observer requires an indexed canonical source operation");
+ let decision;
  try{
-  // Withdrawal or mismatch of a deployed route is an explicit configuration
-  // failure, never a missing validator signature.
-  let configured;
-  try{
-   configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
-    job.asset,job.source_tx_hash);
-  }catch(error){
-   throw Object.assign(error,{code:"PROOF_CONFIG_MISMATCH"});
-  }
+  const configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
+   job.asset,job.source_tx_hash);
   if(configured.route.source!==job.source_chain)
-   throw Object.assign(Error("Route mismatch"),{code:"PROOF_CONFIG_MISMATCH"});
-  // Poll only the local XGRChain quorum journal while signatures are pending.
-  // Existing source safety evidence remains canonical in the SQL operation.
-  // A positive status never signs: it triggers the original full verifier.
-  if(["PROOF_PENDING","PROOF_QUORUM_UNAVAILABLE"].includes(job.previousReason)){
-   const route=ilnValidatorRouteName(configured.route.source==="xgrchain"?1643:
-    catalog.chains[configured.route.source].domainId,
-    catalog.chains[configured.route.destination].domainId,configured.route.routeId);
-   // A failed local status read must not trigger an immediate L2-heavy
-   // full recovery. Keep the known pending state and retry local XGR RPC.
-   const status=await quorumPoll({route,messageId:job.message_id}).catch(()=> "PENDING");
-   const decisionType=quorumPollDecision(status,{
-    lastFullCheckMs:Date.parse(job.lastFullCheckAt||"")||0,now:now()});
-   if(decisionType==="wait"){
-    lightweight=true;
-    decision={state:"waiting",reason:job.previousReason,stage:"quorum"};
-   }
-  }
-  if(!lightweight){
+   throw Object.assign(Error("Source chain mismatch"),{code:"PROOF_CONFIG_MISMATCH"});
+  const chain=catalog.chains[configured.route.source];
+  const target=catalog.chains[configured.route.destination];
+  const route=ilnValidatorRouteName(chain.domainId,target.domainId,configured.route.routeId);
+  // A local RPC status query is inexpensive and does not query the origin
+  // chain. Never fall back to a full source-proof recovery for a missing vote.
+  const status=await quorumPoll({route,messageId:job.message_id});
+  if(status==="AVAILABLE_UNVERIFIED"){
+   // Only an existing cryptographic quorum permits the original full,
+   // unsigned delivery builder. It still checks destination state and BLS.
    const outcome=await runner(configured,{timeoutMs:35000});
    decision=classifyProofObservation(outcome);
+  }else if(status==="NOT_FOUND"||status==="EXPIRED_RETRY"){
+   // The existing node queue is idempotent. No source RPCs are consulted
+   // here, and a pending/retrying status never causes an admission flood.
+   await quorumRequest({route,messageId:job.message_id,
+    sourceBlock:Number(job.source_block_number),sourceTxHash:job.source_tx_hash});
+   decision={state:"waiting",reason:"PROOF_PENDING",stage:"quorum"};
+  }else if(["PENDING","PARTIAL_QUORUM","RETRYING_VALIDATION"].includes(status)){
+   decision={state:"waiting",reason:"PROOF_PENDING",stage:"quorum"};
+  }else{
+   throw Object.assign(Error("Unrecognized local quorum state"),{code:"PROOF_NOT_READY"});
   }
  }catch(error){
   decision=classifyProofObservation(null,error);
  }
- const attempt=job.attempts+1,seconds=lightweight?10:
-  decision.state==="waiting"?10:proofRetrySeconds(decision.state,attempt);
+ // The DB lease prevents concurrent duplicates. Local-only polling every
+ // 30s is sufficient; failed local RPCs back off and never cause source reads.
+ const attempt=job.attempts+1;
+ const seconds=decision.state==="waiting"?30:proofRetrySeconds(decision.state,attempt);
+ const fullCheck=decision.state==="ready"||decision.state==="delivery-observed"||
+   decision.stage==="unsigned-call-ready"||decision.stage==="mailbox-recheck";
  const result=await pool.query({text:`UPDATE xita_transfer_proof_observations
  SET state=$4,reason=$5,stage=$6,attempts=attempts+1,
  lease_token=NULL,lease_until=NULL,
- last_checked_at=CASE WHEN $8::boolean THEN last_checked_at ELSE NOW() END,
+ last_checked_at=CASE WHEN $8::boolean THEN NOW() ELSE last_checked_at END,
  next_check_at=NOW()+($7::integer * INTERVAL '1 second'),updated_at=NOW()
  WHERE source_chain=$1 AND message_id=$2 AND lease_token=$3
  RETURNING message_id`,
  values:[job.source_chain,job.message_id,job.leaseToken,
- decision.state,decision.reason,decision.stage,seconds,lightweight]});
+ decision.state,decision.reason,decision.stage,seconds,fullCheck]});
  return {...decision,seconds,updated:result.rows.length===1};
 }
 export async function tickProofObserver({pool,catalog,runner=runRecoveryProcess}){
