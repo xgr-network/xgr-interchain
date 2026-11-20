@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {recordVerifiedGas,observeOnwardGas,PROCESS_ID_TOPIC} from "./gas-observer.mjs";
+import {recordVerifiedGas,observeOnwardGas,observeDeliveryGas,PROCESS_ID_TOPIC} from "./gas-observer.mjs";
+import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
 const h=x=>"0x"+x.repeat(64);
 const config={chainId:8453,rpcUrls:["https://rpc.example.test"]};
 const profile={key:"base|first-delivery|collateral|synthetic|mint|test",chain:"base"};
@@ -58,4 +59,70 @@ test("F-35: unprofiled child does not stall the next statistical observation",as
  assert.equal(writes.length,1);
  assert.match(writes[0].text,/xita_gas_onward_cursors/);
  assert.deepEqual(writes[0].values,[unknown.source_indexed_at,unknown.source_tx_hash]);
+});
+
+function destinationCatalog(){
+ const asset=deployedFixture("ABC","xgrchain");
+ const infrastructure=Object.fromEntries(["xgrchain","base"].map(chain=>{
+  const components=Object.fromEntries(["factory","sourceRegistry","mailbox","ism","validatorRegistry"]
+   .map((name,i)=>{const address="0x"+String(i+1).repeat(40);
+    return [name,{address,runtimeCodeKeccak256:h("e"),receiptPath:
+     "deployments/receipts/"+chain+"/"+("a".repeat(64))+"-"+address.slice(2)+".json"}];}));
+  return [chain,{present:true,chainId:chain==="base"?8453:1643,
+   xitaV315:{components,receiptPaths:Object.values(components).map(v=>v.receiptPath)}}];
+ }));
+ return {chains:{xgrchain:{chainId:1643},base:{chainId:8453}},
+  infrastructure,assets:{ABC:asset}};
+}
+test("F-35: unmatched permissionless ProcessId does not pin optional gas cursor",async()=>{
+ const catalog=destinationCatalog();
+ const mailbox=catalog.infrastructure.base.xitaV315.components.mailbox.address;
+ const rpcCalls=[],writes=[];
+ const rpc=async(chain,method,params)=>{
+  rpcCalls.push({chain:chain.chainId,method,params});
+  if(method==="eth_chainId")return "0x"+chain.chainId.toString(16);
+  if(method==="eth_getBlockByNumber"){
+   const n=params[0]==="safe"?600:Number(BigInt(params[0]));
+   return {number:"0x"+n.toString(16),hash:h("b")};
+  }
+  if(method==="eth_getLogs"){
+   if(chain.chainId!==8453)return [];
+   return [{address:mailbox,transactionHash:h("a"),blockHash:h("b"),
+    blockNumber:"0x78",topics:[PROCESS_ID_TOPIC,h("c")]}];
+  }
+  throw Error("Unexpected RPC: "+method);
+ };
+ const pool={query:async q=>{
+  const text=q.text||q;
+  if(text.includes("FROM xita_gas_observation_cursors"))
+   return {rows:q.values[0]==="base"?[{scanned_to:119,scanned_hash:h("b")}]:[]};
+  if(text.includes("FROM xita_transfer_operations"))return {rows:[]};
+  if(text.includes("INSERT INTO xita_gas_observation_cursors")){writes.push(q);return {rows:[]};}
+  throw Error("Unexpected SQL");
+ }};
+ const measured=await observeDeliveryGas({catalog,pool,rpc,limit:150});
+ assert.equal(measured,0);
+ assert.ok(writes.some(q=>q.values[0]==="base"&&q.values[2]===120));
+ assert.ok(rpcCalls.some(c=>c.chain===8453&&c.method==="eth_getLogs"));
+ assert.equal(rpcCalls.filter(c=>c.method==="eth_getTransactionReceipt").length,0);
+});
+test("optional gas observer does not sample or advance into indexer grace window",async()=>{
+ const catalog=destinationCatalog(),calls=[];
+ const pool={query:async q=>{
+  const text=q.text||q;
+  if(text.includes("FROM xita_gas_observation_cursors"))
+   return {rows:[{scanned_to:120,scanned_hash:h("b")}]};
+  throw Error("No RPC scanning beyond delayed finalized head");
+ }};
+ const rpc=async(chain,method,params)=>{
+  calls.push(method);
+  if(method==="eth_chainId")return "0x"+chain.chainId.toString(16);
+  if(method==="eth_getBlockByNumber"){
+   const n=params[0]==="safe"||params[0]==="latest"?600:Number(BigInt(params[0]));
+   return {number:"0x"+n.toString(16),hash:h("b")};
+  }
+  throw Error("Unexpected RPC");
+ };
+ assert.equal(await observeDeliveryGas({catalog,pool,rpc}),0);
+ assert.ok(!calls.includes("eth_getLogs"));
 });

@@ -84,9 +84,13 @@ export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
  }
  return measured;
 }
-// Scan each deployed destination Mailbox only once per safe block window.
+// Scan each deployed destination Mailbox once per bounded historical window.
+// Defer optional samples behind the independent delivery indexer's retry window
+// (at least 60s, including fast-block chains). Missing catalog rows cannot
+// authorize a gas sample or pin this statistical cursor indefinitely.
 // Contract addresses and chains come exclusively from verified catalog receipts.
-export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
+const DELIVERY_GAS_INDEX_GRACE_BLOCKS=480;
+export async function observeDeliveryGas({catalog,pool,rpc,limit=150}){
  const routes=deployedRoutes(catalog),groups=new Map();
  for(const route of routes){
   const chain=route.destination,mailbox=catalog.infrastructure?.[chain]?.xitaV315?.components?.mailbox;
@@ -101,19 +105,21 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
   const cfg=catalog.chains[group.chain];
   try{
    const safe=await readNativeFinalityHead((m,args)=>rpc(cfg,m,args),cfg.chainId);
+   const eligibleTo=Math.max(0,safe.number-DELIVERY_GAS_INDEX_GRACE_BLOCKS);
+   if(eligibleTo<1)continue;
    const previous=await pool.query({text:`SELECT scanned_to,scanned_hash FROM
     xita_gas_observation_cursors WHERE chain_name=$1 AND mailbox=$2`,
     values:[group.chain,group.mailbox]});
    if(previous.rows.length>1)continue;
    let from=previous.rows.length?Number(previous.rows[0].scanned_to)+1:
-    Math.max(1,safe.number-limit+1);
+    Math.max(1,eligibleTo-limit+1);
+   if(from>eligibleTo)continue;
    if(previous.rows.length){
     const height=Number(previous.rows[0].scanned_to);
     const old=await rpc(cfg,"eth_getBlockByNumber",[hex(height),false]);
     if(!old||!eq(old.hash,previous.rows[0].scanned_hash))continue;
    }
-   if(from>safe.number)continue;
-   const to=Math.min(safe.number,from+limit-1);
+   const to=Math.min(eligibleTo,from+limit-1);
    const logs=await rpc(cfg,"eth_getLogs",[{
     address:group.mailbox,topics:[PROCESS_ID_TOPIC],
     fromBlock:hex(from),toBlock:hex(to)
@@ -124,17 +130,21 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
     if(!eq(log.address,group.mailbox)||!HASH.test(log.transactionHash||"")||
       !HASH.test(log.topics?.[1]||"")||log.removed===true)continue;
     const operation=await pool.query({text:`SELECT source_chain,route_id,
-     destination_mailbox,parent_message_id FROM xita_transfer_operations
-     WHERE destination_chain=$1 AND message_id=$2 AND delivered=TRUE
-     LIMIT 2`,values:[group.chain,log.topics[1].toLowerCase()]});
-    if(operation.rows.length!==1){incomplete=true;continue;}
-    if(!eq(operation.rows[0].destination_mailbox,group.mailbox))continue;
+     destination_mailbox,parent_message_id,delivered FROM xita_transfer_operations
+     WHERE destination_chain=$1 AND message_id=$2 LIMIT 2`,
+     values:[group.chain,log.topics[1].toLowerCase()]});
+    // F-35: permissionless/out-of-catalog ProcessId events, unresolved rows
+    // and unprofiled routes do not own the OPTIONAL gas-sampling cursor.
+    // The delayed scan gives the independent delivery indexer time to catch
+    // up; a missed optional sample cannot alter delivery or custody state.
+    if(operation.rows.length!==1)continue;
     const row=operation.rows[0];
+    if(!eq(row.destination_mailbox,group.mailbox)||row.delivered!==true)continue;
     const route=group.routes.filter(r=>r.source===row.source_chain&&eq(r.routeId,row.route_id));
-    if(route.length!==1){incomplete=true;continue;}
+    if(route.length!==1)continue;
     const profile=transferGasProfile(catalog,route[0],
      row.parent_message_id?"final-delivery":"first-delivery");
-    if(!profile){incomplete=true;continue;}
+    if(!profile)continue;
     if(await recordVerifiedGas({pool,rpc,chain:group.chain,chainConfig:cfg,
      txHash:log.transactionHash,profile,expectedBlock:num(log.blockNumber),
      expectedBlockHash:log.blockHash}))measured++;
