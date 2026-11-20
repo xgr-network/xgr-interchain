@@ -27,9 +27,9 @@ function sqlPool(overrides={}){
    queries.push(sql);
    if(sql.includes("SELECT feed_cursor,catalog_sha256,indexed_to"))
     return {rows:[{...row}]};
+   if(overrides.fail?.(sql))throw Error("transaction denied");
    if(sql.includes("INSERT INTO xita_transfer_index_cursors"))
     return {rows:[{route_id:routes[0]?.routeId}]};
-   if(overrides.fail?.(sql))throw Error("transaction denied");
    return {rows:[],rowCount:1};
   },release:()=>{}
  };
