@@ -80,6 +80,29 @@ export async function ingestNodeSourcePage({catalog,pool,rpc,sourceChain,
  const routes=canonicalSourceRoutes(catalog,sourceChain);
  if(!routes.length)return {sourceChain,status:"not-configured",indexed:0};
  const coverage=await nodeCoverage(rpc,sourceChain);
+ // A source-wide cursor does not establish that EACH configured Gateway is
+ // registered in the Node observer. Require explicit fresh per-route health.
+ const routeHealth=await rpc("xgr_getILNIndexerStatus",[]);
+ if(routeHealth?.version!==2||routeHealth.workerAlive!==true||
+    !Array.isArray(routeHealth.routes)||
+    !Number.isSafeInteger(routeHealth.updatedUnix)||
+    Math.abs(Date.now()/1000-routeHealth.updatedUnix)>120)
+  throw Error("Node independent route observer is stale");
+ for(const route of routes){
+  const suffix="_"+route.routeId.slice(2).toLowerCase();
+  const matched=routeHealth.routes.filter(r=>
+   r.source===nodeChainName(sourceChain)&&
+   r.destination===nodeChainName(route.destinationChain)&&
+   typeof r.route==="string"&&r.route.toLowerCase().endsWith(suffix));
+  if(matched.length!==1||!matched[0].sourceHeadKnown||
+     !matched[0].scanCursorKnown||
+     matched[0].state!=="ok"||
+     matched[0].sourceHead<coverage.indexedTo||
+     matched[0].scanCursor<coverage.indexedTo||
+     !Number.isSafeInteger(matched[0].lastSuccessfulScanUnix)||
+     Math.abs(Date.now()/1000-matched[0].lastSuccessfulScanUnix)>120)
+   throw Error("Node missing complete observer coverage for "+route.routeName);
+ }
  const hash=catalogDigest(catalog);
  const startCursor=await cursorState(pool,sourceChain,hash);
  const source=nodeChainName(sourceChain);
@@ -135,7 +158,7 @@ export async function ingestNodeSourcePage({catalog,pool,rpc,sourceChain,
    for(const route of routes){
     if(coverage.indexedTo<route.deploymentBlock-1)
      throw Error("Node source index precedes route deployment");
-    await db.query({text:`INSERT INTO xita_transfer_index_cursors
+    const saved=await db.query({text:`INSERT INTO xita_transfer_index_cursors
       (source_chain,route_name,gateway,route_id,deployment_block,
        scanned_to,scanned_hash,finalized_head,updated_at)
       VALUES($1,$2,$3,$4,$5,$6,NULL,$6,NOW())
@@ -145,9 +168,11 @@ export async function ingestNodeSourcePage({catalog,pool,rpc,sourceChain,
        finalized_head=EXCLUDED.finalized_head,updated_at=NOW()
       WHERE xita_transfer_index_cursors.gateway=EXCLUDED.gateway
         AND xita_transfer_index_cursors.deployment_block=EXCLUDED.deployment_block
-        AND xita_transfer_index_cursors.scanned_to<=EXCLUDED.scanned_to`,
+        AND xita_transfer_index_cursors.scanned_to<=EXCLUDED.scanned_to
+      RETURNING route_id`,
      values:[sourceChain,route.routeName,route.gateway,route.routeId,
       route.deploymentBlock,coverage.indexedTo]});
+    if(saved.rows.length!==1)throw Error("Node route cursor conflicts with deployed Gateway");
    }
   }
   await db.query({text:`UPDATE xita_node_index_cursors SET
