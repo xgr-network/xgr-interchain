@@ -1,5 +1,5 @@
 [Unit]
-Description=XITA verified token-agnostic native and ERC20 escrow TVL (read only)
+Description=XITA verified TVL from XGR Node read index and CoinGecko
 After=network-online.target postgresql.service xita-transfer-indexer.service
 Wants=network-online.target
 
