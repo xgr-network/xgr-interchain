@@ -268,11 +268,31 @@ test("successful finalized initial adapter fee is recorded once, without assumin
  assert.match(queries.find(q=>q.includes("INSERT INTO xita_tax_charged_fees")),/ON CONFLICT\(source_chain,message_id\) DO NOTHING/);
 });
 
-test("M-02: finality-qualified false reopens a previously completed delivery",async()=>{
+test("completed deliveries are never re-queried, while pending/null are scheduled",async()=>{
  const queries=[],pool={query:async q=>{
   queries.push(q);
-  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))return {
-   rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
+  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))
+   return {rows:[]};
+  throw Error("No finalized row may be changed");
+ }};
+ let calls=0;
+ const outcome=await refreshPendingDeliveries({pool,routes:[route],
+  rpc:async()=>{calls++;throw Error("Unexpected destination RPC");}});
+ assert.deepEqual(outcome,{checked:0,delivered:0,unknown:0});
+ assert.equal(calls,0);
+ assert.equal(queries.length,1);
+ assert.match(queries[0].text,/o[.]delivered IS DISTINCT FROM TRUE/);
+ assert.match(queries[0].text,/delivery_attempted_at<=NOW\(\)-INTERVAL '60 seconds'/);
+ assert.match(queries[0].text,/WHERE EXISTS/);
+ assert.ok(queries[0].text.indexOf("o.delivered IS DISTINCT FROM TRUE")<
+  queries[0].text.indexOf("LIMIT"),"filter before LIMIT");
+});
+
+test("finalized false stays open and next check retains bounded retry",async()=>{
+ const queries=[],pool={query:async q=>{
+  queries.push(q);
+  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))
+   return {rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
   return {rows:[],rowCount:1};
  }};
  const reader=rpc({
@@ -283,14 +303,13 @@ test("M-02: finality-qualified false reopens a previously completed delivery",as
  const result=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
  assert.equal(result.checked,1);
  assert.equal(result.delivered,0);
- assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
+ assert.match(queries[0].text,/o[.]delivered IS DISTINCT FROM TRUE/);
  const update=queries.find(q=>q.text.includes("destination_checked_block=$4"));
  assert.ok(update);
  assert.equal(update.values[2],false);
  assert.equal(update.values[3],200);
  assert.equal(update.values[4],hash("e"));
 });
-
 test("F-26: retired routes cannot starve active deliveries in a bounded sweep",async()=>{
  const orphanRows=Array.from({length:125},(_,i)=>({
   source_chain:SOURCE,route_id:hash("f"),message_id:hash((i%10).toString())
@@ -302,6 +321,7 @@ test("F-26: retired routes cannot starve active deliveries in a bounded sweep",a
   const sql=q.text;
   if(sql.startsWith("SELECT o.source_chain,o.route_id,o.message_id")){
    assert.match(sql,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
+    assert.match(sql,/o[.]delivered IS DISTINCT FROM TRUE/);
    assert.match(sql,/JOIN|\(VALUES\s+\(\$1::text,\$2::char\(66\)\)/);
    assert.ok(sql.indexOf("WHERE EXISTS")<sql.indexOf("LIMIT"),
     "filter must be applied before bounding the backlog");
