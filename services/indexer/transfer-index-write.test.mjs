@@ -44,8 +44,8 @@ test("conflicting immutable historical operation is rejected, not overwritten",a
 });
 test("onward child cannot invent a second paid intermediary",async()=>{
  const child={...record,sourceChain:"xgrchain",destinationChain:"base",
- parentMessageId:hash("9"),executionAdapter:addr("4"),onwardRouteId:hash("3"),
- interchainFeeWei:null};
+ parentMessageId:hash("9"),executionAdapter:addr("4"),onwardRouteId:null,
+ interchainFeeWei:"100"};
  const actual={...route,sourceChain:"xgrchain",destinationChain:"base"};
  await assert.rejects(()=>storeVerifiedOperation({query:async()=>{throw Error("must not write")}},
   {route:actual,event,record:child}),/Invalid cryptographically linked/);
