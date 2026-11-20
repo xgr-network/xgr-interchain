@@ -7,6 +7,9 @@ import {readFileSync} from "node:fs";
 import {indexedRoutes,readRouteWindow,readSourceWindow,verifiedTransfer,checkedDelivery,canonicalRpc,candidateRpc} from "./transfer-index.mjs";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
+import {tickGasObserver,enqueueDeliveryGasJob} from "./gas-observer.mjs";
+import {tvlSnapshot} from "./tvl-worker.mjs";
+import {storeIndexerTvlSnapshot} from "./indexer-tvl-snapshot.mjs";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const normalize=x=>String(x||"").toLowerCase();
 export async function loadCursor(pool,route){
@@ -228,7 +231,13 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
     WHERE source_chain=$1 AND message_id=$2`,
     values:[row.source_chain,row.message_id,result.delivered,
       result.finalizedHead,result.finalizedHash]});
-   checked++;if(result.delivered)delivered++;
+   // Already-finalized delivery is durable even if optional gas scheduling
+   // fails. The recovery queue must never be discarded.
+   if(result.delivered){
+    await enqueueDeliveryGasJob({pool,row,route,finalizedHead:result.finalizedHead});
+    delivered++;
+   }
+   checked++;
   }catch{unknown++;}
   finally{
    // Scheduling metadata only: an RPC timeout does NOT assert delivery status.
@@ -708,6 +717,10 @@ export async function runTransferIndexWorker({intervalMs=INDEXER_IDLE_MS,
  process.once("SIGTERM",()=>{running=false;});
  process.once("SIGINT",()=>{running=false;});
  const lastScannedAt=new Map();
+ let lastGasAt=0,lastTvlAt=0;
+ // One canonical RPC transport and provider cooldown for all operational reads.
+ // Validator source witnesses remain independent and outside this process.
+
  while(running){
   const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
   const routes=indexedRoutes(catalog);
@@ -718,6 +731,25 @@ export async function runTransferIndexWorker({intervalMs=INDEXER_IDLE_MS,
    sourceChains:routes.map(r=>r.sourceChain),activeSources,lastScannedAt,now,
    idleMs:intervalMs,activeMs:activeIntervalMs
   });
+  // Optional gas receipts and verified TVL are sampled in this INDEXER,
+  // never by independent chain-polling processes.
+  if(now-lastGasAt>=60000){
+   lastGasAt=now;
+   try{
+    const stats=await tickGasObserver({catalog,pool,rpc});
+    if(stats.onward||stats.delivery)
+     console.log("[xita-indexer-gas] recorded",JSON.stringify(stats));
+   }catch(error){console.warn("[xita-indexer-gas] unavailable",
+    String(error?.message||error).slice(0,150));}
+  }
+  if(now-lastTvlAt>=60000){
+   lastTvlAt=now;
+   try{
+    const snap=await tvlSnapshot({catalog,pool,read:rpc});
+    await storeIndexerTvlSnapshot({pool,catalog,snapshot:snap});
+   }catch(error){console.warn("[xita-indexer-tvl] unavailable",
+    String(error?.message||error).slice(0,150));}
+  }
   if(due.size){
    // Mark BEFORE RPC activity. A slow or failed provider must not cause an
    // immediate retry storm on the next wake-up.
