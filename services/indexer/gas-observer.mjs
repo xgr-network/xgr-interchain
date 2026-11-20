@@ -115,9 +115,11 @@ export async function observeDeliveryGas({catalog,pool,rpc,limit=MAX_DELIVERY_GA
  let measured=0;
  for(const job of jobs.rows){
   try{
+   const mailbox=catalog.infrastructure?.[job.destination_chain]?.xitaV315?.components?.mailbox?.address;
+   if(!ADDR.test(mailbox||"")||!eq(mailbox,job.mailbox))
+    throw Error("Destination mailbox no longer matches receipt catalog");
    const group=routes.filter(route=>route.source===job.source_chain&&
-    route.destination===job.destination_chain&&
-    eq(route.destinationMailbox,job.mailbox));
+    route.destination===job.destination_chain);
    // Legacy route metadata must never authorize an ambiguous gas profile.
    const op=await pool.query({text:`SELECT route_id,parent_message_id,delivered,
      destination_checked_block,destination_checked_hash
