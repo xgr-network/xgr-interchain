@@ -84,83 +84,104 @@ export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
  }
  return measured;
 }
-// Scan each deployed destination Mailbox once per bounded historical window.
-// Defer optional samples behind the independent delivery indexer's retry window
-// (at least 60s, including fast-block chains). Missing catalog rows cannot
-// authorize a gas sample or pin this statistical cursor indefinitely.
-// Contract addresses and chains come exclusively from verified catalog receipts.
-const DELIVERY_GAS_INDEX_GRACE_BLOCKS=480;
-export async function observeDeliveryGas({catalog,pool,rpc,limit=150}){
- const routes=deployedRoutes(catalog),groups=new Map();
- for(const route of routes){
-  const chain=route.destination,mailbox=catalog.infrastructure?.[chain]?.xitaV315?.components?.mailbox;
-  if(!ADDR.test(mailbox?.address||"")||!Number.isSafeInteger(catalog.chains?.[chain]?.chainId))
-   continue;
-  const key=chain+":"+mailbox.address.toLowerCase();
-  if(!groups.has(key))groups.set(key,{chain,mailbox:mailbox.address.toLowerCase(),routes:[]});
-  groups.get(key).routes.push(route);
- }
+// Delivery gas work is enqueued atomically after a FINALITY-VERIFIED Mailbox
+// delivered=true check in the canonical transfer indexer. Jobs contain only
+// identities and previously confirmed destination block bounds, never proof
+// of delivery or authorization to pay or sign. No idle eth_getLogs calls.
+export async function enqueueDeliveryGasJob({pool,row,route,finalizedHead}){
+ if(!HASH.test(row.message_id||"")||!ADDR.test(route?.destinationMailbox||"")||
+    !Number.isSafeInteger(finalizedHead)||finalizedHead<1)
+  throw Error("Invalid finalized gas job");
+ await pool.query({text:`INSERT INTO public.xita_gas_delivery_jobs
+   (source_chain,message_id,destination_chain,mailbox,scan_min_block,scan_next_to)
+   VALUES($1,$2,$3,$4,1,$5)
+   ON CONFLICT(source_chain,message_id) DO NOTHING`,
+  values:[row.source_chain,row.message_id,route.destinationChain,
+   route.destinationMailbox.toLowerCase(),finalizedHead]});
+}
+const MAX_DELIVERY_GAS_JOBS_PER_TICK=4;
+const GAS_SCAN_WINDOW=150;
+// The exact source_chain/message_id pair is unique; unrelated Mailbox ProcessId
+// logs never cause receipt reads. Backward windows cannot skip an event mined
+// before the first completed finality-qualified delivery check.
+export async function observeDeliveryGas({catalog,pool,rpc,limit=MAX_DELIVERY_GAS_JOBS_PER_TICK}){
+ if(!Number.isInteger(limit)||limit<1||limit>16)throw Error("Invalid gas job limit");
+ const jobs=await pool.query({text:`SELECT source_chain,message_id,destination_chain,
+   mailbox,scan_min_block,scan_next_to,attempts
+   FROM public.xita_gas_delivery_jobs
+   WHERE completed_at IS NULL AND next_attempt_at<=NOW()
+   ORDER BY next_attempt_at,created_at LIMIT $1`,values:[limit]});
+ const routes=deployedRoutes(catalog);
  let measured=0;
- for(const group of groups.values()){
-  const cfg=catalog.chains[group.chain];
+ for(const job of jobs.rows){
   try{
-   const safe=await readNativeFinalityHead((m,args)=>rpc(cfg,m,args),cfg.chainId);
-   const eligibleTo=Math.max(0,safe.number-DELIVERY_GAS_INDEX_GRACE_BLOCKS);
-   if(eligibleTo<1)continue;
-   const previous=await pool.query({text:`SELECT scanned_to,scanned_hash FROM
-    xita_gas_observation_cursors WHERE chain_name=$1 AND mailbox=$2`,
-    values:[group.chain,group.mailbox]});
-   if(previous.rows.length>1)continue;
-   let from=previous.rows.length?Number(previous.rows[0].scanned_to)+1:
-    Math.max(1,eligibleTo-limit+1);
-   if(from>eligibleTo)continue;
-   if(previous.rows.length){
-    const height=Number(previous.rows[0].scanned_to);
-    const old=await rpc(cfg,"eth_getBlockByNumber",[hex(height),false]);
-    if(!old||!eq(old.hash,previous.rows[0].scanned_hash))continue;
+   const group=routes.filter(route=>route.source===job.source_chain&&
+    route.destination===job.destination_chain&&
+    eq(route.destinationMailbox,job.mailbox));
+   // Legacy route metadata must never authorize an ambiguous gas profile.
+   const op=await pool.query({text:`SELECT route_id,parent_message_id,delivered,
+     destination_checked_block,destination_checked_hash
+     FROM xita_transfer_operations WHERE source_chain=$1 AND message_id=$2
+     AND destination_chain=$3 AND destination_mailbox=$4 LIMIT 2`,
+    values:[job.source_chain,job.message_id,job.destination_chain,job.mailbox]});
+   if(op.rows.length!==1||op.rows[0].delivered!==true||
+      !HASH.test(op.rows[0].destination_checked_hash||""))
+    throw Error("Gas job has no verified completed destination evidence");
+   const selected=group.filter(route=>eq(route.routeId,op.rows[0].route_id));
+   if(selected.length!==1)throw Error("Unknown canonical gas route");
+   const profile=transferGasProfile(catalog,selected[0],
+    op.rows[0].parent_message_id?"final-delivery":"first-delivery");
+   if(!profile)throw Error("No canonical gas profile");
+   const cfg=catalog.chains[job.destination_chain];
+   if(!cfg||!Number.isSafeInteger(cfg.chainId))throw Error("No gas destination chain");
+   const last=Number(job.scan_next_to),min=Number(job.scan_min_block);
+   if(!Number.isSafeInteger(last)||!Number.isSafeInteger(min)||min<1||
+      last<min-1||last>Number(op.rows[0].destination_checked_block))
+    throw Error("Invalid persisted delivery gas scan bound");
+   if(last<min){
+    await pool.query({text:`UPDATE xita_gas_delivery_jobs SET
+      completed_at=NOW(),result='not-found'
+      WHERE source_chain=$1 AND message_id=$2 AND completed_at IS NULL`,
+     values:[job.source_chain,job.message_id]});
+    continue;
    }
-   const to=Math.min(eligibleTo,from+limit-1);
+   const from=Math.max(min,last-GAS_SCAN_WINDOW+1);
    const logs=await rpc(cfg,"eth_getLogs",[{
-    address:group.mailbox,topics:[PROCESS_ID_TOPIC],
-    fromBlock:hex(from),toBlock:hex(to)
+    address:job.mailbox,topics:[PROCESS_ID_TOPIC,job.message_id],
+    fromBlock:hex(from),toBlock:hex(last)
    }]);
-   if(!Array.isArray(logs)||logs.length>1000)continue;
-   let incomplete=false;
-   for(const log of logs){
-    if(!eq(log.address,group.mailbox)||!HASH.test(log.transactionHash||"")||
-      !HASH.test(log.topics?.[1]||"")||log.removed===true)continue;
-    const operation=await pool.query({text:`SELECT source_chain,route_id,
-     destination_mailbox,parent_message_id,delivered FROM xita_transfer_operations
-     WHERE destination_chain=$1 AND message_id=$2 LIMIT 2`,
-     values:[group.chain,log.topics[1].toLowerCase()]});
-    // F-35: permissionless/out-of-catalog ProcessId events, unresolved rows
-    // and unprofiled routes do not own the OPTIONAL gas-sampling cursor.
-    // The delayed scan gives the independent delivery indexer time to catch
-    // up; a missed optional sample cannot alter delivery or custody state.
-    if(operation.rows.length!==1)continue;
-    const row=operation.rows[0];
-    if(!eq(row.destination_mailbox,group.mailbox)||row.delivered!==true)continue;
-    const route=group.routes.filter(r=>r.source===row.source_chain&&eq(r.routeId,row.route_id));
-    if(route.length!==1)continue;
-    const profile=transferGasProfile(catalog,route[0],
-     row.parent_message_id?"final-delivery":"first-delivery");
-    if(!profile)continue;
-    if(await recordVerifiedGas({pool,rpc,chain:group.chain,chainConfig:cfg,
-     txHash:log.transactionHash,profile,expectedBlock:num(log.blockNumber),
-     expectedBlockHash:log.blockHash}))measured++;
-    else incomplete=true;
+   if(!Array.isArray(logs)||logs.length>4)throw Error("Ambiguous ProcessId history");
+   const found=logs.filter(log=>eq(log.address,job.mailbox)&&
+      eq(log.topics?.[0],PROCESS_ID_TOPIC)&&eq(log.topics?.[1],job.message_id)&&
+      HASH.test(log.transactionHash||"")&&!log.removed&&
+      num(log.blockNumber)>=from&&num(log.blockNumber)<=last);
+   if(found.length>1)throw Error("Ambiguous ProcessId receipt");
+   if(found.length===1){
+    const log=found[0];
+    const ok=await recordVerifiedGas({pool,rpc,chain:job.destination_chain,
+      chainConfig:cfg,txHash:log.transactionHash,profile,
+      expectedBlock:num(log.blockNumber),expectedBlockHash:log.blockHash});
+    if(!ok)throw Error("Incomplete canonical gas receipt");
+    measured++;
+    await pool.query({text:`UPDATE xita_gas_delivery_jobs SET
+      completed_at=NOW(),result='observed' WHERE source_chain=$1 AND
+      message_id=$2 AND completed_at IS NULL`,
+     values:[job.source_chain,job.message_id]});
+   }else{
+    await pool.query({text:`UPDATE xita_gas_delivery_jobs SET
+      scan_next_to=$3,next_attempt_at=NOW()+INTERVAL '60 seconds'
+      WHERE source_chain=$1 AND message_id=$2 AND completed_at IS NULL`,
+     values:[job.source_chain,job.message_id,from-1]});
    }
-   if(incomplete)continue;
-   const end=await rpc(cfg,"eth_getBlockByNumber",[hex(to),false]);
-   if(!end||!HASH.test(end.hash||"")||num(end.number)!==to)continue;
-   await pool.query({text:`INSERT INTO xita_gas_observation_cursors
-    (chain_name,mailbox,scanned_to,scanned_hash)
-    VALUES($1,$2,$3,$4) ON CONFLICT(chain_name,mailbox)
-    DO UPDATE SET scanned_to=EXCLUDED.scanned_to,
-     scanned_hash=EXCLUDED.scanned_hash,updated_at=NOW()
-    WHERE xita_gas_observation_cursors.scanned_to<EXCLUDED.scanned_to`,
-    values:[group.chain,group.mailbox,to,end.hash.toLowerCase()]});
-  }catch{/* Fail closed for this chain and do not advance its cursor. */}
+  }catch{
+   // An incomplete/malicious RPC response can never advance the optional gas
+   // cursor. Delay uniformly even if the underlying provider is unavailable.
+   await pool.query({text:`UPDATE xita_gas_delivery_jobs SET
+    attempts=LEAST(attempts+1,1000),
+    next_attempt_at=NOW()+INTERVAL '5 minutes'
+    WHERE source_chain=$1 AND message_id=$2 AND completed_at IS NULL`,
+    values:[job.source_chain,job.message_id]}).catch(()=>{});
+  }
  }
  return measured;
 }
