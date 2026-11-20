@@ -83,8 +83,13 @@ export async function observeProofJob({pool,catalog,job,runner=runRecoveryProces
   throw Error("Observer requires an indexed canonical source operation");
  let decision;
  try{
-  const configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
-   job.asset,job.source_tx_hash);
+  let configured;
+  try{
+   configured=resolveRecoveryRoute(catalog,job.route_name,job.message_id,
+    job.asset,job.source_tx_hash);
+  }catch(error){
+   throw Object.assign(error,{code:"PROOF_CONFIG_MISMATCH"});
+  }
   if(configured.route.source!==job.source_chain)
    throw Object.assign(Error("Source chain mismatch"),{code:"PROOF_CONFIG_MISMATCH"});
   const chain=catalog.chains[configured.route.source];
