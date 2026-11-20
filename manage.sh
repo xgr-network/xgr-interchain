@@ -71,7 +71,7 @@ check() {
     echo "Checking XITA manifests, web and admin ..."
     node tools/validate-manifests.mjs
     node tools/build-xeta-web-catalog.mjs --check
-    node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/source-tx-hints.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs services/onboarding/creator-logo-png.test.mjs services/onboarding/creator-registration.test.mjs tools/validate-join-pr.test.mjs
+    node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs services/indexer/transfer-intake.test.mjs services/indexer/node-index-projector.test.mjs apps/web/legal.test.mjs apps/web/keccak.test.mjs apps/web/experience.test.mjs apps/web/wallet-transfers.test.mjs apps/web/wallet-pending.test.mjs apps/web/source-tx-hints.test.mjs apps/web/transfer-actions.test.mjs apps/web/wallet-nonce.test.mjs apps/web/transfer-page.test.mjs apps/web/leaderboard-data.test.mjs services/indexer/server.test.mjs services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-index-write.test.mjs services/indexer/xgr-node-index-source.test.mjs services/indexer/xgr-node-index-gas.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs services/onboarding/manifests.test.mjs services/onboarding/coingecko-identity.test.mjs services/onboarding/private-store.test.mjs services/onboarding/status-notifier.test.mjs services/onboarding/server.test.mjs services/onboarding/creator-logo-png.test.mjs services/onboarding/creator-registration.test.mjs tools/validate-join-pr.test.mjs
     node --test tools/stamp-xita-web-style.test.mjs tools/transfer-intake-nginx.test.mjs tools/manage-web-release.test.mjs tools/verify-iln-route-catalog.test.mjs tools/transfer-recovery-nginx.test.mjs tools/interchain-fee-nginx.test.mjs
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
@@ -677,6 +677,10 @@ install_tvl() (
     echo "ERROR: /etc/xita/indexer.env unavailable to the system manager" >&2
     return 1
   fi
+  if ! privileged grep -q '^XITA_XGR_INDEX_RPC_URL=https\?://' /etc/xita/indexer.env; then
+    echo "ERROR: trusted XITA_XGR_INDEX_RPC_URL missing from read-only indexer.env" >&2
+    return 1
+  fi
   if ! privileged grep -q '^XITA_INDEXER_DATABASE_URL=postgresql' /etc/xita/indexer.env; then
     echo "ERROR: existing indexer read-only PostgreSQL connection missing" >&2
     return 1
@@ -707,13 +711,17 @@ repair_transfer_db() (
   [[ "$db" =~ ^[a-z][a-z0-9_]*$ ]] || { echo "ERROR: Invalid local DB name" >&2; return 1; }
   echo "Checking PostgreSQL availability for existing XITA database $db ..."
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" -Atqc "SELECT 1" >/dev/null
-  echo "Applying additive XITA transfer migrations 005 and 006 ..."
+  echo "Applying additive XITA transfer and Node-index migrations 005, 006, 019, 020 ..."
   # stdin is opened by checkout owner: postgres cannot necessarily traverse
   # the private /home/xgradmin repository under sudo.
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
     < "$ROOT/services/indexer/sql/005_transfer_announcements.sql"
   privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
     < "$ROOT/services/indexer/sql/006_transfer_flow_timestamps.sql"
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/019_node_index_projection.sql"
+  privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$db" \
+    < "$ROOT/services/indexer/sql/020_node_index_gas_jobs.sql"
   echo "Verifying actual transfer schema ..."
   # Plain SELECT avoids fragile dollar-quoted procedural SQL; no dynamic SQL.
   local schema_ok role_present
@@ -827,8 +835,8 @@ complete_update() {
   if systemctl is-active --quiet xita-tvl.service 2>/dev/null; then
     privileged systemctl restart xita-tvl.service
   fi
-  # Archive-RPC selection and canonical catalog updates must reach the live
-  # history worker too; leaving its prior Node process running keeps stale RPCs.
+  # Restart XGR-only SQL projection after canonical catalog updates; no
+  # independent foreign-chain RPC scanner is restarted.
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
   fi

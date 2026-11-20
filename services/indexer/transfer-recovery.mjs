@@ -7,7 +7,7 @@ import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {selector} from "../../apps/web/keccak.js";
 import {rpc as readPublicRpc} from "../../tools/probe-base-rpc.mjs";
-import {rpcCandidates} from "./transfer-index.mjs";
+import {rpcCandidates} from "./rpc-provider-policy.mjs";
 const root=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const HASH=/^0x[0-9a-f]{64}$/i;

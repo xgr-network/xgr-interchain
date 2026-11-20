@@ -1,5 +1,5 @@
 [Unit]
-Description=XITA finalized Gateway/Mailbox event index (read-only RPC, derived DB writes)
+Description=XITA XGR Node-index to PostgreSQL projector (no foreign-chain RPC)
 After=network-online.target postgresql.service
 Wants=network-online.target
 
@@ -8,7 +8,7 @@ Type=simple
 User=xgradmin
 WorkingDirectory=/home/xgradmin/repos/xgr-interchain
 EnvironmentFile=/etc/xita/transfer-indexer.env
-ExecStart=/usr/bin/node services/indexer/transfer-index-worker.mjs
+ExecStart=/usr/bin/node services/indexer/node-index-projector.mjs
 Restart=on-failure
 RestartSec=10
 NoNewPrivileges=true

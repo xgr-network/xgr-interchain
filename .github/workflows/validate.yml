@@ -112,17 +112,25 @@ jobs:
         run: node --test tools/interchain-fee-nginx.test.mjs
 
       - name: Validate persisted wallet TX announcement intake
-        run: node --test services/indexer/transfer-intake.test.mjs services/indexer/transfer-announcements.test.mjs tools/transfer-intake-nginx.test.mjs
+        run: node --test services/indexer/transfer-intake.test.mjs services/indexer/node-index-projector.test.mjs tools/transfer-intake-nginx.test.mjs
       - name: Validate indexer metrics server
         run: node --test services/indexer/server.test.mjs
       - name: Validate token-agnostic TVL and 24h escrow gross volume
         run: node --test services/indexer/tvl-verifier.test.mjs services/indexer/escrow-flow-24h.test.mjs
+      - name: Validate XGR indexed collateral and source evidence adapters
+        run: node --test services/indexer/xgr-node-index-escrow.test.mjs services/indexer/xgr-node-index-source.test.mjs services/indexer/xgr-node-index-delivery.test.mjs services/indexer/xgr-node-index-gas.test.mjs
 
       - name: Install read-only indexer dependencies for live route audit
         run: npm install --prefix services/indexer --ignore-scripts --no-audit --no-fund --package-lock=false
 
       - name: Validate unsigned on-chain destination recovery
-        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-proof-observer.test.mjs services/indexer/xgr-quorum-poll.test.mjs services/indexer/transfer-index.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
+        run: node --test services/indexer/route-readiness.test.mjs services/indexer/transfer-recovery.test.mjs services/indexer/transfer-proof-observer.test.mjs services/indexer/xgr-quorum-poll.test.mjs services/indexer/transfer-index-write.test.mjs services/indexer/explorer-wallet-discovery.test.mjs services/indexer/transfer-index-store.test.mjs
+
+      - name: Validate XGR source-feed SQL projector
+        run: node --test services/indexer/node-index-projector.test.mjs
+
+      - name: Validate Node-index migration parity (zero foreign-chain RPC)
+        run: node --test tools/verify-node-index-parity.test.mjs
 
       - name: Validate indexed on-chain wallet worklist (generic route identities)
         run: node --test services/indexer/transfer-index-store.test.mjs
