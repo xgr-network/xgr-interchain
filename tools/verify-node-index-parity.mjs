@@ -25,13 +25,14 @@ export function makeNodeIndexRpc({url,fetcher=globalThis.fetch}={}){
  return async(method,params)=>{
   if(!/^xgr_getILNIndexed(?:Coverage|Operations)$/.test(method))
    throw Error("Unexpected XGR index RPC method");
+  const requestId=++nextId;
   const response=await fetcher(url,{method:"POST",
    headers:{"content-type":"application/json"},
-   body:JSON.stringify({jsonrpc:"2.0",id:++nextId,method,params}),
+   body:JSON.stringify({jsonrpc:"2.0",id:requestId,method,params}),
    signal:AbortSignal.timeout(15000)});
   if(!response.ok)throw Error("XGR index RPC HTTP "+response.status);
   const msg=await response.json();
-  if(msg?.id!==nextId||msg?.error||msg?.result===undefined)
+  if(msg?.id!==requestId||msg?.error||msg?.result===undefined)
    throw Error("XGR index RPC did not return canonical result");
   return msg.result;
  };
@@ -66,8 +67,6 @@ export async function readCompleteNodeSource({source,rpc,maxPages=MAX_PAGES}){
    operations.set(lower(op.messageId),op);
   }
   if(!data.nextCursor){
-   if(data.operations.length===PAGE_SIZE)
-    throw Error("Node index ended at full page without continuation");
    break;
   }
   if(data.nextCursor!==previous||data.operations.length!==PAGE_SIZE)
