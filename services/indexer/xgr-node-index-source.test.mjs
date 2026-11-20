@@ -32,3 +32,37 @@ test("index adapter fails closed on forged block hash or source head",()=>{
  assert.throws(()=>nodeIndexSourceRead({route,operation,
   evidence:{...evidence,verifiedAs:"BLS_CONFIRMED"}}),/canonically/);
 });
+
+test("native XGR feed is resolved solely against local XGR RPC, never a foreign chain",async()=>{
+ const {projectXgrIndexedSource}=await import("./xgr-node-index-source.mjs");
+ const {indexedRoutes}=await import("./transfer-index.mjs");
+ const {readFileSync}=await import("node:fs");
+ const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url)));
+ const route=indexedRoutes(catalog).find(r=>r.sourceChain==="xgrchain"&&
+  r.destinationChain==="base");
+ assert.ok(route,"expected deployed XGR -> Base route");
+ const operation={source:"xgr",destination:"base",routeId:route.routeId,
+  gateway:route.gateway,messageId:hash("c"),sourceTxHash:hash("a"),sourceBlockNumber:100,
+  sourceLogIndex:1};
+ const evidence={sourceChainId:1643,sourceTxHash:operation.sourceTxHash,
+  sourceBlockNumber:100,sourceBlockHash:hash("b"),
+  verifiedAs:"FINALIZED_LOCAL_IBFT_OBSERVATION_NOT_BLS_EVIDENCE"};
+ const methods=[];
+ const xgrRpc=async(method,params)=>{
+  methods.push(method);
+  if(method==="eth_getBlockByNumber")return {number:"0x64",hash:hash("b"),timestamp:"0x65000000"};
+  if(method==="eth_chainId")return "0x66b";
+  throw Error("Unexpected local XGR RPC "+method);
+ };
+ const {event,record}=await projectXgrIndexedSource({catalog,operation,evidence,xgrRpc,
+  verify:async({rpc,route,transactionHash})=>{
+   assert.equal(transactionHash,operation.sourceTxHash);
+   assert.equal(await rpc(route.sourceConfig,"eth_chainId",[]),"0x66b");
+   await assert.rejects(()=>rpc(route.destinationConfig,"eth_chainId",[]),/Non-native/);
+   return {messageId:operation.messageId,sourceTxHash:operation.sourceTxHash,
+    routeId:route.routeId,delivered:null};
+  }});
+ assert.equal(event.blockNumber,100);
+ assert.equal(record.delivered,null);
+ assert.deepEqual(methods,["eth_getBlockByNumber","eth_chainId"]);
+});
