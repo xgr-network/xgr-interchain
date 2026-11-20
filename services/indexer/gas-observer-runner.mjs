@@ -21,6 +21,7 @@ try{
    const stats=await tickGasObserver({catalog,pool,rpc});
    if(stats.onward||stats.delivery)console.log("Gas measurements",JSON.stringify(stats));
   }catch(e){console.error("Gas observation tick",String(e.message||e).slice(0,190))}
-  if(running)await new Promise(done=>setTimeout(done,12000));
+  // Optional statistics do not require transfer-indexer-frequency RPC polling.
+  if(running)await new Promise(done=>setTimeout(done,60000));
  }
 }finally{await pool.end()}
