@@ -58,7 +58,7 @@ export async function createNodeIndexedEscrowReader({catalog,rpc,now=Date.now()}
   if(!watches?.length)throw Error("No finalized Node escrow evidence for chain");
   if(method==="eth_chainId")return hex(chain);
   if(method==="eth_blockNumber")
-   return hex(Math.min(...watches.map(w=>w.snap.finalizedHeadBlock)));
+   return hex(Math.min(...watches.map(w=>w.snap.latestHeadBlock)));
   const address=method==="eth_getCode"?params[0]:
    method==="eth_call"?params[0]?.to:null;
   if(!ADDRESS.test(address||""))throw Error("Escrow index address invalid");
