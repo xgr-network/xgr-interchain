@@ -23,7 +23,7 @@ export function makeNodeIndexRpc({url,fetcher=globalThis.fetch}={}){
   throw Error("XGR index RPC must use HTTPS or loopback HTTP");
  let nextId=0;
  return async(method,params)=>{
-  if(!/^(?:xgr_getILNIndexed(?:Coverage|Operations|SourceReceipt|Delivery|Escrow)|eth_(?:chainId|blockNumber|getCode|getBalance|call))$/.test(method))
+  if(!/^(?:xgr_getILNIndexed(?:Coverage|Operations|SourceReceipt|Delivery|Escrow)|eth_(?:chainId|blockNumber|getCode|getBalance|getBlockByNumber|getTransactionByHash|getTransactionReceipt|call))$/.test(method))
    throw Error("Unexpected XGR index RPC method");
   const requestId=++nextId;
   const response=await fetcher(url,{method:"POST",
