@@ -195,6 +195,19 @@ export async function tickNodeIndexProjection({catalog,pool,rpc,gasProjection=nu
   catch(error){indexes.push({sourceChain,
    error:String(error?.message||error).slice(0,200)})}
  }
+ // Transfer announcements are untrusted hints. Once the SAME account and
+ // transaction are present in the canonically checked Node feed, mark them
+ // indexed via SQL only. Never re-query the foreign source transaction.
+ await pool.query({text:`UPDATE xita_transfer_announcements a SET
+   state='indexed',verified_message_id=o.message_id,
+   verified_block_number=o.source_block_number,
+   verified_block_hash=o.source_block_hash,last_attempt_at=NOW(),
+   next_attempt_at=NOW()+INTERVAL '30 days'
+  FROM xita_transfer_operations o
+  WHERE a.state IN ('reported','observed') AND
+    a.source_chain=o.source_chain AND
+    a.source_tx_hash=o.source_tx_hash AND a.account=o.account`})
+  .catch(error=>{if(!["42P01","42501"].includes(error?.code))throw error;});
  const delivery=await refreshNodeIndexedDeliveries({pool,routes,rpc})
   .catch(error=>({error:String(error?.message||error).slice(0,200)}));
  const gas=gasProjection?
