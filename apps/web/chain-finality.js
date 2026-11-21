@@ -49,10 +49,10 @@ export async function verifyNativeFinalityReceipt(rpc,chainId,receipt){
   throw Error("Source receipt block hash not canonical");
  return {verified:true,head,blockNumber,blockHash:block.hash.toLowerCase()};
 }
-export async function verifiedNativeMailboxState(rpc,chainId,mailbox,data){
+export async function verifiedNativeMailboxState(rpc,chainId,mailbox,data,readHead=readNativeFinalityHead){
  if(!/^0x[0-9a-f]{40}$/i.test(mailbox||"")||!/^0x[0-9a-f]+$/i.test(data||""))
   throw Error("Invalid destination Mailbox read");
- const head=await readNativeFinalityHead(rpc,chainId);
+ const head=await readHead(rpc,chainId);
  const tag="0x"+head.number.toString(16);
  const raw=await rpc("eth_call",[{to:mailbox,data},tag]);
  if(!/^0x[0-9a-f]{64}$/i.test(raw||"")||![0n,1n].includes(BigInt(raw)))

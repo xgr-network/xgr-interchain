@@ -5,7 +5,7 @@ import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,readSourceWindow,
  checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
-import {commitWindow,catchUpRoute,refreshPendingDeliveries,recentActiveIndexerSources,
+import {commitWindow,catchUpRoute,catchUpSource,refreshPendingDeliveries,recentActiveIndexerSources,
  dueIndexerSourceChains,groupedSourceRoutes} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const hex=n=>"0x"+BigInt(n).toString(16);
@@ -287,6 +287,67 @@ test("completed deliveries are never re-queried, while pending/null are schedule
  assert.match(queries[0].text,/WHERE EXISTS/);
  assert.ok(queries[0].text.indexOf("o.delivered IS DISTINCT FROM TRUE")<
   queries[0].text.indexOf("LIMIT"),"filter before LIMIT");
+});
+test("delivery sweep shares a chain head but rechecks the pinned block for each result",async()=>{
+ const pool={query:async ({text})=>({rows:text.startsWith("SELECT o.source_chain")?
+  ["c","d"].map(id=>({source_chain:SOURCE,route_id:route.routeId,message_id:hash(id)})):[]})};
+ const calls=[];
+ const result=await refreshPendingDeliveries({pool,routes:[route],rpc:async (chain,method,args)=>{
+  assert.equal(chain.chainId,8453);
+  calls.push([method,args.at(-1)]);
+  if(method==="eth_chainId")return hex(8453);
+  if(method==="eth_call")return "0x"+word(1);
+  return {number:args[0]==="safe"?hex(200):args[0],hash:hash("e")};
+ }});
+ assert.deepEqual(result,{checked:2,delivered:2,unknown:0});
+ assert.deepEqual(calls,[
+  ["eth_chainId",undefined],["eth_getBlockByNumber",false],["eth_getBlockByNumber",false],
+  ["eth_call",hex(200)],["eth_getBlockByNumber",false],
+  ["eth_call",hex(200)],["eth_getBlockByNumber",false]
+ ]);
+});
+test("four source windows use one verified head and four Gateway queries",async()=>{
+ let cursor=null;
+ const pool={
+  query:async()=>({rows:cursor?[{
+   gateway:route.gateway,route_id:route.routeId,deployment_block:route.deploymentBlock,...cursor
+  }]:[]}),
+  connect:async()=>({release(){},query:async q=>{
+   if(q.text?.startsWith("SELECT scanned_to"))return {rows:cursor?[cursor]:[]};
+   if(q.text?.startsWith("INSERT INTO xita_transfer_index_cursors"))
+    cursor={scanned_to:q.values[5],scanned_hash:q.values[6]};
+   return {rows:[]};
+  }})
+ };
+ const calls=[];
+ await catchUpSource({routes:[route],pool,limit:2,rpc:async (_chain,method,args)=>{
+  calls.push([method,args[0]]);
+  if(method==="eth_chainId")return hex(1643);
+  if(method==="eth_getLogs")return [];
+  return {number:args[0]==="latest"?hex(120):args[0],hash:hash("e")};
+ }});
+ assert.equal(cursor.scanned_to,107);
+ assert.equal(calls.filter(([m])=>m==="eth_chainId").length,1);
+ assert.equal(calls.filter(([m,height])=>m==="eth_getBlockByNumber"&&height==="latest").length,1);
+ assert.equal(calls.filter(([m])=>m==="eth_getLogs").length,4);
+});
+test("source cursor at a freshly checked head skips a duplicate pinned block read",async()=>{
+ const calls=[];
+ const reader=async (_chain,method,args)=>{
+  calls.push([method,args[0]]);
+  if(method==="eth_chainId")return hex(1643);
+  assert.equal(method,"eth_getBlockByNumber");
+  return {number:hex(120),hash:hash("e")};
+ };
+ for(const [scannedHash,reorgRoutes] of [[hash("e"),[]],[hash("f"),[route]]]){
+  calls.length=0;
+  const cursors=new Map([[route.routeId,{scannedTo:120,scannedHash}]]);
+  const view=await readSourceWindow({routes:[route],cursors,rpc:reader});
+  assert.deepEqual(view.reorgRoutes,reorgRoutes);
+  assert.deepEqual(calls,[
+   ["eth_chainId",undefined],["eth_getBlockByNumber","latest"],["eth_getBlockByNumber",hex(120)]
+  ]);
+ }
 });
 
 test("finalized false stays open and next check retains bounded retry",async()=>{
