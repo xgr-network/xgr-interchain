@@ -797,16 +797,16 @@ test("dashboard displays verified partial 24h movement with explicit incomplete 
   partialMovement:{verifiedMinimumUsd:0.002285,verifiedAssets:1,requiredAssets:2}};
  const html=renderDashboard(model,{},"ready",snapshot);
  const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
- assert.match(moved,/\$0\.002285/);
- assert.match(moved,/Partial · verified minimum \(1 of 2 tokens\)/);
- assert.match(moved,/Partially verified indexed evidence/);
- assert.doesNotMatch(moved,/Verified indexed evidence<\/span>/);
+ assert.match(moved,/≥ \$0\.002285/);
+ assert.doesNotMatch(moved,/Partial · verified minimum/);
+ assert.doesNotMatch(moved,/Partially verified indexed evidence/);
+ assert.doesNotMatch(moved,/Backfills are observations/);
  assert.match(html,/Awaiting complete verified evidence/,"partial volume must not fake TVL");
  const complete=renderDashboard(model,{},"ready",{
   ...snapshot,totals:{lockedUsd:100,movedUsd:20}});
  const completed=complete.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
  assert.match(completed,/\$20\.00/);
- assert.doesNotMatch(completed,/Partial · verified minimum/);
+ assert.doesNotMatch(completed,/≥/);
 });
 test("dashboard refuses unverified or internally inconsistent partial movement objects",()=>{
  const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
@@ -819,8 +819,8 @@ test("dashboard refuses unverified or internally inconsistent partial movement o
   const html=renderDashboard(model,{},"ready",{
    totals:{lockedUsd:30,movedUsd:null},partialMovement});
   const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
-  assert.doesNotMatch(moved,/Partial · verified minimum/);
-  assert.match(moved,/Awaiting complete verified evidence/);
+  assert.doesNotMatch(moved,/≥/);
+  assert.match(moved,/class="ux-ns-value">—<\/strong>/);
  }
 });
 
