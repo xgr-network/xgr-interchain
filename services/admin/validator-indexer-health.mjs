@@ -27,6 +27,7 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
   error:String(r.error||"").slice(0,200)
  }));
  return {name,workerAlive:true,ageMs,routes,
+  rpcProviders:Array.isArray(raw.rpcProviders)?raw.rpcProviders.slice(0,100):[],
   state:routes.some(r=>r.state==="unavailable")?"degraded":
    routes.some(r=>r.state!=="ok")?"catching-up":routes.length?"ok":"warning",
   reason:routes.length?"":"No registered Direct-BLS Gateway routes"};
