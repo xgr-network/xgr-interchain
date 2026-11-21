@@ -303,7 +303,7 @@ function verifiedFeeAdapterEvent(receiptLogs,route,payer,messageId){
   onwardJourneyEvidence(log,route,payer,messageId);
  return {present:true,evidence};
 }
-export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc,sourceOnly=false}){
+export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc,sourceOnly=false,verifySourceReceipt=verifyNativeFinalityReceipt}){
  if(!isAddress(account)||!HASH.test(txHash||""))throw Error("Connect wallet and enter a valid source transaction hash");
  const routes=configuredGatewayRoutes(catalog).filter(r=>r.sourceChain===sourceChain);
  if(!routes.length)throw Error("No verified deployed XITA Gateway for this source chain");
@@ -394,7 +394,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   return {...base,...finality,...(evidence||{}),status:"confirming"};
  let safe;
  try{
-  safe=await verifyNativeFinalityReceipt(
+  safe=await verifySourceReceipt(
    (method,args)=>reader.read(method,args),route.sourceConfig.chainId,receipt);
  }catch{
   return {...base,...finality,...(evidence||{}),status:"finality-unavailable"};

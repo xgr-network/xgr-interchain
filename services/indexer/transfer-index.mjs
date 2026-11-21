@@ -80,7 +80,7 @@ export function bindVerifiedTransferRpc(route,rpc){
   return rpc(source?route.sourceConfig:route.destinationConfig,method,params);
  };
 }
-export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
+export async function verifiedTransfer({catalog,route,transactionHash,rpc,scanEvidence=null}){
  if(!HASH.test(transactionHash||""))throw Error("Invalid canonical source tx");
  const tx=await rpc(route.sourceConfig,"eth_getTransactionByHash",[transactionHash]);
  if(!ADDRESS.test(tx?.from||""))throw Error("Missing canonical source wallet");
@@ -88,9 +88,25 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   chain===route.sourceConfig&&method==="eth_getTransactionByHash"&&
    norm(params[0])===norm(transactionHash)?tx:rpc(chain,method,params));
  // The SQL delivery sweep checks the destination after source evidence is stored.
+ let verifySourceReceipt;
+ if(scanEvidence){
+  const {chainId,head,event}=scanEvidence;
+  if(chainId!==route.sourceConfig.chainId||norm(event?.txHash)!==norm(transactionHash)||
+     !Number.isSafeInteger(event.blockNumber)||event.blockNumber<1||
+     !Number.isSafeInteger(head?.number)||head.number<event.blockNumber||
+     !HASH.test(head.hash||"")||!HASH.test(event.blockHash||""))
+   throw Error("Invalid scoped source scan evidence");
+  verifySourceReceipt=(_read,receiptChainId,receipt)=>{
+   if(receiptChainId!==chainId||![1,"0x1"].includes(receipt?.status)||
+      number(receipt.blockNumber)!==event.blockNumber||
+      norm(receipt.blockHash)!==norm(event.blockHash))
+    throw Error("Source receipt does not match the canonical scan block");
+   return {verified:true,head};
+  };
+ }
  const evidence=await findWalletSourceTx({catalog,account:tx.from,
   sourceChain:route.sourceChain,txHash:transactionHash,
-  rpc:sourceRpc,sourceOnly:true});
+  rpc:sourceRpc,sourceOnly:true,verifySourceReceipt});
  if(!evidence.confirmed||!HASH.test(evidence.messageId||"")||
    norm(evidence.routeId)!==norm(route.routeId)||
    norm(evidence.gateway)!==norm(route.gateway)||
@@ -152,11 +168,14 @@ function recordSharedRateLimit(rateLimits,key,error,now){
 export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
  baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now,rateLimits=new Map()}={}){
  const validated=new Map(),retryByProvider=new Map();
- return async(chain,method,params)=>{
+ const read=async(chain,method,params,scope)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid canonical chain config");
   let last=null,skipped=0;
-  for(const url of rpcCandidates(chain,{baseUrls})){
+  const urls=rpcCandidates(chain,{baseUrls});
+  if(scope?.url&&(scope.chainId!==chain.chainId||!urls.includes(scope.url)))
+   throw Error("Canonical RPC scan scope mismatch");
+  for(const url of scope?.url?[scope.url]:urls.filter(url=>!scope?.excluded.has(url))){
    const key=String(chain.chainId)+"|"+url;
    const retry=retryByProvider.get(key);
    if(retry?.until>now()||rateLimits.get(key)?.until>now()){skipped++;continue;}
@@ -180,6 +199,7 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
     const value=await publicRead(url,method,params,fetcher,{providerDiagnostics:true});
     if(rateLimits.get(key)?.until<=now())rateLimits.delete(key);
     retryByProvider.delete(key);
+    if(scope&&!scope.url){scope.url=url;scope.chainId=chain.chainId;}
     return value;
    }catch(error){
     if(identityVerified||/identity mismatch/.test(String(error?.message||"")))
@@ -193,10 +213,26 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
      until:now()+Math.min(120000,15000*2**(count-1))});
    }
   }
+  if(scope?.url)scope.failed=true;
   throw Error("All "+String(chain.name||chain.chainId)+" RPC endpoints failed: "+
    (skipped>0?"provider cooldown; ":"")+
    String(last?.message||"retry after cooldown").slice(0,125));
  };
+ // One provider per scan. A failed provider is excluded before retrying
+ // the uncommitted window with a newly verified head.
+ read.openScan=()=>{
+  const scope={excluded:new Set()};
+  const scan=(chain,method,params)=>read(chain,method,params,scope);
+  scan.retryOnAnotherProvider=()=>{
+   if(!scope.failed||!scope.url)return false;
+   scope.excluded.add(scope.url);
+   scope.url=null;
+   scope.failed=false;
+   return true;
+  };
+  return scan;
+ };
+ return read;
 }
 // A known TX hash needs receipt and block confirmation, not archive-length
 // eth_getLogs. Separate this reader from the strict historical route scanner:

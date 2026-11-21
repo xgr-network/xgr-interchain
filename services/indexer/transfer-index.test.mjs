@@ -704,3 +704,25 @@ test("a JSON-RPC plan quota response pauses both indexer readers",async()=>{
  await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/quota exhausted/);
  assert.equal(calls,2);
 });
+
+test("the indexer pins a scan to one provider until retry with a new head",async()=>{
+ const endpoints=["https://first.example","https://second.example"];
+ const chain={chainId:56,name:"bsc",rpcUrls:endpoints};
+ const calls=[];
+ const read=canonicalRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);
+  calls.push([url,method]);
+  if(url===endpoints[0]&&method==="eth_getLogs")return {ok:false,status:429};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:
+   method==="eth_chainId"?"0x38":method==="eth_getLogs"?[]:{number:"0x64",hash:hash("e")}})};
+ }}).openScan();
+ await read(chain,"eth_getBlockByNumber",["finalized",false]);
+ await assert.rejects(()=>read(chain,"eth_getLogs",[]),/429/);
+ assert.ok(calls.every(([url])=>url===endpoints[0]));
+ assert.equal(read.retryOnAnotherProvider(),true);
+ await read(chain,"eth_getBlockByNumber",["finalized",false]);
+ await read(chain,"eth_getLogs",[]);
+ assert.deepEqual(calls.slice(-3),[
+  [endpoints[1],"eth_chainId"],[endpoints[1],"eth_getBlockByNumber"],[endpoints[1],"eth_getLogs"]
+ ]);
+});
