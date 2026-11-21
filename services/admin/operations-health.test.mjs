@@ -46,16 +46,16 @@ test("overall health is sound with absent optional services but flags core failu
   {ok:true,proofBuilder:"installed"};
  const checkChain=async()=>({name:"xgrchain",chainId:1643,head:12,attempted:1,configuredEndpoints:1,state:"ok"});
  const readEvidence=()=>({status:"fresh",asOf:"2026-10-19T11:59:30Z",verifiedAssets:1});
- const good=await collectOperationsHealth({catalog,readUnit,readHTTP,checkChain,readEvidence,now});
+ const good=await collectOperationsHealth({catalog,readUnit,readHTTP,checkChain,checkValidators:async()=>[],readEvidence,now});
  assert.equal(good.status,"ok");assert.equal(good.indexer.state,"ok");
  assert.equal(good.services.find(s=>s.id==="quote").state,"not-installed");
  assert.equal(good.checks.find(s=>s.id==="quote-api").state,"not-installed");
  const bad=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-indexer.service"?
-  "LoadState=loaded\nActiveState=failed\n":readUnit(name),readHTTP,checkChain,readEvidence,now});
+  "LoadState=loaded\nActiveState=failed\n":readUnit(name),readHTTP,checkChain,checkValidators:async()=>[],readEvidence,now});
  assert.equal(bad.status,"degraded");
- const observerDown=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-proof-observer.service"?"LoadState=not-found\nActiveState=inactive\n":readUnit(name),readHTTP,checkChain,readEvidence,now});
+ const observerDown=await collectOperationsHealth({catalog,readUnit:async name=>name==="xita-transfer-proof-observer.service"?"LoadState=not-found\nActiveState=inactive\n":readUnit(name),readHTTP,checkChain,checkValidators:async()=>[],readEvidence,now});
  assert.equal(observerDown.status,"degraded");
- const missingMigration=await collectOperationsHealth({catalog,readUnit,readHTTP:async target=>target.id==="transfer-stats"?{...stats([cursor("2026-10-19T11:59:30Z")]),proofObserver:{status:"not-provisioned"}}:readHTTP(target),checkChain,readEvidence,now});
+ const missingMigration=await collectOperationsHealth({catalog,readUnit,readHTTP:async target=>target.id==="transfer-stats"?{...stats([cursor("2026-10-19T11:59:30Z")]),proofObserver:{status:"not-provisioned"}}:readHTTP(target),checkChain,checkValidators:async()=>[],readEvidence,now});
  assert.equal(missingMigration.status,"degraded");
 });
 
@@ -216,4 +216,26 @@ test("successful inactive oneshot remains healthy; never-run oneshot does not cl
  const def=UNITS.find(x=>x.id==="gas-sponsor-worker");
  assert.equal(parseUnitShow("LoadState=loaded\nActiveState=inactive\nResult=success\nExecMainStatus=0\n",def).state,"ok");
  assert.equal(parseUnitShow("LoadState=loaded\nActiveState=inactive\nUnitFileState=disabled\n",def).state,"warning");
+});
+
+test("default health reuses RPC observations from the XGR status response",async()=>{
+ const rpc="https://rpc.xgr.network";
+ const catalog={chains:{xgrchain:{chainId:1643,rpcUrls:[rpc]},
+  bsc:{chainId:56,rpcUrls:["https://bsc-rpc.publicnode.com","https://bsc.drpc.org"]}}};
+ const result=await collectOperationsHealth({
+  catalog,now,readUnit:async()=>"",readHTTP:async()=>({}),readEvidence:()=>({}),
+  checkValidators:async({urls})=>{
+   assert.ok(urls.length>0);
+   return [{name:"Validator 1",workerAlive:true,state:"ok",routes:[],rpcProviders:[
+    {chainId:56,host:"bsc-rpc.publicnode.com",state:"rate-limited",observedUnix:now/1000},
+    {chainId:56,host:"bsc.drpc.org",state:"ok",observedUnix:now/1000-3600}
+   ]}];
+  }
+ });
+ const bsc=result.chains.find(c=>c.name==="bsc");
+ assert.equal(bsc.attempted,0);
+ assert.equal(bsc.scope,"validator-observations");
+ assert.equal(bsc.providers.find(p=>p.host==="bsc-rpc.publicnode.com").state,"rate-limited");
+ assert.equal(bsc.providers.find(p=>p.host==="bsc.drpc.org").state,"unknown");
+ assert.equal(bsc.providers.find(p=>p.host==="public.1rpc.io").state,"unknown");
 });

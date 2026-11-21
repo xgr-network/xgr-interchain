@@ -24,6 +24,7 @@ import {creatorFactoryDeployment} from "./creator-factory-deploy.mjs";
 import {publishCreatorFactoryPR} from "./creator-factory-github.mjs";
 
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
+import {probeChainProviders} from "./rpc-provider-health.mjs";
 import {collectOperationsHealth} from "./operations-health.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
@@ -173,8 +174,11 @@ http.createServer(async(req,res)=>{
     return reply(res,200,{ok:true,result:await creatorFactory.cancel(body)});
    return reply(res,404,{ok:false,error:"Unknown Creator Factory operation"});
   }
-  if(req.method==="GET"&&path==="/admin/api/operations/health"){
+  if(path==="/admin/api/operations/health"&&req.method==="GET"){
    return reply(res,200,await collectOperationsHealth({catalog:load("apps/web/catalog.json")}));
+  }
+  if(path==="/admin/api/operations/rpc-probe"&&req.method==="POST"){
+   return reply(res,200,await collectOperationsHealth({catalog:load("apps/web/catalog.json"),checkChain:probeChainProviders}));
   }
   if(req.method==="GET"&&path==="/admin/api/deployment-sync/status"){
    return reply(res,200,{ok:true,sync:deploymentSyncDiagnostic()});
