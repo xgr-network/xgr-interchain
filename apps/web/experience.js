@@ -408,9 +408,11 @@ function northstarCards(model,metrics=null,period="24h"){
  // A fully reset network must not resurrect metrics from any older API cache.
  const safeMetrics=(model.deployments?.length||0)>0?metrics:null;
  const recent=validTvlPoints(safeMetrics).at(-1)||null;
+ const indexedTVL=safeMetrics?.indexedTvl?.lockedUsd;
+ const showIndexed=Number.isFinite(indexedTVL);
  const liveTVL=safeMetrics?.totals?.lockedUsd;
- const displayTVL=Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
- const displayAsOf=Number.isFinite(liveTVL)?null:recent?.asOf??null;
+ const displayTVL=showIndexed?indexedTVL:Number.isFinite(liveTVL)?liveTVL:recent?.lockedUsd??null;
+ const displayAsOf=showIndexed||Number.isFinite(liveTVL)?null:recent?.asOf??null;
  const tvlChange=tvlChange24h(safeMetrics);
  // A verified partial 24h movement is an explicit lower bound, NEVER the
  // all-asset total. Never show a fabricated zero for unverified assets.
@@ -440,14 +442,15 @@ function northstarCards(model,metrics=null,period="24h"){
    '<div class="ux-ns-network-numbers"><div><strong>'+(model.deployments?.length||0)+'</strong><span>Deployed directions</span></div><div><strong>'+active+'</strong><span>Active directions</span></div></div>'+
    '<p class="ux-small">Active = deployed route contracts and execution adapters, verified by catalog receipts. Every direction goes via XGRChain.</p>'+
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
-  '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>Locked TVL</h2></div>'+
+  '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>'+(showIndexed?'Indexed TVL':'Locked TVL')+'</h2></div>'+
    '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
-   '<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
-   (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span></div>'+
+   (showIndexed?'':'<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
+   (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span>')+'</div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
+   (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
    tvlHistoryChart(safeMetrics,period)+
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
-   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span></article>'+
+   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span>')+'</article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
    '<strong class="ux-ns-value">'+esc(formatUsd(shownMovement))+'</strong>'+
    (partialReady?'<span class="ux-ns-tvl-last">Partial · verified minimum ('+

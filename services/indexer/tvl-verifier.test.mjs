@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
+import {indexedTvlPosition,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
+import {indexedRoutes} from "./transfer-index.mjs";
+import {tvlSnapshot} from "./tvl-worker.mjs";
+import {projectMetrics} from "./server.mjs";
+import {readFileSync} from "node:fs";
 import {keccak256} from "../../apps/web/keccak.js";
 
 const addr=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
@@ -37,6 +41,43 @@ test("pending reverse unlock retains real escrow backing",()=>{
 test("native pending beneficiary payout is excluded only once",()=>{
  const net=result(data([g(route,100n,true),g(reverse,40n,true)],"0x46","0xa"));
  assert.equal(net.status,"verified");assert.equal(net.netLockedRaw,"60");
+});
+test("indexed TVL counts each lock once and tracks wrapped balances on every chain",()=>{
+ const onward={...reverse,destination:"bsc",routeId:hash("d")};
+ const onwardIndexed={...iRoutes[1],routeId:onward.routeId,destinationChain:"bsc"};
+ const input={catalog:{},descriptor:{...d,routes:[route,reverse,onward]},
+  indexedRoutes:[...iRoutes,onwardIndexed],cursors:[...cursors,{...cursors[1],route_id:onward.routeId}],
+  groups:[g(route,100,true),g(reverse,20,false),g(onward,30,true)],now};
+ const pending=indexedTvlPosition(input);
+ assert.equal(pending.netLockedRaw,"100");
+ assert.deepEqual(pending.wrappedByChainRaw,{base:"50",bsc:"30"});
+ const settled=indexedTvlPosition({...input,groups:[g(route,100,true),g(reverse,20,true),g(onward,30,true)]});
+ assert.equal(settled.netLockedRaw,"80");
+ assert.deepEqual(settled.wrappedByChainRaw,pending.wrappedByChainRaw);
+ assert.equal(indexedTvlPosition({...input,cursors:cursors}).reason,"index-incomplete");
+});
+test("periodic TVL snapshots read only XGR RPC even with a foreign canonical vault",async()=>{
+ const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ const rows=indexedRoutes(catalog).map(r=>({source_chain:r.sourceChain,route_id:r.routeId,gateway:r.gateway,
+  deployment_block:r.deploymentBlock,scanned_to:r.deploymentBlock,finalized_head:r.deploymentBlock,
+  updated_at:new Date(now).toISOString()}));
+ const rpcCalls=[];
+ const snapshot=await tvlSnapshot({catalog,now,pool:{query:async q=>({rows:typeof q==="string"?
+  [{cursors:rows,groups:[]}]:[]})},prices:async()=>({records:Object.fromEntries(["arbitrum","xgr"].map(id=>[
+   id,{source:"coingecko",priceUsd:1,asOf:new Date(now).toISOString()}
+  ]))}),read:async (chain,method)=>{
+  rpcCalls.push([chain.chainId,method]);
+  throw Error("RPC unavailable");
+ }});
+ assert.deepEqual(rpcCalls,[[1643,"eth_chainId"]]);
+ assert.equal(snapshot.indexedTvl.positions.ARB.netLockedRaw,"0");
+ assert.deepEqual(snapshot.indexedTvl.positions.ARB.wrappedByChainRaw,
+  {xgrchain:"0",base:"0",bsc:"0",optimism:"0"});
+ assert.equal(snapshot.custodyEvidence.statuses.ARB,"physical-vault-not-checked");
+ assert.equal(snapshot.custodyEvidence.positions.ARB,undefined);
+ assert.equal(projectMetrics(catalog,snapshot).indexedTvl.lockedUsd,0);
+ delete snapshot.indexedTvl.positions.ARB;
+ assert.equal(projectMetrics(catalog,snapshot).indexedTvl.lockedUsd,null);
 });
 test("unexpected transfer and incomplete finalized index fail closed",()=>{
  assert.equal(result(data([g(route,100n,true)],"0x65")).reason,"escrow-balance-mismatch");

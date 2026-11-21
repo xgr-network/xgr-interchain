@@ -47,6 +47,48 @@ export function escrowDescriptor(catalog,asset){
     entry.profile.market.coingeckoId:null};
 }
 
+// The transfer ledger measures net protocol deposits and finalized releases.
+// Synthetic hops contribute to per-chain supply, never to the net deposit.
+export function indexedTvlPosition({catalog,descriptor,indexedRoutes,cursors,groups,now=Date.now()}){
+ const d=descriptor;
+ if(d?.status!=="ready")return fail("escrow-not-configured");
+ const routes=new Map(d.routes.map(r=>[r.source+":"+lower(r.routeId),r]));
+ const indexed=indexedRoutes.filter(r=>r.asset===d.asset);
+ if(indexed.length!==routes.size||indexed.some(r=>{
+  const expected=routes.get(r.sourceChain+":"+lower(r.routeId));
+  return !expected||!same(expected.gateway,r.gateway)||expected.destination!==r.destinationChain;
+ }))return fail("immutable-route-receipts-missing");
+ if(!routeIndexCoverage(catalog,cursors,{now,maxAgeMs:120000,routeList:indexed}).complete)
+  return fail("index-incomplete");
+ const cursorByRoute=new Map(cursors.map(c=>[c.source_chain+":"+lower(c.route_id),c]));
+ let net=0n;
+ const balances=new Map();
+ const add=(chain,amount)=>balances.set(chain,(balances.get(chain)||0n)+amount);
+ for(const route of routes.values()){
+  for(const chain of [route.source,route.destination])if(chain!==d.chain)add(chain,0n);
+ }
+ for(const g of groups){
+  if(g.asset!==d.asset)continue;
+  const key=g.source_chain+":"+lower(g.route_id),route=routes.get(key);
+  const amount=asInt(g.amount_raw),high=asInt(g.max_source_block);
+  const scanned=asInt(cursorByRoute.get(key)?.scanned_to);
+  if(!route||!same(g.asset_id,d.assetId)||!same(route.gateway,g.gateway)||
+     route.destination!==g.destination_chain||amount===null||amount===0n||
+     asInt(g.bad_count)!==0n||high===null||scanned===null||high>scanned||
+     ![null,false,true].includes(g.delivered))return fail("unverified-operation-group");
+  if(route.source===d.chain)net+=amount;
+  else add(route.source,-amount);
+  if(g.delivered===true){
+   if(route.destination===d.chain)net-=amount;
+   else add(route.destination,amount);
+  }
+ }
+ if(net<0n||[...balances.values()].some(amount=>amount<0n))
+  return fail("indexed-balance-underflow");
+ return {status:"verified",assetId:d.assetId,decimals:d.decimals,netLockedRaw:net.toString(),
+  wrappedByChainRaw:Object.fromEntries([...balances].map(([chain,amount])=>[chain,amount.toString()]))};
+}
+
 // Grouped rows come from the immutable, finality-checked canonical transfer
 // index. Each source_chain/message_id has one PK. Independent amount and
 // destination-delivery evidence detects accidental balance deposits, missing
@@ -153,8 +195,18 @@ export function verifiedEvidence(catalog,proofs,now=Date.now(),flows={}){
  for(const [asset,entry] of Object.entries(catalog.assets||{})){
   if(!isDeployedAsset(entry,catalog))continue;
   const proof=proofs[asset];
+  const f=flows[asset];
+  const movement=f?.status==="verified"&&f.kind==="escrow-gross-24h"&&
+   same(f.assetId,entry.metadata?.assetId)?{
+    status:"verified",complete:true,movedUsd:f.movedUsd,
+    windowStart:f.windowStart,windowEnd:f.windowEnd,metric:"escrow-gross-24h",
+    inflowRaw:f.inflowRaw,outflowRaw:f.outflowRaw,proofDigest:f.proofDigest
+   }:{status:"unavailable"};
   if(proof?.status!=="verified"){
    statuses[asset]=proof?.reason||"not-verified";
+   if(movement.status==="verified")assets[asset]={assetId:asset,verified:true,
+    asOf:new Date(now).toISOString(),market:{status:"unavailable"},
+    custody:{status:"unavailable"},movement};
    continue;
   }
   if(!same(proof.assetId,entry.metadata?.assetId)||
@@ -165,15 +217,6 @@ export function verifiedEvidence(catalog,proofs,now=Date.now(),flows={}){
   const lockedUsd=proof.lockedUsd;
   const vault={verified:true,chain:proof.chain,router:proof.router,
    netLockedRaw:proof.netLockedRaw,valueUsd:lockedUsd};
-  const f=flows[asset];
-  // Gross ESCROW movement is separate from end-to-end journey turnover and
-  // is only counted when canonical physical inflows/outflows were verified.
-  const movement=f?.status==="verified"&&f.kind==="escrow-gross-24h"&&
-   f.assetId===proof.assetId?{
-    status:"verified",complete:true,movedUsd:f.movedUsd,
-    windowStart:f.windowStart,windowEnd:f.windowEnd,metric:"escrow-gross-24h",
-    inflowRaw:f.inflowRaw,outflowRaw:f.outflowRaw,proofDigest:f.proofDigest
-   }:{status:"unavailable"};
   assets[asset]={assetId:asset,verified:true,asOf:proof.observedAt,
    market:{status:"unavailable"},
    custody:{status:"verified",complete:true,lockedUsd,vaults:[vault]},

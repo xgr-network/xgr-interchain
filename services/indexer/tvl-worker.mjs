@@ -6,7 +6,7 @@ import {fileURLToPath} from "node:url";
 import {indexedRoutes} from "./transfer-index.mjs";
 import {transferReaderPool} from "./transfer-index-store.mjs";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
-import {escrowDescriptor,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
+import {escrowDescriptor,indexedTvlPosition,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
 import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
 import {indexedGrossFlow24h} from "./indexed-flow-24h.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
@@ -35,16 +35,26 @@ async function rpc(chain,method,params=[],fetcher=fetch){
   }catch(e){last=e;}}
  throw Error("All RPC endpoints unavailable: "+String(last?.message||"unknown"));
 }
-export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot,now=Date.now(),routeList=null}){
+async function ledgerSnapshot(pool){
+ const {rows}=await pool.query(`SELECT
+  COALESCE((SELECT json_agg(c) FROM xita_transfer_index_cursors c),'[]') AS cursors,
+  COALESCE((SELECT json_agg(g) FROM (
+   SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,delivered,
+    COUNT(*)::text AS operation_count,
+    COUNT(*) FILTER (WHERE amount_raw IS NULL OR amount_raw<=0 OR source_block_hash IS NULL)::text AS bad_count,
+    COALESCE(SUM(amount_raw),0)::text AS amount_raw,MAX(source_block_number)::text AS max_source_block
+   FROM xita_transfer_operations
+   GROUP BY asset,asset_id,source_chain,destination_chain,route_id,gateway,delivered
+  ) g),'[]') AS groups`);
+ return rows[0];
+}
+export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot,now=Date.now(),routeList=null,ledger=null}){
  const d=escrowDescriptor(catalog,asset);
  if(d.status!=="ready")return d;
  if(!d.coingeckoId)return {status:"unavailable",reason:"coingecko-id-unavailable"};
  const routes=routeList||indexedRoutes(catalog);
  // The SQL is a fixed query, untrusted symbols are never concatenated into SQL.
- const observations=await Promise.all([
-  pool.query("SELECT source_chain,route_name,gateway,route_id,deployment_block,scanned_to,finalized_head,updated_at FROM xita_transfer_index_cursors"),
-  pool.query({text:"SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,delivered,COUNT(*)::text AS operation_count,COUNT(*) FILTER (WHERE amount_raw IS NULL OR amount_raw<=0 OR source_block_hash IS NULL)::text AS bad_count,COALESCE(SUM(amount_raw),0)::text AS amount_raw,MAX(source_block_number)::text AS max_source_block FROM xita_transfer_operations WHERE asset=$1 GROUP BY asset,asset_id,source_chain,destination_chain,route_id,gateway,delivered",values:[asset]})
- ]);
+ const observations=ledger||await ledgerSnapshot(pool);
  const readChecked=async(method,params=[])=>read(d.chainConfig,method,params);
  const chainId=await readChecked("eth_chainId");
  if(!HEX.test(chainId)||BigInt(chainId)!==BigInt(d.chainConfig.chainId))
@@ -70,33 +80,48 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
   balance="0x"+BigInt(held).toString(16);
  }
  const proof=reconcileEscrow({catalog,descriptor:d,indexedRoutes:routes,
-  cursors:observations[0].rows,groups:observations[1].rows,
+  cursors:observations.cursors,groups:observations.groups.filter(g=>g.asset===asset),
   routerCode:code,routerBalance:balance,tokenAddress,tokenDecimals,tokenCode,
   pendingBalance,observedHead:head,now});
  if(proof.status!=="verified")return proof;
  return priceEscrow(proof,priceSnapshot?.records?.[d.coingeckoId],{now});
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
- const snap=await prices(catalog),routes=indexedRoutes(catalog),proofs={},flows={};
+ const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
+ const routes=indexedRoutes(catalog),proofs={},flows={},positions={};
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
-  proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes});
-  if(proofs[asset].status!=="verified")continue;
+  const descriptor=escrowDescriptor(catalog,asset);
+  if(descriptor.status!=="ready")continue;
+  const price=snap.records?.[descriptor.coingeckoId];
+  const position=indexedTvlPosition({catalog,descriptor,indexedRoutes:routes,...ledger,now});
+  const indexed=priceEscrow(position,price,{now});
+  if(indexed.status==="verified")positions[asset]={
+   assetId:indexed.assetId,netLockedRaw:indexed.netLockedRaw,
+   wrappedByChainRaw:indexed.wrappedByChainRaw,lockedUsd:indexed.lockedUsd
+  };
+  // The periodic physical check is restricted to the XGR hub. Foreign
+  // collateral estimates are published only as indexed ledger positions.
+  if(descriptor.chainConfig.chainId!==1643){
+   proofs[asset]={status:"unavailable",reason:"physical-vault-not-checked"};
+  }else{
+   proofs[asset]=await scanTokenEscrow({catalog,asset,pool,read,priceSnapshot:snap,now,routeList:routes,ledger});
+  }
   try{
-   const descriptor=escrowDescriptor(catalog,asset);
-   const cursors=await pool.query("SELECT source_chain,route_name,gateway,route_id,deployment_block,scanned_to,finalized_head,updated_at FROM xita_transfer_index_cursors");
    const needed=routes.filter(r=>descriptor.escrowRoutes.some(e=>e.source===r.sourceChain&&e.routeId.toLowerCase()===r.routeId.toLowerCase()));
-   const coverage=routeIndexCoverage(catalog,cursors.rows,{now,maxAgeMs:120000,routeList:needed});
+   const coverage=routeIndexCoverage(catalog,ledger.cursors,{now,maxAgeMs:120000,routeList:needed});
    // Query only current SQL index: NEVER repeat historical RPC reads for volume.
    const events=await pool.query({text:`SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,
        message_id,source_block_hash,amount_raw::text AS amount_raw,delivered,
        source_block_at,escrow_outflow_observed_at
-     FROM xita_transfer_operations WHERE asset=$1`,values:[asset]});
+     FROM xita_transfer_operations WHERE asset=$1 AND
+       (source_chain=$2 OR destination_chain=$2)`,values:[asset,descriptor.chain]});
    flows[asset]=indexedGrossFlow24h({descriptor,rows:events.rows,coverage,
      price:snap.records?.[descriptor.coingeckoId],now});
   }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
- return verifiedEvidence(catalog,proofs,now,flows);
+ return {...verifiedEvidence(catalog,proofs,now,flows),
+  indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};
 }
 function atomic(path,payload){
  const tmp=path+".tmp."+process.pid;
