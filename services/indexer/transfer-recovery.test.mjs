@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {selector} from "../../apps/web/keccak.js";
 import {resolveRecoveryRoute,validateUnsignedRecovery,parseRecoveryCliOutput,classifyRecoveryFailure,ilnValidatorRouteName,recoveryBaseUrls,probeRouteSourceRpc,canRetryBaseRecovery,recoverySourceUrls,canRetrySourceRecovery,runRecoveryProcess} from "./transfer-recovery.mjs";
 import {serveUnsignedTransferRecovery} from "./server.mjs";
@@ -80,6 +81,52 @@ test("transfer recovery handler passes source receipt hints without accepting th
    return validateUnsignedRecovery({status:"PENDING",messageId:msg},ref);
   }});
  assert.equal(result.code,200);assert.equal(result.body.status,"PENDING");
+});
+
+function externalRecoveryRequest(n){
+ const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
+ return {catalog,route:"bsc_to_xgr",asset:"XGR",messageId:hash(n),sourceTxHash:hash("5")};
+}
+test("known BSC transfers awaiting quorum never rerun the source receipt builder",async()=>{
+ for(const [n,status] of [["7","PENDING"],["8","PARTIAL_QUORUM"],["9","RETRYING_VALIDATION"]]){
+  const request=externalRecoveryRequest(n);
+  const result=await serveUnsignedTransferRecovery({...request,
+   quorumPoll:async target=>{
+    assert.deepEqual(target,{
+     route:"iln_56_1643_0bc99aa0bfb8d3d5f3c12e69acf1951b36b4992de3bd9289eda27fc29794ad47",
+     messageId:request.messageId
+    });
+    return status;
+   },
+   runner:()=>assert.fail("pending quorum must not run the proof builder")
+  });
+  assert.deepEqual(result,{code:200,body:{ok:true,status:"PENDING",messageId:request.messageId}});
+ }
+});
+test("known BSC recovery keeps proof verification and new or expired quorum admission",async()=>{
+ for(const [n,status,outcome] of [
+  ["a","AVAILABLE_UNVERIFIED","ALREADY_DELIVERED"],
+  ["b","NOT_FOUND","PENDING"],
+  ["c","EXPIRED_RETRY","PENDING"]
+ ]){
+  const request=externalRecoveryRequest(n);
+  let calls=0;
+  const result=await serveUnsignedTransferRecovery({...request,quorumPoll:async()=>status,
+   runner:async configured=>{
+    calls++;
+    assert.equal(configured.env.SOURCE_TX_HASH,request.sourceTxHash);
+    return {status:outcome,messageId:configured.messageId};
+   }
+  });
+  assert.equal(calls,1);
+  assert.equal(result.body.status,outcome);
+ }
+});
+test("unavailable local quorum does not send known BSC recovery to external RPCs",async()=>{
+ await assert.rejects(serveUnsignedTransferRecovery({...externalRecoveryRequest("d"),
+  quorumPoll:async()=>{throw Error("local RPC timeout")},
+  runner:()=>assert.fail("local outage must not run the proof builder")
+ }),{code:"PROOF_QUORUM_UNAVAILABLE",stage:"quorum"});
 });
 test("proof CLI failures are categorized without putting raw internals in HTTP responses",()=>{
  assert.equal(classifyRecoveryFailure({killed:true},"").code,"PROOF_TIMEOUT");
