@@ -74,55 +74,39 @@ function destinationCatalog(){
  return {chains:{xgrchain:{chainId:1643},base:{chainId:8453}},
   infrastructure,assets:{ABC:asset}};
 }
-test("F-35: unmatched permissionless ProcessId does not pin optional gas cursor",async()=>{
- const catalog=destinationCatalog();
- const mailbox=catalog.infrastructure.base.xitaV315.components.mailbox.address;
- const rpcCalls=[],writes=[];
- const rpc=async(chain,method,params)=>{
-  rpcCalls.push({chain:chain.chainId,method,params});
-  if(method==="eth_chainId")return "0x"+chain.chainId.toString(16);
-  if(method==="eth_getBlockByNumber"){
-   const n=params[0]==="safe"?600:Number(BigInt(params[0]));
-   return {number:"0x"+n.toString(16),hash:h("b")};
-  }
-  if(method==="eth_getLogs"){
-   if(chain.chainId!==8453)return [];
-   return [{address:mailbox,transactionHash:h("a"),blockHash:h("b"),
-    blockNumber:"0x78",topics:[PROCESS_ID_TOPIC,h("c")]}];
-  }
-  throw Error("Unexpected RPC: "+method);
- };
+test("idle delivery gas monitoring issues zero blockchain RPC calls",async()=>{
  const pool={query:async q=>{
-  const text=q.text||q;
-  if(text.includes("FROM xita_gas_observation_cursors"))
-   return {rows:q.values[0]==="base"?[{scanned_to:119,scanned_hash:h("b")}]:[]};
-  if(text.includes("FROM xita_transfer_operations"))return {rows:[]};
-  if(text.includes("INSERT INTO xita_gas_observation_cursors")){writes.push(q);return {rows:[]};}
-  throw Error("Unexpected SQL");
+  assert.match(q.text,/FROM public[.]xita_indexed_mailbox_events/);
+  assert.match(q.text,/o[.]delivered IS TRUE/);
+  return {rows:[]};
  }};
- const measured=await observeDeliveryGas({catalog,pool,rpc,limit:150});
- assert.equal(measured,0);
- assert.ok(writes.some(q=>q.values[0]==="base"&&q.values[2]===120));
- assert.ok(rpcCalls.some(c=>c.chain===8453&&c.method==="eth_getLogs"));
- assert.equal(rpcCalls.filter(c=>c.method==="eth_getTransactionReceipt").length,0);
+ assert.equal(await observeDeliveryGas({catalog:destinationCatalog(),pool,
+  rpc:()=>assert.fail("idle gas monitoring must use SQL only")}),0);
 });
-test("optional gas observer does not sample or advance into indexer grace window",async()=>{
- const catalog=destinationCatalog(),calls=[];
- const pool={query:async q=>{
-  const text=q.text||q;
-  if(text.includes("FROM xita_gas_observation_cursors"))
-   return {rows:[{scanned_to:120,scanned_hash:h("b")}]};
-  throw Error("No RPC scanning beyond delayed finalized head");
- }};
- const rpc=async(chain,method,params)=>{
-  calls.push(method);
-  if(method==="eth_chainId")return "0x"+chain.chainId.toString(16);
-  if(method==="eth_getBlockByNumber"){
-   const n=params[0]==="safe"||params[0]==="latest"?600:Number(BigInt(params[0]));
-   return {number:"0x"+n.toString(16),hash:h("b")};
-  }
-  throw Error("Unexpected RPC");
- };
- assert.equal(await observeDeliveryGas({catalog,pool,rpc}),0);
- assert.ok(!calls.includes("eth_getLogs"));
+
+test("new delivery gas uses a single receipt and retries a missing sample",async()=>{
+ const catalog=destinationCatalog();
+ const source=catalog.assets.ABC.deployment.routeDeployments.find(r=>r.destinationChain==="base");
+ const mailbox=catalog.infrastructure.base.xitaV315.components.mailbox.address;
+ const row={chain_name:"base",mailbox,message_id:h("c"),tx_hash:tx,block_number:"100",
+  block_hash:block,source_chain:source.sourceChain,route_id:source.routeId,parent_message_id:null};
+ for(const available of [false,true]){
+  const calls=[],writes=[];
+  const pool={query:async q=>{
+   if(q.text.includes("JOIN public.xita_transfer_operations"))return {rows:[row]};
+   if(q.text.includes("FROM public.xita_gas_observations"))return {rows:[]};
+   writes.push(q);
+   return {rows:[]};
+  }};
+  const measured=await observeDeliveryGas({catalog,pool,rpc:async (_chain,method,params)=>{
+   calls.push([method,params]);
+   if(!available)return null;
+   return {transactionHash:tx,status:"0x1",blockNumber:"0x64",blockHash:block,
+    gasUsed:"0x493e0",logs:[{address:mailbox,topics:[PROCESS_ID_TOPIC,row.message_id]}]};
+  }});
+  assert.deepEqual(calls,[["eth_getTransactionReceipt",[tx]]]);
+  assert.equal(measured,Number(available));
+  assert.equal(writes.at(-1).values[3],available);
+  assert.equal(writes.some(q=>q.text.includes("xita_record_gas_observation")),available);
+ }
 });

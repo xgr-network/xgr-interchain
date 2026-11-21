@@ -73,7 +73,8 @@ test("F-07/F-19: disposable PostgreSQL regression suite (real schema)",
     "010_wallet_aware_sponsor_commitments.sql",
     "013_sponsor_prepared_tx.sql","014_sponsor_overtaken_obligations.sql",
     "015_sponsor_spendable_receipt.sql","016_gas_profiles.sql",
-    "017_sponsor_obligation_reviews.sql","018_sponsor_review_attribution.sql"]){
+    "017_sponsor_obligation_reviews.sql","018_sponsor_review_attribution.sql",
+    "019_indexed_mailbox_events.sql"]){
    await db.query(readFileSync(new URL("../indexer/sql/"+file,import.meta.url),"utf8"));
   }
   const reset=()=>db.query("TRUNCATE xita_sponsor_obligation_reviews,xita_sponsor_overtaken_obligations,xita_sponsor_grants,xita_sponsor_quote_intents,xita_transfer_operations RESTART IDENTITY CASCADE");

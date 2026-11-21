@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,readSourceWindow,
- checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
+ checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc,PROCESS_ID_TOPIC} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
 import {commitWindow,catchUpRoute,catchUpSource,refreshPendingDeliveries,recentActiveIndexerSources,
  dueIndexerSourceChains,groupedSourceRoutes} from "./transfer-index-worker.mjs";
@@ -474,6 +474,33 @@ test("shared observer keeps lagging route independent of already advanced route"
  assert.equal(view.from,101);assert.equal(view.to,104);
  assert.equal(view.eventsByRoute.get(a.routeId).length,0);
  assert.equal(calls,1);
+});
+test("one canonical window captures both Gateway and Mailbox events",async()=>{
+ const mailbox=address("b"),blockHash=hash("e"),messageId=hash("d");
+ const gatewayEvent={address:route.gateway,topics:[OPERATION_TOPIC,route.routeId,hash("c"),hash("2")],
+  transactionHash:hash("a"),blockNumber:hex(101),blockHash,logIndex:"0x0",data:word(2)};
+ const deliveryEvent={...gatewayEvent,address:mailbox,topics:[PROCESS_ID_TOPIC,messageId],
+  transactionHash:hash("b"),logIndex:"0x1",data:"0x"};
+ let queried=0,body=deliveryEvent;
+ const reader=rpc({
+  eth_chainId:()=>hex(1643),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(105):height,hash:blockHash}),
+  eth_getLogs:(_,[filter])=>{
+   queried++;
+   assert.deepEqual(filter.address,[route.gateway,mailbox]);
+   assert.deepEqual(filter.topics,[[OPERATION_TOPIC,PROCESS_ID_TOPIC]]);
+   return [gatewayEvent,body];
+  }
+ });
+ const params={routes:[route],cursors:new Map(),rpc:reader,limit:4,mailbox};
+ const view=await readSourceWindow(params);
+ assert.equal(queried,1);
+ assert.equal(view.eventsByRoute.get(route.routeId).length,1);
+ assert.deepEqual(view.deliveries,[{messageId,txHash:hash("b"),blockNumber:101,blockHash}]);
+ body={...deliveryEvent,address:route.gateway};
+ await assert.rejects(()=>readSourceWindow(params),/Invalid Mailbox/);
+ body={...deliveryEvent,blockHash:hash("f")};
+ await assert.rejects(()=>readSourceWindow(params),/not canonical/);
 });
 test("shared observer rejects failed logs and does not synthesize a successful window",async()=>{
  const a={...route,sourceChain:"base",sourceConfig:{chainId:8453,rpcUrls:["https://rpc.example/a"]}};

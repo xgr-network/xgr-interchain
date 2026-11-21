@@ -10,6 +10,40 @@ import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const normalize=x=>String(x||"").toLowerCase();
+
+async function storeMailboxEvents(pool,chain,mailbox,events){
+ if(!events.length)return;
+ const inserted=await pool.query({text:`
+  INSERT INTO public.xita_indexed_mailbox_events(chain_name,mailbox,message_id,tx_hash,block_number,block_hash)
+  SELECT $1,$2,e."messageId",e."txHash",e."blockNumber",e."blockHash"
+  FROM json_to_recordset($3::json) AS e("messageId" text,"txHash" text,"blockNumber" bigint,"blockHash" text)
+  ON CONFLICT(chain_name,mailbox,message_id) DO UPDATE SET tx_hash=EXCLUDED.tx_hash
+  WHERE xita_indexed_mailbox_events.tx_hash=EXCLUDED.tx_hash
+    AND xita_indexed_mailbox_events.block_number=EXCLUDED.block_number
+    AND xita_indexed_mailbox_events.block_hash=EXCLUDED.block_hash
+  RETURNING message_id`,values:[chain,normalize(mailbox),JSON.stringify(events)]});
+ if(inserted.rows.length!==events.length)throw Error("Conflicting finalized Mailbox event");
+}
+
+async function applyIndexedDeliveries(pool,routes){
+ if(!routes.length)return;
+ await pool.query({text:`
+  UPDATE public.xita_transfer_operations o
+  SET delivered=TRUE,delivery_checked_at=NOW(),
+      destination_checked_block=e.block_number,destination_checked_hash=e.block_hash
+  FROM public.xita_indexed_mailbox_events e,
+   json_to_recordset($1::json) AS r(source text,destination text,route_id char(66),mailbox char(42))
+  WHERE o.delivered IS DISTINCT FROM TRUE
+    AND o.source_chain=r.source AND o.route_id=r.route_id
+    AND o.destination_chain=r.destination AND o.destination_mailbox=r.mailbox
+    AND e.chain_name=r.destination AND e.mailbox=r.mailbox AND e.message_id=o.message_id
+    AND NOT EXISTS (
+     SELECT 1 FROM public.xita_transfer_operations other
+     WHERE other.destination_chain=e.chain_name AND other.destination_mailbox=e.mailbox
+       AND other.message_id=e.message_id AND other.source_chain<>o.source_chain
+    )`,values:[JSON.stringify(routes.map(r=>({source:r.sourceChain,destination:r.destinationChain,
+   route_id:r.routeId,mailbox:r.destinationMailbox})))]});
+}
 export async function loadCursor(pool,route){
  const result=await pool.query({text:`SELECT source_chain,route_name,gateway,route_id,
  deployment_block,scanned_to,scanned_hash,finalized_head
@@ -232,7 +266,7 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
    await pool.query({text:`UPDATE xita_transfer_operations SET
     delivered=$3,delivery_checked_at=NOW(),
     destination_checked_block=$4,destination_checked_hash=$5
-    WHERE source_chain=$1 AND message_id=$2`,
+    WHERE source_chain=$1 AND message_id=$2 AND delivered IS DISTINCT FROM TRUE`,
     values:[row.source_chain,row.message_id,result.delivered,
       result.finalizedHead,result.finalizedHash]});
    checked++;if(result.delivered)delivered++;
@@ -562,7 +596,7 @@ export async function catchUpRoute({route,scan,batches=4}){
 // Keep every route's own cursor and atomic PostgreSQL commit; a failure before
 // commit never converts an RPC error into a confirmed empty window.
 export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4,
- read=readSourceWindow,verify=verifiedTransfer}){
+ read=readSourceWindow,verify=verifiedTransfer,mailbox=null}){
  if(!Array.isArray(routes)||!routes.length||batches<1||batches>8)
   throw Error("Invalid source batch");
  const totals=new Map(routes.map(r=>[r.routeId,{route:r.routeName,indexed:0,
@@ -577,7 +611,7 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    if(cursor?.stale){await resetIndexedRoute({pool,route});cursor=null;}
    cursors.set(route.routeId,cursor);
   }
-  const view=await read({routes,cursors,rpc,limit,finality});
+  const view=await read({routes,cursors,rpc,limit,finality,mailbox});
   finality=view.finality;
   if(view.reorgRoutes?.length){
    for(const route of view.reorgRoutes)await resetIndexedRoute({pool,route});
@@ -585,6 +619,9 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    // committing ANY window based on the now-invalid source snapshot.
    throw Error("Source cursor block reorg: reset affected route(s)");
   }
+  // Persist positive destination evidence before committing any source
+  // cursor that would make the shared window ineligible on restart.
+  if(mailbox)await storeMailboxEvents(pool,routes[0].sourceChain,mailbox,view.deliveries);
   let pending=0;
   for(const route of routes){
    const cursor=cursors.get(route.routeId);
@@ -680,13 +717,19 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
   {status:"not-provisioned"}:{error:String(error.message||error).slice(0,200)};}
  const progress=[];
  for(const group of groupedSourceRoutes(routes,scanSourceChains)){
-  try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches}));}
+  const chain=group[0].sourceChain;
+  const mailbox=catalog.infrastructure?.[chain]?.xitaV315?.components?.mailbox?.address;
+  const sharedMailbox=routes.some(r=>r.destinationChain===chain&&r.destinationMailbox===normalize(mailbox))?mailbox:null;
+  try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches,mailbox:sharedMailbox}));}
   catch(error){for(const route of group)progress.push({
    route:route.routeName,error:String(error.message||error).slice(0,250)})}
  }
  const taxBackfill=await backfillPaidFeeTax({catalog,pool,routes,rpc})
   .catch(error=>({error:String(error.message||error).slice(0,160)}));
- const destinations=await refreshPendingDeliveries({pool,routes,rpc}).catch(error=>({error:String(error.message||error)}));
+ const destinations=await (async()=>{
+  await applyIndexedDeliveries(pool,routes);
+  return refreshPendingDeliveries({pool,routes,rpc});
+ })().catch(error=>({error:String(error.message||error)}));
  await pruneTransferAnnouncements({pool}).catch(()=>{});
  // Only temporary quote evidence is pruned. A genuine charged fee retains its
  // permanent tax receipt and IP/country evidence. After a generous grace period,

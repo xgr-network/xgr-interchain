@@ -769,6 +769,16 @@ wait_restored_fee_api() {
 }
 complete_update() {
   require_clean_main
+  if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null || \
+     systemctl is-active --quiet xita-gas-observer.service 2>/dev/null; then
+    local transfer_db="${XITA_TRANSFER_DB_NAME:-xita}"
+    if [[ ! "$transfer_db" =~ ^[a-z][a-z0-9_]*$ ]]; then
+      echo "ERROR: Invalid local DB name" >&2
+      return 1
+    fi
+    privileged -u postgres psql -X -v ON_ERROR_STOP=1 -d "$transfer_db" \
+      < "$ROOT/services/indexer/sql/019_indexed_mailbox_events.sql" || return 1
+  fi
   # The unsigned website MUST NOT advertise freshly merged fee behavior while
   # an already running paid signer still executes an older code version.
   # Verify signer schema and least-privilege DB identity BEFORE publishing.
@@ -831,6 +841,9 @@ complete_update() {
   # history worker too; leaving its prior Node process running keeps stale RPCs.
   if systemctl is-active --quiet xita-transfer-indexer.service 2>/dev/null; then
     privileged systemctl restart xita-transfer-indexer.service
+  fi
+  if systemctl is-active --quiet xita-gas-observer.service 2>/dev/null; then
+    privileged systemctl restart xita-gas-observer.service || return 1
   fi
   # The unsigned Direct-BLS proof observer is an independent long-running
   # process. Restart an already running observer so it loads the same
