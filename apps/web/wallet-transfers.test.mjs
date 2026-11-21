@@ -372,3 +372,18 @@ test("Arbitrum mined two-hop intent survives 64-block finality before unlock",as
  assert.equal(finalized.confirmed,true);
  assert.equal(finalized.finalDestinationChain,"base");
 });
+
+test("the indexer reuses its scoped head and rejects a receipt from a different scan block",async()=>{
+ const [route]=configuredGatewayRoutes(cat);
+ const m=mockRPC();
+ const scanEvidence={chainId:1643,head:{number:100,hash:hash("d")},
+  event:{txHash,blockNumber:16,blockHash:receipt.blockHash}};
+ const params={catalog:cat,route,transactionHash:txHash,
+  rpc:(chain,method,args)=>m.rpc(chain.rpcUrls[0],method,args)};
+ const record=await verifiedTransfer({...params,scanEvidence});
+ assert.equal(record.messageId,messageId);
+ assert.equal(m.calls.filter(c=>c.method==="eth_getBlockByNumber").length,0);
+ await assert.rejects(()=>verifiedTransfer({...params,scanEvidence:{
+  ...scanEvidence,event:{...scanEvidence.event,blockHash:hash("c")}
+ }}),/before canonical confirmation/);
+});

@@ -639,6 +639,7 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
   scannedTo:null,finalizedHead:null}]));
  // Share one verified upper bound across the bounded windows in this tick.
  // Each window still validates its own cursor, event and endpoint blocks.
+ const scanRpc=rpc.openScan?.()??rpc;
  let finality=null;
  for(let pass=0;pass<batches;pass++){
   const cursors=new Map();
@@ -647,7 +648,30 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    if(cursor?.stale){await resetIndexedRoute({pool,route});cursor=null;}
    cursors.set(route.routeId,cursor);
   }
-  const view=await read({routes,cursors,rpc,limit,finality,mailbox});
+  let view,verified;
+  for(;;){
+   try{
+    view=await read({routes,cursors,rpc:scanRpc,limit,finality,mailbox});
+    verified=new Map();
+    if(!view.reorgRoutes?.length){
+     for(const route of routes){
+      const records=[];
+      for(const event of view.eventsByRoute.get(route.routeId)||[]){
+       const record=await verify({catalog,route,transactionHash:event.txHash,rpc:scanRpc,
+        scanEvidence:{chainId:route.sourceConfig.chainId,head:view.finality,event}});
+       if(normalize(record.messageId)!==event.messageId)
+        throw Error("Shared source event verification mismatch");
+       records.push(record);
+      }
+      verified.set(route.routeId,records);
+     }
+    }
+    break;
+   }catch(error){
+    if(!scanRpc.retryOnAnotherProvider?.())throw error;
+    finality=null;
+   }
+  }
   finality=view.finality;
   if(view.reorgRoutes?.length){
    for(const route of view.reorgRoutes)await resetIndexedRoute({pool,route});
@@ -671,13 +695,7 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    // this group's oldest range; no unrelated route's cursor is rewound.
    const active=old<view.to||old===view.head;
    if(!active){info.scannedTo=old;info.finalizedHead=view.head;continue;}
-   const records=[];
-   for(const event of events){
-    const record=await verify({catalog,route,transactionHash:event.txHash,rpc});
-    if(normalize(record.messageId)!==event.messageId)
-     throw Error("Shared source event verification mismatch");
-    records.push(record);
-   }
+   const records=verified.get(route.routeId);
    const window={from:old+1,to,hash:to===old?cursor?.scannedHash||null:view.hash,
     finalizedHead:view.head,events};
    const saved=await commitWindow({pool,route,window,records});
