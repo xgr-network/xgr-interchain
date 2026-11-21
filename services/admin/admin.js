@@ -813,30 +813,29 @@ async function waitForDeploymentSync(result){
  if(status.status==="paused")return;
  await loadMainWorkqueue();
 }
-async function loadMainWorkqueue(){
+async function loadMainWorkqueue(view=el("infrastructure").hidden?"assets":"infrastructure"){
  el("main-status").textContent="Aktuellen GitHub main prüfen …";
  try{
   const data=await get("/admin/api/workqueue");
   workqueue=data;
   el("main-status").textContent=data.readOnly ? ("Nur Leseansicht · lokaler main "+data.commit.slice(0,12)+" · "+(data.warning||"Deployment gesperrt")) : ("GitHub main verifiziert · "+data.commit.slice(0,12)+" · Nur bestätigte On-Chain-Belege zählen als Deployment");
   deploymentReadiness.clear();
-  try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];eligibleAssetRoutes=tasks.eligibleRoutes||[];}
-  catch{assetTasks=[];eligibleAssetRoutes=[];}
-  renderAssets();renderInfrastructure();
-  void updateCreatorFactory();
-  // Read-only evidence status lives independently from incomplete GitHub config.
-  await Promise.all((data.infrastructure||[]).map(async chain=>{
-   try{
-    const report=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
-    if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
-   }catch{}
-  }));
-  if(workqueue===data){
-   try{
-    const b=await get("/admin/api/bootstrap");
-    liveBootstrap=new Map(b.bootstrap.map(x=>[x.chain,x]));
-   }catch{liveBootstrap=new Map();}
+  deploymentReadiness.clear();
+  if(view==="assets"){
+   try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];eligibleAssetRoutes=tasks.eligibleRoutes||[];}
+   catch{assetTasks=[];eligibleAssetRoutes=[];}
+   renderAssets();
+   void updateCreatorFactory();
+  }
+  if(view==="infrastructure"){
    renderInfrastructure();
+   await Promise.all((data.infrastructure||[]).map(async chain=>{
+    try{
+     const report=await get("/admin/api/deployment-readiness?chain="+encodeURIComponent(chain.name));
+     if(workqueue===data)deploymentReadiness.set(chain.name,report.readiness);
+    }catch{}
+   }));
+   if(workqueue===data&&!el("infrastructure").hidden)await checkLiveInfrastructure();
   }
  }catch(e){workqueue=null;el("main-status").textContent="Deployment gesperrt: "+e.message;el("main-workqueue").textContent="Der freigegebene GitHub main oder die Deployment-Zuordnung konnte nicht überprüft werden.";}
 }
@@ -888,18 +887,19 @@ const healthValue=n=>Number.isSafeInteger(n)?n.toLocaleString("de-DE"):"—";
 function healthTile(name,state,info="",detail=""){
  return '<article class="health-tile"><div class="health-tile-head"><strong>'+esc(name)+'</strong>'+healthPill(state)+'</div><p>'+esc(info)+'</p>'+(detail?'<small>'+esc(detail)+'</small>':"")+'</article>';
 }
-async function refreshOperationsHealth(){
+async function refreshOperationsHealth({probe=false}={}){
  if(healthBusy)return;
  healthBusy=true;
  el("health-refresh").disabled=true;
+ el("health-rpc-probe").disabled=true;
  el("health-status").textContent="Live-Diagnose läuft …";
  try{
-  const d=await get("/admin/api/operations/health");
-  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Anzeige alle 30 Sekunden · RPC-Messungen höchstens alle 5 Minuten · 429: mindestens 30 Minuten Pause</span>';
+  const d=probe?await postJSON("/admin/api/operations/rpc-probe",{}):await get("/admin/api/operations/health");
+  el("health-status").innerHTML=healthPill(d.status)+' <span>Stand: '+esc(new Date(d.checkedAt).toLocaleString("de-DE"))+' · Anzeige alle 30 Sekunden</span>';
   el("health-summary").innerHTML=[
    ["Dienste online",healthValue(d.summary.servicesHealthy)+"/"+healthValue(d.summary.servicesInstalled)],
    ["Optionale Dienste fehlen",healthValue(d.summary.servicesNotInstalled)],
-   ["RPCs mit Finalität",healthValue(d.summary.rpcProvidersHealthy)+"/"+healthValue(d.summary.rpcProvidersConfigured)],
+   [probe?"RPCs mit Finalität":"RPCs zuletzt erreichbar",healthValue(d.summary.rpcProvidersHealthy)+"/"+healthValue(d.summary.rpcProvidersConfigured)],
    ["Offene Proof-Beobachtungen",healthValue(d.summary.unresolvedProofObservations)],
    ["Überwachte ILN-Validatoren bereit",healthValue(d.summary.validatorsHealthy)+"/"+healthValue(d.summary.validatorsConfigured)]
   ].map(([label,value])=>'<div class="health-kpi"><strong>'+esc(value)+'</strong><span>'+esc(label)+'</span></div>').join("");
@@ -964,30 +964,43 @@ async function refreshOperationsHealth(){
   el("health-chains").innerHTML=(d.chains||[]).map(c=>{
    const ps=c.providers||[],sourceStatus=c.sourceWitness==="not-checked"?
     'Source-Witness und BLS-Quorum NICHT geprüft':'Kein vollständiger Source-Witness-Nachweis';
+   const passive=c.scope==="validator-observations";
    const label=healthValue(c.reachable??0)+'/'+healthValue(c.configuredEndpoints)+
-    ' RPC erreichbar · '+healthValue(c.possibleOperators??0)+'/'+healthValue(c.requiredOperators??2)+
-    ' Betreiber potenziell verfügbar';
+    (passive?' RPC zuletzt erreichbar':' RPC in Direktprüfung erreichbar');
    const rows=ps.map(p=>'<tr><td><strong>'+esc(p.operator||"Unbekannt")+'</strong>'+
     '<small>'+esc(p.host||"")+' · '+esc(p.source||"XITA catalog")+'</small></td><td>'+healthPill(p.state)+
-    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+'</td>'+
-    '<td>'+esc(p.chainId===null?"—":String(p.chainId))+'</td>'+
-    '<td>'+esc(p.finalityTag||"—")+' · '+healthValue(p.finalityHead)+
-    (p.lagBlocks!==null&&p.lagBlocks!==undefined?'<small>Abstand zu Latest: '+healthValue(p.lagBlocks)+'</small>':"")+
-    '</td><td>'+esc(p.elapsedMs===null?"—":String(p.elapsedMs)+" ms")+'</td></tr>').join("");
+    (p.reason?'<small>'+esc(p.reason)+'</small>':"")+
+    (p.observations||[]).map(o=>'<small>'+esc(o.validator)+' · '+healthPill(o.state)+
+     ' · '+esc(new Date(o.checkedAt).toLocaleString("de-DE"))+
+     (o.retryAt?' · Pause bis '+esc(new Date(o.retryAt).toLocaleString("de-DE")):"")+'</small>').join("")+'</td>'+
+    '<td>'+esc(p.checkedAt?new Date(p.checkedAt).toLocaleString("de-DE"):"—")+'</td>'+
+    (passive?"":'<td>'+healthValue(p.finalityHead)+'</td><td>'+esc(p.elapsedMs==null?"—":String(p.elapsedMs)+" ms")+'</td>')+'</tr>').join("");
    return '<div class="health-validator-card health-rpc-card"><div class="health-validator-card-head">'+
     '<strong>'+esc(({bsc:"BNB Smart Chain",base:"Base",arbitrum:"Arbitrum",
      optimism:"Optimism",xgrchain:"XGRChain"})[c.name]||c.name||"Chain")+'</strong>'+
     healthPill(c.state)+'<small>'+esc(label)+'</small></div>'+
     '<p class="health-rpc-note">'+esc(sourceStatus)+'. Erreichbarkeit und native Finalität sind kein Beweis für einen ausführbaren Transfer.</p>'+
     (rows?'<div class="health-table-wrap"><table class="health-table health-rpc-table"><thead>'+
-    '<tr><th>Betreiber / Endpoint</th><th>Status</th><th>Chain-ID</th><th>Finalität / Head</th><th>Latenz</th></tr>'+
+    '<tr><th>Betreiber / Endpoint</th><th>Status</th><th>Beobachtet</th>'+(passive?"":'<th>Finalisierter Head</th><th>Latenz</th>')+'</tr>'+
     '</thead><tbody>'+rows+'</tbody></table></div>':'<p class="tiny">Keine zugelassenen RPC-Endpunkte erfasst.</p>')+'</div>';
   }).join("");
  }catch(e){el("health-status").textContent="Health-Diagnose nicht verfügbar: "+e.message;}
- finally{healthBusy=false;el("health-refresh").disabled=false;}
+ finally{healthBusy=false;el("health-refresh").disabled=false;el("health-rpc-probe").disabled=false;}
 }
-for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{e.preventDefault();setView(a.dataset.view);history.replaceState(null,"","#"+a.dataset.view);if(a.dataset.view==="infrastructure")checkLiveInfrastructure();if(a.dataset.view==="treasury")void refreshFeeTreasury();if(a.dataset.view==="health")void refreshOperationsHealth();});
-setView(["assets","infrastructure","treasury","health"].includes(location.hash.slice(1))?location.hash.slice(1):"assets");
+function openAdminView(view){
+ setView(view);
+ if(view==="health")void refreshOperationsHealth();
+ if(view==="treasury")void refreshFeeTreasury();
+ if(view==="assets"||view==="infrastructure"){
+  void loadMainWorkqueue(view);
+  void loadPlan();
+ }
+}
+for(const a of document.querySelectorAll("[data-view]"))a.addEventListener("click",e=>{
+ e.preventDefault();
+ history.replaceState(null,"","#"+a.dataset.view);
+ openAdminView(a.dataset.view);
+});
 el("connect-wallet").addEventListener("click",async()=>{
  try{
   const providerList=walletsAvailable();
@@ -1094,9 +1107,8 @@ async function checkLiveInfrastructure(){
 }
 el("refresh").addEventListener("click",checkLiveInfrastructure);
 el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
-if(location.hash==="#treasury")void refreshFeeTreasury();
-if(location.hash==="#health")void refreshOperationsHealth();
 el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth());
+el("health-rpc-probe").addEventListener("click",()=>void refreshOperationsHealth({probe:true}));
 setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
-loadMainWorkqueue();loadPlan();
-// Chain RPC state is queried only in the dedicated Chains view or on refresh.
+const initialView=location.hash.slice(1);
+openAdminView(["assets","infrastructure","treasury","health"].includes(initialView)?initialView:"assets");
