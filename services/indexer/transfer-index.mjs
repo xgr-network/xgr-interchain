@@ -59,16 +59,13 @@ export function bridgeAmountFromTransaction(tx,route){
   recipient.slice(0,24)!=="0x"+"0".repeat(22))return null;
  return amount.toString();
 }
-export async function checkedDelivery({route,messageId,rpc}){
+export async function checkedDelivery({route,messageId,rpc,readHead}){
  if(!HASH.test(messageId||"")||typeof rpc!=="function")throw Error("Invalid delivery check");
  if(!ADDRESS.test(route.destinationMailbox||""))return {delivered:null,reason:"destination-not-deployed"};
- const id=await rpc(route.destinationConfig,"eth_chainId",[]);
- if(!HEX.test(id||"")||BigInt(id)!==BigInt(route.destinationConfig.chainId))
-  throw Error("Destination RPC chain mismatch");
  return verifiedNativeMailboxState(
   (method,args)=>rpc(route.destinationConfig,method,args),
   route.destinationConfig.chainId,route.destinationMailbox,
-  DELIVERED_SELECTOR+messageId.slice(2));
+  DELIVERED_SELECTOR+messageId.slice(2),readHead);
 }
 // Browser recovery may retry any configured source/destination RPC URL.
 // A source backup must never silently be treated as the destination.
@@ -86,16 +83,18 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
  if(!HASH.test(transactionHash||""))throw Error("Invalid canonical source tx");
  const tx=await rpc(route.sourceConfig,"eth_getTransactionByHash",[transactionHash]);
  if(!ADDRESS.test(tx?.from||""))throw Error("Missing canonical source wallet");
+ const sourceRpc=bindVerifiedTransferRpc(route,(chain,method,params)=>
+  chain===route.sourceConfig&&method==="eth_getTransactionByHash"&&
+   norm(params[0])===norm(transactionHash)?tx:rpc(chain,method,params));
+ // The SQL delivery sweep checks the destination after source evidence is stored.
  const evidence=await findWalletSourceTx({catalog,account:tx.from,
   sourceChain:route.sourceChain,txHash:transactionHash,
-  rpc:bindVerifiedTransferRpc(route,rpc)});
+  rpc:sourceRpc,sourceOnly:true});
  if(!evidence.confirmed||!HASH.test(evidence.messageId||"")||
    norm(evidence.routeId)!==norm(route.routeId)||
    norm(evidence.gateway)!==norm(route.gateway)||
    ["source-failed","pending-source","confirming"].includes(evidence.status))
   throw Error("Source operation cannot be indexed before canonical confirmation");
- const delivered=await checkedDelivery({route,messageId:evidence.messageId,rpc})
-  .catch(()=>({delivered:null}));
  return {
   sourceChain:route.sourceChain,messageId:norm(evidence.messageId),
   sourceTxHash:norm(transactionHash),
@@ -112,7 +111,7 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   finalRecipient:evidence.finalRecipient||evidence.recipient||null,
   onwardRouteId:evidence.onwardRouteId||null,
   parentMessageId:evidence.parentMessageId||null,
-  delivered:delivered.delivered,
+  delivered:null,
  };
 }
 // Pure read-only RPC transport for the finalized indexer; caller controls endpoints,
@@ -345,6 +344,11 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
   if(!cursor?.scannedHash)continue;
   const height=positions.get(route.routeId);
   if(height>confirmed.number)throw Error("Durable cursor above safe source head");
+  // A fresh finality read has already checked this exact block by number.
+  if(!finality&&height===confirmed.number){
+   if(norm(confirmed.hash)!==norm(cursor.scannedHash))reorgRoutes.push(route);
+   continue;
+  }
   let block=byHeight.get(height);
   if(!block){
    block=await rpc(source,"eth_getBlockByNumber",[hex(height),false]);

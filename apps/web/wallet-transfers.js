@@ -295,7 +295,7 @@ function verifiedFeeAdapterEvent(receiptLogs,route,payer,messageId){
   onwardJourneyEvidence(log,route,payer,messageId);
  return {present:true,evidence};
 }
-export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc}){
+export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc,sourceOnly=false}){
  if(!isAddress(account)||!HASH.test(txHash||""))throw Error("Connect wallet and enter a valid source transaction hash");
  const routes=configuredGatewayRoutes(catalog).filter(r=>r.sourceChain===sourceChain);
  if(!routes.length)throw Error("No verified deployed XITA Gateway for this source chain");
@@ -395,6 +395,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   sourceSafeHeadBlock:safe.head.number,status:"confirming-native-finality"};
  const found={...base,...finality,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
+ if(sourceOnly)return found;
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
   const dest=createReader(route.destinationConfig,fetcher,rpc);

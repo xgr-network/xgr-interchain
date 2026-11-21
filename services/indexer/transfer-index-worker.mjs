@@ -5,6 +5,7 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {readFileSync} from "node:fs";
 import {indexedRoutes,readRouteWindow,readSourceWindow,verifiedTransfer,checkedDelivery,canonicalRpc,candidateRpc} from "./transfer-index.mjs";
+import {readNativeFinalityHead} from "../../apps/web/chain-finality.js";
 import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -215,12 +216,18 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
       o.delivery_attempted_at<=NOW()-INTERVAL '60 seconds')
  ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${limitParam}`,
   values:[...values,limit]});
+ const heads=new Map();
  let checked=0,delivered=0,unknown=0;
  for(const row of pending.rows){
   const route=all.get(row.source_chain+":"+row.route_id);
   if(!route){unknown++;continue;}
   try{
-   const result=await checkedDelivery({route,messageId:row.message_id,rpc});
+   const result=await checkedDelivery({route,messageId:row.message_id,rpc,
+    readHead:(read,chainId)=>{
+     if(!heads.has(route.destinationChain))
+      heads.set(route.destinationChain,readNativeFinalityHead(read,chainId));
+     return heads.get(route.destinationChain);
+    }});
    if(result.delivered===null){unknown++;continue;}
    await pool.query({text:`UPDATE xita_transfer_operations SET
     delivered=$3,delivery_checked_at=NOW(),
@@ -560,6 +567,9 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
   throw Error("Invalid source batch");
  const totals=new Map(routes.map(r=>[r.routeId,{route:r.routeName,indexed:0,
   scannedTo:null,finalizedHead:null}]));
+ // Share one verified upper bound across the bounded windows in this tick.
+ // Each window still validates its own cursor, event and endpoint blocks.
+ let finality=null;
  for(let pass=0;pass<batches;pass++){
   const cursors=new Map();
   for(const route of routes){
@@ -567,7 +577,8 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    if(cursor?.stale){await resetIndexedRoute({pool,route});cursor=null;}
    cursors.set(route.routeId,cursor);
   }
-  const view=await read({routes,cursors,rpc,limit});
+  const view=await read({routes,cursors,rpc,limit,finality});
+  finality=view.finality;
   if(view.reorgRoutes?.length){
    for(const route of view.reorgRoutes)await resetIndexedRoute({pool,route});
    // A reorg resets only affected routes; retry on the next tick without
