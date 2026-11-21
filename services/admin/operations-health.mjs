@@ -327,7 +327,7 @@ export async function collectOperationsHealth({
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
   services,checks,indexer,proofObserver,evidence,chains,
-  validators:validators.map(({rpcProviders,...validator})=>validator),quoteWriter,
+  validators:validators.map(({rpcProviders,rpcEndpoint,...validator})=>validator),quoteWriter,
   sponsorWorker:{state:!sponsorInstalled?"not-installed":sponsorWorker?.state||"unknown",
    reason:!sponsorInstalled?"Gas sponsorship not installed":sponsorHealthy?
     "Last sponsor execution completed successfully":

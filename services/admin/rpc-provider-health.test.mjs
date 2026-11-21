@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders,createRPCMonitor,RPC_RATE_LIMIT_PAUSE_MS,adminRPCSources} from "./rpc-provider-health.mjs";
+import {observedChainProviders,approvedRPC,finalityTag,probeProvider,probeChainProviders,summarizeProviders,createRPCMonitor,RPC_RATE_LIMIT_PAUSE_MS,adminRPCSources} from "./rpc-provider-health.mjs";
 
 const bsc={name:"bsc",chainId:56,rpcUrls:[
  "https://bsc-rpc.publicnode.com","https://bsc.drpc.org","https://bnb.api.onfinality.io/public"]};
@@ -166,4 +166,19 @@ test("1RPC quota error triggers operator cooldown without repeat requests",async
  const second=await monitor({name:"bsc",chainId:56,rpcUrls:["https://public.1rpc.io/bnb"]});
  assert.equal(n,count,"quota exhaustion must not trigger repeat RPC probes");
  assert.equal(second.providers.find(p=>p.operator==="1RPC").state,"rate-limited");
+});
+
+test("XGR uses its existing status response only for the matching public endpoint",()=>{
+ const now=1_800_000_000_000;
+ const chain={name:"xgrchain",chainId:1643,rpcUrls:["https://rpc.xgr.network","https://rpc2.xgr.network"]};
+ const validators=[
+  {name:"Validator 1",workerAlive:false,rpcEndpoint:{
+   url:"https://rpc.xgr.network/",state:"ok",observedUnix:now/1000}},
+  {name:"Validator 2",workerAlive:true,rpcEndpoint:{
+   url:"http://127.0.0.1:8545",state:"ok",observedUnix:now/1000}}
+ ];
+ const result=observedChainProviders(chain,validators,now);
+ assert.equal(result.attempted,0);
+ assert.deepEqual(result.providers.map(p=>p.state),["ok","unknown"]);
+ assert.equal(result.providers[0].checkedAt,new Date(now).toISOString());
 });

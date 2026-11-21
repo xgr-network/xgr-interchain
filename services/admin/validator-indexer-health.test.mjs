@@ -60,3 +60,15 @@ test("XGRChain source alias is normalized at the RPC boundary, not mislabeled un
  assert.equal(status.routes[0].source,"xgrchain");
  assert.equal(status.routes[0].blockLag,3);
 });
+
+test("XGR endpoint reachability is distinct from the freshness of its worker",async()=>{
+ const now=1_800_000_000_000;
+ const url="https://rpc.xgr.network";
+ const [result]=await probeILNValidators({urls:[url],now,fetcher:async()=>({
+  ok:true,text:async()=>JSON.stringify({jsonrpc:"2.0",id:1,result:{
+   version:2,workerAlive:true,updatedUnix:now/1000-123,routes:[]
+  }})
+ })});
+ assert.equal(result.state,"stalled");
+ assert.deepEqual(result.rpcEndpoint,{url,state:"ok",observedUnix:now/1000});
+});
