@@ -979,7 +979,9 @@ async function refreshOperationsHealth({probe=false}={}){
     '<strong>'+esc(({bsc:"BNB Smart Chain",base:"Base",arbitrum:"Arbitrum",
      optimism:"Optimism",xgrchain:"XGRChain"})[c.name]||c.name||"Chain")+'</strong>'+
     healthPill(c.state)+'<small>'+esc(label)+'</small></div>'+
-    '<p class="health-rpc-note">'+esc(sourceStatus)+'. Erreichbarkeit und native Finalität sind kein Beweis für einen ausführbaren Transfer.</p>'+
+    '<p class="health-rpc-note">'+(passive&&c.chainId===1643?
+     'Die Zeilen zeigen, welche XGR-Endpunkte auf die Statusabfrage geantwortet haben.':
+     esc(sourceStatus)+'. Erreichbarkeit und native Finalität sind kein Beweis für einen ausführbaren Transfer.')+'</p>'+
     (rows?'<div class="health-table-wrap"><table class="health-table health-rpc-table"><thead>'+
     '<tr><th>Betreiber / Endpoint</th><th>Status</th><th>Beobachtet</th>'+(passive?"":'<th>Finalisierter Head</th><th>Latenz</th>')+'</tr>'+
     '</thead><tbody>'+rows+'</tbody></table></div>':'<p class="tiny">Keine zugelassenen RPC-Endpunkte erfasst.</p>')+'</div>';

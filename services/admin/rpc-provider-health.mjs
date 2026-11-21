@@ -229,22 +229,30 @@ export function observedChainProviders(chain,validators,now){
  const rows=adminRPCSources(chain).slice(0,6).flatMap(({url,source})=>{
   const provider=approvedRPC(url);
   if(!provider)return [];
-  const observations=validators.flatMap(v=>v.workerAlive?(v.rpcProviders||[]).flatMap(entry=>{
-   if(entry?.chainId!==chainId||entry.host!==provider.host||
-      !Number.isSafeInteger(entry.observedUnix)||entry.observedUnix<=0||
-      !["ok","rate-limited","unavailable"].includes(entry.state))return [];
-   const observedMs=entry.observedUnix*1000;
-   const cooldownMs=entry.cooldownUntilUnix*1000;
-   const activeCooldown=Number.isSafeInteger(entry.cooldownUntilUnix)&&cooldownMs>now&&cooldownMs<=now+60*60*1000;
-   if(observedMs>now+30000||(!activeCooldown&&now-observedMs>15*60*1000))return [];
-   return [{validator:v.name,state:entry.state,checkedAt:new Date(observedMs).toISOString(),
-    retryAt:activeCooldown?new Date(cooldownMs).toISOString():null}];
-  }):[]);
+  const observations=validators.flatMap(v=>{
+   // Native XGR verification does not populate outbound provider statistics.
+   // Use the response from the existing status call for its exact endpoint.
+   const entries=chainId===1643?
+    (approvedRPC(v.rpcEndpoint?.url)?.url===provider.url?
+     [{...v.rpcEndpoint,chainId,host:provider.host}]:[]):
+    (v.workerAlive?v.rpcProviders||[]:[]);
+   return entries.flatMap(entry=>{
+    if(entry?.chainId!==chainId||entry.host!==provider.host||
+       !Number.isSafeInteger(entry.observedUnix)||entry.observedUnix<=0||
+       !["ok","rate-limited","unavailable"].includes(entry.state))return [];
+    const observedMs=entry.observedUnix*1000;
+    const cooldownMs=entry.cooldownUntilUnix*1000;
+    const activeCooldown=Number.isSafeInteger(entry.cooldownUntilUnix)&&cooldownMs>now&&cooldownMs<=now+60*60*1000;
+    if(observedMs>now+30000||(!activeCooldown&&now-observedMs>15*60*1000))return [];
+    return [{validator:v.name,state:entry.state,checkedAt:new Date(observedMs).toISOString(),
+     retryAt:activeCooldown?new Date(cooldownMs).toISOString():null}];
+   });
+  });
   const states=observations.map(o=>o.state);
   const state=states.includes("rate-limited")?"rate-limited":states.includes("unavailable")?"unavailable":
    states.includes("ok")?"ok":"unknown";
   const checkedAt=observations.map(o=>o.checkedAt).sort().at(-1)??null;
-  return [{...provider,source:"XGR Node",state,chainId,checkedAt,observations,
+  return [{...provider,source:chainId===1643?"XGR-Status-RPC":"XGR Node",state,chainId,checkedAt,observations,
    reason:state==="unknown"?"Keine aktuelle Beobachtung":null}];
  });
  const summary=summarizeProviders(name,chainId,rows);
