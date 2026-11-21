@@ -642,3 +642,65 @@ test("candidate receipt propagation null still checks backup without false coold
  await read(chain,"eth_getTransactionReceipt",[hash("c")]);
  assert.ok(first>=3,"valid null is not treated as provider outage");
 });
+
+test("the indexer shares provider rate limits but keeps archive capability failures local",async()=>{
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://rpc.example"]};
+ let now=100000, failure=429;
+ const methods=[];
+ const fetcher=async(_url,{body})=>{
+  const {method}=JSON.parse(body);
+  methods.push(method);
+  if(method==="eth_getLogs")return {ok:false,status:failure};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":{transactionHash:hash("a")}})};
+ };
+ const rateLimits=new Map();
+ const options={now:()=>now,baseUrls:"",fetcher,rateLimits};
+ const scan=canonicalRpc(options), candidate=candidateRpc(options);
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/429/);
+ await assert.rejects(()=>candidate(chain,"eth_getTransactionReceipt",[hash("a")]),/cooldown/);
+ assert.deepEqual(methods,["eth_chainId","eth_getLogs"]);
+ now+=16000;
+ failure=403;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/403/);
+ assert.equal((await candidate(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+});
+
+test("only fresh, caught-up Mailbox coverage filters repeat delivery probes before the limit",async()=>{
+ const now=200000;
+ const recent={chain:"bsc",mailbox:route.destinationMailbox,from:100,to:105,
+  checkedAt:now,caughtUp:true};
+ const coverage=new Map([
+  ["bsc",recent],
+  ["base",{...recent,chain:"base",checkedAt:now-120001}],
+  ["optimism",{...recent,chain:"optimism",caughtUp:false}]
+ ]);
+ let statement;
+ await refreshPendingDeliveries({routes:[route],mailboxCoverage:coverage,now,
+  pool:{query:async q=>{statement=q;return {rows:[]}}},
+  rpc:async()=>{throw Error("no delivery call expected")}});
+ assert.deepEqual(JSON.parse(statement.values[2]),[recent]);
+ assert.match(statement.text,/o\.delivered IS FALSE AND c\.chain=o\.destination_chain/);
+ assert.match(statement.text,/o\.destination_checked_block BETWEEN c\."from"-1 AND c\."to"/);
+ assert.match(statement.text,/xita_indexed_mailbox_events e/);
+ assert.match(statement.text,/LIMIT \$4/);
+});
+
+test("a JSON-RPC plan quota response pauses both indexer readers",async()=>{
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://rpc.example"]};
+ const rateLimits=new Map();
+ let now=100000,calls=0;
+ const options={now:()=>now,baseUrls:"",rateLimits,fetcher:async()=>{
+  calls++;
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,error:{code:-32000,
+   message:"You've reached the usage limit for your current plan"}})};
+ }};
+ const scan=canonicalRpc(options), candidate=candidateRpc(options);
+ await assert.rejects(()=>candidate(chain,"eth_getTransactionReceipt",[hash("a")]),/quota exhausted/);
+ now+=120001;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/cooldown/);
+ assert.equal(calls,1);
+ now+=1800000;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/quota exhausted/);
+ assert.equal(calls,2);
+});

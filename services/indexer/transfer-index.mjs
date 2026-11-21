@@ -135,12 +135,22 @@ export function rpcCandidates(chain,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_
  if(!result.length||result.length>8)throw Error("Missing or excessive chain RPC URLs");
  return result;
 }
+function recordSharedRateLimit(rateLimits,key,error,now){
+ const message=String(error?.message||error);
+ const exhausted=/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/i.test(message);
+ const limited=/\b429\b|too many requests|rate[ -]limit/i.test(message);
+ if(!exhausted&&!limited)return;
+ const previous=rateLimits.get(key);
+ const failures=Math.min(5,(previous?.failures||0)+1);
+ const delay=exhausted?1800000:Math.min(120000,15000*2**(failures-1));
+ rateLimits.set(key,{failures,until:Math.max(previous?.until||0,now()+delay)});
+}
 // A normal historical scan qualifies a provider with its ACTUAL requested
 // finalized block and log window. The old fixed-height Base archive preflight
 // made several unrelated RPC calls per endpoint and was repeated on expiry.
 // An optional injected probe is retained for targeted tests only.
 export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
- baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now,rateLimits=new Map()}={}){
  const validated=new Map(),retryByProvider=new Map();
  return async(chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
@@ -149,12 +159,12 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
   for(const url of rpcCandidates(chain,{baseUrls})){
    const key=String(chain.chainId)+"|"+url;
    const retry=retryByProvider.get(key);
-   if(retry&&retry.until>now()){skipped++;continue;}
+   if(retry?.until>now()||rateLimits.get(key)?.until>now()){skipped++;continue;}
    let identityVerified=false;
    try{
     const ok=validated.get(key);
     if(!ok||ok.expire<=now()){
-     const id=await publicRead(url,"eth_chainId",[],fetcher);
+     const id=await publicRead(url,"eth_chainId",[],fetcher,{providerDiagnostics:true});
      if(typeof id!=="string"||!/^0x[0-9a-f]+$/i.test(id)||
        BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain identity mismatch");
      identityVerified=true;
@@ -167,13 +177,15 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
     }
     // Canonical completeness is checked by the caller. Never reinterpret
     // an eth_getLogs failure or unsupported range as an empty log set.
-    const value=await publicRead(url,method,params,fetcher);
+    const value=await publicRead(url,method,params,fetcher,{providerDiagnostics:true});
+    if(rateLimits.get(key)?.until<=now())rateLimits.delete(key);
     retryByProvider.delete(key);
     return value;
    }catch(error){
     if(identityVerified||/identity mismatch/.test(String(error?.message||"")))
      validated.delete(key);
     last=error;
+    recordSharedRateLimit(rateLimits,key,error,now);
     const count=Math.min(5,(retry?.failures||0)+1);
     // 15/30/60/120 second bounded backoff on transport, 429 and missing
     // historical methods. It is per chain AND URL, never route-scoped.
@@ -191,7 +203,7 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
 // Base public RPCs can serve individual receipts even when archive log probes
 // are rate-limited. Both readers independently verify chain IDs and fail over.
 export function candidateRpc({fetcher=globalThis.fetch,
- baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now,rateLimits=new Map()}={}){
  const identities=new Map(),cooldowns=new Map();
  return async (chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
@@ -200,24 +212,26 @@ export function candidateRpc({fetcher=globalThis.fetch,
   for(const url of rpcCandidates(chain,{baseUrls})){
    const key=String(chain.chainId)+"|"+url;
    const held=cooldowns.get(key);
-   if(held&&held.until>now()){skipped++;continue;}
+   if(held?.until>now()||rateLimits.get(key)?.until>now()){skipped++;continue;}
    try{
      const prev=identities.get(key);
      if(!prev||prev.expire<=now()){
-      const id=await publicRead(url,"eth_chainId",[],fetcher);
+      const id=await publicRead(url,"eth_chainId",[],fetcher,{providerDiagnostics:true});
       if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
        throw Error("Candidate RPC chain ID mismatch");
       identities.set(key,{expire:now()+300000});
      }
-     const result=await publicRead(url,method,params,fetcher);
+     const result=await publicRead(url,method,params,fetcher,{providerDiagnostics:true});
      // A null receipt is propagation delay, NOT a provider failure.
      if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
        "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
+     if(rateLimits.get(key)?.until<=now())rateLimits.delete(key);
      cooldowns.delete(key);
      return result;
     }catch(error){
      identities.delete(key);
      last=error;
+     recordSharedRateLimit(rateLimits,key,error,now);
      const count=Math.min(5,(held?.failures||0)+1);
      const msg=String(error?.message||error).toLowerCase();
      const exhausted=/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/.test(msg);

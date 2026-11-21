@@ -10,6 +10,24 @@ import {transferWriterPool} from "./transfer-index-store.mjs";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const normalize=x=>String(x||"").toLowerCase();
+const MAILBOX_COVERAGE_MAX_AGE_MS=120000;
+
+// Only windows observed by this worker can suppress repeated reads. Source
+// route cursors alone do not establish Mailbox coverage after a restart or gap.
+function updateMailboxCoverage(coverage,chain,mailbox,window,now){
+ const previous=coverage.get(chain);
+ const same=previous?.mailbox===normalize(mailbox);
+ if(window.from>window.to){
+  if(same&&previous.to===window.head&&previous.hash===window.finality?.hash)
+   coverage.set(chain,{...previous,caughtUp:true,checkedAt:now});
+  else coverage.delete(chain);
+  return;
+ }
+ const contiguous=same&&window.from<=previous.to+1&&window.to>=previous.to;
+ coverage.set(chain,{chain,mailbox:normalize(mailbox),
+  from:contiguous?Math.min(previous.from,window.from):window.from,
+  to:window.to,hash:window.hash,caughtUp:window.to===window.head,checkedAt:now});
+}
 
 async function storeMailboxEvents(pool,chain,mailbox,events){
  if(!events.length)return;
@@ -229,7 +247,7 @@ export async function scanIndexedRoute({catalog,route,pool,rpc,limit=150}){
  }
  return commitWindow({pool,route,window,records});
 }
-export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
+export async function refreshPendingDeliveries({pool,routes,rpc,limit=40,mailboxCoverage=new Map(),now=Date.now()}={}){
  const all=new Map(routes.map(r=>[r.sourceChain+":"+r.routeId,r]));
  // Only unfinished transfers are eligible; a delivered=TRUE row already
  // has a finalized destination Mailbox proof and must NEVER be polled again.
@@ -240,6 +258,23 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  const param=n=>String.fromCharCode(36)+n; // PostgreSQL numbered bind parameter
  const pairs=active.map((_,i)=>"("+param(2*i+1)+"::text,"+param(2*i+2)+"::char(66))").join(",");
  const values=active.flatMap(r=>[r.sourceChain,r.routeId]);
+ const covered=[...mailboxCoverage.values()].filter(c=>c.caughtUp&&
+  now>=c.checkedAt&&now-c.checkedAt<=MAILBOX_COVERAGE_MAX_AGE_MS);
+ let eligible="";
+ if(covered.length){
+  const coverageParam=param(values.push(JSON.stringify(covered)));
+  // A prior explicit false result is the baseline. The indexed window must
+  // cover all subsequent blocks. Ambiguous positive events retain RPC fallback.
+  eligible=`AND NOT EXISTS (
+   SELECT 1 FROM json_to_recordset(${coverageParam}::json) AS c(
+    chain text,mailbox char(42),"from" bigint,"to" bigint)
+   WHERE o.delivered IS FALSE AND c.chain=o.destination_chain
+     AND c.mailbox=o.destination_mailbox
+     AND o.destination_checked_block BETWEEN c."from"-1 AND c."to"
+     AND NOT EXISTS (SELECT 1 FROM public.xita_indexed_mailbox_events e
+      WHERE e.chain_name=c.chain AND e.mailbox=c.mailbox AND e.message_id=o.message_id)
+  )`;
+ }
  const limitParam=param(values.length+1);
  const pending=await pool.query({text:`SELECT o.source_chain,o.route_id,o.message_id FROM
  xita_transfer_operations o
@@ -248,6 +283,7 @@ export async function refreshPendingDeliveries({pool,routes,rpc,limit=40}){
  AND o.delivered IS DISTINCT FROM TRUE
  AND (o.delivery_attempted_at IS NULL OR
       o.delivery_attempted_at<=NOW()-INTERVAL '60 seconds')
+ ${eligible}
  ORDER BY o.delivery_attempted_at ASC NULLS FIRST,o.source_indexed_at ASC LIMIT ${limitParam}`,
   values:[...values,limit]});
  const heads=new Map();
@@ -596,7 +632,7 @@ export async function catchUpRoute({route,scan,batches=4}){
 // Keep every route's own cursor and atomic PostgreSQL commit; a failure before
 // commit never converts an RPC error into a confirmed empty window.
 export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4,
- read=readSourceWindow,verify=verifiedTransfer,mailbox=null}){
+ read=readSourceWindow,verify=verifiedTransfer,mailbox=null,mailboxCoverage=new Map()}){
  if(!Array.isArray(routes)||!routes.length||batches<1||batches>8)
   throw Error("Invalid source batch");
  const totals=new Map(routes.map(r=>[r.routeId,{route:r.routeName,indexed:0,
@@ -649,6 +685,7 @@ export async function catchUpSource({catalog,routes,pool,rpc,limit=150,batches=4
    info.finalizedHead=saved.finalizedHead;
    if(saved.scannedTo<view.head)pending++;
   }
+  if(mailbox)updateMailboxCoverage(mailboxCoverage,routes[0].sourceChain,mailbox,view,Date.now());
   if(!pending)break;
  }
  return [...totals.values()];
@@ -705,7 +742,9 @@ export function groupedSourceRoutes(routes,scanSourceChains=null){
  return [...bySource.values()];
 }
 
-export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc=candidateRpc(),blockFor,limit=150,batches=4,scanSourceChains=null}){
+export async function tickTransferIndex({catalog,pool,rateLimits=new Map(),
+ rpc=canonicalRpc({rateLimits}),hintRpc=candidateRpc({rateLimits}),blockFor,limit=150,batches=4,
+ scanSourceChains=null,mailboxCoverage=new Map()}){
  const routes=indexedRoutes(catalog,{blockFor});
  let accelerated={status:"not-installed"};
  try{accelerated=await processTransferAnnouncements({catalog,routes,pool,rpc:hintRpc});}
@@ -720,15 +759,18 @@ export async function tickTransferIndex({catalog,pool,rpc=canonicalRpc(),hintRpc
   const chain=group[0].sourceChain;
   const mailbox=catalog.infrastructure?.[chain]?.xitaV315?.components?.mailbox?.address;
   const sharedMailbox=routes.some(r=>r.destinationChain===chain&&r.destinationMailbox===normalize(mailbox))?mailbox:null;
-  try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches,mailbox:sharedMailbox}));}
-  catch(error){for(const route of group)progress.push({
-   route:route.routeName,error:String(error.message||error).slice(0,250)})}
+  if(!sharedMailbox||mailboxCoverage.get(chain)?.mailbox!==normalize(sharedMailbox))mailboxCoverage.delete(chain);
+  try{progress.push(...await catchUpSource({catalog,routes:group,pool,rpc,limit,batches,mailbox:sharedMailbox,mailboxCoverage}));}
+  catch(error){
+   mailboxCoverage.delete(chain);
+   for(const route of group)progress.push({route:route.routeName,error:String(error.message||error).slice(0,250)});
+  }
  }
  const taxBackfill=await backfillPaidFeeTax({catalog,pool,routes,rpc})
   .catch(error=>({error:String(error.message||error).slice(0,160)}));
  const destinations=await (async()=>{
   await applyIndexedDeliveries(pool,routes);
-  return refreshPendingDeliveries({pool,routes,rpc});
+  return refreshPendingDeliveries({pool,routes,rpc,mailboxCoverage});
  })().catch(error=>({error:String(error.message||error)}));
  await pruneTransferAnnouncements({pool}).catch(()=>{});
  // Only temporary quote evidence is pruned. A genuine charged fee retains its
@@ -750,7 +792,8 @@ export async function runTransferIndexWorker({intervalMs=INDEXER_IDLE_MS,
    checkIntervalMs>activeIntervalMs)
   throw Error("Invalid adaptive indexer timing");
  const pool=await transferWriterPool();
- const rpc=canonicalRpc(),hintRpc=candidateRpc();
+ const rateLimits=new Map(),mailboxCoverage=new Map();
+ const rpc=canonicalRpc({rateLimits}),hintRpc=candidateRpc({rateLimits});
  try{
   const count=await reopenRecentlyRejectedAnnouncements({pool});
   if(count)console.log("[xita-transfer-hints] restaged",count,"unverified hints");
@@ -776,7 +819,7 @@ export async function runTransferIndexWorker({intervalMs=INDEXER_IDLE_MS,
    // Mark BEFORE RPC activity. A slow or failed provider must not cause an
    // immediate retry storm on the next wake-up.
    for(const source of due)lastScannedAt.set(source,now);
-   const result=await tickTransferIndex({catalog,pool,rpc,hintRpc,scanSourceChains:due});
+   const result=await tickTransferIndex({catalog,pool,rpc,hintRpc,scanSourceChains:due,mailboxCoverage});
    if(result.accelerated?.error)console.error("[xita-transfer-hints]",result.accelerated.error);
    if(result.accelerated?.indexed)console.log("[xita-transfer-hints] verified",result.accelerated.indexed);
    if(result.hintsRechecked?.retracted)console.warn("[xita-transfer-hints] reorg retracted",result.hintsRechecked.retracted);
