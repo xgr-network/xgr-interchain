@@ -79,7 +79,16 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
  // totals, not the timestamp of an unrelated (potentially stale) history point.
  const asOf=typeof evidence?.asOf==="string"&&Number.isFinite(Date.parse(evidence.asOf))?
   evidence.asOf:null;
+ const indexedTvl=evidence?.indexedTvl?.kind==="xita-indexed-tvl-v1"?
+  Object.fromEntries(activeKeys.flatMap(key=>{
+   const p=evidence.indexedTvl.positions?.[key];
+   return p?.assetId===catalog.assets[key].metadata?.assetId&&
+    Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0?[[key,p]]:[];
+  })):null;
  return {schemaVersion:1,kind:"xita-asset-metrics-v1",asOf,assets,totals,
+  ...(indexedTvl&&{indexedTvl:{kind:"xita-indexed-tvl-v1",positions:indexedTvl,
+   lockedUsd:activeKeys.length&&Object.keys(indexedTvl).length===activeKeys.length?
+    Object.values(indexedTvl).reduce((sum,p)=>sum+p.lockedUsd,0):null}}),
   partialMovement,
   status:completeTVL&&completeMoved?"verified":"incomplete",
   metadata:{configuredAssets:keys.length,deployedAssets:activeKeys.length,
