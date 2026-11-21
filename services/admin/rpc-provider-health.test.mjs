@@ -182,3 +182,28 @@ test("XGR uses its existing status response only for the matching public endpoin
  assert.deepEqual(result.providers.map(p=>p.state),["ok","unknown"]);
  assert.equal(result.providers[0].checkedAt,new Date(now).toISOString());
 });
+
+test("worker inventory adds unprobed receipt providers without expanding direct probes",()=>{
+ const now=1_800_000_000_000;
+ const validators=[{name:"Validator 1",workerAlive:true,rpcProviders:[
+  {chainId:56,host:"receipt-only.example.org",operator:"receipt-operator",role:"receipt-witness",
+   state:"ok",observedUnix:now/1000},
+  {chainId:56,host:"pending.example.org",operator:"pending-operator",role:"receipt-witness",
+   state:"unknown",observedUnix:0},
+  {chainId:56,host:"bsc-rpc.publicnode.com",operator:"publicnode",role:"scanner",
+   state:"unknown",observedUnix:0},
+  {chainId:56,host:"example.org/path",operator:"invalid",role:"scanner"},
+  {chainId:1,host:"wrong-chain.example.org",operator:"other",role:"scanner"},
+ ]}];
+ const result=observedChainProviders(bsc,validators,now);
+ const rows=new Map(result.providers.map(row=>[row.host,row]));
+ assert.equal(result.attempted,0);
+ assert.equal(rows.size,adminRPCSources(bsc).length+2);
+ assert.equal(rows.get("receipt-only.example.org").source,"XGR Node · Receipt-Prüfung");
+ assert.equal(rows.get("receipt-only.example.org").state,"ok");
+ assert.equal(rows.get("receipt-only.example.org").url,undefined);
+ assert.equal(rows.get("pending.example.org").state,"unknown");
+ assert.equal(rows.has("example.org/path"),false);
+ assert.equal(rows.has("wrong-chain.example.org"),false);
+ assert.equal(adminRPCSources(bsc).some(row=>row.url.includes("receipt-only.example.org")),false);
+});
