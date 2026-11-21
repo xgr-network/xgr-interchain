@@ -7,13 +7,14 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {configuredGatewayRoutes,findWalletSourceTx,OPERATION_TOPIC,publicRead} from "../../apps/web/wallet-transfers.js";
-import {selector} from "../../apps/web/keccak.js";
+import {keccak256,selector} from "../../apps/web/keccak.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HEX=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
 const norm=x=>String(x||"").toLowerCase();
 const hex=n=>"0x"+BigInt(n).toString(16);
 const MAX_EVENTS=150;
+export const PROCESS_ID_TOPIC=keccak256("ProcessId(bytes32)");
 const BRIDGE_SELECTOR=selector("bridge(uint32,bytes32,uint256)");
 const DELIVERED_SELECTOR=selector("delivered(bytes32)");
 const safeUint=n=>HEX.test(n||"")&&BigInt(n)<=BigInt(Number.MAX_SAFE_INTEGER);
@@ -302,7 +303,7 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
 // head and ONE eth_getLogs query per bounded window. The returned log is
 // dispatched only to its exact (Gateway, routeId) pair. This read model is
 // NOT a validator witness and cannot authorize BLS signing or custody.
-export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=null}={}){
+export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=null,mailbox=null}={}){
  if(!Array.isArray(routes)||routes.length===0||routes.length>64||
    !(cursors instanceof Map)||typeof rpc!=="function"||
    !Number.isSafeInteger(limit)||limit<1||limit>250)
@@ -311,6 +312,8 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
  const chain=routes[0].sourceChain;
  if(!source||!Number.isSafeInteger(source.chainId))throw Error("Invalid source chain");
  const configured=JSON.stringify(source.rpcUrls||[]);
+ if(mailbox!==null&&!ADDRESS.test(mailbox))throw Error("Invalid delivery Mailbox");
+ mailbox=mailbox&&norm(mailbox);
  const byPair=new Map(),gateways=new Set(),ids=new Set(),positions=new Map();
  let from=Number.MAX_SAFE_INTEGER;
  for(const route of routes){
@@ -362,21 +365,51 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
  for(const pos of positions.values())if(pos>confirmed.number)
   throw Error("Durable cursor beyond safe source head");
  const eventsByRoute=new Map(routes.map(r=>[r.routeId,[]]));
+ const deliveries=[];
  if(from>confirmed.number)
   return {from,to:from-1,head:confirmed.number,finality:confirmed,
-   hash:null,eventsByRoute,reorgRoutes:[]};
+   hash:null,eventsByRoute,deliveries,reorgRoutes:[]};
  const to=Math.min(confirmed.number,from+limit-1);
  const logs=await rpc(source,"eth_getLogs",[{
-  address:[...gateways],topics:[OPERATION_TOPIC,[...ids]],
+  address:mailbox?[...new Set([...gateways,mailbox])]:[...gateways],
+  topics:mailbox?[[OPERATION_TOPIC,PROCESS_ID_TOPIC]]:[OPERATION_TOPIC,[...ids]],
   fromBlock:hex(from),toBlock:hex(to)}]);
- if(!Array.isArray(logs)||logs.length>MAX_EVENTS*routes.length)
-  throw Error("Incomplete or excessive shared Gateway log response");
+ if(!Array.isArray(logs)||logs.length>MAX_EVENTS*routes.length+(mailbox?1000:0))
+  throw Error("Incomplete or excessive shared log response");
  const seen=new Set(),timestampByHeight=new Map();
+ async function canonicalBlock(height,hash){
+  let block=byHeight.get(height);
+  if(!block){
+   block=await rpc(source,"eth_getBlockByNumber",[hex(height),false]);
+   if(!block||number(block.number)!==height||!HASH.test(block.hash||""))
+    throw Error("Shared event block unavailable");
+   byHeight.set(height,block);
+  }
+  if(hash!==norm(block.hash))throw Error("Shared event block not canonical");
+  return block;
+ }
  for(const log of logs){
+  if(mailbox&&norm(log?.topics?.[0])===PROCESS_ID_TOPIC){
+   const height=number(log.blockNumber),messageId=norm(log.topics[1]);
+   if(norm(log.address)!==mailbox||log.removed===true||height<from||height>to||
+    log.topics.length!==2||log.data!=="0x"||!HASH.test(messageId)||
+    !HASH.test(log.transactionHash||"")||!HASH.test(log.blockHash||""))
+    throw Error("Invalid Mailbox ProcessId log");
+   const key="delivery:"+messageId;
+   if(seen.has(key))throw Error("Duplicate Mailbox ProcessId");
+   seen.add(key);
+   const blockHash=norm(log.blockHash);
+   await canonicalBlock(height,blockHash);
+   deliveries.push({messageId,txHash:norm(log.transactionHash),blockNumber:height,blockHash});
+   continue;
+  }
   if(!gateways.has(norm(log?.address))||
-    norm(log?.topics?.[0])!==norm(OPERATION_TOPIC)||
-    !ids.has(norm(log?.topics?.[1])))
+    norm(log?.topics?.[0])!==norm(OPERATION_TOPIC))
    throw Error("Unexpected event outside source Gateway filter");
+  if(!ids.has(norm(log?.topics?.[1]))){
+   if(!mailbox)throw Error("Unexpected event outside source Gateway filter");
+   continue;
+  }
   const route=byPair.get(norm(log.address)+"|"+norm(log.topics[1]));
   if(!route)continue; // Cross-product of address and routeId topic filters.
   const item=validateIndexedGatewayLog(log,route,from,to);
@@ -385,15 +418,7 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
   seen.add(identity);
   if(item.blockNumber<route.deploymentBlock||
     item.blockNumber<=positions.get(route.routeId))continue;
-  let block=byHeight.get(item.blockNumber);
-  if(!block){
-   block=await rpc(source,"eth_getBlockByNumber",[hex(item.blockNumber),false]);
-   if(!block||number(block.number)!==item.blockNumber||
-     !HASH.test(block.hash||""))
-    throw Error("Shared Gateway event block unavailable");
-   byHeight.set(item.blockNumber,block);
-  }
-  if(item.blockHash!==norm(block.hash))throw Error("Shared Gateway event not canonical");
+  const block=await canonicalBlock(item.blockNumber,item.blockHash);
   if(!timestampByHeight.has(item.blockNumber)){
    timestampByHeight.set(item.blockNumber,
     HEX.test(block.timestamp||"")&&
@@ -410,5 +435,5 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
    throw Error("Shared source endpoint block unavailable");
  }
  return {from,to,head:confirmed.number,finality:confirmed,
-  hash:norm(end.hash),eventsByRoute,reorgRoutes:[]};
+  hash:norm(end.hash),eventsByRoute,deliveries,reorgRoutes:[]};
 }
