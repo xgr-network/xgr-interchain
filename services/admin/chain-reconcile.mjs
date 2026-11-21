@@ -68,6 +68,7 @@ export async function verifyChainBindings({rpc,url,component,address,chain,boots
   await check("originChainId()",1643);
   await check("destinationDomain()",chain.domainId);
   await check("verifier()",v,"address");
+  await check("registryVersion()",3);
   await check("verifierKeyFormat()",chain.blsVerifierFormat==="compressed"?1:2);
   await check("setId()",1);
   if(!bootstrap.reserve?.minimumWei||!bootstrap.reserve?.maxExecutorReimbursementWei||

@@ -105,7 +105,7 @@ let chainObservations=new Map();
 let liveBootstrap=new Map();
 const coreTitles={
  blsVerifier:"BLS-Verifier",ecdsaVerifier:"ECDSA-Verifier (XDC)",
- validatorRegistry:"ValidatorRegistry V3 / ECDSA V4",
+ validatorRegistry:"ValidatorRegistry",
  ism:"Interchain Security Module",
  nativeRouterDeployer:"Native Router Deployer (einmalig)",
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
@@ -113,6 +113,13 @@ const coreTitles={
  factory:"Permissionless Token Factory",
  sourceRegistry:"ILN Source Registry",
  executionGateway:"Interchain Fee · Execution Gateway (optional)"
+};
+const contractDisplayName=(chain,component)=>{
+ if(component==="validatorRegistry")
+  return chain?.blsVerifierFormat==="ecdsa"?"ECDSA ValidatorRegistry V5":"BLS ValidatorRegistry V3";
+ if(component==="ism")
+  return chain?.blsVerifierFormat==="ecdsa"?"ECDSA Direct ISM":"BLS Direct ISM";
+ return coreTitles[component]||component;
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
@@ -139,7 +146,7 @@ function renderInfrastructure(){
    ' ⧉</button></span></div>':"";
   const tasks=c.components.map(part=>
    '<div class="component-row'+(part.key==="executionGateway"?' is-fee-gateway':'')+'"><span>'+
-    esc(coreTitles[part.key]||part.key)+
+    esc(contractDisplayName(cfg,part.key))+
     (part.optional?' · freiwilliger Service':'')+'</span>'+
    '<div class="component-controls">'+
    (part.status==="documented"&&part.address?
@@ -402,9 +409,9 @@ async function openContractModal(chainName,component){
  selectedAssetTask=null;el("modal-route-context").hidden=true;
  el("modal-deploy").hidden=false;el("batch-stop").hidden=true;
  selectedDeployment={chainName,component};
- const title=coreTitles[component]||component;
+ const title=contractDisplayName(chain,component);
  el("contract-modal-title").textContent=title+" · "+chainName;
- el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
+ el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · "+(chain.blsVerifierFormat==="ecdsa"?"ECDSA secp256k1":"BLS")+" · Wallet bestätigt jede Transaktion";
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;

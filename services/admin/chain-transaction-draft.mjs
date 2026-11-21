@@ -1,3 +1,4 @@
+import {chainArtifactKey,assertChainArtifact} from "./chain-contract-profile.mjs";
 // Main-derived infrastructure transaction drafts. Read-only; no keys,
 // no untrusted ABI/bytecode and no broadcast. Chain names never select logic.
 import {readFileSync} from "node:fs";
@@ -132,8 +133,8 @@ export function chainDraft({root,chain,infrastructure,bootstrap,component,parame
    requirePresent(infrastructure,"syntheticRouterDeployer"),
    requirePresent(infrastructure,"collateralRouterDeployer")];
  }
- const artifactKey=chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"xdcValidatorRegistry":
-  chain.blsVerifierFormat==="ecdsa"&&component==="ism"?"xdcIsm":component;
+ const artifactKey=chainArtifactKey(chain,component);
+ if(artifact)assertChainArtifact(chain,component,artifact);
  const artifactData=exactArtifact(root,artifactKey,artifact);
  return {id:chain.name+":"+component,chain:chain.name,chainId:chain.chainId,
   component,operation:"create",contract:artifactData.name,

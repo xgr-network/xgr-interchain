@@ -1,3 +1,4 @@
+import {chainContractProfile} from "./chain-contract-profile.mjs";
 // Configuration-derived, read-only deployment graph. No chain name, order or
 // verifier address is embedded in the executor. XGRChain is merely the hub
 // defined by the approved asset route graph.
@@ -10,9 +11,8 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   const infra=infraByName.get(chain.name),b=bootByName.get(chain.name);
   if(!infra||!b||infra.chainId!==chain.chainId||infra.domainId!==chain.domainId)
    throw Error("Missing matching main-approved deployment configuration: "+chain.name);
-  if(!["compressed","eip2537","ecdsa"].includes(chain.blsVerifierFormat))
-   throw Error("Unsupported configured BLS verifier format: "+chain.name);
-  const native=chain.blsVerifierFormat==="compressed";
+  const profile=chainContractProfile(chain);
+  const native=profile.format==="compressed";
   if(native&&!b.verifierAddress)throw Error("Missing configured native verifier address: "+chain.name);
   const steps=[];
   const add=(component,title,kind,dependsOn=[],extra=[],optional=false)=>{
@@ -29,9 +29,9 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   const verifierComponent=native?"nativeVerifier":chain.blsVerifierFormat==="ecdsa"?"ecdsaVerifier":"blsVerifier";
   add(verifierComponent,native?"Konfigurierten nativen BLS-Verifier prüfen":chain.blsVerifierFormat==="ecdsa"?"ECDSA-Verifier bereitstellen":"EIP-2537-Verifier bereitstellen",
    native?"verify":"deploy",[],[chain.blsVerifierFormat==="ecdsa"?"XGR Mainnet Validator-Commitment vor Deployment unabhängig nachweisen":"Positive und negative BLS-Testvektoren erforderlich"]);
-  add("validatorRegistry","Initiale ValidatorRegistry", "deploy",[verifierComponent],
+  add("validatorRegistry",profile.registryContract, "deploy",[verifierComponent],
    [...b.missing,chain.blsVerifierFormat==="ecdsa"?"XGR-Mainnet-Validator-Set und unveränderlichen Commitment nachweisen":"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
-  add("ism","Interchain Security Module","deploy",["validatorRegistry"]);
+  add("ism",profile.ismContract,"deploy",["validatorRegistry"]);
   add("transportBundle","XITA Mailbox + DispatchHook (atomar)","deploy",["ism"]);
   add("nativeRouterDeployer","Einmaliger Native-Router-Deployer","deploy",["validatorRegistry","ism"]);
   add("syntheticRouterDeployer","Einmaliger Synthetic-Router-Deployer","deploy",["validatorRegistry","ism"]);
@@ -44,7 +44,9 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
    ["sourceRegistry"],["Eine GmbH Service-Wallet und eine getrennte Recovery-Admin-Adresse angeben"],true);
   const verifiedComponents=steps.filter(s=>!s.optional&&s.status==="documented").length;
   return {name:chain.name,chainId:chain.chainId,domainId:chain.domainId,
-   verifierFormat:chain.blsVerifierFormat,verifierAddress:b.verifierAddress,
+   verifierFormat:profile.format,signatureScheme:profile.scheme,
+   registryContract:profile.registryContract,ismContract:profile.ismContract,
+   verifierAddress:b.verifierAddress,
    nativeCurrency:chain.nativeCurrency,initialFeeWei:b.proposedFeeWei,
    initialValidators:b.initialValidators,bootstrapReady:b.ready,bootstrapMissing:b.missing,
    verifiedComponents,totalSteps:steps.filter(s=>!s.optional).length,steps};

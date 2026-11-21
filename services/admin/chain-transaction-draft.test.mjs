@@ -151,3 +151,30 @@ test("one optional Interchain Fee Gateway per chain uses one service wallet and 
    artifact}),/dependency/);
  }
 });
+
+test("chain-specific ISM creation selects independently implemented BLS V3 or ECDSA V5",()=>{
+ const cases=[
+  {chain:base,component:"ism",expected:"XITADirectBLSISM"},
+  {chain:hub,component:"ism",expected:"XITADirectBLSISM"},
+  {chain:{name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa",signatureScheme:"ecdsa"},
+   component:"xdcIsm",expected:"XITADirectECDSAISM"}
+ ];
+ for(const item of cases){
+  const chain=item.chain,registry=addr(90);
+  const draft=chainDraft({root:process.cwd(),chain,
+   infrastructure:{name:chain.name,chainId:chain.chainId,
+    components:[{key:"validatorRegistry",address:registry}]},
+   bootstrap:{chain:chain.name},component:"ism",
+   artifact:{component:item.component,creation:"0x60006000"}
+  });
+  assert.equal(draft.contract,item.expected);
+  assert.equal(draft.transaction.to,null);
+  assert.ok(draft.transaction.data.endsWith(encodeAbi(["address"],[registry]).slice(2)));
+ }
+ const xdc=cases[2].chain;
+ assert.throws(()=>chainDraft({root:process.cwd(),chain:xdc,
+  infrastructure:{name:"xdc",chainId:50,components:[{key:"validatorRegistry",address:addr(90)}]},
+  bootstrap:{chain:"xdc"},component:"ism",
+  artifact:{component:"ism",creation:"0x60006000"}
+ }),/Wrong cryptographic contract artifact/);
+});

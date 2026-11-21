@@ -8,7 +8,7 @@ import {encodeAbi} from "./abi-encoder.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
 const root=new URL("../../",import.meta.url).pathname;
 const a=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
-const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa"};
+const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa",signatureScheme:"ecdsa"};
 const infra=parts=>({name:"xdc",chainId:50,domainId:50,
  components:parts.map(([key,address])=>({key,address,status:"documented"})),hyperlane:{}});
 const artifact=component=>({component,creation:"0x"+"6000".repeat(80)});
