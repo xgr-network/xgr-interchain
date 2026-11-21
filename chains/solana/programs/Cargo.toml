@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["xita-protocol"]
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"

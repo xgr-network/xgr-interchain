@@ -16,3 +16,19 @@ The deployment receipt writer automatically extends existing XGR-hub assets to e
 - [Independent transfer and unsigned recovery](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_v3.4.0_Operations.md)
 - [Protocol and permissionless route registration](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Asset_Bridge.md)
 - [Source map, validation and evidence limits](https://github.com/xgr-network/XGR/blob/main/docs/interchain/XGR_INTERCHAIN_Source_Map.md)
+
+
+## Solana in the shared Chain / Asset / Route workflow
+
+Solana is a normal **Chain-Infrastruktur** card next to EVM chains, served by
+the same `/admin/api/workqueue` and `/admin/api/infrastructure` endpoints.
+There is no separate Solana panel or product workflow. Its native SVM programs
+and the additional Solana-aware XGRChain contracts are component rows in the
+same card, with the actual execution network indicated.
+
+`config/chains/solana/integration.json` remains a reviewed development plan,
+NOT an active EVM chain. Native RPC preflight uses Solana genesis/finalized
+methods without passing through the EVM executor. No Solana deploy button is
+active until SVM artifact, wallet signing, receipt and security validation
+are complete. Asset and route admissions remain guarded; planned components
+are never shown as deployed.

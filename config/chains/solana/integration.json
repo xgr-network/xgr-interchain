@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-chain-integration-plan",
+  "name": "solana",
+  "displayName": "Solana",
+  "protocol": "sealevel",
+  "network": "mainnet-beta",
+  "networkIdentity": {
+    "kind": "solana-genesis-hash",
+    "value": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
+  },
+  "domainId": 1399811149,
+  "hub": {
+    "name": "xgrchain",
+    "domainId": 1643
+  },
+  "status": "development",
+  "protocolAdmissionEnabled": false,
+  "deploymentEnabled": false,
+  "rpcWitnesses": [
+    {
+      "operatorId": "solana-foundation",
+      "url": "https://api.mainnet-beta.solana.com"
+    },
+    {
+      "operatorId": "publicnode",
+      "url": "https://solana-rpc.publicnode.com"
+    },
+    {
+      "operatorId": "drpc",
+      "url": "https://solana.drpc.org"
+    }
+  ],
+  "solanaPrograms": [
+    "mailbox",
+    "validatorRegistry",
+    "directBlsVerifier",
+    "sourceRegistry",
+    "factory",
+    "feeVault",
+    "collateralRouter",
+    "syntheticRouter"
+  ],
+  "xgrChainContracts": [
+    "solanaValidatorRegistry",
+    "solanaHubFactory",
+    "solanaHub"
+  ],
+  "notes": "One SVM executable hosts all eight logical Rust modules. On XGRChain the destination=Solana XGRInterchainValidatorRegistryV3, XITASolanaNativeXGRHubFactory and XITASolanaNativeXGRHub are three actual deployment units. Router/ISM/route-registry functions are inside the hub, not separately deployed contracts. All remain not-deployable until the verified bootstrap, wallet deployer, independent receipts and E2E gate exist.",
+  "authorityPolicy": {
+    "programUpgradeAuthority": "none-before-route-activation",
+    "programCloseAuthority": "none-before-route-activation",
+    "wrappedMintAuthority": "immutable-route-program-pda",
+    "wrappedFreezeAuthority": "none",
+    "tokenVaultAuthority": "immutable-route-program-pda",
+    "factoryRegistration": "permissionless",
+    "serviceOperatorAdmin": "optional-service-gateway-only",
+    "privilegedPause": "none",
+    "forcedRouteMigration": "forbidden",
+    "signedValidatorGovernance": "verified-xgr-bls-quorum"
+  },
+  "evmParity": {
+    "baseline": "XITA-v3.1.5-direct-bls",
+    "routing": "xgrchain-1643-mandatory-two-hop",
+    "assetIdentity": "one-canonical-asset-id-per-origin",
+    "routerCreation": "permissionless-creator-owned-router",
+    "routeRegistration": "permissionless-append-only-active-on-registration",
+    "feeBootstrap": "factory-constructor-source-native",
+    "feeUpdates": "current-validator-set-bls-quorum",
+    "feeAccounting": "route-feevault-validator-set-epoch-pull-claims",
+    "validatorMembership": "current-set-bls-quorum-with-possession-proof",
+    "messageAuthorization": "direct-bls-current-destination-set",
+    "sourceEvidence": "independent-finalized-source-lock-burn-fee-and-route",
+    "execution": "user-signed-replaceable-executor",
+    "optionalService": "separate-commercial-execution-gateway",
+    "destination": "proof-gated-mint-unlock-and-replay-protection",
+    "existingRoutes": "evm-contracts-and-wire-unchanged"
+  },
+  "solanaDeploymentModel": "single-immutable-svm-executable-multiple-modules-and-pdas"
+}

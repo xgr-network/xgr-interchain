@@ -1,0 +1,20 @@
+[package]
+name = "xita-bls-sbf-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+name = "xita_bls_sbf_probe"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+solana-program = "=4.0.0"
+solana-define-syscall = "=4.0.1"
+# Isolated experimental reference, never linked by production xita-protocol.
+# This exact audited-input target is used only for SBF feasibility measurement.
+bls381-hash = { git = "https://github.com/crypt0miester/bls12-381-hash", rev = "e1b6e50fee3b1a9d73ac5863e012c5836655c57b", default-features = false, features = ["g2-ro"] }
+
+[features]
+default = []
