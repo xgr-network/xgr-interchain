@@ -223,12 +223,33 @@ export async function probeChainProviders(chain,options={}){
   clock:()=>now})(chain);
 }
 
-// Aggregate only actual worker observations for catalog providers.
+// Inventory received from the node is for passive display only. Direct probes
+// continue to use the independently configured admin endpoints.
+function passiveRPCSources(chain,validators){
+ const sources=new Map();
+ for(const {url} of adminRPCSources(chain).slice(0,6)){
+  const provider=approvedRPC(url);
+  if(provider)sources.set(provider.host,provider);
+ }
+ for(const validator of validators){
+  if(!validator.workerAlive)continue;
+  for(const entry of validator.rpcProviders||[]){
+   const {host,operator,role}=entry||{};
+   if(entry?.chainId!==chain.chainId||!["scanner","receipt-witness"].includes(role)||
+      typeof host!=="string"||host.length>253||!/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(host)||
+      typeof operator!=="string"||!/^[a-zA-Z0-9_.-]{1,80}$/.test(operator))continue;
+   const current=sources.get(host);
+   if(current?.role==="scanner"||(!current&&sources.size>=32))continue;
+   sources.set(host,{...current,host,operator:KNOWN_OPERATORS[host]||operator,role});
+  }
+ }
+ return [...sources.values()];
+}
+
+// Aggregate worker observations over the node inventory and legacy catalog.
 export function observedChainProviders(chain,validators,now){
  const {name,chainId}=chain;
- const rows=adminRPCSources(chain).slice(0,6).flatMap(({url,source})=>{
-  const provider=approvedRPC(url);
-  if(!provider)return [];
+ const rows=passiveRPCSources(chain,validators).map(provider=>{
   const observations=validators.flatMap(v=>{
    // Native XGR verification does not populate outbound provider statistics.
    // Use the response from the existing status call for its exact endpoint.
@@ -252,11 +273,14 @@ export function observedChainProviders(chain,validators,now){
   const state=states.includes("rate-limited")?"rate-limited":states.includes("unavailable")?"unavailable":
    states.includes("ok")?"ok":"unknown";
   const checkedAt=observations.map(o=>o.checkedAt).sort().at(-1)??null;
-  return [{...provider,source:chainId===1643?"XGR-Status-RPC":"XGR Node",state,chainId,checkedAt,observations,
-   reason:state==="unknown"?"Keine aktuelle Beobachtung":null}];
+  const source=chainId===1643?"XGR-Status-RPC":provider.role==="receipt-witness"?"XGR Node · Receipt-Prüfung":"XGR Node";
+  return {...provider,source,state,chainId,checkedAt,observations,
+   reason:state==="unknown"?"Keine aktuelle Beobachtung":null};
  });
  const summary=summarizeProviders(name,chainId,rows);
- const known=rows.filter(r=>r.state!=="unknown").length;
- const state=known===0?"unknown":known<rows.length?"warning":summary.state;
- return {...summary,attempted:0,scope:"validator-observations",state};
+ const scanRows=rows.filter(r=>r.role!=="receipt-witness");
+ const scanHealth=summarizeProviders(name,chainId,scanRows);
+ const known=scanRows.filter(r=>r.state!=="unknown").length;
+ const state=known===0?"unknown":known<scanRows.length?"warning":scanHealth.state;
+ return {...summary,attempted:0,scope:"validator-observations",state,reason:scanHealth.reason};
 }
