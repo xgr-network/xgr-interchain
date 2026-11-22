@@ -20,6 +20,7 @@ const PORT=Number(process.env.XITA_INDEXER_PORT||4088);
 const HOST=process.env.XITA_INDEXER_HOST||"127.0.0.1";
 const evidencePath=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
 const historyPath=process.env.XITA_TVL_HISTORY||"/var/lib/xita/verified-tvl-history.json";
+const movedHistoryPath=process.env.XITA_TOTAL_MOVED_HISTORY||"/var/lib/xita/verified-total-moved-history.json";
 function readEvidence(){
  if(!existsSync(evidencePath))return null;
  const info=statSync(evidencePath);
@@ -304,7 +305,29 @@ export async function handler(req,res){
     }
    }
   }
-  return send(200,{...metrics,visibility,history});
+  // The cumulative USD valuation is persisted by the background TVL worker.
+  // This read never triggers an RPC call or a new database scan.
+  let totalMoved=null;
+  try{
+   if(Object.values(catalog.assets||{}).some(a=>isDeployedAsset(a,catalog))&&existsSync(movedHistoryPath)){
+    const stat=statSync(movedHistoryPath);
+    if(stat.isFile()&&stat.size<1200000){
+     const value=JSON.parse(readFileSync(movedHistoryPath,"utf8"));
+     if(value?.kind==="xita-total-moved-history-v1"&&value.schemaVersion===1&&
+        value.status==="verified"&&Number.isFinite(value.totalUsd)&&value.totalUsd>=0&&
+        Array.isArray(value.points)){
+      totalMoved={kind:value.kind,status:"verified",asOf:value.asOf,totalUsd:value.totalUsd,
+       points:value.points.filter(p=>typeof p?.asOf==="string"&&
+        Number.isFinite(Date.parse(p.asOf))&&Number.isFinite(p.totalUsd)&&p.totalUsd>=0)
+        .map(p=>({asOf:p.asOf,totalUsd:p.totalUsd})).slice(-6500)};
+      if(!Number.isFinite(Date.parse(totalMoved.asOf))||
+        Date.now()-Date.parse(totalMoved.asOf)>180000||Date.parse(totalMoved.asOf)>Date.now()+30000)
+       totalMoved=null;
+     }
+    }
+   }
+  }catch{totalMoved=null;}
+  return send(200,{...metrics,visibility,history,totalMoved});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});
