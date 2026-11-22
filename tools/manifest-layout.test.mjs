@@ -81,8 +81,14 @@ test("mainnet XDC ECDSA V5 deployment evidence is receipt-backed and grants no p
   assert.equal(receipt.address.toLowerCase(),binding.address.toLowerCase());
   assert.equal(receipt.runtimeCodeKeccak256.toLowerCase(),binding.runtimeCodeKeccak256.toLowerCase());
  }
- // An infrastructure-only receipt is not authority to expose asset routes.
- for(const asset of Object.values(catalog.assets)){
-  assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
+ // Partial core deployment never authorizes an XDC asset route. Once all
+ // required contracts are deployed, route eligibility is independently
+ // established by the normal canonical receipt-based asset-route tests.
+ const required=["ecdsaVerifier","validatorRegistry","ism","transportBundle",
+  "nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer",
+  "factory","sourceRegistry"];
+ if(!required.every(component=>Boolean(record.xitaV315.components[component]))){
+  for(const asset of Object.values(catalog.assets))
+   assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
  }
 });
