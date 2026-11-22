@@ -1717,12 +1717,21 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 /* Long EVM addresses remain readable on narrow token profile cards. */
 .ux-break-anywhere{overflow-wrap:anywhere;word-break:break-word;text-align:right}
 
-/* Verified cumulative gross escrow movement, using existing read-only metrics. */
-.ux-ns-moved-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
- border-top:1px solid #31455b80;margin-top:12px;padding-top:12px}
-.ux-ns-moved-total span{font-size:11px;color:#a5c7d9}
-.ux-ns-moved-total strong{font-size:clamp(16px,1.45vw,22px);color:#e5f5ff;
- font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-align:right}
-.ux-ns-total-moved-chart{min-height:92px;margin:2px 0}
-.ux-ns-card-moved .ux-ns-tvl-sparkline{height:66px}
-.ux-ns-card-moved .ux-small{line-height:1.5}
+/* Compact moved-volume card: two peer metrics, one cumulative chart. */
+.ux-ns-card-moved{gap:7px}
+.ux-ns-moved-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;padding:12px 0 7px}
+.ux-ns-moved-metric{display:flex;flex-direction:column;min-width:0;gap:5px}
+.ux-ns-moved-metric+.ux-ns-moved-metric{border-left:1px solid #31455b8c;padding-left:12px}
+.ux-ns-moved-metric>span{color:#a7bfd5;font-size:11px;font-weight:550;white-space:nowrap}
+.ux-ns-moved-metric>strong{font-size:clamp(17px,1.75vw,25px);font-weight:700;
+ line-height:1.2;letter-spacing:-.025em;color:#edf5ff;font-variant-numeric:tabular-nums;
+ overflow-wrap:anywhere}
+.ux-ns-moved-metric>small{color:#9fbacd;font-size:10px}
+.ux-ns-total-moved-chart{margin-top:auto;padding-top:8px;min-height:94px;
+ border-top:1px solid #31455b80}
+.ux-ns-card-moved .ux-ns-total-moved-chart .ux-ns-tvl-sparkline{height:68px}
+.ux-ns-moved-chart-empty{margin-top:auto;padding:20px 0 12px;color:#849bb5;font-size:11px}
+@media(max-width:1100px){
+ .ux-ns-moved-metric>strong{font-size:clamp(17px,2.35vw,24px)}
+}
