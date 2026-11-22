@@ -26,6 +26,7 @@ import {publishCreatorFactoryPR} from "./creator-factory-github.mjs";
 import {suggestBootstrapValues} from "./bootstrap-suggestions.mjs";
 import {probeChainProviders} from "./rpc-provider-health.mjs";
 import {collectOperationsHealth} from "./operations-health.mjs";
+import {createSiteAnalytics} from "./site-analytics.mjs";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const host=process.env.XGR_ADMIN_HOST||"127.0.0.1";
@@ -126,6 +127,8 @@ const operator=createChainOperator({
  resolve(process.env.HOME||"/nonexistent","xita-bootstrap-public")
 });
 const dir=dirname(fileURLToPath(import.meta.url));
+const siteAnalytics=createSiteAnalytics({stateDir:resolve(dataDir,"site-analytics"),
+ excludeIps:(process.env.XITA_ANALYTICS_EXCLUDE_IPS||"").split(",")});
 function deploymentSyncDiagnostic(){
  const file=resolve(dataDir,"deployment-sync.status.json");
  let record=null;
@@ -159,6 +162,21 @@ http.createServer(async(req,res)=>{
  if(!["GET","POST"].includes(req.method))return reply(res,405,{ok:false,error:"Unsupported method"});
  const path=new URL(req.url,"http://localhost").pathname;
  try{
+  // Public measurement via a dedicated Nginx exact-match location.
+  // Never trust client-controlled forwarded-IP headers for deduplication.
+  if(path==="/api/xita/analytics/hit"&&req.method==="POST"){
+   if(req.headers["x-xita-analytics-proxy"]!=="v1")return reply(res,403,{ok:false,error:"Trusted proxy required"});
+   const event=await bodyJSON(req);
+   siteAnalytics.record({ip:String(req.headers["x-real-ip"]||""),
+    userAgent:req.headers["user-agent"],path:event.path,sourceHost:event.sourceHost,
+    utmSource:event.utmSource,utmCampaign:event.utmCampaign});
+   res.writeHead(204,{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
+   return res.end();
+  }
+  if(path==="/admin/api/site-analytics"&&req.method==="GET"){
+   const range=Number(new URL(req.url,"http://localhost").searchParams.get("days")||30);
+   return reply(res,200,siteAnalytics.summary(range));
+  }
   const file=req.method==="GET"?staticFiles.get(path):null;
   if(file)return reply(res,200,readFileSync(resolve(dir,file[0]),"utf8"),file[1]);
   if(req.method==="GET"&&path==="/admin/api/creator-factory/status")

@@ -1,3 +1,4 @@
+import "./site-analytics.js";
 import {sponsorRouteReady} from "./sponsor-route-readiness.js";
 import {publicDirectoryCatalog,isDeployedAsset,isPublicAsset,listingStatus} from "./listing-visibility.js";
 import {deployedRoutes,executableTransferRoutes} from "./route-availability.js";
