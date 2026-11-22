@@ -27,6 +27,7 @@ import {nextVerifiedWalletStep,walletStepKey,recoveryProbeKey,createAutomaticWal
 import {transferSponsorVisible,sponsorAllowsContinuation,verifiedZeroGrantSource} from "./transfer-sponsor-evidence.js";
 import {linkIndexedJourneys,mergeWalletObservation} from "./verified-journey.js";
 import {canonicalWalletSnapshot} from "./wallet-index-projection.js";
+import {retainVerifiedMovedHistory} from "./verified-moved-ui-state.js";
 const el=document.querySelector("#app"),connect=document.querySelector("#connect");
 const siteMenuToggle=document.querySelector("#site-menu-toggle");
 const siteMenu=document.querySelector("#site-main-nav");
@@ -2103,6 +2104,13 @@ async function loadLeaderboard(){
  metricsRefreshPending=true;
  try{const res=await fetch("/api/xeta/v1/metrics/toplist",{cache:"no-store"});if(!res.ok)return;const body=await res.json();if(body?.kind!=="xita-asset-metrics-v1"||body.schemaVersion!==1)return;
  const previous=state.leaderboard;
+ // Preserve the last VERIFIED cumulative series in the current browser session.
+ // Source snapshots occasionally lack complete historic coverage; that must
+ // not replace an already rendered curve with a lone observation. The helper
+ // never extends a curve or changes its timestamp or last verified amounts.
+ if(previous?.totalMoved&&body?.totalMoved){
+  body.totalMoved=retainVerifiedMovedHistory(previous.totalMoved,body.totalMoved);
+ }
  // Avoid rebuilding the costly interactive 3D dashboard every minute.
  // Repaint only once data that was initially absent/unavailable becomes
  // verifiable; periodic polling still refreshes the in-memory snapshot.
@@ -2121,6 +2129,8 @@ async function loadLeaderboard(){
   // extra metric/chain requests. The existing 60s fetch supplied these values.
   const changed=previous.history?.points?.at(-1)?.asOf!==body.history?.points?.at(-1)?.asOf||
    previous.totalMoved?.asOf!==body.totalMoved?.asOf||
+   previous.totalMoved?.reconstructed?.asOf!==body.totalMoved?.reconstructed?.asOf||
+   previous.totalMoved?.reconstructed?.points?.length!==body.totalMoved?.reconstructed?.points?.length||
    previous.totals?.movedUsd!==body.totals?.movedUsd||
    previous.indexedTvl?.lockedUsd!==body.indexedTvl?.lockedUsd;
   if(changed){

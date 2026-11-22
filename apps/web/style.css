@@ -1770,3 +1770,31 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 @media(max-width:700px){
  .ux-ns-card-moved .ux-ns-moved-metric>strong{font-size:clamp(17px,4vw,22px)}
 }
+
+/* Dashboard numeric plots: identical vertical footprint, clear values,
+   no redundant explanatory paragraphs, no hidden interaction. */
+.ux-ns-overview-deck .ux-ns-card-tvl,
+.ux-ns-overview-deck .ux-ns-card-moved{min-height:350px}
+.ux-ns-card-tvl .ux-ns-tvl-history,
+.ux-ns-card-moved .ux-ns-total-moved-chart{
+ box-sizing:border-box;display:flex;flex-direction:column;
+ margin-top:auto;min-height:180px;padding-top:5px;padding-bottom:0;
+ width:100%
+}
+.ux-ns-card-moved .ux-ns-total-moved-chart{border-top:0}
+.ux-ns-card-tvl .ux-ns-tvl-sparkline,
+.ux-ns-card-moved .ux-ns-total-moved-chart .ux-ns-tvl-sparkline{
+ width:100%;height:110px;min-height:110px;display:block;overflow:visible
+}
+.ux-ns-card-tvl .ux-ns-tvl-periods,
+.ux-ns-card-moved .ux-ns-chart-toolbar{
+ height:24px;min-height:24px;margin-bottom:5px
+}
+.ux-ns-chart-extremes{display:flex;align-items:center;
+ justify-content:space-between;gap:8px;color:#c5d5df;
+ font-family:var(--xita-editorial);font-size:11px;
+ font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:5px}
+.ux-ns-chart-extremes>span{min-width:0}
+.ux-ns-chart-extremes>span:last-child{text-align:right}
+.ux-ns-chart-coverage{display:block;color:#7c96ad;font-size:9px;
+ margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

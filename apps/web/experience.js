@@ -431,18 +431,29 @@ function tvlHistoryChart(metrics,period="24h"){
  // occupy seven minutes, not masquerade as a full 24-hour trend.
  const values=points.map(p=>p.lockedUsd),low=Math.min(...values),high=Math.max(...values);
  const padding=Math.max((high-low)*.15,Math.max(high,1)*.00001),range=high-low+padding*2;
- const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/durations[valid],y:62-50*(p.lockedUsd-low+padding)/range}));
+ // A short verified window must occupy the available plot width, not look
+ // like a clipped line at the far-right edge. This changes only the VIEWPORT:
+ // the axis explicitly labels the REAL first/last observation and coverage.
+ const partialSpan=firstAt>start+durations[valid]*.1;
+ const plotStart=partialSpan?firstAt:start;
+ const plotDuration=partialSpan?span:durations[valid];
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-plotStart)/plotDuration,
+  y:98-86*(p.lockedUsd-low+padding)/range}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
  const lastXY=xy.at(-1),coverage=indexed?
   '<span class="ux-ns-tvl-coverage">Indexed history · current USD reference'+
    (derived.status==="partial"?' · incomplete event times':'')+'</span>':
   span<durations[valid]*.9?'<span class="ux-ns-tvl-coverage">Observed '+
-   Math.max(1,Math.round(span/60000))+' min · partial '+valid+' history</span>':"";
+   Math.max(1,Math.round(span/60000))+' min of '+valid+' · partial history</span>':"";
  return '<div class="ux-ns-tvl-history">'+tabs+
-  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL observations from '+stamp(firstAt)+' to '+stamp(lastAt)+'">'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 110" role="img" aria-label="Verified TVL observations from '+stamp(firstAt)+' to '+stamp(lastAt)+'">'+
   '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
   '<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+'" r="3" fill="#f8dfa4"/></svg>'+
-  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(start))+'</span><span>'+esc(stamp(end))+'</span></div>'+coverage+'</div>';
+  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(plotStart))+'</span><span>'+esc(stamp(end))+'</span></div>'+
+  '<div class="ux-ns-chart-extremes"><span>Low '+esc(formatUsd(low))+'</span><span>High '+esc(formatUsd(high))+'</span></div>'+
+  (coverage?'<span class="ux-ns-chart-coverage">'+
+   (indexed?(derived.status==="partial"?'Partial index history':'Indexed history'):
+    'Partial · '+Math.max(1,Math.round(span/60000))+' min')+'</span>':'')+'</div>';
 }
 
 function totalMovedChart(metrics){
@@ -457,38 +468,49 @@ function totalMovedChart(metrics){
  const points=raw.filter(p=>Number.isFinite(p?.totalUsd)&&p.totalUsd>=0&&
   Number.isFinite(Date.parse(p?.asOf)))
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
- if(!points.length||Math.abs(points.at(-1).totalUsd-reported.totalUsd)>0.000001)
+ const historicalEnd=points.at(-1)?.totalUsd;
+ if(!points.length||!Number.isFinite(historicalEnd)||historicalEnd>reported.totalUsd+0.000001)
   return '<div class="ux-ns-moved-chart-empty">Cumulative history pending</div>';
+ const isOlder=historicalEnd<reported.totalUsd-0.000001 ||
+  (derived&&Number.isFinite(Date.parse(reconstruction.asOf))&&
+   Number.isFinite(Date.parse(reported.asOf))&&
+   Date.parse(reconstruction.asOf)<Date.parse(reported.asOf));
  let previous=0;
  for(const p of points){
   if(p.totalUsd<previous)return '<div class="ux-ns-moved-chart-empty">Cumulative history unavailable</div>';
   previous=p.totalUsd;
  }
- const unchanged=points.every(p=>Math.abs(p.totalUsd-reported.totalUsd)<0.000001);
+ const unchanged=points.every(p=>Math.abs(p.totalUsd-historicalEnd)<0.000001);
  const plotted=unchanged?[points.at(-1)]:points;
  const first=Date.parse(plotted[0].asOf),last=Date.parse(plotted.at(-1).asOf);
  const span=last-first;
  // One verified observation is NOT a historic trend. Show only its verified
  // first-observation marker, without adding a deceptive horizontal series.
- const max=Math.max(...points.map(p=>p.totalUsd),1);
+ const low=Math.min(...plotted.map(p=>p.totalUsd)),high=Math.max(...plotted.map(p=>p.totalUsd));
+ const padding=Math.max((high-low)*.12,Math.max(high,1)*.000001);
+ const range=high-low+2*padding;
  const xy=plotted.map((p,i)=>({
   x:span>0?8+284*(Date.parse(p.asOf)-first)/span:150,
-  y:62-50*(p.totalUsd/max)
+  y:98-86*(p.totalUsd-low+padding)/range
  }));
  const lastXY=xy.at(-1);
  const path=xy.length>1?'<path d="'+xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ")+
   '" fill="none" stroke="#8cc5d4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>':"";
  const stamp=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
  return '<div class="ux-ns-total-moved-chart" aria-label="Total moved TVL history">'+
-  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="'+
+  '<div class="ux-ns-chart-toolbar" aria-hidden="true"></div>'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 110" role="img" aria-label="'+
   (plotted.length>1?'Cumulative verified movement history':'First verified cumulative movement observation')+'">'+
-  (plotted.length>1?'<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>':'')+
+  (plotted.length>1?'<path d="M8 104 H292" stroke="#32475d" stroke-width="1" fill="none"/>':'')+
   path+'<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+
   '" r="'+(plotted.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
   '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(first))+'</span><span>'+
   (plotted.length>1?esc(stamp(last)):'History begins here')+'</span></div>'+
-  (derived?'<span class="ux-ns-tvl-coverage">Indexed movement · current USD reference'+
-   (reconstruction.status==="partial"?' · incomplete event times':'')+'</span>':'')+'</div>';
+  '<div class="ux-ns-chart-extremes"><span>Low '+esc(formatUsd(low))+'</span><span>High '+esc(formatUsd(high))+'</span></div>'+
+  ((derived&&(reconstruction.status==="partial"||isOlder))?
+   '<span class="ux-ns-chart-coverage">'+
+   (isOlder?'Last verified '+esc(stamp(Date.parse(reconstruction.asOf))):
+    'Partial history')+'</span>':'')+'</div>';
 }
 
 function northstarCards(model,metrics=null,period="24h"){
@@ -538,10 +560,7 @@ function northstarCards(model,metrics=null,period="24h"){
    (tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
     (tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h</span>':'')+'</div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified · '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC</span>':'')+
-   tvlHistoryChart(safeMetrics,period)+
-   (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
-   '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
-   '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span>')+'</article>'+
+   tvlHistoryChart(safeMetrics,period)+'</article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR</h2></div>'+
    '<div class="ux-ns-moved-metrics"><div class="ux-ns-moved-metric"><span>24h</span><strong>'+
     esc(formatUsd(shownMovement))+'</strong>'+
