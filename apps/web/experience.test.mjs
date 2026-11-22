@@ -833,3 +833,33 @@ test("dashboard asynchronously refreshes read-only evidence after startup withou
  assert.match(app,/finally\{metricsRefreshPending=false;/);
  assert.doesNotMatch(app,/setInterval\([\s\S]*?systemctl/);
 });
+
+test("TVL period tabs remain visible with indexed TVL and select the desired window",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const origin="2026-11-01T12:00:00Z",recent="2026-11-22T12:00:00Z";
+ const metrics={indexedTvl:{kind:"xita-indexed-tvl-v1",lockedUsd:20},
+  history:{points:[{asOf:origin,lockedUsd:5},{asOf:recent,lockedUsd:20}]}};
+ for(const period of ["24h","7d","30d"]){
+  const html=renderDashboard(model,{tvlPeriod:period},"ready",metrics);
+  assert.match(html,new RegExp('data-tvl-period="'+period+'" class="is-selected"'));
+  assert.match(html,/data-tvl-period="7d"/);
+  assert.match(html,/data-tvl-period="30d"/);
+ }
+ const monthly=renderDashboard(model,{tvlPeriod:"30d"},"ready",metrics);
+ assert.match(monthly,/ux-ns-tvl-sparkline/);
+ const daily=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(daily,/TVL history is being collected/);
+});
+test("total moved TVL renders a monotone cumulative sparkline only from verified points",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const first="2026-11-20T10:00:00Z",last="2026-11-22T10:00:00Z";
+ const base={totals:{lockedUsd:20,movedUsd:2},
+  totalMoved:{kind:"xita-total-moved-history-v1",status:"verified",totalUsd:3,
+   points:[{asOf:first,totalUsd:1},{asOf:last,totalUsd:3}]}};
+ const html=renderDashboard(model,{},"ready",base);
+ assert.match(html,/Total moved TVL/);
+ assert.match(html,/ux-ns-total-moved-chart/);
+ const tampered={...base,totalMoved:{...base.totalMoved,points:[
+   {asOf:first,totalUsd:3},{asOf:last,totalUsd:1}]}};
+ assert.doesNotMatch(renderDashboard(model,{},"ready",tampered),/ux-ns-total-moved-chart/);
+});
