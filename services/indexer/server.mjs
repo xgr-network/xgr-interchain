@@ -403,6 +403,10 @@ export async function handler(req,res){
   return send(200,{...metrics,visibility,history,reconstructedHistory,indexedChange24h,
    historyCoverage:{status:reconstructedHistory?.status||"unavailable",
     reason:reconstructedHistory?null:reconstructed?.reason||"historical-index-incomplete",
+    failedWindows:!reconstructedHistory&&Array.isArray(reconstructed?.failures)?
+     reconstructed.failures.filter(p=>[1,7,30].includes(p.days)&&
+      typeof p.reason==="string"&&/^[a-z0-9-]{3,70}$/.test(p.reason))
+      .map(p=>({days:p.days,reason:p.reason})):[],
     windowDays:reconstructedHistory?.windowDays||null,
     unknown24h:reconstructedHistory?.unknown24h??null},
    totalMoved});
