@@ -900,3 +900,41 @@ test("24h movement shows timestamped last verified measurement on temporary outa
  assert.match(moved,/\$30,378\.46/);
  assert.doesNotMatch(moved,/r="4"[^>]*stroke-width="2\.5"/);
 });
+
+test("24h / 7d / 30d history uses actual indexed event reconstruction without additional fetches",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const end=Date.parse("2026-11-22T10:00:00Z"),day=86400000;
+ const points=Array.from({length:721},(_,i)=>({
+  asOf:new Date(end-30*day+i*3600000).toISOString(),
+  lockedUsd:i<700?8000:8100,movedWindowUsd:i<700?500:600
+ }));
+ const metrics={reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
+  status:"verified",pricing:"current-reference-price",points},
+  history:{points:[{asOf:new Date(end-7*60000).toISOString(),lockedUsd:8100},
+   {asOf:new Date(end).toISOString(),lockedUsd:8100}]},
+  totalMoved:{status:"verified",totalUsd:30600,
+   points:[{asOf:new Date(end).toISOString(),totalUsd:30600}],
+   reconstructed:{status:"verified",pricing:"current-reference-price",
+    points:points.map(p=>({asOf:p.asOf,totalUsd:30500+p.movedWindowUsd-500}))}}};
+ for(const period of ["24h","7d","30d"]){
+  const html=renderDashboard(model,{tvlPeriod:period},"ready",metrics);
+  assert.match(html,/Indexed history · current USD reference/);
+  assert.match(html,/ux-ns-tvl-sparkline/);
+  assert.match(html,new RegExp('data-tvl-period="'+period+'" class="is-selected"'));
+ }
+ const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(html,/Indexed movement · current USD reference/);
+ assert.match(html,/Cumulative verified movement history/);
+ assert.doesNotMatch(html,/Observed 7 min/);
+});
+test("unknown canonical block times label reconstructed history partial, never complete",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const end=Date.parse("2026-11-22T10:00:00Z");
+ const metrics={reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
+  status:"partial",pricing:"current-reference-price",points:[
+   {asOf:new Date(end-86400000).toISOString(),lockedUsd:15,movedWindowUsd:0},
+   {asOf:new Date(end).toISOString(),lockedUsd:16,movedWindowUsd:1}
+  ]}};
+ const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(html,/incomplete event times/);
+});
