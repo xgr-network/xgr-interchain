@@ -76,6 +76,7 @@ check() {
     node --test services/admin/*.test.mjs
     node --check apps/web/app.js
     node --check apps/web/ui-data.js
+    node --test services/admin/site-analytics.test.mjs tools/site-analytics-nginx.test.mjs
     node --check services/admin/server.mjs
     node --check services/admin/admin.js
     node --check services/admin/wallet.js
@@ -803,6 +804,12 @@ complete_update() {
     privileged "$(command -v node)" "$ROOT/tools/install-join-nginx.mjs" || return 1
   fi
   publish_web
+  # Install only the exact public measurement route; never proxy all Admin APIs.
+  if [[ -n "${XITA_NGINX_SITE_CONF:-}" ]]; then
+    privileged "$(command -v node)" "$ROOT/tools/install-site-analytics-nginx.mjs" "$XITA_NGINX_SITE_CONF" || return 1
+  else
+    privileged "$(command -v node)" "$ROOT/tools/install-site-analytics-nginx.mjs" || return 1
+  fi
   install_sync
   if systemctl is-enabled --quiet xita-fee-preview.service 2>/dev/null || \
      systemctl is-active --quiet xita-fee-preview.service 2>/dev/null || \
