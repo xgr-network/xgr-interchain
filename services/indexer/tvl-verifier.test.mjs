@@ -72,7 +72,8 @@ test("periodic TVL snapshots read only XGR RPC even with a foreign canonical vau
  assert.deepEqual(rpcCalls,[[1643,"eth_chainId"]]);
  assert.equal(snapshot.indexedTvl.positions.ARB.netLockedRaw,"0");
  assert.deepEqual(snapshot.indexedTvl.positions.ARB.wrappedByChainRaw,
-  {xgrchain:"0",base:"0",bsc:"0",optimism:"0"});
+  Object.fromEntries(Object.keys(catalog.chains).filter(key=>key!=="arbitrum")
+   .map(key=>[key,"0"])));
  assert.equal(snapshot.custodyEvidence.statuses.ARB,"physical-vault-not-checked");
  assert.equal(snapshot.custodyEvidence.positions.ARB,undefined);
  assert.equal(projectMetrics(catalog,snapshot).indexedTvl.lockedUsd,0);
