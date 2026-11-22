@@ -330,6 +330,21 @@ export async function handler(req,res){
     }
    }
   }catch{totalMoved=null;}
+  // Independent 24h collateral delta comes from the SAME worker evidence.
+  // Keep a compact reason when the canonical historical anchor is unknown.
+  const rawChange=evidence?.indexedChange24h;
+  const indexedChange24h=rawChange?.kind==="indexed-tvl-change-24h-v1"&&
+   rawChange?.status==="verified"&&rawChange.asOf===evidence.asOf&&
+   rawChange.pricing==="current-reference-price"&&
+   Number.isFinite(rawChange.percent)&&Number.isFinite(rawChange.openingUsd)&&
+   rawChange.openingUsd>0&&Number.isFinite(rawChange.currentUsd)&&rawChange.currentUsd>=0&&
+   Number.isFinite(metrics?.indexedTvl?.lockedUsd)&&
+   Math.abs(rawChange.currentUsd-metrics.indexedTvl.lockedUsd)<=
+    Math.max(.02,metrics.indexedTvl.lockedUsd*.00001)?
+   {status:"verified",kind:rawChange.kind,asOf:rawChange.asOf,percent:rawChange.percent,
+    openingUsd:rawChange.openingUsd,pricing:rawChange.pricing}:
+   {status:"unavailable",reason:typeof rawChange?.reason==="string"?
+    rawChange.reason:"24h-canonical-history-incomplete"};
   // Series comes only from the already-materialized, finalized SQL index in
   // the trusted worker evidence. No HTTP-triggered queries or new RPC calls.
   let reconstructedHistory=null;
@@ -385,7 +400,16 @@ export async function handler(req,res){
   }else if(totalMoved){
    totalMoved.reconstructionUnavailable=moved?.reason||"indexed-movement-timestamps-unavailable";
   }
-  return send(200,{...metrics,visibility,history,reconstructedHistory,totalMoved});
+  return send(200,{...metrics,visibility,history,reconstructedHistory,indexedChange24h,
+   historyCoverage:{status:reconstructedHistory?.status||"unavailable",
+    reason:reconstructedHistory?null:reconstructed?.reason||"historical-index-incomplete",
+    failedWindows:!reconstructedHistory&&Array.isArray(reconstructed?.failures)?
+     reconstructed.failures.filter(p=>[1,7,30].includes(p.days)&&
+      typeof p.reason==="string"&&/^[a-z0-9-]{3,70}$/.test(p.reason))
+      .map(p=>({days:p.days,reason:p.reason})):[],
+    windowDays:reconstructedHistory?.windowDays||null,
+    unknown24h:reconstructedHistory?.unknown24h??null},
+   totalMoved});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});

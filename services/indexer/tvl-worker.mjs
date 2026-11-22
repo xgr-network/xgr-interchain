@@ -13,6 +13,7 @@ import {appendVerifiedMovedHistory} from "./total-moved-history.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
 import {indexedEscrowDeltas,combineEscrowHistory} from "./historical-escrow-series.mjs";
 import {indexedGrossMovementEvents,combineGrossMovementEvents} from "./gross-movement-series.mjs";
+import {indexedTvlChange24h} from "./indexed-tvl-change-24h.mjs";
 import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -93,7 +94,7 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
- const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[],historical7d=[],historical24h=[],grossAssets=[];
+ const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[],historical7d=[],historical24h=[],historicalPositions=[],grossAssets=[];
  const names=Object.keys(catalog.assets||{});
  const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  for(const asset of names)try{
@@ -131,6 +132,7 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
     position,price,now,days:7}));
    historical24h.push(indexedEscrowDeltas({descriptor,rows:events.rows,coverage,
     position,price,now,days:1}));
+   historicalPositions.push(indexed);
    grossAssets.push(indexedGrossMovementEvents({descriptor,rows:events.rows,coverage,price,now}));
   }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};
    lifetimeFlows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
@@ -141,12 +143,19 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
    // A legacy 30-day balance reconstruction can be impossible when old
    // event times are incomplete. Try shorter REAL windows (7d, 24h), never
    // manufacture an opening balance or stretch observations backwards.
+   const failures=[];
    for(const [days,assets] of [[30,historicalAssets],[7,historical7d],[1,historical24h]]){
+    const issue=assets.find(a=>a.status==="unavailable");
+    if(issue){failures.push({days,reason:issue.reason});continue;}
     const result=combineEscrowHistory(assets,{now,days});
     if(result.status!=="unavailable")return {...result,windowDays:days};
+    failures.push({days,reason:result.reason});
    }
-   return {status:"unavailable",reason:"indexed-historical-collateral-incomplete"};
+   return {status:"unavailable",reason:"indexed-historical-collateral-incomplete",
+    failures};
   })(),
+  indexedChange24h:indexedTvlChange24h(historical24h,historicalPositions,
+   {now,required:expectedHistorical}),
   reconstructedMoved:expectedHistorical===grossAssets.length?
    combineGrossMovementEvents(grossAssets,{now}):{status:"unavailable",reason:"gross-asset-history-incomplete"},
   indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};

@@ -951,16 +951,21 @@ test("indexed TVL 24h percent is restored from the same verified reference-price
  const metrics={asOf:new Date(asOf).toISOString(),
   indexedTvl:{kind:"xita-indexed-tvl-v1",lockedUsd:6892.15},
   reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
-   status:"verified",unknown24h:0,pricing:"current-reference-price",
-   points}};
+   status:"verified",unknown24h:0,pricing:"current-reference-price",points},
+  indexedChange24h:{kind:"indexed-tvl-change-24h-v1",status:"verified",
+   pricing:"current-reference-price",openingUsd:6800,
+   percent:(6892.15-6800)/6800*100}};
  assert.ok(Math.abs(tvlChange24h(metrics)-(6892.15-6800)/6800*100)<1e-9);
  const html=renderDashboard(buildExperienceModel(catalog),{},"ready",metrics);
  assert.match(html,/\+1\.36% · 24h/);
  assert.match(html,/Indexed history · current USD reference/);
  assert.doesNotMatch(html,/Observed 47 min/);
  const incomplete={...metrics,reconstructedHistory:{...metrics.reconstructedHistory,
-  status:"partial",unknown24h:1}};
+  status:"partial",unknown24h:1},
+  indexedChange24h:{status:"unavailable",reason:"24h-canonical-history-incomplete"}};
  assert.equal(tvlChange24h(incomplete),null);
+ const missingLong={...metrics,reconstructedHistory:{status:"unavailable",reason:"30d-history-incomplete"}};
+ assert.ok(Math.abs(tvlChange24h(missingLong)-(6892.15-6800)/6800*100)<1e-9);
 });
 test("independent recovered cumulative gross events create rising curve when TVL history is unavailable",()=>{
  const {catalog}=freshDeployedCatalog({routeDestination:"base"});
@@ -976,4 +981,12 @@ test("independent recovered cumulative gross events create rising curve when TVL
  assert.match(html,/Cumulative verified movement history/);
  assert.match(html,/stroke-width="2\.5"/);
  assert.match(html,/Indexed movement · current USD reference/);
+});
+
+test("dashboard monetary metrics all use the same font and never wrap",()=>{
+ const css=readFileSync(new URL("./style.css",import.meta.url),"utf8");
+ assert.match(css,/\.ux-ns-card-tvl \.ux-ns-value,\s*\.ux-ns-card-moved \.ux-ns-moved-metric>strong\s*\{/);
+ assert.match(css,/font-family:var\(--xita-editorial\);font-style:normal;font-weight:700/);
+ assert.match(css,/font-variant-numeric:lining-nums tabular-nums/);
+ assert.match(css,/white-space:nowrap;overflow-wrap:normal/);
 });
