@@ -317,6 +317,9 @@ export async function handler(req,res){
         value.status==="verified"&&Number.isFinite(value.totalUsd)&&value.totalUsd>=0&&
         Array.isArray(value.points)){
       totalMoved={kind:value.kind,status:"verified",asOf:value.asOf,totalUsd:value.totalUsd,
+       lastVerified24h:value.lastVerified24h&&Number.isFinite(value.lastVerified24h.movedUsd)&&
+        value.lastVerified24h.movedUsd>=0&&Number.isFinite(Date.parse(value.lastVerified24h.asOf))?
+        {movedUsd:value.lastVerified24h.movedUsd,asOf:value.lastVerified24h.asOf}:null,
        points:value.points.filter(p=>typeof p?.asOf==="string"&&
         Number.isFinite(Date.parse(p.asOf))&&Number.isFinite(p.totalUsd)&&p.totalUsd>=0)
         .map(p=>({asOf:p.asOf,totalUsd:p.totalUsd})).slice(-6500)};
