@@ -21,7 +21,7 @@ const x=(rows,net=6)=>indexedEscrowDeltas({descriptor,rows,
 test("reconstructs a full 30d window from finality-confirmed locks and releases",()=>{
  const rows=[row(origin,"3",2,{source_block_at:new Date(at-20*3600000).toISOString()}),
   row(back,"4",1,{escrow_outflow_observed_at:new Date(at-2*3600000).toISOString()})];
- const one=x(rows);assert.equal(one.status,"verified");assert.equal(one.openingRaw,amount(5));
+ const one=x(rows);assert.equal(one.status,"verified");assert.equal(one.openingRaw,BigInt(amount(5)));
  const series=combineEscrowHistory([one],{now:at});
  assert.equal(series.status,"verified");assert.equal(series.points.length,721);
  assert.equal(series.points[0].lockedUsd,10);
