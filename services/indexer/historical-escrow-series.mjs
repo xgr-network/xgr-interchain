@@ -24,7 +24,7 @@ export function indexedEscrowDeltas({descriptor,rows,coverage,position,price,now
  const windowStart=now-days*DAY;
  const routes=new Map(descriptor.escrowRoutes.map(r=>[r.source+":"+lower(r.routeId),r]));
  const seen=new Set(),events=[];
- let unknownTime=0;
+ let unknownTime=0,unknown24h=0;
  for(const r of rows){
   if(r.asset!==descriptor.asset||lower(r.asset_id)!==lower(descriptor.assetId)||
     !WORD.test(r.message_id||"")||!WORD.test(r.source_block_hash||"")||
@@ -42,7 +42,10 @@ export function indexedEscrowDeltas({descriptor,rows,coverage,position,price,now
    if(Number.isFinite(at)&&at>now+30000)return false;
    if(!Number.isFinite(at)){
     // Source indexing follows the source block; delivery check follows delivery.
-    if(!Number.isFinite(bound)||bound>=windowStart)unknownTime++;
+    if(!Number.isFinite(bound)||bound>=windowStart){
+     unknownTime++;
+     if(!Number.isFinite(bound)||bound>=now-DAY)unknown24h++;
+    }
     return true;
    }
    if(at>=windowStart&&at<=now)events.push({at,raw:BigInt(r.amount_raw)*BigInt(sign)});
@@ -61,7 +64,7 @@ export function indexedEscrowDeltas({descriptor,rows,coverage,position,price,now
  if(opening<0n)return fail("historical-escrow-underflow");
  const testPrice=value(net,descriptor,price,now);
  if(testPrice===null)return fail("price-unavailable");
- return {status:unknownTime?"partial":"verified",unknownTime,events,openingRaw:opening,
+ return {status:unknownTime?"partial":"verified",unknownTime,unknown24h,events,openingRaw:opening,
   asset:descriptor.asset,decimals:descriptor.decimals,
   // Fix current price for the entire reconstructed series; no FX interpolation.
   priceUsd:price.priceUsd,asOf:new Date(now).toISOString()};
@@ -73,9 +76,10 @@ export function combineEscrowHistory(assets,{now=Date.now(),days=30}={}){
  if(!Array.isArray(assets)||!assets.length||assets.some(a=>!["verified","partial"].includes(a.status)))
   return fail("asset-history-incomplete");
  const start=now-days*DAY, hour=3600000, sorted=[];
- let unknownTime=0;
+ let unknownTime=0,unknown24h=0;
  for(const a of assets){
   unknownTime+=a.unknownTime;
+  unknown24h+=a.unknown24h||0;
   const factor=a.priceUsd/10**a.decimals;
   if(!Number.isFinite(factor)||factor<=0)return fail("price-unavailable");
   const baseline=Number(a.openingRaw)*factor;
@@ -101,6 +105,6 @@ export function combineEscrowHistory(assets,{now=Date.now(),days=30}={}){
    movedWindowUsd:moved});
  }
  return {status:unknownTime?"partial":"verified",kind:"indexed-escrow-reconstruction-v1",
-  pricing:"current-reference-price",unknownTime,asOf:new Date(now).toISOString(),
+  pricing:"current-reference-price",unknownTime,unknown24h,asOf:new Date(now).toISOString(),
   points};
 }

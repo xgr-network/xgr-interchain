@@ -361,6 +361,25 @@ function validTvlPoints(metrics){
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
 }
 export function tvlChange24h(metrics){
+ const derived=metrics?.reconstructedHistory;
+ // The 24h comparison must use the same valuation model as the displayed
+ // indexed TVL. Never mix current indexed collateral with custody snapshots.
+ const indexedTVL=metrics?.indexedTvl?.lockedUsd;
+ if(typeof indexedTVL==="number"&&Number.isFinite(indexedTVL)&&indexedTVL>=0&&
+    derived?.kind==="indexed-escrow-reconstruction-v1"&&
+    ["verified","partial"].includes(derived.status)&&derived.unknown24h!==undefined&&
+    derived.unknown24h===0&&derived.pricing==="current-reference-price"&&
+    Array.isArray(derived.points)&&derived.points.length>=25){
+  const points=derived.points.filter(p=>Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
+    Number.isFinite(Date.parse(p.asOf))).sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+  const latest=points.at(-1),now=Date.parse(latest?.asOf);
+  const before=points.filter(p=>Date.parse(p.asOf)<=now-86400000).at(-1);
+  if(before?.lockedUsd>0&&Math.abs(Date.parse(before.asOf)-(now-86400000))<=3600000 &&
+     Math.abs(latest.lockedUsd-indexedTVL)<=Math.max(.01,indexedTVL*.005)){
+   const change=100*(indexedTVL-before.lockedUsd)/before.lockedUsd;
+   return Number.isFinite(change)?change:null;
+  }
+ }
  const points=validTvlPoints(metrics);
  const current=metrics?.totals?.lockedUsd;
  const last=points.at(-1);
@@ -432,12 +451,14 @@ function totalMovedChart(metrics){
   if(p.totalUsd<previous)return '<div class="ux-ns-moved-chart-empty">Cumulative history unavailable</div>';
   previous=p.totalUsd;
  }
- const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf);
+ const unchanged=points.every(p=>Math.abs(p.totalUsd-reported.totalUsd)<0.000001);
+ const plotted=unchanged?[points.at(-1)]:points;
+ const first=Date.parse(plotted[0].asOf),last=Date.parse(plotted.at(-1).asOf);
  const span=last-first;
  // One verified observation is NOT a historic trend. Show only its verified
  // first-observation marker, without adding a deceptive horizontal series.
  const max=Math.max(...points.map(p=>p.totalUsd),1);
- const xy=points.map((p,i)=>({
+ const xy=plotted.map((p,i)=>({
   x:span>0?8+284*(Date.parse(p.asOf)-first)/span:150,
   y:62-50*(p.totalUsd/max)
  }));
@@ -447,12 +468,12 @@ function totalMovedChart(metrics){
  const stamp=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
  return '<div class="ux-ns-total-moved-chart" aria-label="Total moved TVL history">'+
   '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="'+
-  (points.length>1?'Cumulative verified movement history':'First verified cumulative movement observation')+'">'+
-  (points.length>1?'<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>':'')+
+  (plotted.length>1?'Cumulative verified movement history':'First verified cumulative movement observation')+'">'+
+  (plotted.length>1?'<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>':'')+
   path+'<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+
-  '" r="'+(points.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
+  '" r="'+(plotted.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
   '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(first))+'</span><span>'+
-  (points.length>1?esc(stamp(last)):'History begins here')+'</span></div>'+
+  (plotted.length>1?esc(stamp(last)):'History begins here')+'</span></div>'+
   (derived?'<span class="ux-ns-tvl-coverage">Indexed movement · current USD reference'+
    (reconstruction.status==="partial"?' · incomplete event times':'')+'</span>':'')+'</div>';
 }
@@ -501,7 +522,7 @@ function northstarCards(model,metrics=null,period="24h"){
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>'+(showIndexed?'Indexed TVL':'Locked TVL')+'</h2></div>'+
    '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
-   (!showIndexed&&tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
+   (tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
     (tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h</span>':'')+'</div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified · '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC</span>':'')+
    tvlHistoryChart(safeMetrics,period)+
