@@ -7,7 +7,7 @@ import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 import {chainDeploymentIntent,hasOutstandingWalletTransaction} from "./chain-intent-view.mjs";
 import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
-import {assetRouteCards,matchesAssetRouteCard} from "./asset-route-view.mjs";
+import {assetRouteCards,filterAssetRouteCards} from "./asset-route-view.mjs";
 import {advanceDeploymentBeforeSignature} from "./deployment-resume-gate.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
@@ -24,32 +24,27 @@ let assetPreview=null;
 const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
- const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
- const cards=assetRouteCards(workqueue.inventory.assets,eligibleAssetRoutes);
- const selection=cards.filter(card=>matchesAssetRouteCard(card,filter,q));
+ const filter=el("asset-filter").value,q=el("asset-search").value;
+ const cards=assetRouteCards(workqueue.inventory.assets,eligibleAssetRoutes,assetTasks);
+ const selection=filterAssetRouteCards(cards,filter,q);
  el("metrics").innerHTML=[
-  ["Assets",cards.length],["Routen",cards.reduce((n,card)=>n+card.routes.length,0)],
-  ["Offen",cards.filter(card=>card.open).length]
+  ["Assets",cards.length],["Routen",cards.reduce((n,card)=>n+card.routeCount,0)],
+  ["Offen",cards.filter(card=>card.tasks.length).length]
  ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
  const pages=Math.max(1,Math.ceil(selection.length/ASSETS_PER_PAGE));
  assetPage=Math.max(0,Math.min(assetPage,pages-1));
  const pageAssets=selection.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  const addressButton=address=>'<button type="button" class="address-copy asset-address" data-copy="'+
   esc(address)+'" title="Vollständige Contract-Adresse kopieren">'+esc(address)+' ⧉</button>';
- el("main-workqueue").innerHTML=selection.length?pageAssets.map(({asset:a,routes,complete,status})=>{
-  const tasks=assetTasks.filter(t=>t.asset===a.key);
-  const routers=Object.values(a.representations||{}).flatMap(rep=>
-   (rep.deployedContracts||[]).filter(r=>["nativeRouter","syntheticRouter","collateralRouter"].includes(r.component))
-    .map(r=>({chain:rep.chain,component:r.component,address:r.address})));
+ el("main-workqueue").innerHTML=selection.length?pageAssets.map(({asset:a,routeCount,complete,status,tasks,routers,gateways,showBatch})=>{
   const completedRouters=routers.map(r=>'<div class="route"><div><strong>Router · '+
    esc(r.chain)+' · '+esc(r.component)+'</strong><small>'+addressButton(r.address)+
    '</small></div>'+pill("deployed")+'</div>').join("");
-  const completeGateways=routes.flatMap(r=>(r.instances||[]).filter(instance=>
-   instance.status==="deployed"&&instance.gateway&&instance.feeVault).map(instance=>
-   '<div class="route"><div><strong>Route · '+esc(r.source)+' → '+esc(r.destination)+
-   '</strong><small>Gateway: '+addressButton(instance.gateway)+
-   '</small><small>FeeVault: '+addressButton(instance.feeVault)+
-   '</small></div>'+pill("deployed")+'</div>')).join("");
+  const completeGateways=gateways.map(({route,gateway,feeVault})=>
+   '<div class="route"><div><strong>Route · '+esc(route.source)+' → '+esc(route.destination)+
+   '</strong><small>Gateway: '+addressButton(gateway)+
+   '</small><small>FeeVault: '+addressButton(feeVault)+
+   '</small></div>'+pill("deployed")+'</div>').join("");
   const pending=tasks.map(t=>'<div class="route"><div><strong>'+
    esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
    '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
@@ -57,17 +52,16 @@ function renderAssets(){
    (t.blockers.length?' disabled title="Voraussetzungen fehlen"':'')+'>Ausstehend →</button></div>').join("");
   return '<section class="asset-card"><div class="asset-head">'+
    '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+
-   '</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+complete+'/'+routes.length+
-   ' verfügbare Routen dokumentiert</p></div>'+pill(status)+
-   (tasks.length?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+
+   '</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+complete+'/'+routeCount+
+   ' verfügbare Routen dokumentiert</p></div>'+(filter==="all"?pill(status):"")+
+   (showBatch?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+
     '">Alle Schritte deployen</button>':"")+'</div>'+
    '<div class="routes">'+
    (completedRouters||completeGateways?'<div class="asset-group-title">Dokumentierte Contracts · GitHub-Receipts</div>':"")+
    completedRouters+completeGateways+
    (pending?'<div class="asset-group-title">Noch zu deployen</div>'+pending:"")+
-   (!completedRouters&&!completeGateways&&!pending?'<p>Keine offenen oder dokumentierten Routen.</p>':"")+
    '</div></section>';
- }).join(""):'<p>Keine Assets mit verfügbaren Chain-Paaren für diesen Filter.</p>';
+ }).join(""):'<p>Keine Deployment-Einträge für diesen Filter.</p>';
  el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
   b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
  el("main-workqueue").querySelectorAll("[data-batch-asset]").forEach(b=>

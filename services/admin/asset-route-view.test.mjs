@@ -1,25 +1,57 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {assetRouteCards,matchesAssetRouteCard} from "./asset-route-view.mjs";
+import {assetRouteCards,filterAssetRouteCards} from "./asset-route-view.mjs";
+import {approvedWorkInventory} from "./main-gate.mjs";
+import {infrastructureInventory} from "./chain-state.mjs";
+import {nextAssetRouteTasks} from "./route-factory-draft.mjs";
 
-test("a deployed asset with open routes still appears under open deployments",()=>{
- const asset={key:"TOKEN",name:"Token",symbol:"TOKEN",canonicalChain:"hub",
-  routes:[
-   {name:"current",source:"hub",destination:"first",status:"deployed"},
-   {name:"new",source:"second",destination:"hub",status:"not-deployed"},
-   {name:"ineligible",source:"hub",destination:"third",status:"not-deployed"}
-  ]};
- const eligible=asset.routes.slice(0,2).map(({name})=>({asset:asset.key,name}));
- const [card]=assetRouteCards({TOKEN:asset},eligible);
- assert.equal(card.status,"partial");
- assert.equal(card.complete,1);
- assert.equal(matchesAssetRouteCard(card,"open","second"),true);
- assert.equal(matchesAssetRouteCard(card,"open","third"),false);
- assert.equal(matchesAssetRouteCard(card,"deployed",""),false);
+const root=new URL("../../",import.meta.url).pathname;
 
- for(const status of ["partial","deployed"]){
-  asset.routes[1].status=status;
-  const [updated]=assetRouteCards({TOKEN:asset},eligible);
-  assert.equal(matchesAssetRouteCard(updated,"open",""),status==="partial");
+test("real Admin inventory shows only matching deployment entries for mixed assets",()=>{
+ const inventory=approvedWorkInventory(root);
+ for(const asset of Object.values(inventory.assets)){
+  const xdc=asset.representations.xdc;
+  if(!xdc)continue;
+  xdc.deployedContracts=[];
+  for(const route of asset.routes.filter(r=>r.source==="xdc"||r.destination==="xdc"))
+   Object.assign(route,{status:"not-deployed",instances:[],receipts:[]});
  }
+ const plan=nextAssetRouteTasks(inventory,infrastructureInventory(root,inventory.chains));
+ const cards=assetRouteCards(inventory.assets,plan.eligibleRoutes,plan.tasks);
+ const [open]=filterAssetRouteCards(cards,"open","").filter(card=>card.asset.key==="XGR");
+ const [deployed]=filterAssetRouteCards(cards,"deployed","").filter(card=>card.asset.key==="XGR");
+ assert.ok(open.tasks.some(task=>task.kind==="router"&&task.chain==="xdc"));
+ assert.deepEqual(open.routers,[]);
+ assert.deepEqual(open.gateways,[]);
+ assert.ok(deployed.routers.some(router=>router.chain==="base"));
+ assert.ok(deployed.gateways.some(({route})=>route.source==="base"||route.destination==="base"));
+ assert.deepEqual(deployed.tasks,[]);
+ assert.equal(deployed.showBatch,false);
+
+ const xdc=filterAssetRouteCards(cards,"all"," XdC ");
+ assert.ok(xdc.length);
+ for(const card of xdc){
+  assert.ok(card.tasks.length);
+  assert.ok(card.tasks.every(task=>[task.chain,task.route?.source,task.route?.destination].includes("xdc")));
+  assert.deepEqual(card.routers,[]);
+  assert.deepEqual(card.gateways,[]);
+ }
+});
+
+test("partial and network filters scope the visible tasks without enabling a wider batch",()=>{
+ const asset={key:"TOKEN",name:"Token",symbol:"TOKEN",representations:{},routes:[
+  {name:"first",source:"hub",destination:"one",status:"partial",instances:[]},
+  {name:"second",source:"hub",destination:"two",status:"not-deployed",instances:[]}
+ ]};
+ const tasks=asset.routes.map(({name})=>({asset:"TOKEN",id:"TOKEN:"+name+":register",chain:"hub",kind:"gateway"}));
+ const eligible=asset.routes.map(({name})=>({asset:"TOKEN",name}));
+ const cards=assetRouteCards({TOKEN:asset},eligible,tasks);
+ const [partial]=filterAssetRouteCards(cards,"partial","");
+ assert.deepEqual(partial.tasks.map(t=>t.id),[tasks[0].id]);
+ assert.equal(partial.showBatch,false);
+ const [network]=filterAssetRouteCards(cards,"open","two");
+ assert.deepEqual(network.tasks.map(t=>t.id),[tasks[1].id]);
+ assert.equal(network.showBatch,false);
+ assert.equal(filterAssetRouteCards(cards,"open","TOKEN")[0].showBatch,true);
+ assert.deepEqual(filterAssetRouteCards(cards,"deployed",""),[]);
 });
