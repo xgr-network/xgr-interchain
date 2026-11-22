@@ -4,7 +4,7 @@ const endpoint="/api/xita/analytics/hit";
 const TICK_MS=15000;
 const IDLE_MS=60000;
 const allowed=path=>/^(?:\/|\/transfer|\/my-transfers|\/markets|\/faq|\/contact|\/join(?:\/confirm|\/submitted)?|\/createtoken(?:\/confirm|\/submitted)?|\/profile-update|\/xgr|\/imprint\.html|\/privacy-policy\.html|\/terms\.html|\/token\/[a-z0-9-]{1,80})$/.test(path);
-let current=null,lastActivity=Date.now(),lastTick=Date.now();
+let current=null,lastActivity=Date.now(),lastTick=Date.now(),wasActive=false;
 function validPath(){
  const path=location.pathname.replace(/\/+$/,"")||"/";
  return allowed(path)?path:null;
@@ -27,9 +27,9 @@ function flush({unload=false}={}){
  if(current){
   // Count only visible, focused, recently interacted-with time.
   // Cap each interval to avoid browser-suspension/clock-jump inflation.
-  if(active(now)){
-   const start=Math.max(lastTick,lastActivity-IDLE_MS);
-   const elapsed=Math.min(TICK_MS+1500,Math.max(0,now-start));
+  if(wasActive){
+   const until=Math.min(now,lastActivity+IDLE_MS);
+   const elapsed=Math.min(TICK_MS+1500,Math.max(0,until-lastTick));
    current.milliseconds+=elapsed;
   }
   const seconds=Math.floor(current.milliseconds/1000);
@@ -39,6 +39,7 @@ function flush({unload=false}={}){
   }
  }
  lastTick=now;
+ wasActive=active(now);
 }
 function onNavigate(){
  const path=validPath();
@@ -50,6 +51,7 @@ function onNavigate(){
  const id=typeof crypto?.randomUUID==="function"?crypto.randomUUID():null;
  current={path,id,milliseconds:0,reported:0};
  lastTick=Date.now();
+ wasActive=active(lastTick);
  let sourceHost=null;
  try{
   const origin=document.referrer?new URL(document.referrer).hostname:"";
@@ -72,12 +74,12 @@ for(const event of ["pointerdown","keydown","wheel","touchstart"])
  addEventListener(event,()=>{lastActivity=Date.now()},{passive:true});
 addEventListener("visibilitychange",()=>{
  if(document.visibilityState!=="visible")flush({unload:true});
- else {lastTick=Date.now();lastActivity=Date.now();}
+ else {lastTick=Date.now();lastActivity=Date.now();wasActive=active(lastTick);}
 });
 addEventListener("blur",()=>flush({unload:true}));
-addEventListener("focus",()=>{lastTick=Date.now();lastActivity=Date.now();});
+addEventListener("focus",()=>{lastTick=Date.now();lastActivity=Date.now();wasActive=active(lastTick);});
 addEventListener("pagehide",()=>flush({unload:true}));
-setInterval(()=>{if(!document.hidden)flush();else lastTick=Date.now();},TICK_MS);
+setInterval(()=>{flush();},TICK_MS);
 if(document.readyState==="loading")
  addEventListener("DOMContentLoaded",onNavigate,{once:true});
 else onNavigate();
