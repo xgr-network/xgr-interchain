@@ -12,6 +12,7 @@ import {indexedGrossFlow24h,indexedGrossFlowLifetime} from "./indexed-flow-24h.m
 import {appendVerifiedMovedHistory} from "./total-moved-history.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
 import {indexedEscrowDeltas,combineEscrowHistory} from "./historical-escrow-series.mjs";
+import {indexedGrossMovementEvents,combineGrossMovementEvents} from "./gross-movement-series.mjs";
 import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
@@ -92,7 +93,7 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
- const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[];
+ const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[],grossAssets=[];
  const names=Object.keys(catalog.assets||{});
  const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  for(const asset of names)try{
@@ -126,12 +127,15 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
    lifetimeFlows[asset]=indexedGrossFlowLifetime({descriptor,rows:events.rows,coverage});
    historicalAssets.push(indexedEscrowDeltas({descriptor,rows:events.rows,coverage,
     position,price,now}));
+   grossAssets.push(indexedGrossMovementEvents({descriptor,rows:events.rows,coverage,price,now}));
   }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};
    lifetimeFlows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return {...verifiedEvidence(catalog,proofs,now,flows),lifetimeFlows,
   reconstructedHistory:expectedHistorical===historicalAssets.length?
    combineEscrowHistory(historicalAssets,{now}):{status:"unavailable",reason:"asset-history-incomplete"},
+  reconstructedMoved:expectedHistorical===grossAssets.length?
+   combineGrossMovementEvents(grossAssets,{now}):{status:"unavailable",reason:"gross-asset-history-incomplete"},
   indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};
 }
 function atomic(path,payload){
