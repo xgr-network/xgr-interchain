@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {recordVerifiedGas,observeOnwardGas,PROCESS_ID_TOPIC} from "./gas-observer.mjs";
+import {recordVerifiedGas,observeOnwardGas,observeDeliveryGas,PROCESS_ID_TOPIC} from "./gas-observer.mjs";
+import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
 const h=x=>"0x"+x.repeat(64);
 const config={chainId:8453,rpcUrls:["https://rpc.example.test"]};
 const profile={key:"base|first-delivery|collateral|synthetic|mint|test",chain:"base"};
@@ -58,4 +59,54 @@ test("F-35: unprofiled child does not stall the next statistical observation",as
  assert.equal(writes.length,1);
  assert.match(writes[0].text,/xita_gas_onward_cursors/);
  assert.deepEqual(writes[0].values,[unknown.source_indexed_at,unknown.source_tx_hash]);
+});
+
+function destinationCatalog(){
+ const asset=deployedFixture("ABC","xgrchain");
+ const infrastructure=Object.fromEntries(["xgrchain","base"].map(chain=>{
+  const components=Object.fromEntries(["factory","sourceRegistry","mailbox","ism","validatorRegistry"]
+   .map((name,i)=>{const address="0x"+String(i+1).repeat(40);
+    return [name,{address,runtimeCodeKeccak256:h("e"),receiptPath:
+     "deployments/receipts/"+chain+"/"+("a".repeat(64))+"-"+address.slice(2)+".json"}];}));
+  return [chain,{present:true,chainId:chain==="base"?8453:1643,
+   xitaV315:{components,receiptPaths:Object.values(components).map(v=>v.receiptPath)}}];
+ }));
+ return {chains:{xgrchain:{chainId:1643},base:{chainId:8453}},
+  infrastructure,assets:{ABC:asset}};
+}
+test("idle delivery gas monitoring issues zero blockchain RPC calls",async()=>{
+ const pool={query:async q=>{
+  assert.match(q.text,/FROM public[.]xita_indexed_mailbox_events/);
+  assert.match(q.text,/o[.]delivered IS TRUE/);
+  return {rows:[]};
+ }};
+ assert.equal(await observeDeliveryGas({catalog:destinationCatalog(),pool,
+  rpc:()=>assert.fail("idle gas monitoring must use SQL only")}),0);
+});
+
+test("new delivery gas uses a single receipt and retries a missing sample",async()=>{
+ const catalog=destinationCatalog();
+ const source=catalog.assets.ABC.deployment.routeDeployments.find(r=>r.destinationChain==="base");
+ const mailbox=catalog.infrastructure.base.xitaV315.components.mailbox.address;
+ const row={chain_name:"base",mailbox,message_id:h("c"),tx_hash:tx,block_number:"100",
+  block_hash:block,source_chain:source.sourceChain,route_id:source.routeId,parent_message_id:null};
+ for(const available of [false,true]){
+  const calls=[],writes=[];
+  const pool={query:async q=>{
+   if(q.text.includes("JOIN public.xita_transfer_operations"))return {rows:[row]};
+   if(q.text.includes("FROM public.xita_gas_observations"))return {rows:[]};
+   writes.push(q);
+   return {rows:[]};
+  }};
+  const measured=await observeDeliveryGas({catalog,pool,rpc:async (_chain,method,params)=>{
+   calls.push([method,params]);
+   if(!available)return null;
+   return {transactionHash:tx,status:"0x1",blockNumber:"0x64",blockHash:block,
+    gasUsed:"0x493e0",logs:[{address:mailbox,topics:[PROCESS_ID_TOPIC,row.message_id]}]};
+  }});
+  assert.deepEqual(calls,[["eth_getTransactionReceipt",[tx]]]);
+  assert.equal(measured,Number(available));
+  assert.equal(writes.at(-1).values[3],available);
+  assert.equal(writes.some(q=>q.text.includes("xita_record_gas_observation")),available);
+ }
 });

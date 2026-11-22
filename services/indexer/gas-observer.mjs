@@ -1,10 +1,11 @@
 // Bounded finality-qualified gas learner. Receipts, never sponsor grants, are
 // the source of measurements; every chain's Mailbox ProcessId event is eligible.
-import {keccak256} from "ethers";
+import {PROCESS_ID_TOPIC} from "./transfer-index.mjs";
+export {PROCESS_ID_TOPIC};
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {transferGasProfile} from "../../apps/web/transfer-gas-profile.js";
 import {readNativeFinalityHead} from "../../apps/web/chain-finality.js";
-const HASH=/^0x[0-9a-f]{64}$/i,ADDR=/^0x[0-9a-f]{40}$/i;
+const HASH=/^0x[0-9a-f]{64}$/i;
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 const num=x=>{
  const n=typeof x==="number"?x:typeof x==="string"&&/^0x[0-9a-f]+$/i.test(x)?Number(BigInt(x)):NaN;
@@ -12,7 +13,6 @@ const num=x=>{
  return n;
 };
 const hex=n=>"0x"+BigInt(n).toString(16);
-export const PROCESS_ID_TOPIC=keccak256(Buffer.from("ProcessId(bytes32)"));
 export function gasObservationProfile(catalog,sourceChain,routeId,stage){
  const matched=deployedRoutes(catalog).filter(r=>r.source===sourceChain&&
   eq(r.routeId,routeId));
@@ -84,73 +84,58 @@ export async function observeOnwardGas({catalog,pool,rpc,limit=20}){
  }
  return measured;
 }
-// Scan each deployed destination Mailbox only once per safe block window.
-// Contract addresses and chains come exclusively from verified catalog receipts.
-export async function observeDeliveryGas({catalog,pool,rpc,limit=80}){
- const routes=deployedRoutes(catalog),groups=new Map();
- for(const route of routes){
-  const chain=route.destination,mailbox=catalog.infrastructure?.[chain]?.xitaV315?.components?.mailbox;
-  if(!ADDR.test(mailbox?.address||"")||!Number.isSafeInteger(catalog.chains?.[chain]?.chainId))
-   continue;
-  const key=chain+":"+mailbox.address.toLowerCase();
-  if(!groups.has(key))groups.set(key,{chain,mailbox:mailbox.address.toLowerCase(),routes:[]});
-  groups.get(key).routes.push(route);
- }
+// Read only finalized ProcessId locators persisted by the transfer scanner.
+export async function observeDeliveryGas({catalog,pool,rpc,limit=20}){
+ const due=await pool.query({text:`
+  SELECT e.*,o.source_chain,o.route_id,o.parent_message_id
+  FROM public.xita_indexed_mailbox_events e
+  JOIN public.xita_transfer_operations o ON o.destination_chain=e.chain_name
+   AND o.destination_mailbox=e.mailbox AND o.message_id=e.message_id
+  WHERE e.gas_due_at<=NOW() AND o.delivered IS TRUE
+   AND NOT EXISTS (
+    SELECT 1 FROM public.xita_transfer_operations other
+    WHERE other.destination_chain=e.chain_name AND other.destination_mailbox=e.mailbox
+      AND other.message_id=e.message_id AND other.source_chain<>o.source_chain
+   )
+  ORDER BY e.gas_due_at,e.chain_name,e.mailbox,e.message_id LIMIT $1`,values:[limit]});
+ const receipts=new Map();
  let measured=0;
- for(const group of groups.values()){
-  const cfg=catalog.chains[group.chain];
+ for(const row of due.rows){
+  const profile=gasObservationProfile(catalog,row.source_chain,row.route_id,
+   row.parent_message_id?"final-delivery":"first-delivery");
+  const cfg=catalog.chains?.[row.chain_name];
+  let done=!profile||profile.chain!==row.chain_name||!cfg;
   try{
-   const safe=await readNativeFinalityHead((m,args)=>rpc(cfg,m,args),cfg.chainId);
-   const previous=await pool.query({text:`SELECT scanned_to,scanned_hash FROM
-    xita_gas_observation_cursors WHERE chain_name=$1 AND mailbox=$2`,
-    values:[group.chain,group.mailbox]});
-   if(previous.rows.length>1)continue;
-   let from=previous.rows.length?Number(previous.rows[0].scanned_to)+1:
-    Math.max(1,safe.number-limit+1);
-   if(previous.rows.length){
-    const height=Number(previous.rows[0].scanned_to);
-    const old=await rpc(cfg,"eth_getBlockByNumber",[hex(height),false]);
-    if(!old||!eq(old.hash,previous.rows[0].scanned_hash))continue;
+   if(!done){
+    const existing=await pool.query({text:`
+     SELECT 1 FROM public.xita_gas_observations
+     WHERE profile_key=$1 AND chain_name=$2 AND tx_hash=$3 AND block_number=$4 AND block_hash=$5`,
+     values:[profile.key,row.chain_name,row.tx_hash,row.block_number,row.block_hash]});
+    done=existing.rows.length>0;
+    if(!done){
+     const key=row.chain_name+":"+row.tx_hash;
+     if(!receipts.has(key))receipts.set(key,rpc(cfg,"eth_getTransactionReceipt",[row.tx_hash]));
+     const receipt=await receipts.get(key);
+     const height=num(receipt?.blockNumber),gas=num(receipt?.gasUsed);
+     // Finality and canonical block identity were checked by the shared scan.
+     if(receipt.status==="0x1"&&eq(receipt.transactionHash,row.tx_hash)&&
+        height===Number(row.block_number)&&eq(receipt.blockHash,row.block_hash)&&
+        gas>=21000&&gas<=5000000&&receipt.logs?.some(log=>
+         eq(log.address,row.mailbox)&&log.removed!==true&&log.topics?.length===2&&
+         eq(log.topics[0],PROCESS_ID_TOPIC)&&eq(log.topics[1],row.message_id))){
+      await pool.query({text:"SELECT public.xita_record_gas_observation($1,$2,$3,$4,$5,$6)",
+       values:[profile.key,row.chain_name,row.tx_hash,height,row.block_hash,gas]});
+      done=true;
+      measured++;
+     }
+    }
    }
-   if(from>safe.number)continue;
-   const to=Math.min(safe.number,from+limit-1);
-   const logs=await rpc(cfg,"eth_getLogs",[{
-    address:group.mailbox,topics:[PROCESS_ID_TOPIC],
-    fromBlock:hex(from),toBlock:hex(to)
-   }]);
-   if(!Array.isArray(logs)||logs.length>1000)continue;
-   let incomplete=false;
-   for(const log of logs){
-    if(!eq(log.address,group.mailbox)||!HASH.test(log.transactionHash||"")||
-      !HASH.test(log.topics?.[1]||"")||log.removed===true)continue;
-    const operation=await pool.query({text:`SELECT source_chain,route_id,
-     destination_mailbox,parent_message_id FROM xita_transfer_operations
-     WHERE destination_chain=$1 AND message_id=$2 AND delivered=TRUE
-     LIMIT 2`,values:[group.chain,log.topics[1].toLowerCase()]});
-    if(operation.rows.length!==1){incomplete=true;continue;}
-    if(!eq(operation.rows[0].destination_mailbox,group.mailbox))continue;
-    const row=operation.rows[0];
-    const route=group.routes.filter(r=>r.source===row.source_chain&&eq(r.routeId,row.route_id));
-    if(route.length!==1){incomplete=true;continue;}
-    const profile=transferGasProfile(catalog,route[0],
-     row.parent_message_id?"final-delivery":"first-delivery");
-    if(!profile){incomplete=true;continue;}
-    if(await recordVerifiedGas({pool,rpc,chain:group.chain,chainConfig:cfg,
-     txHash:log.transactionHash,profile,expectedBlock:num(log.blockNumber),
-     expectedBlockHash:log.blockHash}))measured++;
-    else incomplete=true;
-   }
-   if(incomplete)continue;
-   const end=await rpc(cfg,"eth_getBlockByNumber",[hex(to),false]);
-   if(!end||!HASH.test(end.hash||"")||num(end.number)!==to)continue;
-   await pool.query({text:`INSERT INTO xita_gas_observation_cursors
-    (chain_name,mailbox,scanned_to,scanned_hash)
-    VALUES($1,$2,$3,$4) ON CONFLICT(chain_name,mailbox)
-    DO UPDATE SET scanned_to=EXCLUDED.scanned_to,
-     scanned_hash=EXCLUDED.scanned_hash,updated_at=NOW()
-    WHERE xita_gas_observation_cursors.scanned_to<EXCLUDED.scanned_to`,
-    values:[group.chain,group.mailbox,to,end.hash.toLowerCase()]});
-  }catch{/* Fail closed for this chain and do not advance its cursor. */}
+  }catch{/* Retry this sample without blocking the transfer cursor. */}
+  await pool.query({text:`
+   UPDATE public.xita_indexed_mailbox_events
+   SET gas_due_at=CASE WHEN $4::boolean THEN NULL ELSE NOW()+INTERVAL '5 minutes' END
+   WHERE chain_name=$1 AND mailbox=$2 AND message_id=$3 AND gas_due_at IS NOT NULL`,
+   values:[row.chain_name,row.mailbox,row.message_id,done]});
  }
  return measured;
 }

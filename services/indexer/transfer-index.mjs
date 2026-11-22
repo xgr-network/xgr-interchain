@@ -7,13 +7,14 @@ import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {deployedRoutes} from "../../apps/web/route-availability.js";
 import {configuredGatewayRoutes,findWalletSourceTx,OPERATION_TOPIC,publicRead} from "../../apps/web/wallet-transfers.js";
-import {selector} from "../../apps/web/keccak.js";
+import {keccak256,selector} from "../../apps/web/keccak.js";
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const HEX=/^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const HASH=/^0x[0-9a-f]{64}$/i,ADDRESS=/^0x[0-9a-f]{40}$/i;
 const norm=x=>String(x||"").toLowerCase();
 const hex=n=>"0x"+BigInt(n).toString(16);
 const MAX_EVENTS=150;
+export const PROCESS_ID_TOPIC=keccak256("ProcessId(bytes32)");
 const BRIDGE_SELECTOR=selector("bridge(uint32,bytes32,uint256)");
 const DELIVERED_SELECTOR=selector("delivered(bytes32)");
 const safeUint=n=>HEX.test(n||"")&&BigInt(n)<=BigInt(Number.MAX_SAFE_INTEGER);
@@ -59,16 +60,13 @@ export function bridgeAmountFromTransaction(tx,route){
   recipient.slice(0,24)!=="0x"+"0".repeat(22))return null;
  return amount.toString();
 }
-export async function checkedDelivery({route,messageId,rpc}){
+export async function checkedDelivery({route,messageId,rpc,readHead}){
  if(!HASH.test(messageId||"")||typeof rpc!=="function")throw Error("Invalid delivery check");
  if(!ADDRESS.test(route.destinationMailbox||""))return {delivered:null,reason:"destination-not-deployed"};
- const id=await rpc(route.destinationConfig,"eth_chainId",[]);
- if(!HEX.test(id||"")||BigInt(id)!==BigInt(route.destinationConfig.chainId))
-  throw Error("Destination RPC chain mismatch");
  return verifiedNativeMailboxState(
   (method,args)=>rpc(route.destinationConfig,method,args),
   route.destinationConfig.chainId,route.destinationMailbox,
-  DELIVERED_SELECTOR+messageId.slice(2));
+  DELIVERED_SELECTOR+messageId.slice(2),readHead);
 }
 // Browser recovery may retry any configured source/destination RPC URL.
 // A source backup must never silently be treated as the destination.
@@ -82,20 +80,38 @@ export function bindVerifiedTransferRpc(route,rpc){
   return rpc(source?route.sourceConfig:route.destinationConfig,method,params);
  };
 }
-export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
+export async function verifiedTransfer({catalog,route,transactionHash,rpc,scanEvidence=null}){
  if(!HASH.test(transactionHash||""))throw Error("Invalid canonical source tx");
  const tx=await rpc(route.sourceConfig,"eth_getTransactionByHash",[transactionHash]);
  if(!ADDRESS.test(tx?.from||""))throw Error("Missing canonical source wallet");
+ const sourceRpc=bindVerifiedTransferRpc(route,(chain,method,params)=>
+  chain===route.sourceConfig&&method==="eth_getTransactionByHash"&&
+   norm(params[0])===norm(transactionHash)?tx:rpc(chain,method,params));
+ // The SQL delivery sweep checks the destination after source evidence is stored.
+ let verifySourceReceipt;
+ if(scanEvidence){
+  const {chainId,head,event}=scanEvidence;
+  if(chainId!==route.sourceConfig.chainId||norm(event?.txHash)!==norm(transactionHash)||
+     !Number.isSafeInteger(event.blockNumber)||event.blockNumber<1||
+     !Number.isSafeInteger(head?.number)||head.number<event.blockNumber||
+     !HASH.test(head.hash||"")||!HASH.test(event.blockHash||""))
+   throw Error("Invalid scoped source scan evidence");
+  verifySourceReceipt=(_read,receiptChainId,receipt)=>{
+   if(receiptChainId!==chainId||![1,"0x1"].includes(receipt?.status)||
+      number(receipt.blockNumber)!==event.blockNumber||
+      norm(receipt.blockHash)!==norm(event.blockHash))
+    throw Error("Source receipt does not match the canonical scan block");
+   return {verified:true,head};
+  };
+ }
  const evidence=await findWalletSourceTx({catalog,account:tx.from,
   sourceChain:route.sourceChain,txHash:transactionHash,
-  rpc:bindVerifiedTransferRpc(route,rpc)});
+  rpc:sourceRpc,sourceOnly:true,verifySourceReceipt});
  if(!evidence.confirmed||!HASH.test(evidence.messageId||"")||
    norm(evidence.routeId)!==norm(route.routeId)||
    norm(evidence.gateway)!==norm(route.gateway)||
    ["source-failed","pending-source","confirming"].includes(evidence.status))
   throw Error("Source operation cannot be indexed before canonical confirmation");
- const delivered=await checkedDelivery({route,messageId:evidence.messageId,rpc})
-  .catch(()=>({delivered:null}));
  return {
   sourceChain:route.sourceChain,messageId:norm(evidence.messageId),
   sourceTxHash:norm(transactionHash),
@@ -112,7 +128,7 @@ export async function verifiedTransfer({catalog,route,transactionHash,rpc}){
   finalRecipient:evidence.finalRecipient||evidence.recipient||null,
   onwardRouteId:evidence.onwardRouteId||null,
   parentMessageId:evidence.parentMessageId||null,
-  delivered:delivered.delivered,
+  delivered:null,
  };
 }
 // Pure read-only RPC transport for the finalized indexer; caller controls endpoints,
@@ -135,26 +151,39 @@ export function rpcCandidates(chain,{baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_
  if(!result.length||result.length>8)throw Error("Missing or excessive chain RPC URLs");
  return result;
 }
+function recordSharedRateLimit(rateLimits,key,error,now){
+ const message=String(error?.message||error);
+ const exhausted=/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/i.test(message);
+ const limited=/\b429\b|too many requests|rate[ -]limit/i.test(message);
+ if(!exhausted&&!limited)return;
+ const previous=rateLimits.get(key);
+ const failures=Math.min(5,(previous?.failures||0)+1);
+ const delay=exhausted?1800000:Math.min(120000,15000*2**(failures-1));
+ rateLimits.set(key,{failures,until:Math.max(previous?.until||0,now()+delay)});
+}
 // A normal historical scan qualifies a provider with its ACTUAL requested
 // finalized block and log window. The old fixed-height Base archive preflight
 // made several unrelated RPC calls per endpoint and was repeated on expiry.
 // An optional injected probe is retained for targeted tests only.
 export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
- baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now,rateLimits=new Map()}={}){
  const validated=new Map(),retryByProvider=new Map();
- return async(chain,method,params)=>{
+ const read=async(chain,method,params,scope)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid canonical chain config");
   let last=null,skipped=0;
-  for(const url of rpcCandidates(chain,{baseUrls})){
+  const urls=rpcCandidates(chain,{baseUrls});
+  if(scope?.url&&(scope.chainId!==chain.chainId||!urls.includes(scope.url)))
+   throw Error("Canonical RPC scan scope mismatch");
+  for(const url of scope?.url?[scope.url]:urls.filter(url=>!scope?.excluded.has(url))){
    const key=String(chain.chainId)+"|"+url;
    const retry=retryByProvider.get(key);
-   if(retry&&retry.until>now()){skipped++;continue;}
+   if(retry?.until>now()||rateLimits.get(key)?.until>now()){skipped++;continue;}
    let identityVerified=false;
    try{
     const ok=validated.get(key);
     if(!ok||ok.expire<=now()){
-     const id=await publicRead(url,"eth_chainId",[],fetcher);
+     const id=await publicRead(url,"eth_chainId",[],fetcher,{providerDiagnostics:true});
      if(typeof id!=="string"||!/^0x[0-9a-f]+$/i.test(id)||
        BigInt(id)!==BigInt(chain.chainId))throw Error("RPC chain identity mismatch");
      identityVerified=true;
@@ -167,13 +196,16 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
     }
     // Canonical completeness is checked by the caller. Never reinterpret
     // an eth_getLogs failure or unsupported range as an empty log set.
-    const value=await publicRead(url,method,params,fetcher);
+    const value=await publicRead(url,method,params,fetcher,{providerDiagnostics:true});
+    if(rateLimits.get(key)?.until<=now())rateLimits.delete(key);
     retryByProvider.delete(key);
+    if(scope&&!scope.url){scope.url=url;scope.chainId=chain.chainId;}
     return value;
    }catch(error){
     if(identityVerified||/identity mismatch/.test(String(error?.message||"")))
      validated.delete(key);
     last=error;
+    recordSharedRateLimit(rateLimits,key,error,now);
     const count=Math.min(5,(retry?.failures||0)+1);
     // 15/30/60/120 second bounded backoff on transport, 429 and missing
     // historical methods. It is per chain AND URL, never route-scoped.
@@ -181,42 +213,76 @@ export function canonicalRpc({fetcher=globalThis.fetch,archiveProbe=null,
      until:now()+Math.min(120000,15000*2**(count-1))});
    }
   }
+  if(scope?.url)scope.failed=true;
   throw Error("All "+String(chain.name||chain.chainId)+" RPC endpoints failed: "+
    (skipped>0?"provider cooldown; ":"")+
    String(last?.message||"retry after cooldown").slice(0,125));
  };
+ // One provider per scan. A failed provider is excluded before retrying
+ // the uncommitted window with a newly verified head.
+ read.openScan=()=>{
+  const scope={excluded:new Set()};
+  const scan=(chain,method,params)=>read(chain,method,params,scope);
+  scan.retryOnAnotherProvider=()=>{
+   if(!scope.failed||!scope.url)return false;
+   scope.excluded.add(scope.url);
+   scope.url=null;
+   scope.failed=false;
+   return true;
+  };
+  return scan;
+ };
+ return read;
 }
 // A known TX hash needs receipt and block confirmation, not archive-length
 // eth_getLogs. Separate this reader from the strict historical route scanner:
 // Base public RPCs can serve individual receipts even when archive log probes
 // are rate-limited. Both readers independently verify chain IDs and fail over.
 export function candidateRpc({fetcher=globalThis.fetch,
- baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now}={}){
- const identities=new Map;
+ baseUrls=process.env.XITA_BASE_ARCHIVE_RPC_URLS||"",now=Date.now,rateLimits=new Map()}={}){
+ const identities=new Map(),cooldowns=new Map();
  return async (chain,method,params)=>{
   if(!Number.isSafeInteger(chain?.chainId)||chain.chainId<1)
    throw Error("Invalid candidate source chain");
-  let last=null,missing=false;
+  let last=null,missing=false,skipped=0;
   for(const url of rpcCandidates(chain,{baseUrls})){
+   const key=String(chain.chainId)+"|"+url;
+   const held=cooldowns.get(key);
+   if(held?.until>now()||rateLimits.get(key)?.until>now()){skipped++;continue;}
    try{
-    const prev=identities.get(url);
-    if(!prev||prev.chainId!==chain.chainId||prev.expire<=now()){
-     const id=await publicRead(url,"eth_chainId",[],fetcher);
-     if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
-      throw Error("Candidate RPC chain ID mismatch");
-     identities.set(url,{chainId:chain.chainId,expire:now()+300000});
+     const prev=identities.get(key);
+     if(!prev||prev.expire<=now()){
+      const id=await publicRead(url,"eth_chainId",[],fetcher,{providerDiagnostics:true});
+      if(!/^0x[0-9a-f]+$/i.test(id||"")||BigInt(id)!==BigInt(chain.chainId))
+       throw Error("Candidate RPC chain ID mismatch");
+      identities.set(key,{expire:now()+300000});
+     }
+     const result=await publicRead(url,method,params,fetcher,{providerDiagnostics:true});
+     // A null receipt is propagation delay, NOT a provider failure.
+     if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
+       "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
+     if(rateLimits.get(key)?.until<=now())rateLimits.delete(key);
+     cooldowns.delete(key);
+     return result;
+    }catch(error){
+     identities.delete(key);
+     last=error;
+     recordSharedRateLimit(rateLimits,key,error,now);
+     const count=Math.min(5,(held?.failures||0)+1);
+     const msg=String(error?.message||error).toLowerCase();
+     const exhausted=/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/.test(msg);
+     const forbidden=/403|forbidden/.test(msg);
+     // Network failures: 15/30/60/120s; forbidden 10m; exhausted plans 30m.
+     // Never contaminate the independent validator witness RPC layer.
+     const delay=exhausted?1800000:forbidden?600000:
+      Math.min(120000,15000*2**(count-1));
+     cooldowns.set(key,{failures:count,until:now()+delay});
     }
-    const result=await publicRead(url,method,params,fetcher);
-    // Receipt propagation can lag behind block finalization on one provider.
-    // Before treating a missing source TX as pending, try verified backups.
-    if(result===null&&["eth_getTransactionByHash","eth_getTransactionReceipt",
-      "eth_getBlockByNumber"].includes(method)){missing=true;continue;}
-    return result;
-   }catch(error){identities.delete(url);last=error;}
   }
   if(missing)return null;
   throw Error("All candidate RPCs failed for "+String(chain.name||chain.chainId)+": "+
-   String(last?.message||"unknown").slice(0,125));
+   (skipped?"provider cooldown; ":"")+
+   String(last?.message||"retry after cooldown").slice(0,125));
  };
 }
 export function validateIndexedGatewayLog(log,route,from,to){
@@ -287,7 +353,7 @@ export async function readRouteWindow({route,cursor,rpc,limit=150}){
 // head and ONE eth_getLogs query per bounded window. The returned log is
 // dispatched only to its exact (Gateway, routeId) pair. This read model is
 // NOT a validator witness and cannot authorize BLS signing or custody.
-export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=null}={}){
+export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=null,mailbox=null}={}){
  if(!Array.isArray(routes)||routes.length===0||routes.length>64||
    !(cursors instanceof Map)||typeof rpc!=="function"||
    !Number.isSafeInteger(limit)||limit<1||limit>250)
@@ -296,6 +362,8 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
  const chain=routes[0].sourceChain;
  if(!source||!Number.isSafeInteger(source.chainId))throw Error("Invalid source chain");
  const configured=JSON.stringify(source.rpcUrls||[]);
+ if(mailbox!==null&&!ADDRESS.test(mailbox))throw Error("Invalid delivery Mailbox");
+ mailbox=mailbox&&norm(mailbox);
  const byPair=new Map(),gateways=new Set(),ids=new Set(),positions=new Map();
  let from=Number.MAX_SAFE_INTEGER;
  for(const route of routes){
@@ -329,6 +397,11 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
   if(!cursor?.scannedHash)continue;
   const height=positions.get(route.routeId);
   if(height>confirmed.number)throw Error("Durable cursor above safe source head");
+  // A fresh finality read has already checked this exact block by number.
+  if(!finality&&height===confirmed.number){
+   if(norm(confirmed.hash)!==norm(cursor.scannedHash))reorgRoutes.push(route);
+   continue;
+  }
   let block=byHeight.get(height);
   if(!block){
    block=await rpc(source,"eth_getBlockByNumber",[hex(height),false]);
@@ -342,21 +415,51 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
  for(const pos of positions.values())if(pos>confirmed.number)
   throw Error("Durable cursor beyond safe source head");
  const eventsByRoute=new Map(routes.map(r=>[r.routeId,[]]));
+ const deliveries=[];
  if(from>confirmed.number)
   return {from,to:from-1,head:confirmed.number,finality:confirmed,
-   hash:null,eventsByRoute,reorgRoutes:[]};
+   hash:null,eventsByRoute,deliveries,reorgRoutes:[]};
  const to=Math.min(confirmed.number,from+limit-1);
  const logs=await rpc(source,"eth_getLogs",[{
-  address:[...gateways],topics:[OPERATION_TOPIC,[...ids]],
+  address:mailbox?[...new Set([...gateways,mailbox])]:[...gateways],
+  topics:mailbox?[[OPERATION_TOPIC,PROCESS_ID_TOPIC]]:[OPERATION_TOPIC,[...ids]],
   fromBlock:hex(from),toBlock:hex(to)}]);
- if(!Array.isArray(logs)||logs.length>MAX_EVENTS*routes.length)
-  throw Error("Incomplete or excessive shared Gateway log response");
+ if(!Array.isArray(logs)||logs.length>MAX_EVENTS*routes.length+(mailbox?1000:0))
+  throw Error("Incomplete or excessive shared log response");
  const seen=new Set(),timestampByHeight=new Map();
+ async function canonicalBlock(height,hash){
+  let block=byHeight.get(height);
+  if(!block){
+   block=await rpc(source,"eth_getBlockByNumber",[hex(height),false]);
+   if(!block||number(block.number)!==height||!HASH.test(block.hash||""))
+    throw Error("Shared event block unavailable");
+   byHeight.set(height,block);
+  }
+  if(hash!==norm(block.hash))throw Error("Shared event block not canonical");
+  return block;
+ }
  for(const log of logs){
+  if(mailbox&&norm(log?.topics?.[0])===PROCESS_ID_TOPIC){
+   const height=number(log.blockNumber),messageId=norm(log.topics[1]);
+   if(norm(log.address)!==mailbox||log.removed===true||height<from||height>to||
+    log.topics.length!==2||log.data!=="0x"||!HASH.test(messageId)||
+    !HASH.test(log.transactionHash||"")||!HASH.test(log.blockHash||""))
+    throw Error("Invalid Mailbox ProcessId log");
+   const key="delivery:"+messageId;
+   if(seen.has(key))throw Error("Duplicate Mailbox ProcessId");
+   seen.add(key);
+   const blockHash=norm(log.blockHash);
+   await canonicalBlock(height,blockHash);
+   deliveries.push({messageId,txHash:norm(log.transactionHash),blockNumber:height,blockHash});
+   continue;
+  }
   if(!gateways.has(norm(log?.address))||
-    norm(log?.topics?.[0])!==norm(OPERATION_TOPIC)||
-    !ids.has(norm(log?.topics?.[1])))
+    norm(log?.topics?.[0])!==norm(OPERATION_TOPIC))
    throw Error("Unexpected event outside source Gateway filter");
+  if(!ids.has(norm(log?.topics?.[1]))){
+   if(!mailbox)throw Error("Unexpected event outside source Gateway filter");
+   continue;
+  }
   const route=byPair.get(norm(log.address)+"|"+norm(log.topics[1]));
   if(!route)continue; // Cross-product of address and routeId topic filters.
   const item=validateIndexedGatewayLog(log,route,from,to);
@@ -365,15 +468,7 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
   seen.add(identity);
   if(item.blockNumber<route.deploymentBlock||
     item.blockNumber<=positions.get(route.routeId))continue;
-  let block=byHeight.get(item.blockNumber);
-  if(!block){
-   block=await rpc(source,"eth_getBlockByNumber",[hex(item.blockNumber),false]);
-   if(!block||number(block.number)!==item.blockNumber||
-     !HASH.test(block.hash||""))
-    throw Error("Shared Gateway event block unavailable");
-   byHeight.set(item.blockNumber,block);
-  }
-  if(item.blockHash!==norm(block.hash))throw Error("Shared Gateway event not canonical");
+  const block=await canonicalBlock(item.blockNumber,item.blockHash);
   if(!timestampByHeight.has(item.blockNumber)){
    timestampByHeight.set(item.blockNumber,
     HEX.test(block.timestamp||"")&&
@@ -390,5 +485,5 @@ export async function readSourceWindow({routes,cursors,rpc,limit=150,finality=nu
    throw Error("Shared source endpoint block unavailable");
  }
  return {from,to,head:confirmed.number,finality:confirmed,
-  hash:norm(end.hash),eventsByRoute,reorgRoutes:[]};
+  hash:norm(end.hash),eventsByRoute,deliveries,reorgRoutes:[]};
 }

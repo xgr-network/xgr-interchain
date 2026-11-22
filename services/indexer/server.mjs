@@ -10,6 +10,7 @@ import {buildLeaderboardRows,verifiedMetrics} from "../../apps/web/leaderboard-d
 import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {resolveRecoveryRoute,runRecoveryProcess} from "./transfer-recovery.mjs";
+import {pollLocalQuorum} from "./xgr-quorum-poll.mjs";
 import {readWalletTransferIndex,readTransferIndexStats} from "./transfer-index-store.mjs";
 import {cachedExplorerWallet} from "./explorer-wallet-discovery.mjs";
 import {proxyCatalogRpcRead} from "./rpc-read.mjs";
@@ -78,7 +79,16 @@ export function projectMetrics(catalog,evidence,marketSnapshot=null){
  // totals, not the timestamp of an unrelated (potentially stale) history point.
  const asOf=typeof evidence?.asOf==="string"&&Number.isFinite(Date.parse(evidence.asOf))?
   evidence.asOf:null;
+ const indexedTvl=evidence?.indexedTvl?.kind==="xita-indexed-tvl-v1"?
+  Object.fromEntries(activeKeys.flatMap(key=>{
+   const p=evidence.indexedTvl.positions?.[key];
+   return p?.assetId===catalog.assets[key].metadata?.assetId&&
+    Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0?[[key,p]]:[];
+  })):null;
  return {schemaVersion:1,kind:"xita-asset-metrics-v1",asOf,assets,totals,
+  ...(indexedTvl&&{indexedTvl:{kind:"xita-indexed-tvl-v1",positions:indexedTvl,
+   lockedUsd:activeKeys.length&&Object.keys(indexedTvl).length===activeKeys.length?
+    Object.values(indexedTvl).reduce((sum,p)=>sum+p.lockedUsd,0):null}}),
   partialMovement,
   status:completeTVL&&completeMoved?"verified":"incomplete",
   metadata:{configuredAssets:keys.length,deployedAssets:activeKeys.length,
@@ -110,7 +120,10 @@ function reportRpcReadFailure(error){
  if(rpcDiagnosticAt.size>100)rpcDiagnosticAt.clear();
  return {code,chainId,attempts};
 }
-export async function serveUnsignedTransferRecovery({catalog,route,messageId,asset,sourceTxHash=null,now=Date.now(),runner=runRecoveryProcess}){
+export async function serveUnsignedTransferRecovery({
+ catalog,route,messageId,asset,sourceTxHash=null,now=Date.now(),
+ runner=runRecoveryProcess,quorumPoll=pollLocalQuorum
+}){
  const request=resolveRecoveryRoute(catalog,route,messageId,asset,sourceTxHash);
  const key=asset+":"+route+":"+request.messageId;
  // Limit replay and quorum request spam without storing transfer state.
@@ -124,7 +137,22 @@ export async function serveUnsignedTransferRecovery({catalog,route,messageId,ass
  if((rateLimit.get(key)||0)>now-15000)
   return {code:429,body:{ok:false,error:"Retry shortly; original source remains unchanged"}};
  rateLimit.set(key,now);
- const pending=runner(request);
+ const pending=(async()=>{
+  // Known external transfers already queued for independent validation
+  // can wait on the local node without replaying source receipt reads.
+  if(sourceTxHash&&request.env.ORIGIN_CHAIN_ID!=="1643"){
+   let status;
+   try{
+    status=await quorumPoll({route:request.env.ATTESTATION_ROUTE,messageId:request.messageId});
+   }catch(error){
+    throw Object.assign(new Error("Local quorum status unavailable",{cause:error}),
+     {code:"PROOF_QUORUM_UNAVAILABLE",stage:"quorum"});
+   }
+   if(["PENDING","PARTIAL_QUORUM","RETRYING_VALIDATION"].includes(status))
+    return {status:"PENDING",messageId:request.messageId};
+  }
+  return runner(request);
+ })();
  recoveryRequests.set(key,pending);
  try{
   const result=await pending;

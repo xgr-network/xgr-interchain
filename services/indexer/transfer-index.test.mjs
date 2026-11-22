@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import {selector} from "../../apps/web/keccak.js";
 import {OPERATION_TOPIC} from "../../apps/web/wallet-transfers.js";
 import {bridgeAmountFromTransaction,readRouteWindow,readSourceWindow,
- checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc} from "./transfer-index.mjs";
+ checkedDelivery,validateIndexedGatewayLog,canonicalRpc,rpcCandidates,candidateRpc,bindVerifiedTransferRpc,PROCESS_ID_TOPIC} from "./transfer-index.mjs";
 import {routeIndexCoverage,indexedTransferRow,readWalletTransferIndex} from "./transfer-index-store.mjs";
-import {commitWindow,catchUpRoute,refreshPendingDeliveries} from "./transfer-index-worker.mjs";
+import {commitWindow,catchUpRoute,catchUpSource,refreshPendingDeliveries,recentActiveIndexerSources,
+ dueIndexerSourceChains,groupedSourceRoutes} from "./transfer-index-worker.mjs";
 const address=x=>"0x"+x.repeat(40),hash=x=>"0x"+x.repeat(64);
 const hex=n=>"0x"+BigInt(n).toString(16);
 const word=n=>BigInt(n).toString(16).padStart(64,"0");
@@ -268,11 +269,92 @@ test("successful finalized initial adapter fee is recorded once, without assumin
  assert.match(queries.find(q=>q.includes("INSERT INTO xita_tax_charged_fees")),/ON CONFLICT\(source_chain,message_id\) DO NOTHING/);
 });
 
-test("M-02: finality-qualified false reopens a previously completed delivery",async()=>{
+test("completed deliveries are never re-queried, while pending/null are scheduled",async()=>{
  const queries=[],pool={query:async q=>{
   queries.push(q);
-  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))return {
-   rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
+  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))
+   return {rows:[]};
+  throw Error("No finalized row may be changed");
+ }};
+ let calls=0;
+ const outcome=await refreshPendingDeliveries({pool,routes:[route],
+  rpc:async()=>{calls++;throw Error("Unexpected destination RPC");}});
+ assert.deepEqual(outcome,{checked:0,delivered:0,unknown:0});
+ assert.equal(calls,0);
+ assert.equal(queries.length,1);
+ assert.match(queries[0].text,/o[.]delivered IS DISTINCT FROM TRUE/);
+ assert.match(queries[0].text,/delivery_attempted_at<=NOW\(\)-INTERVAL '60 seconds'/);
+ assert.match(queries[0].text,/WHERE EXISTS/);
+ assert.ok(queries[0].text.indexOf("o.delivered IS DISTINCT FROM TRUE")<
+  queries[0].text.indexOf("LIMIT"),"filter before LIMIT");
+});
+test("delivery sweep shares a chain head but rechecks the pinned block for each result",async()=>{
+ const pool={query:async ({text})=>({rows:text.startsWith("SELECT o.source_chain")?
+  ["c","d"].map(id=>({source_chain:SOURCE,route_id:route.routeId,message_id:hash(id)})):[]})};
+ const calls=[];
+ const result=await refreshPendingDeliveries({pool,routes:[route],rpc:async (chain,method,args)=>{
+  assert.equal(chain.chainId,8453);
+  calls.push([method,args.at(-1)]);
+  if(method==="eth_chainId")return hex(8453);
+  if(method==="eth_call")return "0x"+word(1);
+  return {number:args[0]==="safe"?hex(200):args[0],hash:hash("e")};
+ }});
+ assert.deepEqual(result,{checked:2,delivered:2,unknown:0});
+ assert.deepEqual(calls,[
+  ["eth_chainId",undefined],["eth_getBlockByNumber",false],["eth_getBlockByNumber",false],
+  ["eth_call",hex(200)],["eth_getBlockByNumber",false],
+  ["eth_call",hex(200)],["eth_getBlockByNumber",false]
+ ]);
+});
+test("four source windows use one verified head and four Gateway queries",async()=>{
+ let cursor=null;
+ const pool={
+  query:async()=>({rows:cursor?[{
+   gateway:route.gateway,route_id:route.routeId,deployment_block:route.deploymentBlock,...cursor
+  }]:[]}),
+  connect:async()=>({release(){},query:async q=>{
+   if(q.text?.startsWith("SELECT scanned_to"))return {rows:cursor?[cursor]:[]};
+   if(q.text?.startsWith("INSERT INTO xita_transfer_index_cursors"))
+    cursor={scanned_to:q.values[5],scanned_hash:q.values[6]};
+   return {rows:[]};
+  }})
+ };
+ const calls=[];
+ await catchUpSource({routes:[route],pool,limit:2,rpc:async (_chain,method,args)=>{
+  calls.push([method,args[0]]);
+  if(method==="eth_chainId")return hex(1643);
+  if(method==="eth_getLogs")return [];
+  return {number:args[0]==="latest"?hex(120):args[0],hash:hash("e")};
+ }});
+ assert.equal(cursor.scanned_to,107);
+ assert.equal(calls.filter(([m])=>m==="eth_chainId").length,1);
+ assert.equal(calls.filter(([m,height])=>m==="eth_getBlockByNumber"&&height==="latest").length,1);
+ assert.equal(calls.filter(([m])=>m==="eth_getLogs").length,4);
+});
+test("source cursor at a freshly checked head skips a duplicate pinned block read",async()=>{
+ const calls=[];
+ const reader=async (_chain,method,args)=>{
+  calls.push([method,args[0]]);
+  if(method==="eth_chainId")return hex(1643);
+  assert.equal(method,"eth_getBlockByNumber");
+  return {number:hex(120),hash:hash("e")};
+ };
+ for(const [scannedHash,reorgRoutes] of [[hash("e"),[]],[hash("f"),[route]]]){
+  calls.length=0;
+  const cursors=new Map([[route.routeId,{scannedTo:120,scannedHash}]]);
+  const view=await readSourceWindow({routes:[route],cursors,rpc:reader});
+  assert.deepEqual(view.reorgRoutes,reorgRoutes);
+  assert.deepEqual(calls,[
+   ["eth_chainId",undefined],["eth_getBlockByNumber","latest"],["eth_getBlockByNumber",hex(120)]
+  ]);
+ }
+});
+
+test("finalized false stays open and next check retains bounded retry",async()=>{
+ const queries=[],pool={query:async q=>{
+  queries.push(q);
+  if(q.text.startsWith("SELECT o.source_chain,o.route_id,o.message_id"))
+   return {rows:[{source_chain:SOURCE,route_id:route.routeId,message_id:hash("d")}]};
   return {rows:[],rowCount:1};
  }};
  const reader=rpc({
@@ -283,14 +365,13 @@ test("M-02: finality-qualified false reopens a previously completed delivery",as
  const result=await refreshPendingDeliveries({pool,routes:[route],rpc:reader});
  assert.equal(result.checked,1);
  assert.equal(result.delivered,0);
- assert.match(queries[0].text,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
+ assert.match(queries[0].text,/o[.]delivered IS DISTINCT FROM TRUE/);
  const update=queries.find(q=>q.text.includes("destination_checked_block=$4"));
  assert.ok(update);
  assert.equal(update.values[2],false);
  assert.equal(update.values[3],200);
  assert.equal(update.values[4],hash("e"));
 });
-
 test("F-26: retired routes cannot starve active deliveries in a bounded sweep",async()=>{
  const orphanRows=Array.from({length:125},(_,i)=>({
   source_chain:SOURCE,route_id:hash("f"),message_id:hash((i%10).toString())
@@ -302,6 +383,7 @@ test("F-26: retired routes cannot starve active deliveries in a bounded sweep",a
   const sql=q.text;
   if(sql.startsWith("SELECT o.source_chain,o.route_id,o.message_id")){
    assert.match(sql,/FROM\s+xita_transfer_operations\s+o\s+WHERE EXISTS/);
+    assert.match(sql,/o[.]delivered IS DISTINCT FROM TRUE/);
    assert.match(sql,/JOIN|\(VALUES\s+\(\$1::text,\$2::char\(66\)\)/);
    assert.ok(sql.indexOf("WHERE EXISTS")<sql.indexOf("LIMIT"),
     "filter must be applied before bounding the backlog");
@@ -393,6 +475,33 @@ test("shared observer keeps lagging route independent of already advanced route"
  assert.equal(view.eventsByRoute.get(a.routeId).length,0);
  assert.equal(calls,1);
 });
+test("one canonical window captures both Gateway and Mailbox events",async()=>{
+ const mailbox=address("b"),blockHash=hash("e"),messageId=hash("d");
+ const gatewayEvent={address:route.gateway,topics:[OPERATION_TOPIC,route.routeId,hash("c"),hash("2")],
+  transactionHash:hash("a"),blockNumber:hex(101),blockHash,logIndex:"0x0",data:word(2)};
+ const deliveryEvent={...gatewayEvent,address:mailbox,topics:[PROCESS_ID_TOPIC,messageId],
+  transactionHash:hash("b"),logIndex:"0x1",data:"0x"};
+ let queried=0,body=deliveryEvent;
+ const reader=rpc({
+  eth_chainId:()=>hex(1643),
+  eth_getBlockByNumber:(_,[height])=>({number:height==="latest"?hex(105):height,hash:blockHash}),
+  eth_getLogs:(_,[filter])=>{
+   queried++;
+   assert.deepEqual(filter.address,[route.gateway,mailbox]);
+   assert.deepEqual(filter.topics,[[OPERATION_TOPIC,PROCESS_ID_TOPIC]]);
+   return [gatewayEvent,body];
+  }
+ });
+ const params={routes:[route],cursors:new Map(),rpc:reader,limit:4,mailbox};
+ const view=await readSourceWindow(params);
+ assert.equal(queried,1);
+ assert.equal(view.eventsByRoute.get(route.routeId).length,1);
+ assert.deepEqual(view.deliveries,[{messageId,txHash:hash("b"),blockNumber:101,blockHash}]);
+ body={...deliveryEvent,address:route.gateway};
+ await assert.rejects(()=>readSourceWindow(params),/Invalid Mailbox/);
+ body={...deliveryEvent,blockHash:hash("f")};
+ await assert.rejects(()=>readSourceWindow(params),/not canonical/);
+});
 test("shared observer rejects failed logs and does not synthesize a successful window",async()=>{
  const a={...route,sourceChain:"base",sourceConfig:{chainId:8453,rpcUrls:["https://rpc.example/a"]}};
  const read=async(_chain,method,args)=>{
@@ -445,4 +554,175 @@ test("four Base providers fail over on HTTP 429 without treating rejected logs a
  const chain={name:"base",chainId:8453,rpcUrls:urls};
  assert.deepEqual(await read(chain,"eth_getLogs",[{address:"0x"+"1".repeat(40),fromBlock:"0x1",toBlock:"0x3"}]),[]);
  assert.deepEqual(calls.filter(x=>x[1]==="eth_getLogs").map(x=>x[0]),urls.slice(0,3));
+});
+
+test("adaptive indexer polls every 60s idle and 20s for active source only",()=>{
+ const chains=["base","bsc","xgrchain"],last=new Map(chains.map(chain=>[chain,1000]));
+ const due=(now,activeSources)=>dueIndexerSourceChains({
+  sourceChains:chains,activeSources:new Set(activeSources),lastScannedAt:last,now});
+ assert.deepEqual([...due(12999,[])],[]);
+ assert.deepEqual([...due(21000,["base"])],["base"]);
+ assert.deepEqual([...due(41000,["base"])],["base"]);
+ assert.deepEqual([...due(61000,[])],["base","bsc","xgrchain"]);
+ assert.deepEqual([...due(61000,["base"])],["base","bsc","xgrchain"]);
+ const first=dueIndexerSourceChains({sourceChains:chains,
+  activeSources:new Set(),lastScannedAt:new Map(),now:100});
+ assert.deepEqual([...first],chains,"cold startup must scan every source");
+});
+test("active indexer sources come from recent real rows or untrusted hints, never stale history",async()=>{
+ const query=[];
+ const pool={query:async q=>{
+  query.push(q);return {rows:[{source_chain:"bsc"},{source_chain:"xgrchain"}]};
+ }};
+ const active=await recentActiveIndexerSources(pool);
+ assert.deepEqual([...active],["bsc","xgrchain"]);
+ assert.match(query[0].text,/first_reported_at >= NOW\(\)-INTERVAL '5 minutes'/);
+ assert.match(query[0].text,/delivered IS DISTINCT FROM TRUE/);
+ assert.match(query[0].text,/source_indexed_at >= NOW\(\)-INTERVAL '5 minutes'/);
+ const missing=await recentActiveIndexerSources({query:async()=>{
+  throw Object.assign(Error("migration unavailable"),{code:"42P01"});
+ }});
+ assert.equal(missing.size,0);
+});
+test("adaptive filter keeps one source-wide scan for all active Gateway routes",()=>{
+ const base={sourceChain:"base",sourceConfig:{chainId:8453},routeId:hash("1")};
+ const more={...base,routeId:hash("2")};
+ const bsc={...base,sourceChain:"bsc",sourceConfig:{chainId:56}};
+ const groups=groupedSourceRoutes([base,more,bsc],new Set(["base"]));
+ assert.equal(groups.length,1);
+ assert.deepEqual(groups[0],[base,more]);
+ assert.equal(groupedSourceRoutes([base,more,bsc]).length,2);
+});
+
+test("candidate RPC cooldown stops repeated failures while other providers remain available",async()=>{
+ let now=100000;
+ const a="https://bsc-rpc.publicnode.com",b="https://bsc.drpc.org";
+ const counts=new Map();
+ const reader=candidateRpc({baseUrls:"",now:()=>now,fetcher:async(url,{body})=>{
+  const method=JSON.parse(body).method;
+  counts.set(url,(counts.get(url)||0)+1);
+  if(url===a)return {ok:false,status:429};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":{transactionHash:hash("a")}})};
+ }});
+ const chain={name:"bsc",chainId:56,rpcUrls:[a,b]};
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ const first=counts.get(a);
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ assert.equal(counts.get(a),first,"429 provider must not be contacted again within cooldown");
+ now+=16000;
+ assert.equal((await reader(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+ assert.ok(counts.get(a)>first,"provider may be tried after bounded cooldown");
+});
+test("candidate exhausted quota holds per-provider cooldown across calls",async()=>{
+ let now=100000,requests=0;
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://bsc.drpc.org"]};
+ const read=candidateRpc({baseUrls:"",now:()=>now,fetcher:async()=>{
+  requests++;throw Error("quota exceeded");
+ }});
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/failed/);
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/cooldown/);
+ assert.equal(requests,1,"do not retry exhausted provider");
+ now+=1800001;
+ await assert.rejects(()=>read(chain,"eth_getTransactionReceipt",[hash("b")]),/failed/);
+ assert.equal(requests,2);
+});
+test("candidate receipt propagation null still checks backup without false cooldown",async()=>{
+ const a="https://bsc-rpc.publicnode.com",b="https://bsc.drpc.org";
+ let first=0;
+ const read=candidateRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);
+  if(url===a)first++;
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":
+    url===a?null:{transactionHash:hash("c")}})};
+ }});
+ const chain={name:"bsc",chainId:56,rpcUrls:[a,b]};
+ await read(chain,"eth_getTransactionReceipt",[hash("c")]);
+ await read(chain,"eth_getTransactionReceipt",[hash("c")]);
+ assert.ok(first>=3,"valid null is not treated as provider outage");
+});
+
+test("the indexer shares provider rate limits but keeps archive capability failures local",async()=>{
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://rpc.example"]};
+ let now=100000, failure=429;
+ const methods=[];
+ const fetcher=async(_url,{body})=>{
+  const {method}=JSON.parse(body);
+  methods.push(method);
+  if(method==="eth_getLogs")return {ok:false,status:failure};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,
+   result:method==="eth_chainId"?"0x38":{transactionHash:hash("a")}})};
+ };
+ const rateLimits=new Map();
+ const options={now:()=>now,baseUrls:"",fetcher,rateLimits};
+ const scan=canonicalRpc(options), candidate=candidateRpc(options);
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/429/);
+ await assert.rejects(()=>candidate(chain,"eth_getTransactionReceipt",[hash("a")]),/cooldown/);
+ assert.deepEqual(methods,["eth_chainId","eth_getLogs"]);
+ now+=16000;
+ failure=403;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/403/);
+ assert.equal((await candidate(chain,"eth_getTransactionReceipt",[hash("a")])).transactionHash,hash("a"));
+});
+
+test("only fresh, caught-up Mailbox coverage filters repeat delivery probes before the limit",async()=>{
+ const now=200000;
+ const recent={chain:"bsc",mailbox:route.destinationMailbox,from:100,to:105,
+  checkedAt:now,caughtUp:true};
+ const coverage=new Map([
+  ["bsc",recent],
+  ["base",{...recent,chain:"base",checkedAt:now-120001}],
+  ["optimism",{...recent,chain:"optimism",caughtUp:false}]
+ ]);
+ let statement;
+ await refreshPendingDeliveries({routes:[route],mailboxCoverage:coverage,now,
+  pool:{query:async q=>{statement=q;return {rows:[]}}},
+  rpc:async()=>{throw Error("no delivery call expected")}});
+ assert.deepEqual(JSON.parse(statement.values[2]),[recent]);
+ assert.match(statement.text,/o\.delivered IS FALSE AND c\.chain=o\.destination_chain/);
+ assert.match(statement.text,/o\.destination_checked_block BETWEEN c\."from"-1 AND c\."to"/);
+ assert.match(statement.text,/xita_indexed_mailbox_events e/);
+ assert.match(statement.text,/LIMIT \$4/);
+});
+
+test("a JSON-RPC plan quota response pauses both indexer readers",async()=>{
+ const chain={name:"bsc",chainId:56,rpcUrls:["https://rpc.example"]};
+ const rateLimits=new Map();
+ let now=100000,calls=0;
+ const options={now:()=>now,baseUrls:"",rateLimits,fetcher:async()=>{
+  calls++;
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,error:{code:-32000,
+   message:"You've reached the usage limit for your current plan"}})};
+ }};
+ const scan=canonicalRpc(options), candidate=candidateRpc(options);
+ await assert.rejects(()=>candidate(chain,"eth_getTransactionReceipt",[hash("a")]),/quota exhausted/);
+ now+=120001;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/cooldown/);
+ assert.equal(calls,1);
+ now+=1800000;
+ await assert.rejects(()=>scan(chain,"eth_getLogs",[]),/quota exhausted/);
+ assert.equal(calls,2);
+});
+
+test("the indexer pins a scan to one provider until retry with a new head",async()=>{
+ const endpoints=["https://first.example","https://second.example"];
+ const chain={chainId:56,name:"bsc",rpcUrls:endpoints};
+ const calls=[];
+ const read=canonicalRpc({baseUrls:"",fetcher:async(url,{body})=>{
+  const {method}=JSON.parse(body);
+  calls.push([url,method]);
+  if(url===endpoints[0]&&method==="eth_getLogs")return {ok:false,status:429};
+  return {ok:true,json:async()=>({jsonrpc:"2.0",id:1,result:
+   method==="eth_chainId"?"0x38":method==="eth_getLogs"?[]:{number:"0x64",hash:hash("e")}})};
+ }}).openScan();
+ await read(chain,"eth_getBlockByNumber",["finalized",false]);
+ await assert.rejects(()=>read(chain,"eth_getLogs",[]),/429/);
+ assert.ok(calls.every(([url])=>url===endpoints[0]));
+ assert.equal(read.retryOnAnotherProvider(),true);
+ await read(chain,"eth_getBlockByNumber",["finalized",false]);
+ await read(chain,"eth_getLogs",[]);
+ assert.deepEqual(calls.slice(-3),[
+  [endpoints[1],"eth_chainId"],[endpoints[1],"eth_getBlockByNumber"],[endpoints[1],"eth_getLogs"]
+ ]);
 });

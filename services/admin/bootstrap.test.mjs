@@ -29,13 +29,13 @@ test("every main-configured chain has independent bootstrap in every lifecycle s
    assert.equal(chain.chainId,50);
    assert.equal(cfg.validatorSource,"explicit-destination-genesis");
    assert.equal(cfg.sourceFee.governance,"validator-ecdsa-quorum");
-   assert.deepEqual(plan.initialValidators,[]);
-   assert.equal(plan.validatorCount,0);
-   assert.equal(plan.expectedValidatorCount,0);
-   assert.equal(plan.reserveWei,null);
-   assert.equal(plan.ready,false);
-   assert.ok(plan.missing.length>0);
-   assert.equal(cfg.genesisValidatorManifest,null);
+   assert.deepEqual(plan.initialValidators,pinned);
+   assert.equal(plan.validatorCount,3);
+   assert.equal(plan.expectedValidatorCount,3);
+   assert.equal(plan.reserveWei,"2400000000000000000");
+   assert.equal(plan.ready,true);
+   assert.deepEqual(plan.missing,[]);
+   assert.equal(cfg.genesisValidatorManifest,"config/validators/xdc.json");
   }else{
    assert.deepEqual(plan.initialValidators,pinned);
    assert.equal(plan.expectedValidatorCount,pinned.length);

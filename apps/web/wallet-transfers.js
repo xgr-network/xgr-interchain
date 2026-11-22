@@ -146,7 +146,7 @@ export function dispatchMessage(logData){
 // resolves approved chain endpoints from the current receipt-backed catalog.
 // No wallet signing/broadcast ever traverses this proxy.
 export async function publicRead(url,method,params,fetcher=globalThis.fetch,{
- viaProxy=typeof window!=="undefined",signal=null
+ viaProxy=typeof window!=="undefined",signal=null,providerDiagnostics=false
 }={}){
  if(typeof url!=="string"||!url.startsWith("https://")||typeof fetcher!=="function")
   throw Error("Untrusted HTTPS RPC endpoint");
@@ -189,9 +189,17 @@ export async function publicRead(url,method,params,fetcher=globalThis.fetch,{
    }
    throw Error(viaProxy?
     "XITA read-only RPC proxy unavailable (HTTP "+String(response?.status||"network")+
-     diagnostic+"); no wallet transaction sent":"Chain RPC unavailable");
+     diagnostic+"); no wallet transaction sent":providerDiagnostics&&Number.isInteger(response?.status)?
+     "Chain RPC unavailable (HTTP "+response.status+")":"Chain RPC unavailable");
   }
   const reply=await response.json();
+  if(providerDiagnostics&&!viaProxy&&reply?.jsonrpc==="2.0"&&reply.id===1){
+   const reason=String(reply.error?.message||"");
+   if(/quota|usage limit|current plan|daily limit|monthly limit|resource exhausted/i.test(reason))
+    throw Error("Chain RPC quota exhausted");
+   if(/\b429\b|too many requests|rate[ -]limit/i.test(reason))
+    throw Error("Chain RPC rate limit");
+  }
   if(reply?.jsonrpc!=="2.0"||reply.id!==1||reply.error||
       !Object.hasOwn(reply,"result"))throw Error("Invalid chain RPC response");
   return reply.result;
@@ -295,7 +303,7 @@ function verifiedFeeAdapterEvent(receiptLogs,route,payer,messageId){
   onwardJourneyEvidence(log,route,payer,messageId);
  return {present:true,evidence};
 }
-export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc}){
+export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fetcher,rpc,sourceOnly=false,verifySourceReceipt=verifyNativeFinalityReceipt}){
  if(!isAddress(account)||!HASH.test(txHash||""))throw Error("Connect wallet and enter a valid source transaction hash");
  const routes=configuredGatewayRoutes(catalog).filter(r=>r.sourceChain===sourceChain);
  if(!routes.length)throw Error("No verified deployed XITA Gateway for this source chain");
@@ -386,7 +394,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   return {...base,...finality,...(evidence||{}),status:"confirming"};
  let safe;
  try{
-  safe=await verifyNativeFinalityReceipt(
+  safe=await verifySourceReceipt(
    (method,args)=>reader.read(method,args),route.sourceConfig.chainId,receipt);
  }catch{
   return {...base,...finality,...(evidence||{}),status:"finality-unavailable"};
@@ -395,6 +403,7 @@ export async function findWalletSourceTx({catalog,account,sourceChain,txHash,fet
   sourceSafeHeadBlock:safe.head.number,status:"confirming-native-finality"};
  const found={...base,...finality,messageId,confirmed:true,validatorFeeWei,
   ...(evidence||{}),status:"delivery-unknown"};
+ if(sourceOnly)return found;
  if(!route.destinationMailbox)return {...found,status:"destination-not-deployed"};
  try{
   const dest=createReader(route.destinationConfig,fetcher,rpc);

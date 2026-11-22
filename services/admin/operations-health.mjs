@@ -3,8 +3,8 @@
 import {execFile} from "node:child_process";
 import {promisify} from "node:util";
 import {readFileSync,statSync} from "node:fs";
-import {probeILNValidators,attachXitaReferenceLag} from "./validator-indexer-health.mjs";
-import {probeChainProviders} from "./rpc-provider-health.mjs";
+import {probeILNValidators,validatorRPCUrls} from "./validator-indexer-health.mjs";
+import {observedChainProviders} from "./rpc-provider-health.mjs";
 
 const execFileAsync=promisify(execFile);
 export const UNITS=Object.freeze([
@@ -212,11 +212,13 @@ function aggregateState(units,checks,indexer,chains){
 }
 export async function collectOperationsHealth({
  catalog,readUnit=readSystemdUnit,readHTTP=readLocalJSON,
- checkChain=probeChainProviders,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
+ checkChain,readEvidence=inspectEvidenceFile,checkValidators=probeILNValidators,now=Date.now()
 }={}){
  if(!catalog||typeof catalog!=="object"||!catalog.chains)
   throw Error("Configured chain catalog unavailable");
- const [units,probes,chains]=await Promise.all([
+ const urls=validatorRPCUrls();
+ const xgrRPC=catalog.chains.xgrchain?.rpcUrls?.[0];
+ const [units,probes,validators]=await Promise.all([
   Promise.all(UNITS.map(async def=>{
    try{return parseUnitShow(await readUnit(def.unit),def)}
    catch{return {id:def.id,title:def.title,group:def.group,unit:def.unit,
@@ -230,13 +232,15 @@ export async function collectOperationsHealth({
     return {...target,state:"unavailable",data:null};
    }
   })),
-  Promise.all(Object.entries(catalog.chains).map(async ([name,c])=>{
-   try{return await checkChain({...c,name})}
-   catch{return {name,chainId:safeNumber(c?.chainId),
-    configuredEndpoints:Array.isArray(c?.rpcUrls)?c.rpcUrls.length:0,
-    attempted:0,head:null,state:"unavailable"}}
-  }))
+  checkValidators({now,urls:urls.length?urls:xgrRPC?[xgrRPC]:[]})
  ]);
+ const chains=await Promise.all(Object.entries(catalog.chains).map(async ([name,c])=>{
+  if(!checkChain)return observedChainProviders({...c,name},validators,now);
+  try{return await checkChain({...c,name})}
+  catch{return {name,chainId:safeNumber(c?.chainId),
+   configuredEndpoints:Array.isArray(c?.rpcUrls)?c.rpcUrls.length:0,
+   attempted:0,head:null,state:"unavailable"}}
+ }));
  // Optional inactive components must not make a healthy deployment yellow.
  // Preserve the probe state if the endpoint responds despite missing systemd.
  const optionalServiceByProbe={
@@ -313,7 +317,6 @@ export async function collectOperationsHealth({
  }));
  // Evidence is diagnostic: a responding API alone cannot establish that
  // the TVL/market verification worker has produced fresh evidence.
- const validators=await checkValidators({now});
  const baseStatus=aggregateState(services,checks,indexer,chains);
  const paidQuoteFault=paidQuoteInstalled&&!quoteReady;
  const sponsorFault=sponsorInstalled&&!sponsorHealthy;
@@ -323,7 +326,8 @@ export async function collectOperationsHealth({
   validators.some(v=>v.state!=="ok")&&baseStatus==="ok"?"warning":baseStatus;
  return {ok:true,kind:"xita-admin-operations-health-v1",
   checkedAt:new Date(now).toISOString(),status,
-  services,checks,indexer,proofObserver,evidence,chains,validators,quoteWriter,
+  services,checks,indexer,proofObserver,evidence,chains,
+  validators:validators.map(({rpcProviders,rpcEndpoint,...validator})=>validator),quoteWriter,
   sponsorWorker:{state:!sponsorInstalled?"not-installed":sponsorWorker?.state||"unknown",
    reason:!sponsorInstalled?"Gas sponsorship not installed":sponsorHealthy?
     "Last sponsor execution completed successfully":
@@ -340,5 +344,5 @@ export async function collectOperationsHealth({
    chainsConfigured:chains.length,
    validatorsHealthy:validators.filter(v=>v.state==="ok").length,
    validatorsConfigured:validators.length},
-  note:"Read-only observations. RPC provider native finality is checked independently per catalog URL but does NOT establish two matching source witnesses, complete ILN evidence, BLS quorum or transfer delivery."};
+  note:"Read-only provider observations do not establish source evidence, BLS quorum or transfer delivery."};
 }

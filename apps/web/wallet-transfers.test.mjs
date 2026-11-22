@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {keccak256,selector} from "./keccak.js";
+import {verifiedTransfer} from "../../services/indexer/transfer-index.mjs";
 import {configuredGatewayRoutes,dispatchMessage,findWalletSourceTx,scanRecentWalletTransfers,publicRead,OPERATION_TOPIC,DISPATCH_TOPIC,INTERCHAIN_FEE_TOPIC} from "./wallet-transfers.js";
 const addr=d=>"0x"+d.repeat(40), hash=d=>"0x"+d.repeat(64);
 const user=addr("a"),other=addr("b"),gateway=addr("1"),srcMailbox=addr("2"),dstMailbox=addr("3"),srcRouter=addr("4");
@@ -64,6 +65,17 @@ test("verified successful source can be delivered or pending proof",async()=>{
  const delivered=await findWalletSourceTx({catalog:cat,account:user,sourceChain:"xgrchain",txHash,
   rpc:mockRPC({delivered:true}).rpc});
  assert.equal(delivered.status,"delivered");
+});
+test("indexer verifies the source transaction once and leaves delivery to the SQL sweep",async()=>{
+ const m=mockRPC();
+ const [route]=configuredGatewayRoutes(cat);
+ const record=await verifiedTransfer({catalog:cat,route,transactionHash:txHash,
+  rpc:(chain,method,args)=>m.rpc(chain.rpcUrls[0],method,args)});
+ assert.equal(record.messageId,messageId);
+ assert.equal(record.delivered,null);
+ assert.equal(m.calls.filter(c=>c.method==="eth_getTransactionByHash").length,1);
+ assert.equal(m.calls.filter(c=>c.method==="eth_getTransactionReceipt").length,1);
+ assert.ok(m.calls.every(c=>c.url===cat.chains.xgrchain.rpcUrls[0]));
 });
 test("failed and pending source cannot advertise a recoverable proof",async()=>{
  const pending=await findWalletSourceTx({catalog:cat,account:user,sourceChain:"xgrchain",txHash,
@@ -359,4 +371,19 @@ test("Arbitrum mined two-hop intent survives 64-block finality before unlock",as
  const finalized=await read("0x4f");
  assert.equal(finalized.confirmed,true);
  assert.equal(finalized.finalDestinationChain,"base");
+});
+
+test("the indexer reuses its scoped head and rejects a receipt from a different scan block",async()=>{
+ const [route]=configuredGatewayRoutes(cat);
+ const m=mockRPC();
+ const scanEvidence={chainId:1643,head:{number:100,hash:hash("d")},
+  event:{txHash,blockNumber:16,blockHash:receipt.blockHash}};
+ const params={catalog:cat,route,transactionHash:txHash,
+  rpc:(chain,method,args)=>m.rpc(chain.rpcUrls[0],method,args)};
+ const record=await verifiedTransfer({...params,scanEvidence});
+ assert.equal(record.messageId,messageId);
+ assert.equal(m.calls.filter(c=>c.method==="eth_getBlockByNumber").length,0);
+ await assert.rejects(()=>verifiedTransfer({...params,scanEvidence:{
+  ...scanEvidence,event:{...scanEvidence.event,blockHash:hash("c")}
+ }}),/before canonical confirmation/);
 });

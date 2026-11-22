@@ -27,6 +27,7 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
   error:String(r.error||"").slice(0,200)
  }));
  return {name,workerAlive:true,ageMs,routes,
+  rpcProviders:Array.isArray(raw.rpcProviders)?raw.rpcProviders.slice(0,100):[],
   state:routes.some(r=>r.state==="unavailable")?"degraded":
    routes.some(r=>r.state!=="ok")?"catching-up":routes.length?"ok":"warning",
   reason:routes.length?"":"No registered Direct-BLS Gateway routes"};
@@ -34,17 +35,23 @@ export function summarizeILNValidatorStatus(raw,{now=Date.now(),name="validator"
 export async function probeILNValidators({urls=validatorRPCUrls(),fetcher=globalThis.fetch,now=Date.now(),timeoutMs=4000}={}){
  return await Promise.all(urls.map(async (url,index)=>{
   const name="Validator "+(index+1);
+  const observation={url,observedUnix:Math.floor(now/1000)};
   try{
    const response=await fetcher(url,{method:"POST",headers:{"content-type":"application/json"},
     redirect:"error",signal:AbortSignal.timeout(timeoutMs),
     body:JSON.stringify({jsonrpc:"2.0",id:1,method:"xgr_getILNIndexerStatus",params:[]})});
+   if(response.status===429)return {name,state:"unavailable",workerAlive:false,routes:[],reason:"HTTP 429",
+    rpcEndpoint:{...observation,state:"rate-limited"}};
    if(!response.ok)throw Error("HTTP "+response.status);
    const text=await response.text();
    if(text.length>180000)throw Error("Response too large");
    const answer=JSON.parse(text);
-   if(answer.error||!answer.result)throw Error("Indexer RPC unavailable");
-   return summarizeILNValidatorStatus(answer.result,{now,name});
-  }catch(e){return {name,state:"unavailable",workerAlive:false,routes:[],reason:String(e.message||e).slice(0,180)}}
+   if(answer.jsonrpc!=="2.0"||answer.id!==1||answer.error||!answer.result)
+    throw Error("Indexer RPC unavailable");
+   return {...summarizeILNValidatorStatus(answer.result,{now,name}),
+    rpcEndpoint:{...observation,state:"ok"}};
+  }catch(e){return {name,state:"unavailable",workerAlive:false,routes:[],reason:String(e.message||e).slice(0,180),
+   rpcEndpoint:{...observation,state:"unavailable"}}}
  }));
 }
 

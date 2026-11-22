@@ -28,9 +28,9 @@ export function buildDeploymentPlan(inventory,infrastructure,bootstrap){
   };
   const verifierComponent=native?"nativeVerifier":chain.blsVerifierFormat==="ecdsa"?"ecdsaVerifier":"blsVerifier";
   add(verifierComponent,native?"Konfigurierten nativen BLS-Verifier prüfen":chain.blsVerifierFormat==="ecdsa"?"ECDSA-Verifier bereitstellen":"EIP-2537-Verifier bereitstellen",
-   native?"verify":"deploy",[],[chain.blsVerifierFormat==="ecdsa"?"XGR Mainnet Validator-Commitment vor Deployment unabhängig nachweisen":"Positive und negative BLS-Testvektoren erforderlich"]);
+   native?"verify":"deploy",[],[chain.blsVerifierFormat==="ecdsa"?"Öffentliche Genesis-Proofs auf XDC prüfen":"Positive und negative BLS-Testvektoren erforderlich"]);
   add("validatorRegistry",profile.registryContract, "deploy",[verifierComponent],
-   [...b.missing,chain.blsVerifierFormat==="ecdsa"?"XGR-Mainnet-Validator-Set und unveränderlichen Commitment nachweisen":"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
+   [...b.missing,chain.blsVerifierFormat==="ecdsa"?"Öffentliche ECDSA-Genesis-Proofs auf XDC prüfen":"Öffentliche Genesis-BLS-Proofs automatisch gegen den Zielchain-Verifier prüfen"]);
   add("ism",profile.ismContract,"deploy",["validatorRegistry"]);
   add("transportBundle","XITA Mailbox + DispatchHook (atomar)","deploy",["ism"]);
   add("nativeRouterDeployer","Einmaliger Native-Router-Deployer","deploy",["validatorRegistry","ism"]);

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-initial-validator-set",
+  "originChainId": 1643,
+  "selection": "explicit-xdc-destination-genesis",
+  "validators": [
+    "0x98F8bC086454B8386788244eee9A43d5D0b4E63E",
+    "0x7E8f8Fd2A198F77dF298041b48D79b0df4c8B1fa",
+    "0x7913fDAe82C678F42B98Ca8076Fe7D13b3EdFF15"
+  ],
+  "notes": "XDC Mainnet destination Genesis in canonical order. Each address must supply its own ECDSA possession proof bound to XGR 1643 and XDC 50."
+}

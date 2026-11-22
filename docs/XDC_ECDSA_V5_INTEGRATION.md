@@ -1,6 +1,6 @@
 # XDC Mainnet — ECDSA V5 chain integration
 
-**Status: implementation incomplete; contract deployment and transfers disabled.**
+**Phase 1 prepares contract deployment. Phase 2 covers node activation and transfers.**
 
 XDC (chain ID/domain 50) is a destination with its own independently selected
 validator roster. Each participating XGR PoS validator decides separately whether
@@ -16,11 +16,30 @@ snapshots, and replay-bound epochs. ECDSA secp256k1 verification replaces
 only the BLS pairing verification. Validators on other destinations do not
 automatically become XDC validators.
 
-The Admin must refuse XDC wallet deployment until the three genesis
-identities, their public destination-bound possession proofs, minimum native
-reserve, maximum executor reimbursement, funded reserve per validator,
-and initial source fee have been explicitly selected and validated. Missing
-values must not be defaulted to arbitrary one-wei amounts.
+## Phase 1 deployment
+
+| Input | XDC |
+| --- | ---: |
+| Minimum reserve | 0.40 |
+| Maximum executor reimbursement | 0.08 |
+| Genesis reserve per validator | 0.80 |
+| Initial source fee | 0.008 |
+
+The three approved Genesis validators fund 2.40 XDC in total. Run
+`bash tools/collect-xdc-bootstrap-proofs.sh` from the main validator host
+as `xgradmin`. The script builds the pinned xgr-node CLI with Go, runs the
+existing `ibft interchain bootstrap-proof` command on each validator and
+writes three public JSON files under `~/xita-bootstrap-public/xdc/`.
+The script expects noninteractive SSH access to the other two validators.
+
+The Admin uses these files to verify the three destination-bound proofs via
+XDC's native ECDSA recovery precompile. Successful verification and the
+approved economics are required before the Admin prepares the first wallet
+transaction. As in the BLS deployment, the Admin simulates each transaction
+and verifies its receipt and runtime. The Registry and Factory constructor
+values are pinned to the approved XDC manifest.
+
+## Phase 2 activation
 
 The node's production ECDSA worker, source/finality evidence, gossip,
 quorum aggregation, durable recovery and per-chain CLI must pass adversarial

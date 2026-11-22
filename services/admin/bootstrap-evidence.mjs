@@ -1,6 +1,7 @@
 // Assemble a proposed, public bootstrap manifest after independent read-only
 // checks. Neither this module nor its CLI authorizes on-chain transactions.
 import {validatePublicBootstrapProof,verifyPublicBootstrapOnChain} from "./bls-bootstrap-proof.mjs";
+import {validateECDSABootstrapProof,verifyECDSABootstrapProof} from "./ecdsa-bootstrap-proof.mjs";
 import {rpcCall} from "./inspector.mjs";
 const ADDR=/^0x[a-f0-9]{40}$/i;
 const eq=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
@@ -18,7 +19,10 @@ export function parsePublicProof(text){
  return {validator:fields["Validator"],originChainId:Number(fields["Origin chain ID"]),
   destinationDomain:Number(fields["Destination domain"]),blsPublicKey:fields["BLS public key"],
   blsPublicKeyEIP2537:fields["BLS public key EIP-2537"],payload:fields["Payload"],
-  possessionProof:fields["Possession proof EIP-2537"]};
+  ...(fields["Validator ECDSA signer"]?{
+   signatureScheme:"ecdsa",ecdsaSigner:fields["Validator ECDSA signer"],
+   possessionProof:fields["Possession proof"]
+  }:{possessionProof:fields["Possession proof EIP-2537"]})};
 }
 // Initial Interchain membership is a hand-approved Genesis selection, not
 // a dynamically inferred XGR PoS snapshot. Each public CLI proof is bound to
@@ -26,7 +30,7 @@ export function parsePublicProof(text){
 // No origin RPC, PoS Registry, snapshot or extra chain transaction is needed.
 export async function prepareBootstrapEvidence({
  chain,bootstrap,initial,proofs,rpc=rpcCall,
- verifyProof=verifyPublicBootstrapOnChain
+ verifyProof
 }){
  if(!chain||!bootstrap||!initial||!Array.isArray(proofs))
   throw Error("Incomplete explicit Interchain Genesis");
@@ -36,8 +40,10 @@ export async function prepareBootstrapEvidence({
     bootstrap.membershipOriginChainId!==initial.originChainId||
     initial.originChainId!==1643)
   throw Error("Genesis chain and origin identity mismatch");
+ const ecdsa=chain.blsVerifierFormat==="ecdsa";
+ const verify=verifyProof??(ecdsa?verifyECDSABootstrapProof:verifyPublicBootstrapOnChain);
  const approved=initial.validators;
- if(!Array.isArray(approved)||approved.length<3||approved.length>128||
+ if(!Array.isArray(approved)||approved.length<3||approved.length>(ecdsa?64:128)||
     new Set(approved.map(x=>String(x).toLowerCase())).size!==approved.length||
     !approved.every(x=>ADDR.test(x))||proofs.length!==approved.length)
   throw Error("Missing or duplicate explicit Genesis validator proofs");
@@ -51,24 +57,28 @@ export async function prepareBootstrapEvidence({
  const validators=[],keys=new Set();
  for(const address of approved){
   const proof=proofMap.get(address.toLowerCase());
-  if(!proof)throw Error("Public Genesis BLS proof missing for validator: "+address);
-  const reconstructed=validatePublicBootstrapProof(proof,{chain,approvedValidators:approved});
-  const compressed=reconstructed.compressedPublicKey.toLowerCase();
-  if(keys.has(compressed))throw Error("Duplicate BLS key in approved Interchain Genesis");
-  keys.add(compressed);
-  const verified=await verifyProof(proof,{chain,bootstrap,approvedValidators:approved,rpc});
+  if(!proof)throw Error("Public Genesis proof missing for validator: "+address);
+  const context={chain,bootstrap,approvedValidators:approved,rpc};
+  const reconstructed=ecdsa?validateECDSABootstrapProof(proof,context):
+   validatePublicBootstrapProof(proof,context);
+  const signer=(ecdsa?reconstructed.ecdsaSigner:reconstructed.compressedPublicKey).toLowerCase();
+  if(keys.has(signer))throw Error("Duplicate signer key in approved Interchain Genesis");
+  keys.add(signer);
+  const verified=await verify(proof,context);
   if(verified?.verified!==true||!eq(verified.validator,address))
-   throw Error("BLS proof rejected by destination verifier: "+address);
-  validators.push({address,originChainId:1643,destinationDomain:chain.domainId,
+   throw Error("Genesis proof rejected by destination verifier: "+address);
+  const cryptography=ecdsa?{ecdsaSigner:reconstructed.ecdsaSigner,possessionProof:proof.possessionProof}:{
    blsPublicKeyCompressed:reconstructed.compressedPublicKey,
    blsPublicKeyEIP2537:proof.blsPublicKeyEIP2537,
    possessionProof:chain.blsVerifierFormat==="compressed"?
-    reconstructed.compressedSignature:proof.possessionProof});
+    reconstructed.compressedSignature:proof.possessionProof
+  };
+  validators.push({address,originChainId:1643,destinationDomain:chain.domainId,...cryptography});
  }
  const candidate=structuredClone(bootstrap);
  candidate.validatorSnapshot={...candidate.validatorSnapshot,
   blockNumber:null,blockHash:null,validators,
-  notes:"Explicit initial Interchain Genesis; public chain-domain BLS possession proofs verified against destination verifier. No PoS snapshot or origin Interchain Registry."};
+  notes:"Explicit initial Interchain Genesis; public chain-domain possession proofs verified against destination verifier. No PoS snapshot or origin Interchain Registry."};
  return {candidate,report:{chain:chain.name,originChainId:1643,
   snapshotBlock:null,snapshotHash:null,originHeadAtCheck:null,
   confirmedDepth:null,verifiedValidatorCount:validators.length,
