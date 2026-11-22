@@ -20,7 +20,10 @@ test("reject wrong site, duplicate and unsafe incoming location",()=>{
  const installed=patchXitaAnalyticsNginx(base).config;
  const unsafe=installed.replace("127.0.0.1:4087","127.0.0.1:9999");
  assert.throws(()=>patchXitaAnalyticsNginx(unsafe),/Unsafe/);
- assert.throws(()=>patchXitaAnalyticsNginx(installed.replace(
-  "location ^~ /api/xeta/ {",installed.slice(installed.indexOf("location = /api/xita/analytics/hit {"),
-  installed.indexOf("location ^~ /api/xeta/ {"))+"location ^~ /api/xeta/ {"))),/Duplicate/);
+ const firstRoute=installed.indexOf("location = /api/xita/analytics/hit {");
+ const nextRoute=installed.indexOf("location ^~ /api/xeta/ {");
+ const routeBlock=installed.slice(firstRoute,nextRoute);
+ const duplicate=installed.replace("location ^~ /api/xeta/ {",
+  routeBlock+"location ^~ /api/xeta/ {");
+ assert.throws(()=>patchXitaAnalyticsNginx(duplicate),/Duplicate/);
 });
