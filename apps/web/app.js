@@ -1839,6 +1839,22 @@ el.addEventListener("submit",event=>{
   event.preventDefault();void runProfile("submit");
  }
 });
+// Dashboard history tabs are local presentation state: no fetch, RPC or scan.
+el.addEventListener("click",event=>{
+ const tab=event.target.closest("[data-tvl-period]");
+ if(!tab||path()!=="/")return;
+ const period=tab.dataset.tvlPeriod;
+ if(!["24h","7d","30d"].includes(period)||state.experience.tvlPeriod===period)return;
+ state.experience.tvlPeriod=period;
+ // Replace only the TVL card. Rebuilding the 3D universe would be expensive.
+ const current=el.querySelector(".ux-ns-card-tvl");
+ if(!current)return;
+ const model=buildExperienceModel(publicCatalog());
+ const fragment=document.createElement("div");
+ fragment.innerHTML=renderDashboard(model,state.experience,state.apiState,state.leaderboard,publicCatalog(),walletGasView());
+ const updated=fragment.querySelector(".ux-ns-card-tvl");
+ if(updated)current.replaceWith(updated);
+});
 el.addEventListener("click",event=>{
  const entry=event.target.closest("[data-join-entry]");
  if(entry&&path()==="/join"){
