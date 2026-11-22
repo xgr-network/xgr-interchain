@@ -8,6 +8,7 @@ test("native source fee price maps XGR to CoinGecko xgr and Base gas to ETH",()=
  assert.equal(COINGECKO_GAS_COIN_IDS.arbitrum,"ethereum");
  assert.equal(COINGECKO_GAS_COIN_IDS.optimism,"ethereum");
  assert.equal(COINGECKO_GAS_COIN_IDS.bsc,"binancecoin");
+ assert.equal(COINGECKO_GAS_COIN_IDS.xdc,"xdce-crowd-sale");
 });
 test("tiny native gas coin prices preserve precision and reject zero",()=>{
  assert.equal(usdPrice12(0.0001),100000000n);
