@@ -5,6 +5,8 @@ import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
 
 const catalog={assets:{XGR:deployedFixture("XGR","xgrchain")},
  chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]},base:{chainId:8453}}};
+catalog.assets.XGR.metadata.decimals=18;
+catalog.assets.XGR.profile.market={priceSource:"coingecko",coingeckoId:"xgr"};
 const assetId=catalog.assets.XGR.metadata.assetId;
 const now=Date.parse("2026-11-22T09:00:00Z");
 const price=n=>({records:{[catalog.assets.XGR.profile.market.coingeckoId]:{
