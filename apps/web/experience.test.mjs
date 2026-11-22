@@ -566,7 +566,7 @@ test("TVL 24h change requires a genuine nearby baseline and colors gain/loss",as
  assert.match(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",neg),/is-negative/);
  const noBaseline={...data,history:{points:[{asOf:"2026-10-21T07:00:00.000Z",lockedUsd:100},{asOf,lockedUsd:120}]}};
  assert.equal(tvlChange24h(noBaseline),null);
- assert.match(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",noBaseline),/24h —/);
+ assert.doesNotMatch(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",noBaseline),/24h —/);
 });
 
 test("TVL chart spreads actual short-window measurements across full plot",()=>{
@@ -577,10 +577,11 @@ test("TVL chart spreads actual short-window measurements across full plot",()=>{
   {asOf,lockedUsd:0.011503}
  ]}};
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
- assert.match(html,/M8\.00 /);
+ assert.match(html,/ux-ns-tvl-sparkline/);
+ assert.doesNotMatch(html,/M8\.00 /,"short observation must not stretch across entire 24h");
  assert.match(html,/L292\.00 /);
  assert.match(html,/Observed 5 min/);
- assert.match(html,/Last verified:/);
+ assert.match(html,/Last verified ·/);
 });
 test("24h delta uses final verified observations even if current snapshot unavailable",async()=>{
  const {tvlChange24h}=await import("./experience.js");
@@ -879,8 +880,61 @@ test("single verified cumulative observation still renders a visible chart point
  assert.match(moved,/\$30,378\.46/);
  assert.match(moved,/ux-ns-total-moved-chart/);
  assert.match(moved,/First verified cumulative movement observation/);
- assert.match(moved,/First observation/);
+ assert.match(moved,/History begins here/);
  assert.doesNotMatch(moved,/stroke-width="2\.5"/,"single observation must not invent a trend line");
  assert.doesNotMatch(moved,/Cumulative history starts with the first verified observation/);
  assert.doesNotMatch(moved,/historical repricing/);
+});
+
+test("24h movement shows timestamped last verified measurement on temporary outage",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const snapshot={totals:{movedUsd:null},
+  totalMoved:{kind:"xita-total-moved-history-v1",status:"verified",totalUsd:30378.46,
+   lastVerified24h:{movedUsd:11743.42,asOf:"2026-11-22T08:55:00Z"},
+   points:[{asOf:"2026-11-22T08:55:00Z",totalUsd:30378.46}]}};
+ const html=renderDashboard(model,{},"ready",snapshot);
+ const moved=html.split("ux-ns-card-moved")[1]?.split("</article>")[0]||"";
+ assert.match(moved,/\$11,743\.42/);
+ assert.match(moved,/Last verified/);
+ assert.match(moved,/22 Nov/);
+ assert.match(moved,/\$30,378\.46/);
+ assert.doesNotMatch(moved,/r="4"[^>]*stroke-width="2\.5"/);
+});
+
+test("24h / 7d / 30d history uses actual indexed event reconstruction without additional fetches",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const end=Date.parse("2026-11-22T10:00:00Z"),day=86400000;
+ const points=Array.from({length:721},(_,i)=>({
+  asOf:new Date(end-30*day+i*3600000).toISOString(),
+  lockedUsd:i<700?8000:8100,movedWindowUsd:i<700?500:600
+ }));
+ const metrics={reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
+  status:"verified",pricing:"current-reference-price",points},
+  history:{points:[{asOf:new Date(end-7*60000).toISOString(),lockedUsd:8100},
+   {asOf:new Date(end).toISOString(),lockedUsd:8100}]},
+  totalMoved:{status:"verified",totalUsd:30600,
+   points:[{asOf:new Date(end).toISOString(),totalUsd:30600}],
+   reconstructed:{status:"verified",pricing:"current-reference-price",
+    points:points.map(p=>({asOf:p.asOf,totalUsd:30500+p.movedWindowUsd-500}))}}};
+ for(const period of ["24h","7d","30d"]){
+  const html=renderDashboard(model,{tvlPeriod:period},"ready",metrics);
+  assert.match(html,/Indexed history · current USD reference/);
+  assert.match(html,/ux-ns-tvl-sparkline/);
+  assert.match(html,new RegExp('data-tvl-period="'+period+'" class="is-selected"'));
+ }
+ const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(html,/Indexed movement · current USD reference/);
+ assert.match(html,/Cumulative verified movement history/);
+ assert.doesNotMatch(html,/Observed 7 min/);
+});
+test("unknown canonical block times label reconstructed history partial, never complete",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const end=Date.parse("2026-11-22T10:00:00Z");
+ const metrics={reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
+  status:"partial",pricing:"current-reference-price",points:[
+   {asOf:new Date(end-86400000).toISOString(),lockedUsd:15,movedWindowUsd:0},
+   {asOf:new Date(end).toISOString(),lockedUsd:16,movedWindowUsd:1}
+  ]}};
+ const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ assert.match(html,/incomplete event times/);
 });

@@ -11,6 +11,8 @@ import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
 import {indexedGrossFlow24h,indexedGrossFlowLifetime} from "./indexed-flow-24h.mjs";
 import {appendVerifiedMovedHistory} from "./total-moved-history.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
+import {indexedEscrowDeltas,combineEscrowHistory} from "./historical-escrow-series.mjs";
+import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
@@ -90,8 +92,9 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
- const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={};
+ const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[];
  const names=Object.keys(catalog.assets||{});
+ const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  for(const asset of names)try{
   const descriptor=escrowDescriptor(catalog,asset);
   if(descriptor.status!=="ready")continue;
@@ -115,16 +118,20 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
    // Query only current SQL index: NEVER repeat historical RPC reads for volume.
    const events=await pool.query({text:`SELECT asset,asset_id,source_chain,destination_chain,route_id,gateway,
        message_id,source_block_hash,amount_raw::text AS amount_raw,delivered,
-       source_block_at,escrow_outflow_observed_at
+       source_block_at,escrow_outflow_observed_at,source_indexed_at,delivery_checked_at
      FROM xita_transfer_operations WHERE asset=$1 AND
        (source_chain=$2 OR destination_chain=$2)`,values:[asset,descriptor.chain]});
    flows[asset]=indexedGrossFlow24h({descriptor,rows:events.rows,coverage,
      price:snap.records?.[descriptor.coingeckoId],now});
    lifetimeFlows[asset]=indexedGrossFlowLifetime({descriptor,rows:events.rows,coverage});
+   historicalAssets.push(indexedEscrowDeltas({descriptor,rows:events.rows,coverage,
+    position,price,now}));
   }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};
    lifetimeFlows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return {...verifiedEvidence(catalog,proofs,now,flows),lifetimeFlows,
+  reconstructedHistory:expectedHistorical===historicalAssets.length?
+   combineEscrowHistory(historicalAssets,{now}):{status:"unavailable",reason:"asset-history-incomplete"},
   indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};
 }
 function atomic(path,payload){

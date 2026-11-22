@@ -317,6 +317,9 @@ export async function handler(req,res){
         value.status==="verified"&&Number.isFinite(value.totalUsd)&&value.totalUsd>=0&&
         Array.isArray(value.points)){
       totalMoved={kind:value.kind,status:"verified",asOf:value.asOf,totalUsd:value.totalUsd,
+       lastVerified24h:value.lastVerified24h&&Number.isFinite(value.lastVerified24h.movedUsd)&&
+        value.lastVerified24h.movedUsd>=0&&Number.isFinite(Date.parse(value.lastVerified24h.asOf))?
+        {movedUsd:value.lastVerified24h.movedUsd,asOf:value.lastVerified24h.asOf}:null,
        points:value.points.filter(p=>typeof p?.asOf==="string"&&
         Number.isFinite(Date.parse(p.asOf))&&Number.isFinite(p.totalUsd)&&p.totalUsd>=0)
         .map(p=>({asOf:p.asOf,totalUsd:p.totalUsd})).slice(-6500)};
@@ -327,7 +330,41 @@ export async function handler(req,res){
     }
    }
   }catch{totalMoved=null;}
-  return send(200,{...metrics,visibility,history,totalMoved});
+  // Series comes only from the already-materialized, finalized SQL index in
+  // the trusted worker evidence. No HTTP-triggered queries or new RPC calls.
+  let reconstructedHistory=null;
+  const reconstructed=evidence?.reconstructedHistory;
+  if(reconstructed?.kind==="indexed-escrow-reconstruction-v1"&&
+    ["verified","partial"].includes(reconstructed.status)&&
+    reconstructed.pricing==="current-reference-price"&&
+    reconstructed.asOf===evidence.asOf&&
+    Array.isArray(reconstructed.points)&&reconstructed.points.length<=745){
+   const points=reconstructed.points;
+   if(points.every(p=>Number.isFinite(Date.parse(p?.asOf))&&
+    Number.isFinite(p?.lockedUsd)&&p.lockedUsd>=0&&
+    Number.isFinite(p?.movedWindowUsd)&&p.movedWindowUsd>=0)&&
+    points.every((p,i)=>!i||(Date.parse(p.asOf)>Date.parse(points[i-1].asOf)&&
+      p.movedWindowUsd>=points[i-1].movedWindowUsd))){
+    reconstructedHistory={kind:reconstructed.kind,status:reconstructed.status,
+     asOf:reconstructed.asOf,pricing:reconstructed.pricing,
+     unknownTime:reconstructed.unknownTime,
+     points:points.map(p=>({asOf:p.asOf,lockedUsd:p.lockedUsd,
+      movedWindowUsd:p.movedWindowUsd}))};
+   }
+  }
+  // Anchor a reference-priced cumulative MOVED curve to the persisted
+  // actual total. It is a current-price reconstruction, not historical FX.
+  if(totalMoved&&reconstructedHistory){
+   const points=reconstructedHistory.points;
+   const end=points.at(-1)?.movedWindowUsd??null;
+   const estimated=points.map(p=>({...p,totalUsd:totalMoved.totalUsd-
+    (end-p.movedWindowUsd)}));
+   if(Number.isFinite(end)&&estimated.every(p=>Number.isFinite(p.totalUsd)&&p.totalUsd>=0))
+    totalMoved.reconstructed={status:reconstructedHistory.status,
+     pricing:"current-reference-price",asOf:reconstructedHistory.asOf,
+     points:estimated.map(p=>({asOf:p.asOf,totalUsd:p.totalUsd}))};
+  }
+  return send(200,{...metrics,visibility,history,reconstructedHistory,totalMoved});
  }catch(error){
   // Never expose filesystem paths or stale statistics after a verification error.
   return send(503,{ok:false,error:"Trusted metrics evidence unavailable or invalid"});
