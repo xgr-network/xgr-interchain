@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {approvedWorkInventory} from "./main-gate.mjs";
-import {readFileSync} from "node:fs";
+import {readFileSync,mkdtempSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {infrastructureInventory,verifyChainInfrastructure} from "./chain-state.mjs";
 import {formatNative} from "./wallet.js";
@@ -18,7 +19,12 @@ test("all main-approved chains derive deployment progress from documented compon
  assert.equal(chains.find(c=>c.name==="base").nativeCurrency.symbol,"ETH");
  const xdc=chains.find(c=>c.name==="xdc");
  assert.equal(xdc.chainId,50);
- assert.equal(xdc.status,"not-deployed");
+ const xdcDeployment=loadChainDeployment(root,inv.chains.find(c=>c.name==="xdc"));
+ const documentedCount=xdc.components.filter(part=>!part.optional&&
+   xdcDeployment.xitaV315.components[part.key]).length;
+ assert.equal(xdc.documented,documentedCount,"XDC progress follows documented receipts");
+ assert.equal(xdc.status,documentedCount===xdc.required?"documented":
+   documentedCount>0?"partial":"not-deployed");
  assert.deepEqual(xdc.components.slice(0,3).map(x=>x.key),["ecdsaVerifier","validatorRegistry","ism"]);
  assert.ok(chains.every(c=>c.required===(inv.chains.find(x=>x.name===c.name).blsVerifierFormat==="compressed"?8:9) && c.components.length===c.required+1 && c.components.filter(x=>x.optional).length===1));
  // A verified deployment receipt may now exist. Progress must be derived
@@ -39,6 +45,17 @@ test("all main-approved chains derive deployment progress from documented compon
     chain.name+" "+part.key+" must follow immutable deployment index");
   }
  }
+});
+test("XDC without receipts remains genuinely not deployed, regardless of chain configuration",()=>{
+ const xdc=approvedWorkInventory(root).chains.find(c=>c.name==="xdc");
+ const temp=mkdtempSync(join(tmpdir(),"xita-empty-xdc-"));
+ try{
+  const [empty]=infrastructureInventory(temp,[xdc]);
+  assert.equal(empty.status,"not-deployed");
+  assert.equal(empty.documented,0);
+  assert.equal(empty.required,9);
+  assert.ok(empty.components.every(part=>part.status==="not-deployed"&&part.address===null));
+ }finally{rmSync(temp,{recursive:true,force:true})}
 });
 test("Base observes only documented XITA contracts, not undeployed legacy core",async()=>{
  const inv=approvedWorkInventory(root),chains=infrastructureInventory(root,inv.chains);

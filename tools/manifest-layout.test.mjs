@@ -59,16 +59,36 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
 });
 
-test("mainnet XDC ECDSA V5 remains undeployed with no authorized XGR transfer routes",()=>{
+test("mainnet XDC ECDSA V5 deployment evidence is receipt-backed and grants no premature routes",()=>{
  const catalog=loadCatalog(root);
  assert.equal(catalog.chains.xdc.chainId,50);
  assert.equal(catalog.chains.xdc.domainId,50);
  assert.equal(catalog.chains.xdc.blsVerifierFormat,"ecdsa");
  const record=catalog.infrastructure.xdc;
- assert.equal(record.present,false);
- assert.deepEqual(record.xitaV315.components,{});
- assert.deepEqual(record.xitaV315.receiptPaths,[]);
- for(const asset of Object.values(catalog.assets)){
-  assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
+ const entries=Object.entries(record.xitaV315.components);
+ assert.equal(record.present,entries.length>0);
+ assert.deepEqual([...new Set(entries.map(([,part])=>part.receiptPath))].sort(),
+  [...record.xitaV315.receiptPaths].sort());
+ for(const [component,binding] of entries){
+  const path=join(root,binding.receiptPath);
+  assert.equal(existsSync(path),true,component+" must have a recorded XDC receipt");
+  const receipt=JSON.parse(readFileSync(path,"utf8"));
+  assert.equal(receipt.chain,"xdc");
+  assert.equal(receipt.chainId,50);
+  assert.equal(receipt.domainId,50);
+  assert.equal(receipt.component,component);
+  assert.equal(receipt.status,"onchain-deployment-verified");
+  assert.equal(receipt.address.toLowerCase(),binding.address.toLowerCase());
+  assert.equal(receipt.runtimeCodeKeccak256.toLowerCase(),binding.runtimeCodeKeccak256.toLowerCase());
+ }
+ // Partial core deployment never authorizes an XDC asset route. Once all
+ // required contracts are deployed, route eligibility is independently
+ // established by the normal canonical receipt-based asset-route tests.
+ const required=["ecdsaVerifier","validatorRegistry","ism","transportBundle",
+  "nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer",
+  "factory","sourceRegistry"];
+ if(!required.every(component=>Boolean(record.xitaV315.components[component]))){
+  for(const asset of Object.values(catalog.assets))
+   assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
  }
 });
