@@ -323,6 +323,25 @@ export async function handler(req,res){
        points:value.points.filter(p=>typeof p?.asOf==="string"&&
         Number.isFinite(Date.parse(p.asOf))&&Number.isFinite(p.totalUsd)&&p.totalUsd>=0)
         .map(p=>({asOf:p.asOf,totalUsd:p.totalUsd})).slice(-6500)};
+      // The worker persists its last verified historical movement curve.
+      // Read-only API responses must preserve it even if a later source
+      // index snapshot temporarily cannot reconstruct the curve.
+      const saved=value.reconstructed;
+      if(saved&&["verified","partial"].includes(saved.status)&&
+         saved.pricing==="current-reference-price"&&
+         Number.isFinite(Date.parse(saved.asOf))&&
+         Date.parse(saved.asOf)<=Date.parse(totalMoved.asOf)&&
+         Date.parse(totalMoved.asOf)-Date.parse(saved.asOf)<=6*3600000&&
+         Array.isArray(saved.points)&&saved.points.length>=2&&saved.points.length<=745&&
+         saved.points.every((p,i)=>Number.isFinite(Date.parse(p?.asOf))&&
+           Number.isFinite(p?.totalUsd)&&p.totalUsd>=0&&
+           (!i||(Date.parse(p.asOf)>Date.parse(saved.points[i-1].asOf)&&
+             p.totalUsd>=saved.points[i-1].totalUsd)))&&
+         saved.points.at(-1).totalUsd<=totalMoved.totalUsd+0.000001){
+       totalMoved.reconstructed={status:saved.status,pricing:saved.pricing,
+        asOf:saved.asOf,unknownTime:saved.unknownTime||0,
+        points:saved.points.map(p=>({asOf:p.asOf,totalUsd:p.totalUsd}))};
+      }
       if(!Number.isFinite(Date.parse(totalMoved.asOf))||
         Date.now()-Date.parse(totalMoved.asOf)>180000||Date.parse(totalMoved.asOf)>Date.now()+30000)
        totalMoved=null;
@@ -397,7 +416,7 @@ export async function handler(req,res){
      pricing:reconstructedMoved.pricing,asOf:reconstructedMoved.asOf,
      unknownTime:reconstructedMoved.unknownTime,points:values};
    }else totalMoved.reconstructionUnavailable="historical-price-basis-incompatible";
-  }else if(totalMoved){
+  }else if(totalMoved&&!totalMoved.reconstructed){
    totalMoved.reconstructionUnavailable=moved?.reason||"indexed-movement-timestamps-unavailable";
   }
   return send(200,{...metrics,visibility,history,reconstructedHistory,indexedChange24h,
