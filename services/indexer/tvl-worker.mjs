@@ -12,6 +12,7 @@ import {indexedGrossFlow24h,indexedGrossFlowLifetime} from "./indexed-flow-24h.m
 import {appendVerifiedMovedHistory} from "./total-moved-history.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
 import {indexedEscrowDeltas,combineEscrowHistory} from "./historical-escrow-series.mjs";
+import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
@@ -92,12 +93,11 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
  const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[];
- let expectedHistorical=0;
+ const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
   const descriptor=escrowDescriptor(catalog,asset);
   if(descriptor.status!=="ready")continue;
-  expectedHistorical++;
   const price=snap.records?.[descriptor.coingeckoId];
   const position=indexedTvlPosition({catalog,descriptor,indexedRoutes:routes,...ledger,now});
   const indexed=priceEscrow(position,price,{now});
