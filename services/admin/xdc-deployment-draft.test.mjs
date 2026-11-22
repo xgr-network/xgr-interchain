@@ -6,6 +6,7 @@ import {infrastructureInventory} from "./chain-state.mjs";
 import {approvedWorkInventory} from "./main-gate.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
+import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 const root=new URL("../../",import.meta.url).pathname;
 const a=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
 const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa",signatureScheme:"ecdsa"};
@@ -20,7 +21,9 @@ test("XDC V5 approved Genesis values remain valid throughout receipt-backed depl
  assert.equal(state.documented,recorded);
  assert.equal(state.status,recorded===state.required?"documented":
   recorded>0?"partial":"not-deployed");
- assert.equal(state.components.find(c=>c.key==="validatorRegistry").status,"not-deployed");
+ const recordedRegistry=loadChainDeployment(root,xdc).xitaV315.components.validatorRegistry;
+ assert.equal(state.components.find(c=>c.key==="validatorRegistry").status,
+  recordedRegistry?"documented":"not-deployed");
  const plan=bootstrapPlan(root,xdc);
  assert.equal(plan.ready,true);
  assert.equal(plan.initialValidators.length,3);
