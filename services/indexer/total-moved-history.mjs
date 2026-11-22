@@ -61,6 +61,44 @@ export function accumulateVerifiedMovement(snapshot,catalog,prices,prior=null,{n
  const current={kind:empty.kind,schemaVersion:1,status:"verified",
   asOf:new Date(asOf).toISOString(),totalUsd:Number(decimal(total)),
   totalUsdExact:decimal(total),assets:updated,lastVerified24h};
+ // Persist the LAST VERIFIED historical curve alongside the lifetime total.
+ // A momentary loss of index coverage must not collapse it to a single dot
+ // on the next dashboard poll. Historical points retain their original asOf,
+ // pricing basis and observation time (never relabeled as live).
+ const source=snapshot?.reconstructedMoved;
+ const valid=source?.kind==="indexed-gross-movement-history-v1"&&
+   ["verified","partial"].includes(source.status)&&
+   source.pricing==="current-reference-price"&&
+   source.asOf===current.asOf&&Array.isArray(source.points)&&
+   source.points.length>=2&&source.points.length<=745&&
+   source.points.every((p,i)=>Number.isFinite(Date.parse(p?.asOf))&&
+     Number.isFinite(p?.movedWindowUsd)&&p.movedWindowUsd>=0&&
+     (!i||(Date.parse(p.asOf)>Date.parse(source.points[i-1].asOf)&&
+       p.movedWindowUsd>=source.points[i-1].movedWindowUsd)));
+ if(valid){
+  const end=source.points.at(-1).movedWindowUsd;
+  const baseline=current.totalUsd-end;
+  if(Number.isFinite(baseline)&&baseline>=-0.000001){
+   current.reconstructed={status:source.status,pricing:source.pricing,
+    asOf:source.asOf,unknownTime:source.unknownTime||0,
+    points:source.points.map(p=>({asOf:p.asOf,
+      totalUsd:Math.max(0,baseline+p.movedWindowUsd)}))};
+  }
+ }
+ // This remains safely immutable if the latest indexer pass cannot
+ // reconstruct. Do not extend the old curve to the newer lifetime total.
+ if(!current.reconstructed&&old?.reconstructed&&
+    Number.isFinite(Date.parse(old.reconstructed.asOf))&&
+    asOf-Date.parse(old.reconstructed.asOf)<=6*3600000&&
+    Array.isArray(old.reconstructed.points)&&
+    old.reconstructed.points.length>=2&&
+    old.reconstructed.points.every((p,i)=>Number.isFinite(p?.totalUsd)&&
+      p.totalUsd>=0&&Number.isFinite(Date.parse(p?.asOf))&&
+      (!i||(Date.parse(p.asOf)>Date.parse(old.reconstructed.points[i-1].asOf)&&
+       p.totalUsd>=old.reconstructed.points[i-1].totalUsd)))&&
+    old.reconstructed.points.at(-1).totalUsd<=current.totalUsd+0.000001){
+  current.reconstructed=old.reconstructed;
+ }
  const earlier=Array.isArray(old?.points)?old.points.filter(p=>
   Number.isFinite(Date.parse(p?.asOf))&&Number.isFinite(p?.totalUsd)&&p.totalUsd>=0):[];
  const points=[...earlier,{asOf:current.asOf,totalUsd:current.totalUsd}];
