@@ -37,6 +37,7 @@ export function filterAssetRouteCards(cards,filter,query){
   const chainMatches=(...chains)=>assetMatch||matches(...chains);
   const tasks=filter==="deployed"?[]:card.tasks.filter(task=>
    (filter!=="partial"||task.route?.status==="partial")&&
+   (filter!=="in-progress"||task.progress)&&
    chainMatches(task.chain,task.route?.source,task.route?.destination));
   const showDocumented=filter==="all"||filter==="deployed";
   const routers=showDocumented?card.routers.filter(router=>chainMatches(router.chain)):[];

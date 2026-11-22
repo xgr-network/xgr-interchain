@@ -37,3 +37,12 @@ test("operator Pause stops sync polling without throwing",async()=>{
  });
  assert.equal(x.status,"paused");
 });
+
+test("a later verified checkout can contain the exact deployed receipt",async()=>{
+ const result=await awaitVerifiedDeploymentCheckout({
+  expectedCommit:next,readQueue:async()=>({commit:"c".repeat(40),readOnly:false,hasReceipt:true}),
+  receiptIsPresent:queue=>queue.hasReceipt
+ });
+ assert.equal(result.status,"current");
+ assert.equal(result.queue.commit,"c".repeat(40));
+});

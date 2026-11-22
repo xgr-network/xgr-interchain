@@ -68,8 +68,13 @@ function validate(e){
   throw Error("Transaction hash missing after submission");
  if(e.txHash!==null&&e.txHash!==undefined&&!TX.test(e.txHash))
   throw Error("Invalid transaction hash");
- if(e.stage==="documented"&&typeof e.receiptPath!=="string")
-  throw Error("Documented deployment missing canonical receipt");
+ if(e.publication){
+  const {commit,receiptPath}=e.publication;
+  const chain=e.id.split(":")[0];
+  if(!e.asset||e.stage!=="confirmed"||!SHA.test(commit||"")||
+     !new RegExp("^deployments/receipts/"+chain+"/"+e.txHash.slice(2)+"-[a-f0-9]{40}\\.json$","i").test(receiptPath||""))
+   throw Error("Invalid asset deployment publication");
+ }
 }
 export function deploymentIntents({directory,chains}){
  if(typeof directory!=="string"||!directory.startsWith("/")||!Array.isArray(chains))
@@ -138,6 +143,8 @@ export function deploymentIntents({directory,chains}){
     // Do not overwrite an unresolved wallet intent, particularly a broadcast
     // hash or confirmed deployment. Resume/reconcile it first. Recovery may
     // explicitly retire an independently verified failed or unused attempt.
+    if(entry.asset&&Object.values(s.entries).some(e=>e.asset===entry.asset&&e.id!==entry.id))
+     throw Error("Previous asset deployment is unresolved; check its status before signing");
     const previous=s.entries[entry.id];
     if(previous){
      if(!forceRetry)
@@ -240,6 +247,25 @@ export function deploymentIntents({directory,chains}){
      throw Error("Transaction was not journaled before verification");
     e.stage="confirmed";e.verifiedProof=proof;
     e.updatedAt=new Date().toISOString();return e;
+   });
+  },
+  markAssetPublished(id,txHash,publication){
+   return mutate(s=>{
+    const e=s.entries[id];
+    if(e?.stage!=="confirmed"||e.txHash!==txHash)throw Error("Verified asset intent changed before publication");
+    const next={...e,publication};
+    approve(next);
+    s.entries[id]=next;
+    return next;
+   });
+  },
+  clearCompletedAssetIntents(entries){
+   if(!entries.length)return;
+   mutate(s=>{
+    for(const {id,createdAt} of entries){
+     const current=s.entries[id];
+     if(current?.asset&&current.createdAt===createdAt)delete s.entries[id];
+    }
    });
   },
   documentRecovered(id,createdAt,path){
