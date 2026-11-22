@@ -380,7 +380,11 @@ export function tvlChange24h(metrics){
 function tvlHistoryChart(metrics,period="24h"){
  const valid=["24h","7d","30d"].includes(period)?period:"24h";
  const durations={"24h":86400000,"7d":604800000,"30d":2592000000};
- const all=validTvlPoints(metrics),last=all.at(-1);
+ const derived=metrics?.reconstructedHistory;
+ const indexed=derived?.kind==="indexed-escrow-reconstruction-v1"&&
+  ["verified","partial"].includes(derived.status)&&derived.pricing==="current-reference-price"&&
+  Array.isArray(derived.points)&&derived.points.length>=2;
+ const all=indexed?derived.points:validTvlPoints(metrics),last=all.at(-1);
  const end=Date.parse(last?.asOf);
  const start=end-durations[valid];
  const points=all.filter(p=>Date.parse(p.asOf)>=start&&Date.parse(p.asOf)<=end);
@@ -397,7 +401,11 @@ function tvlHistoryChart(metrics,period="24h"){
  const padding=Math.max((high-low)*.15,Math.max(high,1)*.00001),range=high-low+padding*2;
  const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/durations[valid],y:62-50*(p.lockedUsd-low+padding)/range}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
- const lastXY=xy.at(-1),coverage=span<durations[valid]*.9?'<span class="ux-ns-tvl-coverage">Observed '+Math.max(1,Math.round(span/60000))+' min · partial '+valid+' history</span>':"";
+ const lastXY=xy.at(-1),coverage=indexed?
+  '<span class="ux-ns-tvl-coverage">Indexed history · current USD reference'+
+   (derived.status==="partial"?' · incomplete event times':'')+'</span>':
+  span<durations[valid]*.9?'<span class="ux-ns-tvl-coverage">Observed '+
+   Math.max(1,Math.round(span/60000))+' min · partial '+valid+' history</span>':"";
  return '<div class="ux-ns-tvl-history">'+tabs+
   '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL observations from '+stamp(firstAt)+' to '+stamp(lastAt)+'">'+
   '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
@@ -409,11 +417,15 @@ function totalMovedChart(metrics){
  const reported=metrics?.totalMoved;
  if(reported?.status!=="verified"||!Number.isFinite(reported.totalUsd)||reported.totalUsd<0)
   return '<div class="ux-ns-moved-chart-empty">Cumulative history pending</div>';
- const raw=Array.isArray(reported.points)?reported.points:[];
+ const reconstruction=reported.reconstructed;
+ const derived=reconstruction?.pricing==="current-reference-price"&&
+  ["verified","partial"].includes(reconstruction.status)&&
+  Array.isArray(reconstruction.points)&&reconstruction.points.length>=2;
+ const raw=derived?reconstruction.points:Array.isArray(reported.points)?reported.points:[];
  const points=raw.filter(p=>Number.isFinite(p?.totalUsd)&&p.totalUsd>=0&&
   Number.isFinite(Date.parse(p?.asOf)))
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
- if(!points.length||points.at(-1).totalUsd!==reported.totalUsd)
+ if(!points.length||Math.abs(points.at(-1).totalUsd-reported.totalUsd)>0.000001)
   return '<div class="ux-ns-moved-chart-empty">Cumulative history pending</div>';
  let previous=0;
  for(const p of points){
@@ -440,7 +452,9 @@ function totalMovedChart(metrics){
   path+'<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+
   '" r="'+(points.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
   '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(first))+'</span><span>'+
-  (points.length>1?esc(stamp(last)):'History begins here')+'</span></div></div>';
+  (points.length>1?esc(stamp(last)):'History begins here')+'</span></div>'+
+  (derived?'<span class="ux-ns-tvl-coverage">Indexed movement · current USD reference'+
+   (reconstruction.status==="partial"?' · incomplete event times':'')+'</span>':'')+'</div>';
 }
 
 function northstarCards(model,metrics=null,period="24h"){
