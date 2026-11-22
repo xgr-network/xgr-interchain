@@ -361,6 +361,19 @@ function validTvlPoints(metrics){
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
 }
 export function tvlChange24h(metrics){
+ // This independently checked 24-hour change does NOT depend on 30d or 7d
+ // chart reconstruction. Use only the same indexed collateral valuation.
+ const direct=metrics?.indexedChange24h;
+ if(typeof metrics?.indexedTvl?.lockedUsd==="number"&&
+    Number.isFinite(metrics.indexedTvl.lockedUsd)){
+  if(direct?.status==="verified"&&direct?.kind==="indexed-tvl-change-24h-v1"&&
+     direct?.pricing==="current-reference-price"&&
+     Number.isFinite(direct.percent)&&direct.openingUsd>0)
+   return direct.percent;
+  // Never substitute unrelated custody history for the indexed TVL figure.
+  // The verified indexed 24h baseline is unavailable, not necessarily zero.
+  return null;
+ }
  const derived=metrics?.reconstructedHistory;
  // The 24h comparison must use the same valuation model as the displayed
  // indexed TVL. Never mix current indexed collateral with custody snapshots.
