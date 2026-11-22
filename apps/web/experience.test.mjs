@@ -798,15 +798,15 @@ test("dashboard displays verified partial 24h movement with explicit incomplete 
  const html=renderDashboard(model,{},"ready",snapshot);
  const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
  assert.match(moved,/\$0\.002285/);
- assert.match(moved,/Partial · verified minimum \(1 of 2 tokens\)/);
- assert.match(moved,/Partially verified indexed evidence/);
- assert.doesNotMatch(moved,/Verified indexed evidence<\/span>/);
+ assert.match(moved,/Verified minimum/);
+ assert.match(moved,/Total moved TVL/);
+ assert.doesNotMatch(moved,/Gross confirmed lock\/unlock activity/);
  assert.match(html,/Awaiting complete verified evidence/,"partial volume must not fake TVL");
  const complete=renderDashboard(model,{},"ready",{
   ...snapshot,totals:{lockedUsd:100,movedUsd:20}});
  const completed=complete.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
  assert.match(completed,/\$20\.00/);
- assert.doesNotMatch(completed,/Partial · verified minimum/);
+ assert.doesNotMatch(completed,/Verified minimum/);
 });
 test("dashboard refuses unverified or internally inconsistent partial movement objects",()=>{
  const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
@@ -819,8 +819,8 @@ test("dashboard refuses unverified or internally inconsistent partial movement o
   const html=renderDashboard(model,{},"ready",{
    totals:{lockedUsd:30,movedUsd:null},partialMovement});
   const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
-  assert.doesNotMatch(moved,/Partial · verified minimum/);
-  assert.match(moved,/Awaiting complete verified evidence/);
+  assert.doesNotMatch(moved,/Verified minimum/);
+  assert.match(moved,/Cumulative history pending/);
  }
 });
 
@@ -859,7 +859,28 @@ test("total moved TVL renders a monotone cumulative sparkline only from verified
  const html=renderDashboard(model,{},"ready",base);
  assert.match(html,/Total moved TVL/);
  assert.match(html,/ux-ns-total-moved-chart/);
+ assert.match(html,/<h2>Moved via XGR<\/h2>/);
+ assert.doesNotMatch(html,/<h2>Moved via XGR · 24h<\/h2>/);
+ assert.doesNotMatch(html,/Cumulative confirmed escrow deposits and releases/);
  const tampered={...base,totalMoved:{...base.totalMoved,points:[
    {asOf:first,totalUsd:3},{asOf:last,totalUsd:1}]}};
  assert.doesNotMatch(renderDashboard(model,{},"ready",tampered),/ux-ns-total-moved-chart/);
+});
+
+test("single verified cumulative observation still renders a visible chart point without synthetic history",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const metrics={totals:{movedUsd:11743.42},
+  totalMoved:{kind:"xita-total-moved-history-v1",status:"verified",totalUsd:30378.46,
+   points:[{asOf:"2026-11-22T08:00:00Z",totalUsd:30378.46}]}};
+ const html=renderDashboard(model,{},"ready",metrics);
+ const moved=html.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
+ assert.match(moved,/<h2>Moved via XGR<\/h2>/);
+ assert.match(moved,/\$11,743\.42/);
+ assert.match(moved,/\$30,378\.46/);
+ assert.match(moved,/ux-ns-total-moved-chart/);
+ assert.match(moved,/First verified cumulative movement observation/);
+ assert.match(moved,/First observation/);
+ assert.doesNotMatch(moved,/stroke-width="2\.5"/,"single observation must not invent a trend line");
+ assert.doesNotMatch(moved,/Cumulative history starts with the first verified observation/);
+ assert.doesNotMatch(moved,/historical repricing/);
 });
