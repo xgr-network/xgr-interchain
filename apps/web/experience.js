@@ -391,17 +391,18 @@ function tvlHistoryChart(metrics,period="24h"){
  if(points.length<2)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected.</p></div>';
  const firstAt=Date.parse(points[0].asOf),lastAt=Date.parse(points.at(-1).asOf),span=lastAt-firstAt;
  if(span<=0)return '<div class="ux-ns-tvl-history is-empty">'+tabs+'<p>TVL history is being collected.</p></div>';
- // Scale to observed timestamps, not the 24h container that compressed samples into a tiny strip.
+ // Fix the x-axis to the selected period: a seven-minute observation must
+ // occupy seven minutes, not masquerade as a full 24-hour trend.
  const values=points.map(p=>p.lockedUsd),low=Math.min(...values),high=Math.max(...values);
  const padding=Math.max((high-low)*.15,Math.max(high,1)*.00001),range=high-low+padding*2;
- const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-firstAt)/span,y:62-50*(p.lockedUsd-low+padding)/range}));
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-start)/durations[valid],y:62-50*(p.lockedUsd-low+padding)/range}));
  const path=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
  const lastXY=xy.at(-1),coverage=span<durations[valid]*.9?'<span class="ux-ns-tvl-coverage">Observed '+Math.max(1,Math.round(span/60000))+' min · partial '+valid+' history</span>':"";
  return '<div class="ux-ns-tvl-history">'+tabs+
   '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Verified TVL observations from '+stamp(firstAt)+' to '+stamp(lastAt)+'">'+
   '<path d="'+path+'" fill="none" stroke="#eacb83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
   '<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+'" r="3" fill="#f8dfa4"/></svg>'+
-  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(firstAt))+'</span><span>'+esc(stamp(lastAt))+'</span></div>'+coverage+'</div>';
+  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(start))+'</span><span>'+esc(stamp(end))+'</span></div>'+coverage+'</div>';
 }
 
 function totalMovedChart(metrics){
@@ -421,8 +422,8 @@ function totalMovedChart(metrics){
  }
  const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf);
  const span=last-first;
- // One verified observation is ONE POINT, not an invented zero-to-total line.
- // Render a proper SVG chart area immediately; grow the line on future samples.
+ // One verified observation is NOT a historic trend. Show only its verified
+ // first-observation marker, without adding a deceptive horizontal series.
  const max=Math.max(...points.map(p=>p.totalUsd),1);
  const xy=points.map((p,i)=>({
   x:span>0?8+284*(Date.parse(p.asOf)-first)/span:150,
@@ -435,11 +436,11 @@ function totalMovedChart(metrics){
  return '<div class="ux-ns-total-moved-chart" aria-label="Total moved TVL history">'+
   '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="'+
   (points.length>1?'Cumulative verified movement history':'First verified cumulative movement observation')+'">'+
-  '<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>'+
+  (points.length>1?'<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>':'')+
   path+'<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+
   '" r="'+(points.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
   '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(first))+'</span><span>'+
-  (points.length>1?esc(stamp(last)):'First observation')+'</span></div></div>';
+  (points.length>1?esc(stamp(last)):'History begins here')+'</span></div></div>';
 }
 
 function northstarCards(model,metrics=null,period="24h"){
@@ -461,8 +462,12 @@ function northstarCards(model,metrics=null,period="24h"){
   Number.isFinite(partial.verifiedMinimumUsd)&&partial.verifiedMinimumUsd>=0&&
   Number.isSafeInteger(partial.verifiedAssets)&&Number.isSafeInteger(partial.requiredAssets)&&
   partial.verifiedAssets>0&&partial.verifiedAssets<partial.requiredAssets;
+ const remembered=safeMetrics?.totalMoved?.lastVerified24h;
+ const remembered24h=!partialReady&&!Number.isFinite(movementTotal)&&
+  Number.isFinite(remembered?.movedUsd)&&remembered.movedUsd>=0&&
+  Number.isFinite(Date.parse(remembered?.asOf))?remembered:null;
  const shownMovement=Number.isFinite(movementTotal)?movementTotal:
-  partialReady?partial.verifiedMinimumUsd:null;
+  partialReady?partial.verifiedMinimumUsd:remembered24h?.movedUsd??null;
  const active=model.transferRoutes?.length||0;
  const rows=model.chains;
  const activeChains=new Set((model.transferRoutes||[]).flatMap(r=>[r.source,r.destination]));
@@ -492,7 +497,10 @@ function northstarCards(model,metrics=null,period="24h"){
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR</h2></div>'+
    '<div class="ux-ns-moved-metrics"><div class="ux-ns-moved-metric"><span>24h</span><strong>'+
     esc(formatUsd(shownMovement))+'</strong>'+
-    (partialReady?'<small>Verified minimum</small>':'')+'</div>'+
+    (partialReady?'<small>Verified minimum</small>':
+     remembered24h?'<small>Last verified · '+esc(new Date(remembered24h.asOf).toLocaleString("en-GB",
+     {timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC</small>':
+     shownMovement===null?'<small>Verification pending</small>':'')+'</div>'+
    '<div class="ux-ns-moved-metric"><span>Total moved TVL</span><strong>'+
     esc(formatUsd(safeMetrics?.totalMoved?.status==="verified"?safeMetrics.totalMoved.totalUsd:null))+
     '</strong></div></div>'+
