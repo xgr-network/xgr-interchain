@@ -2116,6 +2116,23 @@ async function loadLeaderboard(){
  // Do not disrupt an active wallet flow, chart interaction or token search.
  const page=path();
  if((!previous||improved)&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
+ else if(page==="/"&&previous){
+  // Keep both read-only charts fresh without remounting WebGL or issuing any
+  // extra metric/chain requests. The existing 60s fetch supplied these values.
+  const changed=previous.history?.points?.at(-1)?.asOf!==body.history?.points?.at(-1)?.asOf||
+   previous.totalMoved?.asOf!==body.totalMoved?.asOf||
+   previous.totals?.movedUsd!==body.totals?.movedUsd||
+   previous.indexedTvl?.lockedUsd!==body.indexedTvl?.lockedUsd;
+  if(changed){
+   const model=buildExperienceModel(publicCatalog(),()=>false);
+   const fragment=document.createElement("div");
+   fragment.innerHTML=renderDashboard(model,state.experience,state.apiState,body,publicCatalog(),walletGasView());
+   for(const cls of [".ux-ns-card-tvl",".ux-ns-card-moved"]){
+    const original=el.querySelector(cls),updated=fragment.querySelector(cls);
+    if(original&&updated)original.replaceWith(updated);
+   }
+  }
+ }
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
