@@ -63,8 +63,14 @@ const UNIVERSE_REQUIRED=["validatorRegistry","ism","transportBundle","mailbox",
 function isFullyDeployedUniverseChain(catalog,key){
  if(!isDeployedChain(catalog,key))return false;
  const c=catalog.chains[key],core=catalog.infrastructure[key]?.xitaV315;
- const required=c?.blsVerifierFormat==="compressed"?UNIVERSE_REQUIRED:
-  ["blsVerifier",...UNIVERSE_REQUIRED];
+ // Match the chain's APPROVED verification scheme. XDC Mainnet uses an
+ // ECDSA verifier, while external BLS EVM chains require blsVerifier and
+ // XGRChain verifies compressed BLS natively. Unknown schemes fail closed.
+ const verifier= c?.blsVerifierFormat==="compressed" ? null :
+  c?.blsVerifierFormat==="ecdsa" ? "ecdsaVerifier" :
+  c?.blsVerifierFormat==="eip2537" ? "blsVerifier" : undefined;
+ if(verifier===undefined)return false;
+ const required=verifier?[verifier,...UNIVERSE_REQUIRED]:UNIVERSE_REQUIRED;
  const receipts=new Set(core?.receiptPaths||[]);
  return required.every(part=>{
   const item=core?.components?.[part];
