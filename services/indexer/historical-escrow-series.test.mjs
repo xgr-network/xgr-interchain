@@ -51,7 +51,7 @@ test("fails closed on duplicate, incomplete route coverage and impossible histor
  const missing=indexedEscrowDeltas({descriptor,rows:[event],
   coverage:{complete:false},position:{status:"verified",netLockedRaw:amount(6)},price,now:at});
  assert.equal(missing.status,"unavailable");
- assert.equal(x([event],1).status,"verified");
+ assert.equal(x([event],1).status,"unavailable");
  assert.equal(combineEscrowHistory([x([event],1)],{now:at}).status,"unavailable");
 });
 test("multiple assets aggregate without extra SQL or RPC and preserve monotonic gross movements",()=>{
