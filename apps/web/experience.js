@@ -404,6 +404,35 @@ function tvlHistoryChart(metrics,period="24h"){
   '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(firstAt))+'</span><span>'+esc(stamp(lastAt))+'</span></div>'+coverage+'</div>';
 }
 
+function totalMovedChart(metrics){
+ const reported=metrics?.totalMoved;
+ if(reported?.status!=="verified"||!Number.isFinite(reported.totalUsd)||reported.totalUsd<0)
+  return '<p class="ux-small ux-ns-moved-unavailable">Total moved history is being verified.</p>';
+ const raw=Array.isArray(reported.points)?reported.points:[];
+ const points=raw.filter(p=>Number.isFinite(p?.totalUsd)&&p.totalUsd>=0&&
+  Number.isFinite(Date.parse(p?.asOf)))
+  .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+ if(!points.length||points.at(-1).totalUsd!==reported.totalUsd)
+  return '<p class="ux-small ux-ns-moved-unavailable">Total moved history is being verified.</p>';
+ let previous=0;
+ for(const p of points){if(p.totalUsd<previous)return '<p class="ux-small">Verified movement history unavailable.</p>';previous=p.totalUsd;}
+ const value='<div class="ux-ns-moved-total"><span>Total moved TVL</span><strong>'+
+  esc(formatUsd(reported.totalUsd))+'</strong></div>';
+ if(points.length<2)return value+'<p class="ux-small">Cumulative history starts with the first verified observation.</p>';
+ const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf),span=last-first;
+ if(span<=0)return value;
+ const max=Math.max(...points.map(p=>p.totalUsd),1);
+ const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-first)/span,
+  y:62-50*(p.totalUsd/max)}));
+ const d=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
+ const format=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
+ return value+'<div class="ux-ns-tvl-history ux-ns-total-moved-chart">'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Cumulative verified gross escrow movement">'+
+  '<path d="'+d+'" fill="none" stroke="#8cc5d4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
+  '<circle cx="'+xy.at(-1).x.toFixed(2)+'" cy="'+xy.at(-1).y.toFixed(2)+'" r="3" fill="#b1e5ec"/></svg>'+
+  '<div class="ux-ns-tvl-axis"><span>'+esc(format(first))+'</span><span>'+esc(format(last))+'</span></div></div>';
+}
+
 function northstarCards(model,metrics=null,period="24h"){
  // A fully reset network must not resurrect metrics from any older API cache.
  const safeMetrics=(model.deployments?.length||0)>0?metrics:null;
@@ -447,8 +476,8 @@ function northstarCards(model,metrics=null,period="24h"){
    (showIndexed?'':'<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
    (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span>')+'</div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
-   (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
    tvlHistoryChart(safeMetrics,period)+
+   (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span>')+'</article>'+
   '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
@@ -457,7 +486,10 @@ function northstarCards(model,metrics=null,period="24h"){
     partial.verifiedAssets+' of '+partial.requiredAssets+' tokens)</span>':'')+
    '<p class="ux-small">Gross confirmed lock/unlock activity observed by the finalized indexer over 24h, priced in USD. Backfills are observations, not historical block times.</p>'+
    '<span class="ux-ns-evidence">'+(partialReady?"Partially verified indexed evidence":
-    movementTotal==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span></article></section>';
+    movementTotal==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span>'+
+   totalMovedChart(safeMetrics)+
+   '<p class="ux-small">Cumulative confirmed escrow deposits and releases. Each increment is valued once at its first verified USD observation; no historical repricing.</p>'+
+   '</article></section>';
 }
 
 function allianceIntro(){
