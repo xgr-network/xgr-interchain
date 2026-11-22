@@ -1915,7 +1915,9 @@ document.addEventListener("click",e=>{
   joinState.busy=false;
   joinState.mode=null;
  }
+ const enteringTransfers=a.pathname==="/transfer"&&path()!=="/transfer";
  closeSiteMenu();history.pushState(null,"",a.pathname+a.search+a.hash);render();scrollTo(0,0);
+ if(enteringTransfers)void refreshTransferCatalog();
 });
 document.addEventListener("click",e=>{
  const copy=e.target.closest("button[data-xita-copy-address]");
@@ -1953,6 +1955,7 @@ window.addEventListener("popstate",()=>{
   joinState.busy=false;
  }
  render();
+ if(path()==="/transfer")void refreshTransferCatalog();
 });
 // Exact-hash finality polling is separate from the finalized event index.
 // Read-only; an RPC outage never causes another source transaction.
@@ -2014,8 +2017,8 @@ setInterval(()=>{
   void scanWalletHistory();
 },45000);
 refreshTransferLink();
-// Dashboard loads the 10 KB same-origin catalog, never RPC/indexer data.
-async function start(){
+// Read the same-origin receipt catalog without caching the deployment state.
+async function fetchSiteCatalog(){
  const controller=new AbortController();
  const timeout=setTimeout(()=>controller.abort(),2500);
  try{
@@ -2023,7 +2026,25 @@ async function start(){
   if(!response.ok)throw Error("Local catalog.json returned HTTP "+response.status);
   const catalog=await response.json();
   if(!catalog?.assets?.XGR?.routes||!catalog?.infrastructure?.xgrchain||!catalog?.chains?.xgrchain)throw Error("Invalid local catalog");
+  return catalog;
+ }finally{clearTimeout(timeout);}
+}
+let catalogRefreshPending=false;
+async function refreshTransferCatalog(){
+ if(catalogRefreshPending||!state.catalog||transferActivity.working||flowView.open)return;
+ catalogRefreshPending=true;
+ try{
+  const catalog=await fetchSiteCatalog();
+  if(path()!=="/transfer"||transferActivity.working||flowView.open||
+     JSON.stringify(catalog)===JSON.stringify(state.catalog))return;
   state.catalog=catalog;
+  render();
+ }catch{/* Retain the last valid catalog on a transient network failure. */}
+ finally{catalogRefreshPending=false;}
+}
+async function start(){
+ try{
+  state.catalog=await fetchSiteCatalog();
   // Check previously authorized accounts BEFORE rendering a direct
   // /my-transfers URL, otherwise the unauthenticated deep-link redirect
   // would discard the pending-transfer view on every browser restart.
@@ -2037,7 +2058,7 @@ async function start(){
   const message=error?.name==="AbortError"?"Local catalog request timed out after 2.5 seconds":error?.message||"Unknown catalog error";
   el.innerHTML='<section class="ux-app ux-start-error"><div class="ux-kicker">XITA · Configuration error</div><h1>Dashboard unavailable</h1><p>Could not read the local token configuration.</p><p class="ux-small">'+x(message)+'</p><button type="button" class="ux-outline-button" id="retry-xita">Retry</button></section>';
   document.getElementById("retry-xita")?.addEventListener("click",()=>{delete el.dataset.failed;void start();});
- }finally{clearTimeout(timeout);}
+ }
 }
 void start();
 async function loadPublicData(){
