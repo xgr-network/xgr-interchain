@@ -71,3 +71,25 @@ test("last complete 24h number survives a later incomplete observation with time
  assert.deepEqual(later.lastVerified24h,first.lastVerified24h);
  assert.equal(later.totalUsd,first.totalUsd);
 });
+
+test("persisted canonical movement curve survives later temporarily incomplete index snapshot",()=>{
+ const start={...snap("1000000000000000000"),
+  reconstructedMoved:{kind:"indexed-gross-movement-history-v1",status:"verified",
+   pricing:"current-reference-price",asOf:new Date(now).toISOString(),
+   points:[{asOf:new Date(now-3600000).toISOString(),movedWindowUsd:0},
+    {asOf:new Date(now).toISOString(),movedWindowUsd:2}]}};
+ const first=accumulateVerifiedMovement(start,catalog,price(2),null,{now});
+ assert.equal(first.totalUsd,2);
+ assert.equal(first.reconstructed.points.length,2);
+ const later=calc("1000000000000000000",.5,first,now+60000);
+ assert.deepEqual(later.reconstructed,first.reconstructed,
+  "the last verified curve is retained with its ORIGINAL time and values");
+ assert.equal(later.asOf,new Date(now+60000).toISOString());
+ const increased=calc("2000000000000000000",.5,later,now+120000);
+ assert.equal(increased.totalUsd,2.5);
+ assert.equal(increased.reconstructed.points.at(-1).totalUsd,2);
+ assert.equal(increased.reconstructed.asOf,first.reconstructed.asOf);
+ const expired=calc("2000000000000000000",.5,increased,now+7*3600000);
+ assert.equal(expired.reconstructed,undefined,
+  "a stale curve is not misrepresented as a current 30-day reconstruction");
+});
