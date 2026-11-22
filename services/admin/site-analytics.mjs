@@ -53,7 +53,8 @@ function deviceFor(ua){
 }
 function freshDay(){
  return {pageViews:0,visits:0,uniqueVisitors:0,pages:{},sources:{},campaigns:{},devices:{},
-  hourlyViews:Array(24).fill(0),hourlyVisits:Array(24).fill(0),visitors:{}};
+  hourlyViews:Array(24).fill(0),hourlyVisits:Array(24).fill(0),visitors:{},
+  engagementSeconds:0,measuredViews:0,measuredVisits:0,pageEngagement:{},views:{}};
 }
 function increment(collection,key,limit){
  if(Object.hasOwn(collection,key)||Object.keys(collection).length<limit)
@@ -98,7 +99,7 @@ export function createSiteAnalytics({stateDir,clock=()=>new Date(),excludeIps=[]
  function prune(today){
   for(const [day,item] of Object.entries(state.days)){
    if(day<addDays(today,-KEEP_DAYS+1)||day>today)delete state.days[day];
-   else if(day<addDays(today,-1))delete item.visitors;
+   else if(day<addDays(today,-1)){delete item.visitors;delete item.views;}
   }
  }
  function record(input){
@@ -110,14 +111,49 @@ export function createSiteAnalytics({stateDir,clock=()=>new Date(),excludeIps=[]
   const timestamp=clock();
   const {day:dayKey,hour}=berlinParts(timestamp);
   const now=timestamp.getTime();
-  const identity=createHmac("sha256",secret).update("xita-site-v1\0"+dayKey+"\0"+ip).digest("hex").slice(0,32);
+  const viewId=typeof input?.viewId==="string"&&
+   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.viewId)?
+   input.viewId.toLowerCase():null;
+  const viewKey=viewId?createHmac("sha256",secret)
+   .update("xita-engaged-view-v1\0"+dayKey+"\0"+ip+"\0"+viewId).digest("hex").slice(0,32):null;
+  // Engagement always requires a previously counted page view with the same
+  // IP + ephemeral view ID. Arbitrary standalone duration posts are ignored.
+  if(input?.type==="engagement"){
+   if(!viewKey||!Number.isInteger(input.seconds)||input.seconds<0||input.seconds>14400)
+    return {counted:false};
+   const day=state.days[dayKey],view=day?.views?.[viewKey];
+   if(!view||view.path!==path)return {counted:false};
+   const requested=input.seconds-view.reported;
+   // Bound every increment by wall time since the previous credited event.
+   // Repeated or out-of-order beacons never inflate the aggregates.
+   const wallAllowance=Math.max(0,Math.min(30,Math.floor((now-view.lastAt)/1000)+2));
+   const remaining=Math.max(0,14400-view.credited);
+   const seconds=Math.min(requested,wallAllowance,remaining);
+   if(seconds<=0)return {counted:false};
+   view.reported=input.seconds;
+   view.credited+=seconds;
+   view.lastAt=now;
+   day.engagementSeconds=(day.engagementSeconds||0)+seconds;
+   if(!day.pageEngagement)day.pageEngagement={};
+   if(!day.pageEngagement[path])day.pageEngagement[path]={seconds:0,measuredViews:0};
+   day.pageEngagement[path].seconds+=seconds;
+   prune(dayKey);
+   persist();
+   return {counted:true,engagementSeconds:seconds};
+  }
+  if(input?.type&&input.type!=="pageview")return {counted:false};
   const daily=state.days[dayKey]||(state.days[dayKey]=freshDay());
-  const previous=daily.visitors?.[identity];
+  const previous=daily.visitors?.[createHmac("sha256",secret)
+   .update("xita-site-v1\0"+dayKey+"\0"+ip).digest("hex").slice(0,32)];
   if(previous?.hits>=MAX_VIEWS_PER_IP_PER_DAY)return {counted:false,limited:true};
+  if(viewKey&&daily.views?.[viewKey])return {counted:false,duplicate:true};
+  const identity=createHmac("sha256",secret)
+   .update("xita-site-v1\0"+dayKey+"\0"+ip).digest("hex").slice(0,32);
   if(!daily.visitors)daily.visitors={};
   if(!previous)daily.uniqueVisitors++;
   const newVisit=!previous||now-previous.lastSeen>=SESSION_MS;
   const entry=previous||{lastSeen:now,hits:0};
+  if(newVisit)entry.sessionMeasured=false;
   entry.lastSeen=Math.max(now,entry.lastSeen);
   entry.hits++;
   daily.visitors[identity]=entry;
@@ -132,10 +168,25 @@ export function createSiteAnalytics({stateDir,clock=()=>new Date(),excludeIps=[]
    const campaign=cleanCampaign(input.utmCampaign);
    if(campaign)increment(daily.campaigns,campaign,60);
   }
+  // View IDs are random per page view, not persistent or stored raw.
+  // Only the HMAC-backed short-lived receipt is kept for duration dedup.
+  if(viewKey){
+   if(!daily.views)daily.views={};
+   daily.views[viewKey]={path,reported:0,credited:0,lastAt:now};
+   daily.measuredViews=(daily.measuredViews||0)+1;
+   if(!entry.sessionMeasured){
+    daily.measuredVisits=(daily.measuredVisits||0)+1;
+    entry.sessionMeasured=true;
+   }
+   if(!daily.pageEngagement)daily.pageEngagement={};
+   if(!daily.pageEngagement[path])daily.pageEngagement[path]={seconds:0,measuredViews:0};
+   daily.pageEngagement[path].measuredViews++;
+  }
   prune(dayKey);
   persist();
   return {counted:true,newVisit,newDailyVisitor:!previous};
  }
+
  function summary(days=30){
   if(![7,30,90,365].includes(days))throw Error("Unsupported analytics range");
   const {day:today}=berlinParts(clock());
@@ -151,16 +202,38 @@ export function createSiteAnalytics({stateDir,clock=()=>new Date(),excludeIps=[]
   const trackedSince=allDays[0]||null;
   const comparable=Date.parse(state.createdAt)<=Date.parse(prior[0].date+"T00:00:00Z");
   const todayDay=state.days[today]||freshDay();
+  const engagement=current.reduce((sum,day)=>({
+   totalSeconds:sum.totalSeconds+(day.engagementSeconds||0),
+   measuredViews:sum.measuredViews+(day.measuredViews||0),
+   measuredVisits:sum.measuredVisits+(day.measuredVisits||0)
+  }),{totalSeconds:0,measuredViews:0,measuredVisits:0});
+  engagement.averagePageSeconds=engagement.measuredViews?
+   Math.round(engagement.totalSeconds/engagement.measuredViews):null;
+  engagement.averageVisitSeconds=engagement.measuredVisits?
+   Math.round(engagement.totalSeconds/engagement.measuredVisits):null;
+  const pageTimes={};
+  for(const day of current)for(const [path,item] of Object.entries(day.pageEngagement||{})){
+   if(!pageTimes[path])pageTimes[path]={seconds:0,measuredViews:0};
+   pageTimes[path].seconds+=item.seconds||0;
+   pageTimes[path].measuredViews+=item.measuredViews||0;
+  }
+  const topPages=rank(sumField(current,"pages"),15).map(item=>{
+   const tracked=pageTimes[item.name];
+   return {...item,measuredViews:tracked?.measuredViews||0,
+    engagementSeconds:tracked?.seconds||0,
+    averageEngagementSeconds:tracked?.measuredViews?
+     Math.round(tracked.seconds/tracked.measuredViews):null};
+  });
   return {ok:true,timezone:"Europe/Berlin",days,trackedSince,createdAt:state.createdAt,
    updatedAt:clock().toISOString(),totals:aggregate,
    previousTotals:comparable?previous:null,
    series:current.map(d=>({date:d.date,pageViews:d.pageViews,visits:d.visits,uniqueVisitorDays:d.uniqueVisitors})),
    hourly:{views:todayDay.hourlyViews,visits:todayDay.hourlyVisits},
-   topPages:rank(sumField(current,"pages"),15),
+   engagement,topPages,
    sources:rank(sumField(current,"sources"),15),
    devices:rank(sumField(current,"devices"),4),
    campaigns:rank(sumField(current,"campaigns"),12),
-   note:"Unique visitor-days sum daily deduplicated IPs; this is not a cross-day unique person count. No cookies, no persistent cross-day visitor IDs."};
+   note:"Unique visitor-days sum daily deduplicated IPs, not persons across days. Duration is visible, focused, recently active time, not wall-clock session length. No cookies or persistent cross-day visitor IDs."};
  }
  return {record,summary};
 }

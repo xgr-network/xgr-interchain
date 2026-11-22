@@ -1,35 +1,85 @@
-// Lightweight, first-party pageview events. No cookies, storage, wallet data or fingerprinting.
-// This is imported by the public SPA and follows real path changes (not re-renders).
+// First-party, cookie-free page views and active engagement.
+// No persistent browser IDs, IPs, wallet addresses or third-party trackers.
 const endpoint="/api/xita/analytics/hit";
-let lastPath=null;
+const TICK_MS=15000;
+const IDLE_MS=60000;
 const allowed=path=>/^(?:\/|\/transfer|\/my-transfers|\/markets|\/faq|\/contact|\/join(?:\/confirm|\/submitted)?|\/createtoken(?:\/confirm|\/submitted)?|\/profile-update|\/xgr|\/imprint\.html|\/privacy-policy\.html|\/terms\.html|\/token\/[a-z0-9-]{1,80})$/.test(path);
-function sendPageView(){
+let current=null,lastActivity=Date.now(),lastTick=Date.now(),wasActive=false;
+function validPath(){
  const path=location.pathname.replace(/\/+$/,"")||"/";
- if(!allowed(path)||path===lastPath||navigator.webdriver||document.visibilityState==="prerender")return;
- lastPath=path;
- let sourceHost=null,utmSource=null,utmCampaign=null;
+ return allowed(path)?path:null;
+}
+function active(now){
+ return document.visibilityState==="visible"&&document.hasFocus()&&now-lastActivity<IDLE_MS;
+}
+function post(data,{unload=false}={}){
+ const payload=JSON.stringify(data);
+ try{
+  if(unload&&navigator.sendBeacon){
+   if(navigator.sendBeacon(endpoint,new Blob([payload],{type:"application/json"})))return;
+  }
+  void fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},
+   body:payload,cache:"no-store",keepalive:true,credentials:"omit"}).catch(()=>{});
+ }catch{}
+}
+function flush({unload=false}={}){
+ const now=Date.now();
+ if(current){
+  // Count only visible, focused, recently interacted-with time.
+  // Cap each interval to avoid browser-suspension/clock-jump inflation.
+  if(wasActive){
+   const until=Math.min(now,lastActivity+IDLE_MS);
+   const elapsed=Math.min(TICK_MS+1500,Math.max(0,until-lastTick));
+   current.milliseconds+=elapsed;
+  }
+  const seconds=Math.floor(current.milliseconds/1000);
+  if(seconds>current.reported&&seconds<=14400){
+   current.reported=seconds;
+   post({type:"engagement",path:current.path,viewId:current.id,seconds},{unload});
+  }
+ }
+ lastTick=now;
+ wasActive=active(now);
+}
+function onNavigate(){
+ const path=validPath();
+ if(!path||navigator.webdriver||document.visibilityState==="prerender"){
+  flush({unload:true});current=null;return;
+ }
+ if(current?.path===path)return;
+ flush({unload:true});
+ const id=typeof crypto?.randomUUID==="function"?crypto.randomUUID():null;
+ current={path,id,milliseconds:0,reported:0};
+ lastTick=Date.now();
+ wasActive=active(lastTick);
+ let sourceHost=null;
  try{
   const origin=document.referrer?new URL(document.referrer).hostname:"";
   if(origin&&origin!=="xita.xgr.network")sourceHost=origin;
  }catch{}
  const params=new URLSearchParams(location.search);
- utmSource=params.get("utm_source");
- utmCampaign=params.get("utm_campaign");
- const payload=JSON.stringify({path,sourceHost,utmSource,utmCampaign});
- try{
-  void fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},
-   body:payload,cache:"no-store",keepalive:true,credentials:"omit"}).catch(()=>{});
- }catch{}
+ post({type:"pageview",path,viewId:id,sourceHost,utmSource:params.get("utm_source"),
+  utmCampaign:params.get("utm_campaign")});
 }
 for(const method of ["pushState","replaceState"]){
  const original=history[method];
  history[method]=function(...args){
   const result=original.apply(this,args);
-  queueMicrotask(sendPageView);
+  queueMicrotask(onNavigate);
   return result;
  };
 }
-addEventListener("popstate",()=>queueMicrotask(sendPageView));
+addEventListener("popstate",()=>queueMicrotask(onNavigate));
+for(const event of ["pointerdown","keydown","wheel","touchstart"])
+ addEventListener(event,()=>{lastActivity=Date.now()},{passive:true});
+addEventListener("visibilitychange",()=>{
+ if(document.visibilityState!=="visible")flush({unload:true});
+ else {lastTick=Date.now();lastActivity=Date.now();wasActive=active(lastTick);}
+});
+addEventListener("blur",()=>flush({unload:true}));
+addEventListener("focus",()=>{lastTick=Date.now();lastActivity=Date.now();wasActive=active(lastTick);});
+addEventListener("pagehide",()=>flush({unload:true}));
+setInterval(()=>{flush();},TICK_MS);
 if(document.readyState==="loading")
- addEventListener("DOMContentLoaded",sendPageView,{once:true});
-else sendPageView();
+ addEventListener("DOMContentLoaded",onNavigate,{once:true});
+else onNavigate();

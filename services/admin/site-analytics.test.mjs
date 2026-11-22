@@ -77,3 +77,52 @@ test("invalid ranges are rejected; persisted aggregates survive restart",()=>{
   assert.equal(reload.summary(7).totals.pageViews,1);
  }finally{h.dispose();}
 });
+
+
+test("active time is aggregated by page without double counting beacons or changing visits",()=>{
+ const h=setup();
+ const viewId="de305d54-75b4-431b-adb2-eb6b9e546014";
+ try{
+  const base={ip:"192.0.2.1",userAgent:UA,path:"/",viewId};
+  h.api.record({...base,type:"pageview"});
+  h.move(15000);
+  assert.equal(h.api.record({...base,type:"engagement",seconds:15}).engagementSeconds,15);
+  assert.equal(h.api.record({...base,type:"engagement",seconds:15}).counted,false);
+  h.move(15000);
+  assert.equal(h.api.record({...base,type:"engagement",seconds:30}).engagementSeconds,15);
+  const data=h.api.summary(7);
+  assert.deepEqual(data.totals,{pageViews:1,visits:1,uniqueVisitorDays:1});
+  assert.equal(data.engagement.totalSeconds,30);
+  assert.equal(data.engagement.averagePageSeconds,30);
+  assert.equal(data.engagement.averageVisitSeconds,30);
+  assert.equal(data.topPages[0].averageEngagementSeconds,30);
+ }finally{h.dispose();}
+});
+test("duration reports must match a counted page view and never invent traffic",()=>{
+ const h=setup();
+ const viewId="de305d54-75b4-431b-adb2-eb6b9e546014";
+ try{
+  const base={ip:"192.0.2.1",userAgent:UA,path:"/transfer",viewId};
+  assert.equal(h.api.record({...base,type:"engagement",seconds:120}).counted,false);
+  h.api.record({...base,type:"pageview"});
+  assert.equal(h.api.record({...base,type:"pageview"}).duplicate,true);
+  h.move(1000);
+  assert.equal(h.api.record({...base,path:"/join",type:"engagement",seconds:10}).counted,false);
+  assert.equal(h.api.record({...base,type:"engagement",seconds:-4}).counted,false);
+  assert.equal(h.api.record({...base,type:"engagement",seconds:14401}).counted,false);
+  const result=h.api.record({...base,type:"engagement",seconds:500});
+  assert.ok(result.engagementSeconds<=3);
+  assert.equal(h.api.summary(7).totals.pageViews,1);
+ }finally{h.dispose();}
+});
+test("legacy analytics state without engagement fields remains readable",()=>{
+ const h=setup();
+ try{
+  h.api.record({ip:"192.0.2.1",userAgent:UA,path:"/"});
+  const data=h.api.summary(7);
+  assert.equal(data.engagement.totalSeconds,0);
+  assert.equal(data.engagement.averagePageSeconds,null);
+  assert.equal(data.topPages[0].averageEngagementSeconds,null);
+  assert.equal(data.topPages[0].count,1);
+ }finally{h.dispose();}
+});

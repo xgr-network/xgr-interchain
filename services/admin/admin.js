@@ -1104,11 +1104,20 @@ const initialView=location.hash.slice(1);
 openAdminView(["assets","infrastructure","treasury","health","analytics"].includes(initialView)?initialView:"assets");
 
 const analyticsNumber=n=>new Intl.NumberFormat("de-DE").format(Number(n)||0);
+const analyticsPathLabel=path=>({"/":"Startseite / Dashboard","/transfer":"Token Transfer","/my-transfers":"Meine Transfers","/markets":"Token-Übersicht","/faq":"FAQ","/join":"Join XITA","/contact":"Kontakt","/createtoken":"Token Creator"})[path]||path;
+const analyticsDuration=seconds=>{
+ if(seconds==null)return "–";
+ const n=Math.max(0,Math.round(seconds));
+ if(n<60)return n+" s";
+ return Math.floor(n/60)+"m "+String(n%60).padStart(2,"0")+"s";
+};
 function analyticsTable(id,items){
  const target=el(id);
  target.innerHTML=!items.length?'<p class="tiny">Noch keine erfassten Werte.</p>':
   '<div class="analytics-ranking">'+items.map(row=>
-   '<div><span title="'+esc(row.name)+'">'+esc(row.name)+'</span><strong>'+analyticsNumber(row.count)+'</strong></div>').join("")+'</div>';
+   '<div><span title="'+esc(row.name)+'">'+esc(id==="analytics-pages"?analyticsPathLabel(row.name):row.name)+'</span><strong>'+analyticsNumber(row.count)+
+   (id==="analytics-pages"?'<small class="analytics-page-time">Ø aktiv '+analyticsDuration(row.averageEngagementSeconds)+'</small>':"")+
+   '</strong></div>').join("")+'</div>';
 }
 function analyticsChange(value,previous){
  if(previous==null)return '<small class="analytics-compare">Noch kein vergleichbarer Vorzeitraum</small>';
@@ -1151,6 +1160,12 @@ async function refreshSiteAnalytics(){
   const metrics=[["Seitenaufrufe",data.totals.pageViews,"pageViews"],
    ["Besuche",data.totals.visits,"visits"],
    ["Unique Visitor-Days",data.totals.uniqueVisitorDays,"uniqueVisitorDays"]];
+  const engagement=data.engagement||{};
+  el("analytics-engagement").innerHTML=[
+   ["Ø aktive Seitenzeit",analyticsDuration(engagement.averagePageSeconds)],
+   ["Ø aktive Besuchszeit",analyticsDuration(engagement.averageVisitSeconds)],
+   ["Aktive Gesamtzeit",analyticsDuration(engagement.totalSeconds)]
+  ].map(([name,value])=>'<div class="analytics-kpi"><small>'+esc(name)+'</small><strong>'+esc(value)+'</strong></div>').join("");
   el("analytics-metrics").innerHTML=metrics.map(([name,value,key])=>
    '<div class="analytics-kpi"><small>'+esc(name)+'</small><strong>'+analyticsNumber(value)+'</strong>'+
    analyticsChange(value,data.previousTotals?.[key])+'</div>').join("");

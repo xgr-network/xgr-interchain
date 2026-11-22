@@ -169,7 +169,8 @@ http.createServer(async(req,res)=>{
    const event=await bodyJSON(req);
    siteAnalytics.record({ip:String(req.headers["x-real-ip"]||""),
     userAgent:req.headers["user-agent"],path:event.path,sourceHost:event.sourceHost,
-    utmSource:event.utmSource,utmCampaign:event.utmCampaign});
+    utmSource:event.utmSource,utmCampaign:event.utmCampaign,
+    type:event.type,viewId:event.viewId,seconds:event.seconds});
    res.writeHead(204,{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
    return res.end();
   }
