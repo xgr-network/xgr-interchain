@@ -71,7 +71,7 @@ test("unknown or unverified routes never become executable",()=>{
 test("dashboard and inventory do not invent real-time operational metrics",()=>{
   const model=buildExperienceModel(catalog);
   const html=renderDashboard(model,{},"error");
-  assert.match(html,/Awaiting complete verified evidence/);
+  assert.match(html,/TVL history is being collected/);
   assert.match(html,/Active directions/);
   assert.doesNotMatch(html,/99\.9%|18 seconds|In Transit/);
   assert.match(renderRoutes(model),/Alliance projects start with an application and XGR review/);
@@ -229,7 +229,7 @@ test("dashboard never treats partial TVL as verified and planner stays on its ow
  const home=renderDashboard(model,{},"ready",data);
  assert.match(home,/Locked TVL/);
  assert.match(home,/Moved via XGR/);
- assert.match(home,/Awaiting complete verified evidence/);
+ assert.match(home,/TVL history is being collected/);
  assert.doesNotMatch(home,/id="ux-origin"|id="ux-journey-planner"/);
  const planner=renderPlanRoute(model,{},"ready");
  assert.match(planner,/id="ux-origin"/);
@@ -803,7 +803,7 @@ test("dashboard displays verified partial 24h movement with explicit incomplete 
  assert.match(moved,/Verified minimum/);
  assert.match(moved,/Total moved TVL/);
  assert.doesNotMatch(moved,/Gross confirmed lock\/unlock activity/);
- assert.match(html,/Awaiting complete verified evidence/,"partial volume must not fake TVL");
+ assert.match(html,/TVL history is being collected/,"partial volume must not fake TVL");
  const complete=renderDashboard(model,{},"ready",{
   ...snapshot,totals:{lockedUsd:100,movedUsd:20}});
  const completed=complete.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
@@ -937,7 +937,7 @@ test("unknown canonical block times label reconstructed history partial, never c
    {asOf:new Date(end).toISOString(),lockedUsd:16,movedWindowUsd:1}
   ]}};
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
- assert.match(html,/incomplete event times/);
+ assert.match(html,/Partial index history/);
 });
 
 test("indexed TVL 24h percent is restored from the same verified reference-priced history",async()=>{
@@ -1002,7 +1002,7 @@ test("transiently older, persisted cumulative curve stays visible without invent
     {asOf:old,totalUsd:30378.46}]}}};
  const html=renderDashboard(model,{},"ready",metrics);
  assert.match(html,/Cumulative verified movement history/);
- assert.match(html,/last verified 22 Nov/);
+ assert.match(html,/Last verified 22 Nov/);
  assert.match(html,/stroke-width="2.5"/);
 });
 
