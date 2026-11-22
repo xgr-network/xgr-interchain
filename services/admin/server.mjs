@@ -141,6 +141,7 @@ function deploymentSyncDiagnostic(){
 const staticFiles=new Map([
  ["/admin/",["index.html","text/html; charset=utf-8"]],
  ["/admin/admin.js",["admin.js","text/javascript; charset=utf-8"]],
+ ["/admin/asset-route-view.mjs",["asset-route-view.mjs","text/javascript; charset=utf-8"]],
  ["/admin/api-client.mjs",["api-client.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-poll.mjs",["deployment-poll.mjs","text/javascript; charset=utf-8"]],
  ["/admin/deployment-batch.mjs",["deployment-batch.mjs","text/javascript; charset=utf-8"]],

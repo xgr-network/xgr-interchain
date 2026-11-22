@@ -41,6 +41,12 @@
       "representation": "synthetic",
       "symbol": "wARB",
       "assetAddress": null
+    },
+    {
+      "chain": "xdc",
+      "representation": "synthetic",
+      "symbol": "wARB",
+      "assetAddress": null
     }
   ],
   "bridgeModel": "lock-mint-burn-unlock",

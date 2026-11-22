@@ -1,3 +1,5 @@
+import {chainContractProfile} from "../services/admin/chain-contract-profile.mjs";
+
 // Automatically extend already-approved hub assets to newly documented EVM spokes.
 // An infrastructure manifest is deployment evidence ONLY with every expected
 // immutable component receipt. This function derives DESIRED routes, not live
@@ -12,11 +14,12 @@ function ready(catalog,name){
  const bundle=infra.xitaV315;
  if(!Array.isArray(bundle?.receiptPaths))return false;
  const receipts=new Set(bundle.receiptPaths);
+ const {verifierComponent}=chainContractProfile(chain);
  const required=[
   "validatorRegistry","ism","transportBundle","mailbox","dispatchHook",
   "requiredHook","nativeRouterDeployer","syntheticRouterDeployer",
   "collateralRouterDeployer","factory","sourceRegistry","executionGateway",
-  ...(chain.blsVerifierFormat==="eip2537"?["blsVerifier"]:[])
+  ...(verifierComponent?[verifierComponent]:[])
  ];
  return required.every(component=>{
   const part=bundle.components?.[component];
@@ -30,10 +33,7 @@ export function deriveMissingHubRoutes(catalog){
  if(!catalog?.chains?.xgrchain||!catalog.assets||!catalog.infrastructure)
   throw Error("Canonical XGRChain hub inventory missing");
  if(!ready(catalog,"xgrchain"))return new Map();
- // ECDSA spokes require a separately audited validator-signing and source-finality
- // release gate. Deploying their infrastructure does NOT authorize public routes.
- const targets=Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&
-  catalog.chains[name]?.blsVerifierFormat!=="ecdsa"&&ready(catalog,name)).sort();
+ const targets=Object.keys(catalog.chains).filter(name=>name!=="xgrchain"&&ready(catalog,name)).sort();
  const updates=new Map();
  for(const [key,entry] of Object.entries(catalog.assets)){
   const meta=entry.metadata,routes=entry.routes;

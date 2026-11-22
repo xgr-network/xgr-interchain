@@ -57,9 +57,10 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(assetDeploymentFolder("XGR",XGR),"deployments/assets/a7/XGR");
  const virtual=loadAssetDeployment(root,"XGR",XGR);
  assert.equal(virtual.present,Boolean(virtual.representations.length||virtual.routeDeployments.length));
- assert.equal(catalog.assets.XGR.routes.routes.filter(r=>r.sourceChain!=="xdc"&&r.destinationChain!=="xdc").length,
-  Object.values(catalog.chains).filter(c=>c.name!=="xgrchain"&&
-   c.blsVerifierFormat!=="ecdsa"&&c.configurationStatus!=="planned-unverified").length*2);
+ const {metadata,routes}=catalog.assets.XGR;
+ const spokes=metadata.representations.filter(r=>r.chain!=="xgrchain").map(r=>r.chain).sort();
+ assert.deepEqual(routes.routes.filter(r=>r.sourceChain==="xgrchain").map(r=>r.destinationChain).sort(),spokes);
+ assert.deepEqual(routes.routes.filter(r=>r.destinationChain==="xgrchain").map(r=>r.sourceChain).sort(),spokes);
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
 });
 
@@ -96,9 +97,9 @@ test("mainnet XDC ECDSA V5 deployment evidence is receipt-backed and grants no p
  const plan=nextAssetRouteTasks(inventory,infrastructureInventory(root,inventory.chains));
  const coreReady=required.every(component=>Boolean(record.xitaV315.components[component]));
  assert.deepEqual(plan.eligibleRoutes.filter(involvesXdc).map(r=>[r.asset,r.name]),
-  coreReady?[["XGR","xgr_to_xdc"],["XGR","xdc_to_xgr"]]:[]);
+  coreReady?["ARB","XGR"].flatMap(asset=>[[asset,"xgr_to_xdc"],[asset,"xdc_to_xgr"]]):[]);
  const withoutAssetReceipts=structuredClone(catalog);
- withoutAssetReceipts.assets.XGR.deployment.representations=
-  catalog.assets.XGR.deployment.representations.filter(r=>r.chain!=="xdc");
+ for(const entry of Object.values(withoutAssetReceipts.assets))
+  entry.deployment.representations=entry.deployment.representations.filter(r=>r.chain!=="xdc");
  assert.deepEqual(executableTransferRoutes(withoutAssetReceipts).filter(involvesXdc),[]);
 });

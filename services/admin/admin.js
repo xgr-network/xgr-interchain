@@ -7,6 +7,7 @@ import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 import {chainDeploymentIntent,hasOutstandingWalletTransaction} from "./chain-intent-view.mjs";
 import {nextChainDeployment,nextAssetDeployment,chainDeploymentParameters} from "./deployment-batch.mjs";
+import {assetRouteCards,matchesAssetRouteCard} from "./asset-route-view.mjs";
 import {advanceDeploymentBeforeSignature} from "./deployment-resume-gate.mjs";
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el=id=>document.getElementById(id);
@@ -24,36 +25,18 @@ const ASSETS_PER_PAGE=12;
 function renderAssets(){
  if(!workqueue)return;
  const filter=el("asset-filter").value,q=el("asset-search").value.trim().toLowerCase();
- const eligibleByAsset=new Map();
- for(const route of eligibleAssetRoutes){
-  const list=eligibleByAsset.get(route.asset)||new Set();list.add(route.name);eligibleByAsset.set(route.asset,list);
- }
- const selection=Object.values(workqueue.inventory.assets).filter(a=>{
-  const allowed=eligibleByAsset.get(a.key);
-  if(!allowed)return false;
-  const routes=a.routes.filter(r=>allowed.has(r.name));
-  const complete=routes.length>0&&routes.every(r=>r.status==="deployed");
-  const state=complete?"deployed":routes.some(r=>r.receiptCount>0)?"partial":"not-deployed";
-  return (filter==="all"||filter===state)&&
-   [a.name,a.symbol,a.key,a.canonicalChain,...routes.map(r=>r.destination)]
-    .join(" ").toLowerCase().includes(q);
- });
+ const cards=assetRouteCards(workqueue.inventory.assets,eligibleAssetRoutes);
+ const selection=cards.filter(card=>matchesAssetRouteCard(card,filter,q));
  el("metrics").innerHTML=[
-  ["Assets",eligibleByAsset.size],["Routen",eligibleAssetRoutes.length],
-  ["Offen",Object.values(workqueue.inventory.assets).filter(a=>{
-   const names=eligibleByAsset.get(a.key);
-   return names&&a.routes.some(r=>names.has(r.name)&&r.status!=="deployed");
-  }).length]
+  ["Assets",cards.length],["Routen",cards.reduce((n,card)=>n+card.routes.length,0)],
+  ["Offen",cards.filter(card=>card.open).length]
  ].map(([n,v])=>'<div class="metric"><strong>'+v+'</strong><small>'+n+'</small></div>').join("");
  const pages=Math.max(1,Math.ceil(selection.length/ASSETS_PER_PAGE));
  assetPage=Math.max(0,Math.min(assetPage,pages-1));
  const pageAssets=selection.slice(assetPage*ASSETS_PER_PAGE,(assetPage+1)*ASSETS_PER_PAGE);
  const addressButton=address=>'<button type="button" class="address-copy asset-address" data-copy="'+
   esc(address)+'" title="Vollständige Contract-Adresse kopieren">'+esc(address)+' ⧉</button>';
- el("main-workqueue").innerHTML=selection.length?pageAssets.map(a=>{
-  const names=eligibleByAsset.get(a.key),routes=a.routes.filter(r=>names.has(r.name));
-  const complete=routes.filter(r=>r.status==="deployed").length;
-  const status=routes.length&&complete===routes.length?"deployed":routes.some(r=>r.receiptCount>0)?"partial":"not-deployed";
+ el("main-workqueue").innerHTML=selection.length?pageAssets.map(({asset:a,routes,complete,status})=>{
   const tasks=assetTasks.filter(t=>t.asset===a.key);
   const routers=Object.values(a.representations||{}).flatMap(rep=>
    (rep.deployedContracts||[]).filter(r=>["nativeRouter","syntheticRouter","collateralRouter"].includes(r.component))
