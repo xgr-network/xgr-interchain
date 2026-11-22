@@ -1719,19 +1719,25 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 
 /* Compact moved-volume card: two peer metrics, one cumulative chart. */
 .ux-ns-card-moved{gap:7px}
-.ux-ns-moved-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
- gap:12px;padding:12px 0 7px}
+.ux-ns-moved-metrics{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);
+ gap:9px;padding:12px 0 7px}
 .ux-ns-moved-metric{display:flex;flex-direction:column;min-width:0;gap:5px}
 .ux-ns-moved-metric+.ux-ns-moved-metric{border-left:1px solid #31455b8c;padding-left:12px}
 .ux-ns-moved-metric>span{color:#a7bfd5;font-size:11px;font-weight:550;white-space:nowrap}
-.ux-ns-moved-metric>strong{font-size:clamp(17px,1.75vw,25px);font-weight:700;
- line-height:1.2;letter-spacing:-.025em;color:#edf5ff;font-variant-numeric:tabular-nums;
- overflow-wrap:anywhere}
+.ux-ns-moved-metric>strong{font-family:var(--xita-editorial);font-size:clamp(16px,1.45vw,22px);
+ font-weight:700;line-height:1.2;letter-spacing:-.055em;color:#edf5ff;
+ font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:normal;word-break:normal}
 .ux-ns-moved-metric>small{color:#9fbacd;font-size:10px}
 .ux-ns-total-moved-chart{margin-top:auto;padding-top:8px;min-height:94px;
  border-top:1px solid #31455b80}
 .ux-ns-card-moved .ux-ns-total-moved-chart .ux-ns-tvl-sparkline{height:68px}
 .ux-ns-moved-chart-empty{margin-top:auto;padding:20px 0 12px;color:#849bb5;font-size:11px}
 @media(max-width:1100px){
- .ux-ns-moved-metric>strong{font-size:clamp(17px,2.35vw,24px)}
+ .ux-ns-moved-metric>strong{font-size:clamp(15px,2vw,20px)}
 }
+
+/* Keep monetary metrics on ONE baseline, at any card width; all dashboard
+   currency uses the same editorial numerals as Indexed TVL. */
+.ux-ns-card-moved .ux-ns-moved-metric{overflow:visible}
+.ux-ns-card-moved .ux-ns-moved-metric>strong{display:block;max-width:100%;white-space:nowrap}
+@media(max-width:600px){.ux-ns-moved-metric>strong{font-size:clamp(15px,4.5vw,22px)}}
