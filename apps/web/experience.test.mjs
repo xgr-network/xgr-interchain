@@ -580,7 +580,7 @@ test("TVL chart spreads actual short-window measurements across full plot",()=>{
  assert.match(html,/ux-ns-tvl-sparkline/);
  assert.match(html,/M8\.00 /,"verified short window fills the chart viewport");
  assert.match(html,/L292\.00 /);
- assert.match(html,/Observed 5 min of 24h · partial history/);
+ assert.match(html,/Partial · 5 min/);
  assert.match(html,/09:55 UTC/,"x-axis must show the actual first observation");
  assert.match(html,/Last verified ·/);
 });
@@ -919,12 +919,12 @@ test("24h / 7d / 30d history uses actual indexed event reconstruction without ad
     points:points.map(p=>({asOf:p.asOf,totalUsd:30500+p.movedWindowUsd-500}))}}};
  for(const period of ["24h","7d","30d"]){
   const html=renderDashboard(model,{tvlPeriod:period},"ready",metrics);
-  assert.match(html,/Indexed history · current USD reference/);
+  assert.match(html,/Low /);
   assert.match(html,/ux-ns-tvl-sparkline/);
   assert.match(html,new RegExp('data-tvl-period="'+period+'" class="is-selected"'));
  }
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
- assert.match(html,/Indexed movement · current USD reference/);
+ assert.match(html,/Low /);
  assert.match(html,/Cumulative verified movement history/);
  assert.doesNotMatch(html,/Observed 7 min/);
 });
@@ -959,7 +959,7 @@ test("indexed TVL 24h percent is restored from the same verified reference-price
  assert.ok(Math.abs(tvlChange24h(metrics)-(6892.15-6800)/6800*100)<1e-9);
  const html=renderDashboard(buildExperienceModel(catalog),{},"ready",metrics);
  assert.match(html,/\+1\.36% · 24h/);
- assert.match(html,/Indexed history · current USD reference/);
+ assert.match(html,/Low /);
  assert.doesNotMatch(html,/Observed 47 min/);
  const incomplete={...metrics,reconstructedHistory:{...metrics.reconstructedHistory,
   status:"partial",unknown24h:1},
@@ -981,7 +981,7 @@ test("independent recovered cumulative gross events create rising curve when TVL
  const html=renderDashboard(buildExperienceModel(catalog),{},"ready",metrics);
  assert.match(html,/Cumulative verified movement history/);
  assert.match(html,/stroke-width="2\.5"/);
- assert.match(html,/Indexed movement · current USD reference/);
+ assert.match(html,/Low /);
 });
 
 test("dashboard monetary metrics all use the same font and never wrap",()=>{
@@ -1004,4 +1004,30 @@ test("transiently older, persisted cumulative curve stays visible without invent
  assert.match(html,/Cumulative verified movement history/);
  assert.match(html,/last verified 22 Nov/);
  assert.match(html,/stroke-width="2.5"/);
+});
+
+test("both dashboard charts use the same large 110px plotting area with real extremes",()=>{
+ const css=readFileSync(new URL("./style.css",import.meta.url),"utf8");
+ assert.match(css,/ux-ns-card-tvl \.ux-ns-tvl-sparkline,[\s\S]*ux-ns-card-moved \.ux-ns-total-moved-chart \.ux-ns-tvl-sparkline/);
+ assert.match(css,/height:110px;min-height:110px/);
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const end=Date.parse("2026-11-22T10:00:00Z");
+ const metrics={history:{points:[
+  {asOf:new Date(end-3600000).toISOString(),lockedUsd:4},
+  {asOf:new Date(end).toISOString(),lockedUsd:6}]},
+ totalMoved:{status:"verified",totalUsd:30,asOf:new Date(end).toISOString(),
+  reconstructed:{status:"verified",pricing:"current-reference-price",
+   asOf:new Date(end).toISOString(),points:[
+    {asOf:new Date(end-3600000).toISOString(),totalUsd:25},
+    {asOf:new Date(end).toISOString(),totalUsd:30}]}}};
+ const markup=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
+ const tvl=markup.split('ux-ns-card-tvl')[1]?.split("</article>")[0]||"";
+ const moved=markup.split('ux-ns-card-moved')[1]?.split("</article>")[0]||"";
+ for(const html of [tvl,moved]){
+  assert.match(html,/viewBox="0 0 300 110"/);
+  assert.match(html,/ux-ns-chart-extremes/);
+  assert.match(html,/Low \$/);
+  assert.match(html,/High \$/);
+ }
+ assert.doesNotMatch(tvl,/Net deposits and completed releases from finalized bridge events/);
 });
