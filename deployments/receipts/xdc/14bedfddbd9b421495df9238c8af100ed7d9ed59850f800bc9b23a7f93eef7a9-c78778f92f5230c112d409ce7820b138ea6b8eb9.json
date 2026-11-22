@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "36a2e8ef97ee698030e9d3fa8c2904d5fccce6fa"
+  },
+  "chain": "xdc",
+  "chainId": 50,
+  "domainId": 50,
+  "component": "mailbox",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0xc78778f92f5230c112d409ce7820b138ea6b8eb9",
+  "runtimeCodeKeccak256": "0x21aed8173f5060a7b95d22b2174dcdf7cd0e5b1ecbf7775aa5069efe8f9157a8",
+  "transactionHash": "0x14bedfddbd9b421495df9238c8af100ed7d9ed59850f800bc9b23a7f93eef7a9",
+  "blockNumber": 109626757,
+  "blockHash": "0x3e850728a5f144db476ba7ac0f954d2f788eb1f85c472069e6900cc9e2a6181f",
+  "confirmations": 34,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "transport-mailbox",
+    "factory": "0x65a9473b0a7c5ec27127125c05fb4efc29efdba6"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-11-22T09:32:22.667Z"
+}
