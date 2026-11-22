@@ -938,3 +938,42 @@ test("unknown canonical block times label reconstructed history partial, never c
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
  assert.match(html,/incomplete event times/);
 });
+
+test("indexed TVL 24h percent is restored from the same verified reference-priced history",async()=>{
+ const {tvlChange24h}=await import("./experience.js");
+ const {catalog}=freshDeployedCatalog({routeDestination:"base"});
+ const asOf=Date.parse("2026-11-22T10:00:00Z");
+ const points=Array.from({length:25},(_,i)=>({
+  asOf:new Date(asOf-(24-i)*3600000).toISOString(),
+  lockedUsd:i===24?6892.15:6800,
+  movedWindowUsd:i*10
+ }));
+ const metrics={asOf:new Date(asOf).toISOString(),
+  indexedTvl:{kind:"xita-indexed-tvl-v1",lockedUsd:6892.15},
+  reconstructedHistory:{kind:"indexed-escrow-reconstruction-v1",
+   status:"verified",unknown24h:0,pricing:"current-reference-price",
+   points}};
+ assert.ok(Math.abs(tvlChange24h(metrics)-(6892.15-6800)/6800*100)<1e-9);
+ const html=renderDashboard(buildExperienceModel(catalog),{},"ready",metrics);
+ assert.match(html,/\+1\.36% · 24h/);
+ assert.match(html,/Indexed history · current USD reference/);
+ assert.doesNotMatch(html,/Observed 47 min/);
+ const incomplete={...metrics,reconstructedHistory:{...metrics.reconstructedHistory,
+  status:"partial",unknown24h:1}};
+ assert.equal(tvlChange24h(incomplete),null);
+});
+test("independent recovered cumulative gross events create rising curve when TVL history is unavailable",()=>{
+ const {catalog}=freshDeployedCatalog({routeDestination:"base"});
+ const at=Date.parse("2026-11-22T10:00:00Z");
+ const history=[0,5,7,10].map((n,i)=>({
+  asOf:new Date(at-(3-i)*3600000).toISOString(),totalUsd:30368.46+n
+ }));
+ const metrics={reconstructedHistory:{status:"unavailable",reason:"historical-escrow-underflow"},
+  totalMoved:{kind:"xita-total-moved-history-v1",status:"verified",totalUsd:30378.46,
+   points:[{asOf:new Date(at).toISOString(),totalUsd:30378.46}],
+   reconstructed:{status:"verified",pricing:"current-reference-price",points:history}}};
+ const html=renderDashboard(buildExperienceModel(catalog),{},"ready",metrics);
+ assert.match(html,/Cumulative verified movement history/);
+ assert.match(html,/stroke-width="2\.5"/);
+ assert.match(html,/Indexed movement · current USD reference/);
+});
