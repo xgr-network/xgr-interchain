@@ -352,17 +352,37 @@ export async function handler(req,res){
       movedWindowUsd:p.movedWindowUsd}))};
    }
   }
-  // Anchor a reference-priced cumulative MOVED curve to the persisted
-  // actual total. It is a current-price reconstruction, not historical FX.
-  if(totalMoved&&reconstructedHistory){
-   const points=reconstructedHistory.points;
-   const end=points.at(-1)?.movedWindowUsd??null;
-   const estimated=points.map(p=>({...p,totalUsd:totalMoved.totalUsd-
-    (end-p.movedWindowUsd)}));
-   if(Number.isFinite(end)&&estimated.every(p=>Number.isFinite(p.totalUsd)&&p.totalUsd>=0))
-    totalMoved.reconstructed={status:reconstructedHistory.status,
-     pricing:"current-reference-price",asOf:reconstructedHistory.asOf,
-     points:estimated.map(p=>({asOf:p.asOf,totalUsd:p.totalUsd}))};
+  // Gross volume is reconstructed independently of the collateral opening
+  // balance. A TVL deficit must not suppress canonical transaction history.
+  let reconstructedMoved=null;
+  const moved=evidence?.reconstructedMoved;
+  if(moved?.kind==="indexed-gross-movement-history-v1"&&
+    ["verified","partial"].includes(moved.status)&&
+    moved.pricing==="current-reference-price"&&moved.asOf===evidence.asOf&&
+    Array.isArray(moved.points)&&moved.points.length>=2&&moved.points.length<=745&&
+    moved.points.every(p=>Number.isFinite(Date.parse(p.asOf))&&
+      Number.isFinite(p.movedWindowUsd)&&p.movedWindowUsd>=0)&&
+    moved.points.every((p,i)=>!i||(
+      Date.parse(p.asOf)>Date.parse(moved.points[i-1].asOf)&&
+      p.movedWindowUsd>=moved.points[i-1].movedWindowUsd))){
+   reconstructedMoved={kind:moved.kind,status:moved.status,pricing:moved.pricing,
+    asOf:moved.asOf,unknownTime:moved.unknownTime,
+    points:moved.points.map(p=>({asOf:p.asOf,movedWindowUsd:p.movedWindowUsd}))};
+  }
+  if(totalMoved&&reconstructedMoved){
+   const points=reconstructedMoved.points;
+   const end=points.at(-1).movedWindowUsd;
+   // An observed cumulative USD total may use historic prices. An anchored
+   // current-price window is valid ONLY with a nonnegative opening balance.
+   const base=totalMoved.totalUsd-end;
+   if(Number.isFinite(base)&&base>=-0.000001){
+    const values=points.map(p=>({asOf:p.asOf,totalUsd:Math.max(0,base+p.movedWindowUsd)}));
+    totalMoved.reconstructed={status:reconstructedMoved.status,
+     pricing:reconstructedMoved.pricing,asOf:reconstructedMoved.asOf,
+     unknownTime:reconstructedMoved.unknownTime,points:values};
+   }else totalMoved.reconstructionUnavailable="historical-price-basis-incompatible";
+  }else if(totalMoved){
+   totalMoved.reconstructionUnavailable=moved?.reason||"indexed-movement-timestamps-unavailable";
   }
   return send(200,{...metrics,visibility,history,reconstructedHistory,totalMoved});
  }catch(error){
