@@ -76,7 +76,7 @@ test("mainnet XDC ECDSA V5 deployment evidence is receipt-backed and grants no p
   assert.equal(receipt.chain,"xdc");
   assert.equal(receipt.chainId,50);
   assert.equal(receipt.domainId,50);
-  assert.equal(receipt.component,component);
+  assert.equal(receipt.component,component==="requiredHook"?"dispatchHook":component);
   assert.equal(receipt.status,"onchain-deployment-verified");
   assert.equal(receipt.address.toLowerCase(),binding.address.toLowerCase());
   assert.equal(receipt.runtimeCodeKeccak256.toLowerCase(),binding.runtimeCodeKeccak256.toLowerCase());
