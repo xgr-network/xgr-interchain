@@ -361,6 +361,24 @@ function validTvlPoints(metrics){
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
 }
 export function tvlChange24h(metrics){
+ const derived=metrics?.reconstructedHistory;
+ // The 24h comparison must use the same valuation model as the displayed
+ // indexed TVL. Never mix current indexed collateral with custody snapshots.
+ const indexedTVL=metrics?.indexedTvl?.lockedUsd;
+ if(typeof indexedTVL==="number"&&Number.isFinite(indexedTVL)&&indexedTVL>=0&&
+    derived?.kind==="indexed-escrow-reconstruction-v1"&&
+    derived.status==="verified"&&derived.pricing==="current-reference-price"&&
+    Array.isArray(derived.points)&&derived.points.length>=25){
+  const points=derived.points.filter(p=>Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0&&
+    Number.isFinite(Date.parse(p.asOf))).sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
+  const latest=points.at(-1),now=Date.parse(latest?.asOf);
+  const before=points.filter(p=>Date.parse(p.asOf)<=now-86400000).at(-1);
+  if(before?.lockedUsd>0&&Math.abs(Date.parse(before.asOf)-(now-86400000))<=3600000 &&
+     Math.abs(latest.lockedUsd-indexedTVL)<=Math.max(.01,indexedTVL*.005)){
+   const change=100*(indexedTVL-before.lockedUsd)/before.lockedUsd;
+   return Number.isFinite(change)?change:null;
+  }
+ }
  const points=validTvlPoints(metrics);
  const current=metrics?.totals?.lockedUsd;
  const last=points.at(-1);
@@ -501,7 +519,7 @@ function northstarCards(model,metrics=null,period="24h"){
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>'+(showIndexed?'Indexed TVL':'Locked TVL')+'</h2></div>'+
    '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
-   (!showIndexed&&tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
+   (tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
     (tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h</span>':'')+'</div>'+
    (displayAsOf?'<span class="ux-ns-tvl-last">Last verified · '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC</span>':'')+
    tvlHistoryChart(safeMetrics,period)+
