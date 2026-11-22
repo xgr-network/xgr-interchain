@@ -47,7 +47,9 @@ export function indexedGrossFlow24h({descriptor,rows,coverage,price,now=Date.now
 // 24-hour metric. No additional RPC or database query is needed.
 // We count canonical source deposits once and verified destination releases
 // once; synthetic-hop activity is not a second physical escrow movement.
-// Unknown historical timestamps are excluded rather than backdated to now.
+// Historical transfers without block timestamps count toward all-time volume,
+// // but their first USD valuation occurs only when the index is observed.
+// // No fabricated historical timestamp is attached to a backfilled movement.
 export function indexedGrossFlowLifetime({descriptor,rows,coverage}){
  const unavailable=reason=>({status:"unavailable",reason});
  if(descriptor?.status!=="ready"||!Array.isArray(rows)||coverage?.complete!==true)
@@ -68,11 +70,9 @@ export function indexedGrossFlowLifetime({descriptor,rows,coverage}){
   if(!route||row.destination_chain!==route.destination||norm(row.gateway)!==norm(route.gateway))
    return unavailable("unknown-escrow-route");
   if(route.source===descriptor.chain){
-   if(Number.isFinite(Date.parse(row.source_block_at))){
-    incoming+=BigInt(row.amount_raw);inflowCount++;
-   }
+   incoming+=BigInt(row.amount_raw);inflowCount++;
   }else if(route.destination===descriptor.chain){
-   if(row.delivered===true&&Number.isFinite(Date.parse(row.escrow_outflow_observed_at))){
+   if(row.delivered===true){
     outgoing+=BigInt(row.amount_raw);outflowCount++;
    }
   }else return unavailable("not-a-physical-escrow-route");
