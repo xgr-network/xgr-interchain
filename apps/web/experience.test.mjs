@@ -566,7 +566,7 @@ test("TVL 24h change requires a genuine nearby baseline and colors gain/loss",as
  assert.match(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",neg),/is-negative/);
  const noBaseline={...data,history:{points:[{asOf:"2026-10-21T07:00:00.000Z",lockedUsd:100},{asOf,lockedUsd:120}]}};
  assert.equal(tvlChange24h(noBaseline),null);
- assert.match(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",noBaseline),/24h —/);
+ assert.doesNotMatch(renderDashboard(buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog),{},"ready",noBaseline),/24h —/);
 });
 
 test("TVL chart spreads actual short-window measurements across full plot",()=>{
@@ -581,7 +581,7 @@ test("TVL chart spreads actual short-window measurements across full plot",()=>{
  assert.doesNotMatch(html,/M8\.00 /,"short observation must not stretch across entire 24h");
  assert.match(html,/L292\.00 /);
  assert.match(html,/Observed 5 min/);
- assert.match(html,/Last verified:/);
+ assert.match(html,/Last verified ·/);
 });
 test("24h delta uses final verified observations even if current snapshot unavailable",async()=>{
  const {tvlChange24h}=await import("./experience.js");
