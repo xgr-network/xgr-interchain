@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {existsSync,readFileSync} from "node:fs";
 import {join} from "node:path";
+import {executableTransferRoutes} from "../apps/web/route-availability.js";
+import {approvedWorkInventory} from "../services/admin/main-gate.mjs";
+import {infrastructureInventory} from "../services/admin/chain-state.mjs";
+import {nextAssetRouteTasks} from "../services/admin/route-factory-draft.mjs";
 import {loadCatalog,validateCatalog} from "./validate-manifests.mjs";
 import {chainDeploymentPath,chainBootstrapPath,assetConfigFolder,assetDeploymentFolder,loadAssetDeployment} from "./manifest-layout.mjs";
 const root=new URL("../",import.meta.url).pathname;
@@ -53,7 +57,7 @@ test("XGR source configuration and permissionless hub routes survive hard reset"
  assert.equal(assetDeploymentFolder("XGR",XGR),"deployments/assets/a7/XGR");
  const virtual=loadAssetDeployment(root,"XGR",XGR);
  assert.equal(virtual.present,Boolean(virtual.representations.length||virtual.routeDeployments.length));
- assert.equal(catalog.assets.XGR.routes.routes.length,
+ assert.equal(catalog.assets.XGR.routes.routes.filter(r=>r.sourceChain!=="xdc"&&r.destinationChain!=="xdc").length,
   Object.values(catalog.chains).filter(c=>c.name!=="xgrchain"&&
    c.blsVerifierFormat!=="ecdsa"&&c.configurationStatus!=="planned-unverified").length*2);
  assert.equal(catalog.assets.XGR.metadata.assetId,XGR);
@@ -87,8 +91,14 @@ test("mainnet XDC ECDSA V5 deployment evidence is receipt-backed and grants no p
  const required=["ecdsaVerifier","validatorRegistry","ism","transportBundle",
   "nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer",
   "factory","sourceRegistry"];
- if(!required.every(component=>Boolean(record.xitaV315.components[component]))){
-  for(const asset of Object.values(catalog.assets))
-   assert.ok(!asset.routes.routes.some(r=>r.sourceChain==="xdc"||r.destinationChain==="xdc"));
- }
+ const involvesXdc=r=>r.source==="xdc"||r.destination==="xdc";
+ const inventory=approvedWorkInventory(root);
+ const plan=nextAssetRouteTasks(inventory,infrastructureInventory(root,inventory.chains));
+ const coreReady=required.every(component=>Boolean(record.xitaV315.components[component]));
+ assert.deepEqual(plan.eligibleRoutes.filter(involvesXdc).map(r=>[r.asset,r.name]),
+  coreReady?[["XGR","xgr_to_xdc"],["XGR","xdc_to_xgr"]]:[]);
+ const withoutAssetReceipts=structuredClone(catalog);
+ withoutAssetReceipts.assets.XGR.deployment.representations=
+  catalog.assets.XGR.deployment.representations.filter(r=>r.chain!=="xdc");
+ assert.deepEqual(executableTransferRoutes(withoutAssetReceipts).filter(involvesXdc),[]);
 });

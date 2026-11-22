@@ -275,7 +275,11 @@ export async function startTransfer({catalog,account,asset,source,destination,am
  if(!proofService?.ok)throw Error("Destination recovery infrastructure unavailable; no tokens locked");
  const proofHealth=await proofService.json().catch(()=>null);
  if(!proofHealth?.ok||proofHealth.proofBuilder!=="installed")
-  throw Error("Unsigned BLS/Merkle recovery is not ready; no tokens locked");
+  throw Error("Unsigned destination recovery is not ready; no tokens locked");
+ const usesECDSADestination=[dst,catalog.chains[destination]].some(chain=>
+  chain?.blsVerifierFormat==="ecdsa"||chain?.signatureScheme==="ecdsa");
+ if(usesECDSADestination&&!proofHealth.proofSchemes?.includes("ecdsa"))
+  throw Error("Destination ECDSA recovery is not ready; no tokens locked");
  // Require that the actual destination router accepts this exact asset route.
  // GitHub receipts alone are insufficient; check live reverse route enrollment
  // before the wallet is asked to sign ANY source approval or lock/burn.

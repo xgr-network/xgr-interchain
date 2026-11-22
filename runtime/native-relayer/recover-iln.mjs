@@ -1,12 +1,12 @@
 // Prepare unsigned, wallet-owned Mailbox.process calldata from one canonical
-// fee-qualified source receipt and one current-set Direct BLS attestation.
+// fee-qualified source receipt and one current-set direct attestation.
 // No Merkle, relayer custody, source re-execution or historical eth_call.
 import {JsonRpcProvider,Contract,getAddress,getBytes,keccak256,zeroPadValue,hexlify,Interface} from "ethers";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {verifiedSourceReceiptEvidence} from "./receipt-evidence.mjs";
 import {verifySourceFinalityReceipt} from "./source-finality.mjs";
-import {encodeDirectBLSPayload,encodeDirectISMMetadata} from "./xita-direct-codec.mjs";
+import {buildDirectProof} from "./xita-direct-codec.mjs";
 
 const hash=/^0x[0-9a-f]{64}$/i;
 const name=k=>{const v=process.env[k];if(!v)throw Error("Missing "+k);return v};
@@ -38,7 +38,7 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcDomain=number("ORIGIN_DOMAIN");
  const destChain=BigInt(number("DESTINATION_CHAIN_ID"));
  const destDomain=number("DESTINATION_DOMAIN");
- // A completed Direct-BLS quorum identifies the message without requiring
+ // A completed direct quorum identifies the message without requiring
  // a transaction hash. The hash remains mandatory only to bootstrap quorum
  // admission using the legacy receipt-first path.
  const optionalTx=overrideSourceTxHash||process.env.SOURCE_TX_HASH||null;
@@ -51,7 +51,7 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const srcRouter=address("ORIGIN_WARP_ROUTER"),srcRegistryAddress=address("ORIGIN_ILN_REGISTRY");
  const destMailboxAddress=address("DESTINATION_MAILBOX"),destRouter=address("DESTINATION_WARP_ROUTER");
  const destISMAddress=address("DESTINATION_ILN_ISM");
- // Direct BLS is source-authoritative. Prefer the existing current-set
+ // Prefer the existing current-set
  // quorum; only if an attestation has NOT YET been assembled may we fall
  // back to the legacy canonical source confirmation/quorum-request path.
  const checkXgr=new JsonRpcProvider(name("ATTESTATION_RPC_URL"));
@@ -59,10 +59,12 @@ export async function prepareDirectILN(messageID,overrideSourceTxHash=null){
  const ism=new Contract(destISMAddress,[
   "function registry() view returns(address)"
  ],checkDest);
+ mark("destination-registry");
  const destRegistry=await ism.registry();
  const reg=new Contract(destRegistry,["function setId() view returns(uint64)"],checkDest);
  const setId=await reg.setId();
  check(setId>0n&&setId<=BigInt(Number.MAX_SAFE_INTEGER),"Invalid destination validator set");
+ mark("current-quorum");
  let quorumReady=false;
  try{
   await checkXgr.send("xgr_getILNQuorumAttestation",[route,id,Number(setId)]);
@@ -201,7 +203,6 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
  }
 
  mark("validate-attestation");
- check(attestation.version==="XITA_DIRECT_MESSAGE_V1","Unsupported/legacy Merkle attestation");
  equals("Attestation route name",attestation.chain,route);
  equals("Attested Message ID",attestation.authorizedMessageId,id);
  equals("Attested route",attestation.routeId,routeId);
@@ -217,7 +218,7 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
        BigInt(attestation.setId)===BigInt(setId)&&
        Number(attestation.sourceBlockNumber)===sourceBlock&&
        BigInt(attestation.validatorFeeWei)===evidence.validatorFeeWei,
-       "Source event/finality, fee or current BLS validator set mismatch");
+       "Source event/finality, fee or current validator set mismatch");
 
  const authorization={
   sourceChainId:srcChain,sourceDomain:srcDomain,destinationDomain:destDomain,
@@ -227,17 +228,7 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
   destinationRouter:destRouter,validatorFeeWei:evidence.validatorFeeWei,
   messageId:id,destinationIsm:destISMAddress,destinationRegistry:setRegistry
  };
- const raw=encodeDirectBLSPayload(authorization);
- equals("Exact canonical Direct-BLS signed bytes",raw,attestation.payload);
- const format=Number(signatureFormat);
- const signature=format===1?attestation.aggregateSignatureCompressed:
-                 format===2?attestation.aggregateSignature:null;
- check(signature&&[96,256].includes(getBytes(signature).length)&&
-       getBytes(signature).length===(format===1?96:256),
-       "Destination BLS signature format not supported");
- const metadata=encodeDirectISMMetadata({
-  authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
- });
+ const {payload:raw,signature,metadata}=buildDirectProof(authorization,attestation,signatureFormat);
 
  // Distinguish a valid aggregated signature from an executable recipient route.
  // All checks are read-only and use the identical signed payload and metadata.
@@ -253,7 +244,7 @@ export async function prepareReceiptFirstILN(messageID,overrideSourceTxHash=null
   "function verifyQuorum(uint64,bytes,bytes,bytes) view returns(bool)"
  ],dest);
  check(await quorumRegistry.verifyQuorum(setId,raw,attestation.signerBitmap,signature),
-  "Destination registry rejects aggregate BLS quorum");
+  "Destination registry rejects current validator quorum");
 
  mark("verify-destination-ism");
  const directISM=new Contract(destISMAddress,[
@@ -322,7 +313,7 @@ export async function resolveSignedDispatch({
  return matching[0];
 }
 
-// An existing on-chain BLS quorum authorizes the exact source message ID;
+// An existing direct quorum authorizes the exact source message ID;
 // its signed bytes do not contain the variable-length Hyperlane Dispatch body.
 // The body must therefore be supplied by an untrusted public witness AND
 // independently pinned by keccak256(message)==the signed message ID.
@@ -374,7 +365,6 @@ export async function prepareAttestedMessageOnly({
   destDomain,destRouter,messageId:id,sourceBlock:attestation.sourceBlockNumber
  });
  mark("attested-only-validate-signed-identity");
- check(attestation?.version==="XITA_DIRECT_MESSAGE_V1","Wrong attestation format");
  for(const [label,a,b] of [
   ["Route name",attestation.chain,route],
   ["Message ID",attestation.authorizedMessageId,id],
@@ -403,16 +393,7 @@ export async function prepareAttestedMessageOnly({
   destinationRouter:destRouter,validatorFeeWei:BigInt(attestation.validatorFeeWei),
   messageId:id,destinationIsm:destISMAddress,destinationRegistry:setRegistry
  };
- const payload=encodeDirectBLSPayload(authorization);
- equals("Canonical signed authorization payload",payload,attestation.payload);
- const format=Number(signatureFormat);
- const signature=format===1?attestation.aggregateSignatureCompressed:
-   format===2?attestation.aggregateSignature:null;
- check(signature&&getBytes(signature).length===(format===1?96:256),
-  "Invalid current destination BLS signature format");
- const metadata=encodeDirectISMMetadata({
-  authorization,signerBitmap:attestation.signerBitmap,aggregateSignature:signature
- });
+ const {payload,signature,metadata}=buildDirectProof(authorization,attestation,signatureFormat);
  mark("attested-only-verify-destination-route");
  const router=new Contract(destRouter,[
   "function verifyInboundRoute(uint64,uint32,address,bytes32) view returns(bool)"
@@ -421,7 +402,7 @@ export async function prepareAttestedMessageOnly({
   "Destination router rejects inbound route");
  mark("attested-only-verify-bonded-quorum");
  check(await registry.verifyQuorum(setId,payload,attestation.signerBitmap,signature),
-  "Destination registry rejected current set BLS aggregate");
+  "Destination registry rejects current validator quorum");
  mark("attested-only-verify-ism");
  check(await ism.verify(metadata,message),"Destination ISM rejects current signed message");
  mark("attested-only-simulate-delivery");
@@ -442,7 +423,7 @@ if (process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url)
   console.error("XITA_RECOVERY_DIAGNOSTIC:"+JSON.stringify({
    status:"RECOVERY_NOT_READY",messageId:cliMessageID,route,stage,
    rpcCode:Number.isInteger(code)?code:null,
-   error:String(error?.shortMessage||error?.message||"Unknown direct BLS failure").slice(0,1200)
+   error:String(error?.shortMessage||error?.message||"Unknown direct delivery failure").slice(0,1200)
   }));
   process.exitCode=1;
  });

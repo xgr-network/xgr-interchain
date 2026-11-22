@@ -57,6 +57,7 @@ test("different URLs from one operator cannot satisfy two-operator gate",()=>{
 });
 test("XGR latest is a chain-availability probe, not an independent source witness",()=>{
  assert.equal(finalityTag(1643),"latest");
+ assert.equal(finalityTag(50),"finalized");
  assert.equal(finalityTag(42161),"safe");
  const s=summarizeProviders("xgrchain",1643,[{operator:"XGR",state:"ok",finalityHead:12}]);
  assert.equal(s.state,"ok");

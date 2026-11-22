@@ -107,9 +107,9 @@
       "chainId": 50,
       "domainId": 50,
       "rpcUrls": [
-        "https://erpc.xinfin.network",
-        "https://rpc.xdc.blocksscan.io",
-        "https://rpc.ankr.com/xdc"
+        "https://earpc.xinfin.network",
+        "https://rpc.ankr.com/xdc",
+        "https://xdc.public-rpc.com"
       ],
       "explorer": "https://xdcscan.com",
       "nativeCurrency": {
@@ -611,6 +611,12 @@
             "representation": "synthetic",
             "symbol": "wXGR",
             "assetAddress": null
+          },
+          {
+            "chain": "xdc",
+            "representation": "synthetic",
+            "symbol": "wXGR",
+            "assetAddress": null
           }
         ],
         "bridgeModel": "lock-mint-burn-unlock",
@@ -712,6 +718,16 @@
           {
             "name": "optimism_to_xgr",
             "sourceChain": "optimism",
+            "destinationChain": "xgrchain"
+          },
+          {
+            "name": "xgr_to_xdc",
+            "sourceChain": "xgrchain",
+            "destinationChain": "xdc"
+          },
+          {
+            "name": "xdc_to_xgr",
+            "sourceChain": "xdc",
             "destinationChain": "xgrchain"
           }
         ]

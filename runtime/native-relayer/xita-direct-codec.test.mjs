@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {AbiCoder,getBytes} from "ethers";
 import {DIRECT_BLS_DOMAIN,DIRECT_BLS_AUTHORIZATION_TYPE,
-  encodeDirectBLSPayload,encodeDirectISMMetadata,hashDirectBLSPayload
+  encodeDirectBLSPayload,encodeDirectISMMetadata,hashDirectBLSPayload,buildDirectProof
 } from "./xita-direct-codec.mjs";
 
 const addr=n=>"0x"+n.toString(16).padStart(40,"0");
@@ -73,4 +73,31 @@ test("ISM ABI matches Solidity abi.decode(metadata,(Metadata)) and rejects flatt
  assert.equal(metadata[0].messageId.toLowerCase(),message.messageId.toLowerCase());
  assert.equal(metadata[1],bitmap);
  assert.equal(metadata[2],signature);
+});
+
+test("destination registry format selects the signed domain and shared ISM metadata",()=>{
+ const blsPayload=encodeDirectBLSPayload(message);
+ const bls={version:DIRECT_BLS_DOMAIN,payload:blsPayload,signerBitmap:"0x05",
+  aggregateSignatureCompressed:"0x"+"33".repeat(96),aggregateSignature:"0x"+"33".repeat(256)};
+ for(const [format,signature] of [[1,bls.aggregateSignatureCompressed],[2,bls.aggregateSignature]]){
+  const proof=buildDirectProof(message,bls,format);
+  assert.equal(proof.payload,blsPayload);
+  assert.equal(proof.signature,signature);
+  assert.equal(proof.metadata,encodeDirectISMMetadata({
+   authorization:message,signerBitmap:bls.signerBitmap,aggregateSignature:signature
+  }));
+ }
+ const version="XITA_DIRECT_MESSAGE_ECDSA_V1";
+ const payload="0x"+Buffer.from(version).toString("hex")+blsPayload.slice(2+2*DIRECT_BLS_DOMAIN.length);
+ const ecdsa={version,payload,signatureScheme:"ecdsa",signerBitmap:"0x0102",signatures:"0x"+"22".repeat(130)};
+ const proof=buildDirectProof(message,ecdsa,3);
+ assert.equal(proof.payload,payload);
+ const metadata=AbiCoder.defaultAbiCoder().decode(["tuple("+DIRECT_BLS_AUTHORIZATION_TYPE+",bytes,bytes)"],proof.metadata)[0];
+ assert.equal(metadata[0].messageId,message.messageId);
+ assert.equal(metadata[1],ecdsa.signerBitmap);
+ assert.equal(metadata[2],ecdsa.signatures);
+ assert.throws(()=>buildDirectProof(message,ecdsa,2),/scheme or domain/);
+ assert.throws(()=>buildDirectProof(message,{...ecdsa,signatureScheme:undefined},3),/scheme or domain/);
+ assert.throws(()=>buildDirectProof(message,{...ecdsa,payload:blsPayload},3),/payload mismatch/);
+ assert.throws(()=>buildDirectProof(message,{...ecdsa,signerBitmap:"0x01"},3),/signature count/);
 });

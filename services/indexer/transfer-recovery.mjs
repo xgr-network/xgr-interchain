@@ -111,7 +111,8 @@ export function classifyRecoveryFailure(err,stderr=""){
  const rpcCode=Number.isInteger(parsed?.rpcCode)?parsed.rpcCode:null;
  const t=detail.toLowerCase();
  const code=err?.killed||/timed out|timeout/.test(t)?"PROOF_TIMEOUT":
-  (stage==="verify-destination-quorum"&&/rejects aggregate BLS quorum/i.test(detail))?"PROOF_DESTINATION_QUORUM_REJECTED":
+  (["verify-destination-quorum","attested-only-verify-bonded-quorum"].includes(stage)&&
+   /rejects (?:aggregate BLS|current validator) quorum/i.test(detail))?"PROOF_DESTINATION_QUORUM_REJECTED":
   (stage==="verify-destination-router"&&/rejects canonical inbound route/i.test(detail))?"PROOF_DESTINATION_ROUTE_REJECTED":
   (stage==="verify-destination-ism"&&/rejects signed message/i.test(detail))?"PROOF_DESTINATION_ISM_REJECTED":
   rpcCode===-32601?"PROOF_RPC_METHOD_UNAVAILABLE":
@@ -150,6 +151,17 @@ export function canRetrySourceRecovery(error,configured){
    (error?.code==="PROOF_SOURCE_EVIDENCE_UNAVAILABLE"&&
     error?.stage==="attested-only-discover-dispatch"))&&
   sourceRetryStages.has(error?.stage);
+}
+const destinationRetryStages=new Set([
+ "verify-chain-ids","destination-registry","destination-delivery","verify-destination-router",
+ "verify-destination-quorum","verify-destination-ism","simulate-destination-delivery",
+ "attested-only-verify-chain-ids","attested-only-destination-state",
+ "attested-only-verify-destination-route","attested-only-verify-bonded-quorum",
+ "attested-only-verify-ism","attested-only-simulate-delivery"
+]);
+function canRetryDestinationRecovery(error){
+ return ["PROOF_RPC_UNAVAILABLE","PROOF_TIMEOUT"].includes(error?.code)&&
+  destinationRetryStages.has(error?.stage);
 }
 export async function probeRouteSourceRpc(url,configured,{fetcher=globalThis.fetch,ms=4500}={}){
  try{
@@ -240,28 +252,34 @@ export async function runRecoveryProcess(configured,{timeoutMs=45000,
  // Base availability merely because Base is in the global catalog.
  const needsBase=Number(configured.env.ORIGIN_CHAIN_ID)===8453||
   Number(configured.env.DESTINATION_CHAIN_ID)===8453;
- if(!needsBase&&Number(configured.env.ORIGIN_CHAIN_ID)!==1643){
-  const candidates=recoverySourceUrls(configured),deadline=Date.now()+timeoutMs;
+ const sourceIsExternal=Number(configured.env.ORIGIN_CHAIN_ID)!==1643;
+ const destinationChainId=Number(configured.env.DESTINATION_CHAIN_ID);
+ if(!needsBase&&(sourceIsExternal||(destinationChainId>0&&destinationChainId!==1643))){
+  const candidates=sourceIsExternal?recoverySourceUrls(configured):
+   rpcCandidates({chainId:destinationChainId,rpcUrls:configured.destinationRpcUrls||[]});
+  const rpcField=sourceIsExternal?"ORIGIN_RPC_URL":"DESTINATION_RPC_URL";
+  const deadline=Date.now()+timeoutMs;
   let last=null;
   for(let i=0;i<candidates.length;i++){
    const remaining=deadline-Date.now()-1500;
    if(remaining<3000)break;
-   const url=candidates[i],env={...configured.env,ORIGIN_RPC_URL:url};
+   const url=candidates[i],env={...configured.env,[rpcField]:url};
    try{
     return await runAttempt({...configured,env},
      i<candidates.length-1?Math.min(8500,remaining):remaining);
    }catch(error){
     last=error;
-    if(!canRetrySourceRecovery(error,configured)||i===candidates.length-1)
-     throw error;
-    console.warn("XITA canonical source RPC retry",JSON.stringify({
-     sourceChainId:configured.env.ORIGIN_CHAIN_ID,
+    const canRetry=sourceIsExternal?canRetrySourceRecovery(error,configured):
+     canRetryDestinationRecovery(error);
+    if(!canRetry||i===candidates.length-1)throw error;
+    console.warn("XITA recovery RPC retry",JSON.stringify({
+     chainId:sourceIsExternal?configured.env.ORIGIN_CHAIN_ID:destinationChainId,
      provider:new URL(url).hostname,stage:error.stage,reason:error.code
     }));
    }
   }
-  throw last||Object.assign(new Error("Canonical source chain RPC unavailable"),{
-   code:"PROOF_RPC_UNAVAILABLE",stage:"source-receipt"
+  throw last||Object.assign(new Error("External chain RPC unavailable"),{
+   code:"PROOF_RPC_UNAVAILABLE",stage:sourceIsExternal?"source-receipt":"destination-delivery"
   });
  }
  if(!needsBase)return runAttempt(configured,timeoutMs);

@@ -40,6 +40,12 @@
       "representation": "synthetic",
       "symbol": "wXGR",
       "assetAddress": null
+    },
+    {
+      "chain": "xdc",
+      "representation": "synthetic",
+      "symbol": "wXGR",
+      "assetAddress": null
     }
   ],
   "bridgeModel": "lock-mint-burn-unlock",
