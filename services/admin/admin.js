@@ -1099,10 +1099,10 @@ el("analytics-refresh").addEventListener("click",()=>void refreshSiteAnalytics()
 el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth());
 el("health-rpc-probe").addEventListener("click",()=>void refreshOperationsHealth({probe:true}));
 setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
+let analyticsBusy=false;
 const initialView=location.hash.slice(1);
 openAdminView(["assets","infrastructure","treasury","health","analytics"].includes(initialView)?initialView:"assets");
 
-let analyticsBusy=false;
 const analyticsNumber=n=>new Intl.NumberFormat("de-DE").format(Number(n)||0);
 function analyticsTable(id,items){
  const target=el(id);
