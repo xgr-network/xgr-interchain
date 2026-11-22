@@ -1741,3 +1741,32 @@ body>header nav a.xita-nav-join span{font-size:13px;line-height:1}
 .ux-ns-card-moved .ux-ns-moved-metric{overflow:visible}
 .ux-ns-card-moved .ux-ns-moved-metric>strong{display:block;max-width:100%;white-space:nowrap}
 @media(max-width:600px){.ux-ns-moved-metric>strong{font-size:clamp(15px,4.5vw,22px)}}
+
+/* Both dashboard monetary cards share ONE numeric type scale and font.
+   In particular, the 24h and all-time dollars must not wrap or use a
+   different fallback face than the main Indexed TVL value. */
+.ux-ns-card-tvl .ux-ns-value,
+.ux-ns-card-moved .ux-ns-moved-metric>strong{
+ font-family:var(--xita-editorial);font-style:normal;font-weight:700;
+ font-kerning:normal;font-variant-numeric:lining-nums tabular-nums;
+ letter-spacing:-.055em;white-space:nowrap;overflow-wrap:normal;
+ word-break:normal
+}
+.ux-ns-card-moved .ux-ns-moved-metrics{
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ gap:8px;min-width:0
+}
+.ux-ns-card-moved .ux-ns-moved-metric+.ux-ns-moved-metric{
+ padding-left:9px
+}
+.ux-ns-card-moved .ux-ns-moved-metric>strong{
+ font-size:clamp(16px,1.4vw,21px);line-height:1.25;letter-spacing:-.06em;
+ width:max-content;max-width:none
+}
+.ux-ns-card-tvl .ux-ns-value{font-size:clamp(26px,3vw,38px)}
+@media(max-width:1100px){
+ .ux-ns-card-moved .ux-ns-moved-metric>strong{font-size:clamp(16px,1.8vw,20px)}
+}
+@media(max-width:700px){
+ .ux-ns-card-moved .ux-ns-moved-metric>strong{font-size:clamp(17px,4vw,22px)}
+}
