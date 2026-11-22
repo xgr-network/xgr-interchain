@@ -407,30 +407,39 @@ function tvlHistoryChart(metrics,period="24h"){
 function totalMovedChart(metrics){
  const reported=metrics?.totalMoved;
  if(reported?.status!=="verified"||!Number.isFinite(reported.totalUsd)||reported.totalUsd<0)
-  return '<p class="ux-small ux-ns-moved-unavailable">Total moved history is being verified.</p>';
+  return '<div class="ux-ns-moved-chart-empty">Cumulative history pending</div>';
  const raw=Array.isArray(reported.points)?reported.points:[];
  const points=raw.filter(p=>Number.isFinite(p?.totalUsd)&&p.totalUsd>=0&&
   Number.isFinite(Date.parse(p?.asOf)))
   .sort((a,b)=>Date.parse(a.asOf)-Date.parse(b.asOf));
  if(!points.length||points.at(-1).totalUsd!==reported.totalUsd)
-  return '<p class="ux-small ux-ns-moved-unavailable">Total moved history is being verified.</p>';
+  return '<div class="ux-ns-moved-chart-empty">Cumulative history pending</div>';
  let previous=0;
- for(const p of points){if(p.totalUsd<previous)return '<p class="ux-small">Verified movement history unavailable.</p>';previous=p.totalUsd;}
- const value='<div class="ux-ns-moved-total"><span>Total moved TVL</span><strong>'+
-  esc(formatUsd(reported.totalUsd))+'</strong></div>';
- if(points.length<2)return value+'<p class="ux-small">Cumulative history starts with the first verified observation.</p>';
- const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf),span=last-first;
- if(span<=0)return value;
+ for(const p of points){
+  if(p.totalUsd<previous)return '<div class="ux-ns-moved-chart-empty">Cumulative history unavailable</div>';
+  previous=p.totalUsd;
+ }
+ const first=Date.parse(points[0].asOf),last=Date.parse(points.at(-1).asOf);
+ const span=last-first;
+ // One verified observation is ONE POINT, not an invented zero-to-total line.
+ // Render a proper SVG chart area immediately; grow the line on future samples.
  const max=Math.max(...points.map(p=>p.totalUsd),1);
- const xy=points.map(p=>({x:8+284*(Date.parse(p.asOf)-first)/span,
-  y:62-50*(p.totalUsd/max)}));
- const d=xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ");
- const format=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
- return value+'<div class="ux-ns-tvl-history ux-ns-total-moved-chart">'+
-  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="Cumulative verified gross escrow movement">'+
-  '<path d="'+d+'" fill="none" stroke="#8cc5d4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'+
-  '<circle cx="'+xy.at(-1).x.toFixed(2)+'" cy="'+xy.at(-1).y.toFixed(2)+'" r="3" fill="#b1e5ec"/></svg>'+
-  '<div class="ux-ns-tvl-axis"><span>'+esc(format(first))+'</span><span>'+esc(format(last))+'</span></div></div>';
+ const xy=points.map((p,i)=>({
+  x:span>0?8+284*(Date.parse(p.asOf)-first)/span:150,
+  y:62-50*(p.totalUsd/max)
+ }));
+ const lastXY=xy.at(-1);
+ const path=xy.length>1?'<path d="'+xy.map((p,i)=>(i?"L":"M")+p.x.toFixed(2)+" "+p.y.toFixed(2)).join(" ")+
+  '" fill="none" stroke="#8cc5d4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>':"";
+ const stamp=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",timeZone:"UTC"});
+ return '<div class="ux-ns-total-moved-chart" aria-label="Total moved TVL history">'+
+  '<svg class="ux-ns-tvl-sparkline" viewBox="0 0 300 72" role="img" aria-label="'+
+  (points.length>1?'Cumulative verified movement history':'First verified cumulative movement observation')+'">'+
+  '<path d="M8 66 H292" stroke="#32475d" stroke-width="1" fill="none"/>'+
+  path+'<circle cx="'+lastXY.x.toFixed(2)+'" cy="'+lastXY.y.toFixed(2)+
+  '" r="'+(points.length===1?'4':'3')+'" fill="#b1e5ec"/></svg>'+
+  '<div class="ux-ns-tvl-axis"><span>'+esc(stamp(first))+'</span><span>'+
+  (points.length>1?esc(stamp(last)):'First observation')+'</span></div></div>';
 }
 
 function northstarCards(model,metrics=null,period="24h"){
@@ -480,16 +489,14 @@ function northstarCards(model,metrics=null,period="24h"){
    (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
    '<span class="ux-ns-evidence">'+(safeMetrics?.totals?.lockedUsd==null?"Awaiting complete verified evidence":"Verified on-chain evidence")+'</span>')+'</article>'+
-  '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR · 24h</h2></div>'+
-   '<strong class="ux-ns-value">'+esc(formatUsd(shownMovement))+'</strong>'+
-   (partialReady?'<span class="ux-ns-tvl-last">Partial · verified minimum ('+
-    partial.verifiedAssets+' of '+partial.requiredAssets+' tokens)</span>':'')+
-   '<p class="ux-small">Gross confirmed lock/unlock activity observed by the finalized indexer over 24h, priced in USD. Backfills are observations, not historical block times.</p>'+
-   '<span class="ux-ns-evidence">'+(partialReady?"Partially verified indexed evidence":
-    movementTotal==null?"Awaiting complete verified evidence":"Verified indexed evidence")+'</span>'+
-   totalMovedChart(safeMetrics)+
-   '<p class="ux-small">Cumulative confirmed escrow deposits and releases. Each increment is valued once at its first verified USD observation; no historical repricing.</p>'+
-   '</article></section>';
+  '<article class="ux-ns-card ux-ns-card-moved"><div class="ux-ns-card-head"><span class="ux-ns-card-icon">⇄</span><h2>Moved via XGR</h2></div>'+
+   '<div class="ux-ns-moved-metrics"><div class="ux-ns-moved-metric"><span>24h</span><strong>'+
+    esc(formatUsd(shownMovement))+'</strong>'+
+    (partialReady?'<small>Verified minimum</small>':'')+'</div>'+
+   '<div class="ux-ns-moved-metric"><span>Total moved TVL</span><strong>'+
+    esc(formatUsd(safeMetrics?.totalMoved?.status==="verified"?safeMetrics.totalMoved.totalUsd:null))+
+    '</strong></div></div>'+
+   totalMovedChart(safeMetrics)+'</article></section>';
 }
 
 function allianceIntro(){
