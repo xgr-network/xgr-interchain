@@ -144,7 +144,10 @@ export async function runTVL({interval=60000}={}){
    // Persist only snapshots whose COMPLETE TVL reconciles to verified vaults.
    // Retention, deduplication and monotone timestamps live in tvl-history.mjs.
    appendVerifiedTvlHistory(HISTORY,snap,catalog);
-   appendVerifiedMovedHistory(MOVED_HISTORY,snap,catalog,prices);
+   // Cumulative display persistence must not interrupt the existing live TVL
+   // or 24h index snapshots if the optional history file is unavailable.
+   try{appendVerifiedMovedHistory(MOVED_HISTORY,snap,catalog,prices);}
+   catch(e){console.error("[xita-tvl] total-moved history unavailable",String(e.message||e).slice(0,100));}
    // Do not expose unbounded per-operation raw values in the public evidence.
    const {lifetimeFlows:ignored,...publicSnap}=snap;
    atomic(RESULT,publicSnap);
