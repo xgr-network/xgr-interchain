@@ -578,9 +578,10 @@ test("TVL chart spreads actual short-window measurements across full plot",()=>{
  ]}};
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
  assert.match(html,/ux-ns-tvl-sparkline/);
- assert.doesNotMatch(html,/M8\.00 /,"short observation must not stretch across entire 24h");
+ assert.match(html,/M8\.00 /,"verified short window fills the chart viewport");
  assert.match(html,/L292\.00 /);
- assert.match(html,/Observed 5 min/);
+ assert.match(html,/Observed 5 min of 24h · partial history/);
+ assert.match(html,/09:55 UTC/,"x-axis must show the actual first observation");
  assert.match(html,/Last verified ·/);
 });
 test("24h delta uses final verified observations even if current snapshot unavailable",async()=>{
@@ -989,4 +990,18 @@ test("dashboard monetary metrics all use the same font and never wrap",()=>{
  assert.match(css,/font-family:var\(--xita-editorial\);font-style:normal;font-weight:700/);
  assert.match(css,/font-variant-numeric:lining-nums tabular-nums/);
  assert.match(css,/white-space:nowrap;overflow-wrap:normal/);
+});
+
+test("transiently older, persisted cumulative curve stays visible without inventing a current last point",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const old="2026-11-22T09:00:00Z",later="2026-11-22T09:05:00Z";
+ const metrics={totalMoved:{status:"verified",totalUsd:30380,asOf:later,
+  points:[{asOf:later,totalUsd:30380}],
+  reconstructed:{status:"verified",pricing:"current-reference-price",asOf:old,
+   points:[{asOf:"2026-11-20T09:00:00Z",totalUsd:30000},
+    {asOf:old,totalUsd:30378.46}]}}};
+ const html=renderDashboard(model,{},"ready",metrics);
+ assert.match(html,/Cumulative verified movement history/);
+ assert.match(html,/last verified 22 Nov/);
+ assert.match(html,/stroke-width="2.5"/);
 });
