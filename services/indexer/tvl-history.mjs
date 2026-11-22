@@ -20,18 +20,28 @@ export function verifiedTvlHistory(snapshot,catalog,oldHistory=null,{limit=6500}
  // route exists. Apply the same verified-route gate as the evidence producer.
  const assets=Object.keys(catalog?.assets||{}).filter(k=>isDeployedAsset(catalog.assets[k],catalog));
  const facts=assets.map(id=>verifiedMetrics(snapshot,id));
+ // Prefer a complete independently reconciled indexed TVL snapshot when it is
+ // the number currently displayed on the dashboard. Historical points are
+ // genuine observed snapshots, never interpolated or synthetic.
+ const indexed=snapshot?.indexedTvl?.kind==="xita-indexed-tvl-v1"&&
+  assets.length>0&&assets.every(id=>{
+   const p=snapshot.indexedTvl.positions?.[id];
+   return p?.assetId===catalog.assets[id].metadata?.assetId&&
+    Number.isFinite(p.lockedUsd)&&p.lockedUsd>=0;
+  });
  // No deployed routes: historical collateral belongs to the retired generation.
  if(!assets.length)return {kind:"xita-tvl-history-v1",schemaVersion:1,points:[]};
- if(facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
+ if(!indexed&&facts.some(f=>f?.lockedUsd==null))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(previous,Date.now())};
  const at=Date.parse(snapshot?.asOf);
  if(!Number.isFinite(at))return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
- const amount=facts.reduce((n,f)=>n+f.lockedUsd,0);
+ const values=assets.map((id,i)=>indexed?snapshot.indexedTvl.positions[id].lockedUsd:facts[i].lockedUsd);
+ const amount=values.reduce((n,v)=>n+v,0);
  // Never erase later observations if the clock regresses or an old snapshot is retried.
  if(previous.length&&at<=Date.parse(previous.at(-1).asOf))
   return {kind:"xita-tvl-history-v1",schemaVersion:1,points:previous.slice(-limit)};
  const points=previous.filter(p=>Date.parse(p.asOf)<at);
  // Snapshots are produced from independent escrow reconciliation, not browser claims.
- points.push({asOf:new Date(at).toISOString(),lockedUsd:amount,assets:Object.fromEntries(assets.map((id,i)=>[id,facts[i].lockedUsd]))});
+ points.push({asOf:new Date(at).toISOString(),lockedUsd:amount,assets:Object.fromEntries(assets.map((id,i)=>[id,values[i]]))});
  return {kind:"xita-tvl-history-v1",schemaVersion:1,points:compact(points,at)};
 }
 export function appendVerifiedTvlHistory(path,snapshot,catalog){
