@@ -17,6 +17,9 @@ const KNOWN_OPERATORS=Object.freeze({
  "arbitrum.gateway.tenderly.co":"Tenderly",
  "gateway.tenderly.co":"Tenderly",
  "optimism.gateway.tenderly.co":"Tenderly",
+ "earpc.xinfin.network":"XinFin",
+ "xdc.public-rpc.com":"XinFin",
+ "rpc.ankr.com":"Ankr",
  "rpc.xgr.network":"XGR RPC",
  "rpc2.xgr.network":"XGR RPC 2"
 });
@@ -47,7 +50,7 @@ const validNumber=n=>Number.isSafeInteger(n)&&n>0;
 const toNumber=v=>typeof v==="string"&&validHex.test(v)&&
  BigInt(v)<=BigInt(Number.MAX_SAFE_INTEGER)?Number(BigInt(v)):null;
 export function finalityTag(chainId){
- return chainId===56?"finalized":chainId===1643?"latest":"safe";
+ return (chainId===56||chainId===50)?"finalized":chainId===1643?"latest":"safe";
 }
 export function approvedRPC(url){
  try{

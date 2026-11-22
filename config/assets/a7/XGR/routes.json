@@ -45,6 +45,16 @@
       "name": "optimism_to_xgr",
       "sourceChain": "optimism",
       "destinationChain": "xgrchain"
+    },
+    {
+      "name": "xgr_to_xdc",
+      "sourceChain": "xgrchain",
+      "destinationChain": "xdc"
+    },
+    {
+      "name": "xdc_to_xgr",
+      "sourceChain": "xdc",
+      "destinationChain": "xgrchain"
     }
   ]
 }

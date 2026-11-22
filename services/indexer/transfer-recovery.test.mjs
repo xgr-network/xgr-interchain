@@ -340,3 +340,30 @@ test("BSC, Base, Arbitrum, Optimism share one source RPC retry gate",()=>{
   code:"PROOF_RPC_UNAVAILABLE",stage:"attested-only-discover-dispatch"
  },conf),false);
 });
+
+test("XGR to XDC retries destination transport failures without retrying a rejected quorum",async()=>{
+ const conf=resolveRecoveryRoute(fixture(),"xgr_to_base",hash("b"),"ABC",hash("a"));
+ conf.env.DESTINATION_CHAIN_ID="50";
+ conf.destinationRpcUrls=["https://xdc1.example.test","https://xdc2.example.test"];
+ const attempts=[];
+ const output=await runRecoveryProcess(conf,{runAttempt:async current=>{
+  attempts.push(current.env.DESTINATION_RPC_URL);
+  assert.equal(current.env.ORIGIN_RPC_URL,conf.env.ORIGIN_RPC_URL);
+  if(attempts.length===1)throw Object.assign(new Error("Destination RPC timed out"),{
+   code:"PROOF_TIMEOUT",stage:"destination-registry"
+  });
+  return {status:"READY_UNSIGNED_CALL"};
+ }});
+ assert.equal(output.status,"READY_UNSIGNED_CALL");
+ assert.deepEqual(attempts,conf.destinationRpcUrls);
+
+ let rejectedAttempts=0;
+ const rejection=Object.assign(new Error("Destination registry rejects current validator quorum"),{
+  code:"PROOF_DESTINATION_QUORUM_REJECTED",stage:"attested-only-verify-bonded-quorum"
+ });
+ await assert.rejects(runRecoveryProcess(conf,{runAttempt:async ()=>{
+  rejectedAttempts++;
+  throw rejection;
+ }}),rejection);
+ assert.equal(rejectedAttempts,1);
+});

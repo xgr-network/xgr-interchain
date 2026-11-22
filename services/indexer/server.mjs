@@ -200,10 +200,13 @@ export async function handler(req,res){
   // It must not depend on the mutable token catalog or market index.
   const script=existsSync(resolve(root,"runtime/native-relayer/recover-iln.mjs"));
   const ethers=existsSync(resolve(root,"runtime/native-relayer/node_modules/ethers/package.json"));
-  const configured=script&&ethers;
+  const proofSchemes=script&&ethers?
+   await import("../../runtime/native-relayer/xita-direct-codec.mjs").then(m=>m.DIRECT_PROOF_SCHEMES).catch(()=>null):null;
+  const configured=Array.isArray(proofSchemes);
   return send(configured?200:503,{ok:configured,
    proofBuilder:configured?"installed":"unavailable",
-   ...(configured?{}:{reason:!script?"recovery-script-missing":"ethers-package-missing"})});
+   ...(configured?{proofSchemes}:{}),
+   ...(configured?{}:{reason:!script?"recovery-script-missing":!ethers?"ethers-package-missing":"proof-codec-unavailable"})});
  }
  try{
   const catalog=JSON.parse(readFileSync(resolve(root,"apps/web/catalog.json"),"utf8"));

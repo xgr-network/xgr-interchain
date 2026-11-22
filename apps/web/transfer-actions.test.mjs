@@ -99,6 +99,18 @@ test("a documented route whose destination rejects its identity blocks a source 
  assert.deepEqual(sends,[],"No MetaMask operation, approval or lock before destination acceptance");
  assert.deepEqual(rpcCalls,["eth_chainId","eth_call"]);
 });
+test("ECDSA destination requires recovery support before any wallet operation",async()=>{
+ const c=catalog();
+ c.chains.base.signatureScheme="ecdsa";
+ await assert.rejects(()=>startTransfer({catalog:c,commercial:false,
+  account,asset:"XGR",source:"xgrchain",destination:"base",amount:"0.1",
+  provider:{request(){assert.fail("Early wallet operation");}},
+  fetcher:async url=>{
+   assert.equal(url,"/api/xeta/v1/transfer/health");
+   return {ok:true,json:async()=>({ok:true,proofBuilder:"installed",proofSchemes:["bls"]})};
+  }}),/Destination ECDSA recovery is not ready/);
+});
+
 test("destination inbound route verification binds exact canonical source chain, router and route ID",async()=>{
  const c=catalog(),route=deployedRoutes(c).find(r=>r.source==="xgrchain"&&r.destination==="base");
  assert.ok(route);
