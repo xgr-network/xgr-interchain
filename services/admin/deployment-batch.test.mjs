@@ -50,3 +50,18 @@ test("batch constructor inputs use destination approved and verified values",()=
  assert.deepEqual(chainDeploymentParameters("factory",{values:{sourceFeeWei:"10"}}),{sourceFeeWei:"10"});
  assert.deepEqual(chainDeploymentParameters("ism",{}),{});
 });
+
+test("XDC batch forwards the approved funded registry constructor values",()=>{
+ const readiness={chain:"xdc",evidenceVerified:true,verifiedValidatorCount:3,values:{
+  minimumReserveWei:"400000000000000000",
+  maxExecutorReimbursementWei:"80000000000000000",
+  perValidatorReserveWei:"800000000000000000"
+ }};
+ assert.deepEqual(chainDeploymentParameters("validatorRegistry",readiness),{
+  minimumWei:"400000000000000000",maxExecutorReimbursementWei:"80000000000000000",
+  perValidatorWei:"800000000000000000"
+ });
+ assert.throws(()=>chainDeploymentParameters("validatorRegistry",{
+  ...readiness,evidenceVerified:false
+ }),/fehlende Genesis-Proofs/);
+});
