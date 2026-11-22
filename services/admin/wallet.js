@@ -46,11 +46,25 @@ export function getWalletProvider(id = null) {
   return null;
 }
 
+async function deploymentWalletRequest(provider,method,params){
+  try {
+    return await provider.request({method,...(params ? {params} : {})});
+  } catch (error) {
+    const codes=[error?.code,error?.data?.originalError?.code];
+    if(!codes.some(code=>String(code)==="4100")&&
+       !/account and\/or method has not been authorized/i.test(error?.message||""))
+      throw error;
+    throw new Error("MetaMask-Berechtigung fehlt ("+method+"). Wallet im Admin neu verbinden, "+
+      "den Deployment-Account für diese Seite freigeben und das Zielnetz in MetaMask wählen.",
+      {cause:error});
+  }
+}
+
 export async function connectDeploymentWallet({providerId = null,onChange = null}={}) {
   walletsAvailable();
   const provider = getWalletProvider(providerId);
   if (!provider) throw Error("Keine EVM-Wallet gefunden. Bitte MetaMask oder eine EIP-1193 Wallet installieren.");
-  const accounts = await provider.request({method:"eth_requestAccounts"});
+  const accounts = await deploymentWalletRequest(provider,"eth_requestAccounts");
   const address = accounts?.[0];
   if (!ADDRESS.test(address || "")) throw Error("Keine gültige Wallet-Adresse verbunden");
   if (active && active !== provider) for (const item of listeners) {
@@ -65,15 +79,15 @@ export async function connectDeploymentWallet({providerId = null,onChange = null
       listeners.push({name,fn:emit});
     }
   }
-  return {address, chainId:Number(BigInt(await provider.request({method:"eth_chainId"})))};
+  return {address, chainId:Number(BigInt(await deploymentWalletRequest(provider,"eth_chainId")))};
 }
 
 export async function currentWalletState() {
   const provider=getWalletProvider();
   if (!provider) return null;
-  const accounts=await provider.request({method:"eth_accounts"});
+  const accounts=await deploymentWalletRequest(provider,"eth_accounts");
   if (!ADDRESS.test(accounts?.[0] || "")) return null;
-  const chainId=Number(BigInt(await provider.request({method:"eth_chainId"})));
+  const chainId=Number(BigInt(await deploymentWalletRequest(provider,"eth_chainId")));
   return {address:accounts[0],chainId};
 }
 
@@ -86,17 +100,17 @@ export async function switchDeploymentChain(chain) {
     throw Error("Chain ist nicht in GitHub main freigegeben");
   const chainId="0x"+chain.chainId.toString(16);
   try {
-    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId}]});
+    await deploymentWalletRequest(provider,"wallet_switchEthereumChain",[{chainId}]);
   } catch (e) {
     if (e?.code!==4902 && e?.data?.originalError?.code!==4902) throw e;
-    await provider.request({method:"wallet_addEthereumChain",params:[{
+    await deploymentWalletRequest(provider,"wallet_addEthereumChain",[{
       chainId,chainName:chain.name==="xgrchain"?"XGRChain":chain.name,
       nativeCurrency:chain.nativeCurrency,rpcUrls:chain.rpcUrls,
       ...(chain.explorer?{blockExplorerUrls:[chain.explorer]}:{})
-    }]});
-    await provider.request({method:"wallet_switchEthereumChain",params:[{chainId}]});
+    }]);
+    await deploymentWalletRequest(provider,"wallet_switchEthereumChain",[{chainId}]);
   }
-  const actual=BigInt(await provider.request({method:"eth_chainId"}));
+  const actual=BigInt(await deploymentWalletRequest(provider,"eth_chainId"));
   if (actual!==BigInt(chain.chainId)) throw Error("Wallet hat nicht auf die ausgewählte Chain gewechselt");
   return Number(actual);
 }
@@ -127,7 +141,7 @@ export async function broadcastDeploymentIntent(prepared){
   from:state.address,data:t.data,value:t.value,gas:t.gas,nonce:t.nonce,
   ...(t.to?{to:t.to}:{})
  };
- const txHash=await provider.request({method:"eth_sendTransaction",params:[tx]});
+ const txHash=await deploymentWalletRequest(provider,"eth_sendTransaction",[tx]);
  if(!/^0x[0-9a-f]{64}$/i.test(txHash||""))
   throw Error("Wallet did not return a valid transaction hash; intent remains locked");
  return txHash;
