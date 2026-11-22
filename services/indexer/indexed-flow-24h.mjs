@@ -41,3 +41,43 @@ export function indexedGrossFlow24h({descriptor,rows,coverage,price,now=Date.now
    inflowCount,outflowCount,movedUsd:value.lockedUsd,
    proofDigest:keccak256(JSON.stringify(proof.sort()))};
 }
+
+
+// Lifetime gross escrow throughput uses the SAME finalized SQL rows as the
+// 24-hour metric. No additional RPC or database query is needed.
+// We count canonical source deposits once and verified destination releases
+// once; synthetic-hop activity is not a second physical escrow movement.
+// Unknown historical timestamps are excluded rather than backdated to now.
+export function indexedGrossFlowLifetime({descriptor,rows,coverage}){
+ const unavailable=reason=>({status:"unavailable",reason});
+ if(descriptor?.status!=="ready"||!Array.isArray(rows)||coverage?.complete!==true)
+  return unavailable("indexed-flow-coverage-incomplete");
+ const routes=new Map(descriptor.escrowRoutes.map(r=>[r.source+":"+norm(r.routeId),r]));
+ const seen=new Set();
+ let incoming=0n,outgoing=0n,inflowCount=0,outflowCount=0;
+ for(const row of rows){
+  if(row.asset!==descriptor.asset||norm(row.asset_id)!==norm(descriptor.assetId)||
+    !UINT.test(String(row.amount_raw??""))||BigInt(row.amount_raw)<=0n||
+    !/^0x[0-9a-f]{64}$/i.test(row.message_id||"")||
+    !/^0x[0-9a-f]{64}$/i.test(row.source_block_hash||""))
+   return unavailable("invalid-indexed-operation");
+  const identity=row.source_chain+":"+norm(row.message_id);
+  if(seen.has(identity))return unavailable("duplicate-indexed-operation");
+  seen.add(identity);
+  const route=routes.get(row.source_chain+":"+norm(row.route_id));
+  if(!route||row.destination_chain!==route.destination||norm(row.gateway)!==norm(route.gateway))
+   return unavailable("unknown-escrow-route");
+  if(route.source===descriptor.chain){
+   if(Number.isFinite(Date.parse(row.source_block_at))){
+    incoming+=BigInt(row.amount_raw);inflowCount++;
+   }
+  }else if(route.destination===descriptor.chain){
+   if(row.delivered===true&&Number.isFinite(Date.parse(row.escrow_outflow_observed_at))){
+    outgoing+=BigInt(row.amount_raw);outflowCount++;
+   }
+  }else return unavailable("not-a-physical-escrow-route");
+ }
+ return {status:"verified",kind:"escrow-gross-lifetime-raw",assetId:descriptor.assetId,
+  grossRaw:(incoming+outgoing).toString(),inflowRaw:incoming.toString(),
+  outflowRaw:outgoing.toString(),inflowCount,outflowCount};
+}
