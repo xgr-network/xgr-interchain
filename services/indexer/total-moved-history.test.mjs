@@ -45,3 +45,12 @@ test("incomplete coverage and unknown events never invent a new total",()=>{
  assert.equal(fresh.status,"unavailable");
  assert.equal(fresh.totalUsd,null);
 });
+
+test("cumulative first snapshot becomes valid after an incomplete startup",()=>{
+ const pending=accumulateVerifiedMovement({asOf:new Date(now).toISOString()},
+  catalog,price(2),null,{now});
+ assert.equal(pending.status,"unavailable");
+ const ready=calc("1000000000000000000",2,pending,now+60000);
+ assert.equal(ready.status,"verified");
+ assert.equal(ready.totalUsd,2);
+});
