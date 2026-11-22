@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "kind": "xita-v315-deployment-receipt",
+  "network": "mainnet",
+  "approval": {
+    "ref": "main",
+    "sourceCommit": "d211bb0ee3509f4dadae1e18e0f7327ac505e76c"
+  },
+  "chain": "xdc",
+  "chainId": 50,
+  "domainId": 50,
+  "component": "executionGateway",
+  "asset": null,
+  "assetId": null,
+  "routeName": null,
+  "address": "0x504f241c1c177d811021f6412a0c2474d410ec99",
+  "runtimeCodeKeccak256": "0x71938624c92cb75dfc3f90a7fedaa389839da28c7d0f40888b6067272504fdd4",
+  "transactionHash": "0x31a2f9fd03a11470b3a8d89c2ec30592dfef864d90a140d8f184a13e3e07278a",
+  "blockNumber": 109627340,
+  "blockHash": "0x17dbd25aea40e2a532ececa310cbc09198c7b5404c25ceb348a791a8d388aee7",
+  "confirmations": 34,
+  "deployer": "0x6a6415aa1c945ee437336c136c2de9e8bab1f05e",
+  "provenance": {
+    "kind": "create"
+  },
+  "status": "onchain-deployment-verified",
+  "recordedAt": "2026-11-22T09:57:46.377Z"
+}
