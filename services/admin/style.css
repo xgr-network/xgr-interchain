@@ -219,3 +219,5 @@
 .analytics-ranking span{min-width:0;overflow-wrap:anywhere;color:#b4c9d9}
 .analytics-ranking strong{font-variant-numeric:tabular-nums;flex-shrink:0}
 @media(max-width:720px){.analytics-metrics{grid-template-columns:1fr}.analytics-columns{grid-template-columns:1fr}.analytics-kpi strong{font-size:26px}}
+
+.analytics-page-time{display:block;font-weight:500;color:var(--muted);font-size:10px;margin-top:5px;white-space:nowrap}
