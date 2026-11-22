@@ -12,11 +12,14 @@ const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa",signatu
 const infra=parts=>({name:"xdc",chainId:50,domainId:50,
  components:parts.map(([key,address])=>({key,address,status:"documented"})),hyperlane:{}});
 const artifact=component=>({component,creation:"0x"+"6000".repeat(80)});
-test("XDC V5 has approved Genesis values and awaits deployment evidence",()=>{
+test("XDC V5 approved Genesis values remain valid throughout receipt-backed deployment",()=>{
  const inv=approvedWorkInventory(root),xdc=inv.chains.find(x=>x.name==="xdc");
  assert.equal(xdc.chainId,50);
  const state=infrastructureInventory(root,[xdc])[0];
- assert.equal(state.status,"not-deployed");
+ const recorded=state.components.filter(part=>!part.optional&&part.status==="documented").length;
+ assert.equal(state.documented,recorded);
+ assert.equal(state.status,recorded===state.required?"documented":
+  recorded>0?"partial":"not-deployed");
  assert.equal(state.components.find(c=>c.key==="validatorRegistry").status,"not-deployed");
  const plan=bootstrapPlan(root,xdc);
  assert.equal(plan.ready,true);
