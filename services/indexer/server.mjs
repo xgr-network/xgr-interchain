@@ -347,7 +347,8 @@ export async function handler(req,res){
       p.movedWindowUsd>=points[i-1].movedWindowUsd))){
     reconstructedHistory={kind:reconstructed.kind,status:reconstructed.status,
      asOf:reconstructed.asOf,pricing:reconstructed.pricing,
-     unknownTime:reconstructed.unknownTime,
+     unknownTime:reconstructed.unknownTime,unknown24h:reconstructed.unknown24h,
+     windowDays:reconstructed.windowDays,
      points:points.map(p=>({asOf:p.asOf,lockedUsd:p.lockedUsd,
       movedWindowUsd:p.movedWindowUsd}))};
    }
