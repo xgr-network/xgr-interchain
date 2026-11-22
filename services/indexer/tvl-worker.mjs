@@ -92,10 +92,12 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
  const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[];
+ let expectedHistorical=0;
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
   const descriptor=escrowDescriptor(catalog,asset);
   if(descriptor.status!=="ready")continue;
+  expectedHistorical++;
   const price=snap.records?.[descriptor.coingeckoId];
   const position=indexedTvlPosition({catalog,descriptor,indexedRoutes:routes,...ledger,now});
   const indexed=priceEscrow(position,price,{now});
@@ -128,7 +130,8 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
    lifetimeFlows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
  return {...verifiedEvidence(catalog,proofs,now,flows),lifetimeFlows,
-  reconstructedHistory:combineEscrowHistory(historicalAssets,{now}),
+  reconstructedHistory:expectedHistorical===historicalAssets.length?
+   combineEscrowHistory(historicalAssets,{now}):{status:"unavailable",reason:"asset-history-incomplete"},
   indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};
 }
 function atomic(path,payload){
