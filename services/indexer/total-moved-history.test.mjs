@@ -63,6 +63,7 @@ test("last complete 24h number survives a later incomplete observation with time
    proofDigest:"0x"+"a".repeat(64),inflowRaw:"1000000000000000000",
    outflowRaw:"0",movedUsd:2}};
  const first=accumulateVerifiedMovement({...snap("1000000000000000000"),
+  kind:"xita-asset-metrics-v1",schemaVersion:1,
   assets:{XGR:valid24h}},catalog,price(2),null,{now});
  assert.equal(first.lastVerified24h.movedUsd,2);
  assert.equal(first.lastVerified24h.asOf,new Date(now).toISOString());
