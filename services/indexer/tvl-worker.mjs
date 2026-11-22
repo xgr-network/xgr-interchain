@@ -8,12 +8,14 @@ import {transferReaderPool} from "./transfer-index-store.mjs";
 import {getCoinGeckoPrices} from "./coingecko.mjs";
 import {escrowDescriptor,indexedTvlPosition,reconcileEscrow,priceEscrow,verifiedEvidence} from "./tvl-verifier.mjs";
 import {verifiedTvlHistory,appendVerifiedTvlHistory} from "./tvl-history.mjs";
-import {indexedGrossFlow24h} from "./indexed-flow-24h.mjs";
+import {indexedGrossFlow24h,indexedGrossFlowLifetime} from "./indexed-flow-24h.mjs";
+import {appendVerifiedMovedHistory} from "./total-moved-history.mjs";
 import {routeIndexCoverage} from "./transfer-index-store.mjs";
 
 const ROOT=resolve(fileURLToPath(new URL("../..",import.meta.url)));
 const RESULT=process.env.XITA_METRICS_EVIDENCE||"/var/lib/xita/verified-tvl.json";
 const HISTORY=process.env.XITA_TVL_HISTORY||"/var/lib/xita/verified-tvl-history.json";
+const MOVED_HISTORY=process.env.XITA_TOTAL_MOVED_HISTORY||"/var/lib/xita/verified-total-moved-history.json";
 const WORD=/^0x[0-9a-f]{64}$/i, HEX=/^0x[0-9a-f]+$/i;
 const ERC20_BALANCE="0x70a08231", ERC20_DECIMALS="0x313ce567",ROUTER_TOKEN="0xfc0c546a",NATIVE_PENDING="0x"; // computed via selector below
 import {selector} from "../../apps/web/keccak.js";
@@ -88,7 +90,7 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 }
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
- const routes=indexedRoutes(catalog),proofs={},flows={},positions={};
+ const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={};
  const names=Object.keys(catalog.assets||{});
  for(const asset of names)try{
   const descriptor=escrowDescriptor(catalog,asset);
@@ -118,9 +120,11 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
        (source_chain=$2 OR destination_chain=$2)`,values:[asset,descriptor.chain]});
    flows[asset]=indexedGrossFlow24h({descriptor,rows:events.rows,coverage,
      price:snap.records?.[descriptor.coingeckoId],now});
-  }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
+   lifetimeFlows[asset]=indexedGrossFlowLifetime({descriptor,rows:events.rows,coverage});
+  }catch(e){flows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};
+   lifetimeFlows[asset]={status:"unavailable",reason:"indexed-flow-read-unavailable"};}
  }catch(e){proofs[asset]={status:"unavailable",reason:"read-or-verification-error"};}
- return {...verifiedEvidence(catalog,proofs,now,flows),
+ return {...verifiedEvidence(catalog,proofs,now,flows),lifetimeFlows,
   indexedTvl:{kind:"xita-indexed-tvl-v1",positions}};
 }
 function atomic(path,payload){
@@ -135,11 +139,18 @@ export async function runTVL({interval=60000}={}){
  while(run){
   try{
    const catalog=JSON.parse(readFileSync(resolve(ROOT,"apps/web/catalog.json"),"utf8"));
-   const snap=await tvlSnapshot({catalog,pool});
+   const prices=await getCoinGeckoPrices(catalog);
+   const snap=await tvlSnapshot({catalog,pool,prices:async()=>prices});
    // Persist only snapshots whose COMPLETE TVL reconciles to verified vaults.
    // Retention, deduplication and monotone timestamps live in tvl-history.mjs.
-   const history=appendVerifiedTvlHistory(HISTORY,snap,catalog);
-   atomic(RESULT,snap);
+   appendVerifiedTvlHistory(HISTORY,snap,catalog);
+   // Cumulative display persistence must not interrupt the existing live TVL
+   // or 24h index snapshots if the optional history file is unavailable.
+   try{appendVerifiedMovedHistory(MOVED_HISTORY,snap,catalog,prices);}
+   catch(e){console.error("[xita-tvl] total-moved history unavailable",String(e.message||e).slice(0,100));}
+   // Do not expose unbounded per-operation raw values in the public evidence.
+   const {lifetimeFlows:ignored,...publicSnap}=snap;
+   atomic(RESULT,publicSnap);
    console.log("[xita-tvl] verified assets:",Object.keys(snap.assets).join(",")||"none");
   }catch(e){
    if(existsSync(RESULT))unlinkSync(RESULT);

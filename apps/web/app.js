@@ -1839,6 +1839,22 @@ el.addEventListener("submit",event=>{
   event.preventDefault();void runProfile("submit");
  }
 });
+// Dashboard history tabs are local presentation state: no fetch, RPC or scan.
+el.addEventListener("click",event=>{
+ const tab=event.target.closest("[data-tvl-period]");
+ if(!tab||path()!=="/")return;
+ const period=tab.dataset.tvlPeriod;
+ if(!["24h","7d","30d"].includes(period)||state.experience.tvlPeriod===period)return;
+ state.experience.tvlPeriod=period;
+ // Replace only the TVL card. Rebuilding the 3D universe would be expensive.
+ const current=el.querySelector(".ux-ns-card-tvl");
+ if(!current)return;
+ const model=buildExperienceModel(publicCatalog());
+ const fragment=document.createElement("div");
+ fragment.innerHTML=renderDashboard(model,state.experience,state.apiState,state.leaderboard,publicCatalog(),walletGasView());
+ const updated=fragment.querySelector(".ux-ns-card-tvl");
+ if(updated)current.replaceWith(updated);
+});
 el.addEventListener("click",event=>{
  const entry=event.target.closest("[data-join-entry]");
  if(entry&&path()==="/join"){
@@ -2100,6 +2116,23 @@ async function loadLeaderboard(){
  // Do not disrupt an active wallet flow, chart interaction or token search.
  const page=path();
  if((!previous||improved)&&(page==="/"||page==="/markets"&&!document.activeElement?.closest(".ux-leader-toolbar")))render();
+ else if(page==="/"&&previous){
+  // Keep both read-only charts fresh without remounting WebGL or issuing any
+  // extra metric/chain requests. The existing 60s fetch supplied these values.
+  const changed=previous.history?.points?.at(-1)?.asOf!==body.history?.points?.at(-1)?.asOf||
+   previous.totalMoved?.asOf!==body.totalMoved?.asOf||
+   previous.totals?.movedUsd!==body.totals?.movedUsd||
+   previous.indexedTvl?.lockedUsd!==body.indexedTvl?.lockedUsd;
+  if(changed){
+   const model=buildExperienceModel(publicCatalog(),()=>false);
+   const fragment=document.createElement("div");
+   fragment.innerHTML=renderDashboard(model,state.experience,state.apiState,body,publicCatalog(),walletGasView());
+   for(const cls of [".ux-ns-card-tvl",".ux-ns-card-moved"]){
+    const original=el.querySelector(cls),updated=fragment.querySelector(cls);
+    if(original&&updated)original.replaceWith(updated);
+   }
+  }
+ }
  if(path()==="/universe"){
   const details=document.querySelector("#ux-selected-details");
   if(details){const model=buildExperienceModel(publicCatalog(),()=>false);
