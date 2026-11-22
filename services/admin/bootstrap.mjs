@@ -37,22 +37,13 @@ export function bootstrapPlan(root,chain){
     cfg.destinationDomain!==chain.domainId||cfg.membershipOriginChainId!==1643||
     cfg.verifierFormat!==chain.blsVerifierFormat)
   throw Error("Validator bootstrap manifest identity mismatch: "+chain.name);
- if(chain.blsVerifierFormat==="ecdsa"){
-  if(chain.chainId!==50||chain.domainId!==50||
-     cfg.validatorSource!=="explicit-destination-genesis"||
-     cfg.sourceFee?.governance!=="validator-ecdsa-quorum")
-   throw Error("Invalid XDC ECDSA destination bootstrap");
-  // No default validator roster, signing permission or economic parameters.
-  // No wallet deployment until explicit, independently reviewed genesis.
-  return {chain:chain.name,chainId:50,domainId:50,validatorCount:0,
-   expectedValidatorCount:0,initialValidators:[],setId:null,ready:false,
-   missing:["XDC destination genesis validators and public validator.key proofs not approved",
-    "XDC minimum reserve, executor cap, per-validator reserve and source fee not approved"],
-   reserveWei:null,reserve:cfg.reserve,proposedFeeWei:cfg.sourceFee.targetWei,
-   verifierAddress:null,feeGovernance:cfg.sourceFee.governance,
-   feeInitialization:cfg.sourceFee.initialization};
- }
+ const ecdsa=chain.blsVerifierFormat==="ecdsa";
+ if(ecdsa&&(chain.name!=="xdc"||chain.chainId!==50||chain.domainId!==50||
+    cfg.validatorSource!=="explicit-destination-genesis"||
+    cfg.genesisValidatorManifest!=="config/validators/xdc.json"))
+  throw Error("Invalid XDC ECDSA destination bootstrap");
  const expected=approvedValidatorSet(root,cfg).validators;
+ if(ecdsa&&expected.length>64)throw Error("XDC Genesis exceeds Registry V5 capacity");
  const snapshot=cfg.validatorSnapshot||{},validators=snapshot.validators||[];
  if(validators.length && (validators.length!==expected.length ||
     validators.some((v,i)=>v.address?.toLowerCase()!==expected[i].toLowerCase())))
@@ -60,7 +51,16 @@ export function bootstrapPlan(root,chain){
  if(!Array.isArray(validators))throw Error("Invalid validator snapshot");
  const seen=new Set(),keys=new Set();
  for(const v of validators){
-  const address=v.address?.toLowerCase(),key=v.blsPublicKeyCompressed?.toLowerCase();
+  const address=v.address?.toLowerCase();
+  if(ecdsa){
+   if(!addr(address)||seen.has(address)||v.ecdsaSigner?.toLowerCase()!==address||
+      !/^0x[0-9a-f]{130}$/i.test(v.possessionProof||"")||
+      v.originChainId!==1643||v.destinationDomain!==chain.domainId)
+    throw Error("Invalid or duplicated XDC Genesis proof");
+   seen.add(address);
+   continue;
+  }
+  const key=v.blsPublicKeyCompressed?.toLowerCase();
   if(!addr(address)||seen.has(address)||typeof key!=="string"||
      !/^0x[a-f0-9]{96}$/.test(key)||
      !/^0x[a-f0-9]{256}$/i.test(v.blsPublicKeyEIP2537||"")||
@@ -82,7 +82,7 @@ export function bootstrapPlan(root,chain){
   BigInt(reserve.minimumWei)>=BigInt(reserve.maxExecutorReimbursementWei)&&
   BigInt(reserve.perValidatorWei)>=BigInt(reserve.minimumWei)&&uint(fee.targetWei)&&
   fee.initialization==="factory-constructor-no-quorum"&&
-  fee.governance==="validator-bls-quorum"&&Number.isInteger(fee.ttlSeconds)&&
+  fee.governance===(ecdsa?"validator-ecdsa-quorum":"validator-bls-quorum")&&Number.isInteger(fee.ttlSeconds)&&
   fee.ttlSeconds>=1&&fee.ttlSeconds<=600;
  const missing=[];
  if(!complete&&(!uint(reserve.minimumWei)||!uint(reserve.maxExecutorReimbursementWei)||!uint(reserve.perValidatorWei)))
@@ -101,24 +101,6 @@ export function bootstrapPlan(root,chain){
 export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}={}){
  const chain=chains.find(c=>c.name===plan.chain);
  if(!chain)throw Error("Unknown chain");
- if(chain.blsVerifierFormat==="ecdsa"){
-  const obs=infrastructure.find(c=>c.name===plan.chain);
-  const registry=obs?.components.find(x=>x.key==="validatorRegistry")?.address;
-  const sourceRegistry=obs?.components.find(x=>x.key==="sourceRegistry")?.address;
-  let setId=null,threshold=null;
-  if(registry){
-   const url=chain.rpcUrls[0];
-   const [d,s,t]=await Promise.all([
-    abiView(rpc,url,registry,"destinationDomain()"),
-    abiView(rpc,url,registry,"setId()"),
-    abiView(rpc,url,registry,"quorumThreshold()")]);
-   if(decodeUint(d)!==50n)throw Error("XDC registry domain mismatch");
-   setId=decodeUint(s).toString();threshold=decodeUint(t).toString();
-  }
-  return {...plan,validatorRegistry:registry,sourceRegistry,verified:false,
-   validatorSetId:setId,quorumThreshold:threshold,liveValidatorReservesWei:{},
-   missing:["ECDSA-Signer- und Quorum-Freigabe ausstehend"]};
- }
  const url=chain.rpcUrls?.[0];
  if(!url?.startsWith("https://"))throw Error("No HTTPS RPC");
  const observed=infrastructure.find(c=>c.name===plan.chain);
@@ -160,7 +142,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
    result.liveValidatorReservesWei[address]=BigInt("0x"+detail.slice(130,194)).toString();
   }
   result.validatorCountOnChain=plan.initialValidators.length;
- }else result.missing.push("ValidatorRegistry V3 noch nicht deployed");
+ }else result.missing.push("ValidatorRegistry noch nicht deployed");
  const factory=observed?.components.find(c=>c.key==="factory")?.address;
  if(factory){
   const initialFee=await abiView(rpc,url,factory,"initialSourceFeeWei()");
@@ -176,7 +158,7 @@ export async function readLiveBootstrap(plan,infrastructure,chains,{rpc=rpcCall}
   result.feeNonce=decodeUint(nonce).toString();
   if(result.feeWei==="0")result.missing.push("Source-Chain-Initialgebühr fehlt");
   // The main manifest pins ONLY the constructor's INITIAL fee. Later fee
-  // changes are BLS-quorum governed and must never be treated as a drift bug.
+  // changes are quorum governed and must never be treated as a drift bug.
   result.feeOrigin=result.feeNonce==="0"?"initial-constructor":"onchain-governance";
   if(result.feeNonce==="0"&&result.liveFactoryInitialFeeWei&&
      result.feeWei!==result.liveFactoryInitialFeeWei)

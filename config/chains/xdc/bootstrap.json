@@ -12,15 +12,15 @@
     "validators": []
   },
   "reserve": {
-    "minimumWei": null,
-    "maxExecutorReimbursementWei": null,
-    "perValidatorWei": null
+    "minimumWei": "400000000000000000",
+    "maxExecutorReimbursementWei": "80000000000000000",
+    "perValidatorWei": "800000000000000000"
   },
   "sourceFee": {
-    "targetWei": null,
+    "targetWei": "8000000000000000",
     "governance": "validator-ecdsa-quorum",
     "ttlSeconds": 300,
     "initialization": "factory-constructor-no-quorum"
   },
-  "genesisValidatorManifest": null
+  "genesisValidatorManifest": "config/validators/xdc.json"
 }

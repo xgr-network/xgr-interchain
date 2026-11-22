@@ -8,20 +8,20 @@ import {encodeAbi} from "./abi-encoder.mjs";
 import {bootstrapPlan} from "./bootstrap.mjs";
 const root=new URL("../../",import.meta.url).pathname;
 const a=n=>"0x"+BigInt(n).toString(16).padStart(40,"0");
-const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa"};
+const chain={name:"xdc",chainId:50,domainId:50,blsVerifierFormat:"ecdsa",signatureScheme:"ecdsa"};
 const infra=parts=>({name:"xdc",chainId:50,domainId:50,
  components:parts.map(([key,address])=>({key,address,status:"documented"})),hyperlane:{}});
 const artifact=component=>({component,creation:"0x"+"6000".repeat(80)});
-test("XDC V5 has no infrastructure or authorized genesis before explicit opt-in",()=>{
+test("XDC V5 has approved Genesis values and awaits deployment evidence",()=>{
  const inv=approvedWorkInventory(root),xdc=inv.chains.find(x=>x.name==="xdc");
  assert.equal(xdc.chainId,50);
  const state=infrastructureInventory(root,[xdc])[0];
  assert.equal(state.status,"not-deployed");
  assert.equal(state.components.find(c=>c.key==="validatorRegistry").status,"not-deployed");
  const plan=bootstrapPlan(root,xdc);
- assert.equal(plan.ready,false);
- assert.deepEqual(plan.initialValidators,[]);
- assert.equal(plan.reserveWei,null);
+ assert.equal(plan.ready,true);
+ assert.equal(plan.initialValidators.length,3);
+ assert.equal(plan.reserveWei,"2400000000000000000");
 });
 test("XDC V5 requires positive native reserve and executor cap",()=>{
  const p={minimumWei:"10000",maxExecutorReimbursementWei:"1000",perValidatorWei:"20000"};

@@ -21,6 +21,7 @@ import {recoverBeforeWalletSignature} from "./deployment-retry.mjs";
 import {publishDeploymentBatch,deploymentReceiptPath,DeploymentConfirmationsPendingError} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {deploymentParameters} from "./deployment-parameters.mjs";
+import {chainContractProfile,chainArtifactKey,assertChainArtifact} from "./chain-contract-profile.mjs";
 import {queueDeploymentSync} from "./deployment-auto-sync.mjs";
 import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
 
@@ -30,9 +31,10 @@ const nonceWord=s=>{
  return s.toLowerCase();
 };
 const chosenArtifact=(built,chain,component)=>{
- const key=chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"xdcValidatorRegistry":
-  chain.blsVerifierFormat==="ecdsa"&&component==="ism"?"xdcIsm":component;
- return built.artifacts?.[key];
+ const key=chainArtifactKey(chain,component);
+ const artifact=built.artifacts?.[key];
+ assertChainArtifact(chain,component,artifact);
+ return artifact;
 };
 const eq=(a,b)=>String(a||"").toLowerCase()===String(b||"").toLowerCase();
 export function createChainOperator({
@@ -47,51 +49,68 @@ export function createChainOperator({
   const all=inventory();
   const chain=all.chains.find(c=>c.name===chainName);
   if(!chain)throw Error("Chain absent from current GitHub main");
-  // Unreviewed XDC signing/Genesis/reserve inputs must never reach a wallet.
-  // The approved destination-specific V5 admission path will be enabled only
-  // after economic parameters, public PoP and node quorum are verified.
-  if(chain.blsVerifierFormat==="ecdsa")
-   throw Error("XDC ECDSA V5 wallet deployment disabled until approved chain-local validators, proofs and reserve parameters");
   const infrastructure=infrastructureInventory(root,[chain])[0];
   const bootstrap=bootstrapPlan(root,chain);
   return {commit,inventory:all,chain,infrastructure,bootstrap};
  }
- async function requireVersionThree(chain,infrastructure,component){
+ async function requireDestinationRegistry(chain,infrastructure,component){
+  const profile=chainContractProfile(chain);
   if(component==="validatorRegistry" || component==="blsVerifier"||component==="ecdsaVerifier")return;
   const registry=infrastructure.components.find(p=>p.key==="validatorRegistry")?.address;
-  if(!registry)throw Error("Verified ValidatorRegistry V3 required before further deployment");
-  // Fail closed until the currently configured V3 is verified on chain.
+  if(!registry)throw Error("Verified "+profile.registryContract+" required before dependent deployment");
   const {selector}=await import("../../apps/web/keccak.mjs");
-  let version;
+  const read=async function(signature){
+   const value=await rpc(chain.rpcUrls[0],"eth_call",[
+    {to:registry,data:selector(signature)},"latest"]);
+   if(typeof value!=="string"||!/^0x[0-9a-f]{64}$/i.test(value))
+    throw Error("Invalid destination registry getter: "+signature);
+   return BigInt(value);
+  };
   try{
-   version=await rpc(chain.rpcUrls[0],"eth_call",[
-    {to:registry,data:selector("registryVersion()")},"latest"]);
-  }catch{
-   throw Error("ValidatorRegistry V3 verification failed; do not sign");
+   const [version,format,domain,origin]=await Promise.all([
+    read("registryVersion()"),read("verifierKeyFormat()"),
+    read("destinationDomain()"),read("originChainId()")
+   ]);
+   if(version!==BigInt(profile.registryVersion)||format!==BigInt(profile.keyFormat)||
+      domain!==BigInt(chain.domainId)||origin!==1643n)
+    throw Error("Registry version, cryptography, destination domain or origin mismatch");
+  }catch(error){
+   throw Error("Destination "+profile.registryContract+" identity verification failed; do not sign: "+
+    String(error?.message||error));
   }
-  if(typeof version!=="string"||!/^0x[0-9a-f]{64}$/i.test(version)||
-     BigInt(version)!==3n)
-   throw Error("ValidatorRegistry V3 not verified on chain; no dependent deployment");
+ }
+ function constructorParameters(chain,component,bootstrap,parameters){
+  const profile=chainContractProfile(chain);
+  const values=deploymentParameters(component,parameters,{scheme:profile.scheme});
+  if(profile.scheme==="ecdsa"){
+   const expected=component==="validatorRegistry"?bootstrap.reserve:
+    component==="factory"?{sourceFeeWei:bootstrap.proposedFeeWei}:{};
+   if(Object.entries(expected).some(([key,value])=>values[key]!==value))
+    throw Error("XDC constructor parameters differ from approved Genesis configuration");
+  }
+  return values;
+ }
+ async function deploymentBootstrap({all,chain,bootstrap,component}){
+  const ecdsa=chain.blsVerifierFormat==="ecdsa";
+  if(component!=="validatorRegistry"&&(!ecdsa||component!=="ecdsaVerifier"))return bootstrap;
+  const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
+   baseDir:publicEvidenceDir,mainCurrent:true,rpc});
+  if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
+     !readiness.verifiedSnapshot?.validators?.length||(ecdsa&&!readiness.bootstrapReady))
+   throw Error("Destination Genesis proofs or approved parameters not verified: "+
+    (readiness.evidenceError||readiness.missing.join(", ")));
+  return {...bootstrap,validatorSnapshot:readiness.verifiedSnapshot};
  }
  async function preview({chain:chainName,component,wallet,parameters={}}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName,{previewOnly:true});
-  await requireVersionThree(chain,infrastructure,component);
-  const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
+  await requireDestinationRegistry(chain,infrastructure,component);
+  const values=constructorParameters(chain,component,bootstrap,parameters);
   if(infrastructure.components.some(p=>p.key===component&&p.status==="documented"))
    throw Error("Component already documented in GitHub");
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
-  let verified=bootstrap;
-  if(component==="validatorRegistry"){
-   const readiness=await readDeploymentReadiness({root,chain,inventory:all,boot:bootstrap,
-     baseDir:publicEvidenceDir,mainCurrent:true,rpc});
-   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
-      !readiness.verifiedSnapshot?.validators?.length)
-    throw Error("Destination Genesis BLS proofs not verified");
-   verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
-    validatorSnapshot:readiness.verifiedSnapshot};
-  }
+  const verified=await deploymentBootstrap({all,chain,bootstrap,component});
   const compiled=await build(root,commit);
   const artifact=chosenArtifact(compiled,chain,component);
   const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact});
@@ -110,7 +129,7 @@ export function createChainOperator({
  async function prepare({chain:chainName,component,wallet,parameters={},forceRetry=true}){
   if(!ADDRESS.test(wallet||""))throw Error("Connect a valid EIP-1193 wallet");
   const {commit,inventory:all,chain,infrastructure,bootstrap}=await approved(chainName);
-  await requireVersionThree(chain,infrastructure,component);
+  await requireDestinationRegistry(chain,infrastructure,component);
   const journal=journals(all.chains);
   if(component==="sourceRegistry"&&!forceRetry){
    const recovered=await resume({chain:chainName,component});
@@ -122,19 +141,8 @@ export function createChainOperator({
   const preflight=await inspectConfiguredChain({chain,core:infrastructure.hyperlane,rpc,
    bootstrap});
   if(!preflight.basicRpcPreflightOK)throw Error("Chain "+chain.name+" preflight failed: "+String(preflight.error||"RPC check failed").slice(0,240));
-  const values=deploymentParameters(component,parameters,{scheme:chain.blsVerifierFormat==="ecdsa"&&component==="validatorRegistry"?"ecdsa":"bls"});
-  let verified=bootstrap;
-  if(component==="validatorRegistry"){
-   const readiness=await readDeploymentReadiness({
-    root,chain,inventory:all,boot:bootstrap,baseDir:publicEvidenceDir,
-    mainCurrent:true,rpc
-   });
-   if(!readiness.evidenceVerified||readiness.verifiedValidatorCount!==bootstrap.initialValidators.length||
-      !readiness.verifiedSnapshot?.validators?.length)
-    throw Error("Destination Genesis BLS proofs not verified");
-   verified={...bootstrap,validatorCount:bootstrap.initialValidators.length,expectedValidatorCount:bootstrap.initialValidators.length,
-     validatorSnapshot:readiness.verifiedSnapshot};
-  }
+  const values=constructorParameters(chain,component,bootstrap,parameters);
+  const verified=await deploymentBootstrap({all,chain,bootstrap,component});
   const artifacts=await build(root,commit);
   const artifact=chosenArtifact(artifacts,chain,component);
   const draft=chainDraft({root,chain,infrastructure,bootstrap:verified,component,parameters:values,artifact});

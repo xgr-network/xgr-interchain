@@ -138,6 +138,7 @@ test("Base Registry V3 checks initial reserve per validator against signed value
  const responses=new Map(Object.entries({
   "originChainId()":word(1643),"destinationDomain()":word(8453),
   "verifier()":word(BigInt(addr(55))),"verifierKeyFormat()":word(2),
+  "registryVersion()":word(3),
   "setId()":word(1),"minimumDeactivationReserveWei()":word(1000),
   "maxExecutorReimbursementWei()":word(500),"quorumThreshold()":word(2)
  }).map(([s,v])=>[selector(s),v]));

@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {rpcCall} from "./inspector.mjs";
 import {loadChainDeployment} from "../../tools/manifest-layout.mjs";
+import {chainContractProfile} from "./chain-contract-profile.mjs";
 const ADDRESS=/^0x[0-9a-f]{40}$/i;
 const CODE=/^0x(?:[a-f0-9]{2})+$/i;
 const executableParts=["validatorRegistry","ism","transportBundle","nativeRouterDeployer","syntheticRouterDeployer","collateralRouterDeployer","factory","sourceRegistry"];
@@ -23,9 +24,8 @@ export function infrastructureInventory(root,chains) {
   // No historical mailbox/hook or config-supplied address counts as deployment proof.
   const core=freshTransport?{mailbox:verified.mailbox.address,dispatchHook:verified.dispatchHook.address,
    requiredHook:verified.requiredHook.address,transportBundle:verified.transportBundle.address}:{};
-  if(!["compressed","eip2537","ecdsa"].includes(c.blsVerifierFormat))
-   throw Error("Unsupported configured verifier format: "+c.name);
-  const requiredParts=c.blsVerifierFormat==="compressed"?executableParts:[c.blsVerifierFormat==="ecdsa"?"ecdsaVerifier":"blsVerifier",...executableParts];
+  const profile=chainContractProfile(c);
+  const requiredParts=profile.verifierComponent?[profile.verifierComponent,...executableParts]:executableParts;
   const components=[...requiredParts,...optionalParts].map(key=>{
    const ready=valid(key)&&(key!=="transportBundle"||freshTransport);
    return {key,address:ready?verified[key].address:null,status:ready?"documented":"not-deployed",

@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import {readDeploymentReadiness} from "./deployment-readiness.mjs";
+import {bootstrapPlan} from "./bootstrap.mjs";
+import {keccak256} from "../../apps/web/keccak.mjs";
 test("readiness fails closed and never authorizes wallet execution when evidence is absent",async()=>{
  const root=mkdtempSync(join(tmpdir(),"xita-readiness-"));
  try{
@@ -115,4 +117,54 @@ test("Base Registry is ready from pinned Genesis and target BLS PoPs with NO ori
   assert.equal(result.transactionSimulation,"requires-verified-artifact-and-gas-estimation");
   assert.ok(!result.missing.some(v=>v.includes("manual snapshot")));
  }finally{rmSync(root,{recursive:true,force:true})}
+});
+
+test("XDC shares the Genesis file pipeline and fails closed on invalid proofs",async()=>{
+ const root=resolve(import.meta.dirname,"../..");
+ const chain=JSON.parse(readFileSync(join(root,"config/chains/xdc/chain.json")));
+ const inventory={chains:[chain,{chainId:1643}]};
+ const boot=bootstrapPlan(root,chain);
+ const baseDir=mkdtempSync(join(tmpdir(),"xdc-genesis-"));
+ try{
+  mkdirSync(join(baseDir,"xdc"));
+  const recoveries=new Map();
+  for(const [index,address] of boot.initialValidators.entries()){
+   const validator=address.toLowerCase();
+   const payload=Buffer.concat([Buffer.from("XITA_ECDSA_BOOTSTRAP_V2"),
+    Buffer.from("000000000000066b00000032"+validator.slice(2),"hex")]);
+   const scalar=(index+1).toString(16).padStart(64,"0");
+   const possessionProof="0x"+scalar+scalar+"1b";
+   const digest=keccak256(payload);
+   recoveries.set(digest+"1b".padStart(64,"0")+scalar+scalar,
+    "0x"+validator.slice(2).padStart(64,"0"));
+   writeFileSync(join(baseDir,"xdc","validator-"+(index+1)+".txt"),JSON.stringify({
+    validator,ecdsaSigner:validator,signatureScheme:"ecdsa",originChainId:1643,
+    destinationDomain:50,payload:"0x"+payload.toString("hex"),possessionProof
+   }));
+  }
+  const rpc=async(url,method,params)=>{
+   assert.equal(url,chain.rpcUrls[0]);
+   if(method==="eth_chainId")return "0x32";
+   assert.equal(method,"eth_call");
+   assert.equal(params[0].to,"0x"+"1".padStart(40,"0"));
+   return recoveries.get(params[0].data)||"0x";
+  };
+  const input={root,chain,inventory,boot,baseDir,mainCurrent:true,rpc};
+  const ready=await readDeploymentReadiness(input);
+  assert.equal(ready.bootstrapReady,true);
+  assert.equal(ready.verifiedValidatorCount,3);
+  assert.deepEqual(ready.verifiedSnapshot.validators.map(v=>v.address),boot.initialValidators);
+  assert.deepEqual(ready.values,{minimumReserveWei:"400000000000000000",
+   maxExecutorReimbursementWei:"80000000000000000",perValidatorReserveWei:"800000000000000000",
+   sourceFeeWei:"8000000000000000"});
+
+  recoveries.delete(recoveries.keys().next().value);
+  const invalid=await readDeploymentReadiness(input);
+  assert.equal(invalid.bootstrapReady,false);
+  assert.match(invalid.evidenceError,/rejected by destination verifier/);
+  rmSync(join(baseDir,"xdc","validator-3.txt"));
+  const missing=await readDeploymentReadiness(input);
+  assert.equal(missing.bootstrapReady,false);
+  assert.match(missing.evidenceError,/Zielchain-Validator-Nachweis 3/);
+ }finally{rmSync(baseDir,{recursive:true,force:true});}
 });

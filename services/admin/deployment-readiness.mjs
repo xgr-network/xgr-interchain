@@ -39,10 +39,11 @@ export async function verifiedRuntime(record,chain,rpc){
  return record.address;
 }
 
-function sameEvidence(a,b,expected){
+function sameEvidence(a,b,expected,format){
  if(!Array.isArray(a?.validators)||a.validators.length!==expected.length||
     !Array.isArray(b?.validators)||b.validators.length!==expected.length)return false;
- const fields=["address","blsPublicKeyCompressed","blsPublicKeyEIP2537","possessionProof"];
+ const fields=["address","possessionProof",...(format==="ecdsa"?
+  ["ecdsaSigner"]:["blsPublicKeyCompressed","blsPublicKeyEIP2537"])];
  return expected.every((address,i)=>fields.every(field=>
   equal(a.validators[i]?.[field],b.validators[i]?.[field]))&&
   equal(a.validators[i]?.address,address)&&
@@ -55,20 +56,6 @@ export async function readDeploymentReadiness({
 }){
  if(!safeChain(chain?.name)||!inventory?.chains?.some(c=>c.name===chain.name&&c.chainId===chain.chainId))
   throw Error("Chain is not in approved GitHub inventory");
- if(chain.blsVerifierFormat==="ecdsa"){
-  if(chain.chainId!==50||chain.domainId!==50)throw Error("Invalid XDC mainnet");
-  const cfg=loadJSON(join(root,chainBootstrapPath(chain.name)));
-  return {chain:chain.name,chainId:50,mode:"read-only",mainCurrent:Boolean(mainCurrent),
-   evidenceVerified:false,verifiedValidatorCount:0,
-   originSnapshotBlock:null,verifiedSnapshot:null,
-   bootstrapReady:false,deploymentExecutable:false,
-   values:{sourceFeeWei:cfg.sourceFee?.targetWei??null,
-    minimumReserveWei:cfg.reserve?.minimumWei??null,
-    maxExecutorReimbursementWei:cfg.reserve?.maxExecutorReimbursementWei??null,
-    perValidatorReserveWei:cfg.reserve?.perValidatorWei??null},
-   missing:[...boot.missing, "V5 ECDSA destination bootstrap requires approved individual PoS validators and signed possession proofs"],
-   transactionSimulation:"blocked-by-bootstrap"};
- }
  const config=loadJSON(join(root,chainBootstrapPath(chain.name)));
  const initial=approvedValidatorSet(root,config);
  const origin=inventory.chains.find(c=>c.chainId===initial.originChainId);
@@ -90,7 +77,7 @@ export async function readDeploymentReadiness({
  if(!mainCurrent)report.missing.push("GitHub main ist nicht aktuell bestätigt");
  try{
   // One independently approved list per destination remains pinned to GitHub. Public
-  // domain-bound BLS proofs are mandatory; no duplicate hand-saved candidate.
+  // domain-bound possession proofs are mandatory; no duplicate hand-saved candidate.
   const proofs=initial.validators.map((_,i)=>{
    try{return readPublic(join(evidenceDir,"validator-"+(i+1)+".txt"));}
    catch(e){if(e.code==="ENOENT")throw Error("Zielchain-Validator-Nachweis "+(i+1)+" für "+chain.name+" fehlt im Public-Bootstrap-Verzeichnis");throw e;}
@@ -103,7 +90,7 @@ export async function readDeploymentReadiness({
    proofBootstrap={...config,verifierAddress:address};
   }
   // The hand-picked initial validator manifest is a destination Genesis.
-  // Only domain-bound BLS proofs from the configured public files are
+  // Only domain-bound proofs from the configured public files are
   // verified against the destination verifier; no origin PoS dependency.
   const prepared=await prepareBootstrapEvidence({
    chain,bootstrap:proofBootstrap,initial,proofs,rpc,
@@ -111,14 +98,12 @@ export async function readDeploymentReadiness({
   });
   report.snapshotSource="explicit-interchain-genesis";
   const trusted=prepared.candidate.validatorSnapshot;
-  if(new Set(trusted.validators.map(v=>v.blsPublicKeyCompressed.toLowerCase())).size!==initial.validators.length)
-   throw Error("Duplicate validator BLS keys");
   // A committed full snapshot, when present, remains a strict commitment.
   // An EMPTY bootstrap template is not an extra manual deployment gate:
   // proof material is reconstructed and verified at preview/prepare time.
   const pinned=config.validatorSnapshot;
   if(Array.isArray(pinned?.validators)&&pinned.validators.length>0&&
-     !sameEvidence(pinned,trusted,initial.validators))
+     !sameEvidence(pinned,trusted,initial.validators,chain.blsVerifierFormat))
    throw Error("GitHub-pinned validator snapshot differs from live verified evidence");
   report.verifiedSnapshot=trusted;
   report.evidenceVerified=true;
@@ -138,7 +123,8 @@ export async function readDeploymentReadiness({
  const feeReady=positive(config.sourceFee?.targetWei);
  if(!economicsReady)report.missing.push("Reserveparameter fehlen oder sind inkonsistent");
  if(!feeReady)report.missing.push("Initiale Source-Fee fehlt");
- report.bootstrapReady=report.evidenceVerified&&economicsReady;
+ report.bootstrapReady=report.evidenceVerified&&economicsReady&&
+  (chain.blsVerifierFormat!=="ecdsa"||(boot.ready===true&&feeReady));
  if(report.bootstrapReady&&mainCurrent)
   report.transactionSimulation="requires-verified-artifact-and-gas-estimation";
  else report.transactionSimulation="blocked-by-bootstrap";

@@ -105,7 +105,7 @@ let chainObservations=new Map();
 let liveBootstrap=new Map();
 const coreTitles={
  blsVerifier:"BLS-Verifier",ecdsaVerifier:"ECDSA-Verifier (XDC)",
- validatorRegistry:"ValidatorRegistry V3 / ECDSA V4",
+ validatorRegistry:"ValidatorRegistry",
  ism:"Interchain Security Module",
  nativeRouterDeployer:"Native Router Deployer (einmalig)",
  syntheticRouterDeployer:"Synthetic Router Deployer (einmalig)",
@@ -113,6 +113,13 @@ const coreTitles={
  factory:"Permissionless Token Factory",
  sourceRegistry:"ILN Source Registry",
  executionGateway:"Interchain Fee · Execution Gateway (optional)"
+};
+const contractDisplayName=(chain,component)=>{
+ if(component==="validatorRegistry")
+  return chain?.blsVerifierFormat==="ecdsa"?"ECDSA ValidatorRegistry V5":"BLS ValidatorRegistry V3";
+ if(component==="ism")
+  return chain?.blsVerifierFormat==="ecdsa"?"ECDSA Direct ISM":"BLS Direct ISM";
+ return coreTitles[component]||component;
 };
 const displayAddress=a=>a.slice(0,6)+"…"+a.slice(-6);
 let selectedDeployment=null;
@@ -139,7 +146,7 @@ function renderInfrastructure(){
    ' ⧉</button></span></div>':"";
   const tasks=c.components.map(part=>
    '<div class="component-row'+(part.key==="executionGateway"?' is-fee-gateway':'')+'"><span>'+
-    esc(coreTitles[part.key]||part.key)+
+    esc(contractDisplayName(cfg,part.key))+
     (part.optional?' · freiwilliger Service':'')+'</span>'+
    '<div class="component-controls">'+
    (part.status==="documented"&&part.address?
@@ -256,9 +263,6 @@ function moneyInWei(wei,chain){
 }
 function presentModalStatus(message,type=""){const n=el("contract-modal-status");n.textContent=message;n.dataset.type=type;}
 function modalValues(component){
- // XDC registry has NO BLS reserve constructor arguments.
- const cfg=workqueue?.inventory?.chains.find(c=>c.name===selectedDeployment?.chainName);
- if(component==="validatorRegistry"&&cfg?.blsVerifierFormat==="ecdsa")return {};
  const keys=component==="validatorRegistry"
   ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
@@ -402,9 +406,9 @@ async function openContractModal(chainName,component){
  selectedAssetTask=null;el("modal-route-context").hidden=true;
  el("modal-deploy").hidden=false;el("batch-stop").hidden=true;
  selectedDeployment={chainName,component};
- const title=coreTitles[component]||component;
+ const title=contractDisplayName(chain,component);
  el("contract-modal-title").textContent=title+" · "+chainName;
- el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · Wallet bestätigt jede Transaktion";
+ el("contract-modal-subtitle").textContent="Chain "+chain.chainId+" · "+(chain.blsVerifierFormat==="ecdsa"?"ECDSA secp256k1":"BLS")+" · Wallet bestätigt jede Transaktion";
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;
@@ -419,18 +423,17 @@ async function openContractModal(chainName,component){
   const existing=chainDeploymentIntent(status,chainName,component);
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
-  const requiresValues=(component==="validatorRegistry"&&chain.blsVerifierFormat!=="ecdsa")||
+  const requiresValues=component==="validatorRegistry"||
    component==="factory"||component==="executionGateway";
   lastModalPreview=null;
-  const fields=component==="validatorRegistry"&&chain.blsVerifierFormat==="ecdsa"?[]:
-   component==="validatorRegistry"
+  const fields=component==="validatorRegistry"
    ?["minimumWei","maxExecutorReimbursementWei","perValidatorWei"]:
    component==="factory"?["sourceFeeWei"]:
    component==="executionGateway"?["serviceWallet","recoveryAdmin"]:[];
   el("modal-parameters").hidden=!requiresValues;
    el("modal-bootstrap-evidence").textContent=component==="validatorRegistry"
    ?(r.evidenceVerified?
-     r.verifiedValidatorCount+(chain.blsVerifierFormat==="ecdsa"?" aktive XGR-Mainnet-Validatoren samt Registry-Commitment geprüft":" Genesis-Validatoren gegen Zielchain-BLS-Verifier geprüft"):
+     r.verifiedValidatorCount+" Genesis-Proofs auf der Zielchain geprüft":
      "Validator-Bootstrap: "+(r.evidenceError||"Prüfung noch nicht abgeschlossen")):"";
   let proposal=null;
   if(requiresValues){
@@ -449,12 +452,14 @@ async function openContractModal(chainName,component){
   for(const key of ["minimumWei","maxExecutorReimbursementWei","perValidatorWei","sourceFeeWei","serviceWallet","recoveryAdmin"]){
    const input=el("modal-"+key);
    input.parentElement.hidden=!fields.includes(key);
+   input.readOnly=chain.blsVerifierFormat==="ecdsa"&&
+    (component==="validatorRegistry"||component==="factory");
    // Main bootstrap economics are the reviewed defaults, not estimates.
     // Users can review/edit the actual transaction inputs before wallet signing.
    const xgrInitial=chainName==="xgrchain"&&component==="validatorRegistry"?{
     minimumWei:"750000000000000000",maxExecutorReimbursementWei:"500000000000000000",
      perValidatorWei:"750000000000000000"}:null;
-   input.value=["serviceWallet","recoveryAdmin"].includes(key)?"":component==="factory"?String(factoryDefaults?.[key]??""):
+   input.value=["serviceWallet","recoveryAdmin"].includes(key)?"":component==="factory"?String((chain.blsVerifierFormat==="ecdsa"?fromGitHub:factoryDefaults)?.[key]??""):
      String(fromGitHub[key]??xgrInitial?.[key]??"");
    const suggestion=fromGitHub[key]??proposal?.values?.[key];
    input.placeholder=["serviceWallet","recoveryAdmin"].includes(key)?"0x… öffentliche EVM-Adresse":
@@ -465,7 +470,9 @@ async function openContractModal(chainName,component){
     "Editierbare Validatorgebühr in der nativen Währung der Quellchain.":
     "Konfigurierter Wert wird vorausgefüllt und vor der Signatur geprüft. Graue Platzhalter sind nur unverbindliche Vorschläge.";
   }
-  el("modal-parameter-note").textContent=requiresValues?
+  el("modal-parameter-note").textContent=chain.blsVerifierFormat==="ecdsa"&&
+   (component==="validatorRegistry"||component==="factory")?
+   "Verbindliche XDC-Startwerte aus der freigegebenen Konfiguration.":requiresValues?
    (chainName==="xgrchain"&&component==="validatorRegistry"?
     "Vorausgefüllt: 0,75 XGR Mindestreserve und 0,5 XGR Erstattungslimit. Beide Werte vor Wallet-Signatur änderbar. ":
     component==="executionGateway"?
@@ -492,8 +499,8 @@ async function openContractModal(chainName,component){
   }
   // Gas preview works with a clean checked-out main even if GitHub is temporarily unavailable.
   // The server independently validates the LIVE main before wallet preparation.
-  if(component==="validatorRegistry"&&!r.evidenceVerified){
-   presentModalStatus("Validator-Bootstrap: "+(r.evidenceError||"BLS-Nachweis nicht bestätigt"),"warn");
+  if((component==="validatorRegistry"||component==="ecdsaVerifier")&&!r.evidenceVerified){
+   presentModalStatus("Validator-Bootstrap: "+(r.evidenceError||"Genesis-Proofs nicht bestätigt"),"warn");
    return;
   }
   // An existing wallet broadcast/receipt must be reconciled, never

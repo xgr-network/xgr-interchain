@@ -53,5 +53,5 @@ test("missing, duplicated, or target-verifier-rejected public proofs are rejecte
  await assert.rejects(()=>prepareBootstrapEvidence({...input,proofs:[proofs[0],proofs[0],proofs[2]]}),/Duplicate/);
  await assert.rejects(()=>prepareBootstrapEvidence({...input,verifyProof:async p=>({
   verified:p.validator!==initial.validators[1],validator:p.validator
- })}),/BLS proof rejected by destination verifier/);
+ })}),/Genesis proof rejected by destination verifier/);
 });
