@@ -58,7 +58,8 @@ test("indexed TVL counts each lock once and tracks wrapped balances on every cha
 });
 test("periodic TVL snapshots read only XGR RPC even with a foreign canonical vault",async()=>{
  const catalog=JSON.parse(readFileSync(new URL("../../apps/web/catalog.json",import.meta.url),"utf8"));
- const rows=indexedRoutes(catalog).map(r=>({source_chain:r.sourceChain,route_id:r.routeId,gateway:r.gateway,
+ const routes=indexedRoutes(catalog);
+ const rows=routes.map(r=>({source_chain:r.sourceChain,route_id:r.routeId,gateway:r.gateway,
   deployment_block:r.deploymentBlock,scanned_to:r.deploymentBlock,finalized_head:r.deploymentBlock,
   updated_at:new Date(now).toISOString()}));
  const rpcCalls=[];
@@ -71,8 +72,11 @@ test("periodic TVL snapshots read only XGR RPC even with a foreign canonical vau
  }});
  assert.deepEqual(rpcCalls,[[1643,"eth_chainId"]]);
  assert.equal(snapshot.indexedTvl.positions.ARB.netLockedRaw,"0");
+ const wrappedChains=new Set(routes.filter(route=>route.asset==="ARB")
+  .flatMap(route=>[route.sourceChain,route.destinationChain]));
+ wrappedChains.delete(catalog.assets.ARB.metadata.canonical.chain);
  assert.deepEqual(snapshot.indexedTvl.positions.ARB.wrappedByChainRaw,
-  {xgrchain:"0",base:"0",bsc:"0",optimism:"0"});
+  Object.fromEntries([...wrappedChains].map(chain=>[chain,"0"])));
  assert.equal(snapshot.custodyEvidence.statuses.ARB,"physical-vault-not-checked");
  assert.equal(snapshot.custodyEvidence.positions.ARB,undefined);
  assert.equal(projectMetrics(catalog,snapshot).indexedTvl.lockedUsd,0);

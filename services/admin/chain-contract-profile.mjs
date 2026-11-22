@@ -1,37 +1,29 @@
+import {chainSignatureProfile} from "../../apps/web/chain-signature-profile.js";
+
 // One explicitly configured destination contract profile. This mapping is
 // shared by the Admin deployment builder, wallet intent, reconciliation and
 // the operator's on-chain contract identity check. It never selects from
 // RPC availability, a peer signature, a key length or the UI's chain label.
 const PROFILES=Object.freeze({
  compressed:Object.freeze({
-  scheme:"bls",format:"compressed",keyFormat:1,registryVersion:3,
+  keyFormat:1,registryVersion:3,
   registryArtifact:"validatorRegistry",registryContract:"XGRInterchainValidatorRegistryV3",
-  ismArtifact:"ism",ismContract:"XITADirectBLSISM",verifierComponent:null
+  ismArtifact:"ism",ismContract:"XITADirectBLSISM"
  }),
  eip2537:Object.freeze({
-  scheme:"bls",format:"eip2537",keyFormat:2,registryVersion:3,
+  keyFormat:2,registryVersion:3,
   registryArtifact:"validatorRegistry",registryContract:"XGRInterchainValidatorRegistryV3",
-  ismArtifact:"ism",ismContract:"XITADirectBLSISM",verifierComponent:"blsVerifier"
+  ismArtifact:"ism",ismContract:"XITADirectBLSISM"
  }),
  ecdsa:Object.freeze({
-  scheme:"ecdsa",format:"ecdsa",keyFormat:3,registryVersion:5,
+  keyFormat:3,registryVersion:5,
   registryArtifact:"xdcValidatorRegistry",registryContract:"XGRInterchainECDSAValidatorRegistryV5",
-  ismArtifact:"xdcIsm",ismContract:"XITADirectECDSAISM",verifierComponent:"ecdsaVerifier"
+  ismArtifact:"xdcIsm",ismContract:"XITADirectECDSAISM"
  })
 });
-const CONTRACT_KEYS=new Set(["validatorRegistry","ism"]);
-
 export function chainContractProfile(chain){
- const format=chain?.blsVerifierFormat;
- const profile=PROFILES[format];
- if(!profile||!Number.isSafeInteger(chain?.chainId)||chain.chainId<1||
-    !Number.isSafeInteger(chain?.domainId)||chain.domainId!==chain.chainId)
-  throw Error("Unsupported or inconsistent destination chain contract profile");
- // Older, already deployed BLS manifests did not have signatureScheme.
- // Only those profiles may omit it; ECDSA must be explicitly declared.
- if((chain.signatureScheme??(profile.scheme==="bls"?"bls":null))!==profile.scheme)
-  throw Error("Destination signature scheme and verifier format disagree");
- return profile;
+ const profile=chainSignatureProfile(chain);
+ return {...profile,...PROFILES[profile.format]};
 }
 export function chainArtifactKey(chain,component){
  const profile=chainContractProfile(chain);

@@ -5,7 +5,8 @@ import {createServer} from "node:http";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {Wallet,Contract,Interface,JsonRpcProvider,zeroPadValue,keccak256} from "ethers";
+import {Wallet,Contract,Interface,zeroPadValue,keccak256} from "ethers";
+import {createQuoteRpcReader} from "./quote-rpc.mjs";
 import {buildManagedQuote,MANAGED_QUOTE_TYPES} from "./quote-service.mjs";
 import {usdPrice12} from "./fee-quote.mjs";
 import {readCachedGasPrices} from "./price-cache.mjs";
@@ -62,21 +63,13 @@ export function sourceExecutionAddressesFromCatalog(catalog,{
   return [name,previewOnly?documented:configured||documented];
  }));
 }
-const providers=new Map();
-async function chain(name,catalog){
- const cfg=catalog.chains[name];
- if(!cfg?.rpcUrls?.[0])throw Error("Unsupported chain");
- // Refresh the provider when an approved catalog changes an RPC endpoint.
- const previous=providers.get(name);
- if(!previous||previous.url!==cfg.rpcUrls[0]||
-    previous.chainId!==cfg.chainId)
-  providers.set(name,{url:cfg.rpcUrls[0],chainId:cfg.chainId,
-   provider:new JsonRpcProvider(cfg.rpcUrls[0])});
- const provider=providers.get(name).provider;
- const network=await provider.getNetwork();
- if(network.chainId!==BigInt(cfg.chainId))throw Error("Chain RPC identity mismatch");
- return provider;
-}
+const readChain=createQuoteRpcReader();
+const readGasFunding=(chain,catalog,address)=>readChain(chain,catalog,async provider=>{
+ const [balanceWei,fee]=await Promise.all([provider.getBalance(address,"latest"),provider.getFeeData()]);
+ const gasPriceWei=fee.maxFeePerGas||fee.gasPrice||0n;
+ if(gasPriceWei<=0n)throw Object.assign(Error("RPC gas price unavailable"),{code:"QUOTE_GAS_UNAVAILABLE"});
+ return {balanceWei,gasPriceWei};
+});
 const quoteIface=new Interface(EXECUTION_ABI);
 // Both quote/preview processes consume the SAME persisted backend cache.
 // External CoinGecko requests are exclusively performed by price-refresh.mjs.
@@ -156,16 +149,13 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    !/^0x[0-9a-f]{40}$/i.test(request?.recipient||"")||
    String(request.payer).toLowerCase()!==String(request.recipient).toLowerCase()))
   throw Error("Wallet-specific quote requires explicit wallet identity");
- const sourceProvider=await chain(source,catalog);
- await chain(destination,catalog);
- // Allow public estimates before any secrets or signer environment exist.
- // Bind the operator identity to the verified live adapter itself.
- const liveAdapter=new Contract(executionAddress,EXECUTION_ABI,sourceProvider);
- const serviceAddress=preview?await liveAdapter.serviceWallet():configuredServiceAddress;
+ // Bind a keyless estimate to the service wallet exposed by the live adapter.
+ const serviceAddress=preview?await readChain(source,catalog,provider=>
+  new Contract(executionAddress,EXECUTION_ABI,provider).serviceWallet()):configuredServiceAddress;
  if(!/^0x[0-9a-f]{40}$/i.test(serviceAddress))throw Error("Public GmbH service wallet unavailable");
  if(!preview&&(!signer||signer.address.toLowerCase()!==serviceAddress.toLowerCase()))
   throw Error("GmbH signer is not configured for the live adapter");
- const runtime=await sourceProvider.getCode(executionAddress);
+ const runtime=await readChain(source,catalog,provider=>provider.getCode(executionAddress));
  if(!/^0x[0-9a-f]+$/i.test(runtime)||runtime==="0x"||
     keccak256(runtime).toLowerCase()!==String(documented.runtimeCodeKeccak256).toLowerCase())
   throw Error("Source Interchain Fee contract runtime differs from verified deployment receipt");
@@ -173,8 +163,8 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    recipient:request.recipient||serviceAddress}:request;
  const result=await buildManagedQuote({
   catalog,request:previewRequest,executionAddress,signer:signer||{address:serviceAddress},
-  readExecutionOwner:async()=> {
-   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source,catalog));
+  readExecutionOwner:()=>readChain(source,catalog,async provider=>{
+   const c=new Contract(executionAddress,EXECUTION_ABI,provider);
    const [owner,registry,beneficiary,serviceWallet]=await Promise.all([
     c.relayerOwner(),c.sourceRegistry(),c.interchainFeeRecipient(),c.serviceWallet()]);
    if([owner,beneficiary,serviceWallet].some(x=>String(x).toLowerCase()!==serviceAddress.toLowerCase()))
@@ -183,33 +173,29 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    if(String(registry).toLowerCase()!==String(expected||"").toLowerCase())
     throw Error("Managed relay does not bind canonical source ILN Registry");
    return owner;
-  },
-  readQuoteLifetime:async()=>{
-   const c=new Contract(executionAddress,EXECUTION_ABI,await chain(source,catalog));
+  }),
+  readQuoteLifetime:()=>readChain(source,catalog,async provider=>{
+   const c=new Contract(executionAddress,EXECUTION_ABI,provider);
    const [lifetime,maximum]=await Promise.all([c.quoteLifetimeSeconds(),c.MAX_QUOTE_LIFETIME()]);
    if(BigInt(maximum)!==90n)throw Error("Unexpected managed quote validity ceiling");
    return lifetime;
-  },
-  readGatewayQuote:async({source:gatewaySource,route,destinationDomain,recipient,amount})=>{
-    const gateway=new Contract(route.gateway,BRIDGE_ABI,await chain(gatewaySource,catalog));
-   const result=await gateway.quoteILN(destinationDomain,recipient,amount);
-   return {validatorFeeWei:result[0],bridgeNativeWei:result[2],tokenAmount:result[3]};
-  },
+  }),
+  readGatewayQuote:({source:gatewaySource,route,destinationDomain,recipient,amount})=>
+   readChain(gatewaySource,catalog,async provider=>{
+    const gateway=new Contract(route.gateway,BRIDGE_ABI,provider);
+    const result=await gateway.quoteILN(destinationDomain,recipient,amount);
+    return {validatorFeeWei:result[0],bridgeNativeWei:result[2],tokenAmount:result[3]};
+   }),
   getDestinationGasQuote:async({destination:gasChain})=>{
-    const client=await chain(gasChain,catalog),fee=await client.getFeeData();
-    // Fee quote must not be gated on optional sponsor-wallet reserves.
-    const address=serviceAddress;
-    const availableWei=/^0x[0-9a-f]{40}$/i.test(address)?
-     await client.getBalance(address):0n;
-    return {gasPriceWei:fee.maxFeePerGas||fee.gasPrice||0n,availableWei};
-   },
-  readSourceBlockTimestamp:async({source:sourceChain})=>{
-    const provider=await chain(sourceChain,catalog);
-    const block=await provider.getBlock("latest");
-    if(!block||!Number.isSafeInteger(block.timestamp)||block.timestamp<1)
-     throw Error("Cannot verify live source-chain block time");
-    return block.timestamp;
+   const {balanceWei,gasPriceWei}=await readGasFunding(gasChain,catalog,serviceAddress);
+   return {gasPriceWei,availableWei:balanceWei};
   },
+  readSourceBlockTimestamp:({source:sourceChain})=>readChain(sourceChain,catalog,async provider=>{
+   const block=await provider.getBlock("latest");
+   if(!block||!Number.isSafeInteger(block.timestamp)||block.timestamp<1)
+    throw Error("Cannot verify live source-chain block time");
+   return block.timestamp;
+  }),
   readGasProfile:async key=>{
    const url=process.env.XITA_TAX_QUOTE_DATABASE_URL||
     process.env.XITA_SPONSOR_STATUS_DATABASE_URL;
@@ -225,10 +211,8 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
   },
   getCoinGeckoSnapshot:getSnapshot,preview,
   walletAwareEnabled,
-  readWalletNativeBalance:async({chain:chainName,account})=>{
-   const provider=await chain(chainName,catalog);
-   return provider.getBalance(account,"latest");
-  }
+  readWalletNativeBalance:({chain:chainName,account})=>
+   readChain(chainName,catalog,provider=>provider.getBalance(account,"latest"))
  });
  // Read-only estimates never require a recent sponsor-worker heartbeat.
  // Signed quotes remain fail-closed for precisely the positive immutable
@@ -240,13 +224,10 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
    for(const target of required){
     const policy=policies[target];
     if(!policy)throw Error("Sponsor policy missing for "+target);
-    const provider=await chain(target,catalog);
-    const [balance,fees]=await Promise.all([
-     provider.getBalance(signer.address,"latest"),provider.getFeeData()]);
-    const gasPrice=fees.maxFeePerGas||fees.gasPrice||0n;
+    const {balanceWei,gasPriceWei}=await readGasFunding(target,catalog,signer.address);
     const commitments=result.pricing.sponsorCommitments
      .filter(g=>g.chain===target).map(g=>g.amountWei);
-    if(!sponsorFundingCovered({balanceWei:balance,gasPriceWei:gasPrice,
+    if(!sponsorFundingCovered({balanceWei,gasPriceWei,
      minReserveWei:policy.minReserveWei,commitments}))
      throw Error("Live sponsor funding insufficient on "+target+
       "; no paid quote signed");
@@ -296,7 +277,7 @@ async function createQuote(request,{preview=false,catalog=loadCatalogSnapshot()}
   data}};
 }
 function publicError(err){
- const text=String(err?.message||err||"unknown");
+ const text=String(err?.shortMessage||err?.message||err||"unknown");
  // Never log env/private key, raw external responses, or headers.
  if(/Missing XITA_INTERCHAIN_FEE|private key/i.test(text))return "GmbH service wallet not configured";
  return text.slice(0,170);
@@ -480,12 +461,7 @@ async function handler(req,res,{loadCatalog=loadCatalogSnapshot}={}){
     await saveQuoteEvidence(evidence,{quoteReply:reply,
      grantLimits:reply.pricing?.walletAware?sponsorPoliciesForCatalog({
       catalog:loadCatalog(),prices:await getSnapshot()}):null,
-     readLiveFunding:async target=>{
-      const provider=await chain(target,loadCatalog());
-      const [balance,fees]=await Promise.all([
-       provider.getBalance(signer.address,"latest"),provider.getFeeData()]);
-      return {balanceWei:balance,gasPriceWei:fees.maxFeePerGas||fees.gasPrice||0n};
-     }});
+     readLiveFunding:target=>readGasFunding(target,loadCatalog(),signer.address)});
    }
   return send(200,{ok:true,...reply});
  }catch(e){

@@ -54,6 +54,22 @@ test("BSC shows its configured public name on the planet while preserving the ch
  assert.match(renderDashboard(model),/BNB Smart Chain/);
  assert.match(renderUniverse(model,"bsc"),/BNB Smart Chain/);
 });
+test("receipt-backed XDC routes appear in both Transfer Tokens network selectors",()=>{
+ const catalog=JSON.parse(readFileSync(new URL("./catalog.json",import.meta.url),"utf8"));
+ const choices=(html,id)=>html.match(new RegExp('<select id="'+id+'"[^>]*>(.*?)</select>'))?.[1];
+ for(const asset of ["XGR","ARB"]){
+  const model=buildExperienceModel(catalog);
+  const selection={asset,origin:"xgrchain",destination:"xdc"};
+  assert.deepEqual(normalizeTransferSelection(model,selection),selection);
+  const html=renderPlanRoute(model,selection);
+  assert.match(choices(html,"ux-origin"),/<option value="xdc">XDC Mainnet/);
+  assert.match(choices(html,"ux-destination"),/<option value="xdc" selected>XDC Mainnet/);
+ }
+ const withoutAdapter=structuredClone(catalog);
+ delete withoutAdapter.infrastructure.xdc.xitaV315.components.executionGateway;
+ const html=renderPlanRoute(buildExperienceModel(withoutAdapter),{asset:"XGR",origin:"xgrchain"});
+ assert.doesNotMatch(choices(html,"ux-origin")+choices(html,"ux-destination"),/value="xdc"/);
+});
 test("spoke-to-spoke paths are exactly two directed operations",()=>{
   const model=buildExperienceModel(catalog,()=>true);
   const plan=previewRoute(model,"base","bsc","XGR");

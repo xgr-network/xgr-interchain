@@ -1,3 +1,4 @@
+import {chainSignatureProfile} from "./chain-signature-profile.js";
 import {deployedRoutes,executableTransferRoutes,supportedRouteChains,documentedExecutionGateway,isDeployedChain} from "./route-availability.js";
 import {isDeployedAsset} from "./listing-visibility.js";
 import {representationFor} from "./token-representation.js";
@@ -63,8 +64,10 @@ const UNIVERSE_REQUIRED=["validatorRegistry","ism","transportBundle","mailbox",
 function isFullyDeployedUniverseChain(catalog,key){
  if(!isDeployedChain(catalog,key))return false;
  const c=catalog.chains[key],core=catalog.infrastructure[key]?.xitaV315;
- const required=c?.blsVerifierFormat==="compressed"?UNIVERSE_REQUIRED:
-  ["blsVerifier",...UNIVERSE_REQUIRED];
+ let profile;
+ try{profile=chainSignatureProfile(c);}
+ catch{return false;}
+ const required=profile.verifierComponent?[...UNIVERSE_REQUIRED,profile.verifierComponent]:UNIVERSE_REQUIRED;
  const receipts=new Set(core?.receiptPaths||[]);
  return required.every(part=>{
   const item=core?.components?.[part];
