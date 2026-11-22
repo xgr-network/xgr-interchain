@@ -487,9 +487,9 @@ function northstarCards(model,metrics=null,period="24h"){
    '<a class="ux-ns-card-link" data-nav href="/transfer">Check route availability →</a></article>'+
   '<article class="ux-ns-card ux-ns-card-tvl"><div class="ux-ns-card-head"><span class="ux-ns-card-icon is-gold">✦</span><h2>'+(showIndexed?'Indexed TVL':'Locked TVL')+'</h2></div>'+
    '<div class="ux-ns-tvl-value-row"><strong class="ux-ns-value">'+esc(formatUsd(displayTVL))+'</strong>'+
-   (showIndexed?'':'<span class="ux-ns-tvl-change '+(tvlChange==null?'is-unknown':tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
-   (tvlChange==null?'24h —':(tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h')+'</span>')+'</div>'+
-   (displayAsOf?'<span class="ux-ns-tvl-last">Last verified: '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC · current TVL unavailable</span>':'')+
+   (!showIndexed&&tvlChange!=null?'<span class="ux-ns-tvl-change '+(tvlChange>0?'is-positive':tvlChange<0?'is-negative':'is-neutral')+'">'+
+    (tvlChange>0?'+':'')+esc(tvlChange.toFixed(2))+'% · 24h</span>':'')+'</div>'+
+   (displayAsOf?'<span class="ux-ns-tvl-last">Last verified · '+esc(new Date(displayAsOf).toLocaleString("en-GB",{timeZone:"UTC",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+' UTC</span>':'')+
    tvlHistoryChart(safeMetrics,period)+
    (showIndexed?'<p class="ux-small">Net deposits and completed releases from finalized bridge events.</p>':
    '<p class="ux-small">Verified net collateral in route-specific escrows.</p>'+
