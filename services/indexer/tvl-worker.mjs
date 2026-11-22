@@ -143,11 +143,16 @@ export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPric
    // A legacy 30-day balance reconstruction can be impossible when old
    // event times are incomplete. Try shorter REAL windows (7d, 24h), never
    // manufacture an opening balance or stretch observations backwards.
+   const failures=[];
    for(const [days,assets] of [[30,historicalAssets],[7,historical7d],[1,historical24h]]){
+    const issue=assets.find(a=>a.status==="unavailable");
+    if(issue){failures.push({days,reason:issue.reason});continue;}
     const result=combineEscrowHistory(assets,{now,days});
     if(result.status!=="unavailable")return {...result,windowDays:days};
+    failures.push({days,reason:result.reason});
    }
-   return {status:"unavailable",reason:"indexed-historical-collateral-incomplete"};
+   return {status:"unavailable",reason:"indexed-historical-collateral-incomplete",
+    failures};
   })(),
   indexedChange24h:indexedTvlChange24h(historical24h,historicalPositions,
    {now,required:expectedHistorical}),
