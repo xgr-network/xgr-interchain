@@ -47,8 +47,9 @@ export function accumulateVerifiedMovement(snapshot,catalog,prices,prior=null,{n
  // The only valid baseline comes from locally verified, committed observations.
  // Removed assets or a changed deployment generation must not carry stale USD.
  if(Object.keys(previous).some(k=>!assetKeys.includes(k)))return old||empty;
- const lastTotal=old?.totalUsdExact&&atoms(old.totalUsdExact);
- const total=(lastTotal??0n)+additions;
+ const lastTotal=old?atoms(old.totalUsdExact):0n;
+ if(lastTotal===null)return old||empty;
+ const total=lastTotal+additions;
  if(total<0n||!Number.isFinite(Number(decimal(total))))return old||empty;
  const current={kind:empty.kind,schemaVersion:1,status:"verified",
   asOf:new Date(asOf).toISOString(),totalUsd:Number(decimal(total)),
