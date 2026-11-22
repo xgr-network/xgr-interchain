@@ -93,8 +93,8 @@ export async function scanTokenEscrow({catalog,asset,pool,read=rpc,priceSnapshot
 export async function tvlSnapshot({catalog,pool,read=rpc,prices=getCoinGeckoPrices,now=Date.now()}){
  const [snap,ledger]=await Promise.all([prices(catalog),ledgerSnapshot(pool)]);
  const routes=indexedRoutes(catalog),proofs={},flows={},lifetimeFlows={},positions={},historicalAssets=[];
- const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  const names=Object.keys(catalog.assets||{});
+ const expectedHistorical=names.filter(id=>isDeployedAsset(catalog.assets[id],catalog)).length;
  for(const asset of names)try{
   const descriptor=escrowDescriptor(catalog,asset);
   if(descriptor.status!=="ready")continue;
