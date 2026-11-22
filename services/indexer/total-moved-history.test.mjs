@@ -1,10 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {accumulateVerifiedMovement} from "./total-moved-history.mjs";
-import {deployedFixture} from "../../apps/web/deployed-test-fixture.mjs";
+import {freshDeployedCatalog} from "../managed-relay/test-deployments.mjs";
 
-const catalog={assets:{XGR:deployedFixture("XGR","xgrchain")},
- chains:{xgrchain:{chainId:1643,rpcUrls:["https://rpc.xgr.network"]},base:{chainId:8453}}};
+const catalog=freshDeployedCatalog({routeDestination:"base"}).catalog;
 catalog.assets.XGR.metadata.decimals=18;
 catalog.assets.XGR.profile.market={priceSource:"coingecko",coingeckoId:"xgr"};
 const assetId=catalog.assets.XGR.metadata.assetId;
