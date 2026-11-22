@@ -804,6 +804,7 @@
           "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-1a71f0c6e510be98d445ca5ea9fe5c3bb13db1f8.json",
           "deployments/receipts/optimism/1e7dc0d208c2bd3c42b26bc64c641abd852d77b74cc2b13cf32bdcf6d5424a84-8a8e1d955641a78494d1fce2579050dd9b9c5f73.json",
           "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json",
+          "deployments/receipts/xdc/5897514b6c41203e949343097447904065f4c32b6c8f350e3cd601b92eb5b7d6-781ace1ea8985a77e362c88a16ba2f9b96777745.json",
           "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-b14587fcd381e04835d5408fc11be3a29aa0ac68.json",
           "deployments/receipts/xgrchain/1a55ebeb70427b5469f17a642f45a0686d9eecd3f4a68906fe2116729f50f92b-e54de3b0b51f5d02957a3791f18fb3fe253517f7.json",
           "deployments/receipts/xgrchain/3a647c16d9e9e6e8ca4fbf49afff203f06f74294917b9804b420cb74cbdbf11b-17eb63cc1af0c1a206781e3b4ad7faa1e3c3fbc7.json",
@@ -842,6 +843,13 @@
             "address": "0xdb6ef221548bdc64bd733911362d3fd815af6bf7",
             "runtimeCodeKeccak256": "0xcfa84ea3c10da86edfe5b1a3765cae3dd56a91c4705ae76d437dcce8696f516b",
             "receiptPath": "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json"
+          },
+          {
+            "chain": "xdc",
+            "component": "syntheticRouter",
+            "address": "0x781ace1ea8985a77e362c88a16ba2f9b96777745",
+            "runtimeCodeKeccak256": "0x9050ff9e22c32e8151d8a12b69eb46e5ec21f5e6d493a65b95a651fe7bdfb517",
+            "receiptPath": "deployments/receipts/xdc/5897514b6c41203e949343097447904065f4c32b6c8f350e3cd601b92eb5b7d6-781ace1ea8985a77e362c88a16ba2f9b96777745.json"
           },
           {
             "chain": "xgrchain",

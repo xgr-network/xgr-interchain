@@ -33,6 +33,13 @@
       "receiptPath": "deployments/receipts/optimism/e68268a73a666e53f8204fb690a42dcbb5d23e1a0cf5f2a71e6ceca9ecee3966-db6ef221548bdc64bd733911362d3fd815af6bf7.json"
     },
     {
+      "chain": "xdc",
+      "component": "syntheticRouter",
+      "address": "0x781ace1ea8985a77e362c88a16ba2f9b96777745",
+      "runtimeCodeKeccak256": "0x9050ff9e22c32e8151d8a12b69eb46e5ec21f5e6d493a65b95a651fe7bdfb517",
+      "receiptPath": "deployments/receipts/xdc/5897514b6c41203e949343097447904065f4c32b6c8f350e3cd601b92eb5b7d6-781ace1ea8985a77e362c88a16ba2f9b96777745.json"
+    },
+    {
       "chain": "xgrchain",
       "component": "nativeRouter",
       "address": "0x7d9354baab0bf308d17e90ee3895609680e355ed",
