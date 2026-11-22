@@ -974,6 +974,7 @@ async function refreshOperationsHealth({probe=false}={}){
  finally{healthBusy=false;el("health-refresh").disabled=false;el("health-rpc-probe").disabled=false;}
 }
 function openAdminView(view){
+ if(view==="analytics")void refreshSiteAnalytics();
  setView(view);
  if(view==="health")void refreshOperationsHealth();
  if(view==="treasury")void refreshFeeTreasury();
@@ -1093,8 +1094,75 @@ async function checkLiveInfrastructure(){
 }
 el("refresh").addEventListener("click",checkLiveInfrastructure);
 el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
+el("analytics-range").addEventListener("change",()=>void refreshSiteAnalytics());
+el("analytics-refresh").addEventListener("click",()=>void refreshSiteAnalytics());
 el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth());
 el("health-rpc-probe").addEventListener("click",()=>void refreshOperationsHealth({probe:true}));
 setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
 const initialView=location.hash.slice(1);
-openAdminView(["assets","infrastructure","treasury","health"].includes(initialView)?initialView:"assets");
+openAdminView(["assets","infrastructure","treasury","health","analytics"].includes(initialView)?initialView:"assets");
+
+let analyticsBusy=false;
+const analyticsNumber=n=>new Intl.NumberFormat("de-DE").format(Number(n)||0);
+function analyticsTable(id,items){
+ const target=el(id);
+ target.innerHTML=!items.length?'<p class="tiny">Noch keine erfassten Werte.</p>':
+  '<div class="analytics-ranking">'+items.map(row=>
+   '<div><span title="'+esc(row.name)+'">'+esc(row.name)+'</span><strong>'+analyticsNumber(row.count)+'</strong></div>').join("")+'</div>';
+}
+function analyticsChange(value,previous){
+ if(previous==null)return '<small class="analytics-compare">Noch kein vergleichbarer Vorzeitraum</small>';
+ if(!previous)return '<small class="analytics-compare">Vorzeitraum: 0</small>';
+ const percentage=(100*(value-previous)/previous);
+ return '<small class="analytics-compare">'+(percentage>=0?'+':'')+percentage.toLocaleString("de-DE",{maximumFractionDigits:1})+' % ggü. Vorzeitraum</small>';
+}
+function analyticsChart(data){
+ const target=el("analytics-chart"),values=data.series||[];
+ if(!values.length){target.textContent="Keine Daten.";return;}
+ const width=900,height=220,left=42,right=15,top=16,bottom=34;
+ const max=Math.max(1,...values.map(v=>v.pageViews));
+ const x=i=>left+i*(width-left-right)/Math.max(1,values.length-1);
+ const y=v=>height-bottom-Math.max(0,v)/max*(height-top-bottom);
+ const series=[
+  ["pageViews","#6bd8c5"],["visits","#86adff"],["uniqueVisitorDays","#efbd7e"]];
+ const lines=series.map(([key,color])=>{
+  const points=values.map((item,i)=>x(i).toFixed(1)+","+y(item[key]).toFixed(1)).join(" ");
+  return '<polyline points="'+points+'" fill="none" stroke="'+color+
+   '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+ }).join("");
+ const grid=[0,.25,.5,.75,1].map(p=>{
+  const yy=y(p*max);
+  return '<line x1="'+left+'" y1="'+yy+'" x2="'+(width-right)+'" y2="'+yy+'" stroke="#33495a" stroke-dasharray="3 5"/>'+
+   '<text x="'+(left-8)+'" y="'+(yy+4)+'" text-anchor="end" fill="#a7bacb" font-size="12">'+analyticsNumber(Math.round(p*max))+'</text>';
+ }).join("");
+ const ticks=[0,Math.floor((values.length-1)/2),values.length-1].map(i=>'<text x="'+x(i)+
+  '" y="'+(height-7)+'" text-anchor="'+(i===0?'start':i===values.length-1?'end':'middle')+
+  '" fill="#a7bacb" font-size="12">'+esc(values[i].date.slice(5))+'</text>').join("");
+ target.innerHTML='<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Seitenaufrufe, Besuche und tägliche Unique Visitors über '+data.days+
+  ' Tage" preserveAspectRatio="xMidYMid meet">'+grid+lines+ticks+'</svg>';
+}
+async function refreshSiteAnalytics(){
+ if(analyticsBusy)return;
+ analyticsBusy=true;
+ el("analytics-refresh").disabled=true;
+ el("analytics-status").textContent="Lade Statistik …";
+ try{
+  const data=await get("/admin/api/site-analytics?days="+el("analytics-range").value);
+  const metrics=[["Seitenaufrufe",data.totals.pageViews,"pageViews"],
+   ["Besuche",data.totals.visits,"visits"],
+   ["Unique Visitor-Days",data.totals.uniqueVisitorDays,"uniqueVisitorDays"]];
+  el("analytics-metrics").innerHTML=metrics.map(([name,value,key])=>
+   '<div class="analytics-kpi"><small>'+esc(name)+'</small><strong>'+analyticsNumber(value)+'</strong>'+
+   analyticsChange(value,data.previousTotals?.[key])+'</div>').join("");
+  el("analytics-status").textContent="Erfassung ab: "+(data.trackedSince||new Date(data.createdAt).toLocaleDateString("de-DE"))+
+   " · Zeitraum: "+data.days+" Tage · Letzte Abfrage: "+new Date(data.updatedAt).toLocaleString("de-DE");
+  analyticsChart(data);
+  analyticsTable("analytics-pages",data.topPages||[]);
+  analyticsTable("analytics-sources",data.sources||[]);
+  analyticsTable("analytics-devices",data.devices||[]);
+  analyticsTable("analytics-campaigns",data.campaigns||[]);
+ }catch(e){
+  el("analytics-status").textContent="Statistik nicht verfügbar: "+e.message;
+  el("analytics-metrics").textContent="Keine verifizierbaren Werte.";
+ }finally{analyticsBusy=false;el("analytics-refresh").disabled=false;}
+}
