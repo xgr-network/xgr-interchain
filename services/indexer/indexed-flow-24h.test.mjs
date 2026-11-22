@@ -53,3 +53,11 @@ test("lifetime gross movement counts only confirmed escrow locks and releases",(
  assert.equal(indexedGrossFlowLifetime({descriptor,rows,coverage:{complete:false}}).status,"unavailable");
  assert.equal(indexedGrossFlowLifetime({descriptor,rows:[rows[0],rows[0]],coverage:{complete:true}}).status,"unavailable");
 });
+
+test("lifetime includes canonical historic backfills without source timestamps",()=>{
+ const historic=row(forward,"9",{source_block_at:null});
+ const result=indexedGrossFlowLifetime({descriptor,rows:[historic],coverage:{complete:true}});
+ assert.equal(result.status,"verified");
+ assert.equal(result.grossRaw,"1000000000000000000");
+ assert.equal(calculate([historic]).movedUsd,0,"24h remains timestamp based");
+});
