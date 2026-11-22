@@ -264,7 +264,9 @@ http.createServer(async(req,res)=>{
    const infrastructure=infrastructureInventory(root,queue.inventory.chains);
    const {graph:lifecycle,tasks,eligibleRoutes,eligibleChains}=nextAssetRouteTasks(queue.inventory,infrastructure);
    const pending=await pendingLiveRouteTasks(tasks,queue.inventory.chains,infrastructure,probe);
-   return reply(res,200,{ok:true,commit:queue.commit,readOnly:true,lifecycle,tasks:pending,eligibleRoutes,eligibleChains});
+   const progress=assetOperator.progress(queue.inventory);
+   return reply(res,200,{ok:true,commit:queue.commit,readOnly:queue.readOnly,lifecycle,
+    tasks:pending.map(task=>({...task,progress:progress[task.id]||null})),eligibleRoutes,eligibleChains});
   }
   if(req.method==="POST"&&path==="/admin/api/deploy/advance"){
    const item=await bodyJSON(req);
@@ -381,4 +383,9 @@ http.createServer(async(req,res)=>{
   console.error("Interchain admin:",e);
   return reply(res,e.message?.includes("Dependencies")?409:400,{ok:false,error:String(e.message||"Request failed").slice(0,260)});
  }
-}).listen(port,host,()=>console.log("Interchain admin read-only at "+host+":"+port));
+}).listen(port,host,()=>{
+ console.log("Interchain admin at "+host+":"+port);
+ setInterval(()=>{
+  void assetOperator.poll().catch(error=>console.error("Asset deployment progress:",error.message));
+ },10000).unref();
+});

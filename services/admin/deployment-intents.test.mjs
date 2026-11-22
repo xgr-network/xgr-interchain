@@ -335,3 +335,24 @@ test("a confirmed but unpublished on-chain deployment cannot be overridden",()=>
   assert.deepEqual(next.supersededTxHashes,[hash]);
  }finally{rmSync(dir,{recursive:true,force:true})}
 });
+
+test("asset publication stays in the journal until the receipt is in the checkout",()=>{
+ const dir=mkdtempSync(join(tmpdir(),"xita-asset-publication-"));
+ try{
+  const open=()=>deploymentIntents({directory:dir,chains:[{name:"base",chainId:8453}]});
+  const route={...input,id:"base:XGR:gateway:base_to_xgr",chainId:8453,parameters:{},
+   asset:"XGR",routeName:"base_to_xgr",factory:wallet,transaction:{...input.transaction,to:wallet}};
+  const next={...route,id:"base:XGR:syntheticRouter:none",routeName:null};
+  open().prepare(route);
+  open().attachHash(route.id,hash);
+  assert.throws(()=>open().prepare(next),/Previous asset deployment is unresolved/);
+  open().confirm(route.id,hash,{contractAddress:wallet,runtimeKeccak:"0x"+"f".repeat(64)});
+  const receiptPath="deployments/receipts/base/"+hash.slice(2)+"-"+wallet.slice(2)+".json";
+  const publication={receiptPath,commit:"f".repeat(40)};
+  open().markAssetPublished(route.id,hash,publication);
+  assert.deepEqual(open().read().entries[route.id].publication,publication);
+  assert.throws(()=>open().prepare(next),/Previous asset deployment is unresolved/);
+  open().clearCompletedAssetIntents([open().read().entries[route.id]]);
+  assert.equal(open().prepare(next).stage,"prepared");
+ }finally{rmSync(dir,{recursive:true,force:true})}
+});

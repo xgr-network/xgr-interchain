@@ -21,7 +21,25 @@ let assetTasks=[];
 let eligibleAssetRoutes=[];
 let selectedAssetTask=null;
 let assetPreview=null;
+let assetStatusRefresh=false;
 const ASSETS_PER_PAGE=12;
+const progressLabels={prepared:"Wallet-Vorgang prüfen",submitted:"TX gesendet · Prüfung läuft",
+ confirmed:"TX bestätigt · Receipt-Prüfung läuft","awaiting-sync":"In GitHub dokumentiert · Checkout-Sync ausstehend"};
+function assetProgressText(progress){
+ return progressLabels[progress.stage]+(progress.reason==="confirmations"?" · warte auf Blockbestätigungen oder Finalität":
+  progress.reason==="receipt"?" · warte auf Receipt":progress.detail?" · "+progress.detail:"");
+}
+async function checkAssetProgress(task,button){
+ if(!task)return;
+ button.disabled=true;
+ try{
+  const result=await advanceDeploymentBeforeSignature({post:postJSON,type:"asset",target:task.asset});
+  await loadMainWorkqueue("assets");
+  if(result.stage==="pending")el("main-status").textContent=
+   "Deployment "+task.asset+" · "+(result.detail||result.reason)+(result.txHash?" · "+result.txHash:"");
+ }catch(error){el("main-status").textContent="Deployment-Prüfung fehlgeschlagen: "+error.message;}
+ finally{button.disabled=false;}
+}
 function renderAssets(){
  if(!workqueue)return;
  const filter=el("asset-filter").value,q=el("asset-search").value;
@@ -45,16 +63,28 @@ function renderAssets(){
    '</strong><small>Gateway: '+addressButton(gateway)+
    '</small><small>FeeVault: '+addressButton(feeVault)+
    '</small></div>'+pill("deployed")+'</div>').join("");
-  const pending=tasks.map(t=>'<div class="route"><div><strong>'+
-   esc(t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":t.chain+" · Gateway "+t.id.split(":").slice(1,-1).join(":"))+
-   '</strong><small>'+esc(t.blockers.length?"Zuerst: "+t.blockers.join(", "):"Bereit zum Prüfen")+
-   '</small></div><button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'"'+
-   (t.blockers.length?' disabled title="Voraussetzungen fehlen"':'')+'>Ausstehend →</button></div>').join("");
+  const outstanding=assetTasks.some(t=>t.asset===a.key&&t.progress);
+  const next=outstanding||workqueue.readOnly?null:nextAssetDeployment(workqueue,assetTasks,a.key);
+  const pending=tasks.map(t=>{
+   const route=t.route;
+   const title=t.kind==="router"?"Token-Router auf "+t.chain+" (einmalig)":
+    route?route.source+" → "+route.destination:t.id;
+   const detail=t.progress?assetProgressText(t.progress):
+    t.blockers.length?"Zuerst: "+t.blockers.join(", "):
+    outstanding?"Wartet auf laufendes Deployment":
+    next?.id===t.id?"Nächster Schritt":"Bereit zum Prüfen";
+   const hash=t.progress?.txHash;
+   const action=t.progress?'<button type="button" class="outline" data-asset-check="'+esc(t.id)+'">Status prüfen</button>':
+    '<button type="button" class="component-pending" data-asset-task="'+esc(t.id)+'"'+
+    (t.blockers.length||outstanding||workqueue.readOnly?' disabled':'')+'>Deployen →</button>';
+   return '<div class="route"><div><strong>'+esc(title)+'</strong><small>'+esc(detail)+'</small>'+
+    (hash?'<small>'+addressButton(hash)+'</small>':"")+'</div>'+action+'</div>';
+  }).join("");
   return '<section class="asset-card"><div class="asset-head">'+
    '<div class="token-icon">'+esc(a.symbol.substring(0,1))+'</div><div class="asset-intro"><strong>'+esc(a.name)+
    '</strong><p>'+esc(a.symbol)+' · Original: '+esc(a.canonicalChain)+' · '+complete+'/'+routeCount+
    ' verfügbare Routen dokumentiert</p></div>'+(filter==="all"?pill(status):"")+
-   (showBatch?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+
+   (showBatch&&!outstanding&&!workqueue.readOnly?'<button type="button" class="component-pending" data-batch-asset="'+esc(a.key)+
     '">Alle Schritte deployen</button>':"")+'</div>'+
    '<div class="routes">'+
    (completedRouters||completeGateways?'<div class="asset-group-title">Dokumentierte Contracts · GitHub-Receipts</div>':"")+
@@ -64,6 +94,8 @@ function renderAssets(){
  }).join(""):'<p>Keine Deployment-Einträge für diesen Filter.</p>';
  el("main-workqueue").querySelectorAll("[data-asset-task]").forEach(b=>
   b.addEventListener("click",()=>openAssetModal(b.dataset.assetTask)));
+ el("main-workqueue").querySelectorAll("[data-asset-check]").forEach(b=>
+  b.addEventListener("click",()=>checkAssetProgress(assetTasks.find(t=>t.id===b.dataset.assetCheck),b)));
  el("main-workqueue").querySelectorAll("[data-batch-asset]").forEach(b=>
   b.addEventListener("click",()=>runDeploymentBatch("asset",b.dataset.batchAsset)));
  el("main-workqueue").querySelectorAll(".asset-address[data-copy]").forEach(button=>
@@ -368,7 +400,9 @@ async function executeAssetDeployment(){
   });
  if(report.result.stage==="pending"){
   el("modal-deploy").disabled=false;
-  presentModalStatus("Transaktion noch ausstehend. Keine erneute Signatur; zunächst die vorherige TX prüfen.","warn");
+  await loadMainWorkqueue("assets");
+  presentModalStatus("TX gespeichert · "+txHash+" · Prüfung läuft weiter. Fortschritt unter Offene Deployments.","warn");
+  el("modal-deploy").hidden=true;
   return;
  }
  if(report.result.stage!=="documented")throw Error("Deployment-Receipt noch nicht veröffentlicht");
@@ -788,6 +822,9 @@ async function waitForDeploymentSync(result){
  const status=await awaitVerifiedDeploymentCheckout({
   expectedCommit:commit,
   readQueue:()=>get("/admin/api/workqueue"),
+  receiptIsPresent:queue=>Boolean(result?.receiptPath&&Object.values(queue.inventory?.assets||{}).some(asset=>
+   asset.routes.some(route=>route.receipts.includes(result.receiptPath))||
+   Object.values(asset.representations).some(rep=>rep.deployedContracts.some(r=>r.receipt===result.receiptPath)))),
   readSyncStatus:()=>get("/admin/api/deployment-sync/status"),
   paused:()=>batchActive&&batchStopRequested,
   onWaiting:({diagnostic,message})=>{
@@ -806,8 +843,16 @@ async function loadMainWorkqueue(view=el("infrastructure").hidden?"assets":"infr
   deploymentReadiness.clear();
   deploymentReadiness.clear();
   if(view==="assets"){
-   try{const tasks=await get("/admin/api/route-lifecycle");assetTasks=tasks.tasks||[];eligibleAssetRoutes=tasks.eligibleRoutes||[];}
-   catch{assetTasks=[];eligibleAssetRoutes=[];}
+   let tasks=await get("/admin/api/route-lifecycle");
+   if(workqueue!==data)return;
+   if(tasks.commit!==data.commit){
+    const current=await get("/admin/api/workqueue");
+    if(workqueue!==data)return;
+    if(tasks.commit!==current.commit)throw Error("Deployment-Stand wurde erneut aktualisiert. Lade die Übersicht erneut.");
+    workqueue=current;
+   }
+   assetTasks=tasks.tasks||[];
+   eligibleAssetRoutes=tasks.eligibleRoutes||[];
    renderAssets();
    void updateCreatorFactory();
   }
@@ -831,6 +876,7 @@ async function check(){
  }catch(e){el("preflight").textContent=e.message;}
 }
 async function loadPlan(){
+ if(!el("steps"))return;
  try{const d=await get("/admin/api/plan");el("steps").innerHTML=d.steps.map(s=>'<article><strong>'+s.order+'. '+esc(s.description)+'</strong><p>'+esc(s.chain)+' · '+esc(s.kind)+'</p></article>').join("");}
  catch(e){el("steps").textContent="Veralteter Diagnoseplan nicht verfügbar: "+e.message;}
 }
@@ -859,7 +905,7 @@ el("modal-deploy").addEventListener("click",()=>{
   void runDeploymentBatch(next.type,next.target,{forceRetryComponent:override?next.component:null});return;}
  void executeModalDeployment();
 });
-el("reload-inventory").addEventListener("click",loadMainWorkqueue);
+el("reload-inventory").addEventListener("click",()=>loadMainWorkqueue());
 
 el("asset-search").addEventListener("input",()=>{assetPage=0;renderAssets();});
 el("asset-filter").addEventListener("change",()=>{assetPage=0;renderAssets();});
@@ -1096,5 +1142,12 @@ el("treasury-refresh").addEventListener("click",refreshFeeTreasury);
 el("health-refresh").addEventListener("click",()=>void refreshOperationsHealth());
 el("health-rpc-probe").addEventListener("click",()=>void refreshOperationsHealth({probe:true}));
 setInterval(()=>{if(location.hash==="#health"&&!document.hidden)void refreshOperationsHealth();},30000);
+setInterval(async()=>{
+ if(assetStatusRefresh||document.hidden||el("assets").hidden||batchActive||
+    el("contract-deploy-dialog").open||(!workqueue?.readOnly&&!assetTasks.some(task=>task.progress)))return;
+ assetStatusRefresh=true;
+ try{await loadMainWorkqueue("assets");}
+ finally{assetStatusRefresh=false;}
+},10000);
 const initialView=location.hash.slice(1);
 openAdminView(["assets","infrastructure","treasury","health"].includes(initialView)?initialView:"assets");

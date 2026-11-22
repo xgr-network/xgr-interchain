@@ -4,7 +4,7 @@
 // This module only waits on READ-ONLY APIs. It never runs Git or broadcasts.
 const SHA=/^[a-f0-9]{40}$/i;
 export async function awaitVerifiedDeploymentCheckout({
- expectedCommit=null,readQueue,readSyncStatus=async()=>({}),
+ expectedCommit=null,readQueue,readSyncStatus=async()=>({}),receiptIsPresent=()=>false,
  paused=()=>false,onWaiting=()=>{},
  sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),
  attempts=160,intervalMs=2000
@@ -24,7 +24,7 @@ export async function awaitVerifiedDeploymentCheckout({
   try{
    queue=await readQueue();
    if(queue&&!queue.readOnly&&SHA.test(queue.commit||"")&&
-      (expectedCommit===null||queue.commit===expectedCommit))
+      (expectedCommit===null||queue.commit===expectedCommit||receiptIsPresent(queue)))
     return {status:"current",queue};
    if(queue?.warning)lastError=String(queue.warning);
   }catch(e){lastError=String(e?.message||e)}

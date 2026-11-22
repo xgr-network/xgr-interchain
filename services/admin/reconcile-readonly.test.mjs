@@ -11,6 +11,6 @@ test("chain and asset reconcile never mutate read-only git checkout",()=>{
   assert.doesNotMatch(code,/execFileSync\(["']git["']/);
   assert.doesNotMatch(code,/["']pull["'],["']--ff-only["']/);
   assert.match(code,/checkoutUpdateRequired:true/);
-  assert.match(code,/\.document\(id,/);
+  assert.match(code,/\.(document|markAssetPublished)\(id,/);
  }
 });

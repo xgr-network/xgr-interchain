@@ -7,7 +7,7 @@ import {classifyInterruptedDeployment} from "./deployment-auto-recovery.mjs";
 import {isPreResetIntent} from "./deployment-generation.mjs";
 
 export async function resumeInterruptedDeployments({
- journal,chains,rpc,reconcile,include,root=null
+ journal,chains,rpc,reconcile,include,root=null,allowRetry=()=>true
 }){
  if(!journal||!Array.isArray(chains)||typeof rpc!=="function"||
     typeof reconcile!=="function"||typeof include!=="function")
@@ -32,6 +32,10 @@ export async function resumeInterruptedDeployments({
    return {stage:"pending",id:current.id,chain:chain.name,
     reason:verdict.reason,txHash:current.txHash||null};
   if(verdict.action==="retry"){
+   if(!allowRetry(current,verdict.reason))
+    return {stage:"pending",id:current.id,chain:chain.name,txHash:current.txHash,
+     reason:verdict.reason,detail:verdict.warning||"Original transaction needs verification"};
+
    const retired=journal.retireForFreshWalletAttempt({
     id:current.id,createdAt:current.createdAt,reason:verdict.reason
    });

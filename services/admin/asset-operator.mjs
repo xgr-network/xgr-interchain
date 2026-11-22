@@ -14,7 +14,7 @@ import {verifyPrepared} from "./prepared-override.mjs";
 import {resumeInterruptedDeployments} from "./deployment-auto-resume.mjs";
 import {trustedBuild,verifyRuntimeTemplate} from "./trusted-artifacts.mjs";
 import {simulateChainDraft} from "./chain-transaction-draft.mjs";
-import {publishDeploymentBatch,deploymentReceiptPath} from "./deployment-ledger.mjs";
+import {publishDeploymentBatch,deploymentReceiptPath,DeploymentConfirmationsPendingError} from "./deployment-ledger.mjs";
 import {rpcCall} from "./inspector.mjs";
 import {selector,keccak256} from "../../apps/web/keccak.mjs";
 import {encodeAbi} from "./abi-encoder.mjs";
@@ -41,11 +41,68 @@ function eventAddresses(receipt,factory,signature,index){
   throw Error("Missing or ambiguous authenticated Factory event");
  return wordAddress(found[0].topics[index]);
 }
-function safeComponent(task){return task.kind==="router"?
-  task.id.endsWith(":representation")?"router":"router":"gateway";}
 export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertCurrentMain,
  build=trustedBuild,publish=publishDeploymentBatch}){
  const journal=chains=>deploymentIntents({directory:resolve(stateDir,"wallet-intents"),chains});
+ const active=new Map();
+ const observations=new Map();
+ let checking=false;
+ let previousCheck="";
+ const taskIdFor=e=>e.routeName?e.asset+":"+e.routeName+":register":
+  e.asset+":"+e.id.split(":")[0]+":representation";
+ function currentIntents(inventory){
+  const j=journal(inventory.chains),entries=Object.values(j.read().entries).filter(e=>e.asset);
+  const checkedOut=entries.filter(e=>{
+   if(active.has(e.asset))return false;
+   const asset=inventory.assets[e.asset];
+   if(e.routeName)return asset?.routes.some(r=>r.name===e.routeName&&r.status==="deployed");
+   const [chain,,component]=e.id.split(":");
+   return asset?.representations[chain]?.deployedContracts.some(record=>record.component===component);
+  });
+  j.clearCompletedAssetIntents(checkedOut);
+  const pending=entries.filter(e=>!checkedOut.includes(e));
+  const ids=new Set(pending.map(e=>e.id));
+  for(const id of observations.keys())if(!ids.has(id))observations.delete(id);
+  return pending;
+ }
+ function runForAsset(asset,fn){
+  const running=active.get(asset);
+  if(running)return running;
+  const operation=Promise.resolve().then(fn).finally(()=>active.delete(asset));
+  active.set(asset,operation);
+  return operation;
+ }
+ function recordObservation(id,result){
+  observations.set(id,{reason:result.reason,detail:result.detail});
+  return result;
+ }
+ const publishedResult=e=>({stage:"documented",...e.publication,txHash:e.txHash,checkoutUpdateRequired:true});
+ function progress(inventory){
+  return Object.fromEntries(currentIntents(inventory).map(e=>[taskIdFor(e),{
+   stage:e.publication?"awaiting-sync":e.stage,txHash:e.txHash,
+   ...observations.get(e.id),commit:e.publication?.commit
+  }]));
+ }
+ async function poll(){
+  if(checking)return;
+  checking=true;
+  try{
+   const inventory=approvedWorkInventory(root);
+   const candidates=currentIntents(inventory).filter(e=>e.txHash&&!e.publication&&!active.has(e.asset));
+   const index=candidates.findIndex(e=>e.id===previousCheck);
+   const entry=candidates[(index+1)%candidates.length];
+   if(!entry)return;
+   previousCheck=entry.id;
+   await runForAsset(entry.asset,()=>verifyIntent(entry));
+  }finally{checking=false;}
+ }
+ async function verifyIntent(entry){
+  try{return recordObservation(entry.id,await reconcileOnChain({id:entry.id}));}
+  catch(error){
+   return recordObservation(entry.id,{stage:"pending",txHash:entry.txHash,
+    reason:"automatic-verification-pending",detail:String(error.message||error).slice(0,220)});
+  }
+ }
  async function context(taskId){
   const commit=await mainCheck(root),inventory=approvedWorkInventory(root);
   const infrastructure=infrastructureInventory(root,inventory.chains);
@@ -131,6 +188,7 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
  async function draft({taskId,wallet}, {reserve=false}={}){
   if(!ADDR.test(wallet||""))throw Error("Wallet required");
   const ctx=await context(taskId),{task,asset,chain,infrastructure,chainInfra,commit,inventory}=ctx;
+  if(reserve)currentIntents(inventory);
   const j=journal(inventory.chains);
   const routeName=task.kind==="gateway"?task.id.slice(asset.asset.length+1).replace(/:register$/,""):null;
   const id=chain.name+":"+asset.asset+":"+(task.kind==="router"?
@@ -246,6 +304,21 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   return persistWalletBroadcastHash({journal:j,id,txHash});
  }
  async function reconcile({id}){
+  const {chains}=approvedWorkInventory(root);
+  const entry=journal(chains).read().entries[id];
+  if(!entry?.asset)throw Error("Unknown asset intent");
+  if(entry.publication)return publishedResult(entry);
+  const running=active.get(entry.asset);
+  if(running){
+   await running;
+   const current=journal(chains).read().entries[id];
+   if(current?.publication)return publishedResult(current);
+   if(!current)throw Error("Asset deployment intent already resolved");
+   return {stage:"pending",reason:"verification-in-progress",txHash:current.txHash};
+  }
+  return runForAsset(entry.asset,()=>verifyIntent(entry));
+ }
+ async function reconcileOnChain({id}){
   const main=await mainCheck(root),inventory=approvedWorkInventory(root);
   const j=journal(inventory.chains),entry=j.read().entries[id];
   if(!entry?.asset)throw Error("Unknown asset intent");
@@ -308,13 +381,19 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
   }
   if(entry.stage==="submitted")j.confirm(id,entry.txHash,{contractAddress:address,
    runtimeKeccak:inputs[0].expectedRuntimeKeccak256});
-  const result=await publish(root,inputs,{rpc});
+  let result;
+  try{result=await publish(root,inputs,{rpc});}
+  catch(error){
+   if(error instanceof DeploymentConfirmationsPendingError)
+    return {stage:"pending",reason:"confirmations",txHash:entry.txHash};
+   throw error;
+  }
   if(!/^[0-9a-f]{40}$/i.test(result.commit||""))throw Error("Receipt publication not confirmed");
   // The published GitHub commit is authoritative. Never run git pull inside
   // the read-only Admin service; a later manage.sh update syncs the checkout.
   const path=deploymentReceiptPath({kind:"xita-v315-deployment-receipt",chain:chain.name,
    transactionHash:entry.txHash,address});
-  j.document(id,path);
+  j.markAssetPublished(id,entry.txHash,{commit:result.commit,receiptPath:path});
   let autoSyncQueued=false;
   try{queueDeploymentSync(stateDir,result.commit);autoSyncQueued=true;}
   catch(error){console.error("XITA asset sync needs attention:",String(error.message||error));}
@@ -336,24 +415,25 @@ export function createAssetOperator({root,stateDir,rpc=rpcCall,mainCheck=assertC
  async function resume({asset}){
   const all=approvedWorkInventory(root);
   if(!Object.hasOwn(all.assets,asset||""))throw Error("Unapproved deployment asset");
+  const pending=currentIntents(all).filter(e=>e.asset===asset);
+  const publication=pending.find(e=>e.publication);
+  if(publication)return publishedResult(publication);
+  if(active.has(asset)){
+   const entry=pending.find(e=>e.txHash);
+   return {stage:"pending",reason:"verification-in-progress",txHash:entry?.txHash||null};
+  }
   const infrastructure=infrastructureInventory(root,all.chains);
-  const {graph,tasks}=nextAssetRouteTasks(all,infrastructure);
-  const selected=graph.assets.find(a=>a.asset===asset);
-  const outstanding=new Set(tasks.filter(t=>t.asset===asset).map(task=>{
-   const representation=selected?.representations.find(x=>x.chain===task.chain);
-   const component=task.kind==="gateway"?"gateway":representation?.component;
-   if(!component)throw Error("Missing approved router representation");
-   const route=task.kind==="gateway"
-    ?task.id.slice(asset.length+1).replace(/:register$/,""):"none";
-   return task.chain+":"+asset+":"+component+":"+route;
-  }));
-  return resumeInterruptedDeployments({
-   journal:journal(all.chains),chains:all.chains,rpc,reconcile,
-   // Already published router/route receipts are authoritative. The task
-   // planner no longer lists these, even if an old WAL entry survived.
-   include:entry=>entry.asset===asset&&outstanding.has(entry.id)
+  const {tasks}=nextAssetRouteTasks(all,infrastructure);
+  const outstanding=new Set(tasks.filter(t=>t.asset===asset).map(task=>task.id));
+  return runForAsset(asset,async()=>{
+   const result=await resumeInterruptedDeployments({
+    journal:journal(all.chains),chains:all.chains,rpc,reconcile:reconcileOnChain,
+    include:entry=>entry.asset===asset&&outstanding.has(taskIdFor(entry)),
+    allowRetry:(entry,reason)=>!entry.txHash||reason==="failed-onchain"
+   });
+   return result.id?recordObservation(result.id,result):result;
   });
  }
  const status=()=>journal(approvedWorkInventory(root).chains).read();
- return {preview,prepare,hash,reconcile,cancelPrepared,resume,status};
+ return {preview,prepare,hash,reconcile,cancelPrepared,resume,status,progress,poll};
 }
