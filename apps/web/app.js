@@ -2129,6 +2129,8 @@ async function loadLeaderboard(){
   // extra metric/chain requests. The existing 60s fetch supplied these values.
   const changed=previous.history?.points?.at(-1)?.asOf!==body.history?.points?.at(-1)?.asOf||
    previous.totalMoved?.asOf!==body.totalMoved?.asOf||
+   previous.totalMoved?.reconstructed?.asOf!==body.totalMoved?.reconstructed?.asOf||
+   previous.totalMoved?.reconstructed?.points?.length!==body.totalMoved?.reconstructed?.points?.length||
    previous.totals?.movedUsd!==body.totals?.movedUsd||
    previous.indexedTvl?.lockedUsd!==body.indexedTvl?.lockedUsd;
   if(changed){
