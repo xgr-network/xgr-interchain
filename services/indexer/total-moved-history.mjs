@@ -16,7 +16,7 @@ export function accumulateVerifiedMovement(snapshot,catalog,prices,prior=null,{n
  const empty={kind:"xita-total-moved-history-v1",schemaVersion:1,status:"unavailable",
   totalUsd:null,asOf:null,assets:{},points:[]};
  if(!assetKeys.length)return empty;
- const old=prior?.kind===empty.kind&&prior.schemaVersion===1?prior:null;
+ const old=prior?.kind===empty.kind&&prior.schemaVersion===1&&prior.status==="verified"?prior:null;
  const previous=old?.assets&&typeof old.assets==="object"?old.assets:{};
  const asOf=Date.parse(snapshot?.asOf);
  if(!Number.isFinite(asOf)||Math.abs(now-asOf)>120000)return old||empty;
