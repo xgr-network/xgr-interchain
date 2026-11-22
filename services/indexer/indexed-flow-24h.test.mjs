@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {indexedGrossFlow24h} from "./indexed-flow-24h.mjs";
+import {indexedGrossFlow24h,indexedGrossFlowLifetime} from "./indexed-flow-24h.mjs";
 const hash=x=>"0x"+x.repeat(64),addr=x=>"0x"+x.repeat(40);
 const now=Date.parse("2026-10-22T09:00:00.000Z");
 const forward={source:"xgrchain",destination:"base",routeId:hash("1"),gateway:addr("1")};
@@ -37,4 +37,19 @@ test("duplicate messages, incomplete coverage and invalid provenance fail closed
  assert.equal(calculate([r,r]).status,"unavailable");
  assert.equal(indexedGrossFlow24h({descriptor,rows:[r],coverage:{complete:false},price,now}).status,"unavailable");
  assert.equal(calculate([{...r,gateway:addr("9")}]).status,"unavailable");
+});
+
+test("lifetime gross movement counts only confirmed escrow locks and releases",()=>{
+ const rows=[
+  row(forward,"3",{source_block_at:new Date(now-90000000).toISOString()}),
+  row(reverse,"4",{escrow_outflow_observed_at:new Date(now-3000).toISOString()}),
+  row(reverse,"5",{delivered:false,escrow_outflow_observed_at:null})
+ ];
+ const lifetime=indexedGrossFlowLifetime({descriptor,rows,coverage:{complete:true}});
+ assert.equal(lifetime.status,"verified");
+ assert.equal(lifetime.grossRaw,"2000000000000000000");
+ assert.equal(lifetime.inflowCount,1);
+ assert.equal(lifetime.outflowCount,1);
+ assert.equal(indexedGrossFlowLifetime({descriptor,rows,coverage:{complete:false}}).status,"unavailable");
+ assert.equal(indexedGrossFlowLifetime({descriptor,rows:[rows[0],rows[0]],coverage:{complete:true}}).status,"unavailable");
 });
