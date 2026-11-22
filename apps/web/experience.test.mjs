@@ -577,7 +577,8 @@ test("TVL chart spreads actual short-window measurements across full plot",()=>{
   {asOf,lockedUsd:0.011503}
  ]}};
  const html=renderDashboard(model,{tvlPeriod:"24h"},"ready",metrics);
- assert.match(html,/M8\.00 /);
+ assert.match(html,/ux-ns-tvl-sparkline/);
+ assert.doesNotMatch(html,/M8\.00 /,"short observation must not stretch across entire 24h");
  assert.match(html,/L292\.00 /);
  assert.match(html,/Observed 5 min/);
  assert.match(html,/Last verified:/);
@@ -879,8 +880,23 @@ test("single verified cumulative observation still renders a visible chart point
  assert.match(moved,/\$30,378\.46/);
  assert.match(moved,/ux-ns-total-moved-chart/);
  assert.match(moved,/First verified cumulative movement observation/);
- assert.match(moved,/First observation/);
+ assert.match(moved,/History begins here/);
  assert.doesNotMatch(moved,/stroke-width="2\.5"/,"single observation must not invent a trend line");
  assert.doesNotMatch(moved,/Cumulative history starts with the first verified observation/);
  assert.doesNotMatch(moved,/historical repricing/);
+});
+
+test("24h movement shows timestamped last verified measurement on temporary outage",()=>{
+ const model=buildExperienceModel(freshDeployedCatalog({routeDestination:"base"}).catalog);
+ const snapshot={totals:{movedUsd:null},
+  totalMoved:{kind:"xita-total-moved-history-v1",status:"verified",totalUsd:30378.46,
+   lastVerified24h:{movedUsd:11743.42,asOf:"2026-11-22T08:55:00Z"},
+   points:[{asOf:"2026-11-22T08:55:00Z",totalUsd:30378.46}]}};
+ const html=renderDashboard(model,{},"ready",snapshot);
+ const moved=html.split("ux-ns-card-moved")[1]?.split("</article>")[0]||"";
+ assert.match(moved,/\$11,743\.42/);
+ assert.match(moved,/Last verified/);
+ assert.match(moved,/22 Nov/);
+ assert.match(moved,/\$30,378\.46/);
+ assert.doesNotMatch(moved,/r="4"[^>]*stroke-width="2\.5"/);
 });
