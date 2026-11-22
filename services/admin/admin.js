@@ -2,7 +2,7 @@ import {connectDeploymentWallet,currentWalletState,switchDeploymentChain,balance
 import {rotationCalldata,verifyOnChainWallets} from "./service-wallet-rotation.mjs";
 import {selector} from "./keccak.mjs";
 import {apiJSON} from "./api-client.mjs";
-import {awaitDeploymentReceipt} from "./deployment-poll.mjs";
+import {awaitDeploymentReceipt,chainReceiptPolling} from "./deployment-poll.mjs";
 import {awaitVerifiedDeploymentCheckout} from "./deployment-sync-wait.mjs";
 import {factoryDeploymentDefaults} from "./factory-defaults.mjs";
 import {chainDeploymentIntent,hasOutstandingWalletTransaction} from "./chain-intent-view.mjs";
@@ -412,6 +412,7 @@ async function openContractModal(chainName,component){
  presentModalStatus("Lade aktuellen Deployment-Status …");
  el("modal-gas-result").textContent="";
  el("modal-deploy").disabled=true;
+ el("modal-deploy").textContent="Mit Wallet deployen";
  el("modal-parameters").hidden=true;
  el("contract-deploy-dialog").showModal();
  try{
@@ -423,6 +424,13 @@ async function openContractModal(chainName,component){
   const existing=chainDeploymentIntent(status,chainName,component);
   deploymentReadiness.set(chainName,r);
   renderInfrastructure();
+  if(hasOutstandingWalletTransaction(existing)){
+   selectedDeployment.txHash=existing.txHash;
+   el("modal-deploy").textContent="Gesendete Transaktion prüfen";
+   el("modal-deploy").disabled=false;
+   presentModalStatus("TX "+existing.txHash+" ist bereits gesendet. Receipt prüfen.","warn");
+   return;
+  }
   const requiresValues=component==="validatorRegistry"||
    component==="factory"||component==="executionGateway";
   lastModalPreview=null;
@@ -503,14 +511,6 @@ async function openContractModal(chainName,component){
    presentModalStatus("Validator-Bootstrap: "+(r.evidenceError||"Genesis-Proofs nicht bestätigt"),"warn");
    return;
   }
-  // An existing wallet broadcast/receipt must be reconciled, never
-  // replaced by an implicit new MetaMask deployment.
-  if(hasOutstandingWalletTransaction(existing)){
-   el("modal-deploy").disabled=true;
-   presentModalStatus("Bereits gesendete Transaktion ("+existing.stage+
-    ") für "+chainName+" · "+component+" vorhanden. Erst über die Deployment-Wiederherstellung prüfen; keine neue Wallet-Signatur.","warn");
-   return;
-  }
   el("modal-deploy").disabled=false;
   presentModalStatus(existing?.stage==="prepared"
    ?"Nicht gesendeter Deployment-Entwurf vorhanden. Vor einem neuen Wallet-Deploy den Entwurf prüfen oder abbrechen."
@@ -552,12 +552,33 @@ async function checkModalGas(){
   presentModalStatus("Gas geprüft. Deployment benötigt Bestätigung in deiner Wallet.");
  }catch(e){el("modal-deploy").disabled=true;presentModalStatus("Gasprüfung blockiert: "+e.message,"error")}
 }
+async function reconcileChainModal({chainName,component,txHash},button){
+ const result=await awaitDeploymentReceipt(
+  ()=>postJSON("/admin/api/chain-deploy/reconcile",{id:chainName+":"+component}),{
+   ...chainReceiptPolling,
+   onPending:r=>presentModalStatus("TX "+txHash+" · "+
+    (r.reason==="confirmations"?"Warte auf Blockbestätigungen":
+     r.reason==="finalized"?"Warte auf Finalität":"Warte auf verifizierten Receipt")+
+    " …","warn")
+  });
+ if(result.result.stage==="pending"){
+  button.disabled=false;
+  presentModalStatus("TX "+txHash+" wird noch bestätigt. Mit „Gesendete Transaktion prüfen“ weiterprüfen.","warn");
+  return;
+ }
+ if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
+ presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
+ el("contract-deploy-dialog").close();selectedDeployment=null;
+ await waitForDeploymentSync(result.result);
+}
 async function executeModalDeployment(){
  if(selectedAssetTask){try{await executeAssetDeployment()}catch(e){el("modal-deploy").disabled=false;presentModalStatus("Deployment noch nicht abgeschlossen: "+e.message+". Falls eine TX gesendet wurde, keine weitere signieren, sondern zunächst den Status prüfen.","error");}return;}
  if(!selectedDeployment)return;
- const {chainName,component}=selectedDeployment;
+ const selection=selectedDeployment;
+ const {chainName,component}=selection;
  const button=el("modal-deploy");button.disabled=true;
  try{
+  if(selection.txHash){await reconcileChainModal(selection,button);return;}
   const chain=workqueue.inventory.chains.find(c=>c.name===chainName);
   const params=modalValues(component);
   let state=await currentWalletState();
@@ -581,18 +602,9 @@ async function executeModalDeployment(){
  
   presentModalStatus("Transaktion gesendet · Hash wird gesichert …");
   await postJSON("/admin/api/chain-deploy/hash",{id:prepared.id,txHash});
-  presentModalStatus("Warte auf Receipt und On-Chain-Verifikation …");
-  const result=await awaitDeploymentReceipt(
-   ()=>postJSON("/admin/api/chain-deploy/reconcile",{id:prepared.id}),{
-    onPending:r=>presentModalStatus("Transaktion "+
-      (r.reason==="confirmations"?"wartet auf Bestätigungen":"wartet auf On-Chain-Receipt")+
-      " – keine weitere Wallet-Signatur.","warn")
-   });
-  if(result.result.stage==="pending"){button.disabled=false;presentModalStatus("Wallet-Transaktion noch ausstehend. Erneuter Klick prüft zuerst die ursprüngliche TX; keine automatische zweite Signatur.","warn");return;}
-  if(result.result.stage!=="documented")throw Error("Receipt noch nicht dokumentiert");
-  presentModalStatus("Deployment verifiziert und in GitHub dokumentiert.","success");
-  el("contract-deploy-dialog").close();selectedDeployment=null;
-  await waitForDeploymentSync(result.result);
+  selection.txHash=txHash;
+  button.textContent="Gesendete Transaktion prüfen";
+  await reconcileChainModal(selection,button);
  }catch(e){
   // A prepare/preflight RPC 429 happens BEFORE any wallet signature. Never
   // suggest a previous on-chain transaction exists when nothing was sent.
@@ -774,8 +786,14 @@ async function runDeploymentBatch(type,target,{forceRetryComponent=null}={}){
     await postJSON(prefix+"/hash",{id:prepared.id,txHash});
     const outcome=await awaitDeploymentReceipt(
      ()=>postJSON(prefix+"/reconcile",{id:prepared.id}),{
+      ...(core?chainReceiptPolling:{}),
       onPending:()=>presentModalStatus("Schritt "+(stepCount+1)+" · "+next.id+" · Bestätigungen/Receipt ausstehend …")
      });
+    if(outcome.result?.stage==="pending"){
+     presentModalStatus("TX "+txHash+" wartet weiter auf Bestätigungen oder den Receipt. "+
+      "Fortsetzen prüft zuerst diese Transaktion.","warn");
+     break;
+    }
     if(outcome.result?.stage!=="documented")
      throw Error("Transaktion "+txHash+" gesendet, aber Receipt noch nicht dokumentiert");
     presentModalStatus("Schritt "+(stepCount+1)+" abgeschlossen · GitHub-Receipt dokumentiert. Nächsten Schritt vorbereiten …","success");
