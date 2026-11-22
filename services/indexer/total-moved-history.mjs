@@ -4,6 +4,7 @@
 // existing finalized-indexed operations via tvl-worker; no chain RPC here.
 import {readFileSync,writeFileSync,renameSync,unlinkSync,existsSync} from "node:fs";
 import {isDeployedAsset} from "../../apps/web/listing-visibility.js";
+import {verifiedMetrics} from "../../apps/web/leaderboard-data.js";
 import {escrowDescriptor,priceEscrow} from "./tvl-verifier.mjs";
 
 const UINT=/^(0|[1-9][0-9]*)$/;
@@ -50,10 +51,16 @@ export function accumulateVerifiedMovement(snapshot,catalog,prices,prior=null,{n
  const lastTotal=old?atoms(old.totalUsdExact):0n;
  if(lastTotal===null)return old||empty;
  const total=lastTotal+additions;
+ // Retain the last independently complete rolling 24h observation. A missing
+ // newer proof must NOT be relabeled as a current measurement on the website.
+ const rolling=assetKeys.map(id=>verifiedMetrics(snapshot,id)?.movedUsd??null);
+ const completeRolling=rolling.length>0&&rolling.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0);
+ const lastVerified24h=completeRolling?{asOf:new Date(asOf).toISOString(),movedUsd:rolling.reduce((n,v)=>n+v,0)}:
+  old?.lastVerified24h??null;
  if(total<0n||!Number.isFinite(Number(decimal(total))))return old||empty;
  const current={kind:empty.kind,schemaVersion:1,status:"verified",
   asOf:new Date(asOf).toISOString(),totalUsd:Number(decimal(total)),
-  totalUsdExact:decimal(total),assets:updated};
+  totalUsdExact:decimal(total),assets:updated,lastVerified24h};
  const earlier=Array.isArray(old?.points)?old.points.filter(p=>
   Number.isFinite(Date.parse(p?.asOf))&&Number.isFinite(p?.totalUsd)&&p.totalUsd>=0):[];
  const points=[...earlier,{asOf:current.asOf,totalUsd:current.totalUsd}];
