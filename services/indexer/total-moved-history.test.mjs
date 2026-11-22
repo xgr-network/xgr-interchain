@@ -54,3 +54,19 @@ test("cumulative first snapshot becomes valid after an incomplete startup",()=>{
  assert.equal(ready.status,"verified");
  assert.equal(ready.totalUsd,2);
 });
+
+test("last complete 24h number survives a later incomplete observation with timestamp",()=>{
+ const valid24h={assetId:"XGR",verified:true,market:{status:"unavailable"},
+  custody:{status:"unavailable"},
+  movement:{status:"verified",complete:true,metric:"escrow-gross-24h",
+   windowStart:new Date(now-86400000).toISOString(),windowEnd:new Date(now).toISOString(),
+   proofDigest:"0x"+"a".repeat(64),inflowRaw:"1000000000000000000",
+   outflowRaw:"0",movedUsd:2}};
+ const first=accumulateVerifiedMovement({...snap("1000000000000000000"),
+  assets:{XGR:valid24h}},catalog,price(2),null,{now});
+ assert.equal(first.lastVerified24h.movedUsd,2);
+ assert.equal(first.lastVerified24h.asOf,new Date(now).toISOString());
+ const later=calc("1000000000000000000",.5,first,now+60000);
+ assert.deepEqual(later.lastVerified24h,first.lastVerified24h);
+ assert.equal(later.totalUsd,first.totalUsd);
+});
