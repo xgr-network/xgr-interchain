@@ -1,3 +1,5 @@
+export const chainReceiptPolling=Object.freeze({attempts:40,intervalMs:4000});
+
 // Browser-only bounded polling for the SAME already-broadcast wallet tx.
 // Pending is never an error, and never initiates a new EIP-1193 request.
 export async function awaitDeploymentReceipt(check,{
